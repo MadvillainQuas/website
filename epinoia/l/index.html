@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="EPINOIΛ">
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.twitch.tv">
 <title>League · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
@@ -196,7 +196,11 @@
   <div class="tabs-wrap">
     <div class="ep-tabs" role="tablist">
       <button class="ep-tab on" data-p="table" role="tab">Table</button>
+      <!-- 0237: Live and Video are shown only when a game is on now / the league has highlights (mediatabs.js, one
+           idle-time call); hidden, they take no room -->
+      <button class="ep-tab" data-p="live" role="tab" hidden>Live</button>
       <button class="ep-tab" data-p="fixtures" role="tab">Fixtures</button>
+      <button class="ep-tab" data-p="video" role="tab" hidden>Video</button>
       <button class="ep-tab" data-p="leaders" role="tab">Leaders</button>
       <button class="ep-tab" data-p="teams" role="tab">Team Stats</button>
       <button class="ep-tab" data-p="charts" role="tab">Charts</button>
@@ -221,6 +225,9 @@
   <div class="pane" id="pane-charts"></div>
   <!-- index_9's Strength of Schedule tab (sos.js), drawn the first time it is opened -->
   <div class="pane" id="pane-sos"></div>
+  <!-- the league's highlights and its live games (l/mediatabs.js): drawn the first time they are opened -->
+  <div class="pane" id="pane-video"></div>
+  <div class="pane" id="pane-live"></div>
   <div class="pane" id="pane-cup">
     <div id="cupPick" class="pick phasepick"></div>
     <div id="cupBody"></div>
@@ -258,6 +265,7 @@
 <script src="../statpop.js?v=679" defer></script>
 <script src="../chartlab.js?v=679" defer></script>
 <script src="league.js?v=679" defer></script>
+<script src="mediatabs.js?v=679" defer></script>
 <script src="../feedrank.js?v=679" defer></script>
 <script src="../interest.js?v=679" defer></script>
 <script src="../nav.js?v=679" defer></script>

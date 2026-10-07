@@ -138,6 +138,9 @@ async function boot() {
     const ls = await api(`leagues?slug=eq.${encodeURIComponent(wantLeague)}&select=*&limit=1`);
     if (!ls.length) return fail(`No league "${wantLeague}".`);
     league = ls[0];
+    /* which league this is, for what loads beside this file (mediatabs.js: the Video and Live tabs) */
+    window.EPINOIA_LEAGUE = league;
+    try { window.dispatchEvent(new CustomEvent('epinoia:league', { detail: league })); } catch (_) { /* old browser */ }
     /* asked now, by id, so it runs beside the seasons and competitions reads; the module
        gives up by itself after 4 s and answers open */
     const A = window.EpinoiaAccess;

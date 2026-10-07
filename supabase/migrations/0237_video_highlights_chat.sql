@@ -261,6 +261,28 @@ language sql stable security definer set search_path = public as $$
    limit greatest(1, least(coalesce(p_limit, 30), 60));
 $$;
 
+/* THE LEAGUE PAGE'S ONE PROBE, made when the page is idle: whether the league has highlights (its Video tab) and which
+   of its games are live now (its Live tab), each with the stream it has - its own video, or the league's channel. One
+   small call; a league with neither shows neither tab and costs nothing more. */
+create or replace function public.league_media(p_league uuid)
+returns jsonb language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'highlights', exists (select 1 from public.league_videos(p_league, 'highlights', null, 1)),
+    'live', coalesce((
+      select jsonb_agg(public.video_game_json(g.id) || jsonb_build_object(
+               'video', (select jsonb_build_object('provider', v.provider, 'ref', v.video_ref, 'url', v.url, 'live', v.is_live)
+                           from game_videos v where v.game_id = g.id and v.is_primary limit 1),
+               'channel', (select jsonb_build_object('platform', c.platform, 'ref', c.channel_ref)
+                             from public.league_channel_for_game(g.id) c limit 1))
+             order by g.tipoff_at)
+        from games g join competitions co on co.id = g.competition_id join seasons se on se.id = co.season_id
+       where se.league_id = p_league and g.status in ('live', 'finalising') and g.stalled_since is null
+         and g.tipoff_at > now() - interval '8 hours' and public.can_read_game(g.id)), '[]'::jsonb),
+    'chat', exists (select 1 from leagues l where l.id = p_league and l.chat_enabled and coalesce(l.go_photos, true)
+                     and l.visibility = 'public' and l.access_mode = 'open'))
+  where public.league_visible(p_league);
+$$;
+
 -- -------------------------------------------------------------------------------------------- the chat ---
 /* whether a game's chat may be read: a public, open league with its chat on that is not a youth league */
 create or replace function public.chat_open_league(p_game uuid)
@@ -426,6 +448,7 @@ alter function public.video_game_json(uuid) owner to postgres;
 alter function public.video_item_visible(uuid, uuid) owner to postgres;
 alter function public.league_videos(uuid, text, timestamptz, int) owner to postgres;
 alter function public.game_highlights(uuid) owner to postgres;
+alter function public.league_media(uuid) owner to postgres;
 alter function public.video_feed(uuid, text, timestamptz, int) owner to postgres;
 alter function public.video_feed_mine(text, timestamptz, int) owner to postgres;
 alter function public.chat_open_league(uuid) owner to postgres;
@@ -446,6 +469,7 @@ revoke all on function public.video_game_json(uuid) from public, anon, authentic
 revoke all on function public.video_item_visible(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.league_videos(uuid, text, timestamptz, int) from public;
 revoke all on function public.game_highlights(uuid) from public;
+revoke all on function public.league_media(uuid) from public;
 revoke all on function public.video_feed(uuid, text, timestamptz, int) from public;
 revoke all on function public.video_feed_mine(text, timestamptz, int) from public, anon;
 revoke all on function public.chat_open_league(uuid) from public, anon, authenticated;
@@ -463,6 +487,7 @@ grant execute on function public.news_video_modes(uuid[]) to authenticated;
 grant execute on function public.set_news_item_game(uuid, uuid) to authenticated;
 grant execute on function public.league_videos(uuid, text, timestamptz, int) to anon, authenticated;
 grant execute on function public.game_highlights(uuid) to anon, authenticated;
+grant execute on function public.league_media(uuid) to anon, authenticated;
 grant execute on function public.video_feed(uuid, text, timestamptz, int) to anon, authenticated;
 grant execute on function public.video_feed_mine(text, timestamptz, int) to authenticated;
 grant execute on function public.chat_gate(uuid, uuid, text, boolean) to service_role;

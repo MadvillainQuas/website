@@ -113,6 +113,15 @@ if (!loaded || !loaded.db) {
   ok("a fan's own: the highlights of a club they follow", r.some(x => x.video_id === 'abcdefghijk'), r.map(x => x.video_id));
   ok('...signed out: refused', !!(await tryAs(null, null, `select * from public.video_feed_mine(null)`)).error);
 
+  r = (await as(null, null, `select public.league_media($1) v`, [L]))[0].v;
+  ok("the league page's one probe: highlights, the live game with its stream, the chat on",
+     r.highlights === true && r.live.length === 1 && r.live[0].id === GL && r.live[0].home.name === 'FC Barcelona' && 'video' in r.live[0] && r.chat === true, r);
+  r = (await as(null, null, `select public.league_media($1) v`, [LP]))[0].v;
+  ok('...a private league answers nothing to a stranger', r === null, r);
+  await q(`update public.games set stalled_since = now() where id = $1`, [GL]);
+  ok('...a game whose feed stopped is not live', (await as(null, null, `select public.league_media($1) v`, [L]))[0].v.live.length === 0);
+  await q(`update public.games set stalled_since = null where id = $1`, [GL]);
+
   console.log('\nthe channel\'s switch');
   ok('a fan cannot change a channel', /not allowed/.test((await tryAs(FAN, null, `select public.set_news_video_mode($1, 'seeking')`, [SH])).error || ''));
   r = await tryAs(ADM, null, `select public.set_news_video_mode($1, 'seeking') v`, [SH]);

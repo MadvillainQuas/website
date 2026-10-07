@@ -302,6 +302,13 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/video-chat.test.mjs
 
+      - name: The live chat's moderator, and the league's Video and Live tabs (0237)
+        # the moderator's policy, the message as data, the fail-closed verdict and the function's order (gate, model, store);
+        # the tabs hidden until needed, one idle-time call, the player's state from YouTube's frame, cinema, the game's embed
+        run: |
+          node supabase/tests/chat-moderation.test.mjs
+          node supabase/tests/league-media.test.mjs
+
       - name: Box score renders with nothing but S and derive()
         # catches a helper left behind by the extraction, which otherwise only
         # shows up as a blank public page

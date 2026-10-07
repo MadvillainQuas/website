@@ -1,0 +1,129 @@
+/* ============================================================================
+   VIDEO AND LIVE (0237): the highlight tiles, the click-to-play player, the modern box score (gamebox.js) and the
+   live chat (gamechat.js). Loaded with them, never on a page that does not open them. Kit tokens only, light and dark.
+   ============================================================================ */
+
+/* ------------------------------------------------------------------------------------------ the tiles --- */
+.md-wrap{padding:calc(var(--u)*2) calc(var(--u)*3) calc(var(--u)*4)}
+.md-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 calc(var(--u)*2)}
+.md-bar .md-note{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--ink-3);margin-left:auto}
+.md-chip{font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;
+  border:1px solid var(--rule-2);background:transparent;color:var(--ink-2);cursor:pointer}
+.md-chip[aria-pressed="true"]{background:var(--lume);color:var(--on-accent);border-color:var(--lume)}
+.md-chip:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.md-select{font-family:var(--f-ui);font-size:13px;padding:6px 8px;background:var(--panel);color:var(--ink);border:1px solid var(--rule-2)}
+
+.md-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:calc(var(--u)*2)}
+.md-grid.has-hero > .md-tile:first-child{grid-column:1 / -1}
+@media (min-width:760px){ .md-grid.has-hero > .md-tile:first-child{grid-column:span 2;grid-row:span 2} }
+
+.md-tile{position:relative;display:flex;flex-direction:column;text-align:left;padding:0;border:1px solid var(--rule);
+  background:var(--panel);color:var(--ink);cursor:pointer;overflow:hidden;font:inherit;
+  transition:transform .18s var(--ease),border-color .18s var(--ease),box-shadow .18s var(--ease)}
+.md-tile:hover{transform:translateY(-2px);border-color:var(--rule-2);box-shadow:4px 4px 0 color-mix(in oklch,var(--lume) 35%,transparent)}
+.md-tile:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.md-tile[aria-current="true"]{border-color:var(--lume);box-shadow:0 0 0 1px var(--lume)}
+.md-thumb{position:relative;aspect-ratio:16/9;background:#000;overflow:hidden}
+.md-thumb > img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
+  transition:transform .4s var(--ease),filter .4s var(--ease)}
+.md-tile:hover .md-thumb > img{transform:scale(1.045);filter:saturate(1.15)}
+.md-thumb::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.78) 100%)}
+.md-play{position:absolute;left:50%;top:50%;translate:-50% -50%;z-index:1;width:52px;height:52px;border-radius:50%;
+  display:grid;place-items:center;background:color-mix(in oklch,#000 55%,transparent);border:2px solid #fff;color:#fff;
+  transition:background .18s var(--ease),transform .18s var(--ease)}
+.md-play::before{content:"";margin-left:4px;border-left:15px solid currentColor;border-top:9px solid transparent;border-bottom:9px solid transparent}
+.md-tile:hover .md-play{background:var(--flare);transform:scale(1.08)}
+.md-kind{position:absolute;left:8px;top:8px;z-index:1;font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;
+  padding:3px 6px;background:var(--flare);color:#fff}
+.md-kind.v{background:var(--aqua);color:#04100b}
+.md-kind.f{background:var(--violet);color:#04100b}
+.md-score{position:absolute;left:8px;right:8px;bottom:8px;z-index:1;display:flex;align-items:center;gap:8px;color:#fff}
+.md-crest{width:26px;height:26px;flex:none;background:#fff;border-radius:3px;overflow:hidden;display:grid;place-items:center;
+  font-family:var(--f-micro);font-size:8px;color:#04100b}
+.md-crest img{width:88%;height:88%;object-fit:contain}
+.md-pts{font-family:var(--f-score);font-size:22px;line-height:1;letter-spacing:.02em;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+.md-pts .w{color:#fff}.md-pts .l{color:rgba(255,255,255,.62)}
+.md-grid.has-hero > .md-tile:first-child .md-pts{font-size:clamp(26px,4vw,40px)}
+.md-grid.has-hero > .md-tile:first-child .md-crest{width:38px;height:38px}
+.md-cap{padding:10px 12px 12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.md-title{font-family:var(--f-ui);font-weight:700;font-size:14px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden}
+.md-meta{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;color:var(--ink-3);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.md-src{width:14px;height:14px;border-radius:50%;background:#fff;object-fit:contain}
+.md-empty{padding:calc(var(--u)*4) 0;text-align:center;color:var(--ink-3);font-family:var(--f-micro);font-size:10px;letter-spacing:.06em}
+.md-more{display:block;margin:calc(var(--u)*2) auto 0}
+.md-skel{aspect-ratio:16/12;background:linear-gradient(90deg,var(--panel) 0,var(--panel-2) 40%,var(--panel) 80%);
+  background-size:200% 100%;animation:md-shim 1.4s linear infinite;border:1px solid var(--rule)}
+@keyframes md-shim{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.md-tile,.md-thumb img,.md-play{transition:none}.md-skel{animation:none}}
+
+/* --------------------------------------------------------------------------------------- the stage --- */
+.md-stage{margin:0 0 calc(var(--u)*3);border:1px solid var(--rule-2);background:var(--panel);scroll-margin-top:72px}
+.md-stage[hidden]{display:none}
+.md-player{position:relative;aspect-ratio:16/9;background:#000}
+.md-player iframe,.md-player button{position:absolute;inset:0;width:100%;height:100%;border:0}
+.md-player button{padding:0;cursor:pointer;background:#000}
+.md-player button img{width:100%;height:100%;object-fit:cover;display:block;opacity:.88}
+.md-player button .md-play{width:76px;height:76px}
+.md-player button .md-play::before{border-left-width:22px;border-top-width:13px;border-bottom-width:13px;margin-left:6px}
+.md-stage-h{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.md-stage-h .md-title{font-size:16px;-webkit-line-clamp:3}
+.md-close{flex:none}
+.md-yt{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;color:var(--ink-3)}
+
+/* --------------------------------------------------------------- the game, as its embed (embed/game) --- */
+.md-embed{display:block;width:100%;height:230px;border:0;background:transparent;color-scheme:normal}
+.md-boxwrap{padding:10px 12px 12px}
+
+/* ---------------------------------------------------------------------------------------- live tab --- */
+.lv-list{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:calc(var(--u)*2)}
+.lv-card{flex:0 0 auto;min-width:200px;display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--rule);
+  background:var(--panel);color:var(--ink);cursor:pointer;font:inherit;text-align:left}
+.lv-card[aria-current="true"]{border-color:var(--flare);box-shadow:inset 0 -3px 0 var(--flare)}
+.lv-card .t{font-family:var(--f-ui);font-size:12px;font-weight:700;line-height:1.3}
+.lv-card .s{font-family:var(--f-score);font-size:22px}
+.lv-card .c{font-family:var(--f-micro);font-size:8px;color:var(--flare);letter-spacing:.08em}
+.lv-room{display:grid;grid-template-columns:minmax(0,1fr);gap:calc(var(--u)*2)}
+@media (min-width:1000px){ .lv-room{grid-template-columns:minmax(0,1fr) 340px} .lv-room .ch{position:sticky;top:72px;max-height:calc(100vh - 96px)} }
+.lv-main{min-width:0;display:flex;flex-direction:column;gap:calc(var(--u)*2)}
+
+/* -------------------------------------------------------------------------------------- the chat --- */
+.ch{display:flex;flex-direction:column;border:1px solid var(--rule-2);background:var(--panel);min-height:360px;max-height:70vh}
+.ch-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-bottom:1px solid var(--rule)}
+.ch-h b{font-family:var(--f-micro);font-size:10px;letter-spacing:.1em}
+.ch-h .ai{font-family:var(--f-micro);font-size:8px;letter-spacing:.06em;color:var(--ink-3)}
+.ch-log{flex:1 1 auto;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:8px;overscroll-behavior:contain}
+.ch-msg{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:8px;align-items:start}
+.ch-av{width:24px;height:24px;border-radius:50%;background:var(--panel-2);overflow:hidden;display:grid;place-items:center;
+  font-family:var(--f-micro);font-size:9px;color:var(--ink-2)}
+.ch-av img{width:100%;height:100%;object-fit:cover}
+.ch-u{font-family:var(--f-ui);font-weight:700;font-size:12px;color:var(--lume);margin-right:6px}
+.ch-msg.mine .ch-u{color:var(--aqua)}
+.ch-b{font-family:var(--f-ui);font-size:13.5px;line-height:1.35;overflow-wrap:anywhere}
+.ch-act{opacity:0;display:flex;gap:2px;transition:opacity .15s}
+.ch-msg:hover .ch-act,.ch-msg:focus-within .ch-act{opacity:1}
+.ch-act button{font-family:var(--f-micro);font-size:8px;background:none;border:1px solid var(--rule);color:var(--ink-3);cursor:pointer;padding:2px 4px}
+@media (hover:none){.ch-act{opacity:.7}}
+.ch-sys{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;color:var(--ink-3);text-align:center;padding:4px 0}
+.ch-form{border-top:1px solid var(--rule);padding:8px;display:flex;flex-direction:column;gap:6px}
+.ch-row{display:flex;gap:6px}
+.ch-in{flex:1 1 auto;min-width:0;font-family:var(--f-ui);font-size:14px;padding:8px 10px;background:var(--ground);color:var(--ink);
+  border:1px solid var(--rule-2)}
+.ch-in:focus{outline:2px solid var(--lume);outline-offset:-1px}
+.ch-say{font-family:var(--f-micro);font-size:9px;letter-spacing:.04em;color:var(--ink-3);min-height:1em}
+.ch-say.err{color:var(--flare)}
+.ch-gate{padding:12px;font-family:var(--f-ui);font-size:13px;line-height:1.4;color:var(--ink-2)}
+.ch-gate a{color:var(--lume)}
+
+/* ------------------------------------------------------------------------------------------ CINEMA ---
+   media.js cineEnter/cineExit: the page under a veil while a video plays, the video's group lit above it. The veil
+   fades in; then what it covers stops painting (.md-unlit: visibility, so nothing moves). */
+.md-veil{position:fixed;inset:0;z-index:2147483000;background:radial-gradient(ellipse at 50% 40%,rgba(2,6,4,.86),rgba(0,0,0,.95));
+  opacity:0;transition:opacity .45s var(--ease);cursor:zoom-out}
+.md-veil.on{opacity:1}
+.md-lit{position:relative;z-index:2147483001;transition:box-shadow .45s var(--ease),transform .45s var(--ease)}
+.md-cine .md-lit{box-shadow:0 0 0 1px color-mix(in oklch,var(--lume) 45%,transparent),0 30px 120px rgba(0,0,0,.9),
+  0 0 90px color-mix(in oklch,var(--lume) 14%,transparent)}
+.md-unlit{visibility:hidden !important}
+@media (prefers-reduced-motion:reduce){ .md-veil,.md-lit{transition:none} }
