@@ -474,6 +474,18 @@
       if (!t) return;
       const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
       t.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+      /* a frame above it (another box score, loaded as the page goes past) can grow while the page glides and push the
+         box down: when the glide is over, the box is brought to the top again, at most three times */
+      let tries = 0, last = null;
+      const settle = () => {
+        const top = t.getBoundingClientRect().top;
+        const more = window.scrollY + window.innerHeight < document.documentElement.scrollHeight - 2;
+        if (tries++ >= 3 || Math.abs(top) < 40 || !more || (last !== null && Math.abs(top - last) < 2 && top < 40)) return;
+        last = top;
+        t.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+        setTimeout(settle, calm ? 120 : 700);
+      };
+      setTimeout(settle, calm ? 120 : 900);
     });
     bar.appendChild(b);
     return bar;

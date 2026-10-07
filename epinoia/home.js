@@ -421,7 +421,7 @@ async function games() {
     mid.append(sc, st);
     /* WHERE TO WATCH under the time or the score (watch.js): its press opens its own card, never the game */
     const wslug = (LEAGUE && LEAGUE.slug) || window.__CS_LEAGUE_SLUG;
-    const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug) : null;
+    const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug, { game: g.id }) : null;
     if (wp) { wp.classList.add('fx-watch'); mid.appendChild(wp); }
 
     row.append(h, mid, a);

@@ -743,7 +743,7 @@ async function renderFixtures() {
     }
     /* WHERE TO WATCH under the time or the score (watch.js): its press opens its own card, never the game */
     const wslug = (league && league.slug) || window.__CS_LEAGUE_SLUG;
-    const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug) : null;
+    const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug, { game: g.id }) : null;
     if (wp) { wp.classList.add('fx-watch'); mid.appendChild(wp); }
     row.append(side(home, 'h'), mid, side(away, 'a'));
     /* WHO WINS? along the foot of the row (predict.js; its middle opens the game at a glance, gamepeek.js) */

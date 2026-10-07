@@ -349,7 +349,7 @@ function fixtureRow(g, stats, names) {
   /* WHERE TO WATCH under the scoreboard (watch.js): its press opens its own card, never the game */
   const sb = scoreboard(g);
   const wslug = (LEAGUE && LEAGUE.slug) || window.__CS_LEAGUE_SLUG;
-  const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug) : null;
+  const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug, { game: g.id }) : null;
   if (wp) { wp.classList.add('fx-watch'); sb.appendChild(wp); }
   top.append(hs, sb, as);
   row.appendChild(top);
