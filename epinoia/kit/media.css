@@ -47,6 +47,16 @@
 @media (min-width:600px){ .md-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (min-width:1000px){ .md-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
 .md-grid.has-hero > .md-tile:first-child{grid-column:1 / -1}
+/* ON A PHONE, A ROW TO SWIPE (HOME's videos, .md-row-m): the cards side by side, each most of the screen wide with the
+   next one showing at the edge, snapping card by card; the grid as it was from a tablet's width up */
+@media (max-width:719px){
+  .md-grid.md-row-m{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;
+    gap:12px;padding:2px 2px 14px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .md-grid.md-row-m::-webkit-scrollbar{display:none}
+  .md-grid.md-row-m > *{flex:0 0 84%;max-width:420px;scroll-snap-align:start}
+  .md-grid.md-row-m > .md-skel{min-height:320px}
+  .md-grid.md-row-m > .md-empty{flex-basis:100%;max-width:none}
+}
 
 /* ------------------------------------------------------------------------------------------ the tile --- */
 /* --ink-s / --ink-s2 are the inks as SURFACES (teamcolour.js surface(): a white club on the light page, a black one
@@ -233,6 +243,15 @@
 .md-close{flex:none}
 .md-stage-ctl{flex:none;display:flex;gap:6px;align-items:center}
 .md-qbtn[aria-expanded="true"]{background:var(--ink-s,var(--lume));border-color:var(--ink-s,var(--lume));color:var(--bc-on,var(--on-accent))}
+/* A PHONE'S STAGE: the head in two rows - what is playing, the full width, and under it the buttons, wrapping - rather
+   than the words squeezed to a word a line beside five buttons; no WIDE (a phone's menu is the bar along its foot) */
+@container (max-width:599px){
+  .md-stage-h{flex-direction:column;align-items:stretch;gap:10px;padding:10px 12px}
+  .md-stage-h .md-title{font-size:15px}
+  .md-stage-ctl{flex-wrap:wrap;gap:6px}
+  .md-stage-ctl .ep-btn{flex:1 1 auto;min-width:0;padding:8px 8px;font-size:11px;justify-content:center}
+  .md-stage-ctl .md-widebtn{display:none}
+}
 
 /* THE PLAYLIST (media.js stagePlayer): the player, and UP NEXT beside it where the stage is wide enough, under it where
    it is not. Beside it, the list is exactly as tall as the picture and scrolls inside itself. */

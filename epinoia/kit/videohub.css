@@ -135,6 +135,7 @@
 :root:root .vh .md-more:hover{background:var(--lume);color:var(--on-accent)}
 @media (max-width:720px){
   .vh-wrap{padding:calc(var(--u)*3) calc(var(--u)*2) calc(var(--u)*6)}
+  .vh-h .md-widebtn{display:none}              /* WIDE is a desktop's: a phone's menu is the bar along its foot */
   .vh-h .md-seg,.vh-full{margin-left:0}
   .vh-bug-s b{font-size:12px}
   .vh-bug-sc{font-size:22px}

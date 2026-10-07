@@ -175,6 +175,10 @@ ok('any EPINOIA sign-in is the chat\'s: the session from access.js, follow.js or
    /EpinoiaAccess/.test(chat) && /EpinoiaFollow/.test(chat) && /'-auth-token'/.test(chat) && !/GO profile to chat/.test(chat));
 ok('...and one pop-up, JOIN THE CHAT: a name (set_username), 18 or over, the rules (accept_chat_terms, 0250)',
    /call\('set_username'/.test(chat) && /call\('accept_chat_terms', \{ p_adult: true \}\)/.test(chat) && /terms: 'Accept the chat’s terms first\.'/.test(chat));
+ok("on a phone: HOME's video cards a row to swipe, the stage's head in two rows with no WIDE (2026-10-07)",
+   /\.md-grid\.md-row-m\{display:flex;flex-wrap:nowrap;overflow-x:auto/.test(css) && /scroll-snap-type:x mandatory/.test(css)
+   && /@container \(max-width:599px\)\{\s*\.md-stage-h\{flex-direction:column/.test(css) && /\.md-stage-ctl \.md-widebtn\{display:none\}/.test(css)
+   && /el\('div', 'md-grid md-row-m'\)/.test(rd('epinoia', 'home', 'videos-home.js')));
 ok('the chat folds away, remembered, its container told (.chat-min): the Live tab and the theatre give the stream the room',
    /epinoia\.chat\.min/.test(chat) && /classList\.toggle\('chat-min', min\)/.test(chat) && /\.lv-room\.chat-min\{grid-template-columns:minmax\(0,1fr\) 48px\}/.test(css));
 ok('says what is missing before anything is typed (sign in, a username, the chat closed, not on now)',

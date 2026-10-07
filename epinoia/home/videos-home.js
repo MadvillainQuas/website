@@ -68,7 +68,8 @@
 
     const stage = el('section', 'md-stage');
     stage.hidden = true;
-    const grid = el('div', 'md-grid');
+    /* on a phone the cards are a row to swipe through, not a column to scroll past (kit/media.css .md-row-m) */
+    const grid = el('div', 'md-grid md-row-m');
     const more = el('button', 'ep-btn md-more', tr('Show more'));
     more.type = 'button';
     let rows = [], shown = STEP;
