@@ -230,11 +230,24 @@ def _title_date(title: str):
         return None
 
 
+_VS = re.compile(r"\s+(?:vs?\.?|v)\s+", re.I)
+_LIVE_WORD = re.compile(r"^\W*live\b\s*(?:stream\b\s*)?[-:–—]?\s*", re.I)
+
+
 def _sides(title: str) -> tuple[str, str]:
-    """'A Vs B_06.09.26' / 'A vs B - 06.09.26' / 'A v B' -> (A, B)."""
+    """'A Vs B_06.09.26' / 'A vs B - 06.09.26' / 'A v B' -> (A, B).
+
+    A TITLE IN SEGMENTS is FIBA's: 'LIVE - Elan Chalon v Manchester Basketball | FIBA Europe Cup 2026-27 |
+    Regular Season'. Read whole, the competition and the round stuck to the away club ('Manchester Basketball
+    FIBA Europe Cup 2026-27 Regular Season') and 'LIVE -' to the home one, and neither club scored as itself:
+    every stream FIBA put on its channel for the Europe Cup went unattached (2026-10-07). The clubs are the
+    segment that names two sides, without a leading LIVE."""
     t = _DATE.sub(" ", title or "")
+    segs = [s for s in re.split(r"\s*[|•]\s*", t) if s.strip()]
+    two = [s for s in segs if _VS.search(s)]
+    t = _LIVE_WORD.sub("", two[0]) if len(two) == 1 else t
     t = re.sub(r"[_|]+", " ", t)
-    m = re.split(r"\s+(?:vs?\.?|v)\s+", t, maxsplit=1, flags=re.I)
+    m = _VS.split(t, maxsplit=1)
     if len(m) != 2:
         return (t.strip(), "")
     a, b = m[0], re.sub(r"\s+-\s*$", "", m[1])
@@ -276,10 +289,24 @@ def score_title(title: str, home: str, away: str, tip, published: str | None = N
     return s
 
 
+def _on_schedule(video_id: str, tip) -> bool:
+    """the stream is set for this fixture's tip, or opened near it: its scheduled (or real) start within three hours"""
+    d = watch_details(video_id)
+    at = _instant(d.get("scheduled_at") or d.get("started_at"))
+    return bool(at and tip and abs((at - tip).total_seconds()) <= 3 * 3600)
+
+
 def find_on_channel(channel_id: str, home: str, away: str, tip: datetime) -> dict | None:
     best, best_s = None, 0.0
     for v in channel_videos(channel_id):
         s = score_title(v["title"], home, away, tip, v.get("published"))
+        # A STREAM PUBLISHED A WEEK AHEAD: FIBA schedules its Europe Cup streams on the Thursday before, so the publish
+        # time says nothing about the date and costs the title a point it cannot make up. When both clubs are there,
+        # the stream's own scheduled start (or real start) is the date instead - asked of YouTube for that video alone.
+        if s < 1.6 and tip and not _title_date(v["title"]):
+            clubs = score_title(v["title"], home, away, None, None)
+            if clubs >= 1.1 and _on_schedule(v["video_id"], tip):
+                s = clubs + 1.0
         if s <= best_s:
             continue
         if v.get("published") and tip:

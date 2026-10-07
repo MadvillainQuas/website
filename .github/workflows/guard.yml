@@ -522,6 +522,11 @@ jobs:
         # every half hour. Live, played and undated games are still always fetched.
         run: python scripts/ingest/fetchwindow_test.py
 
+      - name: A fixture's stream is found on its league's channel, FIBA's titles and week-ahead schedule included
+        # auto_video.find_on_channel: "LIVE - A v B | FIBA Europe Cup 2026-27 | Regular Season" read as A and B, and a
+        # stream published a week ahead dated by its own scheduled start (2026-10-07: none of eleven attached)
+        run: python scripts/ingest/auto_video_test.py
+
       - name: One shape for a player's name, whatever the feed calls them
         # names.py: "DONCIC, LUKA", "Hernangomez, Willy", kanji with a romaji field beside it,
         # Czech and Polish diacritics, Cyrillic, Mc/Mac/O'/hyphens/particles, and the full stops
