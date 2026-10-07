@@ -263,3 +263,13 @@
 :root[data-theme="light"] .fxc-tm.a{background:linear-gradient(180deg,color-mix(in oklch,var(--a,var(--aqua)) 14%,transparent),transparent 82%)}
 :root[data-theme="light"] .lgb-tile img,
 :root[data-theme="light"] .fxc-crest.has-img{box-shadow:inset 0 0 0 1px rgba(13,31,23,.1)}
+
+/* THE FIXTURE STRIP AS HOME'S CARDS (cardstrip.js: a league's front page, a club's page): one row that scrolls sideways
+   at every width, each card the width HOME gives one, the pick strip hanging under each */
+.cs{padding:6px 0 2px}
+.cs-rail.fxc-rail{display:flex;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;overflow-y:hidden;gap:14px;
+  padding:6px 4px 4px;scroll-snap-type:x proximity;scrollbar-width:thin;overscroll-behavior-x:contain}
+.cs-rail.fxc-rail>.fxc{flex:0 0 272px;scroll-snap-align:start}
+@media (max-width:720px){ .cs-rail.fxc-rail>.fxc{flex-basis:min(78%,272px)} }
+/* the strip's old frame box, once the cards stand in it (home.js, t/team.js): no border, no clipping of the pick strips */
+.stripwrap.has-cards,.has-cards{border:0;background:none;overflow:visible}

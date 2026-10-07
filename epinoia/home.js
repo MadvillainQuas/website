@@ -419,6 +419,10 @@ async function games() {
     /* the row leads to a preview, said on the state's plate */
     else st.appendChild(el('span', 'pv-flag', 'preview'));
     mid.append(sc, st);
+    /* WHERE TO WATCH under the time or the score (watch.js): its press opens its own card, never the game */
+    const wslug = (LEAGUE && LEAGUE.slug) || window.__CS_LEAGUE_SLUG;
+    const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug) : null;
+    if (wp) { wp.classList.add('fx-watch'); mid.appendChild(wp); }
 
     row.append(h, mid, a);
     if (window.EpinoiaFollow && !final) row.appendChild(window.EpinoiaFollow.bell('game', g.id, { cls: 'fxbell' }));
@@ -430,6 +434,13 @@ async function games() {
     const comp = g.competitions && g.competitions.name;
     if (comp && compsSeen.size > 1) bits.push(comp);
     if (bits.length) row.appendChild(el('div', 'fxwhere', bits.join('  ·  ')));
+
+    /* WHO WINS? along the foot of the row (predict.js; its middle opens the game at a glance, gamepeek.js) */
+    if (window.EpinoiaPredict && g.status !== 'void') {
+      const code = t => ({ text: (t && (t.short_name || t.name)) || '', team: null });
+      const ps = window.EpinoiaPredict.strip(g, { row: true, codes: [code(g.home), code(g.away)] });
+      if (ps) row.appendChild(ps);
+    }
 
     host.appendChild(row);
   });
@@ -1907,9 +1918,22 @@ function renumber() {
     /* the strip narrows to this league too */
     const strip = document.querySelector('#strip');
     /* the strip opens in the page's colourway, and teamcolour.js keeps it there */
-    if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + embedLook();
-    /* not drawn while the reader is a screen or more from it (teamcolour.js drawDistance) */
-    if (strip && window.EpinoiaTeamColour && window.EpinoiaTeamColour.drawDistance) window.EpinoiaTeamColour.drawDistance(strip);
+    /* HOME'S CARDS IN PLACE OF THE FRAME (cardstrip.js, 2026-10-07): the same games as the strip, as HOME draws them -
+       the clubs' tiles, where to watch, who wins - none of which fits a 129px frame. The frame comes back if the cards
+       cannot be drawn (an older page without the scripts, a read that fails). */
+    const frameStrip = () => {
+      if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + embedLook();
+      /* not drawn while the reader is a screen or more from it (teamcolour.js drawDistance) */
+      if (strip && window.EpinoiaTeamColour && window.EpinoiaTeamColour.drawDistance) window.EpinoiaTeamColour.drawDistance(strip);
+    };
+    if (strip && window.EpinoiaCardStrip) {
+      const cs = document.createElement('div');
+      strip.hidden = true;
+      strip.insertAdjacentElement('afterend', cs);
+      window.EpinoiaCardStrip.mount(cs, { league: LEAGUE.slug, base: '', n: 12 })
+        .then(ok => { if (ok) { const w = strip.closest('.stripwrap'); if (w) w.classList.add('has-cards'); strip.remove(); } else { cs.remove(); strip.hidden = false; frameStrip(); } })
+        .catch(() => { cs.remove(); strip.hidden = false; frameStrip(); });
+    } else frameStrip();
 
     const head = document.querySelector('#leaguesHead');
     if (head) head.textContent = 'This season';

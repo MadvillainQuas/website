@@ -95,7 +95,8 @@
   function strip(g, opts) {
     const o = opts || {};
     if (!g || !g.id || typeof document === 'undefined') return null;
-    const s = node('span', 'ep-pred' + (o.big ? ' big' : ' fxc-pred'));
+    /* o.big: the preview's band; o.row: a fixture list's row (league pages), a slim bar along its foot; else a card's strip */
+    const s = node('span', 'ep-pred' + (o.big ? ' big' : o.row ? ' row-pred' : ' fxc-pred'));
     s.setAttribute('data-pred-game', g.id);
     s.setAttribute('role', 'group');
     const codes = o.codes || [];
@@ -108,8 +109,8 @@
     /* the clubs' colours for the bar (a card sets them on itself already) */
     const hex = c => (/^#?[0-9a-f]{3}([0-9a-f]{3})?$/i.test(String(c || '')) ? (String(c)[0] === '#' ? c : '#' + c) : null);
     const hc = hex(g.home && g.home.colour), ac = hex(g.away && g.away.colour);
-    if (o.big && hc) s.style.setProperty('--h', hc);
-    if (o.big && ac) s.style.setProperty('--a', ac);
+    if ((o.big || o.row) && hc) s.style.setProperty('--h', hc);
+    if ((o.big || o.row) && ac) s.style.setProperty('--a', ac);
     const side = (k, i) => {
       const b = node('button', 'pr-side ' + (k === 'home' ? 'h' : 'a'));
       b.type = 'button';

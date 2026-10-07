@@ -229,6 +229,17 @@ ok('nav.js loads celebrate.js beside itself, only for a signed-in fan', /\(funct
 ok('it asks when the page opens and every minute and a half while it is in view, and marks what it showed', /const EVERY_MS = 90 \* 1000;/.test(CEL) && /document\.hidden/.test(CEL) && /rpc\('prediction_mark_celebrated', \{ p_games: wins\.map\(w => w\.game_id\) \}\)/.test(CEL));
 ok('the confetti and the banner hang off <html> (the kit zooms <body>); reduced motion: no confetti', /document\.documentElement\.appendChild\(cv\)/.test(CEL) && /prefers-reduced-motion: reduce/.test(CEL));
 ok('before 0243 (404) it stops asking', /if \(r\.status === 404\) \{ stopped = true; return null; \}/.test(CEL));
+/* LEAGUE PAGES (2026-10-07): every fixture row gets the pill and a row's own who-wins bar; the strip becomes HOME's cards */
+const rowsOn = [['home.js', 'index.html'], ['fixtures/fixtures.js', 'fixtures/index.html'], ['l/league.js', 'l/index.html']];
+for (const [js, html] of rowsOn) {
+  const J = read('epinoia', ...js.split('/')), H = read('epinoia', ...html.split('/'));
+  ok(js + ': the watch pill under the time or score, and the who-wins bar along the row', /classList\.add\('fx-watch'\)/.test(J) && /EpinoiaPredict\.strip\([^)]*\{ row: true/.test(J));
+  ok(html + ' loads watch.js, gamepeek.js and predict.js, with their sheets', ['watch.js', 'gamepeek.js', 'predict.js'].every(f => H.includes(f + '?v=')) && ['watch.css', 'predict.css', 'gamepeek.css'].every(f => H.includes(f + '?v=')));
+}
+ok('a row\'s bar is the row\'s own: no plate, its ink, the clubs\' colours', /o\.row \? ' row-pred'/.test(P) && /\(o\.big \|\| o\.row\) && hc/.test(P) && /\.ep-pred\.row-pred\{--pl:var\(--panel\);--pi:var\(--ink\)/.test(read('epinoia', 'kit', 'predict.css')));
+const CS = read('epinoia', 'cardstrip.js');
+ok('the strip on a league\'s and a club\'s page is HOME\'s cards: live, then next, then the latest results', /G\.card\(g, \{ base: o\.base, now, state/.test(CS) && /status=in\.\(live,finalising\)/.test(CS) && /status=eq\.scheduled/.test(CS) && /status=eq\.final&order=tipoff_at\.desc/.test(CS));
+ok('...the frame comes back if the cards cannot be drawn', /else \{ cs\.remove\(\); strip\.hidden = false; frameStrip\(\); \}/.test(read('epinoia', 'home.js')) && /else \{ cs\.remove\(\); frame\.hidden = false; frameIt\(\); \}/.test(read('epinoia', 't', 'team.js')));
 ok('YOUR HUB has YOUR PAGE: to fan/?u= once the username is known', /mk\('', '[^']+', 'your page', root \+ 'profile\/'\)/.test(nav) && /yourPage\.href = root \+ 'fan\/\?u='/.test(nav));
 const ed = read('epinoia', 'me', 'fanprofile.js');
 ok('the page editor offers the photo circle and saves it', /'Photo circle'/.test(ed) && /sb\.rpc\('set_fan_circle', \{ p: circle \}\)/.test(ed) && /On the leaderboards/.test(ed));

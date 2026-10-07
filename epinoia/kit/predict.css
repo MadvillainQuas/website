@@ -121,3 +121,48 @@
 .ep-pred-signin .no{background:transparent;color:#f4fff9;border:1px solid rgba(255,255,255,.28)}
 .ep-pred-signin .no:hover{border-color:#f4fff9}
 @media (prefers-reduced-motion:reduce){ .pr-bar i,.pr-side,.pr-pct,.pr-say,.ep-pred-signin{transition:none} }
+
+/* A FIXTURE LIST'S ROW (league pages: the front page's games, the fixtures page, the league's fixtures tab). Not the
+   card's black plate dropped into a row: the row's own ink, on the row, under a dashed rule - each club's letters and
+   share beside the middle as the two clubs stand either side of the score above, the split under them in the row's
+   two colours (predict.js sets --h and --a from the clubs). Fits the row's width at any size. */
+.ep-pred.row-pred{--pl:var(--panel);--pi:var(--ink);--pd:var(--ink-3);--py:var(--lume);
+  grid-column:1 / -1;justify-self:stretch;width:100%;box-sizing:border-box;margin:10px 0 0;padding:6px 0 9px;min-height:0;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  background:none;border:0;border-top:1px dashed var(--rule-2);border-radius:0;box-shadow:none;overflow:visible}
+.ep-pred.row-pred .pr-side{flex-direction:row;align-items:center;justify-content:flex-end;gap:8px;padding:4px 12px;border-radius:8px}
+.ep-pred.row-pred .pr-side.a{justify-content:flex-start}
+.ep-pred.row-pred .pr-side.a .pr-code{order:2}
+.ep-pred.row-pred .pr-code{font-size:9px;color:var(--ink-2)}
+.ep-pred.row-pred.none .pr-code{font-size:9px;color:var(--ink-3)}
+.ep-pred.row-pred .pr-pct{font-size:18px;color:var(--ink-2)}
+.ep-pred.row-pred .pr-side.lead .pr-pct{color:var(--py);text-shadow:none}
+.ep-pred.row-pred .pr-mid{padding:2px 8px}
+.ep-pred.row-pred .pr-q{color:var(--py)}
+/* the split: a thin pixel line under the middle third, in the row's two colours */
+.ep-pred.row-pred .pr-bar{left:22%;right:22%;bottom:2px;height:3px}
+.ep-pred.row-pred .pr-bar .h{background:var(--h,var(--lume))}
+.ep-pred.row-pred .pr-bar .a{background:var(--a,var(--aqua))}
+/* the fan's own pick: a soft wash of the club's colour and a tick, no edge */
+.ep-pred.row-pred .pr-side.mine.h,.ep-pred.row-pred .pr-side.mine.a{box-shadow:none}
+.ep-pred.row-pred .pr-side.mine.h{background:color-mix(in oklch,var(--h,var(--lume)) 16%,transparent)}
+.ep-pred.row-pred .pr-side.mine.a{background:color-mix(in oklch,var(--a,var(--aqua)) 16%,transparent)}
+.ep-pred.row-pred .pr-side.mine.h .pr-code::before,.ep-pred.row-pred .pr-side.mine.a .pr-code::after{color:var(--py)}
+@media (hover:hover){
+  .ep-pred.row-pred.open .pr-side.h:hover{background:color-mix(in oklch,var(--h,var(--lume)) 12%,transparent)}
+  .ep-pred.row-pred.open .pr-side.a:hover{background:color-mix(in oklch,var(--a,var(--aqua)) 12%,transparent)}
+}
+.ep-pred.row-pred .pr-say{background:var(--panel);color:var(--ink);border-radius:8px}
+.ep-pred.row-pred.right .pr-q{color:var(--good)}
+.ep-pred.row-pred.wrong .pr-q{color:var(--bad)}
+@media (max-width:560px){
+  .ep-pred.row-pred .pr-side{padding:4px 6px;gap:5px}
+  .ep-pred.row-pred .pr-pct{font-size:16px}
+  .ep-pred.row-pred .pr-bar{left:12%;right:12%}
+}
+
+/* the watch pill under a row's time or score: the row's own square plate (as its PREVIEW / FINAL), not the card's black pill */
+.ep-watch.fx-watch{margin-top:2px;padding:3px 8px 3px 7px;border-radius:3px;background:var(--panel);color:var(--ink-2);
+  border:1px solid var(--rule-2);box-shadow:none;font-size:7.5px}
+.ep-watch.fx-watch.on{background:var(--lume);color:var(--on-accent);border-color:var(--lume)}
+@media (hover:hover){ .ep-watch.fx-watch:hover{background:var(--lume);color:var(--on-accent);border-color:var(--lume);transform:none} }

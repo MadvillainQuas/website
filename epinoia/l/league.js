@@ -684,8 +684,8 @@ function renderExtras() {
 async function renderFixtures() {
   const gs = await api(
     `games?competition_id=eq.${comp.id}` +
-    `&select=id,tipoff_at,status,home_score,away_score,venue,` +
-    `home:home_team_id(name,short_name,colour,colour_2,logo_path),away:away_team_id(name,short_name,colour,colour_2,logo_path)` +
+    `&select=id,tipoff_at,status,home_score,away_score,venue,competition_id,` +
+    `home:home_team_id(id,name,short_name,colour,colour_2,logo_path),away:away_team_id(id,name,short_name,colour,colour_2,logo_path)` +
     /* Ascending: this is a FIXTURE LIST. Newest-first is right for a results
        feed and wrong for a schedule, where round one belongs at the top and
        the reader scrolls towards the games that have not happened. */
@@ -741,7 +741,16 @@ async function renderFixtures() {
     } else {
       mid.append(el('div', 'sc t', when ? hhmm(when) : 'TBC'), el('div', 'st sched', g.venue || 'Tip-off'));
     }
+    /* WHERE TO WATCH under the time or the score (watch.js): its press opens its own card, never the game */
+    const wslug = (league && league.slug) || window.__CS_LEAGUE_SLUG;
+    const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug) : null;
+    if (wp) { wp.classList.add('fx-watch'); mid.appendChild(wp); }
     row.append(side(home, 'h'), mid, side(away, 'a'));
+    /* WHO WINS? along the foot of the row (predict.js; its middle opens the game at a glance, gamepeek.js) */
+    if (window.EpinoiaPredict && g.status !== 'void') {
+      const ps = window.EpinoiaPredict.strip(g, { row: true, codes: [{ text: home.short_name || home.name || '' }, { text: away.short_name || away.name || '' }] });
+      if (ps) row.appendChild(ps);
+    }
     pane.appendChild(row);
   });
 }

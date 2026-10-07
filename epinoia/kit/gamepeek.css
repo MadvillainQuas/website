@@ -71,3 +71,7 @@
 .gk-pop.free::before{display:none}
 /* a card too narrow for "who wins?" (predict.css hides it): the sign rides on the line under it */
 @container (max-width:210px){ .fxc-pred .pr-mid.gk-trigger .pr-n::after{content:" \24D8";font-family:var(--f-ui);font-size:8px;letter-spacing:0;color:#ffe14d} }
+/* in a fixture list's row (light, on the row): the trigger's wash and its sign in the row's ink and accent */
+.ep-pred.row-pred .pr-mid.gk-trigger .pr-q::after{color:var(--lume)}
+@media (hover:hover){ .ep-pred.row-pred .pr-mid.gk-trigger:hover{background:color-mix(in oklch,var(--ink) 6%,transparent)} }
+.ep-pred.row-pred .pr-mid.gk-trigger.gk-on{background:color-mix(in oklch,var(--lume) 14%,transparent)}

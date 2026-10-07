@@ -2790,11 +2790,23 @@ function teamStrip(team, lg) {
       (hex(team.colour_2) ? '&accent2=' + encodeURIComponent(team.colour_2) : '');
   }
   frame.title = team.name + ' fixtures';
-  frame.src = src;
   wrap.hidden = false;
-  /* not drawn while the reader is a screen or more from it (teamcolour.js drawDistance) */
-  const TC = window.EpinoiaTeamColour;
-  if (TC && TC.drawDistance) TC.drawDistance(frame);
+  const frameIt = () => {
+    frame.src = src;
+    /* not drawn while the reader is a screen or more from it (teamcolour.js drawDistance) */
+    const TC = window.EpinoiaTeamColour;
+    if (TC && TC.drawDistance) TC.drawDistance(frame);
+  };
+  /* HOME'S CARDS IN PLACE OF THE FRAME (cardstrip.js, 2026-10-07): the club's games as HOME draws them - the tiles,
+     where to watch, who wins - each with its league's badge; the frame comes back if the cards cannot be drawn */
+  if (window.EpinoiaCardStrip) {
+    const cs = document.createElement('div');
+    frame.hidden = true;
+    frame.insertAdjacentElement('afterend', cs);
+    window.EpinoiaCardStrip.mount(cs, { team: team.id, base: '../', n: 12 })
+      .then(ok => { if (ok) { wrap.classList.add('has-cards'); frame.remove(); } else { cs.remove(); frame.hidden = false; frameIt(); } })
+      .catch(() => { cs.remove(); frame.hidden = false; frameIt(); });
+  } else frameIt();
 }
 
 let TG = { comp: '', show: 'all', rows: [] };

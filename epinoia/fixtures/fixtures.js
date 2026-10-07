@@ -346,7 +346,12 @@ function fixtureRow(g, stats, names) {
   an.append(el('div', 'sname', away.name || '—'), el('div', 'srec', 'Away'));
   as.append(badge(away), an);
 
-  top.append(hs, scoreboard(g), as);
+  /* WHERE TO WATCH under the scoreboard (watch.js): its press opens its own card, never the game */
+  const sb = scoreboard(g);
+  const wslug = (LEAGUE && LEAGUE.slug) || window.__CS_LEAGUE_SLUG;
+  const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug) : null;
+  if (wp) { wp.classList.add('fx-watch'); sb.appendChild(wp); }
+  top.append(hs, sb, as);
   row.appendChild(top);
   /* the bell: follow this one game -- its reminder and its score in your bell */
   if (window.EpinoiaFollow && !final) row.appendChild(window.EpinoiaFollow.bell('game', g.id, { cls: 'corner' }));
@@ -380,6 +385,14 @@ function fixtureRow(g, stats, names) {
     foot.appendChild(flag);
   }
   row.appendChild(foot);
+  /* WHO WINS? along the foot of the row (predict.js; its middle opens the game at a glance, gamepeek.js) */
+  if (window.EpinoiaPredict && g.status !== 'void') {
+    const club = (t, id) => ({ id, name: t.name, short_name: t.short_name, colour: t.colour, logo_path: t.logo_path });
+    const G = { id: g.id, status: g.status, home_score: g.home_score, away_score: g.away_score, competition_id: g.competition_id,
+                tipoff_at: g.tipoff_at, home: club(home, g.home_team_id), away: club(away, g.away_team_id) };
+    const ps = window.EpinoiaPredict.strip(G, { row: true, codes: [{ text: home.short_name || home.name || '' }, { text: away.short_name || away.name || '' }] });
+    if (ps) row.appendChild(ps);
+  }
   return row;
 }
 
