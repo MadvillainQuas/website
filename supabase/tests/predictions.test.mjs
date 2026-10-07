@@ -203,6 +203,16 @@ for (const p of ['leaderboards/index.html', 'go/leaderboards/index.html']) {
 const bj = read('epinoia', 'leaderboards', 'boards.js');
 ok('a platform administrator gets the flag on a public fan\'s circle, and the card rejects and warns',
    /rpc\('is_platform_admin', \{\}\)/.test(bj) && /admin && r\.face && r\.face\.u && r\.face\.shown \? modWrap/.test(bj) && /rpc\('moderate_fan', \{ p_username: f\.u, p_what: what/.test(bj));
+/* THE GAME AT A GLANCE (2026-10-07): the middle of the strip opens the preview's numbers, condensed */
+const GK = read('epinoia', 'gamepeek.js');
+ok('the strip\'s middle opens the game at a glance where gamepeek.js is loaded', /if \(!o\.big && root\.EpinoiaPeek && g\.competition_id\) root\.EpinoiaPeek\.attach\(mid, g\)/.test(P));
+ok('...hover with a mouse, a tap pinning it; its press never reaches the strip or the card', /\(hover:hover\) and \(pointer:fine\)/.test(GK) && /e\.preventDefault\(\); e\.stopPropagation\(\);\s*if \(owner === el && pinned\) close\(\); else open\(el, g, true\);/.test(GK));
+ok('...the whole season the fixture belongs to, every competition of it, read once', /competitions\?season_id=eq\./.test(GK) && /D\(\)\.season\(ids\.length \? ids : \[compId\], \{ rows: false, trim: true \}\)/.test(GK) && /seasonOf\.set\(compId, p\)/.test(GK));
+ok('...the four factors, the ratings and two leading players a club; never off the foot of the screen', /\['eFG%', 'ff_efg'\]/.test(GK) && /\['ORTG', 'ortg'\]/.test(GK) && /\.slice\(0, 2\)/.test(GK) && /Math\.max\(8, vh - 8 - h\)/.test(GK));
+for (const p of ['home/index.html', 'games/index.html']) {
+  const h = read('epinoia', ...p.split('/'));
+  ok(p + ' loads gamepeek.js before predict.js, with its sheet, and season.js for the season', /gamepeek\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/predict\.js/.test(h) && /kit\/gamepeek\.css/.test(h) && /season\.js\?v=/.test(h));
+}
 ok('YOUR HUB has YOUR PAGE: to fan/?u= once the username is known', /mk\('', '[^']+', 'your page', root \+ 'profile\/'\)/.test(nav) && /yourPage\.href = root \+ 'fan\/\?u='/.test(nav));
 const ed = read('epinoia', 'me', 'fanprofile.js');
 ok('the page editor offers the photo circle and saves it', /'Photo circle'/.test(ed) && /sb\.rpc\('set_fan_circle', \{ p: circle \}\)/.test(ed) && /On the leaderboards/.test(ed));

@@ -1,0 +1,73 @@
+/* ============================================================================
+   A GAME AT A GLANCE (gamepeek.js): the middle of a fixture's pick strip as its trigger, and the card it opens.
+
+   The card is the strip's black plate grown up: the two clubs either side of a "v" with their records and net
+   ratings, the four factors and the ratings as rows of two numbers over a bar split by their share - the better side
+   in the scoreboard's yellow - and each club's two leading players. On <body>, fixed, above everything.
+   ============================================================================ */
+/* the trigger: "who wins?" answers a pointer, and says it opens something */
+.pr-mid.gk-trigger{pointer-events:auto;cursor:pointer;border-radius:8px;margin:3px 0 0;padding:4px 8px 2px;
+  transition:background-color .16s ease;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.pr-mid.gk-trigger .pr-q::after{content:" \24D8";font-family:var(--f-ui);font-size:9px;letter-spacing:0;color:#ffe14d}
+@media (hover:hover){ .pr-mid.gk-trigger:hover{background:rgba(255,255,255,.08)} }
+.pr-mid.gk-trigger.gk-on{background:rgba(255,225,77,.16)}
+.pr-mid.gk-trigger:focus-visible{outline:2px solid #ffe14d;outline-offset:1px}
+
+.gk-pop{--gy:#ffe14d;--gi:#f4fff9;--gd:rgba(244,255,249,.6);
+  position:fixed;z-index:1250;left:0;top:0;box-sizing:border-box;padding:0 0 10px;overflow:visible;
+  background:linear-gradient(180deg,#151917,#0b0d0c 40%);color:var(--gi);border:1px solid rgba(255,255,255,.1);border-radius:14px;
+  box-shadow:0 26px 54px -16px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.06);
+  font-family:var(--f-ui);
+  opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:var(--ax,50%) 0;pointer-events:none;
+  transition:opacity .16s ease,transform .2s var(--ease,ease),visibility 0s linear .2s}
+.gk-pop.up{transform:translateY(6px) scale(.98);transform-origin:var(--ax,50%) 100%}
+.gk-pop.on{opacity:1;visibility:visible;transform:none;pointer-events:auto;transition:opacity .16s ease,transform .2s var(--ease,ease)}
+.gk-pop::before{content:"";position:absolute;top:-6px;left:calc(var(--ax,50%) - 6px);width:11px;height:11px;background:var(--gy);transform:rotate(45deg);border-radius:2px 0 0 0}
+.gk-pop.up::before{top:auto;bottom:-6px;background:#0b0d0c;border-right:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);border-radius:0 0 2px 0}
+/* the content scrolls inside the card when the screen is too short for it, so the nib is never clipped */
+.gk-in{overflow-y:auto;overscroll-behavior:contain;border-radius:13px;scrollbar-width:thin}
+.gk-hd{position:relative;display:flex;align-items:center;justify-content:space-between;padding:8px 10px 7px 14px;background:var(--gy);color:#0a0a0a;
+  border-radius:13px 13px 0 0;font-family:var(--f-micro);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+.gk-x{display:grid;place-items:center;width:22px;height:22px;border:0;border-radius:50%;background:rgba(0,0,0,.1);color:#0a0a0a;font-size:15px;line-height:1;cursor:pointer}
+.gk-x:hover{background:#0a0a0a;color:var(--gy)}
+.gk-wait,.gk-none{margin:0;padding:18px 14px 8px;text-align:center;font-size:12px;color:var(--gd)}
+
+/* the two clubs */
+.gk-top{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:6px;padding:9px 12px 2px}
+.gk-side{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;text-align:center}
+.gk-crest{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#ffffff;overflow:hidden;box-shadow:0 4px 10px -4px rgba(0,0,0,.6)}
+.gk-crest img{width:100%;height:100%;object-fit:contain;padding:3px;box-sizing:border-box}
+.gk-crest b{font-family:var(--f-score);font-size:15px;color:#0a0a0a}
+.gk-nm{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800;font-size:12.5px}
+.gk-rec{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--gd)}
+.gk-net{display:flex;align-items:baseline;gap:4px;font-family:var(--f-score);font-size:17px;line-height:1;color:var(--gi)}
+.gk-net small{font-family:var(--f-micro);font-size:7px;letter-spacing:.1em;color:var(--gd)}
+.gk-v{align-self:center;font-family:var(--f-score);font-size:16px;color:var(--gd);padding-top:2px}
+
+/* the rows: two numbers over a split bar */
+.gk-sec{margin:6px 12px 0;padding-top:6px;border-top:1px solid rgba(255,255,255,.08)}
+.gk-k{margin-bottom:5px;text-align:center;font-family:var(--f-micro);font-size:7px;letter-spacing:.14em;text-transform:uppercase;color:var(--gy)}
+.gk-row{display:grid;grid-template-columns:40px minmax(0,1fr) 40px;align-items:center;gap:8px;padding:1px 0}
+.gk-row>b{font-family:var(--f-score);font-weight:400;font-size:14px;line-height:1;color:var(--gd);font-variant-numeric:tabular-nums}
+.gk-row>b:first-child{text-align:right}
+.gk-row>b.up{color:var(--gy)}
+.gk-mid{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.gk-mid i{font-style:normal;font-family:var(--f-micro);font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--gd)}
+.gk-bar{position:relative;display:block;width:100%;height:4px;background:color-mix(in oklch,var(--a,#8ff5ff) 75%,#ffffff);
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 7px);mask:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 7px)}
+.gk-bar u{position:absolute;inset:0 auto 0 0;background:color-mix(in oklch,var(--h,#93f2bf) 75%,#ffffff)}
+
+/* the leading players, one column a club */
+.gk-lcols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gk-lcols>div:last-child{text-align:right}
+.gk-pl{display:flex;flex-direction:column;gap:1px;padding:3px 0}
+.gk-pl b{font-weight:800;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gk-pl span{font-family:var(--f-micro);font-size:7px;letter-spacing:.06em;text-transform:uppercase;color:var(--gd)}
+.gk-go{display:block;margin:8px 12px 0;padding:7px 0;border-radius:999px;background:rgba(255,255,255,.06);text-align:center;color:var(--gi);text-decoration:none;
+  font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase}
+.gk-go:hover{background:var(--gy);color:#0a0a0a}
+@media (prefers-reduced-motion:reduce){ .gk-pop,.pr-mid.gk-trigger{transition:none} }
+/* a card placed clear of its strip (neither under nor over it fits): no nib pointing at nothing */
+.gk-pop.free::before{display:none}
+/* a card too narrow for "who wins?" (predict.css hides it): the sign rides on the line under it */
+@container (max-width:210px){ .fxc-pred .pr-mid.gk-trigger .pr-n::after{content:" \24D8";font-family:var(--f-ui);font-size:8px;letter-spacing:0;color:#ffe14d} }

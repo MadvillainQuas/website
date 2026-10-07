@@ -1809,7 +1809,15 @@
       'Your picks go on the leaderboards, for this league and for all of EPINOIA.': 'Tus pronósticos cuentan en las clasificaciones de esta liga y de todo EPINOIA.',
       'picks have closed for this game': 'Los pronósticos de este partido están cerrados',
       'that pick could not be saved': 'No se pudo guardar el pronóstico',
-      'not saved — try again': 'No se guardó: inténtalo de nuevo'
+      'not saved — try again': 'No se guardó: inténtalo de nuevo',
+      'per 100 possessions': 'Por 100 posesiones',
+      'full preview': 'Previa completa',
+      'leading players': 'Jugadores destacados',
+      'the season so far': 'La temporada hasta ahora',
+      'no games yet': 'Sin partidos aún',
+      'reading the season…': 'Cargando la temporada…',
+      'Not enough games yet this season to compare them.': 'Aún no hay partidos suficientes esta temporada para compararlos.',
+      'The season could not be read just now.': 'No se pudo cargar la temporada.'
     },
 
     ctx: {

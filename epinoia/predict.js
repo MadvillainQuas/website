@@ -128,6 +128,8 @@
     mid.appendChild(node('span', 'pr-q', 'who wins?'));
     mid.appendChild(node('span', 'pr-n', ''));
     s.appendChild(mid);
+    /* the middle opens the game at a glance (gamepeek.js, on the pages that load it): hover it, or tap it */
+    if (!o.big && root.EpinoiaPeek && g.competition_id) root.EpinoiaPeek.attach(mid, g);
     s.appendChild(side('away', 1));
     const bar = node('span', 'pr-bar');
     bar.setAttribute('aria-hidden', 'true');

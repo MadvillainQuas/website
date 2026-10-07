@@ -1807,7 +1807,15 @@
       'Your picks go on the leaderboards, for this league and for all of EPINOIA.': '予想はこのリーグとEPINOIA全体のランキングに反映されます。',
       'picks have closed for this game': 'この試合の予想は締め切られました',
       'that pick could not be saved': '予想を保存できませんでした',
-      'not saved — try again': '保存されませんでした — もう一度お試しください'
+      'not saved — try again': '保存されませんでした — もう一度お試しください',
+      'per 100 possessions': '100ポゼッションあたり',
+      'full preview': '見どころをすべて見る',
+      'leading players': '主力選手',
+      'the season so far': '今季ここまで',
+      'no games yet': '試合なし',
+      'reading the season…': 'シーズンを読み込み中…',
+      'Not enough games yet this season to compare them.': '今季はまだ比較できるほどの試合がありません。',
+      'The season could not be read just now.': 'シーズンを読み込めませんでした。'
     },
 
     ctx: {
