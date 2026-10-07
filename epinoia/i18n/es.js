@@ -1882,7 +1882,20 @@
       'The knockout': 'Eliminatoria',
       'Qualifiers': 'Fase previa',
       'Place secured': 'Plaza asegurada',
-      'Into the next round': 'A la siguiente ronda'
+      'Into the next round': 'A la siguiente ronda',
+      'Already written': 'Ya publicado',
+      'From a creator': 'De un creador',
+      'In the news': 'En las noticias',
+      'the match report': 'la crónica',
+      'the highlights': 'el resumen',
+      'Not yet covered': 'Sin cubrir todavía',
+      'Storylines nobody has written about in the last fortnight: the openings': 'Historias sobre las que nadie ha escrito en las dos últimas semanas: las oportunidades',
+      'The last fortnight’s pieces about the league, and the storylines each one covers': 'Lo publicado sobre la liga en las dos últimas semanas, y las historias que cubre cada pieza',
+      'The schedule': 'El calendario',
+      'By the adjusted numbers': 'Según los números ajustados',
+      'Team records': 'Récords de equipo',
+      'One for the future': 'Una promesa',
+      'The fans’ vote': 'La votación de la afición'
     },
 
     ctx: {

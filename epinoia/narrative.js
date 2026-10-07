@@ -355,6 +355,23 @@ function build(input) {
     ff_oreb: 100 * t.off.orebp, dff_oreb: 100 * t.def.orebp, ff_ftr: 100 * t.off.ftr, dff_ftr: 100 * t.def.ftr })));
   const PL = playerSeason(o.lines, games);
   const gone = new Set((o.released || []).filter(r => r && r.team_id && r.player_id).map(r => r.team_id + '|' + r.player_id));
+  /* the rest of what the site publishes about the league (the builder's readExtras): significance, highlights, the
+     fans' vote, the schedule so far, ages */
+  const SIG = o.significance || {}, VID = o.highlights || {}, SOSIN = o.sos || null, BIO = o.bio || {};
+  /* THE SCHEDULE SO FAR (sos.js, the Table page's own engine): every club with four games ranked by how hard its
+     opponents have been (their average adjusted net rating) and by its own margins adjusted for them */
+  const sosRows = SOSIN ? [...C.values()].filter(c => c.gp >= 4 && SOSIN[c.id] && isFinite(SOSIN[c.id].sosNet) && isFinite(SOSIN[c.id].adjNet))
+    .map(c => Object.assign({ id: c.id, c }, SOSIN[c.id])) : [];
+  const byHard = sosRows.slice().sort((a, b) => b.sosNet - a.sosNet);
+  const easyRank = id => { const i = byHard.findIndex(r => r.id === id); return i < 0 ? null : byHard.length - i; };   // 1 = the easiest
+  const byAdj = sosRows.slice().sort((a, b) => b.adjNet - a.adjNet);
+  /* "Yes, but nobody has had an easier schedule so far": for a record built against the weakest opponents */
+  const easyCounter = id => {
+    const k = sosRows.length >= 6 ? easyRank(id) : null;
+    if (!k || k > Math.max(1, Math.floor(sosRows.length / 4))) return null;
+    return k === 1 ? 'Yes, but nobody has had an easier schedule so far.' : 'Yes, but only ' + plural(k - 1, 'club') + ' ' + (k === 2 ? 'has' : 'have') + ' had an easier schedule so far.';
+  };
+  const ageOf = pid => (BIO[pid] && num(BIO[pid].age) > 0 ? +BIO[pid].age : null);
   const names = o.names || {};
   const pname = pid => { const n = names[pid]; return n && n.name ? String(n.name) : null; };
   const maxGp = [...C.values()].reduce((m, c) => Math.max(m, c.gp), 0);
@@ -429,6 +446,8 @@ function build(input) {
     return pos;
   };
   const gameLink = id => ({ label: 'the game', href: 'game/?g=' + id });
+  /* a game's highlights on the site's own watch page, when it has them (league_videos) */
+  const videoLink = id => (VID && VID[id] ? { label: 'the highlights', href: 'watch/?g=' + id } : null);
   const teamLink = id => { const t = T.get(id); return t && t.slug ? { label: name(id), href: 't/?t=' + encodeURIComponent(t.slug) } : null; };
   const playerLink = pid => (/^[0-9a-f-]{36}$/i.test(String(pid)) ? { label: pname(pid) || 'the player', href: 'p/?p=' + pid } : null);
 
@@ -602,7 +621,7 @@ function build(input) {
         numbers: [{ label: 'run', value: 'W' + s.n }, { label: 'record', value: rec(c.w, c.l) }, pos ? { label: 'place', value: ordShort(pos.pos) } : null,
           { label: 'margin in the run', value: signed(margins.reduce((a, b) => a + b, 0) / s.n) },
           shift ? { label: FACET[shift.k] + ', a game', value: signed(shift.run) + ' in the run, ' + signed(shift.before) + ' before' } : null],
-        counter: above === 0 && s.n >= 3 && pos ? 'Yes, but none of the ' + spell(s.n) + ' came against a side above them in the table.' : null,
+        counter: above === 0 && s.n >= 3 && pos ? 'Yes, but none of the ' + spell(s.n) + ' came against a side above them in the table.' : easyCounter(id),
         next: whenNext(id) ? 'It goes on the line ' + whenNext(id) + '.' : null,
         body: [record ? 'It is already their longest run of the season.' : null,
           shift ? 'What changed: ' + FACET[shift.k] + ', worth ' + signed(shift.run) + ' points a game to them in the run against ' + signed(shift.before) + ' before it.' : null],
@@ -642,7 +661,7 @@ function build(input) {
       dek: 'Average margin ' + signed(c.diff || 0) + (c.away.w >= 2 ? '; ' + rec(c.away.w, 0) + ' on the road' : '') + '.',
       why: (unbeaten.length === 1 ? 'The last unbeaten side in the league' : 'One of ' + spell(unbeaten.length) + ' sides still unbeaten') +
         (closest != null ? (closest >= 8 ? ', and nobody has got closer than ' + spell(closest) + ' points.' : '; their closest win was by ' + spell(closest) + '.') : '.'),
-      teams: [id], games: c.games.slice(-3).map(x => x.id),
+      teams: [id], games: c.games.slice(-3).map(x => x.id), counter: easyCounter(id),
       next: nextToTry(id) ? 'Next to try: ' + nextToTry(id) + '.' : null, tracks: { metric: 'w', value: c.w }, importance: 8, magnitude: Math.min(1, c.w / 10), stakes: 1, lastAt: c.lastAt,
       angles: ['what makes them so hard to beat', 'the fixture most likely to end it'], links: [teamLink(id)].filter(Boolean) });
     if (c.gp >= 4 && c.w === 0) story({ id: 'winless:' + id, kind: 'winless', kicker: 'Still waiting', head: name(id) + ' are still looking for a first win, ' + rec(0, c.l),
@@ -863,14 +882,16 @@ function build(input) {
     seesaw: 'the lead changed hands again and again', heldOn: 'a lead nearly given away', tight: 'decided by a single score' };
   /* the same score the coverage plan ranks the week's recaps by, so the game of the week is the plan's first recap */
   const gw = games.filter(g => time(g.tipoff_at) >= nowMs - 7 * DAY && recaps[g.id] && recaps[g.id].headline)
-    .map(g => ({ g, r: recaps[g.id], s: recapScore(g, recaps[g.id], posOf) })).sort((a, b) => b.s - a.s || time(b.g.tipoff_at) - time(a.g.tipoff_at))[0];
+    .map(g => ({ g, r: recaps[g.id], s: recapScore(g, recaps[g.id], posOf, SIG[g.id]) })).sort((a, b) => b.s - a.s || time(b.g.tipoff_at) - time(a.g.tipoff_at))[0];
   if (gw && gw.s >= 2.5) {
     story({ id: 'gotw:' + gw.g.id, kind: 'gotw', kicker: 'Game of the week', head: gw.r.headline, dek: gw.r.standfirst || null,
       why: [ARC_WORDS[gw.r.arc] ? cap(ARC_WORDS[gw.r.arc]) + '.' : null,
         gw.r.moment ? gw.r.moment.name + (gw.r.moment.kind === 'gameWinner' ? ' won it at the death.' : ' put them ahead for good late on.') : null].filter(Boolean).join(' ') || null,
-      numbers: gw.r.decisive ? [{ label: 'what decided it', value: gw.r.decisive.label + ', about ' + Math.round(gw.r.decisive.pts) + ' points' }] : [],
+      numbers: (gw.r.decisive ? [{ label: 'what decided it', value: gw.r.decisive.label + ', about ' + Math.round(gw.r.decisive.pts) + ' points' }] : [])
+        .concat(SIG[gw.g.id] && SIG[gw.g.id].reasons.length ? [{ label: 'what made it stand out', value: SIG[gw.g.id].reasons.join('; ') }] : []),
       teams: [gw.g.home_team_id, gw.g.away_team_id], games: [gw.g.id], tracks: { metric: 'game', value: gw.g.id }, importance: 6, magnitude: Math.min(1, gw.s / 6), stakes: 0.5,
-      lastAt: time(gw.g.tipoff_at), angles: ['the recap, rewritten as a feature with the moments in it', 'a clip of the finish'], links: [gameLink(gw.g.id)] });
+      lastAt: time(gw.g.tipoff_at), angles: ['the recap, rewritten as a feature with the moments in it', VID[gw.g.id] ? 'the highlights, cut around the finish' : 'a clip of the finish'],
+      links: [gameLink(gw.g.id), videoLink(gw.g.id)].filter(Boolean) });
   }
 
   const winnerOf = g => (+g.home_score > +g.away_score ? g.home_team_id : g.away_team_id);
@@ -1014,7 +1035,7 @@ function build(input) {
         teams: [a, b], games: s.games.map(g => g.id).concat(s.next ? [s.next.id] : []), tracks: { metric: 'tie', value: agg[a] + '-' + agg[b] },
         importance: winner ? 6 : 8.5, magnitude: Math.min(1, 0.5 + 0.15 * n), stakes: 1, lastAt: last ? time(last.tipoff_at) : nowMs - 12 * HOUR,
         angles: winner ? ['how the tie was won, leg by leg'] : ['a preview of the next leg: what the side behind has to change'],
-        links: [last ? gameLink(last.id) : null, s.next ? gameLink(s.next.id) : null].filter(Boolean) });
+        links: [last ? gameLink(last.id) : null, last ? videoLink(last.id) : null, s.next ? gameLink(s.next.id) : null].filter(Boolean) });
     };
     SERIES.forEach(s => {
       const [a, b] = s.ids, pa = posOf.get(a), pb = posOf.get(b);
@@ -1073,8 +1094,90 @@ function build(input) {
         importance: through ? 7 : 9 + (lowLeads ? 1 : 0), magnitude: Math.min(1, 0.45 + 0.12 * n + (lowLeads ? 0.2 : 0)), stakes: 1,
         lastAt: last ? time(last.tipoff_at) : nowMs - 12 * HOUR,
         angles: through ? ['how the series was won, game by game'] : ['a series preview: the regular-season meetings and the facet it turns on', 'a game-by-game series tracker', 'the matchup to watch on each side'],
-        links: [last ? gameLink(last.id) : null, s.next ? gameLink(s.next.id) : null].filter(Boolean) });
+        links: [last ? gameLink(last.id) : null, last ? videoLink(last.id) : null, s.next ? gameLink(s.next.id) : null].filter(Boolean) });
     });
+  }
+
+  /* ---- THE SCHEDULE SO FAR (sos.js): a winning record against the hardest opponents anyone has had, and the best
+     side by margins adjusted for whom they have played, when that is not the side on top of the table ------------ */
+  if (!over && byHard.length >= 6) {
+    const h = byHard[0], hc = h.c, adjRank = byAdj.indexOf(h) + 1;
+    if (hc.w > hc.l) story({ id: 'schedule:' + h.id, kind: 'schedule', kicker: 'The schedule',
+      head: possOf(name(h.id)) + ' ' + rec(hc.w, hc.l) + ' has come against the hardest schedule in the league',
+      dek: 'Their opponents so far average ' + signed(h.sosNet) + ' points per 100 possessions, adjusted; the easiest schedule has been ' + possOf(name(byHard[byHard.length - 1].id)) + ' (' + signed(byHard[byHard.length - 1].sosNet) + ').',
+      why: adjRank <= 3 ? 'Against the schedule they have played, their margins rank ' + place(adjRank) + ' in the league: the record undersells them.'
+        : 'A record against the league’s best is worth more than the same record against its worst.',
+      numbers: [{ label: 'record', value: rec(hc.w, hc.l) }, { label: 'opponents, adjusted net', value: signed(h.sosNet) }, { label: 'their adjusted net', value: signed(h.adjNet) + ' (' + ordShort(adjRank) + ')' }],
+      next: nextText(h.id) ? 'Next: ' + nextText(h.id) + '.' : null, teams: [h.id], tracks: { metric: 'schedule', value: h.id },
+      importance: 4.5, magnitude: 0.5, stakes: 0.5, lastAt: hc.lastAt, evergreen: true, under: true,
+      angles: ['a data piece: the records that the schedule explains', 'the run of fixtures ahead, by strength'], links: [teamLink(h.id)].filter(Boolean) });
+    const top = byAdj[0], tl = S.size === 1 ? ([...S.values()][0].filter(r => r.gp > 0)[0] || null) : null;
+    const tpos = posOf.get(top.id);
+    if (tl && top.id !== tl.team_id && top.c.gp >= 6 && tpos && tpos.pos >= 2) story({ id: 'adjusted:' + top.id, kind: 'adjusted', kicker: 'By the adjusted numbers',
+      head: 'By the margins, adjusted for the schedule, ' + name(top.id) + ' are the best side in the league',
+      dek: signed(top.adjNet) + ' points per 100 possessions against the opponents they have had; they are ' + place(tpos.pos) + ' in the table at ' + rec(top.c.w, top.c.l) + '.',
+      why: 'The table counts wins; adjusted margins count how well a side has played against whom, and they are the better guide to what comes next.',
+      numbers: [{ label: 'adjusted net', value: signed(top.adjNet) }, { label: 'place', value: ordShort(tpos.pos) }, { label: 'leaders, adjusted net', value: name(tl.team_id) + ' ' + signed((SOSIN[tl.team_id] || {}).adjNet || 0) }],
+      counter: 'Yes, but the table is what decides the season, and ' + name(tl.team_id) + ' are top of it.',
+      next: nextText(top.id) ? 'Next: ' + nextText(top.id) + '.' : null, teams: [top.id, tl.team_id], tracks: { metric: 'adjusted', value: top.id },
+      importance: 5.5, magnitude: Math.min(1, 0.4 + (top.adjNet - (SOSIN[tl.team_id] || {}).adjNet || 0) / 10), stakes: 0.6, lastAt: top.c.lastAt, evergreen: true, under: true,
+      angles: ['a power ranking built on adjusted margins, beside the table'], links: [teamLink(top.id)].filter(Boolean) });
+  }
+
+  /* ---- THE SEASON'S TEAM RECORDS, when the week set one: the biggest win, the most points, the most threes -------- */
+  if (maxGp >= 3) {
+    const tl3 = new Map();
+    (o.teamLines || []).forEach(t => { if (t && t.adv && num(t.adv.fg3m) != null) tl3.set(t.game_id + '|' + t.team_idx, +t.adv.fg3m); });
+    const best = (val, label, fmt) => {
+      let b = null;
+      regular.forEach(g => [0, 1].forEach(s => { const v = val(g, s); if (v != null && (!b || v > b.v)) b = { v, g, s }; }));
+      return b ? Object.assign(b, { label, fmt }) : null;
+    };
+    const side = (g, s) => (s === 0 ? g.home_team_id : g.away_team_id);
+    const recs = [
+      best((g, s) => (s === 0 ? +g.home_score - +g.away_score : +g.away_score - +g.home_score) || null, 'the biggest win', b => possOf(name(side(b.g, b.s))) + ' ' + b.v + '-point win over ' + name(side(b.g, 1 - b.s))),
+      best((g, s) => (s === 0 ? +g.home_score : +g.away_score), 'the most points', b => possOf(name(side(b.g, b.s))) + ' ' + b.v + ' points against ' + name(side(b.g, 1 - b.s))),
+      tl3.size ? best((g, s) => (tl3.has(g.id + '|' + s) ? tl3.get(g.id + '|' + s) : null), 'the most threes', b => possOf(name(side(b.g, b.s))) + ' ' + b.v + ' threes against ' + name(side(b.g, 1 - b.s))) : null
+    ].filter(b => b && b.v > 0 && time(b.g.tipoff_at) >= nowMs - 7 * DAY);
+    if (recs.length) {
+      const lead = recs[0];
+      story({ id: 'teambest', kind: 'teambest', kicker: 'Team records', head: lead.fmt(lead) + ' ' + (lead.label === 'the biggest win' ? 'is the biggest of the season' : 'are ' + lead.label + ' in a game this season'),
+        dek: dayWords(lead.g.tipoff_at, tz) ? cap(dayWords(lead.g.tipoff_at, tz)) + '.' : null,
+        why: 'Every other night this season is measured against it now.',
+        numbers: recs.map(b => ({ label: b.label, value: b.fmt(b) })), teams: [...new Set(recs.map(b => side(b.g, b.s)))], games: recs.map(b => b.g.id),
+        tracks: { metric: 'teambest', value: recs.map(b => b.label + b.v).join(',') }, importance: 4.5, magnitude: 0.5, stakes: 0.35, lastAt: time(lead.g.tipoff_at),
+        angles: ['the night, in the numbers'], links: [gameLink(lead.g.id)] });
+    }
+  }
+
+  /* ---- ONE FOR THE FUTURE: the best player aged 21 or under, by box plus-minus (ages: player_bio) -------------- */
+  {
+    const young = (o.players || []).filter(r => r && r.id && pname(r.id) && num(r.bpm) != null && num(r.gp) >= Math.max(4, Math.ceil(maxGp * 0.5)) && num(r.mpg) >= 15 &&
+      ageOf(r.id) != null && ageOf(r.id) <= 21).sort((a, b) => b.bpm - a.bpm);
+    const y = young[0];
+    if (y && y.bpm > 0) {
+      const yc = PL.get(y.id) ? PL.get(y.id).team : null;
+      story({ id: 'youth:' + y.id, kind: 'youth', kicker: 'One for the future', head: pname(y.id) + ', ' + ageOf(y.id) + ', is the best young player in the league by the numbers',
+        dek: signed(y.bpm) + ' BPM on ' + one(y.ppg) + ' points, ' + one(y.rpg) + ' rebounds and ' + one(y.apg) + ' assists in ' + one(y.mpg) + ' minutes a game' + (yc ? ' for ' + name(yc) : '') + '.',
+        why: young.length > 1 ? 'Nobody else aged 21 or under with a real role comes close: ' + pname(young[1].id) + ' is next, at ' + signed(young[1].bpm) + '.' : 'Nobody else aged 21 or under has a role like it.',
+        numbers: [{ label: 'age', value: String(ageOf(y.id)) }, { label: 'BPM', value: signed(y.bpm) }, { label: 'minutes', value: one(y.mpg) }],
+        teams: yc ? [yc] : [], players: [y.id], tracks: { metric: 'youth', value: y.id }, importance: 4, magnitude: 0.5, stakes: 0.3,
+        lastAt: PL.get(y.id) ? PL.get(y.id).lastAt : nowMs - DAY, evergreen: true, under: true,
+        angles: ['a feature on the player and the minutes the club is giving them'], links: [playerLink(y.id)].filter(Boolean) });
+    }
+  }
+
+  /* ---- THE FANS' VOTE (fanvote_winners): the week's pick, from a real number of ballots, beside the numbers' pick -- */
+  const FV = o.fanvote;
+  if (FV && FV.player && FV.player.name && FV.ballots >= 25 && time(FV.endsAt) != null && nowMs - time(FV.endsAt) <= 9 * DAY) {
+    const p = FV.player, line = p.line || {};
+    const rival = (FV.others || []).find(x => x.line && num(x.line.bpm) != null && num(line.bpm) != null && x.line.bpm > line.bpm + 1);
+    story({ id: 'fans:' + FV.week, kind: 'fans', kicker: 'The fans’ vote', head: 'The fans’ player of the week: ' + p.name,
+      dek: p.share + '% of the vote from ' + FV.ballots + ' ballots' + (num(line.ppg) != null ? '; ' + one(line.ppg) + ' points a game that week' : '') + '.',
+      why: rival ? 'The numbers had another week in mind: ' + rival.name + '’s BPM was ' + signed(rival.line.bpm) + ', against ' + signed(line.bpm) + '.' : 'The numbers agree: the best box plus-minus of the three the fans liked most.',
+      numbers: [{ label: 'share', value: p.share + '%' }, { label: 'ballots', value: String(FV.ballots) }, num(line.bpm) != null ? { label: 'BPM', value: signed(line.bpm) } : null],
+      teams: p.team ? [p.team] : [], players: p.id ? [p.id] : [], tracks: { metric: 'fans', value: FV.week }, importance: 4.5, magnitude: 0.5, stakes: 0.3, lastAt: time(FV.endsAt),
+      angles: ['the fans’ pick against the numbers’ pick, side by side'], links: [playerLink(p.id)].filter(Boolean) });
   }
 
   /* ---- THE LEAGUE'S LENS: what wins here (What Wins), as a standing data story ------------------------------- */
@@ -1150,6 +1253,50 @@ function build(input) {
     if (ranked.length <= 6) (s.teams || []).forEach(t => used.set(t, (used.get(t) || 0) + 1));
   });
   const stories = ranked.concat(later).map((s, i) => Object.assign(s, { rank: i + 1 }));
+
+  /* ============================================================ what has been written === */
+  /* THE SITE'S OWN COVERAGE OF EACH STORYLINE: the match reports filed for the games it rests on, and the last
+     fortnight's pieces from creators, outlets and channels that name its players, or its clubs (two of them, for a
+     storyline about more than two). A storyline nobody has written about is a gap in the coverage plan. Names are
+     compared without accents or case, as whole words. */
+  const NEWS = o.news || null;
+  let written = null;
+  if (NEWS) {
+    const fold = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const reEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const nameRe = n => { const f = fold(n).trim(); return f.length >= 4 ? new RegExp('(^|[^a-z0-9])' + reEsc(f) + '($|[^a-z0-9])') : null; };
+    const pieces = (NEWS.pieces || []).filter(p => p && p.title && time(p.at) >= nowMs - 14 * DAY).map(p => Object.assign({}, p, { text: fold(p.title + ' ' + (p.summary || '')), stories: [] }));
+    const clubRe = new Map(), playerRe = new Map();
+    const reOfClub = id => {
+      if (!clubRe.has(id)) { const t = T.get(id); clubRe.set(id, [t && t.name, t && t.short_name && String(t.short_name).length >= 5 ? t.short_name : null].filter(Boolean).map(nameRe).filter(Boolean)); }
+      return clubRe.get(id);
+    };
+    const reOfPlayer = id => { if (!playerRe.has(id)) { const n = pname(id); playerRe.set(id, n ? [nameRe(n)].filter(Boolean) : []); } return playerRe.get(id); };
+    /* a player's storyline is covered by a piece that names the player; a game's by one that names both clubs; a club's
+       by one that names it; the race or the line by one that names two of its clubs */
+    const PLAYER_KINDS = new Set(['bpm', 'quiet', 'scoring', 'form', 'milestone', 'absence', 'youth', 'fans', 'best']);
+    const GAME_KINDS = new Set(['upset', 'gotw', 'sweep', 'split', 'series', 'teambest']);
+    stories.forEach(s => {
+      const hits = [];
+      const nT = (s.teams || []).length;
+      const need = PLAYER_KINDS.has(s.kind) ? Infinity : GAME_KINDS.has(s.kind) ? Math.min(2, nT) : nT > 2 ? 2 : 1;
+      pieces.forEach(p => {
+        const byPlayer = (s.players || []).some(id => reOfPlayer(id).some(re => re.test(p.text)));
+        const clubs = (s.teams || []).filter(id => reOfClub(id).some(re => re.test(p.text))).length;
+        const byClub = nT > 0 && clubs >= need;
+        if (!byPlayer && !byClub) return;
+        hits.push({ p, byPlayer });
+        if (s.status !== 'resolved') p.stories.push(s.id);
+      });
+      hits.sort((a, b) => (b.byPlayer ? 1 : 0) - (a.byPlayer ? 1 : 0) || time(b.p.at) - time(a.p.at));
+      const reps = (s.games || []).map(id => (NEWS.reports && NEWS.reports[id] ? Object.assign({ kind: 'report' }, NEWS.reports[id]) : null)).filter(Boolean)
+        .sort((a, b) => time(b.at) - time(a.at));
+      s.pieces = hits.slice(0, 2).map(h => ({ kind: h.p.kind, title: h.p.title, href: h.p.href, at: h.p.at }))
+        .concat(reps.slice(0, 1).map(r => ({ kind: 'report', title: r.title, href: r.href, at: r.at })));
+      s.written = hits.length;
+    });
+    written = pieces.sort((a, b) => time(b.at) - time(a.at)).slice(0, 10).map(p => ({ kind: p.kind, title: p.title, href: p.href, at: p.at, stories: p.stories.slice(0, 3) }));
+  }
   /* the copy a creator takes away: the headline, the line under it, the why, the numbers, the counterpoint and what's next */
   stories.forEach(s => {
     s.copy = [s.head, s.dek, s.why ? 'Why it matters: ' + s.why : null, s.numbers.length ? 'By the numbers: ' + s.numbers.map(n => n.label + ' ' + n.value).join('; ') : null,
@@ -1157,7 +1304,7 @@ function build(input) {
   });
 
   const ctxObj = { nowMs, tz, C, S, posOf, name, short, fixtures, games, regular, recaps, tallies, P, model: o.model, LENS, PL, pname, ID, DISTINCT, F, maxGp, qualifiers, nextText,
-    shape, SERIES, isPost: isPostFix, pairKey };
+    shape, SERIES, isPost: isPostFix, pairKey, SIG, VID, NEWS, written };
   /* the clubs the file names, so a page can draw a slate or a link without asking for them */
   const clubsOut = {};
   new Set(games.concat(fixtures).flatMap(g => [g.home_team_id, g.away_team_id])).forEach(id => {
@@ -1177,13 +1324,15 @@ function build(input) {
 
 /* HOW MUCH A GAME IS WORTH A RECAP: its shape (the match report's arc), how close it finished, an upset by the table,
    and a moment at the end */
-function recapScore(g, r, posOf) {
+function recapScore(g, r, posOf, sig) {
   const m = Math.abs(g.home_score - g.away_score);
   const w = +g.home_score > +g.away_score ? g.home_team_id : g.away_team_id, l = w === g.home_team_id ? g.away_team_id : g.home_team_id;
   const pw = posOf.get(w), pl = posOf.get(l);
   const upset = pw && pl && (pw.gp || 0) >= 3 && (pl.gp || 0) >= 3 ? Math.max(0, pw.pos - pl.pos) : 0;
   const arc = r && r.arc ? ({ heist: 3, collapse: 3, comeback: 2.5, overtime: 2.5, seesaw: 1.5, heldOn: 1.5, tight: 1.5, pulledAway: 1, wire: 0.5, rout: 0.5 }[r.arc] || 0) : 0;
-  return arc + (m <= 3 ? 2 : m <= 6 ? 1 : 0) + Math.min(3, upset / 2) + (r && r.moment ? (r.moment.kind === 'gameWinner' ? 2.5 : 1.5) : 0);
+  /* the site's own measure of the game (game_significance: a 50-point night, first against second, a final...) */
+  const sg = sig && sig.points > 0 ? Math.min(4, sig.points / 20) : 0;
+  return arc + (m <= 3 ? 2 : m <= 6 ? 1 : 0) + Math.min(3, upset / 2) + (r && r.moment ? (r.moment.kind === 'gameWinner' ? 2.5 : 1.5) : 0) + sg;
 }
 
 /* what changed, in a few words */
@@ -1353,9 +1502,11 @@ function coverage(stories, X) {
   const recaps = X.games.filter(g => time(g.tipoff_at) >= X.nowMs - 7 * DAY).map(g => {
     const r = X.recaps[g.id] || null;
     const w = +g.home_score > +g.away_score ? g.home_team_id : g.away_team_id, l = w === g.home_team_id ? g.away_team_id : g.home_team_id;
-    const score = recapScore(g, r, X.posOf);
+    const score = recapScore(g, r, X.posOf, X.SIG[g.id]);
     return { game: g.id, at: g.tipoff_at, score: Math.round(score * 10) / 10, headline: r && r.headline ? r.headline : X.name(w) + ' beat ' + X.name(l) + ' ' + Math.max(+g.home_score, +g.away_score) + '–' + Math.min(+g.home_score, +g.away_score),
-             standfirst: r && r.standfirst || null, angle: r && r.decisive ? cap(r.decisive.label) + ' decided it, about ' + Math.round(r.decisive.pts) + ' points' : null, arc: r && r.arc || null };
+             standfirst: r && r.standfirst || null, angle: r && r.decisive ? cap(r.decisive.label) + ' decided it, about ' + Math.round(r.decisive.pts) + ' points' : null, arc: r && r.arc || null,
+             reasons: X.SIG[g.id] && X.SIG[g.id].reasons.length ? X.SIG[g.id].reasons : null, video: !!(X.VID && X.VID[g.id]),
+             report: X.NEWS && X.NEWS.reports && X.NEWS.reports[g.id] ? X.NEWS.reports[g.id].href : null };
   }).sort((a, b) => b.score - a.score || time(b.at) - time(a.at)).slice(0, 8);
 
   /* PLAYERS TO FEATURE */
@@ -1418,7 +1569,10 @@ function coverage(stories, X) {
     bigPicture: big.map(clean).filter(Boolean),
     storylines: live.slice(0, 10).map(s => s.id),
     underRadar: stories.filter(s => s.under && s.status !== 'resolved').slice(0, 3).map(s => s.id),
-    slate: sl, recaps, players: players.slice(0, 8), teams: teams.slice(0, 10), notes, calendar
+    slate: sl, recaps, players: players.slice(0, 8), teams: teams.slice(0, 10), notes, calendar,
+    /* what has been written in the last fortnight, and the storylines nobody has written about yet (with the news read) */
+    written: X.written || null,
+    gaps: X.written ? live.slice(0, 12).filter(s => !s.written).map(s => s.id) : null
   };
 }
 

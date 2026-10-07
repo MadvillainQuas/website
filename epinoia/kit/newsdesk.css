@@ -92,3 +92,5 @@
   .nd-v{display:none}
   .nd-meter{width:60px}
 }
+/* a score or a record kept on one line (newsdesk.js nb) */
+.nd-nb{white-space:nowrap}

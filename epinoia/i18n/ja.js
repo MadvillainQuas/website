@@ -1880,7 +1880,20 @@
       'The knockout': 'トーナメント',
       'Qualifiers': '予選',
       'Place secured': '進出圏確定',
-      'Into the next round': '次のラウンドへ'
+      'Into the next round': '次のラウンドへ',
+      'Already written': '公開済みの記事',
+      'From a creator': 'クリエイターの記事',
+      'In the news': 'ニュース',
+      'the match report': 'レポート',
+      'the highlights': 'ハイライト',
+      'Not yet covered': 'まだ記事になっていない話題',
+      'Storylines nobody has written about in the last fortnight: the openings': '過去2週間、誰も書いていないストーリーライン。狙い目です',
+      'The last fortnight’s pieces about the league, and the storylines each one covers': '過去2週間のリーグ関連の記事と、それぞれが扱うストーリーライン',
+      'The schedule': '対戦相手の強さ',
+      'By the adjusted numbers': '補正後の数字で見ると',
+      'Team records': 'チーム記録',
+      'One for the future': '未来のスター候補',
+      'The fans’ vote': 'ファン投票'
     },
 
     ctx: {

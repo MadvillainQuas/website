@@ -54,6 +54,7 @@ export function load(url) {
   try { g('EpinoiaShotClock', 'shotclock.js'); } catch (_) { /* no shot clock here */ }
   try { g('EpinoiaConnections', path.join('game', 'connections.js')); } catch (_) { /* no connections here */ }
   g('EpinoiaGamePctData', 'gamepct-data.js'); g('EpinoiaGamePct', 'gamepct.js'); g('EpinoiaBPM', 'bpm.js');
+  try { g('EpinoiaSOS', 'sos.js'); } catch (_) { /* no schedule strength: the storylines go without it */ }
   g('EpinoiaLanguage', path.join('game', 'language.js')); g('EpinoiaStory', path.join('game', 'story.js'));
   g('EpinoiaReport', path.join('game', 'report.js')); g('EpinoiaContext', path.join('game', 'context.js'));
   return g('EpinoiaNarrative', 'narrative.js');
@@ -196,11 +197,99 @@ async function readLeague(api, lg, o) {
   const ties = poIds.length ? await api.rest(`bracket_ties?competition_id=in.(${poIds.join(',')})&is_bye=eq.false&select=competition_id,round,label,home_team_id,away_team_id,winner_team_id,home_agg,away_agg,legs,decider`).catch(() => []) : [];
   /* the players a club has said have gone (player_releases): never "not playing" */
   const released = teamIds.length ? await api.rest(`player_releases?team_id=in.(${teamIds.join(',')})&select=team_id,player_id`).catch(() => []) : [];
+  const extra = await readExtras(api, lg, { games, leagueComp, players, nowMs: o.nowMs, teamIds, teams, gids, teamLines }).catch(e => { log && log('    extras: ' + String(e.message || e).slice(0, 120)); return {}; });
+  const n = v => (v ? Object.keys(v).length : 0);
+  log && log('    read: ' + (extra.news ? n(extra.news.reports) + ' reports, ' + extra.news.pieces.length + ' pieces' : 'no news') + ', significance ' + n(extra.significance) +
+    ', highlights ' + n(extra.highlights) + ', fans’ vote ' + (extra.fanvote ? extra.fanvote.ballots + ' ballots' : 'none') + ', schedule ' + n(extra.sos) + ' clubs, ages ' +
+    (extra.bio ? Object.values(extra.bio).filter(b => b.age != null).length : 0));
   log && log('  ' + lg.slug + ': ' + games.length + ' games, ' + fixtures.length + ' to come, ' + lines.length + ' player lines, ' + (model ? 'the league’s model' : 'fixed weights') +
     ', ' + rest.length + ' league games still to play' + (lastLine ? ', last season’s play-offs took ' + lastLine.n + ' of ' + lastLine.of : '') +
     ((released || []).length ? ', ' + released.length + ' released' : ''));
   return { season, comps, leagueComp, games, fixtures, table: { comp: leagueComp, rows: table || [] }, teams, lines, teamLines, names, model, tallies, players,
-           rest, lastLine, lastTotal, released: released || [], ties: ties || [] };
+           rest, lastLine, lastTotal, released: released || [], ties: ties || [], extra };
+}
+
+/* EVERYTHING ELSE THE SITE PUBLISHES ABOUT A LEAGUE, read as a signed-out reader reads it, each part on its own (one that
+   fails leaves the others):
+     news          the match reports filed for its games (news_articles with a game_id) and the pieces about it from
+                   creators, outlets and channels (news_feed): a storyline cites what has been written about it, and the
+                   coverage plan says what has not been
+     significance  the site's own measure of a finished game (game_significance: points, and the reasons in words)
+     highlights    which of the week's games have their highlights on the site (league_videos)
+     fanvote       the latest week of the fans' vote (fanvote_winners)
+     sos           every club's schedule so far and its margins adjusted for it (sos.js, the Table page's own engine),
+                   worked here from the season's team lines
+     bio           the players' ages and heights (player_bio) */
+async function readExtras(api, lg, x) {
+  const out = {};
+  const rpc = (fn, body) => api.rest('rpc/' + fn, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const since = new Date(x.nowMs - 21 * DAY).toISOString();
+  const parts = [
+    (async () => {
+      const reps = (await api.rest(`news_articles?league_id=eq.${lg.id}&status=eq.published&game_id=not.is.null&published_at=gte.${encodeURIComponent(since)}` +
+        `&select=slug,title,published_at,game_id&order=published_at.desc&limit=200`)) || [];
+      const rows = (await rpc('news_feed', { p_league: lg.id, p_limit: 60, p_kinds: ['creator', 'outlet', 'channel'] })) || [];
+      const reports = {};
+      reps.forEach(r => { if (r.game_id && !reports[r.game_id]) reports[r.game_id] = { title: r.title, at: r.published_at, href: 'news/?l=' + encodeURIComponent(lg.slug) + '&a=' + encodeURIComponent(r.slug) }; });
+      /* this league's own pieces only: a sister league's (the women's, with the same clubs' names) is not this one's */
+      const mine = r => r.league_slug ? r.league_slug === lg.slug : (r.leagues || []).some(l => l && l.slug === lg.slug);
+      const pieces = rows.filter(r => r && r.id && r.title && r.published_at >= since && mine(r)).map(r => ({
+        kind: r.kind === 'creator' ? 'creator' : 'news', id: r.id, title: String(r.title).slice(0, 200), summary: String(r.summary || '').slice(0, 400), at: r.published_at,
+        href: r.kind === 'creator' && r.league_slug && r.outlet_slug && r.slug
+          ? 'creators/?l=' + encodeURIComponent(r.league_slug) + '&o=' + encodeURIComponent(r.outlet_slug) + '&p=' + encodeURIComponent(r.slug)
+          : 'news/?i=' + encodeURIComponent(r.id) }));
+      out.news = { reports, pieces };
+    })(),
+    (async () => {
+      const week = x.games.filter(g => Date.parse(g.tipoff_at) >= x.nowMs - 8 * DAY).map(g => g.id).slice(-60);
+      if (!week.length) return;
+      const rows = (await rpc('game_significance', { p_game_ids: week })) || [];
+      out.significance = {};
+      rows.forEach(r => { if (r && r.game_id) out.significance[r.game_id] = { points: +r.points || 0, reasons: Array.isArray(r.reasons) ? r.reasons.slice(0, 4) : [] }; });
+    })(),
+    (async () => {
+      const rows = (await rpc('league_videos', { p_league: lg.id, p_kind: 'highlights', p_limit: 60 })) || [];
+      out.highlights = {};
+      rows.forEach(r => { const id = r && r.game && r.game.id; if (id) out.highlights[id] = true; });
+    })(),
+    (async () => {
+      const rows = await rpc('fanvote_winners', { p_league: lg.id, p_limit: 1 });
+      const w = Array.isArray(rows) ? rows[0] : null;
+      if (w && w.player) out.fanvote = { week: w.week_start, endsAt: w.ends_at, ballots: +w.player_ballots || +w.ballots || 0,
+        player: { id: w.player.id, name: w.player.name, team: w.player.team ? w.player.team.id || null : null, share: +w.player.share || 0, firsts: +w.player.firsts || 0, line: w.player.line || null },
+        others: (w.players || []).slice(1, 3).map(p => ({ id: p.id, name: p.name, share: +p.share || 0, line: p.line || null })) };
+    })(),
+    (async () => {
+      const SOS = globalThis.EpinoiaSOS;
+      if (!SOS || typeof SOS.compute !== 'function' || !x.teamLines || !x.teamLines.length) return;
+      const pair = new Map();
+      x.teamLines.forEach(t => { if (!pair.has(t.game_id)) pair.set(t.game_id, {}); pair.get(t.game_id)[t.team_idx] = t.adv; });
+      const num = v => (v == null || !isFinite(+v) ? 0 : +v);
+      const line = (a, pts) => ({ pts: +pts, fgm: num(a.fgm), fga: num(a.fga), fg3m: num(a.fg3m), fg3a: num(a.fg3a), ftm: num(a.ftm), fta: num(a.fta),
+        oreb: num(a.oreb), dreb: num(a.dreb), tov: num(a.tov), poss: num(a.possessions) });
+      const lc = new Set([x.leagueComp && x.leagueComp.id].filter(Boolean));
+      const inp = [];
+      x.games.forEach(g => {
+        const p = pair.get(g.id);
+        if (!p || !p[0] || !p[1] || (lc.size && !lc.has(g.competition_id)) || !g.home_team_id || !g.away_team_id) return;
+        const ts = Date.parse(g.tipoff_at);
+        inp.push({ gameId: g.id, ts, date: new Date(ts).toISOString().slice(0, 10), teams: [g.home_team_id, g.away_team_id],
+          data: { [g.home_team_id]: line(p[0], g.home_score), [g.away_team_id]: line(p[1], g.away_score) } });
+      });
+      if (inp.length < 12) return;
+      const res = SOS.compute(inp, {});
+      out.sos = {};
+      (res.rows || []).forEach(r => { if (r.key) out.sos[r.key] = { games: r.games, elo: r.elo, sosNet: r.sosNetRtg, sosElo: r.sosElo, adjNet: r.adjNet, rawNet: r.rawNet, adjO: r.adjOrtg, adjD: r.adjDrtg }; });
+    })(),
+    (async () => {
+      const ids = (x.players || []).filter(p => p && p.id && +p.gp >= 3).map(p => p.id).slice(0, 1000);
+      if (!ids.length) return;
+      out.bio = {};
+      for (const c of chunks(ids, 400)) ((await rpc('player_bio', { p_ids: c })) || []).forEach(r => { if (r && r.player_id) out.bio[r.player_id] = { age: r.age != null ? +r.age : null, height: r.height_cm != null ? +r.height_cm : null }; });
+    })()
+  ];
+  await Promise.all(parts.map(p => p.catch(() => null)));
+  return out;
 }
 
 /* ONE GAME, REPLAYED: the match report's headline, standfirst, shape, decisive facet and moment, from the events file */
@@ -294,7 +383,9 @@ export async function buildLeague(api, lg, o) {
     season: { id: D.season.id, name: D.season.name }, comp: D.leagueComp, comps: D.comps.map(c => ({ id: c.id, kind: c.kind || 'league', name: c.name })),
     table: D.table, teams: D.teams, games: D.games, fixtures: D.fixtures,
     lines: D.lines, teamLines: D.teamLines, names: D.names, players: D.players, recaps, model: D.model, tallies: D.tallies, previous,
-    rest: D.rest, lastLine: D.lastLine, lastTotal: D.lastTotal, released: D.released, ties: D.ties });
+    rest: D.rest, lastLine: D.lastLine, lastTotal: D.lastTotal, released: D.released, ties: D.ties,
+    news: D.extra.news || null, significance: D.extra.significance || null, highlights: D.extra.highlights || null, fanvote: D.extra.fanvote || null,
+    sos: D.extra.sos || null, bio: D.extra.bio || null });
   out.token = D.games.length + '@' + D.games.reduce((m, g) => (g.finalised_at && g.finalised_at > m ? g.finalised_at : m), '');
   o.log && o.log('    ' + out.stories.length + ' storylines, ' + replayed + ' games replayed, top: ' + (out.stories[0] ? out.stories[0].head : '(none)'));
   return { out, cache };

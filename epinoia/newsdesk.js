@@ -30,7 +30,9 @@ const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g,
 const SEEN_KEY = 'epinoia_newsdesk_seen';
 const HOUR = 3600000, DAY = 86400000;
 /* only links the file itself makes, to the site's own pages */
-const safeHref = (base, h) => (/^(game|t|p|l)\/\?[a-z]=[\w%.:-]+$/i.test(String(h || '')) ? (base || '') + h : null);
+/* only the site's own pages, by a short list: a game, a club, a player, a league, a news story or article, a creator's
+   piece, a game's highlights; each with a few plain parameters */
+const safeHref = (base, h) => (/^(game|t|p|l|news|creators|watch)\/\?[a-z]=[\w%.:-]+(?:&[a-z]=[\w%.:-]+){0,3}$/i.test(String(h || '')) ? (base || '') + h : null);
 
 /* ------------------------------------------------------------------- read --- */
 async function load(leagueId, opts) {
@@ -77,18 +79,22 @@ function ago(iso) {
   return 'updated ' + d + (d === 1 ? ' day ago' : ' days ago');
 }
 
+/* a score or a record never breaks at its dash ("5–" at the end of one line, "0" at the start of the next) */
+const nb = html => String(html).replace(/(\d+)–(\d+)/g, '<span class="nd-nb">$1–$2</span>');
+
 /* ------------------------------------------------------------- a storyline --- */
+const PIECE = { report: 'Match report', creator: 'From a creator', news: 'In the news' };
 function storyHTML(s, o) {
   const opts = o || {};
   const b = badgeOf(s, (opts.seen || {})[s.id]);
   const nums = (s.numbers || []).slice(0, opts.full ? 8 : 4).map(n =>
     '<div><dt>' + esc(n.label) + '</dt><dd translate="no">' + esc(n.value) + '</dd></div>').join('');
   const links = (s.links || []).map(l => { const h = safeHref(opts.base, l.href); return h ? '<a href="' + esc(h) + '" translate="no">' + esc(l.label) + '</a>' : ''; }).filter(Boolean).join('');
-  const line = (cls, label, text) => (text ? '<p class="' + cls + '"><b>' + label + '</b> <span translate="no">' + esc(text) + '</span></p>' : '');
+  const line = (cls, label, text) => (text ? '<p class="' + cls + '"><b>' + label + '</b> <span translate="no">' + nb(esc(text)) + '</span></p>' : '');
   return '<article class="nd-story" data-kind="' + esc(s.kind) + '" data-status="' + esc(s.status) + '">' +
     '<div class="nd-top"><span class="nd-kick">' + esc(s.kicker) + '</span>' + (b ? '<span class="nd-badge ' + b[0] + '">' + b[1] + '</span>' : '') + '</div>' +
-    '<h3 class="nd-h" translate="no">' + esc(s.head) + '</h3>' +
-    (s.dek ? '<p class="nd-dek" translate="no">' + esc(s.dek) + '</p>' : '') +
+    '<h3 class="nd-h" translate="no">' + nb(esc(s.head)) + '</h3>' +
+    (s.dek ? '<p class="nd-dek" translate="no">' + nb(esc(s.dek)) + '</p>' : '') +
     (b && b[0] !== 'new' && s.change ? '<p class="nd-change" translate="no">' + esc(s.change) + '</p>' : '') +
     (nums ? '<dl class="nd-nums">' + nums + '</dl>' : '') +
     line('nd-why', 'Why it matters', s.why) +
@@ -96,6 +102,11 @@ function storyHTML(s, o) {
     line('nd-but', 'Yes, but', s.counter) +
     line('nd-next', 'What’s next', s.next) +
     (opts.full && (s.angles || []).length ? '<div class="nd-angles"><b>Ways to cover it</b><ul>' + s.angles.map(a => '<li translate="no">' + esc(a) + '</li>').join('') + '</ul></div>' : '') +
+    /* what the site has already published about it: a creator's piece, the news, the match report */
+    (opts.full && (s.pieces || []).length ? '<div class="nd-angles nd-pieces"><b>Already written</b><ul>' + s.pieces.map(x => {
+      const h = safeHref(opts.base, x.href);
+      return h ? '<li><a href="' + esc(h) + '" translate="no">' + esc(x.title) + '</a> <small>' + esc(PIECE[x.kind] || PIECE.news) + '</small></li>' : '';
+    }).join('') + '</ul></div>' : '') +
     '<div class="nd-foot"><span class="nd-time">' + esc(s.status === 'resolved' ? 'finished' : ago(s.updated)) + '</span>' + (links ? '<span class="nd-links">' + links + '</span>' : '') +
       (opts.actions ? '<span class="nd-acts" data-story="' + esc(s.id) + '"></span>' : '') + '</div>' +
   '</article>';
@@ -168,8 +179,22 @@ function coverageHTML(build, o) {
   const recaps = (C.recaps || []).length ? '<ol class="nd-recaps">' + C.recaps.map(r => {
     const h = safeHref(opts.base, 'game/?g=' + r.game);
     return '<li><a href="' + esc(h || '#') + '" translate="no">' + esc(r.headline) + '</a>' + (r.standfirst ? '<small translate="no">' + esc(r.standfirst) + '</small>' : '') +
-      (r.angle ? '<span class="nd-angle" translate="no">' + esc(r.angle) + '</span>' : '') + '</li>';
+      (r.angle ? '<span class="nd-angle" translate="no">' + esc(r.angle) + '</span>' : '') +
+      (r.reasons && r.reasons.length ? '<span class="nd-angle" translate="no">' + esc(r.reasons.join(' · ')) + '</span>' : '') +
+      ((r.video || r.report) ? '<span class="nd-links">' + (r.report ? '<a href="' + esc(safeHref(opts.base, r.report) || '#') + '">the match report</a>' : '') +
+        (r.video ? '<a href="' + esc(safeHref(opts.base, 'watch/?g=' + r.game) || '#') + '">the highlights</a>' : '') + '</span>' : '') + '</li>';
   }).join('') + '</ol>' : '';
+  /* WHAT HAS BEEN WRITTEN, and what has not: the fortnight's pieces from creators and the news, each with the
+     storylines it covers; and the storylines nobody has written about yet */
+  const written = (C.written || []).length ? '<ul class="nd-people">' + C.written.map(w => {
+    const h = safeHref(opts.base, w.href);
+    const about = (w.stories || []).map(id => byId.get(id)).filter(Boolean).map(s => s.head);
+    return '<li>' + (h ? '<a href="' + esc(h) + '" translate="no">' + esc(w.title) + '</a>' : '<span translate="no">' + esc(w.title) + '</span>') +
+      ' <small>' + esc(PIECE[w.kind] || PIECE.news) + '</small>' + (about.length ? '<span class="nd-angle" translate="no">' + esc(about.join(' · ')) + '</span>' : '') + '</li>';
+  }).join('') + '</ul>' : '';
+  const gaps = (C.gaps || []).map(id => byId.get(id)).filter(Boolean);
+  const gapList = gaps.length ? '<ul class="nd-people">' + gaps.map(s => '<li><b translate="no">' + esc(s.head) + '</b>' + (s.dek ? '<small translate="no">' + esc(s.dek) + '</small>' : '') +
+    ((s.angles || [])[0] ? '<span class="nd-angle" translate="no">' + esc(s.angles[0]) + '</span>' : '') + '</li>').join('') + '</ul>' : '';
   const people = (C.players || []).length ? '<ul class="nd-people">' + C.players.map(p => '<li><b translate="no">' + esc(p.head) + '</b>' + (p.dek ? '<small translate="no">' + esc(p.dek) + '</small>' : '') +
     (p.angle ? '<span class="nd-angle" translate="no">' + esc(p.angle) + '</span>' : '') + '</li>').join('') + '</ul>' : '';
   const clubs = (C.teams || []).length ? '<div class="nd-clubs">' + C.teams.map(t => '<div class="nd-club"><b translate="no">' + esc(t.name) + '</b>' +
@@ -185,11 +210,13 @@ function coverageHTML(build, o) {
     sec('ndBrief', 'Today', 'The day in the league, to read in a minute', briefingHTML(build, opts)) +
     sec('ndLines', 'The storylines to run', 'Ranked by how much each matters now; each with its evidence, the counterpoint and ways to cover it',
       lines.length ? '<div class="nd-grid wide">' + lines.map(s => storyHTML(s, Object.assign({}, opts, { full: true, actions: !!opts.write }))).join('') + '</div>' : '') +
+    sec('ndGaps', 'Not yet covered', 'Storylines nobody has written about in the last fortnight: the openings', gapList) +
     sec('ndRadar', 'Under the radar', 'What the numbers say that the table does not', radar.length ? '<div class="nd-grid">' + radar.map(s => storyHTML(s, Object.assign({}, opts, { actions: !!opts.write }))).join('') + '</div>' : '') +
     sec('ndSlate', 'The week ahead', 'Every game in the next seven days, the biggest first, with the angle a preview should take', slateHTML(build, opts)) +
     sec('ndRecaps', 'Recaps worth writing', 'The week’s games, the most worth a piece first', recaps) +
     sec('ndPeople', 'Players to feature', null, people) +
     sec('ndClubs', 'Clubs to feature', 'What wins for them, the record against the points, the close games and what is next', clubs) +
+    sec('ndWritten', 'Already written', 'The last fortnight’s pieces about the league, and the storylines each one covers', written) +
     sec('ndNotes', 'Data notes', null, notes) +
     sec('ndCal', 'The week’s calendar', 'What to publish, and when', cal) +
   '</div>';
@@ -204,8 +231,11 @@ function planText(b) {
   if (b.briefing && b.briefing.lines.length) out.push('TODAY', ...b.briefing.lines, '');
   const lines = (C.storylines || []).map(id => byId.get(id)).filter(Boolean);
   if (lines.length) { out.push('THE STORYLINES'); lines.forEach((s, i) => out.push((i + 1) + '. ' + s.copy.replace(/\n/g, '\n   ') + (s.angles && s.angles.length ? '\n   Ways to cover it: ' + s.angles.join('; ') : ''), '')); }
+  const gaps = (C.gaps || []).map(id => byId.get(id)).filter(Boolean);
+  if (gaps.length) { out.push('NOT YET COVERED'); gaps.forEach(s => out.push('- ' + s.head)); out.push(''); }
   if ((C.slate || []).length) { out.push('THE WEEK AHEAD'); C.slate.forEach(x => out.push('- ' + x.day + ': ' + x.title + (x.angle ? ' — ' + x.angle : '') + ' — ' + (x.plan || []).join(', '))); out.push(''); }
-  if ((C.recaps || []).length) { out.push('RECAPS WORTH WRITING'); C.recaps.forEach(r => out.push('- ' + r.headline + (r.angle ? ' (' + r.angle + ')' : ''))); out.push(''); }
+  if ((C.recaps || []).length) { out.push('RECAPS WORTH WRITING'); C.recaps.forEach(r => out.push('- ' + r.headline + (r.angle ? ' (' + r.angle + ')' : '') + (r.reasons && r.reasons.length ? ' [' + r.reasons.join('; ') + ']' : ''))); out.push(''); }
+  if ((C.written || []).length) { out.push('ALREADY WRITTEN'); C.written.forEach(w => out.push('- ' + w.title)); out.push(''); }
   if ((C.notes || []).length) { out.push('DATA NOTES'); C.notes.forEach(n => out.push('- ' + n.head + ': ' + n.line)); out.push(''); }
   if ((C.calendar || []).length) { out.push('THE CALENDAR'); C.calendar.forEach(d => out.push('- ' + d.day + ': ' + d.items.map(i => i.what).join(' / '))); }
   return out.join('\n').trim();

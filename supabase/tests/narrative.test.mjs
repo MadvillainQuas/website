@@ -199,5 +199,54 @@ console.log('\nthe week’s results, read as a desk reads them');
   ok('“It goes on the line away at …” reads as a sentence', run && /^It goes on the line away at Birch City on /.test(run.next || ''), run && run.next);
 }
 
+console.log('\neverything else the site publishes: coverage, significance, highlights, the schedule, ages, the fans');
+{
+  const news = { reports: { g6: { title: 'Ash City edge Cedar City 88–86', href: 'news/?l=test&a=report-g6', at: at(2.9) } },
+    pieces: [{ kind: 'creator', id: 'c1', title: 'How Pat Archer became unstoppable', summary: '', at: at(1), href: 'creators/?l=test&o=desk&p=archer' },
+             { kind: 'news', id: 'n1', title: 'Ash City keep winning', summary: 'A fifth straight for Ash City.', at: at(1.5), href: 'news/?i=n1' },
+             { kind: 'news', id: 'n2', title: 'Elm City sign a guard', summary: '', at: at(2), href: 'news/?i=n2' }] };
+  const bn = N.build(Object.assign({}, base, { news }));
+  const sc = bn.stories.find(s => s.id === 'scoring:p1'), rn = bn.stories.find(s => s.id === 'run:t1');
+  ok('a player’s storyline cites the piece that names the player', sc && sc.pieces.some(p => p.href === 'creators/?l=test&o=desk&p=archer'), sc && sc.pieces);
+  ok('...and not a piece that only names the club', sc && !sc.pieces.some(p => p.href === 'news/?i=n1'), sc && sc.pieces);
+  ok('a club’s storyline cites the piece that names the club, and the match report of its games', rn && rn.pieces.some(p => p.href === 'news/?i=n1') && rn.pieces.some(p => p.kind === 'report'), rn && rn.pieces);
+  ok('the race needs two of its clubs named', (() => { const r = bn.stories.find(s => s.id === 'race:top'); return r && !r.pieces.some(p => p.href === 'news/?i=n1'); })());
+  ok('the plan lists what has been written, with the storylines each covers', (bn.coverage.written || []).some(w => w.href === 'news/?i=n1' && w.stories.includes('run:t1')), bn.coverage.written);
+  ok('...and the storylines nobody has written about', Array.isArray(bn.coverage.gaps) && bn.coverage.gaps.length > 0 && !bn.coverage.gaps.includes('run:t1'), bn.coverage.gaps);
+  ok('without the news read, no gaps are claimed', b1.coverage.gaps === null);
+
+  /* the site's significance lifts a game up the recaps and says why; its highlights are linked */
+  const bs = N.build(Object.assign({}, base, { significance: { g20: { points: 60, reasons: ['52-point game: Pat Archer'] } }, highlights: { g6: true } }));
+  const r20 = bs.coverage.recaps.find(r => r.game === 'g20');
+  ok('a significant game is ranked higher among the recaps', r20 && bs.coverage.recaps.indexOf(r20) <= 1, bs.coverage.recaps.map(r => r.game + ':' + r.score));
+  ok('...with the reasons the site gives', r20 && r20.reasons && r20.reasons[0] === '52-point game: Pat Archer');
+  ok('the game of the week links its highlights', bs.stories.some(s => s.kind === 'gotw' && s.links.some(l => l.href === 'watch/?g=g6')), bs.stories.filter(s => s.kind === 'gotw').map(s => s.links));
+
+  /* the schedule so far: Elm City (4-2) have had the hardest opponents; Birch City have the best adjusted margins */
+  const sos = { t1: { sosNet: -2, adjNet: 4, games: 6 }, t2: { sosNet: 1, adjNet: 9, games: 6 }, t3: { sosNet: 0, adjNet: -2, games: 8 },
+    t4: { sosNet: 0.5, adjNet: -1, games: 7 }, t5: { sosNet: 3, adjNet: 2, games: 6 }, t6: { sosNet: 2, adjNet: -12, games: 7 } };
+  const bo = N.build(Object.assign({}, base, { sos }));
+  ok('a winning record against the hardest schedule is a storyline', bo.stories.some(s => s.kind === 'schedule' && s.head === 'Elm City’s 4–2 has come against the hardest schedule in the league'),
+    bo.stories.filter(s => s.kind === 'schedule').map(s => s.head));
+  ok('the best side by adjusted margins, when it is not the leader, is a storyline', bo.stories.some(s => s.kind === 'adjusted' && /Birch City are the best side in the league$/.test(s.head)),
+    bo.stories.filter(s => s.kind === 'adjusted').map(s => s.head));
+  ok('a run against the easiest schedule hears "yes, but"', (() => { const r = bo.stories.find(s => s.id === 'run:t1'); return r && /easier schedule/.test(r.counter || '') || (r && /above them/.test(r.counter || '')); })());
+
+  /* a fresh blowout is a team record; the best player aged 21 or under; the fans' vote from a real number of ballots */
+  const blow = games.concat([{ id: 'gb', home_team_id: 't2', away_team_id: 't6', home_score: 110, away_score: 60, tipoff_at: at(0.5) }]);
+  const bt = N.build(Object.assign({}, base, { games: blow }));
+  ok('the season’s biggest win, set this week, is a team record', bt.stories.some(s => s.kind === 'teambest' && s.head === 'Birch City’s 50-point win over Fir City is the biggest of the season'),
+    bt.stories.filter(s => s.kind === 'teambest').map(s => s.head));
+  const by = N.build(Object.assign({}, base, { players: [{ id: 'p1', gp: 6, mpg: 30, bpm: 5.2, ppg: 20, rpg: 5, apg: 3 }], bio: { p1: { age: 20 } } }));
+  ok('the best player aged 21 or under is a storyline, with the age', by.stories.some(s => s.kind === 'youth' && s.head === 'Pat Archer, 20, is the best young player in the league by the numbers'),
+    by.stories.filter(s => s.kind === 'youth').map(s => s.head));
+  const fv = { week: '2026-11-23', endsAt: at(1), ballots: 30, player: { id: 'p1', name: 'Pat Archer', team: 't1', share: 47, line: { bpm: 3.1, ppg: 22 } },
+    others: [{ id: 'p2', name: 'Bo Birch', share: 30, line: { bpm: 6.0 } }] };
+  const bf = N.build(Object.assign({}, base, { fanvote: fv }));
+  const f = bf.stories.find(s => s.kind === 'fans');
+  ok('the fans’ player of the week, beside the numbers’ pick', f && f.head === 'The fans’ player of the week: Pat Archer' && /Bo Birch’s BPM was \+6\.0/.test(f.why), f && [f.head, f.why]);
+  ok('...but never from a handful of ballots', !N.build(Object.assign({}, base, { fanvote: Object.assign({}, fv, { ballots: 5 }) })).stories.some(s => s.kind === 'fans'));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
