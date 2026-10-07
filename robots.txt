@@ -113,5 +113,5 @@ User-agent: Claude-User
 User-agent: Claude-SearchBot
 Allow: /
 
-# an index (written on every deploy by tools/build-seo.py): sitemap-static.xml, sitemap-entities.xml, sitemap-games.xml
+# an index (written on every deploy by tools/build-seo.py): sitemap-static.xml, sitemap-entities.xml, sitemap-games.xml, sitemap-videos.xml
 Sitemap: https://prophesyscouting.co.uk/epinoia/sitemap.xml

@@ -72,6 +72,24 @@ the soonest fixtures).
 - The address `/epinoia/game/?g=<id>` still works and is what every link inside the site uses; the static copy reads the id from
   `<meta name="epinoia-entity">` (`game.js`, `go/fans.js`, `track.js`) and keeps its baked title and markup instead of rewriting them.
 
+**Game video** `/epinoia/watch/<home>-v-<away>-<kind>-<youtube id>.html` (2026-10-07): one page per video tied to a game
+(highlights, the whole game, press conferences) published in the last 180 days, at most 3,000. Google shows a video
+thumbnail, or lists a page in the Videos tab, only for a page whose MAIN content is the video: a game page with its highlights in
+a tab never qualifies, so this page is the video first, then what YouTube does not have (the result, top scorers, the box score).
+- `Adelaide 36ers 94–96 Melbourne United – Highlights | NBL | Epinoia`, "Highlights of Melbourne United's 96-94 win over Adelaide 36ers
+  in NBL on 7 October 2026. Top scorers: ... Watch it with the full box score on Epinoia." Our words, never the channel's description.
+- `VideoObject`: name, description, `thumbnailUrl` (YouTube's 480x360 frame, which every video has), `uploadDate`, `embedUrl`
+  (youtube.com/embed), `author` (the channel), `about` = the game's `SportsEvent` with its page. Breadcrumb: league > game > kind.
+- The body is pre-drawn by the build (the only copy that is): the head, the video's cover, the result with both clubs and the game
+  linked, and the game's other videos as plain links. `watch/page.js` makes the cover the player (youtube-nocookie, on press) and
+  loads the box score frame when the reader nears it. Built to the page standard.
+- A video with no game (podcasts, top-10s, channel clips) gets no page: alone on a page it is YouTube's page with nothing added, and
+  thin pages count against the site. Two videos of one kind for one game: two channels are named, one channel's are numbered.
+- The game page's video list links to the video page (`watch/?g=&v=`, noindex), which goes to the video's own address through
+  `watch/paths.json`.
+- What to expect: for a search that matches the video's own title Google usually shows YouTube and drops copies. These pages are for
+  the searches YouTube answers badly: "<club> v <club> highlights", "<club> highlights", with a score and a box score beside it.
+
 ## Safeguarding: nobody flagged as a minor
 
 The rule from `tools/build-seo.py` is kept and extended. A person with any minor-flagged or masked ("#14", no name) row gets no
@@ -84,7 +102,9 @@ appears anywhere. Against the live database the anonymous API returned no minor 
 ## The sitemap and robots.txt
 
 `/epinoia/sitemap.xml` is an index of `sitemap-static.xml` (the entry points; source `epinoia/sitemap.xml`), `sitemap-entities.xml`
-(leagues, clubs, players, with `xhtml:link` hreflang alternates) and `sitemap-games.xml` (omitted when there are no games). Every
+(leagues, clubs, players, with `xhtml:link` hreflang alternates), `sitemap-games.xml` (omitted when there are no games) and
+`sitemap-videos.xml` (the watch pages, each with its `<video:video>`: thumbnail, title, description, player address, publication date;
+omitted when there are none). Every
 entity has a `<lastmod>` from the data (a club's newest standings update; a game's finish, or its record's creation for a fixture;
 "now" for a live game). `robots.txt` keeps its single `Sitemap:` line, the index. Nothing noindex, admin, embed or blocked is listed
 (`build_seo_test.py` checks the static list against `robots.txt`).
@@ -140,10 +160,13 @@ which pages say noindex.
 8. **Removals** only for a person who asks to be taken out: remove the address, then unpublish the profile; the nightly build will not
    recreate a page for a minor or a masked name.
 9. Bing: `Sitemaps`, `URL Submission` for the home; Bing reads `robots.txt`'s `Crawl-delay`.
+10. **Videos** (Indexing > Videos): the watch pages. "Video indexed" is the aim. "Video isn't on a watch page" should not appear for
+    `/epinoia/watch/`; if it appears for a game page, a game page has grown a VideoObject by mistake. Rich Results Test on one watch
+    page shows the Video item. Performance > Search appearance > Videos, and the Videos tab, show what they bring.
 
 ## Running it
 
-- `python3 tools/build_seo_test.py`: 230 offline checks (no minor anywhere, JSON-LD shape, titles <= 65, no duplicate titles,
+- `python3 tools/build_seo_test.py`: 263 offline checks (no minor anywhere, JSON-LD shape, titles <= 65, no duplicate titles,
   every written page in a sitemap, static heads, robots consistency).
 - `python3 tools/apply-page-heads.py [--check]`: rewrite / measure the static heads. `python3 tools/build-share-image.py`: redraw the share image.
 - `python3 tools/build-seo.py <dir>`: the real generator against the public database (about a minute; `--fixtures <dir>` offline).
@@ -154,6 +177,10 @@ which pages say noindex.
 - Duplicate titles remain only where two clubs' or players' names are so long that only the bare name fits, and for two games of
   the same clubs on the same day. The same page in English and Spanish shares a title in the same case.
 - `startDate` uses the league's time zone from `leagues.timezone`; a league without one is shown in UTC.
+- `player_season_stats` is read ten competitions at a time: one ordered read of the whole view outgrew the anon role's statement
+  timeout on 2026-10-07 (every deploy from 17:15 UTC fell back to the cached copy until this changed).
+- Watch pages follow the matcher (`scripts/news/videos.py`): a video it ties to the wrong game, or calls highlights when it is a
+  show about the game, gets a page that says so. Fix the match in the console and the next build follows.
 - Game pages are a window, not an archive: a result older than 30 days keeps its `?g=` address but loses its own page and sitemap
   entry at the next build. Google may keep the URL indexed for a while; it still opens the full page.
 - Descriptions are Google's to rewrite; expect it to do so for long-tail queries.

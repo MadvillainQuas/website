@@ -2287,7 +2287,7 @@
   /* injuries is here for the LEAGUE's report (?l=…). The global wire is the same path with no
      league named, and themeLeague only paints when a page has named one, so it stays the
      platform's own colours without needing a rule of its own. */
-  const LEAGUE_PAGE = /\/epinoia\/(fixtures|stats|news|game|video|join|injuries)\//;
+  const LEAGUE_PAGE = /\/epinoia\/(fixtures|stats|news|game|video|watch|join|injuries)\//;
   const CLUB_PAGE = /\/epinoia\/(t|p)\//;
   let themedFor = '';
   let teamColour = null;

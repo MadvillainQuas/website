@@ -35,10 +35,20 @@ scheduled game says so and never shows a score it does not have. game/game.js re
 <meta name="epinoia-entity"> when the address has no ?g=. Games are a nicety: a night on which they cannot be
 read writes no game pages (and says so) instead of failing the deploy.
 
-THE SITEMAP is an index (sitemap.xml) of three files: sitemap-static.xml (the site's own entry points, from
+GAME VIDEOS (2026-10-07). Google shows a video result only for a page whose main content is the video, which a
+box score page with its highlights in a tab is not. Every video tied to a game (video_feed: highlights, the whole
+game, press conferences) published in the last WATCH_DAYS gets a copy of epinoia/watch/index.html at
+/epinoia/watch/<home>-v-<away>-<kind>-<youtube id>.html: VideoObject structured data (about the game's SportsEvent),
+and - unlike the other copies - its BODY pre-drawn between the watch:body markers (the head, the video's cover, the
+result with both clubs and the game linked, the game's other videos), so the video is there without running the
+page. Our own words, never the channel's description; a video with no game gets no page (it would be YouTube's page
+with nothing added). watch/paths.json maps a video to its address for the bare watch/?g=&v= page.
+
+THE SITEMAP is an index (sitemap.xml) of four files: sitemap-static.xml (the site's own entry points, from
 epinoia/sitemap.xml in the repository), sitemap-entities.xml (leagues, clubs, players, with the hreflang
-alternates of the Japanese and Spanish copies) and sitemap-games.xml. Every address has a <lastmod> taken from
-the data (a club's standings row, a game's finish), never the build clock alone.
+alternates of the Japanese and Spanish copies), sitemap-games.xml and sitemap-videos.xml (each watch page with
+its <video:video>). Every address has a <lastmod> taken from the data (a club's standings row, a game's finish,
+a video's publication), never the build clock alone.
 
 RICHER MARKUP, ONLY FROM WHAT IS PUBLIC. A player's Person carries a photograph only when a moderated (approved)
 upload exists, a height only when the profile holds one, his club and league; a club's SportsTeam its crest,
@@ -968,6 +978,184 @@ def top_scorers(m: Model, game_ids: list, source) -> dict:
     return out
 
 
+# ============================================================================ the watch pages
+# ONE PAGE A GAME VIDEO, FOR GOOGLE'S VIDEO RESULTS. Google shows a video thumbnail or a Videos-tab entry only for a page
+# whose MAIN content is the video, so a game page with its highlights in a tab never gets one. A watch page is the video
+# first, then what YouTube does not have: the game's result, top scorers and box score. Only videos tied to a game
+# (highlights, the whole game, press conferences, a channel's video on the game): a podcast or a top-10 alone on a page
+# would be YouTube's page again with nothing added (a thin page counts against the site).
+WATCH_DAYS = 180                   # videos published in the last 180 days
+MAX_WATCH = 3000                   # hard cap on watch pages (~20 kB each: 60 MB at most)
+WATCH_KINDS = {"highlights": ("Highlights", "highlights"), "full": ("Full game", "full-game"),
+               "press": ("Press conference", "press-conference"), "video": ("Video", "video")}
+YT_ID = re.compile(r"^[A-Za-z0-9_-]{6,20}$")
+
+
+def yt_thumb(vid: str) -> str:
+    """YouTube's 480x360 frame: every video has one (maxresdefault does not, and a missing thumbnail fails the video)."""
+    return f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg"
+
+
+def read_videos(source, now: dt.datetime) -> list:
+    """The game videos of the window, newest first, one row a video (a channel registered twice reads each video twice):
+    video_feed's public rows, paged by publication time."""
+    lo = now - dt.timedelta(days=WATCH_DAYS)
+    out, seen, before = [], set(), None
+    for _ in range(200):
+        params = {"p_limit": "60"}
+        if before:
+            params["p_before"] = before
+        rows = optional(source, "rpc/video_feed", params, "the videos")
+        fresh = [r for r in rows if r.get("id") not in seen]
+        for r in fresh:
+            seen.add(r.get("id"))
+        if not fresh:
+            break
+        oldest = None
+        for r in fresh:
+            pub = iso(r.get("published_at"))
+            if not pub:
+                continue
+            oldest = pub if oldest is None or pub < oldest else oldest
+            if dt.datetime.fromisoformat(pub) < lo:
+                continue
+            g = r.get("game") if isinstance(r.get("game"), dict) else None
+            if g and g.get("id") and YT_ID.match(str(r.get("video_id") or "")):
+                out.append(r)
+        if len(rows) < 60 or not oldest or dt.datetime.fromisoformat(oldest) < lo:
+            break
+        before = oldest
+    uniq, keep = set(), []
+    for r in sorted(out, key=lambda x: (iso(x.get("published_at")) or "", x.get("id") or ""), reverse=True):
+        if r["video_id"] in uniq:
+            continue
+        uniq.add(r["video_id"])
+        keep.append(r)
+    return keep[:MAX_WATCH]
+
+
+def watch_head(m: Model, it: dict, g: dict, gh: dict, tops: dict, game_url: str, tagged: str = "") -> dict | None:
+    """The head and the pre-drawn body of one video's watch page. gh: the game's own head (game_head), which says the
+    game may be shown at all; game_url: its page (the baked copy when the game has one, else ?g=)."""
+    home, away = m.teams.get(g.get("home_team_id")), m.teams.get(g.get("away_team_id"))
+    lg = m.league_of_comp(g.get("competition_id"))
+    if not (home and away and lg and gh):
+        return None
+    vid = it["video_id"]
+    kind, kslug = WATCH_KINDS.get(it.get("video_kind") or "video", WATCH_KINDS["video"])
+    hn, an, ln = home["name"], away["name"], lg["name"]
+    d, _w = when(g, lg)
+    day = f"{d.day} {d.strftime('%B %Y')}" if d else ""
+    final = g.get("status") == "final"
+    hs, as_ = int(num(g.get("home_score"))), int(num(g.get("away_score")))
+    src = (it.get("source_name") or "").strip()
+    match = f"{hn} {hs}–{as_} {an}" if final else f"{hn} v {an}"
+    title = fit_title([f"{match} – {kind}{tagged} | {ln} | {SITE_NAME}", f"{match} – {kind}{tagged} | {SITE_NAME}",
+                       f"{hn} v {an} – {kind}{tagged} | {SITE_NAME}", f"{hn} v {an} – {kind}{tagged}"])
+    res = None
+    if final:
+        if hs == as_:
+            res = f"{hn} and {an} finishing level, {hs}-{as_}"
+        else:
+            (w, wl), (lo_, ll) = ((hn, hs), (an, as_)) if hs > as_ else ((an, as_), (hn, hs))
+            res = f"{w}{chr(39) if w.endswith('s') else chr(39) + 's'} {wl}-{ll} win over {lo_}"
+    tp = tops.get(g["id"]) or {}
+    runs = [(run[0], nm) for idx, nm in ((0, hn), (1, an)) for run in [tp.get(idx) or []] if run]
+    lead_word = " Top scorers: " if len(runs) > 1 else " Top scorer: "
+    s1 = (lead_word + ", ".join(f"{p} {n} ({nm})" for (p, n), nm in runs) + ".") if runs else ""
+    s2 = (lead_word + ", ".join(f"{p} {n}" for (p, n), _nm in runs) + ".") if runs else ""     # home first, as in the title
+    on = f" in {ln} on {day}" if day else f" in {ln}"
+    tail = f" Watch it with the full box score on {SITE_NAME}."
+    if kind == "Highlights":
+        lead = f"Highlights of {res}{on}." if res else f"Highlights of {hn} v {an}{on}."
+    elif kind == "Full game":
+        lead = f"The whole game: {hn} v {an}{on}" + (f", {hs}-{as_}." if final else ".")
+    elif kind == "Press conference":
+        lead = f"The press conference after {res}{on}." if res else f"The press conference from {hn} v {an}{on}."
+    else:
+        lead = f"{src + ' on ' if src else ''}{hn} v {an}{on}" + (f", {hs}-{as_}." if final else ".")
+    desc = best([f"{lead}{s1}{tail}", f"{lead}{s1}", f"{lead}{s2}{tail}", f"{lead}{s2}", f"{lead}{tail}", lead])
+    path = f"{BASE}/watch/{slugify(hn)}-v-{slugify(an)}-{kslug}-{vid}.html"
+    url = ORIGIN + path
+    pub = iso(it.get("published_at"))
+    ev = gh["ld"][0]
+    vo = {"@context": "https://schema.org", "@type": "VideoObject", "name": f"{match} – {kind}", "description": desc,
+          "thumbnailUrl": [yt_thumb(vid)], "uploadDate": pub, "embedUrl": f"https://www.youtube.com/embed/{vid}",
+          "url": url, "isFamilyFriendly": True,
+          "about": {"@type": "SportsEvent", "name": ev["name"], "url": ORIGIN + game_url, "startDate": ev["startDate"],
+                    "homeTeam": ev["homeTeam"], "awayTeam": ev["awayTeam"]}}
+    if src:
+        vo["author"] = {"@type": "Organization", "name": src}
+    trail = [(SITE_NAME, f"{BASE}/home/"), (ln, league_path(m, lg)), (match, game_url), (kind, None)]
+    return {"title": title, "desc": desc, "path": path, "entity": it.get("id") or vid, "og": "video.other",
+            "image": yt_thumb(vid), "image_alt": f"{match} – {kind}", "ld": [vo, breadcrumb(trail)], "lastmod": pub,
+            "lang": "", "kind": kind, "match": match, "day": day, "game_url": game_url, "home": home, "away": away, "lg": lg,
+            "video_id": vid, "video_title": (it.get("title") or "").strip(), "source": src, "published": pub,
+            "src_logo": it.get("source_logo"), "item_id": it.get("id"), "game_id": g["id"], "s1": s1.strip(), "kslug": kslug}
+
+
+def watch_body(m: Model, h: dict, others: list) -> str:
+    """What the page shows before its script runs (and what a crawler that does not run it reads): the title, the video's
+    cover, where it is from, our words on the game, the result with links to both clubs and the game, and the game's other
+    videos as plain links. watch/page.js turns the cover into the player and adds the box score under it."""
+    lg, home, away = h["lg"], h["home"], h["away"]
+    pub = h["published"] or ""
+    pday = ""
+    if pub:
+        p = dt.datetime.fromisoformat(pub)
+        pday = f"{p.day} {p.strftime('%B %Y')}"
+    data = {"item": h["item_id"], "video": h["video_id"], "game": h["game_id"], "kind": h["kind"], "title": h["video_title"],
+            "league": lg.get("slug"), "game_url": h["game_url"]}
+    # THE PAGE STANDARD (docs/page-standard.md): the head (what it belongs to, the name, what it is for), then sections, each
+    # with a title and a one-line subtitle (no full stop, 70 characters at most)
+    note = clip(f"From {h['source']}, {pday}" if h["source"] and pday else (f"From {h['source']}" if h["source"] else
+                (f"Published {pday}" if pday else "The video, with the box score below")), 70).rstrip(".")
+    more = ""
+    if others:
+        li = "".join(f'<li><a href="{esc(o["path"])}"><img src="{esc(yt_thumb(o["video_id"]))}" alt="" loading="lazy" width="160" height="120">'
+                     f'<span class="wp-mk">{esc(o["kind"])}</span><span class="wp-mt">{esc(o["video_title"] or o["kind"])}</span></a></li>'
+                     for o in others)
+        more = ('<section class="sec" id="more" aria-labelledby="moreH">\n'
+                '  <div class="sec-h"><h2 id="moreH">More from this game</h2>\n'
+                '    <p class="note">The game’s other videos, each on its own page</p></div>\n'
+                f'  <div class="sec-b"><ul class="wp-more">{li}</ul></div>\n</section>\n')
+    ytu = f"https://www.youtube.com/watch?v={h['video_id']}"
+    alt = esc(h["video_title"] or h["match"])
+    score = h["match"].replace(home["name"], "", 1).replace(away["name"], "", 1).strip() or "v"
+    return (f'<script type="application/json" id="wpData">{ld(data)}</script>\n'
+            '<header class="hero pg-head" id="wpHead">\n'
+            f'  <p class="pg-kick"><a href="{esc(league_path(m, lg))}">{esc(lg["name"])}</a>{" · " + esc(h["day"]) if h["day"] else ""}</p>\n'
+            f'  <h1 id="wpTitle">{esc(h["match"])} <span class="wp-kind">{esc(h["kind"])}</span></h1>\n'
+            f'  <p class="pg-sub" id="wpDesc">{esc(h["desc"])}</p>\n'
+            '</header>\n'
+            '<section class="sec" id="video" aria-labelledby="videoH">\n'
+            f'  <div class="sec-h"><h2 id="videoH">{esc(h["kind"])}</h2>\n'
+            f'    <p class="note">{esc(note)}</p>\n'
+            f'    <a class="showall" href="{esc(ytu)}" rel="noopener" target="_blank">on YouTube ↗</a></div>\n'
+            f'  <div class="sec-b"><figure class="wp-stage"><div class="wp-player md-player" id="wpPlayer"><button type="button" aria-label="Play: {alt}">'
+            f'<img src="{esc(yt_thumb(h["video_id"]))}" alt="{alt}" width="480" height="360"><span class="md-play" aria-hidden="true"></span></button></div>\n'
+            f'    <figcaption class="wp-meta">{"<b>" + esc(h["source"]) + "</b> · " if h["source"] else ""}'
+            f'{"<time datetime=" + chr(34) + esc(pub) + chr(34) + ">" + esc(pday) + "</time> · " if pday else ""}'
+            f'<span>{esc(h["video_title"])}</span></figcaption></figure></div>\n'
+            '</section>\n'
+            '<section class="sec" id="game" aria-labelledby="gameH">\n'
+            '  <div class="sec-h"><h2 id="gameH">The game</h2>\n'
+            '    <p class="note">The result, both clubs and the full box score</p>\n'
+            f'    <a class="showall" href="{esc(h["game_url"])}">box score, play-by-play and shot chart →</a></div>\n'
+            f'  <div class="sec-b"><p class="wp-score"><a href="{esc(team_path(home))}">{esc(home["name"])}</a> <span>{esc(score)}</span> '
+            f'<a href="{esc(team_path(away))}">{esc(away["name"])}</a></p>\n'
+            f'    <div class="wp-box" id="wpBox" data-game="{esc(h["game_id"])}"></div></div>\n'
+            '</section>\n' + more)
+
+
+def bake_body(page: str, body: str) -> str:
+    out, n = re.subn(r"<!-- watch:body -->.*?<!-- /watch:body -->", lambda _m: f"<!-- watch:body -->\n{body}\n<!-- /watch:body -->",
+                     page, count=1, flags=re.S)
+    if n != 1:
+        raise SystemExit("build-seo: the watch page shell has no watch:body markers")
+    return out
+
+
 def bake(shell: str, h: dict) -> str:
     """The full page's own HTML with this entity's head. The description, canonical and link-preview tags
     are replaced if the page has any and added if not; nothing else in the page is touched."""
@@ -1032,10 +1220,10 @@ def xml_url(loc: str, lastmod: str | None = None, alts: list | None = None, extr
     return out + "</url>"
 
 
-def write_xml(site: str, name: str, entries: list, hreflang: bool = False) -> None:
+def write_xml(site: str, name: str, entries: list, hreflang: bool = False, video: bool = False) -> None:
     if len(entries) > 50000:
         raise SystemExit(f"build-seo: {name}: over 50,000 URLs - split it before this many pages")
-    ns = ' xmlns:xhtml="http://www.w3.org/1999/xhtml"' if hreflang else ""
+    ns = (' xmlns:xhtml="http://www.w3.org/1999/xhtml"' if hreflang else "") + (' xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"' if video else "")
     out = os.path.join(site, "epinoia", name)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8", newline="\n") as f:
@@ -1043,11 +1231,13 @@ def write_xml(site: str, name: str, entries: list, hreflang: bool = False) -> No
                 + "\n".join(entries) + "\n</urlset>\n")
 
 
-def sitemap(site: str, ents: list, games: list, data_ts: str | None, now_iso: str) -> dict:
+def sitemap(site: str, ents: list, games: list, data_ts: str | None, now_iso: str, videos: list = ()) -> dict:
     """sitemap.xml is an INDEX of three: sitemap-static.xml (the site's own entry points, epinoia/sitemap.xml in the
     repository, each with the newest data timestamp where it changes with the data), sitemap-entities.xml (every
     league, club and player written here, with the hreflang alternates of the Japanese and Spanish copies) and
-    sitemap-games.xml (absent when there are no game pages, with the hreflang alternates of the Japanese and Spanish copies). ents: [(path, lastmod, alts)]; games: [(path, lastmod, alts)]."""
+    sitemap-games.xml (absent when there are no game pages, with the hreflang alternates of the Japanese and Spanish copies) and
+    sitemap-videos.xml (the watch pages, each with its <video:video> entry; absent when there are none). ents: [(path, lastmod,
+    alts)]; games: [(path, lastmod, alts)]; videos: [(path, lastmod, video xml)]."""
     static = []
     src = os.path.join(ROOT, "epinoia", "sitemap.xml")
     if os.path.exists(src):
@@ -1076,17 +1266,84 @@ def sitemap(site: str, ents: list, games: list, data_ts: str | None, now_iso: st
     if games:
         write_xml(site, "sitemap-games.xml", [xml_url(ORIGIN + p, last, alts) for p, last, alts in games], hreflang=True)
         files.append(("sitemap-games.xml", max(l for _p, l, _a in games)))
+    if videos:
+        write_xml(site, "sitemap-videos.xml", [xml_url(ORIGIN + p, last, extra=x) for p, last, x in videos], video=True)
+        files.append(("sitemap-videos.xml", max(l for _p, l, _x in videos)))
     idx = os.path.join(site, "epinoia", "sitemap.xml")
     with open(idx, "w", encoding="utf-8", newline="\n") as f:
         f.write('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
                 + "\n".join(f"<sitemap><loc>{ORIGIN}{BASE}/{n}</loc><lastmod>{esc(l)}</lastmod></sitemap>" for n, l in files)
                 + "\n</sitemapindex>\n")
-    return {"sitemap_urls": len(static) + len(entries) + len(games), "static": len(static), "entities": len(entries), "games": len(games)}
+    return {"sitemap_urls": len(static) + len(entries) + len(games) + len(videos), "static": len(static), "entities": len(entries),
+            "games": len(games), "videos": len(videos)}
+
+
+def watch_pages(site: str, m: Model, source, sh: dict, now: dt.datetime, rows_by_id: dict, baked_games: set, tops: dict) -> list:
+    """Every game video's watch page (see WATCH_DAYS), plus watch/paths.json (video id -> address: how the bare watch
+    page, opened from a game page's video tab, finds a video's own address). Returns the video sitemap's entries:
+    [(path, lastmod, <video:video> xml)]."""
+    items = read_videos(source, now)
+    if not items:
+        write(site, f"{BASE}/watch/paths.json", "{}\n")
+        return []
+    gids = sorted({it["game"]["id"] for it in items})
+    games = {gid: rows_by_id[gid] for gid in gids if gid in rows_by_id}
+    need = [gid for gid in gids if gid not in games]
+    cols = "id,competition_id,home_team_id,away_team_id,tipoff_at,venue,venue_id,status,home_score,away_score,finalised_at,reverted_at,created_at"
+    for i in range(0, len(need), 60):
+        chunk = need[i:i + 60]
+        for r in optional(source, "games", {"select": cols, "id": "in.(" + ",".join(chunk) + ")"}, "the videos' games"):
+            if r.get("id") in chunk:
+                games[r["id"]] = r
+    fin = [gid for gid, g in games.items() if g.get("status") == "final" and gid not in tops]
+    tops = dict(tops, **(top_scorers(m, fin, source) if fin else {}))
+    heads = []
+    for it in items:
+        g = games.get(it["game"]["id"])
+        gh = game_head(m, g, tops) if g else None
+        if not gh:
+            continue                                             # a private league, a youth side, a game we may not show
+        gurl = gh["path"] if g["id"] in baked_games else f"{BASE}/game/?g={g['id']}"
+        h = watch_head(m, it, g, gh, tops, gurl)
+        if h:
+            heads.append((it, g, gh, gurl, h))
+    # two videos of one kind for one game would share a title: two channels' are told apart by the channel, one channel's
+    # by number in the order they were published (the first keeps the plain title)
+    count = defaultdict(list)
+    for i, (_it, _g, _gh, _u, h) in enumerate(heads):
+        count[h["title"]].append(i)
+    for idxs in (v for v in count.values() if len(v) > 1):
+        srcs = [heads[i][4]["source"] for i in idxs]
+        by_source = all(srcs) and len(set(srcs)) == len(srcs)
+        idxs = sorted(idxs, key=lambda i: (heads[i][4]["published"] or "", heads[i][4]["video_id"]))
+        for n, i in enumerate(idxs):
+            it, g, gh, gurl, h = heads[i]
+            tag = f" ({h['source']})" if by_source else (f" ({n + 1})" if n else "")
+            heads[i] = (it, g, gh, gurl, watch_head(m, it, g, gh, tops, gurl, tag))
+    by_game = defaultdict(list)
+    for _it, g, _gh, _u, h in heads:
+        by_game[g["id"]].append(h)
+    order = {"Highlights": 0, "Full game": 1, "Press conference": 2, "Video": 3}
+    out, paths = [], {}
+    for _it, g, _gh, _u, h in heads:
+        others = sorted((o for o in by_game[g["id"]] if o["path"] != h["path"]), key=lambda o: (order.get(o["kind"], 9), o["published"] or ""))
+        write(site, h["path"], bake_body(bake(sh["watch"], h), watch_body(m, h, others)))
+        paths[h["video_id"]] = h["path"]
+        xml = ("<video:video>"
+               f"<video:thumbnail_loc>{esc(yt_thumb(h['video_id']))}</video:thumbnail_loc>"
+               f"<video:title>{esc(h['ld'][0]['name'])}</video:title>"
+               f"<video:description>{esc(h['desc'])}</video:description>"
+               f"<video:player_loc>{esc(h['ld'][0]['embedUrl'])}</video:player_loc>"
+               + (f"<video:publication_date>{esc(h['published'])}</video:publication_date>" if h["published"] else "")
+               + "<video:family_friendly>yes</video:family_friendly></video:video>")
+        out.append((h["path"], min(h["lastmod"] or now.isoformat(timespec="seconds"), now.isoformat(timespec="seconds")), xml))
+    write(site, f"{BASE}/watch/paths.json", json.dumps(paths, sort_keys=True, separators=(",", ":")) + "\n")
+    return out
 
 
 def shells() -> dict:
     out = {}
-    for kind in ("p", "t", "l", "game"):
+    for kind in ("p", "t", "l", "game", "watch"):
         with open(os.path.join(ROOT, "epinoia", kind, "index.html"), encoding="utf-8") as f:
             out[kind] = f.read()
     return out
@@ -1099,7 +1356,17 @@ def build(site: str, source, min_players: int, min_teams: int = 50, min_leagues:
                                      "visibility": "eq.public", "order": "name"})
     comps = source.get("competitions", {"select": "id,name,seasons(id,name,starts_on,leagues(id,name,slug))"})
     teams = source.get("teams", {"select": "id,slug,name,short_name,league_id,logo_path,home_venue,home_venue_id,age_group"})
-    stats = source.get("player_season_stats", {"select": STAT_COLS, "order": "player_id.asc,season_id.asc,competition_id.asc"})
+    # TEN COMPETITIONS A READ. The view sums every game row of whatever it is asked for, and one ordered read of all of
+    # it outgrew the anon role's statement timeout on 2026-10-07 (~11,700 players: 500 "canceling statement due to
+    # statement timeout" from 17:15 UTC, every deploy since publishing yesterday's copy). Named competitions are summed
+    # alone (0.2-0.3 s for ten); the rows are put back in the one order the model was built on.
+    stats, cids = [], sorted({c["id"] for c in comps if c.get("id")})
+    for i in range(0, len(cids), 10):
+        chunk = cids[i:i + 10]
+        stats += [r for r in source.get("player_season_stats", {"select": STAT_COLS, "competition_id": "in.(" + ",".join(chunk) + ")",
+                                                                "order": "player_id.asc,season_id.asc,competition_id.asc"})
+                  if r.get("competition_id") in chunk]
+    stats.sort(key=lambda r: (str(r.get("player_id")), str(r.get("season_id")), str(r.get("competition_id"))))
     standings = optional(source, "standings", {"select": "competition_id,team_id,gp,w,l,rank,group_name,updated_at",
                                                "order": "competition_id.asc,team_id.asc"}, "the standings")
     venues = optional(source, "venues", {"select": "id,name,city,country", "order": "id.asc"}, "the venues")
@@ -1216,10 +1483,11 @@ def build(site: str, source, min_players: int, min_teams: int = 50, min_leagues:
             if hl:
                 write(site, hl["path"], bake(sh["game"], hl))
                 games.append((hl["path"], stamp, hl.get("alts")))
-    sm = sitemap(site, ents, games, m.data_ts, now.isoformat(timespec="seconds"))
+    vids = watch_pages(site, m, source, sh, now, {g_["id"]: g_ for g_ in rows}, seen_g, tops)
+    sm = sitemap(site, ents, games, m.data_ts, now.isoformat(timespec="seconds"), vids)
     return {"players": len(m.players), "left_out_minor_or_masked": m.dropped, "teams": len(m.teams),
             "leagues": len(m.leagues), "games": len(games), "photos": sum(1 for p in m.players if m.photo.get(p)),
-            "heights": len(m.height), **sm}
+            "heights": len(m.height), "watch": len(vids), **sm}
 
 
 def main() -> int:

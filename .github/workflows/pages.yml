@@ -55,7 +55,7 @@ jobs:
           key: seo-pages-restore
           restore-keys: seo-pages-
 
-      - name: Search-engine pages (every player, team and league)
+      - name: Search-engine pages (every player, team, league, game and game video)
         run: |
           rm -rf _seo-new
           if python3 tools/build-seo.py _seo-new; then

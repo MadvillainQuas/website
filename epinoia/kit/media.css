@@ -326,6 +326,8 @@
 .vid-clips-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 10px}
 .vid-clips-h b{font-family:var(--f-ui);font-weight:800;font-size:12px;letter-spacing:.14em;color:var(--ink)}
 .vid-clips-h span{font-family:var(--f-ui);font-weight:600;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+.vid-clips-page{margin-left:auto;font-family:var(--f-ui);font-weight:800;font-size:10.5px;letter-spacing:.1em;color:var(--ink-2);text-decoration:none}
+.vid-clips-page:hover{color:var(--ink);text-decoration:underline}
 
 /* --------------------------------------------------------------- the game, as its embed (embed/game) --- */
 .md-embed{display:block;width:100%;height:560px;border:0;background:transparent;color-scheme:normal}

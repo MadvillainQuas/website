@@ -2631,6 +2631,14 @@ async function mountClips() {
   const kinds = [...new Set(list.map(x => x.video_kind))];
   const NAME = { highlights: 'highlights', full: 'the whole game', press: 'press conferences', video: 'videos' };
   head.innerHTML = '<b>THIS GAME\u2019S VIDEOS</b><span>' + B.esc(kinds.map(k => NAME[k] || 'videos').join(' \u00b7 ')) + ' \u00b7 one after another</span>';
+  /* EACH VIDEO HAS A PAGE OF ITS OWN (watch/, 2026-10-07): the video first, the box score under it - the address to share,
+     and the one search engines list. It follows the video playing here, else the first. */
+  const page = document.createElement('a');
+  page.className = 'vid-clips-page';
+  const pageTo = it => { page.href = '../watch/?g=' + encodeURIComponent(gameId) + '&v=' + encodeURIComponent((it && it.video_id) || ''); };
+  page.textContent = 'VIDEO PAGE \u2197';
+  pageTo(list[0]);
+  head.appendChild(page);
   const stage = document.createElement('div');
   stage.className = 'md-stage';
   stage.hidden = true;
@@ -2648,7 +2656,7 @@ async function mountClips() {
       grid.appendChild(t);
     });
   };
-  const sp = M.stagePlayer(stage, { list: () => rows, onClose: () => { playing = null; paint(); }, onChange: it => { playing = it; paint(); } });
+  const sp = M.stagePlayer(stage, { list: () => rows, onClose: () => { playing = null; pageTo(list[0]); paint(); }, onChange: it => { playing = it; pageTo(it); paint(); } });
   paint();
   box.append(head, stage, grid);
 }

@@ -436,13 +436,17 @@ PGS = [{"game_id": "G1", "player_id": "P1", "team_idx": 0, "pts": 24}, {"game_id
        {"game_id": "G10", "player_id": "P1", "team_idx": 1, "pts": 12}]
 
 
-def run_rich(games=GAMES, **kw):
+def run_rich(games=GAMES, videos=None, **kw):
     fx, out = tempfile.mkdtemp(), tempfile.mkdtemp()
     for name, data in (("leagues", [LG1r, LG2, LGY]), ("competitions", COMPS_R), ("teams", TEAMS_R), ("player_season_stats", STATS_R),
                        ("standings", STANDINGS), ("venues", VENUES), ("media", PHOTOS), ("players", PROFILES), ("games", games),
                        ("player_game_stats", PGS)):
         with open(os.path.join(fx, name + ".json"), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False)
+    if videos is not None:
+        os.makedirs(os.path.join(fx, "rpc"), exist_ok=True)
+        with open(os.path.join(fx, "rpc", "video_feed.json"), "w", encoding="utf-8") as f:
+            json.dump(videos, f, ensure_ascii=False)
     res = B.build(out, Src(fx), 1, min_teams=1, min_leagues=1, now=NOW, supa=SUPA, **kw)
     return out, res
 
@@ -583,6 +587,100 @@ ok("the cap holds (3), live first, then the newest finals and soonest fixtures s
 ok("with no games at all the build still succeeds, writes no game pages and no games sitemap",
    (lambda o_r: files(o_r[0], "game") == [] and not os.path.exists(os.path.join(o_r[0], "epinoia", "sitemap-games.xml")) and o_r[1]["games"] == 0)(run_rich(games=[])))
 ok("the games are ordered so a duplicate row or an unknown team never breaks the build", run_rich(games=GAMES + [dict(GAMES[0]), G("GX", "TZ", "T1", "2026-09-29T18:00:00+00:00", "final", 1, 2)])[1]["games"] == 5)
+
+print("\n-- the watch pages (one page a game video)")
+
+
+def V(item, vid, game, kind, published, title="A video", source="Test Channel"):
+    return {"kind": "channel", "id": item, "title": title, "summary": "the channel's own words", "image_url": f"https://i.ytimg.com/vi/{vid}/hqdefault.jpg",
+            "url": f"https://www.youtube.com/watch?v={vid}", "published_at": published, "source_name": source, "video_id": vid,
+            "video_kind": kind, "game": {"id": game} if game else None}
+
+
+VIDEOS = [V("I1", "AAAAAAAAAA1", "G1", "highlights", "2026-09-27T22:00:00+00:00", "Red Lions v Blue Hawks | Highlights"),
+          V("I2", "BBBBBBBBBB2", "G1", "press", "2026-09-27T23:00:00+00:00", "Press conference"),
+          V("I3", "CCCCCCCCCC3", "G1", "highlights", "2026-09-28T09:00:00+00:00", "Extended highlights"),        # the same channel again
+          V("I4", "DDDDDDDDDD4", "G4", "full", "2026-07-02T10:00:00+00:00", "The whole game"),                   # a game outside the game window
+          V("I5", "EEEEEEEEEE5", "G6", "highlights", "2026-09-26T22:00:00+00:00"),                              # a league that protects its youth
+          V("I6", "FFFFFFFFFF6", None, "video", "2026-09-29T10:00:00+00:00", "A podcast"),                      # no game: no page
+          V("I7", "GGGGGGGGGG7", "G1", "highlights", "2026-01-01T10:00:00+00:00"),                              # older than WATCH_DAYS
+          V("I8", "AAAAAAAAAA1", "G1", "highlights", "2026-09-27T22:00:00+00:00", "Red Lions v Blue Hawks | Highlights"),   # registered twice
+          V("I9", "x", "G1", "highlights", "2026-09-27T22:00:00+00:00"),                                       # not a YouTube id
+          V("I10", "HHHHHHHHHH8", "G8", "highlights", "2026-09-26T22:00:00+00:00"),                            # not a public league
+          V("I11", "JJJJJJJJJJ9", "G10", "press", "2026-09-21T10:00:00+00:00", "</script><img src=x onerror=alert(1)>", '"><b>Bad</b>')]
+wout, wres = run_rich(videos=VIDEOS)
+wfiles = sorted(x for x in files(wout, "watch") if x.endswith(".html"))
+W1 = "red-lions-v-blue-hawks-highlights-AAAAAAAAAA1.html"
+W2 = "red-lions-v-blue-hawks-press-conference-BBBBBBBBBB2.html"
+W3 = "red-lions-v-blue-hawks-highlights-CCCCCCCCCC3.html"
+W4 = "red-lions-v-blue-hawks-full-game-DDDDDDDDDD4.html"
+W11 = "blue-hawks-v-red-lions-press-conference-JJJJJJJJJJ9.html"
+ok("a page for every game video of the window, once a video: not the youth league's, the private league's, the old one, "
+   "the one with no game or the one that is not a YouTube id", wfiles == sorted([W1, W2, W3, W4, W11]) and wres["watch"] == 5, (wfiles, wres))
+wshell = rd("epinoia", "watch", "index.html")
+w1, w2, w3, w4, w11 = (read(wout, "epinoia", "watch", f) for f in (W1, W2, W3, W4, W11))
+
+
+def outside_body(p):
+    return re.sub(r"<!-- watch:body -->.*?<!-- /watch:body -->", "", p.split("</head>", 1)[1], flags=re.S)
+
+
+ok("a watch page is the full watch page: after </head>, everything but the pre-drawn part is the shell's, byte for byte",
+   all(outside_body(x) == outside_body(wshell) for x in (w1, w2, w3, w4, w11)))
+ok("the bare shell stays out of search; each written page is in it",
+   'content="noindex"' in wshell and all(meta(x, "name", "robots") == B.ROBOTS for x in (w1, w4)))
+ok("its canonical address is its own", meta(w1, "property", "og:url") == B.ORIGIN + "/epinoia/watch/" + W1
+   and f'<link rel="canonical" href="{B.ORIGIN}/epinoia/watch/{W1}">' in w1)
+t1, t3 = title_of(w1), title_of(w3)
+ok("the title names both clubs, the score and the kind of video", t1.startswith("Red Lions 92–88 Blue Hawks – Highlights"), t1)
+ok("one channel's second highlights of the game are numbered, the first keeps the plain title", "(2)" in t3 and "(" not in t1.split("|")[0], (t1, t3))
+d1 = meta(w1, "name", "description")
+ok("the description is ours (the result, the top scorers, the box score), not the channel's",
+   "Red Lions' 92-88 win over Blue Hawks" in html.unescape(d1) and "Jordan Reed 24" in d1 and "channel's own words" not in w1, d1)
+vo = next(o for o in lds_of(w1) if o.get("@type") == "VideoObject")
+ok("VideoObject: name, description, thumbnail, upload date with its offset, the embed address and the page",
+   vo["name"] == "Red Lions 92–88 Blue Hawks – Highlights" and vo["description"] == html.unescape(d1)
+   and vo["thumbnailUrl"] == ["https://i.ytimg.com/vi/AAAAAAAAAA1/hqdefault.jpg"] and vo["uploadDate"] == "2026-09-27T22:00:00+00:00"
+   and vo["embedUrl"] == "https://www.youtube.com/embed/AAAAAAAAAA1" and vo["url"] == B.ORIGIN + "/epinoia/watch/" + W1, vo)
+ok("...about the game: its SportsEvent and its page (the baked copy when the game has one)",
+   vo["about"]["@type"] == "SportsEvent" and vo["about"]["url"] == B.ORIGIN + "/epinoia/game/G1.html" and vo["author"]["name"] == "Test Channel", vo["about"])
+vo4 = next(o for o in lds_of(w4) if o.get("@type") == "VideoObject")
+ok("a game with no page of its own is linked by its ?g= address", vo4["about"]["url"] == B.ORIGIN + "/epinoia/game/?g=G4"
+   and 'href="/epinoia/game/?g=G4"' in w4, vo4["about"])
+ok("the video is there before any script runs: the title, the cover and where it is from",
+   '<h1 id="wpTitle">Red Lions 92–88 Blue Hawks <span class="wp-kind">Highlights</span></h1>' in w1
+   and 'src="https://i.ytimg.com/vi/AAAAAAAAAA1/hqdefault.jpg"' in w1 and "<b>Test Channel</b>" in w1)
+ok("both clubs, the league and the game are links", all(x in w1 for x in ('href="/epinoia/t/red-lions.html"', 'href="/epinoia/t/blue-hawks.html"',
+                                                                         'href="/epinoia/l/test-league.html"', 'href="/epinoia/game/G1.html"')))
+more1 = (re.search(r'<ul class="wp-more">(.*?)</ul>', w1, re.S) or [None, ""])[1]
+ok("the game's other videos are plain links to their own pages, highlights first, never the page itself",
+   more1.index(f'href="/epinoia/watch/{W3}"') < more1.index(f'href="/epinoia/watch/{W2}"') and f"/epinoia/watch/{W1}" not in more1, more1[:300])
+ok("built to the page standard: the head (league, name, what it is), then titled sections with a subtitle",
+   re.search(r'<header class="hero pg-head" id="wpHead">\s*<p class="pg-kick"><a href="/epinoia/l/test-league.html">Test League</a>', w1) is not None
+   and all(f'<section class="sec" id="{s_}"' in w1 for s_ in ("video", "game", "more")) and w1.count("<h1") == 1
+   and all(len(n_) <= 70 and not n_.endswith(".") for n_ in re.findall(r'<p class="note">([^<]*)</p>', w1)))
+wd = json.loads(re.search(r'<script type="application/json" id="wpData">(.*?)</script>', w1, re.S).group(1))
+ok("what page.js reads: the video, the game, the league", wd["video"] == "AAAAAAAAAA1" and wd["game"] == "G1" and wd["league"] == "test-league", wd)
+ok("a hostile title or channel name closes no script and opens no tag",
+   "</script><img" not in w11 and "<img src=x" not in w11 and '"><b>Bad' not in w11
+   and json.loads(re.search(r'id="wpData">(.*?)</script>', w11, re.S).group(1))["title"] == "</script><img src=x onerror=alert(1)>")
+vmap = read(wout, "epinoia", "sitemap-videos.xml")
+vlocs = re.findall(r"<loc>(.*?)</loc>", vmap)
+ok("sitemap-videos.xml lists every watch page, each with its video", sorted(vlocs) == sorted(B.ORIGIN + "/epinoia/watch/" + f for f in wfiles)
+   and vmap.count("<video:video>") == 5 and 'xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"' in vmap, vlocs)
+ok("...thumbnail, player, publication date, and the sitemap index names it",
+   "<video:thumbnail_loc>https://i.ytimg.com/vi/AAAAAAAAAA1/hqdefault.jpg</video:thumbnail_loc>" in vmap
+   and "<video:player_loc>https://www.youtube.com/embed/AAAAAAAAAA1</video:player_loc>" in vmap
+   and "<video:publication_date>2026-09-27T22:00:00+00:00</video:publication_date>" in vmap
+   and "/epinoia/sitemap-videos.xml" in read(wout, "epinoia", "sitemap.xml"))
+paths = json.loads(read(wout, "epinoia", "watch", "paths.json"))
+ok("watch/paths.json: each video's address, for the bare page", paths.get("AAAAAAAAAA1") == "/epinoia/watch/" + W1 and len(paths) == 5, paths)
+ok("no videos: no video sitemap, an empty paths.json", not os.path.exists(os.path.join(rout, "epinoia", "sitemap-videos.xml"))
+   and read(rout, "epinoia", "watch", "paths.json").strip() == "{}" and "sitemap-videos" not in read(rout, "epinoia", "sitemap.xml"))
+pjs = rd("epinoia", "watch", "page.js")
+ok("page.js: the baked data first, else the bare page's ?g=&v= by paths.json then the game's list",
+   "getElementById('wpData')" in pjs.replace('$(\'wpData\')', "getElementById('wpData')") and "paths.json" in pjs and "game_highlights" in pjs)
+ok("the game page's video list links to the video page", "'../watch/?g=' + encodeURIComponent(gameId)" in rd("epinoia", "game", "game.js"))
 
 print("\n-- the site's own pages: heads, structured data, sitemap, robots")
 AP = importlib.util.spec_from_file_location("apply_heads", os.path.join(HERE, "apply-page-heads.py"))
