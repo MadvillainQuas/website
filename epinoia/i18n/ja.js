@@ -1815,7 +1815,9 @@
       'no games yet': '試合なし',
       'reading the season…': 'シーズンを読み込み中…',
       'Not enough games yet this season to compare them.': '今季はまだ比較できるほどの試合がありません。',
-      'The season could not be read just now.': 'シーズンを読み込めませんでした。'
+      'The season could not be read just now.': 'シーズンを読み込めませんでした。',
+      'videos': '動画',
+      'videos: highlights, full games, press conferences and every game streaming now, from every league': '動画：全リーグのハイライト、フルゲーム、記者会見、配信中の試合'
     },
 
     ctx: {

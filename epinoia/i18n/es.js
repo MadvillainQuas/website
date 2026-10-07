@@ -1817,7 +1817,9 @@
       'no games yet': 'Sin partidos aún',
       'reading the season…': 'Cargando la temporada…',
       'Not enough games yet this season to compare them.': 'Aún no hay partidos suficientes esta temporada para compararlos.',
-      'The season could not be read just now.': 'No se pudo cargar la temporada.'
+      'The season could not be read just now.': 'No se pudo cargar la temporada.',
+      'videos': 'Vídeos',
+      'videos: highlights, full games, press conferences and every game streaming now, from every league': 'Vídeos: resúmenes, partidos completos, ruedas de prensa y todos los partidos en directo de cada liga'
     },
 
     ctx: {

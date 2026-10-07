@@ -45,6 +45,8 @@
     tabs.forEach(t => { const on = t.dataset.mode === mode; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; });
     strip.dataset.mode = mode;
     place();
+    /* the rail's VIDEOS row lights while VIDEO is up (nav.js) */
+    try { document.dispatchEvent(new CustomEvent('ep:homeview', { detail: { mode } })); } catch (_) { /* no rail to tell */ }
   }
 
   /* VIDEO's code and styles, once, both loaded before it opens (no unstyled flash) */

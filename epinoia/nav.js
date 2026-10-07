@@ -628,6 +628,45 @@
      into everything else, so they come first after the platform's front page, never under the platform's pages */
   hlist.insertBefore(leaguesRow, hlist.children[1] || null);
 
+  /* VIDEOS, straight under the leagues (Louie, 2026-10-07): HOME's VIDEO view (home/vhmode.js), the
+     address ?view=video. On HOME itself it changes the view in place, the way the MAIN / VIDEO tabs
+     do (a step in the history, so Back returns to MAIN) - vhmode follows the address on popstate;
+     anywhere else it is the link. It is the row that is lit while VIDEO is open, not HOME, and it
+     follows the tabs (vhmode says which view is up with 'ep:homeview'). */
+  const videosRow = el('a', 'item');
+  videosRow.href = root + 'home/?view=video';
+  videosRow.append(el('span', 'ic', '▶'), el('span', 'tx', 'videos'));
+  videosRow.title = 'videos: highlights, full games, press conferences and every game streaming now, from every league';
+  hlist.insertBefore(videosRow, hlist.children[2] || null);       // home, leagues, then this
+  const homeRow = hlist.querySelector('a.item');
+  let videoLit = false;
+  const current = (a, on) => {
+    if (!a) return;
+    a.classList.toggle('on', on);
+    if (on) a.setAttribute('aria-current', 'page');
+    else if (a.removeAttribute) a.removeAttribute('aria-current');
+  };
+  const lightVideo = on => {
+    if (!atHome || on === videoLit) return;
+    videoLit = on;
+    current(videosRow, on);
+    if (homeRow && homeRow !== videosRow) current(homeRow, !on);
+  };
+  try { lightVideo(atHome && new URLSearchParams(location.search).get('view') === 'video'); } catch (_) { /* no address */ }
+  if (document.addEventListener) document.addEventListener('ep:homeview', e => lightVideo(!!(e.detail && e.detail.mode === 'video')));
+  videosRow.addEventListener('click', e => {
+    if (!atHome || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (!document.querySelector('.hm-strip, [data-mode]')) return;     // no view switch on this page: follow the link
+    e.preventDefault();
+    try {
+      const u = new URL(location.href);
+      u.searchParams.set('view', 'video');
+      u.hash = '';
+      if (u.toString() !== location.href) history.pushState({ hmView: 'video' }, '', u.toString());
+      window.dispatchEvent(new PopStateEvent('popstate', { state: { hmView: 'video' } }));
+    } catch (_) { location.href = videosRow.href; }
+  });
+
   /* EPINOIA GO (epinoia/go/, docs/epinoia-go.md 6.3), under the leagues. Set in its own letters -
      EPINOIΛ in the logotype, GO in a Y2K face of its own (--f-go, epinoia-kit.css) - because it is
      a thing to do at a game rather than one more page to read, and a row in the rail's label type
