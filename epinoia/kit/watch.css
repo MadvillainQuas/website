@@ -101,3 +101,41 @@
 @media (prefers-reduced-motion:reduce){ .ep-watch,.ep-watch-pop,.ew-ln,.ew-ln i{transition:none} }
 :root[data-theme="light"] .ep-watch-pop{box-shadow:0 24px 48px -14px rgba(13,31,23,.32)}
 :root[data-theme="light"] .ew-ln{background:#f4f8f6}
+
+/* ---------------------------------------------------------------- ON AIR --- */
+/* A GAME STREAMING NOW ON THE SITE'S OWN PLAYER (watch.js onAir / livePill): broadcast red, apart from the plain LIVE
+   flare of every game being played. A fixture card breathes a red outline and carries WATCH LIVE beside its state; the
+   game page has a pill beside the score. Each press goes to HOME's VIDEO view, its LIVE on that game. */
+.ew-onair{box-shadow:0 0 0 1px rgba(255,59,59,.5),0 0 22px -8px rgba(255,59,59,.6)}
+@media (prefers-reduced-motion:no-preference){ .ew-onair{animation:ew-air-glow 2.4s ease-in-out infinite} }
+@keyframes ew-air-glow{
+  0%,100%{box-shadow:0 0 0 1px rgba(255,59,59,.42),0 0 16px -8px rgba(255,59,59,.5)}
+  50%{box-shadow:0 0 0 1px rgba(255,59,59,.9),0 0 30px -6px rgba(255,59,59,.85)}}
+.ew-air-b{position:relative;display:inline-flex;align-items:center;gap:5px;flex:none;padding:3px 8px 3px 6px;border:0;border-radius:999px;
+  background:#ff3b3b;color:#fff;cursor:pointer;box-shadow:0 2px 10px -2px rgba(255,59,59,.7);
+  font-family:var(--f-micro);font-size:7.5px;line-height:1;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:background-color .16s ease,color .16s ease,transform .16s ease}
+.ew-air-b::after{content:"";position:absolute;inset:-9px -5px}
+.ew-air-b i{width:0;height:0;flex:none;border-left:6px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent}
+@media (hover:hover){ .ew-air-b:hover{background:#fff;color:#e0202f;transform:translateY(-1px)} }
+.ew-air-b:active{transform:scale(.95)}
+.ew-air-b:focus-visible{outline:2px solid #fff;outline-offset:2px}
+/* in a card's top line: beside the state, on the right */
+.fxc-top .ew-air-b{margin-left:auto}
+.fxc-top .ew-air-b + .fxc-st{margin-left:0}
+.fxm .ew-air-b{margin:2px auto 0}
+
+.ew-air{display:flex;align-items:center;gap:10px;box-sizing:border-box;max-width:100%;padding:9px 14px 9px 12px;border-radius:12px;
+  background:linear-gradient(135deg,#ff3b3b,#c40f2c);color:#fff;text-decoration:none;text-align:left;
+  box-shadow:0 10px 26px -10px rgba(255,59,59,.8);font-family:var(--f-ui);transition:transform .16s ease,box-shadow .16s ease}
+.ew-air[hidden]{display:none}
+.ew-air-dot{width:9px;height:9px;flex:none;border-radius:50%;background:#fff}
+@media (prefers-reduced-motion:no-preference){ .ew-air-dot{animation:ew-air-ping 1.6s ease-out infinite} }
+@keyframes ew-air-ping{0%{box-shadow:0 0 0 0 rgba(255,255,255,.75)}100%{box-shadow:0 0 0 10px rgba(255,255,255,0)}}
+.ew-air span{display:grid;gap:2px;min-width:0}
+.ew-air b{font-weight:900;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.ew-air small{font-weight:600;font-size:10.5px;opacity:.86;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ew-air em{margin-left:auto;padding-left:6px;font-style:normal;font-weight:900;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
+@media (hover:hover){ .ew-air:hover{transform:translateY(-1px);box-shadow:0 14px 30px -10px rgba(255,59,59,.95)} }
+.ew-air:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){ .ew-air,.ew-air-b{transition:none} }

@@ -255,5 +255,87 @@
     root.addEventListener('scroll', () => { if (pop && pop.classList.contains('on')) { if (pinned) place(); else close(); } }, { passive: true, capture: true });
   }
 
-  root.EpinoiaWatch = { of, pill, close, sync: () => { if (pop && pop.classList.contains('on')) place(); }, DATA, KIND };
+  /* ------------------------------------------------------------ ON AIR --- */
+  /* A GAME STREAMING NOW ON THE SITE'S OWN PLAYER (live_streams, 0242/0247: a live game with a vetted stream, or its
+     league's channel live) is said where the game is shown (2026-10-07):
+       onAir(card, id, { slot })   a fixture card lit, and a WATCH LIVE badge in `slot` - a press into HOME's VIDEO view,
+                                   its LIVE on that game (?view=video&play=<game>), never the card's own link
+       livePill(id)                the game page's pill beside the score: LIVE ON EPINOIΛ, the same press
+     ONE LIST FOR THE PAGE: read when a live game's card or pill first asks, again each minute while one is on the screen
+     and the page is seen, never for a page with no live game on it. HOME's own LIVE mark (home/vhmode.js) and the VIDEO
+     view's LIVE hand over their reads (airFeed), so the page never asks twice for the same thing. */
+  const AIR_MS = 60000;
+  let air = null, airAt = 0, airP = null, airT = 0;
+  const airEls = new Set(), airSlot = new WeakMap();
+  const playUrl = id => BASE + 'home/?view=video&play=' + encodeURIComponent(id);
+  const UUID = /^[0-9a-f-]{36}$/i;
+  function airFeed(list) {
+    if (!Array.isArray(list)) return;
+    air = new Set(list.filter(g => g && g.id).map(g => String(g.id)));
+    airAt = Date.now();
+    airPaint();
+  }
+  const airFresh = () => (air && Date.now() - airAt < AIR_MS ? air : null);
+  function airRead() {
+    if (airP || (typeof document !== 'undefined' && document.hidden)) return airP;
+    const C = root.EPINOIA_CONFIG;
+    if (!C || !C.supabaseUrl || typeof fetch !== 'function') return null;
+    airP = fetch(C.supabaseUrl + '/rest/v1/rpc/live_streams', { method: 'POST', cache: 'no-store',
+      headers: { apikey: C.supabaseAnonKey, Authorization: 'Bearer ' + C.supabaseAnonKey, 'Content-Type': 'application/json' }, body: '{}' })
+      .then(r => (r.ok ? r.json() : null)).catch(() => null)
+      .then(list => { airP = null; if (Array.isArray(list)) airFeed(list); else airAt = Date.now(); });
+    return airP;
+  }
+  function airAlive() { [...airEls].forEach(e => { if (!e.isConnected) airEls.delete(e); }); return airEls.size > 0; }
+  function airTick() {
+    if (airT) return;
+    airT = setTimeout(function tick() {
+      airT = 0;
+      if (!airAlive()) return;                                      // nothing live on the screen: nothing asked
+      if (!airFresh()) airRead();
+      airT = setTimeout(tick, AIR_MS);
+    }, AIR_MS);
+  }
+  function airPaint() { [...airEls].forEach(e => { if (!e.isConnected) airEls.delete(e); else airSet(e); }); }
+  function airGo(id, e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    root.location.href = playUrl(id);
+  }
+  function airSet(e) {
+    const id = e.getAttribute('data-onair'), on = !!(air && air.has(id));
+    if (e.classList.contains('ew-air')) { e.hidden = !on; return; }   // the game page's pill: there or not
+    e.classList.toggle('ew-onair', on);                               // a card: lit, and its badge
+    const slot = airSlot.get(e) || e;
+    let b = slot.querySelector(':scope > .ew-air-b');
+    if (on && !b) {
+      b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ew-air-b';
+      b.setAttribute('aria-label', 'watch this game live on EPINOIΛ');
+      b.innerHTML = '<i aria-hidden="true"></i><span>watch live</span>';
+      b.addEventListener('click', ev => airGo(id, ev));
+      slot.insertBefore(b, slot.querySelector(':scope > .fxc-st, :scope > .st') || null);
+    } else if (!on && b) b.remove();
+  }
+  function onAir(el, id, opts) {
+    if (!el || !UUID.test(String(id || '')) || typeof document === 'undefined') return;
+    el.setAttribute('data-onair', String(id));
+    if (opts && opts.slot) airSlot.set(el, opts.slot);
+    airEls.add(el);
+    if (air) airSet(el);
+    if (!airFresh()) airRead();
+    airTick();
+  }
+  function livePill(id) {
+    if (!UUID.test(String(id || '')) || typeof document === 'undefined') return null;
+    const a = document.createElement('a');
+    a.className = 'ew-air';
+    a.href = playUrl(id);
+    a.hidden = true;
+    a.innerHTML = '<i class="ew-air-dot" aria-hidden="true"></i><span><b>live on EPINOIΛ</b><small>the stream, the chat and the storylines</small></span><em aria-hidden="true">watch →</em>';
+    onAir(a, id);
+    return a;
+  }
+
+  root.EpinoiaWatch = { of, pill, close, sync: () => { if (pop && pop.classList.contains('on')) place(); }, DATA, KIND, onAir, livePill, airFeed, airFresh };
 })(typeof window !== 'undefined' ? window : globalThis);

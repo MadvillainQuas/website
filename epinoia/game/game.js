@@ -2366,6 +2366,17 @@ function dressHead(el, d) {
       b.type = 'button'; b.id = 'csSheet'; b.className = 'bt-sheet'; b.textContent = 'Scoresheet · PDF';
       mid.appendChild(b);
     }
+    /* LIVE ON EPINOIΛ (watch.js livePill): a game streaming now on the site's own player - the stream, its chat, its
+       storylines on HOME's VIDEO view - a pill under the state plate, shown once live_streams says so; put back on every
+       redraw, as the rest of the head is */
+    if (window.EpinoiaWatch && window.EpinoiaWatch.livePill && (S.status === 'live' || S.status === 'finalising') && !mid.querySelector('.ew-air')) {
+      const lp = window.EpinoiaWatch.livePill(gameId);
+      if (lp) {
+        lp.classList.add('bt-air');
+        const first = mid.querySelector('.ep-watch, #csSheet');
+        if (first) mid.insertBefore(lp, first); else mid.appendChild(lp);
+      }
+    }
     /* WHERE TO WATCH (watch.js), under the state plate and above the downloads; the head is redrawn on every update, so
        it is put back each time */
     if (window.EpinoiaWatch && S.leagueSlug && !mid.querySelector('.ep-watch')) {

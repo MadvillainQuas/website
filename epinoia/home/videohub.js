@@ -261,6 +261,8 @@
     }
     async function readLive(first) {
       const list = await rpc('live_streams', {});
+      /* the fixture cards' list too (watch.js onAir): one read for the page */
+      try { if (Array.isArray(list) && window.EpinoiaWatch && window.EpinoiaWatch.airFeed) window.EpinoiaWatch.airFeed(list); } catch (_) { /* theirs */ }
       if (!st.alive) return;
       games = Array.isArray(list) ? list.filter(g => g && g.id && g.home && g.away && (!team || isTeam(g))) : [];
       /* the club's version: LIVE is there only while the club is playing */

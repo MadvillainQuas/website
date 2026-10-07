@@ -164,10 +164,13 @@
   function probe() {
     const c = window.EPINOIA_CONFIG;
     if (!c || !c.supabaseUrl || !liveMark || document.hidden) return;
+    /* the fixture cards' list (watch.js: the games streaming now) when it is fresh: the same read, not asked twice */
+    const W = window.EpinoiaWatch, fresh = W && W.airFresh ? W.airFresh() : null;
+    if (fresh) { setLive(fresh.size); return; }
     fetch(c.supabaseUrl + '/rest/v1/rpc/live_streams', { method: 'POST', cache: 'no-store',
       headers: { apikey: c.supabaseAnonKey, Authorization: 'Bearer ' + c.supabaseAnonKey, 'Content-Type': 'application/json' }, body: '{}' })
       .then(r => (r.ok ? r.json() : null))
-      .then(list => setLive(Array.isArray(list) ? list.length : 0))
+      .then(list => { if (Array.isArray(list) && W && W.airFeed) W.airFeed(list); setLive(Array.isArray(list) ? list.length : 0); })
       .catch(() => {});
   }
   if ('requestIdleCallback' in window) requestIdleCallback(probe, { timeout: 4000 }); else setTimeout(probe, 2500);

@@ -791,6 +791,9 @@ function card(g, opts) {
   }
   top.appendChild(state);
   a.appendChild(top);
+  /* STREAMING NOW ON THE SITE'S OWN PLAYER (watch.js onAir): the card lit, and WATCH LIVE beside its state - a press into
+     HOME's VIDEO view on this game, never the card's own link */
+  if (isLive && root.EpinoiaWatch && root.EpinoiaWatch.onAir) root.EpinoiaWatch.onAir(a, g.id, { slot: top });
 
   /* THE TWO CLUBS SIDE BY SIDE, as the scoreboard card does it (kit/embed.css .ep-card):
      crest over name, a "v" or the score between them. Stacked one above the other, a

@@ -272,6 +272,8 @@ table.adv th+th, table.adv td+td{ border-left:1px solid rgba(170,255,215,.06) }
 .bx-scorehead.bt-dressed .bt-sheet::before{ content:"\2193  "; }
 /* WHERE TO WATCH (watch.js) on the head: the black plate pill (kit/watch.css), a step clear of the state plate */
 .bx-scorehead.bt-dressed .bt-watch{ margin:4px 0 2px }
+/* LIVE ON EPINOIΛ (watch.js livePill): under the state plate, above where to watch */
+.bx-scorehead.bt-dressed .bt-air{ margin:8px auto 2px; width:min(360px,100%) }
 @media (prefers-reduced-motion:reduce){ .bx-scorehead.bt-dressed.bt-live .pacepill::before{ animation:none } }
 @media (max-width:640px){
   .bx-scorehead.bt-dressed{ column-gap:8px; padding:16px 10px 18px }
