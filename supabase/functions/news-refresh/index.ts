@@ -19,7 +19,7 @@
    reader has in GitHub): with it, a YouTube channel added by its link is found and read at once, through the Data API
    (../_shared/ytvideo.js); without it, a channel's link waits for that reader. Deploy: npx supabase functions deploy news-refresh
    ============================================================================ */
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { createHandler } from '../_shared/newsrefresh.js';
 
 const CORS = {

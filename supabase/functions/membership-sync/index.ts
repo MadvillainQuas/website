@@ -33,7 +33,7 @@
    itself, which is platform-wide, and a body that governs one league should
    not be able to rename a player who also turns out in another.
    ============================================================================ */
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { runSync, restAdapter, tableAdapter } from '../_shared/membership.js';
 
 const CORS = {

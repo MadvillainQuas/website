@@ -22,7 +22,7 @@
    than guess: an arena is only taken from a result of an arena kind within 150 m of the pin.
    Every change is written to the audit log with what it replaced.
    ============================================================================ */
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { ARENA_TYPES, REACH_M, languageFor, pickPlace, sameName } from '../_shared/arenaplace.js';
 
 const CORS = {

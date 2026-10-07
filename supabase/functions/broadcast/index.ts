@@ -28,7 +28,7 @@
    through a CDN that decided to cache for sixty is the sort of fault that is
    invisible in rehearsal and obvious on air.
    ============================================================================ */
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { deriveGame, timeoutsLeft, formatOf, perName } from '../_shared/engine.js';
 
 const CORS = {
