@@ -113,17 +113,37 @@
    as it can be with the score under it, and one column beside it, CHAT or BOX SCORE, a press between them. .rot: the
    phone is held upright and nothing turned the screen (an iPhone has no lock for a page), so the theatre turns itself
    a quarter; turn the phone and it stops. The rules are doubled up (.vh-land.vh-land) to win over FULL SCREEN's. ---- */
-.vh-landbtn,.vh-landtabs{display:none}
+/* the way in: a tab hanging from the stream's foot at the right, beside BOX SCORE - inside the theatre, so cinema mode
+   keeps it lit while the stream plays; the word beside the icon where there is room for it */
+.vh-landtabs,.vh-landfloat,.vh-tmain .vh-landcue{display:none}
+.vh-tmain .md-cuebar{position:relative}
+.vh-landcue{position:absolute;right:12px;top:0;gap:7px;padding:6px 10px 8px}
+.vh-landcue svg{width:20px;height:20px;display:block}
+.vh-landcue-t{display:none}
 @media (max-width:719px),(max-height:500px) and (orientation:landscape){
-  .vh-landbtn:not([hidden]){display:inline-block}
+  .vh-tmain .vh-landcue:not([hidden]){display:inline-flex}
+  /* a phone's full screen is LANDSCAPE: the header's FULL SCREEN was the desktop's (a 380px chat column beside the
+     stream - on a phone, the chat and a sliver of picture) and sat under cinema mode's veil once play was pressed */
+  .vh-h .vh-full{display:none}
 }
-.vh-landbtn::before{background:none;border:2px solid currentColor;border-radius:3px;width:16px;height:10px;left:10px;box-sizing:border-box}
+@media (min-width:430px) and (max-width:719px),(max-height:500px) and (orientation:landscape){
+  .vh-landcue-t{display:inline}
+}
+/* a narrow screen in FULL SCREEN however it got there: the stream across the top, the chat under it */
+@media (max-width:719px){
+  .vh-theatre:fullscreen .vh-ttop{grid-template-columns:minmax(0,1fr)}
+  .vh-theatre:fullscreen .vh-screen{aspect-ratio:16/9;height:auto}
+  .vh-theatre:fullscreen .vh-chat{position:static;height:auto;max-height:none}
+  .vh-theatre:fullscreen .vh-chat .ch{min-height:50vh}
+}
 html.vh-land-on,html.vh-land-on body{overflow:hidden}
 /* the theatre's ancestors let go of it while landscape is on, so its fixed box is the screen (videohub.js free) */
 .vh-land-free{animation:none!important;opacity:1!important;transform:none!important;translate:none!important;scale:none!important;
   rotate:none!important;filter:none!important;perspective:none!important;backdrop-filter:none!important;contain:none!important;
   container-type:normal!important;content-visibility:visible!important;will-change:auto!important;z-index:auto!important}
-.vh-theatre.vh-land.vh-land{position:fixed;inset:0;z-index:2147483000;margin:0;border:0;box-shadow:none;overflow:hidden;
+/* over cinema mode's veil (2147483000) and its lit group (…001): a stream playing in landscape is the whole screen, and
+   CHAT | BOX SCORE and the ✕ answer the finger (at the veil's own height they were under it once play was pressed) */
+.vh-theatre.vh-land.vh-land{position:fixed;inset:0;z-index:2147483050;margin:0;border:0;box-shadow:none;overflow:hidden;
   width:100vw;height:100vh;height:100dvh;padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
   display:grid;grid-template-columns:minmax(0,1fr) clamp(220px,34%,340px);grid-template-rows:auto minmax(0,1fr);
   grid-template-areas:"main tabs" "main panel"}
@@ -160,6 +180,21 @@ html.vh-land-on,html.vh-land-on body{overflow:hidden}
 .vh-theatre.vh-land.vh-land .vh-box{grid-area:panel;display:none;min-height:0;overflow:auto;padding:6px;border-top:0;border-left:1px solid var(--rule)}
 .vh-theatre.vh-land.vh-land.land-box .vh-box{display:block}
 .vh-theatre.vh-land.vh-land.land-box .vh-chat{display:none}
+/* VIDEO ONLY: the column folded away, the stream the whole screen; over its corner, the way back to the column and out */
+.vh-landhide{flex:none;width:44px;border:0;border-left:1px solid var(--rule);background:transparent;color:#fff;cursor:pointer;position:relative}
+.vh-landhide::before{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;border-top:2px solid currentColor;border-right:2px solid currentColor;
+  translate:-70% -50%;rotate:45deg}
+.vh-landhide::after{content:"";position:absolute;left:50%;top:50%;width:2px;height:14px;background:currentColor;translate:5px -50%}
+.vh-theatre.vh-land.vh-land.land-wide{grid-template-columns:minmax(0,1fr) 0}
+.vh-theatre.vh-land.vh-land.land-wide .vh-landtabs,.vh-theatre.vh-land.vh-land.land-wide .vh-chat,
+.vh-theatre.vh-land.vh-land.land-wide .vh-box{display:none}
+.vh-theatre.vh-land.vh-land.land-wide .vh-landfloat{display:flex;position:absolute;top:8px;right:8px;z-index:3;gap:6px}
+.vh-landfloat > button{min-height:36px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.62);color:#fff;cursor:pointer;
+  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.vh-landshow{padding:0 12px;font-family:var(--f-ui);font-weight:800;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+.vh-landfloat > .vh-landx{width:36px;border-left:1px solid rgba(255,255,255,.22)}
+.vh-landhide:hover,.vh-landfloat > button:hover{background:rgba(255,255,255,.1)}
+.vh-landhide:focus-visible,.vh-landfloat > button:focus-visible{outline:2px solid var(--lume);outline-offset:-3px}
 
 /* ---- nothing live: a test card ---- */
 .vh-none{position:relative;display:grid;place-items:center;aspect-ratio:16/6;min-height:200px;overflow:hidden;border:1px solid var(--rule)}

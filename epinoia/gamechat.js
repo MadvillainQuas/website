@@ -304,7 +304,7 @@
          full-screen element, and follows it in or out. Its first box takes the focus without scrolling the page -
          on a phone that moved the page 400 px under the pop-up. */
       // ...and inside a theatre in LANDSCAPE (videohub.js .md-land): turned on its side, the pop-up turns with it
-      const stage = () => document.fullscreenElement || document.webkitFullscreenElement || box.closest('.md-land') || document.body;
+      const stage = () => box.closest('.md-land') || document.fullscreenElement || document.webkitFullscreenElement || document.body;
       stage().appendChild(ov);
       const onFs = () => { if (pop && pop.parentNode !== stage()) stage().appendChild(pop); };
       document.addEventListener('fullscreenchange', onFs);
