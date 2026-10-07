@@ -684,7 +684,13 @@ function sectionFlow(g, fs, R) {
     : (bl && !/never close|rarely troubled|over early/.test(opening))
       ? R.subj(bl.side, { allowRole: true }) + ' led by as many as ' + bl.data.by + '.'
     : null;
-  out.push(joinSentences([opening, second], 'plain'));
+  /* THE SHAPE, WHEN NOTHING ELSE HAS SAID IT: a game short of points and a shootout read differently, and say so */
+  const arcF = fs.find(f => f.kind === 'arc');
+  const arcLine = !second && arcF ? ({
+    grind: pickVaried('arcg' + hi + lo, ['It was a low-scoring grind, ' + (hi + lo) + ' points between the two sides.', 'Points were hard to come by: ' + (hi + lo) + ' between the two sides.']),
+    shootout: pickVaried('arcs' + hi + lo, ['It was a shootout, ' + (hi + lo) + ' points between the two sides.', 'Neither defence held: ' + (hi + lo) + ' points between them.'])
+  })[arcF.data.kind] || null : null;
+  out.push(joinSentences([opening, second || arcLine], 'plain'));
 
   /* WHY IT MATTERS: the one or two things about this result that reach past the forty minutes -- a run made or ended,
      the top of the table, an upset, a meeting turned round (story.js factContext). What a paper calls the nut graf. */
@@ -1416,9 +1422,10 @@ function sectionLedger(g, fs, R) {
   const margin = Math.abs(d.actual);
   const out = [];
   const top = d.decisive, second = d.second, back = d.against;
-  const mdl = d.model, mn = mdl && mdl.n ? ' (built on ' + mdl.n + ' of its games)' : '';
-  const by = mdl ? pick('ledby' + w + margin, ['By this league’s own model of what wins' + mn + ', ', 'Weighed the way this league’s games are decided' + mn + ', '])
-                 : 'Counted factor by factor, ';
+  /* the model's sample is on the card's key; said in every report it became the one phrase every report shared */
+  const mdl = d.model;
+  const by = mdl ? pickVaried('ledby' + w + margin + g.names.join(''), ['By this league’s own model of what wins, ', 'Weighed the way this league’s games are decided, ', 'On what decides games in this league, '])
+                 : pickVaried('ledbyf' + w + margin + g.names.join(''), ['Counted factor by factor, ', 'Facet by facet, ', 'Weighing each facet at its usual value, ']);
   const one1 = v => (Math.round(v * 10) / 10).toFixed(1);
   if (top && toW(top) >= 2) {
     const v = toW(top), share = margin > 0 ? v / margin : 0;
@@ -1600,7 +1607,16 @@ function sectionMeans(g, fs, R) {
         if (!n || !n.oppName) return;
         const day = dayWords(n.at, tz);
         if (!day) return;
-        bits.push('Next for ' + nm(g, t) + ': ' + (n.home ? esc(tc(n.oppName)) + ' at home' : 'away at ' + esc(tc(n.oppName))) + ' on ' + day + '.');
+        const opp = esc(tc(n.oppName));
+        bits.push(pickVaried('next' + t + g.names.join('') + n.id, n.home ? [
+          'Next for ' + nm(g, t) + ': ' + opp + ' at home on ' + day + '.',
+          nm(g, t) + ' host ' + opp + ' next, on ' + day + '.',
+          opp + ' are next for ' + nm(g, t) + ', at home on ' + day + '.'
+        ] : [
+          'Next for ' + nm(g, t) + ': away at ' + opp + ' on ' + day + '.',
+          nm(g, t) + ' go to ' + opp + ' next, on ' + day + '.',
+          'A trip to ' + opp + ' is next for ' + nm(g, t) + ', on ' + day + '.'
+        ]));
       });
     }
     if (bits.length) out.push(bits.join(' '));
@@ -2081,7 +2097,12 @@ function sectionPlayers(g, fs, R) {
         s = possOf(who) + ' points took their season total past ' + d.mark + ' for ' + cl;
       } else if (f.kind === 'bpmTop') {
         if (!d.notScorer) return;
-        s = 'By box plus-minus the best game on the floor was ' + possOf(who) + ' for ' + cl + ', ' + (d.bpm > 0 ? '+' : '') + (Math.round(d.bpm * 10) / 10).toFixed(1);
+        const v = (d.bpm > 0 ? '+' : '') + (Math.round(d.bpm * 10) / 10).toFixed(1);
+        s = pickVaried('bpmtop' + p.id, [
+          'By box plus-minus the best game on the floor was ' + possOf(who) + ' for ' + cl + ', ' + v,
+          possOf(who) + ' game for ' + cl + ' was the best on the floor by box plus-minus, ' + v,
+          'Box plus-minus rates ' + who + ' of ' + cl + ' as the best player on the floor, at ' + v
+        ]);
       }
       if (s) ctxLines.push(s + '.');
     });
@@ -2210,17 +2231,27 @@ function sectionScout(g, fs, R, opts) {
       const pw = pctPhrase(top.pcts[gw], g.names[gw] + top.key + 'a');
       const pl = pctPhrase(top.pcts[gl], g.names[gl] + top.key + 'b');
       const tail = (half ? 'they have been ' : 'they were ') + pw + ' there, ' + nm(gl) + ' ' + pl;
+      /* three ways into the same claim, seeded by the game: the same frame in every report a league files is the
+         stock phrase a regular reader notices first */
+      const lead3 = half ? null : pickVaried('scoutopen' + g.names.join('') + top.key, [
+        nm(gw) + ' won this on ' + top.label + ' before anything else: ',
+        nm(gw) + ' won this on ' + top.label + ' above all: ',
+        top.label.charAt(0).toUpperCase() + top.label.slice(1) + ' was where ' + nm(gw) + ' won it: '
+      ]);
       out.push(gw === W
-        ? nm(gw) + (half ? ' have had the better of ' + top.label + ' more than anything: '
-                         : ' won this on ' + top.label + ' before anything else: ') + tail + '.'
+        ? (half ? nm(gw) + ' have had the better of ' + top.label + ' more than anything: ' : lead3) + tail + '.'
         : (half ? 'The widest gap so far is ' + top.label + ', and it favours ' + nm(gw) + (tied ? ': ' : ', who trail: ')
                 : 'The widest gap between them was ' + top.label + ', and it went ' + nmPoss(g, gw) + ' way — ') +
           tail + (half ? '.' : ' — but it was not enough.'));
       const rest = sc.decided.slice(1, 3);
       if (rest.length) {
-        out.push((half ? 'The other gaps to watch after the break: ' : 'The other gaps worth the film room: ') +
-          rest.map(x => x.label + ' (' + nm(x.winner) + ', ' +
-            Math.round(x.gap) + ' percentile points clear)').join(' and ') + '.');
+        out.push((half ? 'The other gaps to watch after the break: '
+          : pickVaried('scoutrest' + g.names.join(''), ['The other gaps worth the film room: ', 'Two more for the film room: ', 'Further down the list: '])) +
+          (() => {
+            const k = seedOf('scoutgap' + g.names.join('')) % 2;
+            return rest.map(x => x.label + ' (' + nm(x.winner) + ', ' + Math.round(x.gap) +
+              (k ? ' percentile points ahead)' : ' percentile points clear)')).join(' and ') + '.';
+          })());
       }
     } else {
       /* NO SCALES FOR THIS COMPETITION YET, so there is no league to be measured against and
@@ -2253,9 +2284,19 @@ function sectionScout(g, fs, R, opts) {
     const bits = [];
     if (side.good.length) {
       const g0 = side.good[0], rest = side.good.slice(1).map(r => r.label);
-      bits.push(nm(t) + (half ? ' are doing their best work on ' : ' did their best work on ') + g0.label +
-        ', where they ' + were + pctPhrase(g0.pct, g.names[t] + g0.key + 'good') +
-        (rest.length ? ', with ' + listOf(rest) + ' not far behind' : '') + '.');
+      const ph = pctPhrase(g0.pct, g.names[t] + g0.key + 'good');
+      const behind = rest.length ? ', with ' + listOf(rest) + ' not far behind' : '';
+      bits.push(half ? nm(t) + ' are doing their best work on ' + g0.label + ', where they ' + were + ph + behind + '.'
+        : (() => {
+          /* the same shape and length each, so the critic finds them equal and the game picks (language.js choose) */
+          const G0 = g0.label.charAt(0).toUpperCase() + g0.label.slice(1);
+          const close = rest.length ? ', with ' + listOf(rest) + ' close behind' : '';
+          return pickVaried('scoutgood' + g.names[t] + g0.key, [
+            G0 + ' was ' + possOf(nm(t)) + ' strongest suit: they were ' + ph + ' there' + behind + '.',
+            nm(t) + ' were at their best on ' + g0.label + ': they were ' + ph + ' there' + close + '.',
+            'Nothing went better for ' + nm(t) + ' than ' + g0.label + ': they were ' + ph + ' there' + behind + '.'
+          ]);
+        })());
     }
     const closer = t === L;                          // its first weakness is the closing line's
     const bad = closer ? side.bad.slice(1) : side.bad;
@@ -2264,12 +2305,23 @@ function sectionScout(g, fs, R, opts) {
          report they will read on the Monday is the quickest way to lose a coach */
       if (!closer) {
         const b0 = bad[0], rest = bad.slice(1).map(r => r.label);
-        bits.push((half ? 'What they will want to tighten starts with ' : 'What they will still want back starts with ') +
-          b0.label + ', where they ' + were + pctPhrase(b0.pct, g.names[t] + b0.key + 'bad') +
-          (rest.length ? '; ' + listOf(rest) + (half ? ' are lagging too' : ' lagged too') : '') + '.');
+        const phb = pctPhrase(b0.pct, g.names[t] + b0.key + 'bad');
+        const lag = rest.length ? '; ' + listOf(rest) + (half ? ' are lagging too' : ' lagged too') : '';
+        const B0 = b0.label.charAt(0).toUpperCase() + b0.label.slice(1);
+        bits.push(half ? 'What they will want to tighten starts with ' + b0.label + ', where they ' + were + phb + lag + '.'
+          : pickVaried('scoutbad' + g.names[t] + b0.key, [
+            'The weak spot was ' + b0.label + ', where they were ' + phb + lag + '.',
+            B0 + ' let them down: they were ' + phb + ' there' + lag + '.',
+            'Where they came up short was ' + b0.label + ': they were ' + phb + ' there' + lag + '.'
+          ]));
       } else {
-        bits.push((bits.length ? 'They ' : nm(t) + ' ') + (half ? 'are also struggling with ' : 'also struggled with ') +
-          listOf(bad.map(r => r.label)) + '.');
+        const who = bits.length ? 'They' : nm(t), list0 = listOf(bad.map(r => r.label));
+        bits.push(half ? who + ' are also struggling with ' + list0 + '.'
+          : pickVaried('scoutalso' + g.names[t], [
+            who + ' also struggled with ' + list0 + '.',
+            who + ' had trouble with ' + list0 + ' too.',
+            who + ' fell short on ' + list0 + ' as well.'
+          ]));
       }
     }
     if (bits.length) out.push(bits.join(' '));
@@ -2282,8 +2334,18 @@ function sectionScout(g, fs, R, opts) {
     out.push(half
       ? 'The one thing to fix at the break is ' + b0.label + ': ' + nm(L) + ' have been ' + ph +
           ' there, further behind the league than anything else in their game.'
-      : 'If there is one thing to take into the week, it is ' + b0.label + ': ' + nm(L) + ' were ' + ph +
-          ' there, further behind the league than anything else in their game.');
+      : (() => {
+          /* the same judgement, three ways: a coach's column, not a form letter */
+          const k = seedOf('scouttail' + g.names.join('') + b0.key) % 3;
+          const tail = [' there, further behind the league than anything else in their game.',
+                        ' there, the furthest from the league anything in their game was.',
+                        ' there, and nothing else in their game sat further behind the league.'][k];
+          return pickVaried('scouttake' + g.names[L] + b0.key, [
+            'If there is one thing to take into the week, it is ' + b0.label + ': ' + nm(L) + ' were ' + ph + tail,
+            'The one thing for ' + nm(L) + ' to take into the week is ' + b0.label + ': they were ' + ph + tail,
+            'The Monday work for ' + nm(L) + ' starts with ' + b0.label + ': they were ' + ph + tail
+          ]);
+        })());
   }
   return out;
 }

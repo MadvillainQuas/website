@@ -901,21 +901,26 @@ function revise(html, o) {
 /* CHOOSE between a template's phrasings by score, not by luck: the option the critic likes best given what has just been
    written (`recent` is the openers of the last few sentences chosen), and only when several tie does the seed decide, so
    the same game still reads the same way twice. */
+/* NEAR ENOUGH IS A TIE (2026-10-07). Taking the single best score made one phrasing win in almost every report a league
+   filed - the evaluator found the same frame in 29 reports of 30 - and a reader who follows a league reads them all.
+   Every option within NEAR points of the best is as good as the others to a reader, and the seed (the game) picks among
+   those; anything further below is never chosen. */
+const NEAR = 3;
 function choose(seed, options, recent) {
   if (!options || !options.length) return undefined;
   if (options.length === 1) return options[0];
   const rc = recent || [];
-  const start = seed % options.length;
-  let best = -1, bestScore = -Infinity;
-  for (let k = 0; k < options.length; k++) {
-    const i = (start + k) % options.length;
-    const opt = options[i];
-    if (typeof opt !== 'string') continue;
+  const scored = [];
+  options.forEach((opt, i) => {
+    if (typeof opt !== 'string') return;
     let sc = critique(opt, {}).score;
     if (rc.indexOf(opener(opt)) >= 0) sc -= 6;
-    if (sc > bestScore) { bestScore = sc; best = i; }
-  }
-  return options[best < 0 ? start : best];
+    scored.push({ i, sc });
+  });
+  if (!scored.length) return options[seed % options.length];
+  const best = Math.max(...scored.map(s => s.sc));
+  const near = scored.filter(s => s.sc >= best - NEAR);
+  return options[near[seed % near.length].i];
 }
 
 return { spell, spellFull, ordinalWord, ordinalNum, periodName, numeral, signed, pct, score, clock, approxMinutes,
