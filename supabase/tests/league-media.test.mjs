@@ -179,6 +179,9 @@ ok("on a phone: HOME's video cards a row to swipe, the stage's head in two rows 
    /\.md-grid\.md-row-m\{display:flex;flex-wrap:nowrap;overflow-x:auto/.test(css) && /scroll-snap-type:x mandatory/.test(css)
    && /@container \(max-width:599px\)\{\s*\.md-stage-h\{flex-direction:column/.test(css) && /\.md-stage-ctl \.md-widebtn\{display:none\}/.test(css)
    && /el\('div', 'md-grid md-row-m'\)/.test(rd('epinoia', 'home', 'videos-home.js')));
+ok("HOME's videos Show more as the news cards': six at a time, each six a block of its own under the last (a row to swipe on a phone)",
+   /const g = addBlock\(from, shown\);/.test(rd('epinoia', 'home', 'videos-home.js')) && /const STEP = 6;/.test(rd('epinoia', 'home', 'videos-home.js'))
+   && /\.md-rows > \.md-grid \+ \.md-grid\{margin-top/.test(css));
 ok('the chat folds away, remembered, its container told (.chat-min): the Live tab and the theatre give the stream the room',
    /epinoia\.chat\.min/.test(chat) && /classList\.toggle\('chat-min', min\)/.test(chat) && /\.lv-room\.chat-min\{grid-template-columns:minmax\(0,1fr\) 48px\}/.test(css));
 ok('says what is missing before anything is typed (sign in, a username, the chat closed, not on now)',

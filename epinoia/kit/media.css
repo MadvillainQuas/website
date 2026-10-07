@@ -199,6 +199,8 @@
 
 .md-empty{grid-column:1 / -1;padding:calc(var(--u)*4) 0;text-align:center;color:var(--ink-3);font-family:var(--f-ui);font-weight:600;font-size:13px}
 .md-more{display:block;margin:calc(var(--u)*3) auto 0}
+/* HOME's videos six at a time (videos-home.js): each six a block of its own, the next under the last */
+.md-rows > .md-grid + .md-grid{margin-top:calc(var(--u)*3)}
 .md-more[hidden]{display:none !important}
 /* waiting: a blank plate, halftone and all */
 .md-skel{aspect-ratio:16/13;border:1px solid var(--rule);border-left:4px solid var(--rule-2);

@@ -68,8 +68,11 @@
 
     const stage = el('section', 'md-stage');
     stage.hidden = true;
-    /* on a phone the cards are a row to swipe through, not a column to scroll past (kit/media.css .md-row-m) */
-    const grid = el('div', 'md-grid md-row-m');
+    /* SIX AT A TIME, AS THE NEWS CARDS ARE (feedview.js): each six a block of its own - on a phone a row to swipe through
+       (kit/media.css .md-row-m), on a wider screen two rows of three - and SHOW MORE adds the next six under the last,
+       fading in, where the reader is looking, rather than drawing everything again */
+    const grid = el('div', 'md-rows');
+    const block = () => el('div', 'md-grid md-row-m');
     const more = el('button', 'ep-btn md-more', tr('Show more'));
     more.type = 'button';
     let rows = [], shown = STEP;
@@ -106,27 +109,41 @@
       }
     });
     const play = it => sp.go(it);
+    function addBlock(from, to) {
+      const g = block();
+      rows.slice(from, to).forEach(it => {
+        const t = M.tile(it, play, false);
+        if (playing && playing.id === it.id) t.setAttribute('aria-current', 'true');
+        g.appendChild(t);
+      });
+      grid.appendChild(g);
+      return g;
+    }
     function paint() {
       grid.textContent = '';
-      rows.slice(0, shown).forEach((it, i) => {
-        const t = M.tile(it, play, false, { no: i + 1, of: rows.length });
-        if (playing && playing.id === it.id) t.setAttribute('aria-current', 'true');
-        grid.appendChild(t);
-      });
+      for (let at = 0; at < Math.min(shown, rows.length); at += STEP) addBlock(at, Math.min(at + STEP, shown));
       more.hidden = rows.length <= shown;
     }
     async function load() {
       grid.textContent = '';
-      for (let i = 0; i < STEP; i++) grid.appendChild(el('div', 'md-skel'));
+      const sk = block();
+      for (let i = 0; i < STEP; i++) sk.appendChild(el('div', 'md-skel'));
+      grid.appendChild(sk);
       const got = await read();
       if (!got || (!got.length && !kind)) { sec.hidden = true; return false; }
       sec.hidden = false;
       rows = got; shown = STEP;
-      if (!rows.length) { grid.textContent = ''; grid.appendChild(el('div', 'md-empty', tr(kind === 'highlights' ? 'No highlights yet.' : 'No videos yet.'))); more.hidden = true; return true; }
+      if (!rows.length) { grid.textContent = ''; const g = block(); g.appendChild(el('div', 'md-empty', tr(kind === 'highlights' ? 'No highlights yet.' : 'No videos yet.'))); grid.appendChild(g); more.hidden = true; return true; }
       paint();
       return true;
     }
-    more.addEventListener('click', () => { shown += STEP; paint(); });
+    more.addEventListener('click', () => {
+      const from = shown;
+      shown += STEP;
+      const g = addBlock(from, shown);
+      if (ctx.fadeIn) ctx.fadeIn(g);
+      more.hidden = rows.length <= shown;
+    });
     if (seg) {
       seg.querySelectorAll('button').forEach(b => {
         const k = b.dataset.vk || null;
