@@ -1312,7 +1312,7 @@ function build(input) {
     if (t) clubsOut[id] = { name: String(t.name || ''), short: t.short_name || null, slug: t.slug || null };
   });
   return {
-    v: 1, built: builtIso, clubs: clubsOut,
+    v: 1, engine: VERSION, built: builtIso, clubs: clubsOut,
     league: o.league ? { id: o.league.id, slug: o.league.slug, name: o.league.name } : null,
     season: o.season ? { id: o.season.id, name: o.season.name } : null,
     stories: stories.filter(s => s.status !== 'expired'),
@@ -1576,5 +1576,8 @@ function coverage(stories, X) {
   };
 }
 
-return { build, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
+/* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
+   builder treats a file from an older engine as due) */
+const VERSION = 3;
+return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));

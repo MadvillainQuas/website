@@ -425,7 +425,9 @@ export async function run(opts) {
     const active = new Set(activeGames.map(g => leagueOf.get(g.competition_id)).filter(Boolean));
     due = leagues.filter(l => active.has(l.id)).map(l => {
       const at = index.leagues && index.leagues[l.id] ? Date.parse(index.leagues[l.id].built) : 0;
-      const why = changed.has(l.id) ? 'new results' : !at ? 'never built' : nowMs - at > 6 * HOUR ? 'six hours' : null;
+      /* a file an older engine wrote is due at once: what the newsdesk says has changed */
+      const stale = index.leagues && index.leagues[l.id] && index.leagues[l.id].engine !== globalThis.EpinoiaNarrative.VERSION;
+      const why = changed.has(l.id) ? 'new results' : !at ? 'never built' : stale ? 'a new engine' : nowMs - at > 6 * HOUR ? 'six hours' : null;
       return why ? Object.assign({ why, at }, l) : null;
     }).filter(Boolean).sort((a, b) => (a.why === 'new results' ? 0 : 1) - (b.why === 'new results' ? 0 : 1) || a.at - b.at);
   }
@@ -443,7 +445,7 @@ export async function run(opts) {
         await api.upload(PUBLIC_BUCKET, 'narrative/' + lg.id + '.json', body, 600);
         await api.upload(PRIVATE_BUCKET, 'narrative-cache/' + lg.id + '.json', JSON.stringify(res.cache), 0);
         index.leagues = index.leagues || {};
-        index.leagues[lg.id] = { slug: lg.slug, built: res.out.built, token: res.out.token, stories: res.out.stories.length };
+        index.leagues[lg.id] = { slug: lg.slug, built: res.out.built, token: res.out.token, stories: res.out.stories.length, engine: res.out.engine };
       }
       if (o.out) fs.writeFileSync(o.out, body);
       if (o.print) printBuild(res.out, log);
