@@ -40,13 +40,36 @@
     'worse than nine weeks in ten': '10週中9週を下回る水準',
     'among the weakest in the league': 'リーグ最低レベル',
     'near the bottom of the league': 'リーグ最下位に近い水準',
+    'second to none in the league': 'リーグで誰にも引けを取らない水準',
+    'in the league’s top tenth': 'リーグ上位1割の水準',
+    'in the league’s top quarter': 'リーグ上位4分の1の水準',
+    'clearly better than the league’s usual': 'リーグの標準をはっきり上回る水準',
+    'a little better than the league’s usual': 'リーグの標準をわずかに上回る水準',
+    'just above the league’s average': 'リーグ平均をわずかに上回る水準',
+    'no different from the league’s usual': 'リーグの標準と変わらない水準',
+    'neither better nor worse than usual here': 'このリーグの標準どおりの水準',
+    'a little worse than the league’s usual': 'リーグの標準をわずかに下回る水準',
+    'just below the league’s average': 'リーグ平均をわずかに下回る水準',
+    'in the league’s bottom quarter': 'リーグ下位4分の1の水準',
+    'clearly worse than the league’s usual': 'リーグの標準をはっきり下回る水準',
+    'in the league’s bottom tenth': 'リーグ下位1割の水準',
+    'as poor as it gets in the league': 'リーグで最も苦しい水準',
     'hard to place': '評価の難しい数字'
   };
   const FREQ = {
     'a share few sides in this league ever reach': 'リーグでもほとんど見られない割合だ',
     'more than most sides manage': '多くのチームを上回る割合だ',
     'as few as any side in this league gets': 'リーグで最も少ない水準だ',
-    'fewer than most sides get': '多くのチームより少ない'
+    'fewer than most sides get': '多くのチームより少ない',
+    /* three a band (2026-10-08) */
+    'as high a share as this league sees': 'リーグでも最高水準の割合だ',
+    'a share almost nobody here matches': 'ほとんどのチームが及ばない割合だ',
+    'more than three sides in four get': '4チーム中3チームを上回る割合だ',
+    'above what most sides here get': 'リーグの多くのチームを上回る割合だ',
+    'about as few as this league sees': 'リーグでも最少クラスだ',
+    'about as low as this league goes': 'リーグでも最も低い水準だ',
+    'fewer than three sides in four get': '4チーム中3チームより少ない',
+    'below what most sides here get': 'リーグの多くのチームより少ない'
   };
   const alt = o => Object.keys(o).sort((a, b) => b.length - a.length)
     .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
@@ -79,12 +102,13 @@
   const DAY = { sunday: '日曜日', monday: '月曜日', tuesday: '火曜日', wednesday: '水曜日', thursday: '木曜日', friday: '金曜日', saturday: '土曜日' };
   const PART = { morning: '午前', afternoon: '午後', evening: '夜' };
   const WHERE = { 'in transition': 'ファストブレイク', 'on second chances': 'セカンドチャンス', 'off turnovers': '相手のターンオーバーからの攻撃' };
+  const ZONE_JA = { 'at the rim': 'ゴール下', 'from mid-range': 'ミドルレンジ', 'from three': '3P' };
 
   /* the measures the scout's note and the weekly report name */
   const LAB = {
     'shooting': 'シュート', 'turnovers': 'ターンオーバー', 'the offensive glass': 'オフェンスリバウンド',
     'offensive glass': 'オフェンスリバウンド', 'free throws': 'フリースロー',
-    'shooting from the field': 'フィールドゴール', 'looking after the ball': 'ターンオーバーの少なさ',
+    'shooting from the field': 'フィールドゴール', 'looking after the ball': 'ボールの管理',
     'the defensive glass': 'ディフェンスリバウンド', 'getting to the line': 'フリースローの獲得',
     'shooting from three': '3Pシュート', 'how much they shot from three': '3P試投の多さ',
     'how much they got to the rim': 'ゴール下へのアタックの多さ', 'getting to the rim': 'ゴール下へのアタック',
@@ -363,13 +387,29 @@
     ['{X} were held to {D}, well short of the {F} they usually manage', (x, d, f) => S(x) + d + '得点に抑えられ、平均の' + f + '得点を大きく下回った'],
 
     /* ---- where the points came from ---- */
-    ['{X} (had|have) the edge {V}: {D} points? from {D} chances?(?:, {F} a time)?, against {X}’s? {D}',
+    ['{X} (had|have) the edge {V}: {D} points? from {D} chances?(?:,(?: at)? {F} (?:a time|points a chance|points each))?, against {X}’s? {D}',
       (x, t, v, p, c, r, y, o) => S(x) + WHERE[v.toLowerCase()] + 'で優位に' + (/^had$/i.test(t) ? '立った' : '立っている') + '。' +
         c + '回のチャンスで' + p + '得点' + (r ? '（1回あたり' + r + '点）' : '') + '、' + y + 'は' + o + '得点'],
-    ['{V} it (?:was|is) {S} to {X}( so far)?, from {D} chances?(?:, {F} a time)?',
+    ['{V} it (?:was|is) {S} to {X}( so far)?, from {D} chances?(?:,(?: at)? {F} (?:a time|points a chance|points each))?',
       (v, a, b, x, far, c, r) => WHERE[v.toLowerCase()] + 'では' + (far ? 'ここまで' : '') + x + 'が' + sc(a, b) + 'と上回り、' +
         c + '回のチャンス' + (r ? 'で1回あたり' + r + '点' : 'から得点') ],
     ['they (got|are getting) {D}% of their chances that way, {R}', (t, d, r) => 'チャンス全体の' + d + '%がこの形で、' + freq(r)],
+    /* the glass and the line, with the other side named (2026-10-08: it was "for the other side", and none of these was
+       translated) */
+    ['{X} won the ball back on {W} of their {W} misses, against {W} of {W} for {X}',
+      (x, a, b, c, d, y) => S(x) + '自らのシュートミス' + n(b) + '本のうち' + n(a) + '本でボールを取り返し、' + (who(y) || y) + 'は' + n(d) + '本中' + n(c) + '本だった'],
+    ['misses were not the end of it for {X}: {W} of {W} came back to them, to {W} of {W} for {X}',
+      (x, a, b, c, d, y) => S(x, 'の') + 'ミスはそれで終わらなかった。' + n(b) + '本のミスのうち' + n(a) + '本が手元に戻り、' + (who(y) || y) + 'は' + n(d) + '本中' + n(c) + '本だった'],
+    ['{X} got {W} of their {W} misses (at the rim|from mid-range|from three) back, against {W} of {W} for {X}',
+      (x, a, b, z, c, d, y) => S(x) + ZONE_JA[z.toLowerCase()] + 'のミス' + n(b) + '本のうち' + n(a) + '本を取り返し、' + (who(y) || y) + 'は' + n(d) + '本中' + n(c) + '本だった'],
+    ['the second shots came (at the rim|from mid-range|from three) for {X}: {W} of {W} misses came back, to {W} of {W} for {X}',
+      (z, x, a, b, c, d, y) => S(x, 'の') + 'セカンドチャンスは' + ZONE_JA[z.toLowerCase()] + 'から生まれた。' + n(b) + '本のミスのうち' + n(a) + '本を取り返し、' + (who(y) || y) + 'は' + n(d) + '本中' + n(c) + '本だった'],
+    ['{X} got to the line far more often — {D} free throws for every hundred shots, against {D}',
+      (x, a, b) => S(x) + 'ずっと多くフリースローを獲得した。シュート100本あたり' + a + '本で、相手は' + b + '本'],
+    ['{X} lived at the line, drawing {D} free-throw attempts per hundred field goals to {D}',
+      (x, a, b) => S(x) + 'フリースローラインに立ち続け、フィールドゴール100本あたり' + a + '本のフリースローを得た（相手は' + b + '本）'],
+    ['the whistle was kind to {X}: {D} free throws per hundred shots, against {D} for {X}',
+      (x, a, b, y) => '笛は' + (who(x) || 'このチーム') + 'に味方した。シュート100本あたりのフリースローは' + a + '本、' + (who(y) || y) + 'は' + b + '本だった'],
     ['in the half court, where most of any game is played, {X} scored {F} points a chance to {F}',
       (x, a, b) => '試合の大半を占めるハーフコートでは、' + S(x) + '1チャンスあたり' + a + '点を挙げ、相手は' + b + '点だった'],
     ['{X} were the better set offence — {F} points a chance in the half court against {F}',
@@ -393,6 +433,8 @@
     ['{X} won the boards {S}', (x, a, b) => S(x) + 'リバウンドで' + sc(a, b) + 'と上回った'],
     ['{X} scored {D} on the break to {D}', (x, a, b) => S(x) + 'ファストブレイクからの得点で' + sc(a, b) + 'と上回った'],
     ['{X} gave the ball away {D} times', (x, d) => S(x) + d + '本のターンオーバーを犯した'],
+    ['{X} turned it over {D} times', (x, d) => S(x) + d + '本のターンオーバーを犯した'],
+    ['{X} coughed it up {D} times', (x, d) => S(x) + d + '回ボールを失った'],
     ['{X} went {M} without a field goal in the {O}', (x, m, o) => S(x) + ord(o) + 'に' + dur(m) + '間フィールドゴールがなかった'],
     ['{X} shot it better, {F}% eFG against {F}%', (x, a, b) => S(x) + 'シュートで上回り、EFG%は' + a + '%対' + b + '%'],
     ['{X} were the sharper side from the floor — {F}% eFG to {F}%', (x, a, b) => S(x) + 'シュートの精度で上回った。EFG%は' + a + '%対' + b + '%'],
@@ -416,6 +458,8 @@
     ['{X} moved it well, assisting on {F}% of their field goals', (x, a) => S(x) + 'ボールがよく回り、FG成功の' + a + '%がアシストによるものだった'],
     ['{X} defended better, giving up {F} points per 100 possessions to {F}', (x, a, b) => S(x) + '守備で上回り、100ポゼッションあたりの失点は' + a + '（相手は' + b + '）'],
     ['{X} forced the ball loose all night — their opponents coughed it up on {F}% of possessions', (x, a) => S(x) + '試合を通じてボールを奪い続け、相手のターンオーバー率は' + a + '%に達した'],
+    ['{X} had their hands on the ball all night — their opponents turned it over on {F}% of possessions', (x, a) => S(x) + '試合を通じて相手のボールに手を伸ばし続け、相手のターンオーバー率は' + a + '%に達した'],
+    ['{X} kept taking it away — their opponents gave it up on {F}% of possessions', (x, a) => S(x) + 'ボールを奪い続け、相手は' + a + '%のポゼッションでボールを失った'],
     ['{P} hands were everywhere: {D} steals? and {D} blocks?', (p, s, b) => own(p) + '守備では手がよく出て、' + s + 'スティール' + b + 'ブロックを記録した'],
     ['both sides lived off second chances — {D} points for {X}, {D} for {X}', (a, x, b, y) => '両チームともセカンドチャンスから得点を重ねた。' + x + 'が' + a + '得点、' + y + 'が' + b + '得点'],
     ['turnovers were punished at both ends: {D} points off them for {X}, {D} for {X}', (a, x, b, y) => 'ターンオーバーは両チームとも失点に直結し、ターンオーバーからの得点は' + x + 'が' + a + '、' + y + 'が' + b],
@@ -614,8 +658,17 @@
     ['what they will (?:still want back|want to tighten) starts with (.+?), where they (were|have been) {Q}(?:; (.+?) (?:lagged too|are lagging too))?',
       (l, t, q, r) => (lab(l) && (!r || labs(r)) ? '課題はまず' + lab(l) + 'で、' + pct(q) + (/^were$/i.test(t) ? 'だった' : 'だ') + (r ? '。' + labs(r) + 'も' + (/^were$/i.test(t) ? '物足りなかった' : '物足りない') : '') : null)],
     /* each side in turn after the game, three frames each (2026-10-07) */
-    ['(.+?) was {X}’s? strongest suit: they were {Q} there(?:, with (.+?) not far behind)?',
+    ['(.+?) (?:was|were) {X}’s? strongest suit: they were {Q} there(?:, with (.+?) not far behind)?',
       (l, x, q, r) => (lab(l) && (!r || labs(r)) ? x + 'の最大の武器は' + lab(l) + 'で、' + pct(q) + 'だった' + (r ? '。' + labs(r) + 'もそれに続いた' : '') : null)],
+    /* two more ways into each side's best and worst (2026-10-08): five a side, picked by the game */
+    ['for {X}, the high point was (.+?): they were {Q} there(?:, with (.+?) not far behind)?',
+      (x, l, q, r) => (lab(l) && (!r || labs(r)) ? x + 'の最大の見せ場は' + lab(l) + 'で、' + pct(q) + 'だった' + (r ? '。' + labs(r) + 'もそれに続いた' : '') : null)],
+    ['{X} did nothing better than (.+?): they were {Q} there(?:, with (.+?) not far behind)?',
+      (x, l, q, r) => (lab(l) && (!r || labs(r)) ? S(x, 'が') + '最も得意としたのは' + lab(l) + 'で、' + pct(q) + 'だった' + (r ? '。' + labs(r) + 'もそれに続いた' : '') : null)],
+    ['(.+?) held them back: they were {Q} there(?:; (.+?) lagged too)?',
+      (l, q, r) => (lab(l) && (!r || labs(r)) ? lab(l) + 'が足かせとなり、' + pct(q) + 'だった' + (r ? '。' + labs(r) + 'も物足りなかった' : '') : null)],
+    ['the trouble was (.+?): they were {Q} there(?:; (.+?) lagged too)?',
+      (l, q, r) => (lab(l) && (!r || labs(r)) ? '問題は' + lab(l) + 'で、' + pct(q) + 'だった' + (r ? '。' + labs(r) + 'も物足りなかった' : '') : null)],
     ['{X} were at their best on (.+?): they were {Q} there(?:, with (.+?) close behind)?',
       (x, l, q, r) => (lab(l) && (!r || labs(r)) ? S(x, 'が') + '最も良かったのは' + lab(l) + 'で、' + pct(q) + 'だった' + (r ? '。' + labs(r) + 'もそれに続いた' : '') : null)],
     ['nothing went better for {X} than (.+?): they were {Q} there(?:, with (.+?) not far behind)?',

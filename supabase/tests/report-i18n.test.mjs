@@ -187,7 +187,32 @@ const S = {
     'They fell short on the defensive glass as well.',
     'The one thing for Harbour Bay to take into the week is getting to the line: they were worse than nine games in ten there, further behind the league than anything else in their game.',
     'The Monday work for Harbour Bay starts with getting to the line: they were worse than nine games in ten there, the furthest from the league anything in their game was.',
-    'If there is one thing to take into the week, it is getting to the line: Harbour Bay were worse than nine games in ten there, and nothing else in their game sat further behind the league.'
+    'If there is one thing to take into the week, it is getting to the line: Harbour Bay were worse than nine games in ten there, and nothing else in their game sat further behind the league.',
+    /* five frames a side and five phrasings a band (2026-10-08), and a plural facet's "were" */
+    'Free throws were Neon City’s strongest suit: they were in the league’s top tenth there, with sharing the ball not far behind.',
+    'For Neon City, the high point was the offensive glass: they were second to none in the league there, with forcing turnovers not far behind.',
+    'Neon City did nothing better than protecting the rim: they were in the league’s top quarter there.',
+    'Getting to the line held them back: they were in the league’s bottom tenth there; free throws lagged too.',
+    'The trouble was looking after the ball: they were as poor as it gets in the league there.',
+    'Sharing the ball was where Neon City won it: they were clearly better than the league’s usual there, Harbour Bay in the league’s bottom quarter.',
+    'Nothing went better for Neon City than the defensive glass: they were a little better than the league’s usual there.',
+    'The weak spot was the defensive glass, where they were just below the league’s average.',
+    'Where they came up short was shooting from three: they were no different from the league’s usual there.',
+    /* the glass and the line with the other side named, the chances' rate three ways, the shares three a band (2026-10-08) */
+    'Misses were not the end of it for Neon City: 14 of 28 came back to them, to 16 of 43 for Harbour Bay.',
+    'Neon City won the ball back on eight of their 13 misses, against seven of 23 for Harbour Bay.',
+    'The second shots came from three for Neon City: 8 of 13 misses came back, to 7 of 23 for Harbour Bay.',
+    'Neon City got 6 of their 11 misses at the rim back, against 5 of 22 for Harbour Bay.',
+    'The whistle was kind to Neon City: 42 free throws per hundred shots, against 15 for Harbour Bay.',
+    'Neon City lived at the line, drawing 41 free-throw attempts per hundred field goals to 18.',
+    'In transition it was 27–19 to Neon City, from 22 chances, at 1.23 points each.',
+    'Neon City had the edge off turnovers: 19 points from 28 chances, 0.68 points a chance, against Harbour Bay’s 11.',
+    'They got 26% of their chances that way, as high a share as this league sees.',
+    'They got 21% of their chances that way, more than three sides in four get.',
+    'Harbour Bay turned it over 18 times.',
+    'Harbour Bay coughed it up 18 times.',
+    'Neon City had their hands on the ball all night — their opponents turned it over on 22.4% of possessions.',
+    'Neon City kept taking it away — their opponents gave it up on 22.4% of possessions.'
   ],
   /* the valued preview (preview.js valuedParas) */
   preview: [

@@ -307,6 +307,9 @@ function unshout(str) {
     const lw = w.toLowerCase();
     if (i > 0 && PARTICLES.has(lw)) return lw;
     if (lw === 'jr' || lw === 'sr') return w.charAt(0) + lw.charAt(1);
+    /* initials with their stops stay initials: "VALENCIA B.C." is Valencia B.C., not "B.c." (which then read as the end of a
+       sentence, and the word after it was given a capital: "Valencia B.c. Won it") */
+    if (/^[A-Z](?:\.[A-Z])+\.?$/.test(w)) return w;
     if (w.length <= 3 && /^[A-Z.]+$/.test(w) && !SMALL_WORDS.has(lw) && !PARTICLES.has(lw)) return w;
     return w.charAt(0) + w.slice(1).toLowerCase();
   }).join(' ');

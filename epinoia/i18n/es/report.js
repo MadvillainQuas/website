@@ -42,13 +42,36 @@
     'worse than nine weeks in ten': 'por debajo de nueve de cada diez semanas',
     'among the weakest in the league': 'entre lo más flojo de la liga',
     'near the bottom of the league': 'cerca de lo más bajo de la liga',
+    'second to none in the league': 'sin rival en la liga',
+    'in the league’s top tenth': 'en el mejor diez por ciento de la liga',
+    'in the league’s top quarter': 'en el mejor cuarto de la liga',
+    'clearly better than the league’s usual': 'claramente por encima de lo habitual en la liga',
+    'a little better than the league’s usual': 'algo por encima de lo habitual en la liga',
+    'just above the league’s average': 'justo por encima de la media de la liga',
+    'no different from the league’s usual': 'en la línea habitual de la liga',
+    'neither better nor worse than usual here': 'en un nivel normal para esta liga',
+    'a little worse than the league’s usual': 'algo por debajo de lo habitual en la liga',
+    'just below the league’s average': 'justo por debajo de la media de la liga',
+    'in the league’s bottom quarter': 'en el peor cuarto de la liga',
+    'clearly worse than the league’s usual': 'claramente por debajo de lo habitual en la liga',
+    'in the league’s bottom tenth': 'en el peor diez por ciento de la liga',
+    'as poor as it gets in the league': 'de lo peor de la liga',
     'hard to place': 'en un punto difícil de situar'
   };
   const FREQ = {
     'a share few sides in this league ever reach': 'un porcentaje que pocos equipos de esta liga alcanzan',
     'more than most sides manage': 'más que la mayoría de equipos',
     'as few as any side in this league gets': 'tan pocas como el que menos en esta liga',
-    'fewer than most sides get': 'menos que la mayoría de equipos'
+    'fewer than most sides get': 'menos que la mayoría de equipos',
+    /* three a band (2026-10-08) */
+    'as high a share as this league sees': 'un porcentaje de los más altos de la liga',
+    'a share almost nobody here matches': 'un porcentaje que casi nadie iguala aquí',
+    'more than three sides in four get': 'más que tres de cada cuatro equipos',
+    'above what most sides here get': 'por encima de lo que logra la mayoría de equipos',
+    'about as few as this league sees': 'de los porcentajes más bajos de la liga',
+    'about as low as this league goes': 'de lo más bajo que se ve en esta liga',
+    'fewer than three sides in four get': 'menos que tres de cada cuatro equipos',
+    'below what most sides here get': 'por debajo de lo que logra la mayoría de equipos'
   };
   const alt = o => Object.keys(o).sort((a, b) => b.length - a.length)
     .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
@@ -89,6 +112,7 @@
   const DAY = { sunday: 'el domingo', monday: 'el lunes', tuesday: 'el martes', wednesday: 'el miércoles', thursday: 'el jueves', friday: 'el viernes', saturday: 'el sábado' };
   const PART = { morning: 'por la mañana', afternoon: 'por la tarde', evening: 'por la noche' };
   const WHERE = { 'in transition': 'al contraataque', 'on second chances': 'en segundas oportunidades', 'off turnovers': 'tras pérdida' };
+  const ZONE_ES = { 'at the rim': 'bajo el aro', 'from mid-range': 'en la media distancia', 'from three': 'en el triple' };
   const LIVED = { 'in transition': 'del contraataque', 'on second chances': 'de las segundas oportunidades', 'off turnovers': 'de las pérdidas rivales' };
 
   /* the measures the scout's note and the weekly report name */
@@ -472,13 +496,29 @@
       (x, w, y) => 'solo por estas facetas, ' + sv(x, 'habría ganado por más') + '; ' + n(w) + ' puntos fueron a parar a ' + y + ' en lo que ningún factor mide'],
 
     /* ---- where the points came from ---- */
-    ['{X} (had|have) the edge {V}: {D} points? from {D} chances?(?:, {F} a time)?, against {X}’s? {D}',
+    ['{X} (had|have) the edge {V}: {D} points? from {D} chances?(?:,(?: at)? {F} (?:a time|points a chance|points each))?, against {X}’s? {D}',
       (x, t, v, p, c, r, y, o) => sv(x, (/^had$/i.test(t) ? 'dominó ' : 'domina ') + WHERE[v.toLowerCase()]) + ': ' + stat('points', p) + ' en ' + c + ' ' +
         pl(c, 'oportunidad', 'oportunidades') + (r ? ', ' + r + ' por acción' : '') + ', frente a los ' + o + ' de ' + y],
-    ['{V} it (?:was|is) {S} to {X}( so far)?, from {D} chances?(?:, {F} a time)?',
+    ['{V} it (?:was|is) {S} to {X}( so far)?, from {D} chances?(?:,(?: at)? {F} (?:a time|points a chance|points each))?',
       (v, a, b, x, far, c, r) => WHERE[v.toLowerCase()] + ', ' + sc(a, b) + ' para ' + x + (far ? ' hasta ahora' : '') + ', en ' + c + ' ' +
         pl(c, 'oportunidad', 'oportunidades') + (r ? ', ' + r + ' por acción' : '')],
     ['they (got|are getting) {D}% of their chances that way, {R}', (t, d, r) => 'el ' + d + '% de sus oportunidades ' + (/^got$/i.test(t) ? 'llegaron' : 'están llegando') + ' así, ' + freq(r)],
+    /* the glass and the line, with the other side named (2026-10-08: it was "for the other side", and none of these was
+       translated) */
+    ['{X} won the ball back on {W} of their {W} misses, against {W} of {W} for {X}',
+      (x, a, b, c, d, y) => sv(x, 'recuperó el balón en ' + n(a) + ' de sus ' + n(b) + ' fallos') + ', frente a ' + n(c) + ' de ' + n(d) + ' de ' + (who(y) || y)],
+    ['misses were not the end of it for {X}: {W} of {W} came back to them, to {W} of {W} for {X}',
+      (x, a, b, c, d, y) => 'los fallos no fueron el final para ' + (who(x) || 'ellos') + ': ' + n(a) + ' de ' + n(b) + ' volvieron a sus manos, por ' + n(c) + ' de ' + n(d) + ' de ' + (who(y) || y)],
+    ['{X} got {W} of their {W} misses (at the rim|from mid-range|from three) back, against {W} of {W} for {X}',
+      (x, a, b, z, c, d, y) => sv(x, 'recuperó ' + n(a) + ' de sus ' + n(b) + ' fallos ' + ZONE_ES[z.toLowerCase()]) + ', frente a ' + n(c) + ' de ' + n(d) + ' de ' + (who(y) || y)],
+    ['the second shots came (at the rim|from mid-range|from three) for {X}: {W} of {W} misses came back, to {W} of {W} for {X}',
+      (z, x, a, b, c, d, y) => 'las segundas opciones llegaron ' + ZONE_ES[z.toLowerCase()] + ' para ' + (who(x) || x) + ': ' + n(a) + ' de ' + n(b) + ' fallos volvieron a sus manos, por ' + n(c) + ' de ' + n(d) + ' de ' + (who(y) || y)],
+    ['{X} got to the line far more often — {D} free throws for every hundred shots, against {D}',
+      (x, a, b) => sv(x, 'fue mucho más a la línea') + ': ' + a + ' tiros libres por cada cien tiros, frente a ' + b],
+    ['{X} lived at the line, drawing {D} free-throw attempts per hundred field goals to {D}',
+      (x, a, b) => sv(x, 'vivió en la línea de tiros libres') + ', con ' + a + ' intentos por cada cien tiros de campo, por ' + b + ' del rival'],
+    ['the whistle was kind to {X}: {D} free throws per hundred shots, against {D} for {X}',
+      (x, a, b, y) => 'el silbato sonrió a ' + (who(x) || x) + ': ' + a + ' tiros libres por cada cien tiros, frente a ' + b + ' de ' + (who(y) || y)],
     ['in the half court, where most of any game is played, {X} scored {F} points a chance to {F}',
       (x, a, b) => 'en ataque posicional, donde se juega la mayor parte de cualquier partido, ' + sv(x, 'anotó ' + a + ' puntos por oportunidad') + ', frente a ' + b],
     ['{X} were the better set offence — {F} points a chance in the half court against {F}',
@@ -502,6 +542,8 @@
     ['{X} won the boards {S}', (x, a, b) => sv(x, 'ganó la batalla del rebote por ' + sc(a, b))],
     ['{X} scored {D} on the break to {D}', (x, a, b) => sv(x, 'anotó ' + stat('points', a) + ' al contraataque, por ' + b + ' del rival')],
     ['{X} gave the ball away {D} times', (x, d) => sv(x, 'perdió ' + d + ' ' + pl(d, 'balón', 'balones'))],
+    ['{X} turned it over {D} times', (x, d) => sv(x, 'cometió ' + d + ' ' + pl(d, 'pérdida', 'pérdidas'))],
+    ['{X} coughed it up {D} times', (x, d) => sv(x, 'regaló ' + d + ' ' + pl(d, 'balón', 'balones'))],
     ['{X} went {M} without a field goal in the {O}', (x, m, o) => sv(x, 'estuvo ' + m + ' sin anotar en juego en ' + ord(o))],
     ['{X} shot it better, {F}% eFG against {F}%', (x, a, b) => sv(x, 'tiró mejor') + ': ' + a + '% de eFG% frente a ' + b + '%'],
     ['{X} were the sharper side from the floor — {F}% eFG to {F}%', (x, a, b) => sv(x, 'fue más certero en el tiro') + ': ' + a + '% de eFG% por ' + b + '%'],
@@ -525,6 +567,8 @@
     ['{X} moved it well, assisting on {F}% of their field goals', (x, a) => sv(x, 'movió bien el balón') + ': el ' + a + '% de sus canastas fueron asistidas'],
     ['{X} defended better, giving up {F} points per 100 possessions to {F}', (x, a, b) => sv(x, 'defendió mejor') + ': encajó ' + a + ' puntos por cada 100 posesiones, frente a ' + b],
     ['{X} forced the ball loose all night — their opponents coughed it up on {F}% of possessions', (x, a) => sv(x, 'forzó pérdidas toda la noche') + ': el rival perdió el balón en el ' + a + '% de sus posesiones'],
+    ['{X} had their hands on the ball all night — their opponents turned it over on {F}% of possessions', (x, a) => sv(x, 'metió la mano toda la noche') + ': el rival perdió el balón en el ' + a + '% de sus posesiones'],
+    ['{X} kept taking it away — their opponents gave it up on {F}% of possessions', (x, a) => sv(x, 'no dejó de robar') + ': el rival perdió el balón en el ' + a + '% de sus posesiones'],
     ['{P} hands were everywhere: {D} steals? and {D} blocks?', (p, s, b) => own(p, 'sus manos', 'las manos') + ' estuvieron en todas partes: ' + stat('steals', s) + ' y ' + stat('blocks', b)],
     ['both sides lived off second chances — {D} points for {X}, {D} for {X}', (a, x, b, y) => 'los dos equipos vivieron de las segundas oportunidades: ' + stat('points', a) + ' para ' + x + ' y ' + b + ' para ' + y],
     ['turnovers were punished at both ends: {D} points off them for {X}, {D} for {X}', (a, x, b, y) => 'las pérdidas se castigaron en ambos lados: ' + stat('points', a) + ' tras pérdida para ' + x + ' y ' + b + ' para ' + y],
@@ -618,8 +662,17 @@
       (l, t, q, r) => lab(l) && (!r || labs(r)) && 'lo que ' + (/^were$/i.test(t) ? 'querrá recuperar' : 'querrá ajustar') + ' empieza por ' + lab(l) + ', donde ' + (/^were$/i.test(t) ? 'estuvo ' : 'está ') + pct(q) +
         (r ? '; ' + labs(r) + ' también ' + (/^were$/i.test(t) ? (many(labs(r)) ? 'se quedaron' : 'se quedó') : (many(labs(r)) ? 'se están' : 'se está') + ' quedando') + ' atrás' : '')],
     /* each side's best and worst, three ways into each (2026-10-07) */
-    ['(.+?) was {X}’s? strongest suit: they were {Q} there(?:, with (.+?) not far behind)?',
-      (l, x, q, r) => lab(l) && (!r || labs(r)) && lab(l) + ' fue el punto fuerte de ' + x + ': ahí estuvo ' + pct(q) + (r ? ', con ' + labs(r) + ' no muy lejos' : '')],
+    ['(.+?) (?:was|were) {X}’s? strongest suit: they were {Q} there(?:, with (.+?) not far behind)?',
+      (l, x, q, r) => lab(l) && (!r || labs(r)) && lab(l) + (many(lab(l)) ? ' fueron' : ' fue') + ' el punto fuerte de ' + x + ': ahí estuvo ' + pct(q) + (r ? ', con ' + labs(r) + ' no muy lejos' : '')],
+    /* two more ways into each side's best and worst (2026-10-08): five a side, picked by the game */
+    ['for {X}, the high point was (.+?): they were {Q} there(?:, with (.+?) not far behind)?',
+      (x, l, q, r) => lab(l) && (!r || labs(r)) && 'para ' + x + ', lo mejor ' + (many(lab(l)) ? 'fueron ' : 'fue ') + lab(l) + ': estuvo ' + pct(q) + (r ? ', con ' + labs(r) + ' no muy lejos' : '')],
+    ['{X} did nothing better than (.+?): they were {Q} there(?:, with (.+?) not far behind)?',
+      (x, l, q, r) => lab(l) && (!r || labs(r)) && sv(x, 'no hizo nada mejor que ' + lab(l)) + ': estuvo ' + pct(q) + (r ? ', con ' + labs(r) + ' no muy lejos' : '')],
+    ['(.+?) held them back: they were {Q} there(?:; (.+?) lagged too)?',
+      (l, q, r) => lab(l) && (!r || labs(r)) && lab(l) + (many(lab(l)) ? ' le lastraron' : ' le lastró') + ': ahí estuvo ' + pct(q) + (r ? '; ' + lagged(labs(r)) : '')],
+    ['the trouble was (.+?): they were {Q} there(?:; (.+?) lagged too)?',
+      (l, q, r) => lab(l) && (!r || labs(r)) && 'el problema ' + (many(lab(l)) ? 'fueron ' : 'fue ') + lab(l) + ': estuvo ' + pct(q) + (r ? '; ' + lagged(labs(r)) : '')],
     ['{X} were at their best on (.+?): they were {Q} there(?:, with (.+?) close behind)?',
       (x, l, q, r) => lab(l) && (!r || labs(r)) && sv(x, 'dio lo mejor de sí en ' + lab(l)) + ': estuvo ' + pct(q) + (r ? ', con ' + labs(r) + ' muy cerca' : '')],
     ['nothing went better for {X} than (.+?): they were {Q} there(?:, with (.+?) not far behind)?',

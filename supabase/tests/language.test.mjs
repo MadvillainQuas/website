@@ -72,6 +72,8 @@ eq('a group letter is not an article ("Group A at", never "Group An at")', L.pol
 eq('...nor a league’s letter', L.polish('The best record in Serie A is theirs.'), 'The best record in Serie A is theirs.');
 eq('...but a sentence’s first A still is', L.polish('Neon City won. A eight-point run did it.'), 'Neon City won. An eight-point run did it.');
 eq('a written name keeps its small words', L.titleCase('Dorados de Chihuahua'), 'Dorados de Chihuahua');
+eq('initials keep their capitals ("VALENCIA B.C.")', L.titleCase('VALENCIA B.C.'), 'Valencia B.C.');
+eq('...and the word after them is not a new sentence', L.polish('Free throws were where Valencia B.C. won it.'), 'Free throws were where Valencia B.C. won it.');
 eq('...all of them', L.titleCase('Diablos Rojos del Mexico'), 'Diablos Rojos del Mexico');
 eq('...and a lower-case first word is still raised', L.titleCase('de la Cruz Ada'), 'De la Cruz Ada');
 

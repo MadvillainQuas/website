@@ -1001,13 +1001,23 @@ function sectionFlow(g, fs, R) {
    it is a lot or a little, and a reader cannot tell which without being told.
    --------------------------------------------------------------------------- */
 const ppc = v => (v == null ? '–' : (+v).toFixed(2));
-function freqWords(p) {
+/* THREE A BAND (2026-10-08): one wording a band said "a share few sides in this league ever reach" twice in one report and
+   in most of a league's. Picked by the seed, never the same words as the last time. */
+const FREQ_BANDS = [
+  ['a share few sides in this league ever reach', 'as high a share as this league sees', 'a share almost nobody here matches'],
+  ['more than most sides manage', 'more than three sides in four get', 'above what most sides here get'],
+  ['as few as any side in this league gets', 'about as few as this league sees', 'about as low as this league goes'],
+  ['fewer than most sides get', 'fewer than three sides in four get', 'below what most sides here get']
+];
+let lastFreq = null;
+function freqWords(p, seed) {
   if (p == null) return '';
-  if (p >= 90) return 'a share few sides in this league ever reach';
-  if (p >= 75) return 'more than most sides manage';
-  if (p <= 10) return 'as few as any side in this league gets';
-  if (p <= 25) return 'fewer than most sides get';
-  return '';
+  const opts = p >= 90 ? FREQ_BANDS[0] : p >= 75 ? FREQ_BANDS[1] : p <= 10 ? FREQ_BANDS[2] : p <= 25 ? FREQ_BANDS[3] : null;
+  if (!opts) return '';
+  let i = mixed(seedOf(String(seed || '') + '|' + p)) % opts.length;
+  if (opts[i] === lastFreq) i = (i + 1) % opts.length;
+  lastFreq = opts[i];
+  return opts[i];
 }
 /* which box-line facts the situations paragraph makes redundant: it gives the same points
    plus the chances behind them, so the plain count is dropped rather than said twice */
@@ -1026,7 +1036,9 @@ function sitSentences(g, fs, R, tense) {
        for the reader to attach. Only the chosen phrasing is built, because building both would
        spend the referrer twice. */
     const other = nmPoss(g, 1 - edge.side);
-    const rate = m.ppp != null ? ', ' + ppc(m.ppp) + ' a time' : '';
+    /* what the chances came to, three ways (it was ", 1.23 a time" in 13 of 16 reports) */
+    const rate = m.ppp != null ? pickSeeded('rate' + k + edge.side + gameSeed(g),
+      [', ' + ppc(m.ppp) + ' a time', ', ' + ppc(m.ppp) + ' points a chance', ', at ' + ppc(m.ppp) + ' points each']) : '';
     const Where = where.charAt(0).toUpperCase() + where.slice(1);
     let s;
     if (seedOf('sit' + k + edge.side + tense) % 2 === 0) {
@@ -1037,7 +1049,7 @@ function sitSentences(g, fs, R, tense) {
       s = Where + (now ? ' it is ' : ' it was ') + m.pts + '–' + o.pts + ' to ' + nm(g, edge.side) +
         (now ? ' so far' : '') + ', from ' + plural(m.chances, 'chance') + rate;
     }
-    const fw = m.freqPct != null && m.freqPct >= 75 ? freqWords(m.freqPct) : '';
+    const fw = m.freqPct != null && m.freqPct >= 75 ? freqWords(m.freqPct, 'edge' + k + edge.side + gameSeed(g)) : '';
     if (fw && m.freq != null) s += '. They ' + (now ? 'are getting ' : 'got ') + Math.round(m.freq) + '% of their chances that way, ' + fw;
     bits.push(s + '.');
   }
@@ -1054,7 +1066,7 @@ function sitSentences(g, fs, R, tense) {
     ]) + '.');
   }
   fs.filter(f => f.kind === 'sitStyle' && !(edge && edge.side === f.side && edge.data.key === f.data.key)).slice(0, 1).forEach(f => {
-    const fw = freqWords(f.data.pct);
+    const fw = freqWords(f.data.pct, 'style' + f.data.key + f.side + gameSeed(g));
     if (!fw) return;
     const who = R.subj(f.side);
     bits.push(who + (now ? ' are living ' : ' lived ') + f.data.where + ': ' + Math.round(f.data.freq) + '% of their chances ' +
@@ -1106,7 +1118,12 @@ function sectionNumbers(g, fs, R) {
   if (poorL) box.push(R.subj(poorL.side) + ' made only ' + poorL.data.m + ' of ' + poorL.data.a + ' free throws');
   if (boards && !SPENT.has('stat:boards')) box.push(R.subj(boards.side, { allowRole: true }) + ' won the boards ' + boards.data.mine + '\u2013' + boards.data.theirs);
   if (fb) box.push(R.subj(fb.side, { allowRole: true }) + ' scored ' + fb.data.mine + ' on the break to ' + fb.data.theirs);
-  if (careless) box.push(R.subj(careless.side) + ' gave the ball away ' + careless.data.tov + ' times');
+  if (careless) {
+    /* three ways to say it (2026-10-08: "gave the ball away 18 times" in 11 of 16 reports); the referrer first */
+    const who = R.subj(careless.side), n = careless.data.tov;
+    box.push(pickSeeded('careless' + careless.side + gameSeed(g), [who + ' gave the ball away ' + n + ' times', who + ' turned it over ' + n + ' times',
+      who + ' coughed it up ' + n + ' times']));
+  }
   /* two figure pairs to a sentence at most; the rest start a new one */
   for (let i = 0; i < box.length; i += 2) {
     out.push(joinSentences(box.slice(i, i + 2), 'plain') + '.');
@@ -1171,7 +1188,7 @@ function sectionNumbers(g, fs, R) {
         who + ' lived at the line, drawing ' + per(mine) +
           ' free-throw attempts per hundred field goals to ' + per(theirs),
         'The whistle was kind to ' + midCase(who) + ': ' + per(mine) + ' free throws per hundred ' +
-          'shots, against ' + per(theirs) + ' for the other side'
+          'shots, against ' + per(theirs) + ' for ' + nm(g, 1 - lead.side)
       ]);
     }
 
@@ -1233,7 +1250,7 @@ function sectionNumbers(g, fs, R) {
     const [o1, m1, o2, m2] = L().spellSet([d.orb, d.misses, d.theirs.orb, d.theirs.misses]);      // one style for all four figures
     out.push(pick('missfate' + mf.side + d.orb, [
       who + ' won the ball back on ' + o1 + ' of their ' + m1 + ' misses, against ' + o2 + ' of ' + m2 + ' for ' + nm(g, 1 - mf.side) + '.',
-      'Misses were not the end of it for ' + midCase(who) + ': ' + o1 + ' of ' + m1 + ' came back to them, to ' + o2 + ' of ' + m2 + ' for the other side.'
+      'Misses were not the end of it for ' + midCase(who) + ': ' + o1 + ' of ' + m1 + ' came back to them, to ' + o2 + ' of ' + m2 + ' for ' + nm(g, 1 - mf.side) + '.'
     ]));
   });
 
@@ -1256,9 +1273,12 @@ function sectionNumbers(g, fs, R) {
       one(dr.data.theirs));
   }
   if (forced) {
-    defBits.push(R.subj(forced.side) + ' forced the ball loose all night \u2014 ' +
-      'their opponents coughed it up on ' + pct1(forced.data.rate) +
-      ' of possessions');
+    /* three ways in (it was "forced the ball loose all night" in 11 of 16 reports); the referrer first */
+    const who = R.subj(forced.side), r = pct1(forced.data.rate);
+    defBits.push(pickSeeded('forced' + forced.side + gameSeed(g), [
+      who + ' forced the ball loose all night \u2014 their opponents coughed it up on ' + r + ' of possessions',
+      who + ' had their hands on the ball all night \u2014 their opponents turned it over on ' + r + ' of possessions',
+      who + ' kept taking it away \u2014 their opponents gave it up on ' + r + ' of possessions']));
   }
   if (disrupt && !forced) {
     defBits.push(R.poss(disrupt.side) + ' hands were everywhere: ' +
@@ -1686,7 +1706,7 @@ function sectionPlayTypes(g, fs, R) {
     const d = zb.data, [o1, m1, o2, m2] = L().spellSet([d.mine.o, d.mine.miss, d.theirs.o, d.theirs.miss]);
     out.push(pick('zoneb' + zb.side + d.zone, [
       nm(g, zb.side) + ' got ' + o1 + ' of their ' + m1 + ' misses ' + d.where + ' back, against ' + o2 + ' of ' + m2 + ' for ' + nm(g, 1 - zb.side) + '.',
-      'The second shots came ' + d.where + ' for ' + nm(g, zb.side) + ': ' + o1 + ' of ' + m1 + ' misses came back, to ' + o2 + ' of ' + m2 + ' for the other side.'
+      'The second shots came ' + d.where + ' for ' + nm(g, zb.side) + ': ' + o1 + ' of ' + m1 + ' misses came back, to ' + o2 + ' of ' + m2 + ' for ' + nm(g, 1 - zb.side) + '.'
     ]));
   }
   return out;
@@ -2228,8 +2248,8 @@ function sectionScout(g, fs, R, opts) {
          about a game Bristol Flyers LOST 72-60 (read-through, 2026-09-23). When the two differ
          the sentence says the gap went the loser's way and was not enough. */
       const gw = top.winner, gl = 1 - gw;
-      const pw = pctPhrase(top.pcts[gw], g.names[gw] + top.key + 'a');
-      const pl = pctPhrase(top.pcts[gl], g.names[gl] + top.key + 'b');
+      const pw = pctPhrase(top.pcts[gw], g.names[gw] + top.key + 'a' + gameSeed(g));
+      const pl = pctPhrase(top.pcts[gl], g.names[gl] + top.key + 'b' + gameSeed(g));
       const tail = (half ? 'they have been ' : 'they were ') + pw + ' there, ' + nm(gl) + ' ' + pl;
       /* three ways into the same claim, seeded by the game: the same frame in every report a league files is the
          stock phrase a regular reader notices first */
@@ -2284,17 +2304,19 @@ function sectionScout(g, fs, R, opts) {
     const bits = [];
     if (side.good.length) {
       const g0 = side.good[0], rest = side.good.slice(1).map(r => r.label);
-      const ph = pctPhrase(g0.pct, g.names[t] + g0.key + 'good');
+      const ph = pctPhrase(g0.pct, g.names[t] + g0.key + 'good' + gameSeed(g));
       const behind = rest.length ? ', with ' + listOf(rest) + ' not far behind' : '';
       bits.push(half ? nm(t) + ' are doing their best work on ' + g0.label + ', where they ' + were + ph + behind + '.'
         : (() => {
           /* the same shape and length each, so the critic finds them equal and the game picks (language.js choose) */
           const G0 = g0.label.charAt(0).toUpperCase() + g0.label.slice(1);
           const close = rest.length ? ', with ' + listOf(rest) + ' close behind' : '';
-          return pickVaried('scoutgood' + g.names[t] + g0.key, [
-            G0 + ' was ' + possOf(nm(t)) + ' strongest suit: they were ' + ph + ' there' + behind + '.',
+          return pickSeeded('scoutgood' + g.names[t] + g0.key + gameSeed(g), [
+            G0 + (PLURAL_LABEL.test(g0.label) ? ' were ' : ' was ') + possOf(nm(t)) + ' strongest suit: they were ' + ph + ' there' + behind + '.',
             nm(t) + ' were at their best on ' + g0.label + ': they were ' + ph + ' there' + close + '.',
-            'Nothing went better for ' + nm(t) + ' than ' + g0.label + ': they were ' + ph + ' there' + behind + '.'
+            'Nothing went better for ' + nm(t) + ' than ' + g0.label + ': they were ' + ph + ' there' + behind + '.',
+            'For ' + nm(t) + ', the high point was ' + g0.label + ': they were ' + ph + ' there' + behind + '.',
+            nm(t) + ' did nothing better than ' + g0.label + ': they were ' + ph + ' there' + behind + '.'
           ]);
         })());
     }
@@ -2305,19 +2327,21 @@ function sectionScout(g, fs, R, opts) {
          report they will read on the Monday is the quickest way to lose a coach */
       if (!closer) {
         const b0 = bad[0], rest = bad.slice(1).map(r => r.label);
-        const phb = pctPhrase(b0.pct, g.names[t] + b0.key + 'bad');
+        const phb = pctPhrase(b0.pct, g.names[t] + b0.key + 'bad' + gameSeed(g));
         const lag = rest.length ? '; ' + listOf(rest) + (half ? ' are lagging too' : ' lagged too') : '';
         const B0 = b0.label.charAt(0).toUpperCase() + b0.label.slice(1);
         bits.push(half ? 'What they will want to tighten starts with ' + b0.label + ', where they ' + were + phb + lag + '.'
-          : pickVaried('scoutbad' + g.names[t] + b0.key, [
+          : pickSeeded('scoutbad' + g.names[t] + b0.key + gameSeed(g), [
             'The weak spot was ' + b0.label + ', where they were ' + phb + lag + '.',
             B0 + ' let them down: they were ' + phb + ' there' + lag + '.',
-            'Where they came up short was ' + b0.label + ': they were ' + phb + ' there' + lag + '.'
+            'Where they came up short was ' + b0.label + ': they were ' + phb + ' there' + lag + '.',
+            B0 + ' held them back: they were ' + phb + ' there' + lag + '.',
+            'The trouble was ' + b0.label + ': they were ' + phb + ' there' + lag + '.'
           ]));
       } else {
         const who = bits.length ? 'They' : nm(t), list0 = listOf(bad.map(r => r.label));
         bits.push(half ? who + ' are also struggling with ' + list0 + '.'
-          : pickVaried('scoutalso' + g.names[t], [
+          : pickSeeded('scoutalso' + g.names[t] + gameSeed(g), [
             who + ' also struggled with ' + list0 + '.',
             who + ' had trouble with ' + list0 + ' too.',
             who + ' fell short on ' + list0 + ' as well.'
@@ -2330,7 +2354,7 @@ function sectionScout(g, fs, R, opts) {
   /* and the one thing to take into the week -- or into the dressing room */
   const lose = sc.sides[L];
   if (lose && lose.bad.length) {
-    const b0 = lose.bad[0], ph = pctPhrase(b0.pct, g.names[L] + b0.key + 'take');
+    const b0 = lose.bad[0], ph = pctPhrase(b0.pct, g.names[L] + b0.key + 'take' + gameSeed(g));
     out.push(half
       ? 'The one thing to fix at the break is ' + b0.label + ': ' + nm(L) + ' have been ' + ph +
           ' there, further behind the league than anything else in their game.'
@@ -2376,14 +2400,16 @@ function sideAhead(sc, dec, t) {
    old entries only worked after a statistic: "London Lions were rare to see this low in the
    league", "as good as almost anyone plays this in the league" and "neither a strength nor a
    weakness" all failed the first frame (read-through of three SLB games, 2026-09-23). */
+/* FIVE A BAND (2026-10-08): with three, and the critic scoring fragments it was never meant to score, a league's reports
+   said "better than nine games in ten" in 15 of 16 (report-eval --ctx). */
 const PCT_BANDS = [
-  [90, ['better than nine games in ten', 'among the best in the league', 'at the very top of the league']],
-  [75, ['better than three games in four', 'comfortably above the league', 'well above the league average']],
-  [60, ['better than most', 'above the league’s middle', 'on the good side of average']],
-  [40, ['about league average', 'in the middle of the league', 'right on the league average']],
-  [25, ['worse than most', 'below the league’s middle', 'on the wrong side of average']],
-  [10, ['worse than three games in four', 'comfortably below the league', 'well below the league average']],
-  [-1, ['worse than nine games in ten', 'among the weakest in the league', 'near the bottom of the league']]
+  [90, ['better than nine games in ten', 'among the best in the league', 'at the very top of the league', 'second to none in the league', 'in the league’s top tenth']],
+  [75, ['better than three games in four', 'comfortably above the league', 'well above the league average', 'in the league’s top quarter', 'clearly better than the league’s usual']],
+  [60, ['better than most', 'above the league’s middle', 'on the good side of average', 'a little better than the league’s usual', 'just above the league’s average']],
+  [40, ['about league average', 'in the middle of the league', 'right on the league average', 'no different from the league’s usual', 'neither better nor worse than usual here']],
+  [25, ['worse than most', 'below the league’s middle', 'on the wrong side of average', 'a little worse than the league’s usual', 'just below the league’s average']],
+  [10, ['worse than three games in four', 'comfortably below the league', 'well below the league average', 'in the league’s bottom quarter', 'clearly worse than the league’s usual']],
+  [-1, ['worse than nine games in ten', 'among the weakest in the league', 'near the bottom of the league', 'in the league’s bottom tenth', 'as poor as it gets in the league']]
 ];
 function pctOptions(r) {
   if (r >= 90) return PCT_BANDS[0][1];
@@ -2399,9 +2425,35 @@ function pctOptions(r) {
    the same band are free to say it differently -- and pickVaried's own memory of the last
    template used is what actually stops a sentence saying the same words about both sides of
    one comparison in a row. */
+/* A FRAGMENT IS PICKED BY ITS SEED, not by the critic: language.js scores whole sentences, and on a fragment it preferred the
+   same words nearly every time. The seed (the club, the measure, the game) keeps one report stable and lets the same club's
+   reports differ through a season; never the same place in a band as the pick just before, so the two sides of one
+   comparison never mirror each other's words. */
+/* PHRASINGS EQUAL BY DESIGN, picked by the seed alone: the critic (pickVaried) kept preferring the first of them, so a league's
+   reports opened their scout paragraphs the same way (15 of 16). A murmur-style mix first, because seedOf's h*31 makes the
+   remainder by 3 or 5 a plain sum of the characters; never the same place as the pick just before. */
+function mixed(h) {
+  let x = h >>> 0;
+  x ^= x >>> 16; x = Math.imul(x, 0x85ebca6b) >>> 0; x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35) >>> 0; x ^= x >>> 16;
+  return x >>> 0;
+}
+function pickSeeded(seed, options) {
+  let i = mixed(seedOf(String(seed || ''))) % options.length;
+  if (options.length + ':' + i === lastPick) i = (i + 1) % options.length;
+  lastPick = options.length + ':' + i;
+  return options[i];
+}
+/* a facet's label that takes a plural verb ("free throws were", "assists against turnovers were") */
+const PLURAL_LABEL = /^(free throws|assists|threes|turnovers)\b/i;
+/* the game's own part of a seed (its tip-off and score): the same club's reports through a season pick differently */
+const gameSeed = g => '|' + String((g && g.meta && g.meta.tipoff_at) || '') + '|' + String((g && g.score) ? g.score.join('-') : '');
 function pctPhrase(p, seed) {
   if (p == null) return 'hard to place';
-  return pickVaried(String(seed || ''), pctOptions(Math.round(p)));
+  const opts = pctOptions(Math.round(p));
+  let i = mixed(seedOf(String(seed || ''))) % opts.length;
+  if (opts.length + ':' + i === lastPick) i = (i + 1) % opts.length;
+  lastPick = opts.length + ':' + i;
+  return opts[i];
 }
 
 function listOf(xs) {
