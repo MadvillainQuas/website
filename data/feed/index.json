@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-30T08:34:51.599838+00:00",
+ "updated": "2026-10-07T16:14:33.241296+00:00",
  "competitions": [
   {
    "code": "ABA",
@@ -42,6 +42,13 @@
    "adapter": "fiba_livestats",
    "games": 222,
    "updated": "2026-09-28T07:40:50.701888+00:00"
+  },
+  {
+   "code": "BCL",
+   "label": "Basketball Champions League",
+   "adapter": "fiba_events",
+   "games": 96,
+   "updated": "2026-10-07T15:57:38.069024+00:00"
   },
   {
    "code": "BGNBL",
@@ -147,6 +154,13 @@
    "adapter": "feb",
    "games": 364,
    "updated": "2026-09-27T01:27:31.346462+00:00"
+  },
+  {
+   "code": "FEC",
+   "label": "FIBA Europe Cup",
+   "adapter": "fiba_events",
+   "games": 246,
+   "updated": "2026-10-07T16:14:33.221574+00:00"
   },
   {
    "code": "GREL",

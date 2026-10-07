@@ -1,0 +1,2101 @@
+{
+"code": "FEC",
+"label": "FIBA Europe Cup",
+"adapter": "fiba_events",
+"updated": "2026-10-07T16:14:33.221574+00:00",
+"games": [
+{
+"id": "135752",
+"home": "Sporting CP",
+"away": "Esenler Erokspor",
+"status": "scheduled",
+"date": "2026-12-23T19:30:00+00:00",
+"venue": "Pavilhao Joao Rocha"
+},
+{
+"id": "135841",
+"home": "Manchester Basketball",
+"away": "Valmiera Glass VIA",
+"status": "scheduled",
+"date": "2026-12-23T19:00:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "135783",
+"home": "King Szczecin",
+"away": "BC Parnu",
+"status": "scheduled",
+"date": "2026-12-23T19:00:00+00:00",
+"venue": "Enea Arena"
+},
+{
+"id": "135871",
+"home": "BC Prievidza",
+"away": "Lions de Geneve",
+"status": "scheduled",
+"date": "2026-12-23T18:00:00+00:00",
+"venue": "ŠH Prievidza"
+},
+{
+"id": "135843",
+"home": "BC Bashkimi",
+"away": "Biotekno Korfez Basket",
+"status": "scheduled",
+"date": "2026-12-23T18:00:00+00:00",
+"venue": "Sezai Surroi"
+},
+{
+"id": "135811",
+"home": "MZT Skopje Aerodrom",
+"away": "Dziki Warszawa",
+"status": "scheduled",
+"date": "2026-12-23T18:00:00+00:00",
+"venue": "Sports Centre Jane Sandanski"
+},
+{
+"id": "135781",
+"home": "BC Vienna",
+"away": "Nitra Blue Wings",
+"status": "scheduled",
+"date": "2026-12-23T18:00:00+00:00",
+"venue": "BC Vienna Arena"
+},
+{
+"id": "135691",
+"home": "BC Split",
+"away": "BC Batumi 2010",
+"status": "scheduled",
+"date": "2026-12-23T18:00:00+00:00",
+"venue": "Arena of Split Croatia Insurance"
+},
+{
+"id": "135872",
+"home": "Bakken Bears",
+"away": "Yukatel Denizli Basket",
+"status": "scheduled",
+"date": "2026-12-23T17:30:00+00:00",
+"venue": "Vejlby Risskov Hallen"
+},
+{
+"id": "135842",
+"home": "Bigbank/Kalev",
+"away": "Elan Chalon",
+"status": "scheduled",
+"date": "2026-12-23T17:30:00+00:00",
+"venue": "Unibet Arena"
+},
+{
+"id": "135692",
+"home": "Trepca",
+"away": "VET-CONCEPT Gladiators Trier",
+"status": "scheduled",
+"date": "2026-12-23T17:30:00+00:00",
+"venue": "Minatori"
+},
+{
+"id": "135903",
+"home": "VEF Riga",
+"away": "Fribourg Olympic Basket",
+"status": "scheduled",
+"date": "2026-12-23T17:00:00+00:00",
+"venue": "Xiaomi Arena"
+},
+{
+"id": "135902",
+"home": "CSM CSU Raiffeisen Oradea",
+"away": "Mykonos Betsson BC",
+"status": "scheduled",
+"date": "2026-12-23T17:00:00+00:00",
+"venue": "Oradea Arena"
+},
+{
+"id": "135812",
+"home": "Petrolina AEK",
+"away": "Iraklis BC",
+"status": "scheduled",
+"date": "2026-12-23T17:00:00+00:00",
+"venue": "Kition Athletic Center"
+},
+{
+"id": "135693",
+"home": "BK Opava",
+"away": "Promitheas Patras BC",
+"status": "scheduled",
+"date": "2026-12-23T17:00:00+00:00",
+"venue": "Víceúčelová Hala Opava"
+},
+{
+"id": "135901",
+"home": "Neftchi SC",
+"away": "Lokomotiv Plovdiv",
+"status": "scheduled",
+"date": "2026-12-23T15:00:00+00:00",
+"venue": "Baku Sports Palace"
+},
+{
+"id": "135873",
+"home": "LANDAU Lions",
+"away": "SL Benfica",
+"status": "scheduled",
+"date": "2026-12-23T15:00:00+00:00",
+"venue": "Baku Sports Palace"
+},
+{
+"id": "135751",
+"home": "Gence BC",
+"away": "SCM Universitatea Craiova",
+"status": "scheduled",
+"date": "2026-12-23T14:00:00+00:00",
+"venue": "Ganja Sports Palace"
+},
+{
+"id": "135722",
+"home": "Patrioti Levice",
+"away": "FIATC Girona",
+"status": "scheduled",
+"date": "2026-12-22T18:00:00+00:00",
+"venue": "Haleon Arena"
+},
+{
+"id": "135813",
+"home": "Tartu Ulikool Maks & Moorits",
+"away": "Fitness First Wurzburg Baskets",
+"status": "scheduled",
+"date": "2026-12-22T17:00:00+00:00",
+"venue": "University of Tartu Sports Hall"
+},
+{
+"id": "135782",
+"home": "Keravnos BC",
+"away": "SLUC Nancy Basket",
+"status": "scheduled",
+"date": "2026-12-22T17:00:00+00:00",
+"venue": "Costas Papaellinas Arena"
+},
+{
+"id": "135723",
+"home": "NHSZ-Szolnoki Olajbanyasz",
+"away": "Coretec Oostende",
+"status": "scheduled",
+"date": "2026-12-22T17:00:00+00:00",
+"venue": "Varosi Sportcsarnok"
+},
+{
+"id": "135721",
+"home": "Dinamo Bucharest",
+"away": "Zastal Zielona Gora",
+"status": "scheduled",
+"date": "2026-12-22T17:00:00+00:00",
+"venue": "Arena of Dinamo"
+},
+{
+"id": "135753",
+"home": "Kolossos H Hotels BC",
+"away": "Rilski Sportist",
+"status": "scheduled",
+"date": "2026-12-22T16:00:00+00:00",
+"venue": "Kallithea Indoor Hall"
+},
+{
+"id": "135869",
+"home": "SL Benfica",
+"away": "Lions de Geneve",
+"status": "scheduled",
+"date": "2026-12-16T20:00:00+00:00",
+"venue": "Pavilhao Fidelidade"
+},
+{
+"id": "135748",
+"home": "Sporting CP",
+"away": "Gence BC",
+"status": "scheduled",
+"date": "2026-12-16T19:30:00+00:00",
+"venue": "Pavilhao Joao Rocha"
+},
+{
+"id": "135899",
+"home": "Fribourg Olympic Basket",
+"away": "Lokomotiv Plovdiv",
+"status": "scheduled",
+"date": "2026-12-16T19:00:00+00:00",
+"venue": "Salle Saint Leonard"
+},
+{
+"id": "135720",
+"home": "FIATC Girona",
+"away": "NHSZ-Szolnoki Olajbanyasz",
+"status": "scheduled",
+"date": "2026-12-16T19:00:00+00:00",
+"venue": "Pavello Fontajau"
+},
+{
+"id": "135690",
+"home": "VET-CONCEPT Gladiators Trier",
+"away": "BK Opava",
+"status": "scheduled",
+"date": "2026-12-16T19:00:00+00:00",
+"venue": "SWT-Arena"
+},
+{
+"id": "135809",
+"home": "Dziki Warszawa",
+"away": "Fitness First Wurzburg Baskets",
+"status": "scheduled",
+"date": "2026-12-16T18:00:00+00:00",
+"venue": "Kola Arena"
+},
+{
+"id": "135868",
+"home": "Bakken Bears",
+"away": "BC Prievidza",
+"status": "scheduled",
+"date": "2026-12-16T17:30:00+00:00",
+"venue": "Vejlby Risskov Hallen"
+},
+{
+"id": "135810",
+"home": "Iraklis BC",
+"away": "Tartu Ulikool Maks & Moorits",
+"status": "scheduled",
+"date": "2026-12-16T17:30:00+00:00",
+"venue": "Ivanofio"
+},
+{
+"id": "135688",
+"home": "Trepca",
+"away": "BC Batumi 2010",
+"status": "scheduled",
+"date": "2026-12-16T17:30:00+00:00",
+"venue": "Minatori"
+},
+{
+"id": "135898",
+"home": "CSM CSU Raiffeisen Oradea",
+"away": "Neftchi SC",
+"status": "scheduled",
+"date": "2026-12-16T17:00:00+00:00",
+"venue": "Oradea Arena"
+},
+{
+"id": "135808",
+"home": "Petrolina AEK",
+"away": "MZT Skopje Aerodrom",
+"status": "scheduled",
+"date": "2026-12-16T17:00:00+00:00",
+"venue": "Kition Athletic Center"
+},
+{
+"id": "135779",
+"home": "BC Parnu",
+"away": "Nitra Blue Wings",
+"status": "scheduled",
+"date": "2026-12-16T17:00:00+00:00",
+"venue": "Pärnu Sports Hall"
+},
+{
+"id": "135778",
+"home": "Keravnos BC",
+"away": "BC Vienna",
+"status": "scheduled",
+"date": "2026-12-16T17:00:00+00:00",
+"venue": "Costas Papaellinas Arena"
+},
+{
+"id": "135749",
+"home": "Rilski Sportist",
+"away": "SCM Universitatea Craiova",
+"status": "scheduled",
+"date": "2026-12-16T17:00:00+00:00",
+"venue": "Arena SamElyon"
+},
+{
+"id": "135689",
+"home": "Promitheas Patras BC",
+"away": "BC Split",
+"status": "scheduled",
+"date": "2026-12-16T17:00:00+00:00",
+"venue": "Dimitris Tofalos Arena"
+},
+{
+"id": "135839",
+"home": "Biotekno Korfez Basket",
+"away": "Valmiera Glass VIA",
+"status": "scheduled",
+"date": "2026-12-16T16:30:00+00:00",
+"venue": "Sehit Polis Recep Topaloglu Spor Salonu"
+},
+{
+"id": "135750",
+"home": "Esenler Erokspor",
+"away": "Kolossos H Hotels BC",
+"status": "scheduled",
+"date": "2026-12-16T16:00:00+00:00",
+"venue": "Besiktas Gain Sport Complex"
+},
+{
+"id": "135719",
+"home": "Coretec Oostende",
+"away": "Zastal Zielona Gora",
+"status": "scheduled",
+"date": "2026-12-15T19:30:00+00:00",
+"venue": "COREtec Dôme"
+},
+{
+"id": "135840",
+"home": "Elan Chalon",
+"away": "BC Bashkimi",
+"status": "scheduled",
+"date": "2026-12-15T19:00:00+00:00",
+"venue": "Le Colisée"
+},
+{
+"id": "135780",
+"home": "SLUC Nancy Basket",
+"away": "King Szczecin",
+"status": "scheduled",
+"date": "2026-12-15T19:00:00+00:00",
+"venue": "Palais des Sports \"Jean Weille\""
+},
+{
+"id": "135718",
+"home": "Patrioti Levice",
+"away": "Dinamo Bucharest",
+"status": "scheduled",
+"date": "2026-12-15T18:00:00+00:00",
+"venue": "Haleon Arena"
+},
+{
+"id": "135838",
+"home": "Bigbank/Kalev",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2026-12-15T17:30:00+00:00",
+"venue": "Kalevi Spordihall"
+},
+{
+"id": "135900",
+"home": "Mykonos Betsson BC",
+"away": "VEF Riga",
+"status": "scheduled",
+"date": "2026-12-15T17:00:00+00:00",
+"venue": "P. Chanioti Ano Mera Indoor Hall"
+},
+{
+"id": "135870",
+"home": "Yukatel Denizli Basket",
+"away": "LANDAU Lions",
+"status": "scheduled",
+"date": "2026-12-15T17:00:00+00:00",
+"venue": "Pamukkale Üniversitesi Spor Salonu"
+},
+{
+"id": "135745",
+"home": "Gence BC",
+"away": "Rilski Sportist",
+"status": "scheduled",
+"date": "2026-12-10T15:00:00+00:00",
+"venue": "Ganja Sports Palace"
+},
+{
+"id": "135835",
+"home": "Manchester Basketball",
+"away": "Biotekno Korfez Basket",
+"status": "scheduled",
+"date": "2026-12-09T19:00:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "135776",
+"home": "King Szczecin",
+"away": "Keravnos BC",
+"status": "scheduled",
+"date": "2026-12-09T19:00:00+00:00",
+"venue": "Enea Arena"
+},
+{
+"id": "135836",
+"home": "BC Bashkimi",
+"away": "Bigbank/Kalev",
+"status": "scheduled",
+"date": "2026-12-09T18:00:00+00:00",
+"venue": "Sezai Surroi"
+},
+{
+"id": "135807",
+"home": "Dziki Warszawa",
+"away": "Iraklis BC",
+"status": "scheduled",
+"date": "2026-12-09T18:00:00+00:00",
+"venue": "Kola Arena"
+},
+{
+"id": "135805",
+"home": "MZT Skopje Aerodrom",
+"away": "Fitness First Wurzburg Baskets",
+"status": "scheduled",
+"date": "2026-12-09T18:00:00+00:00",
+"venue": "Sports Centre Jane Sandanski"
+},
+{
+"id": "135687",
+"home": "BC Split",
+"away": "VET-CONCEPT Gladiators Trier",
+"status": "scheduled",
+"date": "2026-12-09T18:00:00+00:00",
+"venue": "Arena of Split Croatia Insurance"
+},
+{
+"id": "135717",
+"home": "Zastal Zielona Gora",
+"away": "FIATC Girona",
+"status": "scheduled",
+"date": "2026-12-09T17:30:00+00:00",
+"venue": "Centrum Rekreacyjno-Sportowe Zielona Gora"
+},
+{
+"id": "135897",
+"home": "Lokomotiv Plovdiv",
+"away": "Mykonos Betsson BC",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00+00:00",
+"venue": "Sila Complex"
+},
+{
+"id": "135896",
+"home": "VEF Riga",
+"away": "CSM CSU Raiffeisen Oradea",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00+00:00",
+"venue": "Xiaomi Arena"
+},
+{
+"id": "135867",
+"home": "Yukatel Denizli Basket",
+"away": "Lions de Geneve",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00+00:00",
+"venue": "Pamukkale Üniversitesi Spor Salonu"
+},
+{
+"id": "135837",
+"home": "Valmiera Glass VIA",
+"away": "Elan Chalon",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00+00:00",
+"venue": "Vidzemes Olimpiskas Centrs"
+},
+{
+"id": "135806",
+"home": "Tartu Ulikool Maks & Moorits",
+"away": "Petrolina AEK",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00+00:00",
+"venue": "University of Tartu Sports Hall"
+},
+{
+"id": "135777",
+"home": "Nitra Blue Wings",
+"away": "SLUC Nancy Basket",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00+00:00",
+"venue": "Nitra City Sports Hall"
+},
+{
+"id": "135747",
+"home": "SCM Universitatea Craiova",
+"away": "Esenler Erokspor",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00+00:00",
+"venue": "Sala Polivalenta Craiova"
+},
+{
+"id": "135716",
+"home": "NHSZ-Szolnoki Olajbanyasz",
+"away": "Patrioti Levice",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00+00:00",
+"venue": "Varosi Sportcsarnok"
+},
+{
+"id": "135686",
+"home": "BK Opava",
+"away": "Trepca",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00+00:00",
+"venue": "Víceúčelová Hala Opava"
+},
+{
+"id": "135895",
+"home": "Neftchi SC",
+"away": "Fribourg Olympic Basket",
+"status": "scheduled",
+"date": "2026-12-09T16:30:00+00:00",
+"venue": "Baku Sports Palace"
+},
+{
+"id": "135746",
+"home": "Kolossos H Hotels BC",
+"away": "Sporting CP",
+"status": "scheduled",
+"date": "2026-12-09T16:00:00+00:00",
+"venue": "Kallithea Indoor Hall"
+},
+{
+"id": "135685",
+"home": "BC Batumi 2010",
+"away": "Promitheas Patras BC",
+"status": "scheduled",
+"date": "2026-12-09T16:00:00+00:00",
+"venue": "Tbilisi Sports Palace"
+},
+{
+"id": "135866",
+"home": "LANDAU Lions",
+"away": "Bakken Bears",
+"status": "scheduled",
+"date": "2026-12-09T13:00:00+00:00",
+"venue": "Baku Sports Palace"
+},
+{
+"id": "135865",
+"home": "BC Prievidza",
+"away": "SL Benfica",
+"status": "scheduled",
+"date": "2026-12-08T18:00:00+00:00",
+"venue": "ŠH Prievidza"
+},
+{
+"id": "135775",
+"home": "BC Vienna",
+"away": "BC Parnu",
+"status": "scheduled",
+"date": "2026-12-08T18:00:00+00:00",
+"venue": "BC Vienna Arena"
+},
+{
+"id": "135715",
+"home": "Dinamo Bucharest",
+"away": "Coretec Oostende",
+"status": "scheduled",
+"date": "2026-12-08T17:00:00+00:00",
+"venue": "Arena of Dinamo"
+},
+{
+"id": "135714",
+"home": "Patrioti Levice",
+"away": "Zastal Zielona Gora",
+"status": "scheduled",
+"date": "2026-11-19T18:00:00+00:00",
+"venue": "Haleon Arena"
+},
+{
+"id": "135832",
+"home": "BC Bashkimi",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2026-11-18T20:00:00+00:00",
+"venue": "Sezai Surroi"
+},
+{
+"id": "135744",
+"home": "Sporting CP",
+"away": "SCM Universitatea Craiova",
+"status": "scheduled",
+"date": "2026-11-18T19:30:00+00:00",
+"venue": "Pavilhao Joao Rocha"
+},
+{
+"id": "135772",
+"home": "King Szczecin",
+"away": "BC Vienna",
+"status": "scheduled",
+"date": "2026-11-18T19:00:00+00:00",
+"venue": "Enea Arena"
+},
+{
+"id": "135683",
+"home": "VET-CONCEPT Gladiators Trier",
+"away": "Promitheas Patras BC",
+"status": "scheduled",
+"date": "2026-11-18T19:00:00+00:00",
+"venue": "SWT-Arena"
+},
+{
+"id": "135864",
+"home": "Bakken Bears",
+"away": "Lions de Geneve",
+"status": "scheduled",
+"date": "2026-11-18T17:30:00+00:00",
+"venue": "Vejlby Risskov Hallen"
+},
+{
+"id": "135684",
+"home": "Trepca",
+"away": "BC Split",
+"status": "scheduled",
+"date": "2026-11-18T17:30:00+00:00",
+"venue": "Minatori"
+},
+{
+"id": "135894",
+"home": "CSM CSU Raiffeisen Oradea",
+"away": "Lokomotiv Plovdiv",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00+00:00",
+"venue": "Oradea Arena"
+},
+{
+"id": "135892",
+"home": "VEF Riga",
+"away": "Neftchi SC",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00+00:00",
+"venue": "Xiaomi Arena"
+},
+{
+"id": "135804",
+"home": "Petrolina AEK",
+"away": "Dziki Warszawa",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00+00:00",
+"venue": "Kition Athletic Center"
+},
+{
+"id": "135802",
+"home": "Tartu Ulikool Maks & Moorits",
+"away": "MZT Skopje Aerodrom",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00+00:00",
+"venue": "University of Tartu Sports Hall"
+},
+{
+"id": "135774",
+"home": "Keravnos BC",
+"away": "Nitra Blue Wings",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00+00:00",
+"venue": "Costas Papaellinas Arena"
+},
+{
+"id": "135712",
+"home": "NHSZ-Szolnoki Olajbanyasz",
+"away": "Dinamo Bucharest",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00+00:00",
+"venue": "Varosi Sportcsarnok"
+},
+{
+"id": "135682",
+"home": "BK Opava",
+"away": "BC Batumi 2010",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00+00:00",
+"venue": "Víceúčelová Hala Opava"
+},
+{
+"id": "135743",
+"home": "Esenler Erokspor",
+"away": "Rilski Sportist",
+"status": "scheduled",
+"date": "2026-11-18T16:00:00+00:00",
+"venue": "Besiktas Gain Sport Complex"
+},
+{
+"id": "135742",
+"home": "Kolossos H Hotels BC",
+"away": "Gence BC",
+"status": "scheduled",
+"date": "2026-11-18T16:00:00+00:00",
+"venue": "Kallithea Indoor Hall"
+},
+{
+"id": "135862",
+"home": "LANDAU Lions",
+"away": "BC Prievidza",
+"status": "scheduled",
+"date": "2026-11-18T15:00:00+00:00",
+"venue": "Baku Sports Palace"
+},
+{
+"id": "135833",
+"home": "Elan Chalon",
+"away": "Biotekno Korfez Basket",
+"status": "scheduled",
+"date": "2026-11-17T19:00:00+00:00",
+"venue": "Le Colisée"
+},
+{
+"id": "135773",
+"home": "SLUC Nancy Basket",
+"away": "BC Parnu",
+"status": "scheduled",
+"date": "2026-11-17T19:00:00+00:00",
+"venue": "Palais des Sports \"Jean Weille\""
+},
+{
+"id": "135713",
+"home": "FIATC Girona",
+"away": "Coretec Oostende",
+"status": "scheduled",
+"date": "2026-11-17T18:45:00+00:00",
+"venue": "Pavello Fontajau"
+},
+{
+"id": "135803",
+"home": "Fitness First Wurzburg Baskets",
+"away": "Iraklis BC",
+"status": "scheduled",
+"date": "2026-11-17T18:00:00+00:00",
+"venue": "tectake ARENA"
+},
+{
+"id": "135834",
+"home": "Bigbank/Kalev",
+"away": "Valmiera Glass VIA",
+"status": "scheduled",
+"date": "2026-11-17T17:30:00+00:00",
+"venue": "Kalevi Spordihall"
+},
+{
+"id": "135893",
+"home": "Mykonos Betsson BC",
+"away": "Fribourg Olympic Basket",
+"status": "scheduled",
+"date": "2026-11-17T17:00:00+00:00",
+"venue": "P. Chanioti Ano Mera Indoor Hall"
+},
+{
+"id": "135863",
+"home": "Yukatel Denizli Basket",
+"away": "SL Benfica",
+"status": "scheduled",
+"date": "2026-11-17T17:00:00+00:00",
+"venue": "Pamukkale Üniversitesi Spor Salonu"
+},
+{
+"id": "135771",
+"home": "BC Parnu",
+"away": "Keravnos BC",
+"status": "scheduled",
+"date": "2026-11-12T17:00:00+00:00",
+"venue": "Pärnu Sports Hall"
+},
+{
+"id": "135739",
+"home": "Gence BC",
+"away": "Esenler Erokspor",
+"status": "scheduled",
+"date": "2026-11-12T15:00:00+00:00",
+"venue": "Ganja Sports Palace"
+},
+{
+"id": "135861",
+"home": "SL Benfica",
+"away": "Bakken Bears",
+"status": "scheduled",
+"date": "2026-11-11T20:00:00+00:00",
+"venue": "Pavilhao Fidelidade"
+},
+{
+"id": "135860",
+"home": "Lions de Geneve",
+"away": "LANDAU Lions",
+"status": "scheduled",
+"date": "2026-11-11T19:30:00+00:00",
+"venue": "Centre sportif de la Queue-d'Arve"
+},
+{
+"id": "135711",
+"home": "Coretec Oostende",
+"away": "Patrioti Levice",
+"status": "scheduled",
+"date": "2026-11-11T19:30:00+00:00",
+"venue": "COREtec Dôme"
+},
+{
+"id": "135891",
+"home": "Fribourg Olympic Basket",
+"away": "CSM CSU Raiffeisen Oradea",
+"status": "scheduled",
+"date": "2026-11-11T19:00:00+00:00",
+"venue": "Salle Saint Leonard"
+},
+{
+"id": "135859",
+"home": "BC Prievidza",
+"away": "Yukatel Denizli Basket",
+"status": "scheduled",
+"date": "2026-11-11T18:00:00+00:00",
+"venue": "ŠH Prievidza"
+},
+{
+"id": "135801",
+"home": "Fitness First Wurzburg Baskets",
+"away": "Petrolina AEK",
+"status": "scheduled",
+"date": "2026-11-11T18:00:00+00:00",
+"venue": "tectake ARENA"
+},
+{
+"id": "135800",
+"home": "Dziki Warszawa",
+"away": "Tartu Ulikool Maks & Moorits",
+"status": "scheduled",
+"date": "2026-11-11T18:00:00+00:00",
+"venue": "Kola Arena"
+},
+{
+"id": "135769",
+"home": "BC Vienna",
+"away": "SLUC Nancy Basket",
+"status": "scheduled",
+"date": "2026-11-11T18:00:00+00:00",
+"venue": "BC Vienna Arena"
+},
+{
+"id": "135680",
+"home": "BC Split",
+"away": "BK Opava",
+"status": "scheduled",
+"date": "2026-11-11T18:00:00+00:00",
+"venue": "Arena of Split Croatia Insurance"
+},
+{
+"id": "135799",
+"home": "Iraklis BC",
+"away": "MZT Skopje Aerodrom",
+"status": "scheduled",
+"date": "2026-11-11T17:30:00+00:00",
+"venue": "Ivanofio"
+},
+{
+"id": "135710",
+"home": "Zastal Zielona Gora",
+"away": "NHSZ-Szolnoki Olajbanyasz",
+"status": "scheduled",
+"date": "2026-11-11T17:30:00+00:00",
+"venue": "Centrum Rekreacyjno-Sportowe Zielona Gora"
+},
+{
+"id": "135890",
+"home": "Lokomotiv Plovdiv",
+"away": "VEF Riga",
+"status": "scheduled",
+"date": "2026-11-11T17:00:00+00:00",
+"venue": "Sila Complex"
+},
+{
+"id": "135830",
+"home": "Valmiera Glass VIA",
+"away": "BC Bashkimi",
+"status": "scheduled",
+"date": "2026-11-11T17:00:00+00:00",
+"venue": "Vidzemes Olimpiskas Centrs"
+},
+{
+"id": "135770",
+"home": "Nitra Blue Wings",
+"away": "King Szczecin",
+"status": "scheduled",
+"date": "2026-11-11T17:00:00+00:00",
+"venue": "Nitra City Sports Hall"
+},
+{
+"id": "135741",
+"home": "Rilski Sportist",
+"away": "Sporting CP",
+"status": "scheduled",
+"date": "2026-11-11T17:00:00+00:00",
+"venue": "Arena SamElyon"
+},
+{
+"id": "135740",
+"home": "SCM Universitatea Craiova",
+"away": "Kolossos H Hotels BC",
+"status": "scheduled",
+"date": "2026-11-11T17:00:00+00:00",
+"venue": "Sala Polivalenta Craiova"
+},
+{
+"id": "135681",
+"home": "Promitheas Patras BC",
+"away": "Trepca",
+"status": "scheduled",
+"date": "2026-11-11T17:00:00+00:00",
+"venue": "Dimitris Tofalos Arena"
+},
+{
+"id": "135831",
+"home": "Biotekno Korfez Basket",
+"away": "Bigbank/Kalev",
+"status": "scheduled",
+"date": "2026-11-11T16:30:00+00:00",
+"venue": "Sehit Polis Recep Topaloglu Spor Salonu"
+},
+{
+"id": "135679",
+"home": "BC Batumi 2010",
+"away": "VET-CONCEPT Gladiators Trier",
+"status": "scheduled",
+"date": "2026-11-11T16:00:00+00:00",
+"venue": "Tbilisi Sports Palace"
+},
+{
+"id": "135889",
+"home": "Neftchi SC",
+"away": "Mykonos Betsson BC",
+"status": "scheduled",
+"date": "2026-11-11T15:00:00+00:00",
+"venue": "Baku Sports Palace"
+},
+{
+"id": "135829",
+"home": "Manchester Basketball",
+"away": "Elan Chalon",
+"status": "scheduled",
+"date": "2026-11-10T19:00:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "135709",
+"home": "Dinamo Bucharest",
+"away": "FIATC Girona",
+"status": "scheduled",
+"date": "2026-11-10T17:00:00+00:00",
+"venue": "Arena of Dinamo"
+},
+{
+"id": "135856",
+"home": "Lions de Geneve",
+"away": "BC Prievidza",
+"status": "scheduled",
+"date": "2026-11-04T19:30:00+00:00",
+"venue": "Centre sportif de la Queue-d'Arve"
+},
+{
+"id": "135708",
+"home": "Coretec Oostende",
+"away": "NHSZ-Szolnoki Olajbanyasz",
+"status": "scheduled",
+"date": "2026-11-04T19:30:00+00:00",
+"venue": "COREtec Dôme"
+},
+{
+"id": "135888",
+"home": "Fribourg Olympic Basket",
+"away": "VEF Riga",
+"status": "scheduled",
+"date": "2026-11-04T19:00:00+00:00",
+"venue": "Salle Saint Leonard"
+},
+{
+"id": "135858",
+"home": "SL Benfica",
+"away": "LANDAU Lions",
+"status": "scheduled",
+"date": "2026-11-04T19:00:00+00:00",
+"venue": "Pavilhao Fidelidade"
+},
+{
+"id": "135827",
+"home": "Elan Chalon",
+"away": "Bigbank/Kalev",
+"status": "scheduled",
+"date": "2026-11-04T19:00:00+00:00",
+"venue": "Le Colisée"
+},
+{
+"id": "135677",
+"home": "VET-CONCEPT Gladiators Trier",
+"away": "Trepca",
+"status": "scheduled",
+"date": "2026-11-04T19:00:00+00:00",
+"venue": "SWT-Arena"
+},
+{
+"id": "135796",
+"home": "Dziki Warszawa",
+"away": "MZT Skopje Aerodrom",
+"status": "scheduled",
+"date": "2026-11-04T18:00:00+00:00",
+"venue": "Kola Arena"
+},
+{
+"id": "135797",
+"home": "Iraklis BC",
+"away": "Petrolina AEK",
+"status": "scheduled",
+"date": "2026-11-04T17:30:00+00:00",
+"venue": "Ivanofio"
+},
+{
+"id": "135706",
+"home": "Zastal Zielona Gora",
+"away": "Dinamo Bucharest",
+"status": "scheduled",
+"date": "2026-11-04T17:30:00+00:00",
+"venue": "Centrum Rekreacyjno-Sportowe Zielona Gora"
+},
+{
+"id": "135886",
+"home": "Lokomotiv Plovdiv",
+"away": "Neftchi SC",
+"status": "scheduled",
+"date": "2026-11-04T17:00:00+00:00",
+"venue": "Sila Complex"
+},
+{
+"id": "135826",
+"home": "Valmiera Glass VIA",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2026-11-04T17:00:00+00:00",
+"venue": "Vidzemes Olimpiskas Centrs"
+},
+{
+"id": "135768",
+"home": "BC Parnu",
+"away": "King Szczecin",
+"status": "scheduled",
+"date": "2026-11-04T17:00:00+00:00",
+"venue": "Pärnu Sports Hall"
+},
+{
+"id": "135766",
+"home": "Nitra Blue Wings",
+"away": "BC Vienna",
+"status": "scheduled",
+"date": "2026-11-04T17:00:00+00:00",
+"venue": "Nitra City Sports Hall"
+},
+{
+"id": "135736",
+"home": "SCM Universitatea Craiova",
+"away": "Gence BC",
+"status": "scheduled",
+"date": "2026-11-04T17:00:00+00:00",
+"venue": "Sala Polivalenta Craiova"
+},
+{
+"id": "135678",
+"home": "Promitheas Patras BC",
+"away": "BK Opava",
+"status": "scheduled",
+"date": "2026-11-04T17:00:00+00:00",
+"venue": "Dimitris Tofalos Arena"
+},
+{
+"id": "135828",
+"home": "Biotekno Korfez Basket",
+"away": "BC Bashkimi",
+"status": "scheduled",
+"date": "2026-11-04T16:30:00+00:00",
+"venue": "Sehit Polis Recep Topaloglu Spor Salonu"
+},
+{
+"id": "135737",
+"home": "Esenler Erokspor",
+"away": "Sporting CP",
+"status": "scheduled",
+"date": "2026-11-04T16:00:00+00:00",
+"venue": "Besiktas Gain Sport Complex"
+},
+{
+"id": "135676",
+"home": "BC Batumi 2010",
+"away": "BC Split",
+"status": "scheduled",
+"date": "2026-11-04T16:00:00+00:00",
+"venue": "Tbilisi Sports Palace"
+},
+{
+"id": "135767",
+"home": "SLUC Nancy Basket",
+"away": "Keravnos BC",
+"status": "scheduled",
+"date": "2026-11-03T19:00:00+00:00",
+"venue": "Palais des Sports \"Jean Weille\""
+},
+{
+"id": "135707",
+"home": "FIATC Girona",
+"away": "Patrioti Levice",
+"status": "scheduled",
+"date": "2026-11-03T19:00:00+00:00",
+"venue": "Pavello Fontajau"
+},
+{
+"id": "135887",
+"home": "Mykonos Betsson BC",
+"away": "CSM CSU Raiffeisen Oradea",
+"status": "scheduled",
+"date": "2026-11-03T17:00:00+00:00",
+"venue": "P. Chanioti Ano Mera Indoor Hall"
+},
+{
+"id": "135857",
+"home": "Yukatel Denizli Basket",
+"away": "Bakken Bears",
+"status": "scheduled",
+"date": "2026-11-03T17:00:00+00:00",
+"venue": "Pamukkale Üniversitesi Spor Salonu"
+},
+{
+"id": "135738",
+"home": "Rilski Sportist",
+"away": "Kolossos H Hotels BC",
+"status": "scheduled",
+"date": "2026-11-03T17:00:00+00:00",
+"venue": "Arena SamElyon"
+},
+{
+"id": "135798",
+"home": "Fitness First Wurzburg Baskets",
+"away": "Tartu Ulikool Maks & Moorits",
+"status": "scheduled",
+"date": "2026-11-02T18:00:00+00:00",
+"venue": "tectake ARENA"
+},
+{
+"id": "135733",
+"home": "Gence BC",
+"away": "Sporting CP",
+"status": "scheduled",
+"date": "2026-10-29T15:00:00+00:00",
+"venue": "Ganja Sports Palace"
+},
+{
+"id": "135854",
+"home": "Lions de Geneve",
+"away": "SL Benfica",
+"status": "scheduled",
+"date": "2026-10-28T19:30:00+00:00",
+"venue": "Centre sportif de la Queue-d'Arve"
+},
+{
+"id": "135823",
+"home": "Manchester Basketball",
+"away": "Bigbank/Kalev",
+"status": "scheduled",
+"date": "2026-10-28T19:00:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "135765",
+"home": "King Szczecin",
+"away": "SLUC Nancy Basket",
+"status": "scheduled",
+"date": "2026-10-28T19:00:00+00:00",
+"venue": "Enea Arena"
+},
+{
+"id": "135825",
+"home": "BC Bashkimi",
+"away": "Elan Chalon",
+"status": "scheduled",
+"date": "2026-10-28T18:00:00+00:00",
+"venue": "Sezai Surroi"
+},
+{
+"id": "135794",
+"home": "Fitness First Wurzburg Baskets",
+"away": "Dziki Warszawa",
+"status": "scheduled",
+"date": "2026-10-28T18:00:00+00:00",
+"venue": "tectake ARENA"
+},
+{
+"id": "135674",
+"home": "BC Split",
+"away": "Promitheas Patras BC",
+"status": "scheduled",
+"date": "2026-10-28T18:00:00+00:00",
+"venue": "Arena of Split Croatia Insurance"
+},
+{
+"id": "135704",
+"home": "Zastal Zielona Gora",
+"away": "Coretec Oostende",
+"status": "scheduled",
+"date": "2026-10-28T17:30:00+00:00",
+"venue": "Centrum Rekreacyjno-Sportowe Zielona Gora"
+},
+{
+"id": "135885",
+"home": "VEF Riga",
+"away": "Mykonos Betsson BC",
+"status": "scheduled",
+"date": "2026-10-28T17:00:00+00:00",
+"venue": "Xiaomi Arena"
+},
+{
+"id": "135884",
+"home": "Lokomotiv Plovdiv",
+"away": "Fribourg Olympic Basket",
+"status": "scheduled",
+"date": "2026-10-28T17:00:00+00:00",
+"venue": "Sila Complex"
+},
+{
+"id": "135824",
+"home": "Valmiera Glass VIA",
+"away": "Biotekno Korfez Basket",
+"status": "scheduled",
+"date": "2026-10-28T17:00:00+00:00",
+"venue": "Vidzemes Olimpiskas Centrs"
+},
+{
+"id": "135795",
+"home": "Tartu Ulikool Maks & Moorits",
+"away": "Iraklis BC",
+"status": "scheduled",
+"date": "2026-10-28T17:00:00+00:00",
+"venue": "University of Tartu Sports Hall"
+},
+{
+"id": "135764",
+"home": "Nitra Blue Wings",
+"away": "BC Parnu",
+"status": "scheduled",
+"date": "2026-10-28T17:00:00+00:00",
+"venue": "Nitra City Sports Hall"
+},
+{
+"id": "135734",
+"home": "SCM Universitatea Craiova",
+"away": "Rilski Sportist",
+"status": "scheduled",
+"date": "2026-10-28T17:00:00+00:00",
+"venue": "Sala Polivalenta Craiova"
+},
+{
+"id": "135705",
+"home": "NHSZ-Szolnoki Olajbanyasz",
+"away": "FIATC Girona",
+"status": "scheduled",
+"date": "2026-10-28T17:00:00+00:00",
+"venue": "Varosi Sportcsarnok"
+},
+{
+"id": "135675",
+"home": "BK Opava",
+"away": "VET-CONCEPT Gladiators Trier",
+"status": "scheduled",
+"date": "2026-10-28T17:00:00+00:00",
+"venue": "Víceúčelová Hala Opava"
+},
+{
+"id": "135855",
+"home": "LANDAU Lions",
+"away": "Yukatel Denizli Basket",
+"status": "scheduled",
+"date": "2026-10-28T16:30:00+00:00",
+"venue": "Baku Sports Palace"
+},
+{
+"id": "135735",
+"home": "Kolossos H Hotels BC",
+"away": "Esenler Erokspor",
+"status": "scheduled",
+"date": "2026-10-28T16:00:00+00:00",
+"venue": "Kallithea Indoor Hall"
+},
+{
+"id": "135673",
+"home": "BC Batumi 2010",
+"away": "Trepca",
+"status": "scheduled",
+"date": "2026-10-28T16:00:00+00:00",
+"venue": "Tbilisi Sports Palace"
+},
+{
+"id": "135883",
+"home": "Neftchi SC",
+"away": "CSM CSU Raiffeisen Oradea",
+"status": "scheduled",
+"date": "2026-10-28T13:00:00+00:00",
+"venue": "Baku Sports Palace"
+},
+{
+"id": "135853",
+"home": "BC Prievidza",
+"away": "Bakken Bears",
+"status": "scheduled",
+"date": "2026-10-27T18:00:00+00:00",
+"venue": "ŠH Prievidza"
+},
+{
+"id": "135793",
+"home": "MZT Skopje Aerodrom",
+"away": "Petrolina AEK",
+"status": "scheduled",
+"date": "2026-10-27T18:00:00+00:00",
+"venue": "Sports Centre Jane Sandanski"
+},
+{
+"id": "135763",
+"home": "BC Vienna",
+"away": "Keravnos BC",
+"status": "scheduled",
+"date": "2026-10-27T18:00:00+00:00",
+"venue": "BC Vienna Arena"
+},
+{
+"id": "135703",
+"home": "Dinamo Bucharest",
+"away": "Patrioti Levice",
+"status": "scheduled",
+"date": "2026-10-27T17:00:00+00:00",
+"venue": "Arena of Dinamo"
+},
+{
+"id": "135701",
+"home": "Patrioti Levice",
+"away": "NHSZ-Szolnoki Olajbanyasz",
+"status": "scheduled",
+"date": "2026-10-22T17:00:00+00:00",
+"venue": "Haleon Arena"
+},
+{
+"id": "135760",
+"home": "BC Parnu",
+"away": "BC Vienna",
+"status": "scheduled",
+"date": "2026-10-22T16:00:00+00:00",
+"venue": "Pärnu Sports Hall"
+},
+{
+"id": "135850",
+"home": "SL Benfica",
+"away": "BC Prievidza",
+"status": "scheduled",
+"date": "2026-10-21T19:00:00+00:00",
+"venue": "Pavilhao Fidelidade"
+},
+{
+"id": "135852",
+"home": "Lions de Geneve",
+"away": "Yukatel Denizli Basket",
+"status": "scheduled",
+"date": "2026-10-21T18:30:00+00:00",
+"venue": "Centre sportif de la Queue-d'Arve"
+},
+{
+"id": "135880",
+"home": "Fribourg Olympic Basket",
+"away": "Neftchi SC",
+"status": "scheduled",
+"date": "2026-10-21T18:00:00+00:00",
+"venue": "Salle Saint Leonard"
+},
+{
+"id": "135672",
+"home": "VET-CONCEPT Gladiators Trier",
+"away": "BC Split",
+"status": "scheduled",
+"date": "2026-10-21T18:00:00+00:00",
+"venue": "SWT-Arena"
+},
+{
+"id": "135851",
+"home": "Bakken Bears",
+"away": "LANDAU Lions",
+"status": "scheduled",
+"date": "2026-10-21T16:30:00+00:00",
+"venue": "Vejlby Risskov Hallen"
+},
+{
+"id": "135821",
+"home": "Bigbank/Kalev",
+"away": "BC Bashkimi",
+"status": "scheduled",
+"date": "2026-10-21T16:30:00+00:00",
+"venue": "Kalevi Spordihall"
+},
+{
+"id": "135820",
+"home": "Biotekno Korfez Basket",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2026-10-21T16:30:00+00:00",
+"venue": "Sehit Polis Recep Topaloglu Spor Salonu"
+},
+{
+"id": "135792",
+"home": "Iraklis BC",
+"away": "Dziki Warszawa",
+"status": "scheduled",
+"date": "2026-10-21T16:30:00+00:00",
+"venue": "Ivanofio"
+},
+{
+"id": "135671",
+"home": "Trepca",
+"away": "BK Opava",
+"status": "scheduled",
+"date": "2026-10-21T16:30:00+00:00",
+"venue": "Minatori"
+},
+{
+"id": "135881",
+"home": "CSM CSU Raiffeisen Oradea",
+"away": "VEF Riga",
+"status": "scheduled",
+"date": "2026-10-21T16:00:00+00:00",
+"venue": "Oradea Arena"
+},
+{
+"id": "135791",
+"home": "Petrolina AEK",
+"away": "Tartu Ulikool Maks & Moorits",
+"status": "scheduled",
+"date": "2026-10-21T16:00:00+00:00",
+"venue": "Kition Athletic Center"
+},
+{
+"id": "135761",
+"home": "Keravnos BC",
+"away": "King Szczecin",
+"status": "scheduled",
+"date": "2026-10-21T16:00:00+00:00",
+"venue": "Costas Papaellinas Arena"
+},
+{
+"id": "135732",
+"home": "Esenler Erokspor",
+"away": "SCM Universitatea Craiova",
+"status": "scheduled",
+"date": "2026-10-21T16:00:00+00:00",
+"venue": "Besiktas Gain Sport Complex"
+},
+{
+"id": "135731",
+"home": "Sporting CP",
+"away": "Kolossos H Hotels BC",
+"status": "scheduled",
+"date": "2026-10-21T16:00:00+00:00",
+"venue": "Pavilhao Joao Rocha"
+},
+{
+"id": "135730",
+"home": "Rilski Sportist",
+"away": "Gence BC",
+"status": "scheduled",
+"date": "2026-10-21T16:00:00+00:00",
+"venue": "Arena Samokov"
+},
+{
+"id": "135670",
+"home": "Promitheas Patras BC",
+"away": "BC Batumi 2010",
+"status": "scheduled",
+"date": "2026-10-21T16:00:00+00:00",
+"venue": "Dimitris Tofalos Arena"
+},
+{
+"id": "135700",
+"home": "Coretec Oostende",
+"away": "Dinamo Bucharest",
+"status": "scheduled",
+"date": "2026-10-20T18:30:00+00:00",
+"venue": "COREtec Dôme"
+},
+{
+"id": "135822",
+"home": "Elan Chalon",
+"away": "Valmiera Glass VIA",
+"status": "scheduled",
+"date": "2026-10-20T18:00:00+00:00",
+"venue": "Le Colisée"
+},
+{
+"id": "135762",
+"home": "SLUC Nancy Basket",
+"away": "Nitra Blue Wings",
+"status": "scheduled",
+"date": "2026-10-20T18:00:00+00:00",
+"venue": "Palais des Sports \"Jean Weille\""
+},
+{
+"id": "135702",
+"home": "FIATC Girona",
+"away": "Zastal Zielona Gora",
+"status": "scheduled",
+"date": "2026-10-20T18:00:00+00:00",
+"venue": "Pavello Fontajau"
+},
+{
+"id": "135790",
+"home": "Fitness First Wurzburg Baskets",
+"away": "MZT Skopje Aerodrom",
+"status": "scheduled",
+"date": "2026-10-20T17:00:00+00:00",
+"venue": "tectake ARENA"
+},
+{
+"id": "135882",
+"home": "Mykonos Betsson BC",
+"away": "Lokomotiv Plovdiv",
+"status": "scheduled",
+"date": "2026-10-20T16:00:00+00:00",
+"venue": "P. Chanioti Ano Mera Indoor Hall"
+},
+{
+"id": "135848",
+"home": "SL Benfica",
+"away": "Yukatel Denizli Basket",
+"status": "scheduled",
+"date": "2026-10-14T19:00:00+00:00",
+"venue": "Pavilhao Fidelidade"
+},
+{
+"id": "135849",
+"home": "Lions de Geneve",
+"away": "Bakken Bears",
+"status": "scheduled",
+"date": "2026-10-14T18:30:00+00:00",
+"venue": "Centre sportif de la Queue-d'Arve"
+},
+{
+"id": "135789",
+"home": "Dziki Warszawa",
+"away": "Petrolina AEK",
+"status": "scheduled",
+"date": "2026-10-14T17:00:00+00:00",
+"venue": "Kola Arena"
+},
+{
+"id": "135787",
+"home": "MZT Skopje Aerodrom",
+"away": "Tartu Ulikool Maks & Moorits",
+"status": "scheduled",
+"date": "2026-10-14T17:00:00+00:00",
+"venue": "Sports Centre Jane Sandanski"
+},
+{
+"id": "135669",
+"home": "BC Split",
+"away": "Trepca",
+"status": "scheduled",
+"date": "2026-10-14T17:00:00+00:00",
+"venue": "Arena of Split Croatia Insurance"
+},
+{
+"id": "135818",
+"home": "Biotekno Korfez Basket",
+"away": "Elan Chalon",
+"status": "scheduled",
+"date": "2026-10-14T16:30:00+00:00",
+"venue": "Sehit Polis Recep Topaloglu Spor Salonu"
+},
+{
+"id": "135788",
+"home": "Iraklis BC",
+"away": "Fitness First Wurzburg Baskets",
+"status": "scheduled",
+"date": "2026-10-14T16:30:00+00:00",
+"venue": "Ivanofio"
+},
+{
+"id": "135699",
+"home": "Zastal Zielona Gora",
+"away": "Patrioti Levice",
+"status": "scheduled",
+"date": "2026-10-14T16:30:00+00:00",
+"venue": "Centrum Rekreacyjno-Sportowe Zielona Gora"
+},
+{
+"id": "135879",
+"home": "Lokomotiv Plovdiv",
+"away": "CSM CSU Raiffeisen Oradea",
+"status": "scheduled",
+"date": "2026-10-14T16:00:00+00:00",
+"venue": "Sila Complex"
+},
+{
+"id": "135819",
+"home": "Valmiera Glass VIA",
+"away": "Bigbank/Kalev",
+"status": "scheduled",
+"date": "2026-10-14T16:00:00+00:00",
+"venue": "Vidzemes Olimpiskas Centrs"
+},
+{
+"id": "135759",
+"home": "Nitra Blue Wings",
+"away": "Keravnos BC",
+"status": "scheduled",
+"date": "2026-10-14T16:00:00+00:00",
+"venue": "Nitra City Sports Hall"
+},
+{
+"id": "135729",
+"home": "SCM Universitatea Craiova",
+"away": "Sporting CP",
+"status": "scheduled",
+"date": "2026-10-14T16:00:00+00:00",
+"venue": "Sala Polivalenta Craiova"
+},
+{
+"id": "135728",
+"home": "Rilski Sportist",
+"away": "Esenler Erokspor",
+"status": "scheduled",
+"date": "2026-10-14T16:00:00+00:00",
+"venue": "Arena Samokov"
+},
+{
+"id": "135668",
+"home": "Promitheas Patras BC",
+"away": "VET-CONCEPT Gladiators Trier",
+"status": "scheduled",
+"date": "2026-10-14T16:00:00+00:00",
+"venue": "Dimitris Tofalos Arena"
+},
+{
+"id": "135667",
+"home": "BC Batumi 2010",
+"away": "BK Opava",
+"status": "scheduled",
+"date": "2026-10-14T16:00:00+00:00",
+"venue": "Tbilisi Sports Palace"
+},
+{
+"id": "135877",
+"home": "Neftchi SC",
+"away": "VEF Riga",
+"status": "scheduled",
+"date": "2026-10-14T15:00:00+00:00",
+"venue": "Baku Sports Palace"
+},
+{
+"id": "135698",
+"home": "Coretec Oostende",
+"away": "FIATC Girona",
+"status": "scheduled",
+"date": "2026-10-13T18:30:00+00:00",
+"venue": "COREtec Dôme"
+},
+{
+"id": "135878",
+"home": "Fribourg Olympic Basket",
+"away": "Mykonos Betsson BC",
+"status": "scheduled",
+"date": "2026-10-13T18:00:00+00:00",
+"venue": "Salle Saint Leonard"
+},
+{
+"id": "135817",
+"home": "Manchester Basketball",
+"away": "BC Bashkimi",
+"status": "scheduled",
+"date": "2026-10-13T18:00:00+00:00",
+"venue": "National Basketball Performance Centre"
+},
+{
+"id": "135847",
+"home": "BC Prievidza",
+"away": "LANDAU Lions",
+"status": "scheduled",
+"date": "2026-10-13T17:00:00+00:00",
+"venue": "ŠH Prievidza"
+},
+{
+"id": "135757",
+"home": "BC Vienna",
+"away": "King Szczecin",
+"status": "scheduled",
+"date": "2026-10-13T17:00:00+00:00",
+"venue": "BC Vienna Arena"
+},
+{
+"id": "135758",
+"home": "BC Parnu",
+"away": "SLUC Nancy Basket",
+"status": "scheduled",
+"date": "2026-10-13T16:00:00+00:00",
+"venue": "Pärnu Sports Hall"
+},
+{
+"id": "135697",
+"home": "Dinamo Bucharest",
+"away": "NHSZ-Szolnoki Olajbanyasz",
+"status": "scheduled",
+"date": "2026-10-13T16:00:00+00:00",
+"venue": "Arena of Dinamo"
+},
+{
+"id": "135727",
+"home": "Gence BC",
+"away": "Kolossos H Hotels BC",
+"status": "scheduled",
+"date": "2026-10-13T15:00:00+00:00",
+"venue": "Ganja Sports Palace"
+},
+{
+"id": "135726",
+"home": "Sporting CP",
+"away": "Rilski Sportist",
+"status": "scheduled",
+"date": "2026-10-07T18:30:00+00:00",
+"venue": "Pavilhao Joao Rocha"
+},
+{
+"id": "135814",
+"home": "Elan Chalon",
+"away": "Manchester Basketball",
+"status": "scheduled",
+"date": "2026-10-07T18:00:00+00:00",
+"venue": "Le Colisée"
+},
+{
+"id": "135664",
+"home": "VET-CONCEPT Gladiators Trier",
+"away": "BC Batumi 2010",
+"status": "scheduled",
+"date": "2026-10-07T18:00:00+00:00",
+"venue": "SWT-Arena"
+},
+{
+"id": "135815",
+"home": "BC Bashkimi",
+"away": "Valmiera Glass VIA",
+"status": "scheduled",
+"date": "2026-10-07T17:00:00+00:00",
+"venue": "Sezai Surroi"
+},
+{
+"id": "135755",
+"home": "King Szczecin",
+"away": "Nitra Blue Wings",
+"status": "scheduled",
+"date": "2026-10-07T17:00:00+00:00",
+"venue": "Enea Arena"
+},
+{
+"id": "135846",
+"home": "Bakken Bears",
+"away": "SL Benfica",
+"homeScore": 0,
+"awayScore": 0,
+"status": "scheduled",
+"date": "2026-10-07T16:30:00+00:00",
+"hash": "2885349bb2fed275cd595f0ebc624fb741366864",
+"venue": "Vejlby Risskov Hallen",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135846.json",
+"updated": "2026-10-07T16:06:21.002403+00:00"
+},
+{
+"id": "135816",
+"home": "Bigbank/Kalev",
+"away": "Biotekno Korfez Basket",
+"homeScore": 0,
+"awayScore": 0,
+"status": "scheduled",
+"date": "2026-10-07T16:30:00+00:00",
+"hash": "b95a256f94ff6f4a562d700f479ae38205f17216",
+"venue": "Kalevi Spordihall",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135816.json",
+"updated": "2026-10-07T16:07:52.287101+00:00"
+},
+{
+"id": "135666",
+"home": "Trepca",
+"away": "Promitheas Patras BC",
+"homeScore": 0,
+"awayScore": 0,
+"status": "scheduled",
+"date": "2026-10-07T16:30:00+00:00",
+"hash": "f709b8e61ad84e68e0adf27ee1d3bed24ab8afa7",
+"venue": "Minatori",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135666.json",
+"updated": "2026-10-07T16:13:53.859204+00:00"
+},
+{
+"id": "135876",
+"home": "CSM CSU Raiffeisen Oradea",
+"away": "Fribourg Olympic Basket",
+"homeScore": 4,
+"awayScore": 2,
+"status": "live",
+"date": "2026-10-07T16:00:00+00:00",
+"hash": "65c11316d1c361cefa98db0f23574f2764e9e2f5",
+"venue": "Oradea Arena",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135876.json",
+"updated": "2026-10-07T16:04:38.715762+00:00"
+},
+{
+"id": "135875",
+"home": "VEF Riga",
+"away": "Lokomotiv Plovdiv",
+"homeScore": 4,
+"awayScore": 4,
+"status": "live",
+"date": "2026-10-07T16:00:00+00:00",
+"hash": "f1a5ed229ce0b6f5f2ac87bd8ae7121cb1178851",
+"venue": "Xiaomi Arena",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135875.json",
+"updated": "2026-10-07T16:05:00.140059+00:00"
+},
+{
+"id": "135786",
+"home": "Petrolina AEK",
+"away": "Fitness First Wurzburg Baskets",
+"homeScore": 6,
+"awayScore": 3,
+"status": "live",
+"date": "2026-10-07T16:00:00+00:00",
+"hash": "8a0415903a3781b9f2ec5116c9deea3e0ad58dab",
+"venue": "Kition Athletic Center",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135786.json",
+"updated": "2026-10-07T16:08:17.663584+00:00"
+},
+{
+"id": "135756",
+"home": "Keravnos BC",
+"away": "BC Parnu",
+"homeScore": 13,
+"awayScore": 2,
+"status": "live",
+"date": "2026-10-07T16:00:00+00:00",
+"hash": "1bbf42cacd9059ec2b563ae4dde341d6fe58c534",
+"venue": "Costas Papaellinas Arena",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135756.json",
+"updated": "2026-10-07T16:09:46.936402+00:00"
+},
+{
+"id": "135724",
+"home": "Esenler Erokspor",
+"away": "Gence BC",
+"homeScore": 14,
+"awayScore": 11,
+"status": "live",
+"date": "2026-10-07T16:00:00+00:00",
+"hash": "db2a7efe4adc224ac9ba9a502a885eb63beab765",
+"venue": "Besiktas Gain Sport Complex",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135724.json",
+"updated": "2026-10-07T16:11:38.172757+00:00"
+},
+{
+"id": "135665",
+"home": "BK Opava",
+"away": "BC Split",
+"homeScore": 6,
+"awayScore": 7,
+"status": "live",
+"date": "2026-10-07T16:00:00+00:00",
+"hash": "b87a8f69042f3050f4aa0732a7e901deb11d0718",
+"venue": "Víceúčelová Hala Opava",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135665.json",
+"updated": "2026-10-07T16:14:15.394692+00:00"
+},
+{
+"id": "135845",
+"home": "LANDAU Lions",
+"away": "Lions de Geneve",
+"homeScore": 36,
+"awayScore": 52,
+"status": "live",
+"date": "2026-10-07T15:00:00+00:00",
+"hash": "c9ee34f1b90fd1d63a77e841bcb4910296c4d501",
+"venue": "Baku Sports Palace",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135845.json",
+"updated": "2026-10-07T16:06:47.618739+00:00"
+},
+{
+"id": "135725",
+"home": "Kolossos H Hotels BC",
+"away": "SCM Universitatea Craiova",
+"homeScore": 37,
+"awayScore": 37,
+"status": "live",
+"date": "2026-10-07T15:00:00+00:00",
+"hash": "adfea88397527af024d9ed84b8b68bba6290791d",
+"venue": "Kallithea Indoor Hall",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135725.json",
+"updated": "2026-10-07T16:11:19.894917+00:00"
+},
+{
+"id": "135754",
+"home": "SLUC Nancy Basket",
+"away": "BC Vienna",
+"homeScore": 66,
+"awayScore": 65,
+"status": "final",
+"date": "2026-10-06T18:00:00+00:00",
+"hash": "c097af584e4c970eedc53bc1b370170dd4c5f696",
+"venue": "Palais des Sports \"Jean Weille\"",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135754.json",
+"updated": "2026-10-07T16:10:21.722862+00:00"
+},
+{
+"id": "135694",
+"home": "FIATC Girona",
+"away": "Dinamo Bucharest",
+"homeScore": 87,
+"awayScore": 75,
+"status": "final",
+"date": "2026-10-06T17:45:00+00:00",
+"hash": "76530303ae85d87abb862e5c8a0d0ce8c715013b",
+"venue": "Pavello Fontajau",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135694.json",
+"updated": "2026-10-07T16:13:06.828617+00:00"
+},
+{
+"id": "135844",
+"home": "Yukatel Denizli Basket",
+"away": "BC Prievidza",
+"homeScore": 83,
+"awayScore": 69,
+"status": "final",
+"date": "2026-10-06T17:00:00+00:00",
+"hash": "c9428b926ebe39c1b6ac7276174369a0d95c4a86",
+"venue": "Pamukkale Üniversitesi Spor Salonu",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135844.json",
+"updated": "2026-10-07T16:07:07.383014+00:00"
+},
+{
+"id": "135784",
+"home": "MZT Skopje Aerodrom",
+"away": "Iraklis BC",
+"homeScore": 59,
+"awayScore": 64,
+"status": "final",
+"date": "2026-10-06T17:00:00+00:00",
+"hash": "84230d10575221efed649cb4c8000ffd0a3b792f",
+"venue": "Sports Centre Jane Sandanski",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135784.json",
+"updated": "2026-10-07T16:09:12.020801+00:00"
+},
+{
+"id": "135696",
+"home": "Patrioti Levice",
+"away": "Coretec Oostende",
+"homeScore": 69,
+"awayScore": 76,
+"status": "final",
+"date": "2026-10-06T17:00:00+00:00",
+"hash": "0ced50fb9d5b17e617c5975e8fe84de6e5fe7a40",
+"venue": "Haleon Arena",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135696.json",
+"updated": "2026-10-07T16:11:57.652065+00:00"
+},
+{
+"id": "135874",
+"home": "Mykonos Betsson BC",
+"away": "Neftchi SC",
+"homeScore": 78,
+"awayScore": 58,
+"status": "final",
+"date": "2026-10-06T16:00:00+00:00",
+"hash": "515f4a3e1a8f47fac5624a118a17607e106a57a2",
+"venue": "P. Chanioti Ano Mera Indoor Hall",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135874.json",
+"updated": "2026-10-07T16:05:30.096671+00:00"
+},
+{
+"id": "135785",
+"home": "Tartu Ulikool Maks & Moorits",
+"away": "Dziki Warszawa",
+"homeScore": 76,
+"awayScore": 103,
+"status": "final",
+"date": "2026-10-06T16:00:00+00:00",
+"hash": "2e5f5277414f411791bbbeb25f07cfc5df904921",
+"venue": "University of Tartu Sports Hall",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135785.json",
+"updated": "2026-10-07T16:08:35.889969+00:00"
+},
+{
+"id": "135695",
+"home": "NHSZ-Szolnoki Olajbanyasz",
+"away": "Zastal Zielona Gora",
+"homeScore": 80,
+"awayScore": 90,
+"status": "final",
+"date": "2026-10-06T16:00:00+00:00",
+"hash": "c9f9219ffa440c073608789146cb9db872775f09",
+"venue": "Varosi Sportcsarnok",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135695.json",
+"updated": "2026-10-07T16:12:34.040728+00:00"
+},
+{
+"id": "135473",
+"home": "BC Parnu",
+"away": "Neftchi SC",
+"homeScore": 73,
+"awayScore": 61,
+"status": "final",
+"date": "2026-09-30",
+"hash": "835db5058a073bb9d39f1f60c1898f364b62979c",
+"venue": "Pärnu Sports Hall",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135473.json",
+"updated": "2026-10-07T15:57:56.827745+00:00"
+},
+{
+"id": "135471",
+"home": "Dinamo Bucharest",
+"away": "KB Peja",
+"homeScore": 105,
+"awayScore": 83,
+"status": "final",
+"date": "2026-09-30",
+"hash": "2f8de0314744655a433c622a37212a467ec96e54",
+"venue": "Arena of Dinamo",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135471.json",
+"updated": "2026-10-07T15:58:59.363533+00:00"
+},
+{
+"id": "135469",
+"home": "BC Prievidza",
+"away": "KK Samobor",
+"homeScore": 98,
+"awayScore": 65,
+"status": "final",
+"date": "2026-09-30",
+"hash": "c50356095eaa675b7f77ec7eaf16c546651713d5",
+"venue": "ŠH Prievidza",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135469.json",
+"updated": "2026-10-07T15:59:50.198729+00:00"
+},
+{
+"id": "135472",
+"home": "Neftchi SC",
+"away": "BC Parnu",
+"homeScore": 80,
+"awayScore": 67,
+"status": "final",
+"date": "2026-09-23",
+"hash": "0e15bed219ac79c8c664fa1e97365ad7e7d006cc",
+"venue": "Baku Sports Palace",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135472.json",
+"updated": "2026-10-07T15:58:30.734767+00:00"
+},
+{
+"id": "135470",
+"home": "KB Peja",
+"away": "Dinamo Bucharest",
+"homeScore": 58,
+"awayScore": 96,
+"status": "final",
+"date": "2026-09-23",
+"hash": "9e0579e5db308872be40c2f76a8d18f6313e3cbb",
+"venue": "Palestra e Sporteve \"Karagac\"",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135470.json",
+"updated": "2026-10-07T15:59:34.739631+00:00"
+},
+{
+"id": "135468",
+"home": "KK Samobor",
+"away": "BC Prievidza",
+"homeScore": 83,
+"awayScore": 103,
+"status": "final",
+"date": "2026-09-23",
+"hash": "1ed4f369f9b3a23f84f2591428cf8b24b7a84af6",
+"venue": "Drazen Petrovic Basketball Center",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/135468.json",
+"updated": "2026-10-07T16:00:31.948277+00:00"
+}
+]
+}

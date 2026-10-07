@@ -1,0 +1,831 @@
+{
+"code": "BCL",
+"label": "Basketball Champions League",
+"adapter": "fiba_events",
+"updated": "2026-10-07T15:57:38.069024+00:00",
+"games": [
+{
+"id": "136282",
+"home": "BK KVIS Pardubice",
+"away": "Pallacanestro Reggiana",
+"status": "scheduled",
+"date": "2026-12-23T19:30:00+00:00",
+"venue": "Enteria Arena"
+},
+{
+"id": "136281",
+"home": "Unicaja",
+"away": "BC Juventus Utena",
+"status": "scheduled",
+"date": "2026-12-23T19:30:00+00:00",
+"venue": "Palacio de Deportes Jose Maria Martin Carpena"
+},
+{
+"id": "136294",
+"home": "RASTA Vechta",
+"away": "Spartak Office Shoes",
+"status": "scheduled",
+"date": "2026-12-23T19:00:00+00:00",
+"venue": "Rasta Dome Vechta"
+},
+{
+"id": "136293",
+"home": "Cholet Basket",
+"away": "Hapoel Maoz Daniel Holon",
+"status": "scheduled",
+"date": "2026-12-23T19:00:00+00:00",
+"venue": "La Meilleraie"
+},
+{
+"id": "136318",
+"home": "Bnei Penlink Herzliya",
+"away": "Asisa Joventut",
+"status": "scheduled",
+"date": "2026-12-23T17:30:00+00:00",
+"venue": "Arena SamElyon"
+},
+{
+"id": "136317",
+"home": "FC Porto",
+"away": "Telekom Baskets Bonn",
+"status": "scheduled",
+"date": "2026-12-23T17:30:00+00:00",
+"venue": "Centro de Desportos e Congressos de Matosinhos"
+},
+{
+"id": "136246",
+"home": "Legia Warszawa",
+"away": "SIG Strasbourg",
+"status": "scheduled",
+"date": "2026-12-23T17:00:00+00:00",
+"venue": "Torwar Arena"
+},
+{
+"id": "136245",
+"home": "Galatasaray MCT Technic",
+"away": "Cibona",
+"status": "scheduled",
+"date": "2026-12-23T17:00:00+00:00",
+"venue": "Sinan Erdem Dome"
+},
+{
+"id": "136306",
+"home": "Surne Bilbao",
+"away": "Igokea m:tel",
+"status": "scheduled",
+"date": "2026-12-22T19:00:00+00:00",
+"venue": "Bilbao Arena"
+},
+{
+"id": "136305",
+"home": "ALBA BERLIN",
+"away": "SK Slavia Praha ERA NBK",
+"status": "scheduled",
+"date": "2026-12-22T19:00:00+00:00",
+"venue": "Berlin Arena"
+},
+{
+"id": "136258",
+"home": "Salon Vilpas",
+"away": "Falco-Vulcano Szombathely",
+"status": "scheduled",
+"date": "2026-12-22T18:30:00+00:00",
+"venue": "Kupittaa Hall"
+},
+{
+"id": "136257",
+"home": "Windrose Giants Antwerp",
+"away": "AEK BC",
+"status": "scheduled",
+"date": "2026-12-22T18:30:00+00:00",
+"venue": "Lotto Arena"
+},
+{
+"id": "136270",
+"home": "Itelyum Varese",
+"away": "UCAM Murcia",
+"status": "scheduled",
+"date": "2026-12-22T17:30:00+00:00",
+"venue": "Itelyum Arena"
+},
+{
+"id": "136269",
+"home": "BMA365 Bamberg Baskets",
+"away": "Peristeri Betsson",
+"status": "scheduled",
+"date": "2026-12-22T17:30:00+00:00",
+"venue": "Brose Arena"
+},
+{
+"id": "136234",
+"home": "Sabah BC",
+"away": "Rytas Vilnius",
+"status": "scheduled",
+"date": "2026-12-22T17:00:00+00:00",
+"venue": "National Gymnastics Arena"
+},
+{
+"id": "136233",
+"home": "Nanterre 92",
+"away": "Trabzonspor",
+"status": "scheduled",
+"date": "2026-12-22T17:00:00+00:00",
+"venue": "Palais des Sports Maurice Thorez"
+},
+{
+"id": "136316",
+"home": "FC Porto",
+"away": "Bnei Penlink Herzliya",
+"status": "scheduled",
+"date": "2026-12-16T19:30:00+00:00",
+"venue": "Centro de Desportos e Congressos de Matosinhos"
+},
+{
+"id": "136315",
+"home": "Telekom Baskets Bonn",
+"away": "Asisa Joventut",
+"status": "scheduled",
+"date": "2026-12-16T19:00:00+00:00",
+"venue": "Telekom Dome"
+},
+{
+"id": "136280",
+"home": "BK KVIS Pardubice",
+"away": "BC Juventus Utena",
+"status": "scheduled",
+"date": "2026-12-16T17:00:00+00:00",
+"venue": "Enteria Arena"
+},
+{
+"id": "136256",
+"home": "Falco-Vulcano Szombathely",
+"away": "Windrose Giants Antwerp",
+"status": "scheduled",
+"date": "2026-12-16T17:00:00+00:00",
+"venue": "Schaeffler Arena Savaria"
+},
+{
+"id": "136279",
+"home": "Pallacanestro Reggiana",
+"away": "Unicaja",
+"status": "scheduled",
+"date": "2026-12-15T19:00:00+00:00",
+"venue": "Palasport Giulio Bigi"
+},
+{
+"id": "136244",
+"home": "SIG Strasbourg",
+"away": "Galatasaray MCT Technic",
+"status": "scheduled",
+"date": "2026-12-15T19:00:00+00:00",
+"venue": "Rhenus Sport"
+},
+{
+"id": "136243",
+"home": "Legia Warszawa",
+"away": "Cibona",
+"status": "scheduled",
+"date": "2026-12-15T19:00:00+00:00",
+"venue": "Torwar Arena"
+},
+{
+"id": "136255",
+"home": "Salon Vilpas",
+"away": "AEK BC",
+"status": "scheduled",
+"date": "2026-12-15T17:30:00+00:00",
+"venue": "Kupittaa Hall"
+},
+{
+"id": "136268",
+"home": "Itelyum Varese",
+"away": "BMA365 Bamberg Baskets",
+"status": "scheduled",
+"date": "2026-12-09T19:00:00+00:00",
+"venue": "Itelyum Arena"
+},
+{
+"id": "136232",
+"home": "Nanterre 92",
+"away": "Sabah BC",
+"status": "scheduled",
+"date": "2026-12-09T19:00:00+00:00",
+"venue": "Palais des Sports Maurice Thorez"
+},
+{
+"id": "136292",
+"home": "Hapoel Maoz Daniel Holon",
+"away": "Spartak Office Shoes",
+"status": "scheduled",
+"date": "2026-12-09T17:30:00+00:00",
+"venue": "Arena SamElyon"
+},
+{
+"id": "136231",
+"home": "Trabzonspor",
+"away": "Rytas Vilnius",
+"status": "scheduled",
+"date": "2026-12-09T17:00:00+00:00",
+"venue": "Hayri Gur Spor Salonu"
+},
+{
+"id": "136304",
+"home": "Igokea m:tel",
+"away": "ALBA BERLIN",
+"status": "scheduled",
+"date": "2026-12-08T19:00:00+00:00",
+"venue": "SD Laktaši"
+},
+{
+"id": "136291",
+"home": "RASTA Vechta",
+"away": "Cholet Basket",
+"status": "scheduled",
+"date": "2026-12-08T18:00:00+00:00",
+"venue": "Rasta Dome Vechta"
+},
+{
+"id": "136267",
+"home": "Peristeri Betsson",
+"away": "UCAM Murcia",
+"status": "scheduled",
+"date": "2026-12-08T17:30:00+00:00",
+"venue": "Andreas Papandreou Indoor Peristeri"
+},
+{
+"id": "136303",
+"home": "SK Slavia Praha ERA NBK",
+"away": "Surne Bilbao",
+"status": "scheduled",
+"date": "2026-12-08T17:00:00+00:00",
+"venue": "Enteria Arena"
+},
+{
+"id": "136278",
+"home": "Unicaja",
+"away": "BK KVIS Pardubice",
+"status": "scheduled",
+"date": "2026-11-18T19:30:00+00:00",
+"venue": "Palacio de Deportes Jose Maria Martin Carpena"
+},
+{
+"id": "136242",
+"home": "Cibona",
+"away": "SIG Strasbourg",
+"status": "scheduled",
+"date": "2026-11-18T19:00:00+00:00",
+"venue": "Drazen Petrovic Basketball Center"
+},
+{
+"id": "136254",
+"home": "AEK BC",
+"away": "Falco-Vulcano Szombathely",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00+00:00",
+"venue": "SUNEL Arena"
+},
+{
+"id": "136241",
+"home": "Galatasaray MCT Technic",
+"away": "Legia Warszawa",
+"status": "scheduled",
+"date": "2026-11-18T17:00:00+00:00",
+"venue": "Sinan Erdem Dome"
+},
+{
+"id": "136314",
+"home": "Asisa Joventut",
+"away": "FC Porto",
+"status": "scheduled",
+"date": "2026-11-17T19:30:00+00:00",
+"venue": "Palau Municipal d'Esports de Badalona"
+},
+{
+"id": "136253",
+"home": "Windrose Giants Antwerp",
+"away": "Salon Vilpas",
+"status": "scheduled",
+"date": "2026-11-17T19:00:00+00:00",
+"venue": "Lotto Arena"
+},
+{
+"id": "136277",
+"home": "BC Juventus Utena",
+"away": "Pallacanestro Reggiana",
+"status": "scheduled",
+"date": "2026-11-17T18:00:00+00:00",
+"venue": "Vilnius Arena"
+},
+{
+"id": "136313",
+"home": "Bnei Penlink Herzliya",
+"away": "Telekom Baskets Bonn",
+"status": "scheduled",
+"date": "2026-11-17T17:30:00+00:00",
+"venue": "Telekom Dome"
+},
+{
+"id": "136266",
+"home": "UCAM Murcia",
+"away": "BMA365 Bamberg Baskets",
+"status": "scheduled",
+"date": "2026-11-11T19:30:00+00:00",
+"venue": "Palacio de los Deportes"
+},
+{
+"id": "136265",
+"home": "Peristeri Betsson",
+"away": "Itelyum Varese",
+"status": "scheduled",
+"date": "2026-11-11T17:30:00+00:00",
+"venue": "Andreas Papandreou Indoor Peristeri"
+},
+{
+"id": "136230",
+"home": "Rytas Vilnius",
+"away": "Nanterre 92",
+"status": "scheduled",
+"date": "2026-11-11T17:30:00+00:00",
+"venue": "Vilnius Arena"
+},
+{
+"id": "136302",
+"home": "SK Slavia Praha ERA NBK",
+"away": "Igokea m:tel",
+"status": "scheduled",
+"date": "2026-11-11T17:00:00+00:00",
+"venue": "Enteria Arena"
+},
+{
+"id": "136301",
+"home": "Surne Bilbao",
+"away": "ALBA BERLIN",
+"status": "scheduled",
+"date": "2026-11-10T19:00:00+00:00",
+"venue": "Bilbao Arena"
+},
+{
+"id": "136290",
+"home": "Spartak Office Shoes",
+"away": "Cholet Basket",
+"status": "scheduled",
+"date": "2026-11-10T19:00:00+00:00",
+"venue": "Hala Sportova Dudova Šuma"
+},
+{
+"id": "136289",
+"home": "Hapoel Maoz Daniel Holon",
+"away": "RASTA Vechta",
+"status": "scheduled",
+"date": "2026-11-10T17:30:00+00:00",
+"venue": "Arena SamElyon"
+},
+{
+"id": "136229",
+"home": "Sabah BC",
+"away": "Trabzonspor",
+"status": "scheduled",
+"date": "2026-11-10T16:00:00+00:00",
+"venue": "National Gymnastics Arena"
+},
+{
+"id": "136311",
+"home": "Telekom Baskets Bonn",
+"away": "Bnei Penlink Herzliya",
+"status": "scheduled",
+"date": "2026-11-04T19:00:00+00:00",
+"venue": "Telekom Dome"
+},
+{
+"id": "136252",
+"home": "Falco-Vulcano Szombathely",
+"away": "AEK BC",
+"status": "scheduled",
+"date": "2026-11-04T17:00:00+00:00",
+"venue": "Schaeffler Arena Savaria"
+},
+{
+"id": "136240",
+"home": "Legia Warszawa",
+"away": "Galatasaray MCT Technic",
+"status": "scheduled",
+"date": "2026-11-04T17:00:00+00:00",
+"venue": "Torwar Arena"
+},
+{
+"id": "136312",
+"home": "FC Porto",
+"away": "Asisa Joventut",
+"status": "scheduled",
+"date": "2026-11-03T19:30:00+00:00",
+"venue": "Centro de Desportos e Congressos de Matosinhos"
+},
+{
+"id": "136276",
+"home": "Unicaja",
+"away": "Pallacanestro Reggiana",
+"status": "scheduled",
+"date": "2026-11-03T19:30:00+00:00",
+"venue": "Palacio de Deportes Jose Maria Martin Carpena"
+},
+{
+"id": "136239",
+"home": "SIG Strasbourg",
+"away": "Cibona",
+"status": "scheduled",
+"date": "2026-11-03T19:00:00+00:00",
+"venue": "Rhenus Sport"
+},
+{
+"id": "136275",
+"home": "BC Juventus Utena",
+"away": "BK KVIS Pardubice",
+"status": "scheduled",
+"date": "2026-11-03T18:00:00+00:00",
+"venue": "Vilnius Arena"
+},
+{
+"id": "136251",
+"home": "Salon Vilpas",
+"away": "Windrose Giants Antwerp",
+"status": "scheduled",
+"date": "2026-11-03T17:30:00+00:00",
+"venue": "Kupittaa Hall"
+},
+{
+"id": "136300",
+"home": "ALBA BERLIN",
+"away": "Surne Bilbao",
+"status": "scheduled",
+"date": "2026-10-28T19:00:00+00:00",
+"venue": "Berlin Arena"
+},
+{
+"id": "136287",
+"home": "Cholet Basket",
+"away": "Spartak Office Shoes",
+"status": "scheduled",
+"date": "2026-10-28T19:00:00+00:00",
+"venue": "La Meilleraie"
+},
+{
+"id": "136288",
+"home": "RASTA Vechta",
+"away": "Hapoel Maoz Daniel Holon",
+"status": "scheduled",
+"date": "2026-10-28T18:00:00+00:00",
+"venue": "Rasta Dome Vechta"
+},
+{
+"id": "136228",
+"home": "Rytas Vilnius",
+"away": "Trabzonspor",
+"status": "scheduled",
+"date": "2026-10-28T17:30:00+00:00",
+"venue": "Vilnius Arena"
+},
+{
+"id": "136264",
+"home": "UCAM Murcia",
+"away": "Peristeri Betsson",
+"status": "scheduled",
+"date": "2026-10-27T19:30:00+00:00",
+"venue": "Palacio de los Deportes"
+},
+{
+"id": "136299",
+"home": "Igokea m:tel",
+"away": "SK Slavia Praha ERA NBK",
+"status": "scheduled",
+"date": "2026-10-27T19:00:00+00:00",
+"venue": "SD Laktaši"
+},
+{
+"id": "136263",
+"home": "BMA365 Bamberg Baskets",
+"away": "Itelyum Varese",
+"status": "scheduled",
+"date": "2026-10-27T18:00:00+00:00",
+"venue": "Brose Arena"
+},
+{
+"id": "136227",
+"home": "Sabah BC",
+"away": "Nanterre 92",
+"status": "scheduled",
+"date": "2026-10-27T16:00:00+00:00",
+"venue": "National Gymnastics Arena"
+},
+{
+"id": "136310",
+"home": "Asisa Joventut",
+"away": "Telekom Baskets Bonn",
+"status": "scheduled",
+"date": "2026-10-21T18:00:00+00:00",
+"venue": "Palau Municipal d'Esports de Badalona"
+},
+{
+"id": "136274",
+"home": "Pallacanestro Reggiana",
+"away": "BC Juventus Utena",
+"status": "scheduled",
+"date": "2026-10-21T18:00:00+00:00",
+"venue": "Palasport Giulio Bigi"
+},
+{
+"id": "136309",
+"home": "Bnei Penlink Herzliya",
+"away": "FC Porto",
+"status": "scheduled",
+"date": "2026-10-21T16:30:00+00:00",
+"venue": "Arena SamElyon"
+},
+{
+"id": "136250",
+"home": "AEK BC",
+"away": "Windrose Giants Antwerp",
+"status": "scheduled",
+"date": "2026-10-21T16:00:00+00:00",
+"venue": "SUNEL Arena"
+},
+{
+"id": "136238",
+"home": "Cibona",
+"away": "Legia Warszawa",
+"status": "scheduled",
+"date": "2026-10-20T18:00:00+00:00",
+"venue": "Drazen Petrovic Basketball Center"
+},
+{
+"id": "136237",
+"home": "Galatasaray MCT Technic",
+"away": "SIG Strasbourg",
+"status": "scheduled",
+"date": "2026-10-20T17:00:00+00:00",
+"venue": "Sinan Erdem Dome"
+},
+{
+"id": "136273",
+"home": "BK KVIS Pardubice",
+"away": "Unicaja",
+"status": "scheduled",
+"date": "2026-10-20T16:00:00+00:00",
+"venue": "Enteria Arena"
+},
+{
+"id": "136249",
+"home": "Falco-Vulcano Szombathely",
+"away": "Salon Vilpas",
+"status": "scheduled",
+"date": "2026-10-20T16:00:00+00:00",
+"venue": "Schaeffler Arena Savaria"
+},
+{
+"id": "136298",
+"home": "Surne Bilbao",
+"away": "SK Slavia Praha ERA NBK",
+"status": "scheduled",
+"date": "2026-10-14T18:00:00+00:00",
+"venue": "Bilbao Arena"
+},
+{
+"id": "136286",
+"home": "Spartak Office Shoes",
+"away": "Hapoel Maoz Daniel Holon",
+"status": "scheduled",
+"date": "2026-10-14T18:00:00+00:00",
+"venue": "Hala Sportova Dudova Šuma"
+},
+{
+"id": "136285",
+"home": "Cholet Basket",
+"away": "RASTA Vechta",
+"status": "scheduled",
+"date": "2026-10-14T18:00:00+00:00",
+"venue": "La Meilleraie"
+},
+{
+"id": "136262",
+"home": "BMA365 Bamberg Baskets",
+"away": "UCAM Murcia",
+"status": "scheduled",
+"date": "2026-10-14T17:00:00+00:00",
+"venue": "Brose Arena"
+},
+{
+"id": "136226",
+"home": "Trabzonspor",
+"away": "Sabah BC",
+"status": "scheduled",
+"date": "2026-10-14T16:00:00+00:00",
+"venue": "Hayri Gur Spor Salonu"
+},
+{
+"id": "136297",
+"home": "ALBA BERLIN",
+"away": "Igokea m:tel",
+"status": "scheduled",
+"date": "2026-10-13T18:00:00+00:00",
+"venue": "Berlin Arena"
+},
+{
+"id": "136261",
+"home": "Itelyum Varese",
+"away": "Peristeri Betsson",
+"status": "scheduled",
+"date": "2026-10-13T18:00:00+00:00",
+"venue": "Itelyum Arena"
+},
+{
+"id": "136225",
+"home": "Nanterre 92",
+"away": "Rytas Vilnius",
+"status": "scheduled",
+"date": "2026-10-13T18:00:00+00:00",
+"venue": "Palais des Sports Maurice Thorez"
+},
+{
+"id": "136260",
+"home": "UCAM Murcia",
+"away": "Itelyum Varese",
+"status": "scheduled",
+"date": "2026-10-07T18:30:00+00:00",
+"venue": "Palacio de los Deportes"
+},
+{
+"id": "136308",
+"home": "Telekom Baskets Bonn",
+"away": "FC Porto",
+"status": "scheduled",
+"date": "2026-10-07T18:00:00+00:00",
+"venue": "Telekom Dome"
+},
+{
+"id": "136284",
+"home": "Spartak Office Shoes",
+"away": "RASTA Vechta",
+"status": "scheduled",
+"date": "2026-10-07T18:00:00+00:00",
+"venue": "Hala Sportova Dudova Šuma"
+},
+{
+"id": "136248",
+"home": "Windrose Giants Antwerp",
+"away": "Falco-Vulcano Szombathely",
+"status": "scheduled",
+"date": "2026-10-07T18:00:00+00:00",
+"venue": "Lotto Arena"
+},
+{
+"id": "136272",
+"home": "BC Juventus Utena",
+"away": "Unicaja",
+"status": "scheduled",
+"date": "2026-10-07T17:00:00+00:00",
+"venue": "Vilnius Arena"
+},
+{
+"id": "136296",
+"home": "SK Slavia Praha ERA NBK",
+"away": "ALBA BERLIN",
+"homeScore": 0,
+"awayScore": 0,
+"status": "scheduled",
+"date": "2026-10-07T16:00:00+00:00",
+"hash": "cc12de5ae4c077c929d994d937fe593c3d5272a3",
+"venue": "Enteria Arena",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136296.json",
+"updated": "2026-10-07T15:52:32.335056+00:00"
+},
+{
+"id": "136247",
+"home": "AEK BC",
+"away": "Salon Vilpas",
+"homeScore": 0,
+"awayScore": 0,
+"status": "scheduled",
+"date": "2026-10-07T16:00:00+00:00",
+"hash": "2b9932b0647b450807795461c71029285b793d11",
+"venue": "SUNEL Arena",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136247.json",
+"updated": "2026-10-07T15:55:27.505770+00:00"
+},
+{
+"id": "136224",
+"home": "Trabzonspor",
+"away": "Nanterre 92",
+"homeScore": 0,
+"awayScore": 0,
+"status": "scheduled",
+"date": "2026-10-07T16:00:00+00:00",
+"hash": "e671fa05821d31d55fe2610d149ab261a31a87ff",
+"venue": "Hayri Gur Spor Salonu",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136224.json",
+"updated": "2026-10-07T15:56:47.686808+00:00"
+},
+{
+"id": "136307",
+"home": "Asisa Joventut",
+"away": "Bnei Penlink Herzliya",
+"homeScore": 86,
+"awayScore": 75,
+"status": "final",
+"date": "2026-10-06T18:30:00+00:00",
+"hash": "51ad0cd95477a1d8ad1d38628f4b848bcca40ba7",
+"venue": "Palau Municipal d'Esports de Badalona",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136307.json",
+"updated": "2026-10-07T15:51:55.109735+00:00"
+},
+{
+"id": "136295",
+"home": "Igokea m:tel",
+"away": "Surne Bilbao",
+"homeScore": 79,
+"awayScore": 92,
+"status": "final",
+"date": "2026-10-06T18:00:00+00:00",
+"hash": "48ae830bc0733098bf0ece6dc645f2f27ea0273a",
+"venue": "SD Laktaši",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136295.json",
+"updated": "2026-10-07T15:52:50.928671+00:00"
+},
+{
+"id": "136271",
+"home": "Pallacanestro Reggiana",
+"away": "BK KVIS Pardubice",
+"homeScore": 82,
+"awayScore": 65,
+"status": "final",
+"date": "2026-10-06T18:00:00+00:00",
+"hash": "3b12baf1e38c81c8065d602355590859a104e5ba",
+"venue": "Palasport Giulio Bigi",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136271.json",
+"updated": "2026-10-07T15:54:11.465068+00:00"
+},
+{
+"id": "136236",
+"home": "SIG Strasbourg",
+"away": "Legia Warszawa",
+"homeScore": 100,
+"awayScore": 62,
+"status": "final",
+"date": "2026-10-06T18:00:00+00:00",
+"hash": "8e0fb2ce1b0e4e943d8be040ccf5dfe1485858bf",
+"venue": "Rhenus Sport",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136236.json",
+"updated": "2026-10-07T15:55:43.560098+00:00"
+},
+{
+"id": "136259",
+"home": "Peristeri Betsson",
+"away": "BMA365 Bamberg Baskets",
+"homeScore": 93,
+"awayScore": 87,
+"status": "final",
+"date": "2026-10-06T16:30:00+00:00",
+"hash": "ed7d0623ccab1ac78b3206ad5997a07237cd34e4",
+"venue": "Andreas Papandreou Indoor Peristeri",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136259.json",
+"updated": "2026-10-07T15:54:50.110527+00:00"
+},
+{
+"id": "136223",
+"home": "Rytas Vilnius",
+"away": "Sabah BC",
+"homeScore": 82,
+"awayScore": 73,
+"status": "final",
+"date": "2026-10-06T16:30:00+00:00",
+"hash": "ffe66c12c1f2321fd9c32f3f31db7a9f2a1f779b",
+"venue": "Vilnius Arena",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136223.json",
+"updated": "2026-10-07T15:57:04.208473+00:00"
+},
+{
+"id": "136235",
+"home": "Cibona",
+"away": "Galatasaray MCT Technic",
+"homeScore": 96,
+"awayScore": 76,
+"status": "final",
+"date": "2026-10-06T16:00:00+00:00",
+"hash": "bf0d428ab5975096841158457a452d4146f9615b",
+"venue": "Drazen Petrovic Basketball Center",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136235.json",
+"updated": "2026-10-07T15:56:15.866395+00:00"
+},
+{
+"id": "136283",
+"home": "Hapoel Maoz Daniel Holon",
+"away": "Cholet Basket",
+"homeScore": 79,
+"awayScore": 99,
+"status": "final",
+"date": "2026-10-06T15:45:00+00:00",
+"hash": "d19338280853b40c6e5f0e6477cf6df0b5f2af2c",
+"venue": "Arena SamElyon",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_events/136283.json",
+"updated": "2026-10-07T15:53:34.478610+00:00"
+}
+]
+}
