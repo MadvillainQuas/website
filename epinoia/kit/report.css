@@ -806,3 +806,52 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 .rp-kb dt{ font-family:var(--f-ui); font-weight:800; font-size:8px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink) }
 .rp-kb dd{ margin:1px 0 0; font-size:8.5px; line-height:1.4; color:var(--ink-2) }
 .rp-kb.one dl{ grid-template-columns:1fr }
+
+/* ---- THE CLUTCH PAGE (report-teampages.js clutch, clutch.js; 2026-10-07) ---- */
+/* the career FT% editor above the pages: a player a line, this season beside the boxes */
+.rp-cft-row{ grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 64px 54px 54px minmax(0,1.4fr) }
+.rp-cft-row input{ min-width:0; width:100% }
+.rp-cft-row .rp-cft-err{ grid-column:1 / -1; color:#b32433; font-weight:700 }
+.rp-cft-row .rp-cft-err:empty{ display:none }
+@media (max-width:640px){ .rp-cft-row{ grid-template-columns:repeat(3,minmax(0,1fr)) } .rp-cft-row .rp-syn-n, .rp-cft-row small, .rp-cft-row input:last-of-type{ grid-column:1 / -1 } }
+/* FREE THROWS: a player a row, the track 40 to 100%, this season the bar, clutch the dot, career the diamond */
+.rp-ft{ display:grid; gap:3px }
+.rp-ft-r{ --b:var(--b0); display:grid; grid-template-columns:96px minmax(0,1fr) 54px 38px 48px; align-items:center; gap:8px; min-height:15px }
+.rp-ft-r[data-b="4"]{ --b:var(--b4) } .rp-ft-r[data-b="3"]{ --b:var(--b3) } .rp-ft-r[data-b="2"]{ --b:var(--b2) } .rp-ft-r[data-b="1"]{ --b:var(--b1) }
+.rp-ft-r .n{ font-family:var(--f-ui); font-weight:700; font-size:9px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.rp-ft-r.few .n, .rp-ft-r.few .v{ color:var(--ink-3) }
+.rp-ft-tr{ position:relative; height:11px; border-radius:3px; background:#eef3f0 }
+.rp-ft-tr b{ position:absolute; left:0; top:0; bottom:0; border-radius:3px; background:color-mix(in srgb,var(--b) 70%,#ffffff) }
+.rp-ft-r.few .rp-ft-tr b{ background:repeating-linear-gradient(135deg,#d5ddd8 0 3px,#eef3f0 3px 6px) }
+.rp-ft-tr i{ position:absolute; top:50%; transform:translate(-50%,-50%) }
+.rp-ft-tr i.t{ top:0; bottom:0; width:1px; transform:none; background:rgba(13,31,23,.10) }
+.rp-ft-tr i.lg{ top:-2px; bottom:-2px; width:1.5px; transform:translateX(-50%); background:rgba(13,31,23,.55) }
+.rp-ft-tr i.c{ width:7px; height:7px; border-radius:50%; background:#0d1f17; box-shadow:0 0 0 1.5px #ffffff }
+.rp-ft-tr i.k{ width:7px; height:7px; transform:translate(-50%,-50%) rotate(45deg); background:var(--rp-a,#08603f); box-shadow:0 0 0 1.5px #ffffff }
+.rp-ft-r .v{ display:flex; align-items:baseline; justify-content:flex-end; gap:4px; font-family:var(--f-data,ui-monospace,monospace); font-variant-numeric:tabular-nums }
+.rp-ft-r .v b{ font-size:9.5px; color:var(--ink) } .rp-ft-r .v b.nil{ color:var(--ink-3); font-weight:400 }
+.rp-ft-r .v small{ font-size:7px; color:var(--ink-3) }
+.rp-ft-h{ min-height:0; padding-bottom:3px; border-bottom:1px solid var(--rule) }
+.rp-ft-h span{ font-family:var(--f-micro); font-size:6.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.rp-ft-h span:nth-child(n+3){ text-align:right }
+.rp-ft-ax{ min-height:10px } .rp-ft-ax .rp-ft-tr{ height:10px; background:none }
+.rp-ft-ax em{ position:absolute; top:0; transform:translateX(-50%); font-style:normal; font-family:var(--f-data,ui-monospace,monospace); font-size:7px; color:var(--ink-3) }
+/* the ratings' shooting table under the tiles, and usage against true shooting: the chart beside its table */
+.rp-cl-ff{ margin-top:8px }
+.rp-cl-two{ display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:14px; align-items:start }
+.rp-cl-two > div{ min-width:0 }
+.rp-cl-sc{ display:block; width:100%; height:auto; border:1px solid var(--rule-2); border-radius:10px; background:#fbfdfc }
+.rp-cl-sc .g{ stroke:rgba(13,31,23,.08); stroke-width:1 }
+.rp-cl-sc .ref{ stroke:rgba(13,31,23,.45); stroke-width:1; stroke-dasharray:3 3 }
+.rp-cl-sc .ax{ font-family:var(--f-data,ui-monospace,monospace); font-size:7px; fill:#6b7a72 }
+.rp-cl-sc .at{ font-family:var(--f-micro,sans-serif); font-size:6.5px; letter-spacing:.08em; fill:#6b7a72 }
+.rp-cl-sc .rl{ font-family:var(--f-ui,sans-serif); font-size:6.5px; font-weight:700; fill:#3f5249 }
+.rp-cl-sc .pt{ stroke:#ffffff; stroke-width:1.2; fill-opacity:.85 }
+.rp-cl-sc .pt.up{ fill:#1f9d55 } .rp-cl-sc .pt.dn{ fill:#d9534f }
+.rp-cl-sc .pl{ font-family:var(--f-ui,sans-serif); font-size:7.5px; font-weight:700; fill:#0d1f17; paint-order:stroke; stroke:#ffffff; stroke-width:2.5px }
+.rp-cl-pl td.l{ white-space:nowrap }
+.rp-cl-lu td.names{ font-size:8.5px }
+
+/* THE CONTENTS AND THE PAGE NUMBERS ARE LINKS (report.js data-goto; in the PDF, raster.js link annotations) */
+.rp-stage [data-goto]{ cursor:pointer }
+.rp-cv-toc li[data-goto]:hover span, .rp-no[data-goto]:hover{ text-decoration:underline }

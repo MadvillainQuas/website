@@ -20,6 +20,9 @@
                       margin at each minute, and the most-used fives as cards two rows deep (teamviz.js lineupCards)
      COMBINATIONS     the five best and five worst trios, and the shot clock: early, middle and late at both ends, then
                       the same three windows for the defence alone, with how each chance ended
+     CLUTCH           (clutch.js: the last four minutes of the fourth and overtime, within five) every player's free throws
+                      with a career figure entered by hand (0238), the clutch ratings, the players' clutch usage and true
+                      shooting as a chart, the clutch shot card and the fives with the most clutch time
      LEGEND           every statistic printed, defined
    A module starts in the space the one before left, when its first block fits there (report.js layout, packed).
 
@@ -49,8 +52,9 @@ const TEAM_STATS = {
   tsa_for: { l: 'TSA A GAME', dp: 1 }, tsa_vs: { l: 'TSA ALLOWED A GAME', dp: 1, low: true }, tsa_gap: { l: 'TRUE SHOTS GAP', dp: 1, signed: true },
   ev_half_pts_sh: { l: 'HALF-COURT %PTS', dp: 1, style: true }, evd_half_pts_sh: { l: 'DEF HALF-COURT %PTS', dp: 1, style: true },
   /* the CLUB's half-court AST% has a key of its own: hc_ast_pct is the player's (his share of teammates' half-court baskets he
-     assisted, ranked among his position on the squad's cards), and one key for both blanked the players' ranking */
-  tm_hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1, rank: false, ref: 'ast_sh_all', refL: 'all', sc: 5 },
+     assisted, ranked among his position on the squad's cards), and one key for both blanked the players' ranking. Ranked among
+     the clubs as a style, like AST% of all baskets (2026-10-07: it was drawn as the gap to that, from the middle) */
+  tm_hc_ast_pct: { l: 'HALF-COURT AST%', dp: 1, style: true },
   evd_half_tov_pct: { l: 'DEF HALF-COURT TO%', dp: 1 }, evd_half_efg: { l: 'DEF HALF-COURT eFG%', dp: 1, low: true },
   evd_half_ppp: { l: 'DEF HALF-COURT PTS / CHANCE', dp: 2, low: true },
   tr_def_delta: { l: 'TRANSITION PTS GIVEN v OPP AVG', dp: 1, signed: true, low: true },
@@ -106,7 +110,7 @@ const TEAM_DEFS = {
   net: ['Net rating', 'Offensive rating minus defensive rating.'], pace: ['Pace', 'Possessions per 40 minutes, both sides averaged.'],
   ev_half_pts_sh: ['Half-court share of points', 'The share of the club’s points scored in the half court (not a second chance, a fast break, off a turnover or after a timeout).'],
   evd_half_pts_sh: ['Opponents’ half-court share of points', 'The same share for what opponents scored against the club.'],
-  tm_hc_ast_pct: ['Half-court assist %', 'Of the club’s half-court baskets, the share that were assisted (its play-by-play), drawn against the assisted share of all its baskets.'],
+  tm_hc_ast_pct: ['Half-court assist %', 'Of the club’s half-court baskets, the share that were assisted (the play-by-play of every game in the scope), ranked among the clubs as a style: a deeper bar is more of its half-court scoring made off a pass.'],
   ev_half_tov_pct: ['Half-court turnover %', 'Turnovers per half-court chance. Lower is better.'],
   evd_half_tov_pct: ['Opponents’ half-court turnover %', 'Turnovers the club forces per half-court chance. Higher is better.'],
   ev_half_efg: ['Half-court eFG%', 'Effective field-goal percentage in the half court.'], evd_half_efg: ['Opponents’ half-court eFG%', 'Lower is better.'],
@@ -129,8 +133,10 @@ const TEAM_DEFS = {
   own_bench_drtg: ['Our bench: defence', 'Points allowed per 100 possessions in the club’s other minutes. Lower is better.']
 };
 /* a club's place among the clubs on one key: '3rd of 18' (style: by most) */
+/* THE PLACE IS AMONG THIS SEASON'S CLUBS (Louie, 2026-10-07): an earlier season's rows (report.js priorRows, __prior) deepen the
+   field the bars and colours are ranked in, but "4th of 10" counts the clubs of the season shown */
 function rankOf(teams, k, id, low) {
-  const vals = teams.filter(t => t[k] != null && t[k] !== '' && isFinite(+t[k]));
+  const vals = teams.filter(t => !t.__prior && t[k] != null && t[k] !== '' && isFinite(+t[k]));
   const me = vals.find(t => t.id === id);
   if (!me || vals.length < 3) return null;
   return { r: vals.filter(t => (low ? +t[k] < +me[k] : +t[k] > +me[k])).length + 1, n: vals.length };
@@ -203,28 +209,54 @@ function modules(ctx) {
   };
 
   /* ---------------- MAIN STATS ---------------- */
-  async function halfCourtAst(flip) {
+  /* one game's half-court baskets at each end, and how many were assisted: [{ m, a }, { m, a }] (null without the modules) */
+  function hcGame(evs) {
     const SI = root.EpinoiaSituations;
-    if (!SI || !SI.stamps || !SI.assistedShots || !SI.inGameOrder) return null;
+    if (!SI || !SI.stamps || !SI.assistedShots || !SI.inGameOrder || !evs || !evs.length) return null;
+    const all = SI.inGameOrder(evs);
+    const desc = SI.describe ? SI.describe(all) : { tags: {} };
+    const plays = all.filter(e => e && !/^(loc|stype|tag|tags)$/.test(e.t));
+    const st = SI.stamps(plays, desc.tags);
+    const A = SI.assistedShots(plays).assisted;
+    const out = [{ m: 0, a: 0 }, { m: 0, a: 0 }];
+    plays.forEach(e => {
+      if (!(e.team === 0 || e.team === 1) || !(e.t === 'p2_made' || e.t === 'p3_made')) return;
+      const s = st.get(e);
+      if (!s || s.second || s.offTo || s.transition) return;
+      out[e.team].m++; if (A.has(e)) out[e.team].a++;
+    });
+    return out;
+  }
+  async function halfCourtAst(flip) {
     const L = await ctx.logs();
     let made = 0, ast = 0;
     L.gs.forEach(g => {
-      const evs = L.byG[g.id] || [];
-      if (!evs.length) return;
-      const all = SI.inGameOrder(evs);
-      const desc = SI.describe ? SI.describe(all) : { tags: {} };
-      const plays = all.filter(e => e && !/^(loc|stype|tag|tags)$/.test(e.t));
-      const st = SI.stamps(plays, desc.tags);
-      const A = SI.assistedShots(plays).assisted;
+      let r = null;
+      try { r = hcGame(L.byG[g.id] || []); } catch (_) { r = null; }
+      if (!r) return;
       const side = flip ? 1 - L.sideOf[g.id] : L.sideOf[g.id];
-      plays.forEach(e => {
-        if (e.team !== side || !(e.t === 'p2_made' || e.t === 'p3_made')) return;
-        const s = st.get(e);
-        if (!s || s.second || s.offTo || s.transition) return;
-        made++; if (A.has(e)) ast++;
-      });
+      made += r[side].m; ast += r[side].a;
     });
     return made ? Math.round(1000 * ast / made) / 10 : null;
+  }
+  /* EVERY CLUB'S HALF-COURT AST% (Louie, 2026-10-07: a bar among the clubs like the rest, not the gap to its own assisted share):
+     the scope's games with their logs (ctx.fieldGames, read once and shared with the players' cards), each side's baskets summed
+     onto its club. A club with fewer than HC_TEAM_MIN half-court baskets is left blank */
+  const HC_TEAM_MIN = 20;
+  async function hcTeams(games) {
+    const G = ctx.fieldGames ? await ctx.fieldGames().catch(() => null) : null;
+    if (!G || !G.length) return null;
+    const sideIds = new Map((games || []).map(g => [g.id, [g.home_team_id, g.away_team_id]]));
+    const out = new Map();
+    G.forEach(g => {
+      const ids = sideIds.get(g.id);
+      if (!ids) return;
+      let r = null;
+      try { r = hcGame(g.events || []); } catch (_) { r = null; }
+      if (!r) return;
+      [0, 1].forEach(i => { if (!ids[i]) return; const o = out.get(ids[i]) || { m: 0, a: 0 }; o.m += r[i].m; o.a += r[i].a; out.set(ids[i], o); });
+    });
+    return out;
   }
   /* the ratings of a list of lineup records (lineupevents.js) */
   const LE = () => root.EpinoiaLineupEvents;
@@ -267,6 +299,16 @@ function modules(ctx) {
          offence against what it allowed: in one game what one allowed is the other's own) */
       const them = c.vs ? teams.find(r => r.id === c.vs.bid) || null : null;
       try { me.tm_hc_ast_pct = await halfCourtAst(); if (them) them.tm_hc_ast_pct = await halfCourtAst(true); } catch (_) { /* without it */ }
+      /* every other club's over the scope's games (a single game's two clubs keep this game's own), so the club's is ranked
+         among them; the club's own is taken from the same games where it has enough there */
+      try {
+        const HT = await hcTeams(S.games);
+        if (HT) teams.forEach(r => {
+          if (r === them) return;
+          const t = HT.get(r.id), v = t && t.m >= HC_TEAM_MIN ? Math.round(1000 * t.a / t.m) / 10 : null;
+          if (r === me) { if (!c.vs && v != null) r.tm_hc_ast_pct = v; } else r.tm_hc_ast_pct = v;
+        });
+      } catch (e) { if (root.console) root.console.warn('[report half-court AST%]', e); }
       /* against the other side's starters and bench, and the club's own: its play-by-play records */
       try {
         const scoped = new Set((S.games || []).map(g => g.id));
@@ -301,22 +343,23 @@ function modules(ctx) {
          seasons shown among them, so "4th of 38" rests on more than ten clubs. A figure an earlier season's rows do not carry
          (the shot zones, the half-court assists) is ranked among the season shown alone. */
       const priorTeams = E.priorRows(T.prior, P => P.teams, (rows, P) => deriveTeams(rows, P.games));
-      if (priorTeams.length) { teams = teams.concat(priorTeams); R.pooled = 'Every figure is ranked against all ' + ((T.prior || []).length + 1) + ' seasons of the league with data (each club’s season is one entry, ' + teams.length + ' in all), not only the season shown. A stat an earlier season did not record is ranked within the season shown.'; }
+      if (priorTeams.length) { teams = teams.concat(priorTeams); R.pooled = 'The bars and colours rank every figure against all ' + ((T.prior || []).length + 1) + ' seasons of the league with data (each club’s season is one entry, ' + teams.length + ' in all), for a deeper field; a place such as “4th of 10” counts only this season’s clubs. A stat an earlier season did not record is ranked within the season shown.'; }
       /* THE LEAGUE'S MARKS for the three ratings: the clubs' own season net, offensive and defensive ratings, among which a starting five or a
-         bench is placed (splitFor): its percentile (smaller is better for defence) and its place among them */
-      const LGR = {};
-      ['net', 'ortg', 'drtg'].forEach(k => { LGR[k] = teams.map(r => +r[k]).filter(x => isFinite(x)); });
+         bench is placed (splitFor): its percentile among every season's (smaller is better for defence), its place among this season's */
+      const LGR = {}, LGRnow = {};
+      ['net', 'ortg', 'drtg'].forEach(k => { LGR[k] = teams.map(r => +r[k]).filter(x => isFinite(x)); LGRnow[k] = teams.filter(r => !r.__prior).map(r => +r[k]).filter(x => isFinite(x)); });
       const SPB = {};
       ['vs_start', 'vs_bench', 'own_start', 'own_bench'].forEach(pre => { SPB[pre + '_net'] = 'net'; SPB[pre + '_ortg'] = 'ortg'; SPB[pre + '_drtg'] = 'drtg'; });
       const splitFor = (k, row) => {
         const b = SPB[k], arr = b ? LGR[b] : null, v = row ? +row[k] : NaN;
         if (!arr || arr.length < 3 || !isFinite(v)) return null;
         const low = b === 'drtg', worse = arr.filter(x => (low ? x > v : x < v)).length, tie = arr.filter(x => x === v).length;
-        const better = arr.filter(x => (low ? x < v : x > v)).length;
-        return { pct: Math.round(100 * (worse + tie / 2) / arr.length), place: Math.min(better + 1, arr.length), n: arr.length, avg: arr.reduce((a, c) => a + c, 0) / arr.length };
+        const now = LGRnow[b] || [], better = now.filter(x => (low ? x < v : x > v)).length;
+        return { pct: Math.round(100 * (worse + tie / 2) / arr.length), place: Math.min(better + 1, Math.max(1, now.length)), n: now.length, avg: arr.reduce((a, c) => a + c, 0) / arr.length };
       };
-      const N = teams.length;
-      const POOL = priorTeams.length ? ' club-seasons of the league (' + ((T.prior || []).length + 1) + ' seasons)' : ' clubs in the league';
+      /* the field named in the titles: this season's clubs, and where earlier seasons deepen it, how many entries the bars use */
+      const N = teams.filter(r => !r.__prior).length;
+      const POOL = priorTeams.length ? ' clubs this season, bars and colours across ' + ((T.prior || []).length + 1) + ' seasons' : ' clubs in the league';
       const ff = [['Shooting', 'eFG%', 'ff_efg', 'dff_efg', false], ['Turnovers', 'TOV%', 'ff_tov', 'dff_tov', true],
                   ['Rebounding', 'OREB%', 'ff_oreb', 'dff_oreb', false], ['Free throws', 'FTr', 'ff_ftr', 'dff_ftr', false]];
       const Rf = E.ranker(teams, ff.flatMap(x => [x[2], x[3]]).concat(['ortg', 'drtg', 'net', 'pace']));
@@ -419,7 +462,7 @@ function modules(ctx) {
         : 'the bar and its colour: the club’s place among the ' + N + POOL + ' (green the top quarter, red the bottom)') +
         cols([groups[1]], [groups[0], groups[2]], tempoHTML) + E.keyHTML('Reading the season line', [
           ['PTS v OPP AVERAGE', 'The transition points the club gives up a game, minus what those same opponents usually score in transition against everyone else. It takes the opposition out of the number: below zero means the club defends the break better than the others do.'],
-          ['AST%', 'The share of the club’s half-court baskets that were assisted, drawn against the assisted share of all its baskets: a club that is more assisted in the half court than overall is moving the ball against a set defence.']], 'one')));
+          ['AST%', 'The share of the club’s half-court baskets that were assisted, ranked among the clubs: a style (blue to purple), deeper where more of its half-court scoring comes off a pass against a set defence.']], 'one')));
       /* a single game: each club's starters and its bench, side by side, each against that club over the game */
       const sb = (name, row) => [(name + ' starters & bench').toUpperCase(), [['n', ['own_start_net', 'own_bench_net']], ['o', ['own_start_ortg', 'own_bench_ortg']], ['d', ['own_start_drtg', 'own_bench_drtg']]], row];
       out.push(block(title('Starters and bench', 'ratings per 100 possessions · each placed among the league’s ' + N + POOL + ' as a club’s own rating is (green the top quarter, red the bottom)') +
@@ -693,7 +736,7 @@ function modules(ctx) {
         const mz = E.miniZonesHTML ? E.miniZonesHTML(shotsBy.get(String(r.id)) || []) : '';
         out.push(block((i === 0 ? head : '') + '<div class="rp-pcard"><div class="rp-pid">' + ph + '<div class="rp-pname">' + (m.jersey ? '#' + esc(m.jersey) + ' ' : '') + esc(nm) + '</div>' +
           '<div class="rp-pmeta">' + esc(grp) + ' · ' + (r.gp || 0) + ' gp · ' + f1(r.mpg) + ' mpg · ' + f1(r.ppg) + ' ppg</div>' +
-          '<div class="rp-pvs">vs ' + Rk.n + ' ' + esc(Rk.who) + '</div>' +
+          '<div class="rp-pvs">vs ' + (Rk.nNow || Rk.n) + ' ' + esc(Rk.who) + (Rk.nNow && Rk.nNow < Rk.n ? ' this season' : '') + '</div>' +
           '<div class="rp-ppos">' + chips + '</div>' + chart + '</div>' +
           '<div class="rp-pgroups">' + (mz ? '<div class="rp-pside">' + mz + '</div>' : '') + groups + '</div></div>'));
       });
@@ -820,6 +863,374 @@ function modules(ctx) {
     }
   };
 
+  /* ---------------- CLUTCH ---------------- */
+  /* CLUTCH (Louie, 2026-10-07): clutch time worked out from the play-by-play by one rule (clutch.js: the last four minutes of
+     the fourth quarter and overtime, within five points), and the page in four parts, top to bottom:
+       FREE THROWS      every player's free-throw % this season as a bar, their clutch free throws as a dot and a CAREER figure
+                        as a diamond: a number from outside the platform (college, other leagues) entered by hand above the
+                        pages and kept in player_career_ft (0238), so the PRIME REPORT and the emailed copy draw it too
+       RATINGS          the club's clutch offence, defence and net, each against its own over every minute; its clutch record
+       USAGE AND TS%    each player's share of the plays in clutch time against how well they scored them, as a chart
+       SHOTS AND FIVES  the clutch shot card (the half-court and transition pages' card, report.js sitCardHTML), and the fives
+                        that played the most clutch time with their net rating */
+  const CFT = { local: new Map(), cache: new Map(), unkept: new Set() };
+  async function cftClient() {
+    try {
+      if (typeof root.epinoiaMaybeSignedIn === 'function' && !root.epinoiaMaybeSignedIn()) return null;
+      if (typeof root.epinoiaClientReady === 'function') return await root.epinoiaClientReady();
+      return typeof root.epinoiaClient === 'function' ? root.epinoiaClient() : null;
+    } catch (_) { return null; }
+  }
+  /* the career figures of these players: entered on this page first, then kept ones (readable by anyone, so the mailer's copy
+     reads them as the page does). stored: the kept ones only, read again (the PRIME REPORT's check) */
+  async function careerFt(ids, stored) {
+    const out = new Map(), need = [];
+    (ids || []).forEach(id => {
+      const k = String(id);
+      if (!stored && CFT.local.has(k)) { const v = CFT.local.get(k); if (v) out.set(k, v); }
+      else if (!stored && CFT.cache.has(k)) { const v = CFT.cache.get(k); if (v) out.set(k, v); }
+      else need.push(k);
+    });
+    if (!need.length) return out;
+    const D = root.EpinoiaData, q = 'player_career_ft?player_id=in.(' + need.join(',') + ')&select=player_id,ft_pct,ftm,fta,note';
+    let rows = null;
+    /* a read that fails (the table not there yet, offline) leaves the figures entered on this page standing; only the
+       PRIME REPORT's check (stored) needs to hear of it */
+    try {
+      if (D && D.all) rows = await D.all(q);
+      else {
+        const CFG = root.EPINOIA_CONFIG;
+        if (!CFG || !root.fetch) return out;
+        const r = await root.fetch(CFG.supabaseUrl + '/rest/v1/' + q, { headers: { apikey: CFG.supabaseAnonKey, Accept: 'application/json' } });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        rows = await r.json();
+      }
+    } catch (e) { if (stored) throw e; return out; }
+    need.forEach(k => CFT.cache.set(k, null));
+    (rows || []).forEach(r => {
+      if (!E.isNum(r.ft_pct)) return;
+      const v = { pct: +r.ft_pct, ftm: E.isNum(r.ftm) ? +r.ftm : null, fta: E.isNum(r.fta) ? +r.fta : null, note: r.note || '' };
+      CFT.cache.set(String(r.player_id), v);
+      out.set(String(r.player_id), v);
+    });
+    return out;
+  }
+  /* the squad of the scope, with their names */
+  async function squadOf() {
+    const T = await season();
+    if (!T || !T.S || !T.mine) return null;
+    const sq = T.S.players.filter(r => r.teamId === T.mine.id && +r.gp > 0);
+    const meta = await ctx.meta(sq.map(r => r.id)).catch(() => ({}));
+    const nm = r => (meta[r.id] && meta[r.id].name) || r.name || 'Player';
+    return { T, sq, meta, nm };
+  }
+  /* a number as somebody types it on any page: '82.5', '82,5' (a Spanish page shows a decimal comma), '' for nothing */
+  const typed = s => { const t = String(s == null ? '' : s).trim().replace(',', '.'); return t === '' ? null : isFinite(+t) ? +t : NaN; };
+  /* THE BEST GUESS AT A FREE-THROW SHOOTER: this season's makes and attempts, with the career figure added in as so many more
+     attempts at its percentage (its own attempts where they were entered, 100 where only the percentage was, capped at 300 so a
+     long career does not bury this season). With no career figure it is this season's own */
+  const CAREER_W = 100, CAREER_CAP = 300;
+  function ftGuess(ftm, fta, car) {
+    if (!car || !E.isNum(car.pct)) return fta > 0 ? 100 * ftm / fta : null;
+    const w = Math.min(CAREER_CAP, E.isNum(car.fta) && car.fta > 0 ? car.fta : CAREER_W);
+    return 100 * (ftm + w * car.pct / 100) / (fta + w);
+  }
+
+  const clutch = {
+    key: 'clutch', title: 'Clutch', page: 'CLUTCH', on: true,
+    controls(host, state) {
+      const row = E.el('div', 'rp-rapm rp-syn rp-cft');
+      const btn = E.el('button', 'ep-btn mini', 'Career FT%'); btn.type = 'button';
+      btn.title = 'Enter a player’s free-throw % over their career: drawn beside this season’s on the Clutch page';
+      const say = E.el('span', null, 'each player’s career free-throw % (college, other leagues), drawn beside this season’s on the Clutch page');
+      const box = E.el('div', 'rp-syn-box'); box.hidden = true;
+      row.append(E.el('span', 'rp-k', 'Clutch'), btn, say);
+      host.append(row, box);
+      const close = () => { box.hidden = true; box.textContent = ''; };
+      /* PRIME REPORT: the career figures READ BACK from player_career_ft, where the emailed reports find them */
+      (state.primers = state.primers || []).push(async () => {
+        const Q = await squadOf().catch(() => null);
+        if (!Q || !Q.sq.length) return null;
+        const ids = Q.sq.map(r => String(r.id));
+        let kept;
+        try { kept = await careerFt(ids, true); } catch (_) { return { ok: !ids.some(k => CFT.unkept.has(k)), text: 'the career free-throw figures could not be read back' }; }
+        const only = ids.filter(k => CFT.unkept.has(k) && CFT.local.get(k)).length;
+        return { ok: !only, text: (kept.size ? 'career FT% kept for ' + kept.size + ' of ' + ids.length + ' players' : 'no career FT% kept for these players') +
+          (only ? '; ' + only + ' on this page only, not kept' : '') };
+      });
+      btn.onclick = async () => {
+        if (!box.hidden) { close(); return; }
+        say.textContent = 'reading…';
+        const Q = await squadOf().catch(() => null);
+        if (!Q || !Q.sq.length) { say.textContent = 'no players in this scope yet'; return; }
+        let have = new Map();
+        try { have = await careerFt(Q.sq.map(r => r.id)); } catch (_) { /* none kept yet */ }
+        close(); box.hidden = false;
+        box.appendChild(E.el('p', 'rp-syn-t', 'Each player’s career free-throw %. Made and attempted are optional: where they are given, the career counts for that many attempts against this season’s; where not, for 100. Empty the % to take one away.'));
+        const inp = (ph, v, w) => { const x = E.el('input', 'ep-input'); x.type = 'text'; x.inputMode = 'decimal'; x.placeholder = ph; x.value = v == null ? '' : String(v); if (w) x.size = w; return x; };
+        const lines = Q.sq.slice().sort((a, b) => Q.nm(a).localeCompare(Q.nm(b))).map(r => {
+          const k = String(r.id), v = have.get(k) || null;
+          const line = E.el('div', 'rp-syn-row rp-cft-row');
+          const nm = E.el('span', 'rp-syn-n', Q.nm(r));
+          const now = E.el('small', null, 'this season ' + (+r.fta > 0 ? (100 * r.ftm / r.fta).toFixed(1) + '% (' + r.ftm + '/' + r.fta + ')' : 'no free throws'));
+          const pct = inp('career %', v && v.pct, 6), made = inp('made', v && v.ftm, 5), att = inp('att.', v && v.fta, 5);
+          const note = inp('where from (NCAA, 3 seasons)', v && v.note); note.maxLength = 80;
+          const err = E.el('small', 'rp-cft-err');
+          line.append(nm, now, pct, made, att, note, err);
+          box.appendChild(line);
+          return { k, v, pct, made, att, note, err };
+        });
+        const go = E.el('button', 'ep-btn mini pri', 'Save'); go.type = 'button';
+        const no = E.el('button', 'ep-btn mini', 'Cancel'); no.type = 'button';
+        const act = E.el('div', 'rp-syn-act'); act.append(go, no);
+        box.appendChild(act);
+        say.textContent = Q.sq.length + ' players: enter what you have below';
+        no.onclick = () => { close(); say.textContent = ''; };
+        go.onclick = async () => {
+          /* read and check every line first: nothing is kept while one of them is wrong */
+          let bad = 0;
+          const todo = [];
+          lines.forEach(L0 => {
+            L0.err.textContent = '';
+            let p = typed(L0.pct.value), m = typed(L0.made.value), a = typed(L0.att.value);
+            const note = L0.note.value.trim().slice(0, 80);
+            if (p == null && E.isNum(m) && E.isNum(a) && a > 0) p = Math.round(1000 * m / a) / 10;    // made / attempted alone
+            const why = [Number.isNaN(p) || (p != null && (p < 0 || p > 100)) ? 'a % is 0 to 100' : '',
+              Number.isNaN(m) || Number.isNaN(a) || (m != null && (m < 0 || m % 1)) || (a != null && (a < 0 || a % 1)) ? 'made and attempted are whole numbers' : '',
+              E.isNum(m) && E.isNum(a) && m > a ? 'more made than attempted' : ''].filter(Boolean).join('; ');
+            if (why) { L0.err.textContent = why; bad++; return; }
+            const val = p == null ? null : { pct: Math.round(10 * p) / 10, ftm: m, fta: a, note };
+            const was = L0.v;
+            const same = (!val && !was) || (val && was && val.pct === was.pct && val.ftm === was.ftm && val.fta === was.fta && (val.note || '') === (was.note || ''));
+            if (!same) todo.push({ k: L0.k, val });
+          });
+          if (bad) { say.textContent = bad + (bad === 1 ? ' line needs' : ' lines need') + ' putting right'; return; }
+          if (!todo.length) { close(); say.textContent = 'nothing changed'; return; }
+          go.disabled = no.disabled = true;
+          const c = await cftClient();
+          let kept = 0, here = 0;
+          for (const { k, val } of todo) {
+            CFT.local.set(k, val);
+            let ok = false;
+            if (c && c.rpc) {
+              try {
+                const { error } = await c.rpc('set_career_ft', { p_player: k, p_pct: val ? val.pct : null, p_made: val ? val.ftm : null, p_att: val ? val.fta : null, p_note: val ? val.note || null : null });
+                ok = !error;
+              } catch (_) { ok = false; }
+            }
+            if (ok) { kept++; CFT.cache.set(k, val); CFT.unkept.delete(k); } else { here++; CFT.unkept.add(k); }
+          }
+          close();
+          say.textContent = [kept ? kept + ' kept for every report' : '', here ? here + ' on this page only (only a platform administrator can keep a career FT%)' : ''].filter(Boolean).join(' · ');
+          state.rebuild();
+        };
+      };
+    },
+    async build(c, R) {
+      const CL = root.EpinoiaClutch;
+      const L = await ctx.logs().catch(() => null);
+      if (!CL || !L || !L.gs || !L.gs.length) return [block('<div class="rp-empty">No play-by-play for this club yet.</div>')];
+      const Q = await squadOf().catch(() => null);
+      const me = Q && Q.T.mine ? Q.T.mine : {};
+      const S = CL.season(L.gs.filter(g => Array.isArray(g.starters)).map(g => ({
+        game: { id: g.id, starters: g.starters, period: g.period, events: L.byG[g.id] || [] }, side: L.sideOf[g.id] })));
+      const out = [];
+      const pct = (m, a) => (a > 0 ? 100 * m / a : null);
+      const mins = sec => Math.floor(sec / 60) + ':' + String(Math.round(sec % 60)).padStart(2, '0');
+      const ids = [...new Set([...(Q ? Q.sq.map(r => String(r.id)) : []), ...Object.keys(S.players)])];
+      const meta = Object.assign({}, Q ? Q.meta : {});
+      const missing = ids.filter(id => !meta[id]);
+      if (missing.length) { try { Object.assign(meta, await ctx.meta(missing)); } catch (_) { /* unnamed */ } }
+      const name = id => (meta[id] && meta[id].name) || ((Q && Q.sq.find(r => String(r.id) === String(id))) || {}).name || 'Player';
+      const short = id => surname(name(id));
+
+      /* ---- FREE THROWS: the foul line, most foulable first ---- */
+      try {
+        if (Q && Q.sq.length) {
+          let car = new Map();
+          try { car = await careerFt(Q.sq.map(r => r.id)); } catch (_) { /* before 0238, or offline */ }
+          const lg = Q.T.S.players.reduce((a, r) => { a.m += +r.ftm || 0; a.a += +r.fta || 0; return a; }, { m: 0, a: 0 });
+          const lgPct = pct(lg.m, lg.a);
+          const rows = Q.sq.map(r => {
+            const k = String(r.id), cp = S.players[k] || null, cv = car.get(k) || null;
+            return { k, ftm: +r.ftm || 0, fta: +r.fta || 0, season: pct(+r.ftm || 0, +r.fta || 0), cm: cp ? cp.ftm : 0, ca: cp ? cp.fta : 0,
+                     car: cv, guess: ftGuess(+r.ftm || 0, +r.fta || 0, cv), mpg: +r.mpg || 0 };
+          }).filter(x => x.fta > 0 || x.car);
+          /* the players who have been to the line ten times, or have a career figure, by their best guess, lowest first; the
+             rest underneath, by their attempts: too few to read */
+          const sure = x => (x.fta >= 10 || x.car ? 1 : 0);
+          rows.sort((a, b) => (sure(b) - sure(a)) || (sure(a) ? (a.guess - b.guess) : (b.fta - a.fta)));
+          if (rows.length) {
+            /* the track from 40% (lower where a shooter of ten attempts or more is under it) to 100% */
+            const low = Math.min(...rows.filter(x => x.fta >= 10 && E.isNum(x.season)).map(x => x.season).concat(rows.filter(x => x.car).map(x => x.car.pct)), 40);
+            const LO = Math.max(0, Math.floor(low / 10) * 10), HI = 100, at = v => Math.max(0, Math.min(100, 100 * (v - LO) / (HI - LO)));
+            const marks = []; for (let t = LO; t <= HI; t += 10) marks.push(t);
+            const ticks = marks.slice(1, -1).map(t => '<i class="t" style="left:' + at(t).toFixed(1) + '%"></i>').join('') +
+              (E.isNum(lgPct) ? '<i class="lg" style="left:' + at(lgPct).toFixed(1) + '%"></i>' : '');
+            const axis = '<div class="rp-ft-r rp-ft-ax"><span></span><div class="rp-ft-tr">' + marks.map(t => '<em style="left:' + at(t).toFixed(1) + '%">' + t + '</em>').join('') + '</div><span></span><span></span><span></span></div>';
+            const line = x => {
+              const b = E.isNum(x.season) && x.fta >= 10 ? E.bandVs(x.season, lgPct, 5, false) : 0;
+              const few = !sure(x);
+              const dot = x.ca > 0 ? '<i class="c" style="left:' + at(100 * x.cm / x.ca).toFixed(1) + '%" title="clutch"></i>' : '';
+              const dia = x.car ? '<i class="k" style="left:' + at(x.car.pct).toFixed(1) + '%"></i>' : '';
+              return '<div class="rp-ft-r' + (few ? ' few' : '') + '" data-b="' + b + '"><span class="n">' + esc(short(x.k)) + '</span>' +
+                '<div class="rp-ft-tr">' + ticks + (E.isNum(x.season) ? '<b style="width:' + at(x.season).toFixed(1) + '%"></b>' : '') + dot + dia + '</div>' +
+                '<span class="v"><b>' + (E.isNum(x.season) ? f1(x.season) : '—') + '</b><small>' + x.ftm + '/' + x.fta + '</small></span>' +
+                '<span class="v cl">' + (x.ca ? '<b>' + x.cm + '/' + x.ca + '</b>' : '<b class="nil">—</b>') + '</span>' +
+                '<span class="v ca">' + (x.car ? '<b>' + f1(x.car.pct) + '</b>' + (E.isNum(x.car.fta) ? '<small>' + (E.isNum(x.car.ftm) ? x.car.ftm + '/' : '') + x.car.fta + '</small>' : '') : '<b class="nil">—</b>') + '</span></div>';
+            };
+            const head = '<div class="rp-ft-r rp-ft-h"><span>player</span><span>FT% this season (bar) · clutch (dot) · career (diamond)</span><span>season</span><span>clutch</span><span>career</span></div>';
+            out.push(block(title('Free throws', 'who to send to the line: lowest best guess first · ' + (E.isNum(lgPct) ? 'the line is the league’s ' + f1(lgPct) + '%' : 'this season')) +
+              '<div class="rp-ft">' + head + rows.map(line).join('') + axis + '</div>' +
+              '<p class="rp-note">Each bar is the player’s free-throw % this season, coloured against the league’s (green above, red below; grey under ten attempts). The dot is their clutch free throws, the diamond their career % where one has been entered. The order is the best guess at each shooter: this season’s free throws with the career figure added in as so many more attempts at its percentage, lowest first. Under ten attempts and no career figure, the player is at the foot, too few to read.</p>'));
+            R.legendExtra.push(['FREE THROWS', 'This season’s free-throw % (the bar, coloured against the league’s average, the line), the clutch free throws (the dot) and a career % entered by hand (the diamond: college or other leagues). The order is the best guess at each shooter, lowest first: this season’s makes and attempts with the career figure counted as its own attempts (or 100 where only the % was entered).']);
+          }
+        }
+      } catch (e) { if (root.console) root.console.warn('[report clutch FT]', e); }
+
+      if (!S.games) {
+        out.push(block(title('Clutch time', 'the last four minutes of the fourth quarter and overtime, within five points') +
+          '<div class="rp-empty">None of the club’s last ' + L.gs.length + ' games with a play-by-play was within five points in the last four minutes.</div>'));
+        return out;
+      }
+
+      /* ---- RATINGS: the club's clutch offence, defence and net against its own over every minute ---- */
+      const Rt = CL.ratings(S.own, S.opp), sh = CL.shooting(S.own), shO = CL.shooting(S.opp);
+      try {
+        const tile = (l, v, ref, low, w, signed) => '<div class="rp-tile" data-b="' + (E.isNum(v) && E.isNum(ref) ? E.bandVs(v, ref, signed ? 6 : 5, low) : 0) + '"><b>' + (signed ? sg1(v) : f1(v)) + '</b><span>' + l + '</span><em>' + w + '</em></div>';
+        const tov = Rt.poss > 0 ? 100 * S.own.tov / Rt.poss : null, tovD = Rt.poss > 0 ? 100 * S.opp.tov / Rt.poss : null;
+        /* the scope named, so a season's total is never read as this month's (the clutch minutes add up over every game read) */
+        out.push(block(title('Clutch ratings', (c.scope ? c.scope + ' · ' : '') + S.games + ' of the last ' + S.of + ' games had clutch time · ' + Math.round(S.dur / 60) + ' minutes in all (' + (S.dur / 60 / S.games).toFixed(1) + ' a game) · ' + Math.round(Rt.poss) + ' possessions a side') +
+          '<div class="rp-tiles rp-tiles-b" style="--n:4">' +
+            tile('CLUTCH ORTG', Rt.ortg, me.ortg, false, 'all minutes ' + f1(me.ortg)) +
+            tile('CLUTCH DRTG', Rt.drtg, me.drtg, true, 'all minutes ' + f1(me.drtg)) +
+            tile('CLUTCH NET', Rt.net, me.net, false, 'all minutes ' + sg1(me.net), true) +
+            '<div class="rp-tile" data-b="9"><b>' + S.wins + '–' + S.losses + '</b><span>CLUTCH RECORD</span><em>' + (S.own.pts - S.opp.pts > 0 ? '+' : '') + (S.own.pts - S.opp.pts) + ' points in clutch time</em></div>' +
+          '</div>' +
+          '<table class="rp-tbl rp-cl-ff"><thead><tr><th class="l">in clutch time</th><th>PTS</th><th>eFG%</th><th>TS%</th><th>TOV / 100</th><th>OREB</th><th>FT</th><th>FT RATE</th></tr></thead><tbody>' +
+            '<tr><td class="l">' + esc(c.name) + '</td><td>' + S.own.pts + '</td><td>' + f1(sh.efg) + '</td><td>' + f1(sh.ts) + '</td><td>' + f1(tov) + '</td><td>' + S.own.or + '</td><td>' + S.own.ftm + '/' + S.own.fta + '</td><td>' + f1(S.own.fga ? 100 * S.own.fta / S.own.fga : null) + '</td></tr>' +
+            '<tr><td class="l">Opponents</td><td>' + S.opp.pts + '</td><td>' + f1(shO.efg) + '</td><td>' + f1(shO.ts) + '</td><td>' + f1(tovD) + '</td><td>' + S.opp.or + '</td><td>' + S.opp.ftm + '/' + S.opp.fta + '</td><td>' + f1(S.opp.fga ? 100 * S.opp.fta / S.opp.fga : null) + '</td></tr>' +
+          '</tbody></table>' +
+          '<p class="rp-note">Clutch time is worked out from the play-by-play: the last four minutes of the fourth quarter and all of overtime, while the score is within five points going into each play. Each tile is coloured against the club’s own rating over every minute: green better, red worse. Possessions are estimated (FGA − OREB + TOV + 0.44 FTA); a few clutch minutes make a small sample.</p>'));
+      } catch (e) { if (root.console) root.console.warn('[report clutch ratings]', e); }
+
+      /* ---- USAGE AND TRUE SHOOTING: who takes the plays, and how well ---- */
+      try {
+        const ps = Object.keys(S.players).map(k => { const p = S.players[k]; return { k, p, sec: p.sec, usg: CL.usage(p), ts: CL.shooting(p).ts, tsa: p.fga + 0.44 * p.fta }; })
+          .filter(x => x.sec >= 60 || x.p.mine > 0).sort((a, b) => b.sec - a.sec);
+        if (ps.length) {
+          const W = 380, Hh = 250, P = { l: 34, r: 12, t: 12, b: 28 };
+          const sc = ps.filter(x => E.isNum(x.usg) && E.isNum(x.ts) && x.tsa >= 2);
+          const xMax = Math.max(40, Math.ceil(Math.max(0, ...sc.map(x => x.usg)) / 10) * 10);
+          const tsv = sc.map(x => x.ts), yLo = Math.min(20, Math.floor(Math.min(100, ...tsv) / 10) * 10), yHi = Math.max(80, Math.ceil(Math.max(0, ...tsv) / 10) * 10);
+          const X = v => P.l + (W - P.l - P.r) * Math.min(1, Math.max(0, v / xMax)), Y = v => P.t + (Hh - P.t - P.b) * (1 - (Math.min(yHi, Math.max(yLo, v)) - yLo) / (yHi - yLo));
+          const maxSec = Math.max(1, ...sc.map(x => x.sec));
+          let svg = '<svg class="rp-cl-sc" viewBox="0 0 ' + W + ' ' + Hh + '" xmlns="http://www.w3.org/2000/svg">';
+          for (let v = 0; v <= xMax; v += 10) svg += '<line class="g" x1="' + X(v) + '" x2="' + X(v) + '" y1="' + P.t + '" y2="' + (Hh - P.b) + '"/><text class="ax" x="' + X(v) + '" y="' + (Hh - P.b + 11) + '" text-anchor="middle">' + v + '</text>';
+          for (let v = yLo; v <= yHi; v += 10) svg += '<line class="g" x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + Y(v) + '" y2="' + Y(v) + '"/><text class="ax" x="' + (P.l - 4) + '" y="' + (Y(v) + 3) + '" text-anchor="end">' + v + '</text>';
+          /* the club's clutch TS% across, and a fair share of the plays (one in five) down */
+          /* EVERY NAME WHERE IT CAN BE READ: the dots first, then each label in the first of eight places round its dot that
+             touches no dot and no label already put down (the biggest dots' labels first), inside the plot */
+          const boxes = [], hit = b => boxes.some(q => !(b[2] < q[0] || b[0] > q[2] || b[3] < q[1] || b[1] > q[3]));
+          const inside = b => b[0] >= P.l && b[2] <= W - P.r && b[1] >= P.t && b[3] <= Hh - P.b;
+          const label = (txt, x, y, cls, opts) => {
+            const w = 4.3 * txt.length + 2, h = 8;
+            const tries = opts || [['start', 0, 0]];
+            for (const [anc, dx, dy] of tries) {
+              const x0 = anc === 'start' ? x + dx : anc === 'end' ? x + dx - w : x + dx - w / 2, b = [x0, y + dy - h + 2, x0 + w, y + dy + 2];
+              if (!hit(b) && inside(b)) { boxes.push(b); return '<text class="' + cls + '" x="' + (x + dx).toFixed(1) + '" y="' + (y + dy).toFixed(1) + '" text-anchor="' + anc + '">' + esc(txt) + '</text>'; }
+            }
+            return '';
+          };
+          if (E.isNum(sh.ts)) svg += '<line class="ref" x1="' + P.l + '" x2="' + (W - P.r) + '" y1="' + Y(sh.ts) + '" y2="' + Y(sh.ts) + '"/>';
+          svg += '<line class="ref" x1="' + X(20) + '" x2="' + X(20) + '" y1="' + P.t + '" y2="' + (Hh - P.b) + '"/>';
+          svg += '<text class="at" x="' + ((P.l + W - P.r) / 2) + '" y="' + (Hh - 3) + '" text-anchor="middle">CLUTCH USAGE %</text><text class="at" transform="translate(9 ' + ((P.t + Hh - P.b) / 2) + ') rotate(-90)" text-anchor="middle">CLUTCH TS %</text>';
+          const dots = sc.slice().sort((a, b) => b.sec - a.sec).map(x => ({ x, cx: X(x.usg), cy: Y(x.ts), r: 4 + 9 * Math.sqrt(x.sec / maxSec) }));
+          dots.forEach(d => { boxes.push([d.cx - d.r, d.cy - d.r, d.cx + d.r, d.cy + d.r]); });
+          svg += dots.map(d => '<circle class="pt ' + (!E.isNum(sh.ts) || d.x.ts >= sh.ts ? 'up' : 'dn') + '" cx="' + d.cx.toFixed(1) + '" cy="' + d.cy.toFixed(1) + '" r="' + d.r.toFixed(1) + '"/>').join('');
+          /* the reference lines' words go down before the names, at the ends of their lines */
+          if (E.isNum(sh.ts)) svg += label('club ' + f1(sh.ts), W - P.r - 2, Y(sh.ts), 'rl', [['end', 0, -3], ['end', 0, 9]]);
+          svg += label('one in five', X(20), P.t, 'rl', [['start', 3, 8], ['end', -3, 8], ['start', 3, Hh - P.b - P.t - 3], ['end', -3, Hh - P.b - P.t - 3]]);
+          dots.forEach(d => {
+            const r = d.r, g = 2, far = r + g + 8;
+            svg += label(short(d.x.k), d.cx, d.cy, 'pl', [['start', r + g, 3], ['end', -r - g, 3], ['middle', 0, -r - g], ['middle', 0, r + g + 7],
+              ['start', r * 0.7 + g, -r * 0.7 - 1], ['start', r * 0.7 + g, r * 0.7 + 7], ['end', -r * 0.7 - g, -r * 0.7 - 1], ['end', -r * 0.7 - g, r * 0.7 + 7],
+              ['start', far, -10], ['start', far, 14], ['end', -far, -10], ['end', -far, 14], ['middle', 0, -far - 4], ['middle', 0, far + 10]]);
+          });
+          svg += '</svg>';
+          const trs = ps.map(x => {
+            const p = x.p, bU = E.isNum(x.usg) ? (x.usg >= 25 ? 9 : 0) : 0;
+            return '<tr><td class="l">' + esc(short(x.k)) + '</td><td>' + mins(x.sec) + '</td><td>' + p.pts + '</td><td>' + p.fgm + '/' + p.fga + '</td><td>' + p.ftm + '/' + p.fta + '</td>' +
+              '<td data-b="' + bU + '">' + f1(x.usg) + '</td><td data-b="' + (E.isNum(x.ts) && x.tsa >= 2 && E.isNum(sh.ts) ? E.bandVs(x.ts, sh.ts, 8, false) : 0) + '">' + f1(x.ts) + '</td></tr>';
+          }).join('');
+          out.push(block(title('Clutch usage and true shooting', 'who takes the plays in clutch time, and how well they score them · the dot’s size is their clutch minutes') +
+            '<div class="rp-cl-two"><div>' + (sc.length ? svg : '<div class="rp-empty">Too few clutch shots to chart.</div>') + '</div>' +
+            '<div><table class="rp-tbl rp-cl-pl"><thead><tr><th class="l">player</th><th>min</th><th>pts</th><th>FG</th><th>FT</th><th>USG%</th><th>TS%</th></tr></thead><tbody>' + trs + '</tbody></table></div></div>' +
+            '<p class="rp-note">Usage: the share of the club’s plays (a shot, 0.44 of a free throw, a turnover) a player ended while on the floor in clutch time; one in five is a fair share. True shooting: points against shots, free throws included. Green above the club’s clutch TS%, red below; blue for a usage of 25% or more. The chart leaves out a player with fewer than two shots.</p>'));
+          R.legendExtra.push(['CLUTCH TIME', 'The last four minutes of the fourth quarter (of the second half, in halves) and all of overtime, while the score is within five points going into the play: worked out from the play-by-play of every game.'],
+            ['CLUTCH USG%', 'The share of the club’s plays a player ended (field goal attempts + 0.44 × free throw attempts + turnovers) while on the floor in clutch time.'],
+            ['CLUTCH TS%', 'Points ÷ (2 × (field goal attempts + 0.44 × free throw attempts)) in clutch time.']);
+        }
+      } catch (e) { if (root.console) root.console.warn('[report clutch usage]', e); }
+
+      /* ---- THE CLUTCH SHOT CARD: the half-court page's card, drawn from clutch time's shots ---- */
+      try {
+        const SI = root.EpinoiaSituations;
+        if (SI && SI.compute && E.sitCardHTML) {
+          const A = { pts: S.own.pts, fga: S.own.fga, fgm: S.own.fgm, p3m: S.own.p3m, fta: S.own.fta, ftm: S.own.ftm, tov: S.own.tov, astd: 0, shots: [],
+            types: new Map(), zones: { rim: { a: 0, m: 0, x: 0 }, mid: { a: 0, m: 0, x: 0 }, three: { a: 0, m: 0, x: 0 } } };
+          L.gs.forEach(g => {
+            const seqs = S.seqs.get(g.id);
+            if (!seqs || !seqs.size) return;
+            let C;
+            try { C = SI.compute({ teams: (g.roster_snapshot && g.roster_snapshot.teams) || [{}, {}], events: L.byG[g.id] || [] }); } catch (_) { return; }
+            const D = C && C.side && C.side[L.sideOf[g.id]];
+            ((D && D.sits && D.sits.all && D.sits.all.shots) || []).forEach(x => {
+              if (!seqs.has(x.id)) return;
+              A.shots.push(x);
+              const key = (x.three ? 'three' : 'two') + '|' + (x.type || '');
+              const T0 = A.types.get(key) || { three: x.three, type: x.type || '', a: 0, m: 0 };
+              T0.a++; if (x.made) T0.m++; A.types.set(key, T0);
+              const z = A.zones[x.zone] || null; if (z) { z.a++; if (x.made) z.m++; }
+              if (x.made && x.ast) { A.astd++; if (z) z.x++; }
+            });
+          });
+          A.efg = A.fga ? (A.fgm + 0.5 * A.p3m) / A.fga : null;
+          A.ppp = Rt.poss > 0 ? A.pts / Rt.poss : null;
+          A.tovPct = Rt.poss > 0 ? A.tov / Rt.poss : null;
+          A.astPct = A.fgm ? A.astd / A.fgm : null;
+          A.types = [...A.types.values()].sort((x, y) => (y.a - x.a) || (y.m - x.m));
+          A.scorers = Object.keys(S.players).map(k => ({ pid: k, pts: S.players[k].pts, fgm: S.players[k].fgm, fga: S.players[k].fga })).filter(x => x.pts > 0).sort((x, y) => y.pts - x.pts).slice(0, 5);
+          const names = {}; A.scorers.forEach(x => { names[x.pid] = name(x.pid); });
+          out.push(block(title('Clutch shots', 'every shot of clutch time, as the half-court and transition cards draw theirs · per chance: per possession') +
+            E.sitCardHTML(A, { key: 'clutch', colour: c.accent || '#08603f', who: c.name + ' offence', names })));
+        }
+      } catch (e) { if (root.console) root.console.warn('[report clutch shots]', e); }
+
+      /* ---- THE FIVES: the ones that played the most clutch time, with their net rating ---- */
+      try {
+        let floor = 120;
+        const pick = () => Object.values(S.fives).filter(f => f.ids.length === 5 && f.sec >= floor).sort((a, b) => b.sec - a.sec);
+        let fv = pick();
+        while (fv.length < 4 && floor > 30) { floor = Math.floor(floor / 2); fv = pick(); }
+        fv = fv.slice(0, 8);
+        if (fv.length) {
+          const td = (v, ref, low, scl, sgn) => '<td' + (sgn ? ' class="rp-netc"' : '') + ' data-b="' + (E.isNum(v) && E.isNum(ref) ? E.bandVs(v, ref, scl, low) : 0) + '">' + (sgn ? sg1(v) : f1(v)) + '</td>';
+          const trs = fv.map(f => {
+            const r = CL.ratings(f.own, f.opp), pm = f.own.pts - f.opp.pts;
+            return '<tr><td class="l names">' + f.ids.map(id => esc(short(id))).join(', ') + '</td><td>' + mins(f.sec) + '</td><td>' + Math.round(r.poss) + '</td>' +
+              '<td class="' + (pm > 0 ? 'pos' : pm < 0 ? 'neg' : '') + '">' + (pm > 0 ? '+' : '') + pm + '</td>' +
+              td(r.ortg, Rt.ortg, false, 10) + td(r.drtg, Rt.drtg, true, 10) + td(r.net, Rt.net, false, 12, true) + '</tr>';
+          }).join('');
+          out.push(block(title('The clutch fives', 'the ' + fv.length + ' fives with the most clutch time together (' + mins(floor) + '+) · coloured against the club’s clutch ratings') +
+            '<table class="rp-tbl rp-cmb rp-cl-lu"><thead><tr><th class="l">five</th><th>min</th><th>poss</th><th>+/−</th><th>ORTG</th><th>DRTG</th><th>NET</th></tr></thead><tbody>' + trs + '</tbody></table>' +
+            '<p class="rp-note">Ratings per 100 possessions (estimated) in the clutch time each five played together; a handful of possessions swings them a long way, so read the minutes and the margin beside them.</p>'));
+        }
+      } catch (e) { if (root.console) root.console.warn('[report clutch fives]', e); }
+      return out.length ? out : [block('<div class="rp-empty">No play-by-play for this club yet.</div>')];
+    }
+  };
+
   const week = {
     key: 'week', title: 'Last 7 days', page: 'LAST 7 DAYS', on: false,
     async build() {
@@ -830,7 +1241,7 @@ function modules(ctx) {
     }
   };
   const legend = { key: 'legend', title: 'Legend', on: true };
-  return [cover, main, shots, players, depth, combos, week, legend];
+  return [cover, main, shots, players, depth, combos, clutch, week, legend];
 }
 
 return { modules, TEAM_STATS };

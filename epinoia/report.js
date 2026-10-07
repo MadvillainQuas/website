@@ -424,8 +424,10 @@ function ranker(field, keys) {
     const vs = fl.map(r => r[k]).filter(isNum).map(Number);
     avg.set(k, vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null);
   });
+  /* n: the whole field; nNow: the season shown's part of it (an earlier season's rows, priorRows __prior, deepen the
+     percentiles but a count printed as "among 40 guards" is this season's) */
   return { pct: (k, id) => { const m = ranks.get(k); const v = m ? m.get(id) : null; return v == null ? null : Math.round(v); },
-           avg: k => avg.get(k), n: fl.length };
+           avg: k => avg.get(k), n: fl.length, nNow: fl.filter(r => !r.__prior).length };
 }
 /* a style (shot volume, usage, the share of assists that are threes) has no good end: it is drawn in blue-to-purple, DEEPER the
    higher it is among the others (bands 5 to 8, quarter by quarter; 9 is the one neutral tone kept for what has no field) */
@@ -720,7 +722,9 @@ function sitSeason(games) {
   return out;
 }
 const SIT_NAME = { half: ['Half court', 'chances that were not a second chance, a break, off a turnover or after a timeout'],
-                   transition: ['Transition', 'tagged a fast break, or within eight seconds of a defensive rebound or a steal'] };
+                   transition: ['Transition', 'tagged a fast break, or within eight seconds of a defensive rebound or a steal'],
+                   /* the club report's CLUTCH page (report-teampages.js clutch, clutch.js): the card drawn from clutch time's shots */
+                   clutch: ['Clutch', 'the last four minutes of the fourth quarter and overtime, within five points'] };
 function sitCardHTML(A, o) {
   const opt = o || {};
   const Box = root.EpinoiaBox, SC = root.EpinoiaShotChart;
@@ -1591,7 +1595,7 @@ function ui(state) {
       /* the mailer's copy (EPINOIA_RP_BOT) at email weight: twice the page's size (about 190 dpi on A4) and a lighter
          JPEG, a third of the bytes, so a week's reports go in one email */
       const bot = !!root.EPINOIA_RP_BOT;
-      if (kind === 'pdf') await X.savePdf(sheets, name, { w: PAGE.w, h: PAGE.h, scale: bot ? 2 : 3, quality: bot ? 0.84 : 0.9, title: (state.c && state.c.docTitle) || 'Report', onProgress: (i, n) => say('drawing page ' + i + ' of ' + n + '…') });
+      if (kind === 'pdf') await X.savePdf(sheets, name, { w: PAGE.w, h: PAGE.h, scale: bot ? 2 : 3, quality: bot ? 0.84 : 0.9, title: (state.c && state.c.docTitle) || 'Report', outline: state.outline || null, onProgress: (i, n) => say('drawing page ' + i + ' of ' + n + '…') });
       else await X.saveImages(sheets, name, { w: PAGE.w, h: PAGE.h, onProgress: (i, n) => say('drawing page ' + i + ' of ' + n + '…') });
       say('saved');
       setTimeout(() => say(''), 4000);
@@ -1646,6 +1650,8 @@ function ui(state) {
         try { blocks = await m.build(c, R); } catch (e) { warn(e); blocks = [block('<div class="rp-empty">' + esc(m.title) + ' could not be built: ' + esc(e.message || e) + '</div>')]; }
         if (R.stale()) return;
         if (!blocks || !blocks.length) continue;
+        /* each block knows its section: the PDF's bookmarks put a section's headings under it */
+        blocks.forEach(b => { if (b && b.setAttribute) b.setAttribute('data-mod', m.page || m.title); });
         /* a module starts a page of its own unless it says it may follow on (pack: true, the combinations after the
            depth chart): a new section half-way down a page read as clutter (Louie, 2026-10-02) */
         const at = layout(pagesNew, c, m.page || m.title, blocks, { pack: m.pack === true });
@@ -1657,9 +1663,28 @@ function ui(state) {
         layout(pagesNew, c, 'LEGEND', legendBlocks(R.legend, R.legendExtra, o.kind, R.pooled));
       }
       const tocEl = pagesNew.querySelector('.rp-cv-toc');
-      if (tocEl) tocEl.innerHTML = toc.map(([t, n]) => '<li><span>' + esc(t.charAt(0) + t.slice(1).toLowerCase()) + '</span><i></i><b>' + n + '</b></li>').join('');
+      const cap = t => t.charAt(0) + t.slice(1).toLowerCase();
+      /* THE CONTENTS ARE LINKS (2026-10-07): each line goes to its page (data-goto: on the screen a scroll, in the PDF a link,
+         raster.js), and every page's number goes back to the contents */
+      if (tocEl) tocEl.innerHTML = toc.map(([t, n]) => '<li data-goto="' + n + '" title="Go to page ' + n + '"><span>' + esc(cap(t)) + '</span><i></i><b>' + n + '</b></li>').join('');
       const all = pagesNew.querySelectorAll('.rp-pg');
-      all.forEach((p, i) => { const n = p.querySelector('.rp-no'); if (n) n.textContent = (i + 1) + ' / ' + all.length; });
+      all.forEach((p, i) => { const n = p.querySelector('.rp-no'); if (n) { n.textContent = (i + 1) + ' / ' + all.length; if (tocEl && i > 0) { n.setAttribute('data-goto', '1'); n.title = 'Back to the contents'; } } });
+      /* THE BOOKMARKS (raster.js outline): every section at its first page, and the headings in it at theirs */
+      const heads = [];
+      all.forEach((p, i) => p.querySelectorAll('.rp-blk[data-mod]').forEach(b => {
+        const h = b.querySelector('.rp-h h3'), pn = b.querySelector('.rp-pname');      // a heading; a player's card, by his name
+        if (h && h.textContent.trim()) heads.push({ mod: b.getAttribute('data-mod'), title: h.textContent.trim(), page: i + 1 });
+        if (pn && pn.textContent.trim()) heads.push({ mod: b.getAttribute('data-mod'), title: pn.textContent.trim(), page: i + 1 });
+      }));
+      state.outline = (tocEl ? [{ title: 'Cover and contents', page: 1 }] : []).concat(toc.map(([t, n]) => ({
+        title: cap(t), page: n,
+        kids: heads.filter((x, k) => x.mod === t && !heads.slice(0, k).some(y => y.mod === t && y.title === x.title)).map(x => ({ title: x.title, page: x.page }))
+      })));
+      pagesNew.addEventListener('click', e => {
+        const g = e.target && e.target.closest ? e.target.closest('[data-goto]') : null;
+        const to = g ? pagesNew.querySelectorAll('.rp-pg')[+g.getAttribute('data-goto') - 1] : null;
+        if (to && to.scrollIntoView) to.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
       say(all.length + (all.length === 1 ? ' page' : ' pages'));
       stand(pagesNew);
       (state.onBuilt || []).forEach(f => { try { f(); } catch (_) { /* a label */ } });
@@ -1685,7 +1710,7 @@ function ui(state) {
     const z = pages.style.getPropertyValue('--rp-z');
     pages.style.setProperty('--rp-z', '1');
     try {
-      const bytes = await X.pdfBytes(sheets, { w: PAGE.w, h: PAGE.h, scale: 2, quality: 0.84, title: (state.c && state.c.docTitle) || 'Report',
+      const bytes = await X.pdfBytes(sheets, { w: PAGE.w, h: PAGE.h, scale: 2, quality: 0.84, title: (state.c && state.c.docTitle) || 'Report', outline: state.outline || null,
         onProgress: (i, n) => say('drawing page ' + i + ' of ' + n + ' for sending\u2026') });
       const path = o.kind + '/' + o.id + '.pdf';
       say('storing it for sending\u2026');

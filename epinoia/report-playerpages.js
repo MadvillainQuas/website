@@ -121,11 +121,11 @@ function modules(ctx) {
         return '<div class="rp-tile"' + (p == null ? '' : ' data-b="' + E.band(p) + '"') + '><b>' + (E.isNum(v) ? (sg && +v > 0 ? '+' : '') + (+v).toFixed(dp) : '—') + '</b><span>' + l + '</span>' +
           (p == null ? '' : '<span class="rp-rk" data-b="' + E.band(p) + '">' + E.ordinal(p) + '</span>') + '</div>'; }).join('') + '</div>';
       const needRapm = keys.some(k => E.STATS[k] && E.STATS[k].rapm) && !rapmOk;
-      const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + Rk.n + ' ' + Rk.who + (Rk.group ? ' (adjusted for position)' : '') : ''].filter(Boolean).join(' · ')) + tileHTML +
+      const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + (Rk.nNow || Rk.n) + ' ' + Rk.who + (Rk.nNow && Rk.nNow < Rk.n ? ' this season' : '') + (Rk.group ? ' (adjusted for position)' : '') : ''].filter(Boolean).join(' · ')) + tileHTML +
         (needRapm ? '<p class="rp-flagnote" style="margin-top:8px">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : ''))];
       out.push(block(E.colsHTML(E.groupsOn ? E.groupsOn(groups, mine) : groups, ([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + E.groupRowsHTML(ks, mine, Rk) + '</div>',
         ([, ks]) => E.groupWeight(ks)) +
-        '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + Rk.n + ' ' + Rk.who + ' of ' + (c.scope || 'the competition') +
+        '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + (Rk.nNow || Rk.n) + ' ' + Rk.who + ' of ' + (c.scope || 'the competition') + (Rk.nNow && Rk.nNow < Rk.n ? ' (with earlier seasons’, ' + Rk.n + ' in all, deepening the field)' : '') +
           ' (the bar), and their average' + (Rk.group ? ': every figure is adjusted for position, ranked against players of their own' : ': too few players of their position to rank that player among them alone, so against everybody') +
           '. Template: ' + templateName(R.state, group) + '.') + '</p>' + E.keyHTML('Reading the player’s numbers', [
           ['THE BAR · THE ORDINAL', 'Where they sit among players of their own position in the field named above: 80th means better than eight in ten of them. Green is the top quarter, red the bottom; blue-to-purple bars are styles, deeper = more of it.'],

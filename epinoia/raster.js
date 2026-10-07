@@ -10,7 +10,8 @@
 
    OUT.
      canvasOf(node, {scale})            -> a canvas
-     savePdf(nodes, name, {title})      one A4 PDF, a page per node (each a JPEG at that resolution), downloaded
+     savePdf(nodes, name, {title, outline}) one A4 PDF, a page per node (each a JPEG at that resolution), downloaded; an
+                                        element with data-goto="N" is a link to page N, and outline the bookmarks
      pdfBytes(nodes, {title})           the same PDF's bytes, not downloaded (PRIME REPORT keeps them for sending)
      saveImages(nodes, name)            one PNG per node, a ZIP of them when there is more than one, downloaded
      pdfFromJpegs([{bytes, w, h}], meta) and zip(files) are the writers, pure (no library, every offset counted)
@@ -279,8 +280,16 @@ const blobOf = (c, type, q) => new Promise((res, rej) => c.toBlob(b => (b ? res(
 /* ---- the PDF: a page per image, each filling an A4 page ---- */
 const A4_PT = [595.28, 841.89];
 const pdfText = s => '(' + String(s || '').replace(/[^\x20-\x7e]/g, '').replace(/([\\()])/g, '\\$1') + ')';
+/* any text at all (a bookmark: 'Shot clock · defence', a player's accented name), as UTF-16 with its byte-order mark */
+const pdfUni = s => '<FEFF' + [...String(s || '')].map(ch => { const c = ch.codePointAt(0);
+  if (c < 0x10000) return c.toString(16).padStart(4, '0');
+  const v = c - 0x10000; return (0xd800 + (v >> 10)).toString(16) + (0xdc00 + (v & 1023)).toString(16); }).join('').toUpperCase() + '>';
 const pad2 = n => String(n).padStart(2, '0');
 const pdfDate = d => 'D:' + d.getUTCFullYear() + pad2(d.getUTCMonth() + 1) + pad2(d.getUTCDate()) + pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + pad2(d.getUTCSeconds()) + 'Z';
+/* THE PDF CAN BE FOUND YOUR WAY ROUND (2026-10-07): a page's links (pages[i].links: [{ x, y, w, h, page }], the box as fractions
+   of the page from its top left, page counted from 1) become link annotations that jump to that page - the cover's contents, a
+   page's number back to the contents - and meta.outline ([{ title, page, kids: [same] }]) the bookmarks a PDF reader shows down
+   its side, two deep: the sections, and the headings in each */
 function pdfFromJpegs(pages, meta) {
   const mt = meta || {}, page = mt.page || A4_PT;
   const enc = s => { const b = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 255; return b; };
@@ -293,27 +302,62 @@ function pdfFromJpegs(pages, meta) {
     if (stream) { put(stream); put(enc('\nendstream\nendobj\n')); }
   };
   const n = pages.length;
-  /* 1 catalog, 2 pages, then three objects a page (page, image, contents), then the info */
+  /* 1 catalog, 2 pages, then three objects a page (page, image, contents), then the info; then the links and the bookmarks */
   const pageObj = i => 3 + i * 3, info = 3 + n * 3;
+  let next = info + 1;
+  const okPage = q => Number.isInteger(+q) && +q >= 1 && +q <= n;
+  const dest = q => '[' + pageObj(+q - 1) + ' 0 R /Fit]';
+  const annots = pages.map(p => (p.links || []).filter(l => l && okPage(l.page) && l.w > 0 && l.h > 0).map(l => ({ l, id: next++ })));
+  const outline = [];
+  const walk = (list, parent) => (list || []).filter(o => o && okPage(o.page) && String(o.title || '').trim()).map(o => {
+    const it = { o, id: next++, parent, kids: [] };
+    outline.push(it);
+    it.kids = walk(o.kids, it);
+    return it;
+  });
+  const outRoot = (mt.outline || []).length ? next++ : 0;
+  const top = outRoot ? walk(mt.outline, null) : [];
   put(enc('%PDF-1.4\n%âãÏÓ\n'));
-  obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  obj(1, '<< /Type /Catalog /Pages 2 0 R' + (top.length ? ' /Outlines ' + outRoot + ' 0 R /PageMode /UseOutlines' : '') + ' >>');
   obj(2, '<< /Type /Pages /Kids [' + pages.map((_, i) => pageObj(i) + ' 0 R').join(' ') + '] /Count ' + n + ' >>');
+  const place = [];
   pages.forEach((p, i) => {
     const s = Math.min(page[0] / p.w, page[1] / p.h);
     const w = +(p.w * s).toFixed(2), h = +(p.h * s).toFixed(2);
     const x = +((page[0] - w) / 2).toFixed(2), y = +((page[1] - h) / 2).toFixed(2);
+    place[i] = { x, y, w, h };
     const draw = enc('q ' + w + ' 0 0 ' + h + ' ' + x + ' ' + y + ' cm /Im0 Do Q');
     obj(pageObj(i), '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + page[0] + ' ' + page[1] + '] ' +
-      '/Resources << /XObject << /Im0 ' + (pageObj(i) + 1) + ' 0 R >> >> /Contents ' + (pageObj(i) + 2) + ' 0 R >>');
+      '/Resources << /XObject << /Im0 ' + (pageObj(i) + 1) + ' 0 R >> >> /Contents ' + (pageObj(i) + 2) + ' 0 R' +
+      (annots[i].length ? ' /Annots [' + annots[i].map(a => a.id + ' 0 R').join(' ') + ']' : '') + ' >>');
     obj(pageObj(i) + 1, '<< /Type /XObject /Subtype /Image /Width ' + p.w + ' /Height ' + p.h +
       ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + p.bytes.length + ' >>', p.bytes);
     obj(pageObj(i) + 2, '<< /Length ' + draw.length + ' >>', draw);
   });
   obj(info, '<< /Title ' + pdfText(mt.title || 'Report') + ' /Producer (Epinoia) /Creator (Epinoia report) /CreationDate (' + pdfDate(mt.date || new Date()) + ') >>');
+  /* a link's box: its fractions of the picture, on the picture's place on the page (PDF's origin is the bottom left) */
+  const f2 = v => (+v).toFixed(2);
+  annots.forEach((list, i) => list.forEach(({ l, id }) => {
+    const P = place[i], x0 = P.x + l.x * P.w, y1 = P.y + P.h - l.y * P.h;
+    obj(id, '<< /Type /Annot /Subtype /Link /Rect [' + f2(x0) + ' ' + f2(y1 - l.h * P.h) + ' ' + f2(x0 + l.w * P.w) + ' ' + f2(y1) + '] /Border [0 0 0] /Dest ' + dest(l.page) + ' >>');
+  }));
+  if (outRoot) {
+    const count = list => list.reduce((a, it) => a + 1 + count(it.kids), 0);
+    obj(outRoot, '<< /Type /Outlines' + (top.length ? ' /First ' + top[0].id + ' 0 R /Last ' + top[top.length - 1].id + ' 0 R /Count ' + top.length : ' /Count 0') + ' >>');       // the open items: the sections (their headings start folded)
+    /* a section's headings start folded (a negative count): the reader opens the one they want */
+    outline.forEach(it => {
+      const sib = it.parent ? it.parent.kids : top, k = sib.indexOf(it);
+      obj(it.id, '<< /Title ' + pdfUni(it.o.title) + ' /Parent ' + (it.parent ? it.parent.id : outRoot) + ' 0 R' +
+        (k > 0 ? ' /Prev ' + sib[k - 1].id + ' 0 R' : '') + (k < sib.length - 1 ? ' /Next ' + sib[k + 1].id + ' 0 R' : '') +
+        (it.kids.length ? ' /First ' + it.kids[0].id + ' 0 R /Last ' + it.kids[it.kids.length - 1].id + ' 0 R /Count -' + count(it.kids) : '') +
+        ' /Dest ' + dest(it.o.page) + ' >>');
+    });
+  }
+  const size = next;
   const xref = len;
-  let table = 'xref\n0 ' + (info + 1) + '\n0000000000 65535 f \n';
-  for (let k = 1; k <= info; k++) table += String(offsets[k]).padStart(10, '0') + ' 00000 n \n';
-  put(enc(table + 'trailer\n<< /Size ' + (info + 1) + ' /Root 1 0 R /Info ' + info + ' 0 R >>\nstartxref\n' + xref + '\n%%EOF\n'));
+  let table = 'xref\n0 ' + size + '\n0000000000 65535 f \n';
+  for (let k = 1; k < size; k++) table += String(offsets[k]).padStart(10, '0') + ' 00000 n \n';
+  put(enc(table + 'trailer\n<< /Size ' + size + ' /Root 1 0 R /Info ' + info + ' 0 R >>\nstartxref\n' + xref + '\n%%EOF\n'));
   const out = new Uint8Array(len);
   let at = 0;
   parts.forEach(b => { out.set(b, at); at += b.length; });
@@ -368,17 +412,28 @@ function download(blob, name) {
   setTimeout(() => root.URL.revokeObjectURL(url), 60000);
 }
 
+/* the links on a page: every element with data-goto (a page number, from 1), its box as fractions of the page's */
+function linksOf(node) {
+  if (!node || !node.getBoundingClientRect || !node.querySelectorAll) return [];
+  const R = node.getBoundingClientRect();
+  if (!(R.width > 0 && R.height > 0)) return [];
+  return [...node.querySelectorAll('[data-goto]')].map(e => {
+    const r = e.getBoundingClientRect();
+    return { x: (r.left - R.left) / R.width, y: (r.top - R.top) / R.height, w: r.width / R.width, h: r.height / R.height, page: +e.getAttribute('data-goto') };
+  }).filter(l => l.w > 0 && l.h > 0 && l.page > 0);
+}
 /* the PDF's bytes, a page per node, without downloading it (report.js PRIME REPORT keeps them for sending, 0229) */
 async function pdfBytes(nodes, opt) {
   const o = opt || {};
   const pages = [];
   for (let i = 0; i < nodes.length; i++) {
     if (o.onProgress) o.onProgress(i + 1, nodes.length);
+    const links = linksOf(nodes[i]);
     const c = await canvasOf(nodes[i], { scale: o.scale || 3, w: o.w, h: o.h });
-    pages.push({ bytes: new Uint8Array(await (await blobOf(c, 'image/jpeg', o.quality || 0.9)).arrayBuffer()), w: c.width, h: c.height });
+    pages.push({ bytes: new Uint8Array(await (await blobOf(c, 'image/jpeg', o.quality || 0.9)).arrayBuffer()), w: c.width, h: c.height, links });
     c.width = c.height = 1;
   }
-  return pdfFromJpegs(pages, { title: o.title, date: new Date() });
+  return pdfFromJpegs(pages, { title: o.title, date: new Date(), outline: o.outline || null });
 }
 async function savePdf(nodes, name, opt) {
   const bytes = await pdfBytes(nodes, opt);
