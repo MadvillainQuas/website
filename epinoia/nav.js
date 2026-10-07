@@ -2817,6 +2817,8 @@
     });
     let sig = null;
     const paint = () => {
+      /* HOME's VIDEO view (home/vhmode.js) takes the sections away while it is open: the list stays as it was */
+      if (document.documentElement.classList.contains('vh-on')) return;
       const heads = [].filter.call(frame.querySelectorAll('.sec-h, .ep-hdr'), n => n.getClientRects().length > 0);
       const names = heads.map(n => { const h = n.querySelector('h2'); return h ? h.textContent.trim() : ''; });
       const now = names.join('|');

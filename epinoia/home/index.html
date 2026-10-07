@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="EPINOIΛ">
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com">
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.twitch.tv">
 <!-- seo:head -->
 <title>Basketball Scores Today, Results &amp; Top Players | Epinoia</title>
 <meta name="description" content="Today&#x27;s live basketball scores and results from every league on Epinoia, plus the best-performing players, the leagues you follow and the standings.">
@@ -92,6 +92,22 @@
        never on iPhone or desktop; EpinoiaAppShell.appCard in nav.js decides); empty, it takes no room.
        First under the wordmark, so a phone sees it before the fixtures. -->
   <div id="homeApp"></div>
+
+  <!-- MAIN | VIDEO (vhmode.js): the page as it is, or the black VIDEO view in its place - LIVE (every game streaming
+       now, with its box score and its chat) over the newest videos as a playlist. VIDEO's code and styles arrive with
+       the first press (videohub.js, kit/videohub.css); the LIVE mark on the tab is one small read when the page is idle. -->
+  <nav class="hm-modes" id="hmModes" aria-label="Main or video">
+    <div class="hm-modes-in" role="tablist">
+      <button type="button" role="tab" class="hm-mode" data-mode="main" aria-selected="true" aria-controls="hmMain">
+        <span class="ic" aria-hidden="true"></span><span class="t">Main</span>
+      </button>
+      <button type="button" role="tab" class="hm-mode" data-mode="video" aria-selected="false" aria-controls="videoHub">
+        <span class="ic" aria-hidden="true"></span><span class="t">Video</span><span class="hm-mode-live" data-on="0" title="Nothing live right now"><i></i>Live</span>
+      </button>
+      <span class="hm-modes-bar" aria-hidden="true"></span>
+    </div>
+  </nav>
+  <div class="vh" id="videoHub" role="tabpanel" aria-label="Video" hidden></div>
 
   <!-- daily fixtures ------------------------------------------------------
        LIVE | UPCOMING | RESULTS, eight cards and SHOW MORE under them
@@ -283,6 +299,7 @@
 <script src="../feedview.js?v=696" defer></script>
 <script src="feed-home.js?v=696" defer></script>
 <script src="videos-home.js?v=696" defer></script>
+<script src="vhmode.js?v=696" defer></script>
 <script src="../go/geo.js?v=696" defer></script>
 <script src="../go/logo.js?v=696" defer></script>
 <script src="../go/go.js?v=696" defer></script>

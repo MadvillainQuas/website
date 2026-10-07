@@ -61,6 +61,7 @@
   function cineEnter(group) {
     if (!group || !group.isConnected) return;
     clearTimeout(CINE.exitT);
+    if (group.dataset && group.dataset.mdWide === 'auto' && !WIDE.refused && !isWide()) wide(true);
     if (CINE.group === group) return;
     if (CINE.group) cineExit(true);
     CINE.group = group;
@@ -68,12 +69,13 @@
     veil.setAttribute('aria-hidden', 'true');
     veil.onclick = () => cineExit();
     document.body.appendChild(veil);
-    /* a transformed or filtered ancestor would hold the group under the veil: those are flattened while it lasts */
+    /* a transformed, filtered or isolated ancestor would hold the group under the veil: those are flattened while it lasts */
     for (let a = group.parentElement; a && a !== document.body; a = a.parentElement) {
       const cs = getComputedStyle(a);
-      if (cs.transform !== 'none' || cs.filter !== 'none' || cs.perspective !== 'none' || /paint|layout|strict|content/.test(cs.contain)) {
-        CINE.lifted.push([a, a.style.transform, a.style.filter, a.style.perspective, a.style.contain]);
-        a.style.transform = 'none'; a.style.filter = 'none'; a.style.perspective = 'none'; a.style.contain = 'none';
+      if (cs.transform !== 'none' || cs.filter !== 'none' || cs.perspective !== 'none' || /paint|layout|strict|content/.test(cs.contain)
+          || cs.isolation === 'isolate') {
+        CINE.lifted.push([a, a.style.transform, a.style.filter, a.style.perspective, a.style.contain, a.style.isolation]);
+        a.style.transform = 'none'; a.style.filter = 'none'; a.style.perspective = 'none'; a.style.contain = 'none'; a.style.isolation = 'auto';
       }
     }
     group.classList.add('md-lit');
@@ -104,12 +106,33 @@
       if (CINE.group) return;                       // entered again meanwhile
       g.classList.remove('md-lit');
       document.documentElement.classList.remove('md-cine');
-      CINE.lifted.forEach(([a, t, f, p, c]) => { a.style.transform = t; a.style.filter = f; a.style.perspective = p; a.style.contain = c; });
+      CINE.lifted.forEach(([a, t, f, p, c, i]) => { a.style.transform = t; a.style.filter = f; a.style.perspective = p; a.style.contain = c; a.style.isolation = i || ''; });
       CINE.lifted = [];
       if (veil && veil.isConnected) veil.remove();
     };
     CINE.group = null;
     if (now || reduced()) done(); else setTimeout(done, 460);
+  }
+  /* WIDE: the side menu slides away and the page takes the whole width of the screen, so the player does too
+     (kit/media.css html.md-wide; a desktop's menu only - a phone's is a bar along the foot). It comes on by itself when a
+     video starts playing on a stage that asks for it (data-md-wide="auto": the playlist's stage, HOME's VIDEO theatre),
+     and a WIDE toggle in the player's head turns it on and off by hand; turned off by hand, it stays off for that
+     stage until it is closed. Closing the stage gives the menu back. */
+  const WIDE = { refused: false };
+  const isWide = () => document.documentElement.classList.contains('md-wide');
+  function wide(on) {
+    document.documentElement.classList.toggle('md-wide', !!on);
+    document.querySelectorAll('.md-widebtn').forEach(b => { b.setAttribute('aria-pressed', String(!!on)); b.lastChild.textContent = on ? tr('Menu') : tr('Wide'); });
+  }
+  function wideReset() { WIDE.refused = false; wide(false); }
+  function wideButton() {
+    const b = el('button', 'ep-btn mini md-widebtn');
+    b.type = 'button';
+    b.title = tr('Hide the menu and play across the whole screen');
+    b.setAttribute('aria-pressed', String(isWide()));
+    b.append(el('span', 'ic'), el('span', null, isWide() ? tr('Menu') : tr('Wide')));
+    b.addEventListener('click', () => { const on = !isWide(); WIDE.refused = !on; wide(on); });
+    return b;
   }
   /* a pause is not an exit until it has lasted a moment (a seek reports a pause too) */
   const cineExitSoon = () => { clearTimeout(CINE.exitT); CINE.exitT = setTimeout(() => cineExit(), 900); };
@@ -250,7 +273,20 @@
      colour (a red against a red) print the away side in its second colour. A video with no game takes its channel's
      colour; with neither, the page's accent stands. */
   const HEX = /^#?[0-9a-f]{6}$/i;
-  function inks(node, it) {
+  /* A COLOUR ON BLACK, whatever the page's own light or dark: HOME's VIDEO view is black on both (videohub.js), so its
+     inks are made for that ground - lifted towards white until they read as text (6.5:1) or show as a surface (1.6:1) */
+  const DARK_GROUND = [4, 16, 11];
+  function onBlack(hex, min) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    let c = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    const lum = x => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(x[0]) + 0.7152 * f(x[1]) + 0.0722 * f(x[2]); };
+    const ratio = (a, b) => { const x = lum(a) + 0.05, y = lum(b) + 0.05; return x > y ? x / y : y / x; };
+    for (let i = 0; i < 28 && ratio(c, DARK_GROUND) < min; i++) c = c.map(v => v + (255 - v) * 0.09);
+    return '#' + c.map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+  }
+  function inks(node, it, dark) {
     const TC = window.EpinoiaTeamColour, g = it && it.game, h = g && g.home, a = g && g.away;
     const A = h && HEX.test(h.colour || '') ? h.colour : (HEX.test((it && it.source_colour) || '') ? it.source_colour : null);
     if (!A) return;
@@ -263,6 +299,11 @@
       /* the same inks as surfaces (an edge, a shadow, a ring): a white club on the light page, a black one on the dark,
          nudged until it shows */
       if (TC.surface) { node.style.setProperty('--ink-s', TC.surface(A)); node.style.setProperty('--ink-s2', TC.surface(B || TC.derived(A))); }
+      if (dark) {
+        const B2 = B || (TC.derived ? TC.derived(A) : A);
+        node.style.setProperty('--ink-t', onBlack(A, 6.5)); node.style.setProperty('--ink-t2', onBlack(B2, 6.5));
+        node.style.setProperty('--ink-s', onBlack(A, 1.6)); node.style.setProperty('--ink-s2', onBlack(B2, 1.6));
+      }
     } else { node.style.setProperty('--ink-c', A); if (B) node.style.setProperty('--ink-c2', B); }
   }
   /* THE CHANNEL'S COLOUR, as a news card colours its brand (newscard.js: its own colour, else one made from its name, so
@@ -303,12 +344,13 @@
      it is CSS over the one picture: nothing more is fetched for it. onOpen(it) on a press; a tile is a button.
      pos: {no, of}. */
   function tile(it, onOpen, big, pos) {
+    const dark = !!(pos && pos.dark);
     const id = idOf(it);
     const k = KIND[it.video_kind] || KIND.video;
     const b = el('button', 'md-tile' + (big ? ' md-lead' : ''));
     b.type = 'button';
     b.dataset.id = it.id;
-    inks(b, it);
+    inks(b, it, dark);
     brand(b, it);
     const th = el('div', 'md-thumb');
     if (id) {
@@ -366,10 +408,13 @@
      a half court, the bench beneath, a face for each player's full line - with the score over it), live by itself, in a
      frame. The frame says how tall it is (epinoiaEmbed 'height'); teamcolour.js gives it the page's light/dark and
      colours. */
-  function embedGame(host, gameId) {
+  function embedGame(host, gameId, opts) {
+    const eo = opts || {};
     host.textContent = '';
     const f = document.createElement('iframe');
-    f.src = BASE + 'embed/game/?g=' + encodeURIComponent(gameId);
+    f.src = BASE + 'embed/game/?g=' + encodeURIComponent(gameId) + (eo.theme ? '&theme=' + encodeURIComponent(eo.theme) : '');
+    /* a frame that keeps its own theme (the VIDEO view's dark): the page's light/dark is not sent to it (teamcolour.js) */
+    if (eo.theme) f.setAttribute('data-own-theme', eo.theme);
     f.title = tr('Box score');
     f.loading = 'lazy';
     f.className = 'md-embed';
@@ -399,7 +444,7 @@
   const pref = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v === '1'; } catch (_) { return d; } };
   const setPref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (_) { /* private mode */ } };
   function stagePlayer(stage, o) {
-    let cur = null, frame = null, boxer = null, timer = null, card = null, held = null;
+    let cur = null, frame = null, boxer = null, timer = null, card = null, held = null, back = [], prevB = null, nextB = null;
     let open = pref(Q_KEY, !(window.matchMedia && matchMedia('(max-width: 720px)').matches));
     let auto = pref(AUTO_KEY, true);
     let nowKind, titleEl, metaEl, qBtn, body, vid, queue, qList, box, autoBox;
@@ -428,7 +473,15 @@
       const close = el('button', 'ep-btn mini md-close', tr('Close'));
       close.type = 'button';
       close.addEventListener('click', () => { stop(); if (o.onClose) o.onClose(); });
-      ctl.append(qBtn, close);
+      /* BACK AND NEXT: back to the video played before this one (or the one before it in the list), on to the next */
+      prevB = el('button', 'ep-btn mini md-prev', '‹ ' + tr('Back'));
+      prevB.type = 'button';
+      prevB.addEventListener('click', goBack);
+      nextB = el('button', 'ep-btn mini md-fwd', tr('Next') + ' ›');
+      nextB.type = 'button';
+      nextB.addEventListener('click', () => { const nx = upcoming()[0]; if (nx) go(nx); });
+      ctl.append(prevB, nextB, wideButton(), qBtn, close);
+      stage.dataset.mdWide = 'auto';
       head.append(words, ctl);
       body = el('div', 'md-stage-b');
       vid = el('div');
@@ -454,6 +507,7 @@
     function stop() {
       cancelNext();
       cineExit(true); stage.hidden = true; stage.textContent = '';
+      wideReset();
       if (boxer) boxer.stop();
       boxer = null; frame = null; cur = null;
     }
@@ -465,7 +519,7 @@
     /* the head, the inks, the box score and the list, for `it` */
     function fill(it) {
       stage.style.cssText = '';
-      inks(stage, it);
+      inks(stage, it, o.dark);
       const k = KIND[it.video_kind] || KIND.video;
       nowKind.className = 'md-kind' + (k[1] ? ' ' + k[1] : '');
       nowKind.textContent = tr(k[0]);
@@ -476,7 +530,7 @@
         if (boxer) boxer.stop();
         boxer = null;
         box.textContent = '';
-        if (gid) { boxer = embedGame(box, gid); boxer.game = gid; }
+        if (gid) { boxer = embedGame(box, gid, o.dark ? { theme: 'dark' } : undefined); boxer.game = gid; }
       }
       box.hidden = !gid;
       drawList();
@@ -485,7 +539,7 @@
       const b = el('button', 'md-q-row' + (now ? ' now' : ''));
       b.type = 'button';
       if (now) b.setAttribute('aria-current', 'true');
-      inks(b, it);
+      inks(b, it, o.dark);
       const th = el('span', 'md-q-th');
       const id = idOf(it);
       if (id) { const im = el('img'); im.src = thumb(id); im.alt = ''; im.loading = 'lazy'; im.decoding = 'async'; th.appendChild(im); }
@@ -504,6 +558,8 @@
       next.forEach(it => qList.appendChild(row(it, false)));
       if (!next.length) qList.appendChild(el('p', 'md-q-end', tr('Nothing after this one.')));
       qBtn.textContent = tr('Up next') + (next.length ? ' · ' + next.length : '');
+      nextB.disabled = !next.length;
+      prevB.disabled = !(back.length || before());
       layout();
     }
     /* A VIDEO ENDED. With Autoplay on and something after it: the card, the count, then the next. True: the page has it. */
@@ -540,23 +596,39 @@
     }
     function cancelNext() { clearTimeout(timer); timer = null; if (card) card.remove(); card = null; }
     /* the next video IN THE SAME PLAYER: the frame is told to load it, so it plays at once, sound and all */
-    function swap(it) {
+    /* the video before this one in the list, when nothing was played before it */
+    function before() {
+      const L = ((o.list && o.list()) || []).filter(playable);
+      const i = cur ? L.findIndex(x => x.id === cur.id) : -1;
+      return i > 0 ? L[i - 1] : null;
+    }
+    /* the one now playing goes on the way back, unless it is the way back being taken */
+    function leave(it, returning) {
+      if (!returning && cur && it && cur.id !== it.id) { back.push(cur); if (back.length > 50) back.shift(); }
+    }
+    function goBack() {
+      const prev = back.pop() || before();
+      if (prev) go(prev, true);
+    }
+    function swap(it, returning) {
       cancelNext();
-      if (!frame || !frame.isConnected) return play(it);
+      if (!frame || !frame.isConnected) return play(it, false, returning);
       try {
         frame.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'loadVideoById', args: [idOf(it)], id: 'md', channel: 'widget' }), '*');
-      } catch (_) { return play(it); }
+      } catch (_) { return play(it, false, returning); }
       held = null;
+      leave(it, returning);
       cur = it;
       frame.title = it.title || 'video';
       fill(it);
       if (o.onChange) o.onChange(it);
     }
     /* A VIDEO ON THE STAGE, from its cover (quiet: opened by the address, so nothing plays and nothing scrolls) */
-    function play(it, quiet) {
+    function play(it, quiet, returning) {
       cancelNext();
-      if (stage.hidden || !body || !stage.contains(body)) build();
+      if (stage.hidden || !body || !stage.contains(body)) { build(); back = []; }
       held = null;
+      leave(it, returning);
       cur = it;
       frame = null;
       fill(it);
@@ -567,13 +639,13 @@
       if (!quiet) stage.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
     }
     /* a tile or a row pressed: into the playing player when one is playing, else onto the stage */
-    function go(it) {
+    function go(it, returning) {
       if (frame && frame.isConnected && playable(it) && !stage.hidden) {
-        swap(it);
+        swap(it, returning);
         stage.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'nearest' });
-      } else play(it);
+      } else play(it, false, returning);
     }
-    return { play, go, stop, refresh: () => { if (cur && !stage.hidden) drawList(); } };
+    return { play, go, back: goBack, stop, refresh: () => { if (cur && !stage.hidden) drawList(); } };
   }
 
   /* A LEAGUE'S VIDEO BOARD, wherever a league shows its videos (the stats page's Video tab, the league's front page):
@@ -704,5 +776,5 @@
   /* run fn when the browser is idle (or after a beat where it cannot say) - the probes a page does not wait for */
   const idle = fn => ('requestIdleCallback' in window) ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 600);
 
-  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, videoBoard, stagePlayer, tile, inks, uniq, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
+  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, videoBoard, stagePlayer, wide, wideButton, wideReset, tile, inks, uniq, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
 })();

@@ -1,0 +1,140 @@
+/* ============================================================================
+   HOME'S VIDEO VIEW (home/videohub.js, opened by the MAIN | VIDEO strip). Loaded with the first press, never before.
+
+   BLACK, WHATEVER THE PAGE'S OWN LIGHT OR DARK: the kit's dark tokens are set again on .vh, so everything inside it -
+   the tiles and the player of kit/media.css, the chat, the buttons - draws itself dark. Its colours on black come from
+   media.js (inks with dark: true), and the box score's frame is told dark (embedGame theme).
+   ============================================================================ */
+.vh{--ground:#04100b;--panel:#0a1a13;--panel-2:#102419;
+  --ink:#e6fff1;--ink-2:rgba(230,255,241,.92);--ink-3:rgba(230,255,241,.7);
+  --rule:rgba(147,242,191,.16);--rule-2:rgba(147,242,191,.34);
+  --lume:#93f2bf;--aqua:#8ff5ff;--amber:#ffd166;--flare:#ff5f6b;--violet:#b7a8ff;--on-accent:#04100b;
+  --ca-x:1.4px;--ca-r:color-mix(in srgb,#ff5f6b 62%,transparent);--ca-b:color-mix(in srgb,#8ff5ff 62%,transparent);
+  --vh-red:#ff4b4b;
+  color-scheme:dark;position:relative;color:var(--ink);
+  /* the screen's grain (scan lines) over its glow, as backgrounds: no layer of its own, so nothing here makes a stacking
+     context that would hold a playing video under the cinema's dark (media.js cineEnter) */
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px),
+             radial-gradient(120% 70% at 50% 0%,#0b1d15 0%,#030806 55%,#010302 100%)}
+.vh[hidden]{display:none}
+.vh-wrap{display:flex;flex-direction:column;gap:calc(var(--u)*5);padding:calc(var(--u)*4) calc(var(--u)*3) calc(var(--u)*8)}
+.vh-sec{min-width:0}
+.vh-h{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;margin:0 0 calc(var(--u)*2.5)}
+.vh-t{margin:0;display:inline-flex;align-items:center;gap:12px;font-family:var(--f-score);font-weight:400;font-size:clamp(30px,3.4vw,44px);
+  line-height:1;letter-spacing:.04em;text-transform:uppercase;color:#fff;
+  text-shadow:calc(-1 * var(--ca-x)) 0 var(--ca-r),var(--ca-x) 0 var(--ca-b)}
+.vh-sub{font-family:var(--f-ui);font-weight:700;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.vh-h .md-seg{margin-left:auto}
+.vh-dot{width:13px;height:13px;border-radius:50%;background:var(--ink-3);flex:none}
+.vh-live.is-on .vh-dot{background:var(--vh-red);box-shadow:0 0 0 4px rgba(255,75,75,.18),0 0 18px var(--vh-red);animation:vh-pulse 1.4s ease-in-out infinite}
+@keyframes vh-pulse{50%{box-shadow:0 0 0 8px rgba(255,75,75,0),0 0 6px var(--vh-red)}}
+.vh-full{font-family:var(--f-ui);font-weight:800;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  padding:9px 14px 9px 34px;border:1px solid var(--rule-2);background:transparent;color:var(--ink);cursor:pointer;position:relative}
+.vh-full::before{content:"";position:absolute;left:12px;top:50%;width:12px;height:12px;translate:0 -50%;
+  background:linear-gradient(currentColor,currentColor) 0 0/5px 2px no-repeat,linear-gradient(currentColor,currentColor) 0 0/2px 5px no-repeat,
+  linear-gradient(currentColor,currentColor) 100% 0/5px 2px no-repeat,linear-gradient(currentColor,currentColor) 100% 0/2px 5px no-repeat,
+  linear-gradient(currentColor,currentColor) 0 100%/5px 2px no-repeat,linear-gradient(currentColor,currentColor) 0 100%/2px 5px no-repeat,
+  linear-gradient(currentColor,currentColor) 100% 100%/5px 2px no-repeat,linear-gradient(currentColor,currentColor) 100% 100%/2px 5px no-repeat}
+.vh-full:hover{background:var(--vh-red);border-color:var(--vh-red);color:#fff}
+.vh-full[hidden]{display:none}
+
+/* ---- the games streaming: a row to choose from ---- */
+.vh-games{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;margin:0 0 calc(var(--u)*2);scrollbar-width:thin}
+.vh-games[hidden]{display:none}
+.vh-game{flex:0 0 auto;min-width:230px;display:flex;flex-direction:column;gap:7px;padding:10px 12px;text-align:left;cursor:pointer;font:inherit;
+  color:var(--ink);background:rgba(255,255,255,.03);border:1px solid var(--rule);border-left:3px solid var(--ink-s,var(--vh-red));
+  transition:background .15s ease,border-color .15s ease}
+.vh-game:hover{background:rgba(255,255,255,.07)}
+.vh-game[aria-selected="true"]{border-color:var(--vh-red);background:rgba(255,75,75,.1);box-shadow:inset 0 -3px 0 var(--vh-red)}
+.vh-game-lg{font-family:var(--f-ui);font-weight:700;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+.vh-game-r{display:flex;align-items:center;gap:10px}
+.vh-game-s{display:inline-flex;align-items:center;gap:7px;font-family:var(--f-ui);font-weight:800;font-size:12px;letter-spacing:.06em}
+.vh-game-s .md-crest{width:24px;height:24px}
+.vh-game-sc{font-family:var(--f-ui);font-weight:900;font-size:16px;font-variant-numeric:tabular-nums;padding:3px 8px;background:#000;color:#fff}
+.vh-game-st{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-ui);font-weight:800;font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--vh-red)}
+.vh-game-st i{width:6px;height:6px;border-radius:50%;background:var(--vh-red);animation:hm-live-blink 1.2s steps(2,end) infinite}
+@keyframes hm-live-blink{50%{opacity:.2}}
+
+/* ---- THE THEATRE: the stream, its scorebug and its box score; the chat beside them ---- */
+.vh-theatre{display:grid;grid-template-columns:minmax(0,1fr);background:#000;border:1px solid rgba(255,75,75,.35);
+  box-shadow:0 0 0 1px rgba(0,0,0,.6),0 30px 80px rgba(0,0,0,.55),0 0 60px rgba(255,75,75,.08)}
+.vh-theatre[hidden]{display:none}
+@media (min-width:1000px){
+  .vh-theatre{grid-template-columns:minmax(0,1fr) 360px}
+  .vh-theatre.no-chat{grid-template-columns:minmax(0,1fr)}
+  .vh-chat{border-left:1px solid var(--rule);position:sticky;top:12px;align-self:start;max-height:calc(100vh - 24px)}
+}
+.vh-tmain{min-width:0;display:flex;flex-direction:column}
+.vh-screen{position:relative;aspect-ratio:16/9;background:#000}
+.vh-screen.md-player{aspect-ratio:16/9}
+.vh-cover{position:absolute;inset:0;width:100%;height:100%;border:0;padding:0;cursor:pointer;color:#fff;
+  background:radial-gradient(60% 60% at 50% 45%,#16241d 0%,#000 75%)}
+.vh-cover .md-play{width:78px;height:78px}
+.vh-cover-t{position:absolute;left:50%;top:calc(50% + 62px);translate:-50% 0;font-family:var(--f-ui);font-weight:800;font-size:11px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--vh-red)}
+/* the scorebug: home, the score, away, and the league - in FULL SCREEN, where the box score under it is out of sight
+   (on the page the box score's own head carries the score, right under the stream) */
+.vh-bug{display:none;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:6px 16px;padding:12px 16px;
+  background:linear-gradient(90deg,color-mix(in oklch,var(--ink-s,#333) 22%,#000),#000 45%,#000 55%,color-mix(in oklch,var(--ink-s2,#333) 22%,#000));
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.vh-bug-s{display:flex;align-items:center;gap:10px;min-width:0;font-family:var(--f-ui);font-weight:800;font-size:14px;letter-spacing:.04em;text-transform:uppercase}
+.vh-bug-s b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-t,#fff)}
+.vh-bug-s.a{justify-content:flex-end}
+.vh-bug-s.a b{color:var(--ink-t2,#fff)}
+.vh-bug-s .md-crest{width:36px;height:36px}
+.vh-bug-sc{display:flex;align-items:baseline;gap:8px;font-family:var(--f-ui);font-weight:900;font-size:28px;font-variant-numeric:tabular-nums;color:#fff;
+  padding:4px 14px;background:#000;border:1px solid rgba(255,255,255,.14);text-shadow:calc(-1 * var(--ca-x)) 0 var(--ca-r),var(--ca-x) 0 var(--ca-b)}
+.vh-bug-sc .l{color:rgba(255,255,255,.5)}
+.vh-bug-sc i{font-style:normal;color:rgba(255,255,255,.4)}
+.vh-bug-lg{grid-column:1 / -1;justify-self:center;display:inline-flex;align-items:center;gap:7px;font-family:var(--f-ui);font-weight:700;font-size:9.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.vh-bug-lg i{width:7px;height:7px;border-radius:50%;background:var(--vh-red);box-shadow:0 0 8px var(--vh-red)}
+.vh-box{padding:10px 12px 12px;background:#020504}
+.vh-chat{min-width:0;background:#050b08}
+.vh-chat[hidden]{display:none}
+.vh-chat .ch{border:0;max-height:none;height:100%;min-height:420px;background:transparent}
+/* FULL SCREEN: the stream as large as the screen allows, the chat beside it, the box score under them */
+.vh-theatre:fullscreen{grid-template-columns:minmax(0,1fr) 380px;overflow-y:auto;border:0;align-content:start}
+.vh-theatre.no-chat:fullscreen{grid-template-columns:minmax(0,1fr)}
+.vh-theatre:fullscreen .vh-screen{aspect-ratio:auto;height:calc(100vh - 92px)}
+.vh-theatre:fullscreen .vh-bug{display:grid}
+.vh-theatre:fullscreen .vh-chat{position:sticky;top:0;max-height:100vh;height:100vh}
+
+/* ---- nothing live: a test card ---- */
+.vh-none{position:relative;display:grid;place-items:center;aspect-ratio:16/6;min-height:200px;overflow:hidden;border:1px solid var(--rule)}
+.vh-none[hidden]{display:none}
+.vh-bars{position:absolute;inset:0;opacity:.32;filter:saturate(.85);
+  background:linear-gradient(90deg,#c0c0c0 0 14.28%,#c0c000 0 28.57%,#00c0c0 0 42.85%,#00c000 0 57.14%,#c000c0 0 71.42%,#c00000 0 85.71%,#0000c0 0)}
+.vh-bars::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px),
+  radial-gradient(70% 90% at 50% 50%,transparent 30%,rgba(0,0,0,.85) 100%)}
+.vh-none-t{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 26px;background:rgba(0,0,0,.82);
+  border:1px solid rgba(255,255,255,.18);text-align:center}
+.vh-none-t b{font-family:var(--f-score);font-weight:400;font-size:clamp(22px,2.6vw,32px);letter-spacing:.06em;text-transform:uppercase;color:#fff}
+.vh-none-t span{font-family:var(--f-ui);font-weight:600;font-size:12px;color:var(--ink-3)}
+
+/* ---- the videos: the playlist's stage and the tiles, dark ---- */
+.vh .md-stage{background:#000;border-color:rgba(255,255,255,.14)}
+.vh .md-tile{background:#07110d}
+.vh .md-board{background:linear-gradient(180deg,color-mix(in oklch,var(--ink-s,var(--lume)) 18%,#07110d),#07110d 50%,
+  color-mix(in oklch,var(--ink-s2,var(--lume)) 18%,#07110d))}
+:root:root .vh .md-more{background:transparent;color:var(--ink);border-color:var(--rule-2)}
+:root:root .vh .md-more:hover{background:var(--lume);color:var(--on-accent)}
+@media (max-width:720px){
+  .vh-wrap{padding:calc(var(--u)*3) calc(var(--u)*2) calc(var(--u)*6)}
+  .vh-h .md-seg,.vh-full{margin-left:0}
+  .vh-bug-s b{font-size:12px}
+  .vh-bug-sc{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){ .vh-live.is-on .vh-dot,.vh-game-st i{animation:none} }
+
+/* the kit's buttons, dark here whatever the page's theme (a light page paints them white) */
+:root:root .vh .ep-btn{background:transparent;color:var(--ink);border-color:var(--rule-2)}
+:root:root .vh .ep-btn:hover:not(:disabled),:root:root .vh .ep-btn:focus-visible{background:var(--lume);border-color:var(--lume);color:var(--on-accent)}
+:root:root .vh .ep-btn.pri{background:var(--lume);border-color:var(--lume);color:var(--on-accent)}
+:root:root .vh .ep-btn:disabled{opacity:.35;cursor:default}
+:root:root .vh .md-qbtn[aria-expanded="true"]{background:var(--ink-s,var(--lume));border-color:var(--ink-s,var(--lume));color:var(--bc-on,var(--on-accent))}
+/* the LIVE head's controls at its right: WIDE, then FULL SCREEN */
+.vh-h .md-widebtn{margin-left:auto}
+:root:root .vh .md-widebtn[aria-pressed="true"]{background:var(--vh-red);border-color:var(--vh-red);color:#fff}

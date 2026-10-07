@@ -77,7 +77,7 @@ ok('HOME: the video feed under the feed - All, Highlights, Videos - read near it
 console.log('\nthe tiles, printed like the site\'s cards');
 const tileCss = css.slice(0, css.indexOf('/* -------------------------------------------------------------------------------------- the chat'));
 ok('in their clubs\' inks (teamcolour.js card, the surface variants for edges), the clash printed in a second colour',
-   /inks\(b, it\)/.test(media) && /TC\.card\(node, A, B\)/.test(media) && /'--ink-s', TC\.surface\(A\)/.test(media) && /TC\.contrast\(A, B\) < 1\.6/.test(media));
+   /inks\(b, it, dark\)/.test(media) && /TC\.card\(node, A, B\)/.test(media) && /'--ink-s', TC\.surface\(A\)/.test(media) && /TC\.contrast\(A, B\) < 1\.6/.test(media));
 ok('the plate\'s print: halftone, registration crosses, the kind tag, the stencil band, the edition mark',
    ['md-tone', 'md-reg', 'md-kind', 'md-band', 'md-ed'].every(c => new RegExp("'" + c).test(media) && new RegExp('\\.' + c + '[{ .]').test(tileCss))
    && /'NO ' \+ String\(pos\.no\)/.test(media));
@@ -114,6 +114,36 @@ ok('...the next plays in the same player (loadVideoById through the frame), noth
    /func: 'loadVideoById', args: \[idOf\(it\)\]/.test(media) && /if \(!boxer \|\| boxer\.game !== gid\)/.test(media));
 ok("the player's cover rules are its own button's alone (the card's buttons are not covers)", /\.md-player > iframe,\.md-player > button\{/.test(css)
    && !/\.md-player button\{/.test(css));
+
+console.log('\nHOME: MAIN | VIDEO, and the VIDEO view');
+{
+  const home2 = rd('epinoia', 'home', 'index.html'), vm = rd('epinoia', 'home', 'vhmode.js'), hubjs = rd('epinoia', 'home', 'videohub.js');
+  const hubcss = rd('epinoia', 'kit', 'videohub.css'), nav = rd('epinoia', 'nav.js');
+  ok('the strip under ON THIS PAGE: MAIN and VIDEO, the LIVE mark on VIDEO unlit until a game streams',
+     /<nav class="hm-modes" id="hmModes"/.test(home2) && /data-mode="main" aria-selected="true"/.test(home2) && /class="hm-mode-live" data-on="0"/.test(home2)
+     && home2.indexOf('id="hmModes"') < home2.indexOf('id="fixtures"'));
+  ok("light: only the strip's own code with the page; VIDEO's code and styles with the first press, the LIVE mark one idle read",
+     /<script src="vhmode\.js\?v=\d+" defer><\/script>/.test(home2) && !/src="videohub\.js|href="[^"]*videohub\.css/.test(home2)
+     && /withStamp\('videohub\.js'\)/.test(vm) && /withStamp\('\.\.\/kit\/videohub\.css'\)/.test(vm) && /requestIdleCallback\(probe/.test(vm)
+     && /rpc\/live_streams/.test(vm) && /dataset\.on = on \? '1' : '0'/.test(vm));
+  ok('the change over: what leaves fades and sinks and is then not drawn; ?view=video in the address, the Back button back to MAIN',
+     /n\.classList\.add\('vh-gone'\)/.test(vm) && /searchParams\.set\('view', 'video'\)/.test(vm) && /addEventListener\('popstate'/.test(vm)
+     && /\.vh-gone\{display:none !important\}/.test(rd('epinoia', 'kit', 'home.css')));
+  ok('ON THIS PAGE holds still while VIDEO is open (nav.js), and an entry of it pressed goes back to MAIN first',
+     /classList\.contains\('vh-on'\)\) return;/.test(nav) && /\.tt-index a\[href\^="#"\]/.test(vm));
+  ok('LIVE: every game streaming (live_streams), its stream, its box score dark, its chat, FULL SCREEN; read again every minute while seen',
+     /rpc\('live_streams'/.test(hubjs) && /M\.embedGame\(box, g\.id, \{ theme: 'dark' \}\)/.test(hubjs) && /EpinoiaGameChat/.test(hubjs)
+     && /requestFullscreen/.test(hubjs) && /LIVE_EVERY = 60000/.test(hubjs) && /\.vh-theatre:fullscreen/.test(hubcss));
+  ok('LATEST VIDEOS: what the reader follows first, each part in the feed order, as a playlist (dark tiles and stage)',
+     /const lead = ranked\.filter\(r => followed\.has\(r\.id\)\)/.test(hubjs) && /M\.stagePlayer\(stage, \{\s*dark: true/.test(hubjs) && /dark: true \}\)/.test(hubjs));
+  ok('black whatever the theme: the dark tokens on .vh, nothing that would hold a playing video under the cinema dark',
+     /\.vh\{--ground:#04100b/.test(hubcss) && !/isolation:isolate/.test(hubcss.split('.vh-theatre')[0]) && /cs\.isolation === 'isolate'/.test(media));
+  ok('the box score keeps its own theme in the dark view (teamcolour.js does not send the page\'s)', /iframe:not\(\[data-own-theme\]\)/.test(rd('epinoia', 'teamcolour.js')));
+}
+ok('the playlist: Back (to the video played before) and Next', /function goBack\(\)/.test(media) && /back\.push\(cur\)/.test(media) && /ep-btn mini md-fwd/.test(media));
+ok('WIDE: the menu slides away when a video plays on a stage that asks, a toggle by hand, the menu back when it closes',
+   /group\.dataset\.mdWide === 'auto' && !WIDE\.refused/.test(media) && /stage\.dataset\.mdWide = 'auto'/.test(media) && /function wideReset\(\)/.test(media)
+   && /html\.md-wide body\.has-nav\{padding-left:0\}/.test(css) && /html\.md-wide \.ep-frame\{max-width:none\}/.test(css));
 
 console.log('\nthe console: a channel\'s own names for clubs (0240)');
 const cui = rd('epinoia', 'admin', 'creators-ui.js');

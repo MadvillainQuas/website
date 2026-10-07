@@ -251,7 +251,8 @@
   }
 
   function embedFrames() {
-    return [...document.querySelectorAll('iframe')].filter(f => {
+    /* a frame that keeps its own theme (data-own-theme: HOME's black VIDEO view, media.js embedGame) is not told the page's */
+    return [...document.querySelectorAll('iframe:not([data-own-theme])')].filter(f => {
       try { const u = new URL(f.getAttribute('src') || '', location.href); return u.origin === location.origin && /\/embed\//.test(u.pathname); }
       catch (_) { return false; }
     });

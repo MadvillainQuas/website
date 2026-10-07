@@ -345,3 +345,21 @@
   0 0 90px color-mix(in oklch,var(--lume) 14%,transparent)}
 .md-unlit{visibility:hidden !important}
 @media (prefers-reduced-motion:reduce){ .md-veil,.md-lit{transition:none} }
+
+/* ------------------------------------------------------------------------------------------- WIDE ---
+   media.js wide(): the side menu slides off to the left and the page takes the whole width of the screen, the player
+   with it - on its own when a video starts on a stage that asks (data-md-wide="auto"), or by the WIDE toggle. A desktop's
+   menu only: a phone's is a bar along the foot, and stays. */
+.md-widebtn{display:inline-flex;align-items:center;gap:8px}
+.md-widebtn .ic{width:14px;height:10px;flex:none;
+  background:linear-gradient(currentColor,currentColor) center/100% 2px no-repeat,
+    linear-gradient(currentColor,currentColor) 0 50%/2px 10px no-repeat,linear-gradient(currentColor,currentColor) 100% 50%/2px 10px no-repeat}
+.md-widebtn[aria-pressed="true"]{background:var(--ink-s,var(--lume));border-color:var(--ink-s,var(--lume));color:var(--bc-on,var(--on-accent))}
+@media (min-width:721px){
+  body.has-nav{transition:padding-left .4s var(--ease)}
+  .ep-nav{transition:transform .4s var(--ease),visibility 0s}
+  html.md-wide body.has-nav{padding-left:0}
+  html.md-wide .ep-nav{transform:translateX(-100%);visibility:hidden;transition:transform .4s var(--ease),visibility 0s .4s}
+  html.md-wide .ep-frame{max-width:none}
+}
+@media (prefers-reduced-motion:reduce){ body.has-nav,.ep-nav,html.md-wide .ep-nav{transition:none} }

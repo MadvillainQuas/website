@@ -143,6 +143,35 @@ if (!loaded || !loaded.db) {
   await q(`update public.news_items set game_id = $2, video_kind = 'full' where id = $1`, [KV, G]);
   ok('...and the matcher putting it on a game sets its kind', (await one(`select video_kind from public.news_items where id = $1`, [KV])).video_kind === 'full');
 
+  console.log('\nevery game streaming now (0242 live_streams)');
+  {
+    const live = async (home, away, status, ago) => (await one(`insert into public.games (competition_id, home_team_id, away_team_id, status, tipoff_at, home_score, away_score)
+        values ($1, $2, $3, $4, now() - $5::interval, 40, 38) returning id`, [C, home, away, status, ago])).id;
+    const L1 = await live(BRI, MAN, 'live', '1 hour');
+    const L2 = await live(MAN, BRI, 'live', '30 minutes');                 // live, but nothing to watch
+    const L3 = await live(BRI, MAN, 'final', '2 hours');                   // over
+    const L4 = await live(MAN, BRI, 'live', '20 minutes');                 // live, its feed stalled
+    await q(`update public.games set stalled_since = now() where id = $1`, [L4]);
+    for (const g of [L1, L3, L4]) {
+      await q(`insert into public.game_videos (game_id, provider, url, video_ref, is_primary, is_live) values ($1, 'youtube', 'https://www.youtube.com/watch?v=cccccccccc1', 'cccccccccc1', true, true)`, [g]);
+    }
+    await q(`update public.leagues set public_live = true where id = $1`, [L]);
+    /* a private league's live game with a stream, for the last check */
+    const LP = (await one(`insert into public.leagues (slug, name, visibility, public_live) values ('priv-l', 'Private', 'private', true) returning id`)).id;
+    const CP = (await one(`with s as (insert into public.seasons (league_id, name) values ($1, '2026-27') returning id)
+                           insert into public.competitions (season_id, name) select id, 'P' from s returning id`, [LP])).id;
+    const PA1 = (await one(`insert into public.teams (league_id, slug, name) values ($1, 'pa1', 'Priv One') returning id`, [LP])).id;
+    const PB1 = (await one(`insert into public.teams (league_id, slug, name) values ($1, 'pb1', 'Priv Two') returning id`, [LP])).id;
+    const LPG = (await one(`insert into public.games (competition_id, home_team_id, away_team_id, status, tipoff_at) values ($1, $2, $3, 'live', now() - interval '1 hour') returning id`, [CP, PA1, PB1])).id;
+    await q(`insert into public.game_videos (game_id, provider, url, video_ref, is_primary, is_live) values ($1, 'youtube', 'https://www.youtube.com/watch?v=dddddddddd1', 'dddddddddd1', true, true)`, [LPG]);
+    const r = (await as(null, `select public.live_streams() as j`))[0].j;
+    ok('a stranger sees the live game with a stream: its clubs, its score, its video, whether its chat is open',
+       Array.isArray(r) && r.length === 1 && r[0].id === L1 && r[0].home.name === 'Bristol Flyers' && r[0].home_score === 40
+       && r[0].video && r[0].video.ref === 'cccccccccc1' && r[0].video.live === true && typeof r[0].chat === 'boolean', r);
+    ok('...never a live game with nothing to watch, a game that is over, or one whose feed has stalled', !r.some(x => [L2, L3, L4].includes(x.id)));
+    ok("...and nothing of a league the reader may not see (a private league's live stream)", !r.some(x => x.id === LPG), r.map(x => x.id));
+  }
+
   console.log('\na video\'s game');
   const gj = (await one(`select public.video_game_json($1) as j`, [G])).j;
   ok('carries each club\'s second colour', gj.home.colour_2 === '#071728' && gj.away.colour_2 === '#4271b7', gj);
