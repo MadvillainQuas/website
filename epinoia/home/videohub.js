@@ -201,6 +201,19 @@
         screen.appendChild(b);
       }
     }
+    /* THE STORYLINES, a drawer at the foot of the stream (storyline.js): a lip at rest, up on a resting pointer or a press */
+    async function mountDeck(g) {
+      if (st.deck) { try { st.deck.stop(); } catch (_) { /* gone */ } st.deck = null; }
+      st.deckFor = g.id;
+      if (!st.story || st.story.game !== g.id) st.story = null;
+      try {
+        M.css('kit/storyline.css');
+        const SL = await M.load('storyline.js', 'EpinoiaStoryline');
+        if (!st.alive || !SL || !chosen || chosen.id !== g.id || st.deckFor !== g.id) return;
+        st.deck = SL.mount(screen, { tr });
+        if (st.story) st.deck.update(st.story);
+      } catch (_) { /* no drawer: the stream as it was */ }
+    }
     async function enter(g) {
       M.cineExit(true);
       if (st.chat) { try { st.chat.stop(); } catch (_) { /* gone */ } st.chat = null; }
@@ -213,8 +226,14 @@
       M.inks(theatre, { game: g }, true);
       stream(g);
       drawBug(g);
+      mountDeck(g);
       box.textContent = '';
-      st.boxer = M.embedGame(box, g.id, { theme: 'dark', fit: true });
+      /* the box score frame works the game's storylines out from what it holds, for the drawer over the stream */
+      st.boxer = M.embedGame(box, g.id, { theme: 'dark', fit: true, story: s => {
+        if (!s || s.game !== g.id) return;
+        st.story = s;
+        if (st.deck && st.deckFor === g.id) st.deck.update(s);
+      } });
       side.textContent = '';
       side.hidden = !g.chat;
       theatre.classList.toggle('no-chat', !g.chat);
@@ -624,6 +643,7 @@
     try { if (st.sp) st.sp.stop(); } catch (_) { /* nothing */ }
     try { if (st.chat) st.chat.stop(); } catch (_) { /* nothing */ }
     try { if (st.boxer) st.boxer.stop(); } catch (_) { /* nothing */ }
+    try { if (st.deck) st.deck.stop(); } catch (_) { /* nothing */ }
     st.timers.forEach(f => { try { f(); } catch (_) { /* nothing */ } });
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch (_) { /* nothing */ }
     if (st.host) st.host.textContent = '';

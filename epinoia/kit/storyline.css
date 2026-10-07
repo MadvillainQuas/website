@@ -1,0 +1,168 @@
+/* ============================================================================
+   THE GAME'S STORYLINES, the drawer at the foot of a game's video (storyline.js).
+
+   SOLIDITY FOLLOWS THE PICTURE. --sl-glass is how much of the stream the drawer hides:
+     * the stream playing (cinema mode, html.md-cine): glass - the game moves behind it, blurred, and the cards float
+       on it;
+     * the stream paused or not started: firmer - there is reading to do and nothing to miss behind it;
+     * a card under the pointer (or the finger) goes solid and the others step back, so what is being read is never
+       fighting the picture.
+   The drawer rises out of the picture rather than cutting across it: its top edge is feathered, and the lip at rest is
+   barely there - a tab of frosted glass in the middle of the bottom edge, where YouTube's control bar has nothing - until
+   a run or a streak lights it in the side's colour.
+   ============================================================================ */
+@property --sl-glass { syntax: '<number>'; inherits: true; initial-value: .72 }
+@property --sl-blur { syntax: '<length>'; inherits: true; initial-value: 16px }
+
+.sl{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden;container:sl / size;
+  --sl-glass:.72;--sl-blur:16px;--sl-ink:var(--lume,#93f2bf);
+  font-family:var(--f-ui,'Archivo',system-ui,sans-serif);color:#fff;text-align:left;
+  transition:--sl-glass .6s var(--ease,ease),--sl-blur .6s var(--ease,ease)}
+html.md-cine .sl{--sl-glass:.46;--sl-blur:10px}
+
+/* ---- the lip ---- */
+.sl-lip{pointer-events:auto;position:absolute;left:50%;bottom:0;translate:-50% 0;display:inline-flex;align-items:center;gap:8px;
+  max-width:min(460px,72%);height:24px;padding:0 14px 0 11px;border:1px solid rgba(255,255,255,.16);border-bottom:0;border-radius:12px 12px 0 0;
+  background:linear-gradient(180deg,rgba(6,10,8,.26),rgba(6,10,8,.52));-webkit-backdrop-filter:blur(6px) saturate(1.4);backdrop-filter:blur(6px) saturate(1.4);
+  color:rgba(255,255,255,.88);font:800 9.5px/1 var(--f-ui,'Archivo',system-ui,sans-serif);letter-spacing:.14em;text-transform:uppercase;cursor:pointer;
+  box-shadow:inset 0 2px 0 color-mix(in oklch,var(--sl-ink) 70%,transparent);opacity:.7;
+  transition:opacity .25s var(--ease,ease),height .25s var(--ease,ease),background .25s,translate .45s var(--ease,ease)}
+.sl-lip:hover,.sl-lip:focus-visible{opacity:1;height:28px;background:linear-gradient(180deg,rgba(6,10,8,.5),rgba(6,10,8,.8))}
+.sl-lip:focus-visible{outline:2px solid var(--sl-ink);outline-offset:-3px}
+.sl-lip-a{flex:none;width:7px;height:7px;border-top:2px solid currentColor;border-left:2px solid currentColor;rotate:45deg;translate:0 2px}
+.sl-lip-k{flex:none;color:var(--sl-ink)}
+.sl-lip-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff}
+.sl-lip-t:empty{display:none}
+.sl[data-open="1"] .sl-lip{translate:-50% 110%;opacity:0;pointer-events:none}
+/* A RUN OR A STREAK AS IT HAPPENS: the lip lit in the side's colour, a little taller, breathing three times */
+.sl.sl-alert .sl-lip{opacity:1;height:30px;
+  background:linear-gradient(180deg,color-mix(in oklch,var(--sl-ink) 52%,rgba(6,10,8,.55)),rgba(6,10,8,.86));
+  animation:sl-breathe 1.6s var(--ease,ease) 3}
+@keyframes sl-breathe{
+  0%,100%{box-shadow:inset 0 2px 0 var(--sl-ink),0 0 0 0 color-mix(in oklch,var(--sl-ink) 0%,transparent)}
+  50%{box-shadow:inset 0 2px 0 var(--sl-ink),0 -8px 26px 2px color-mix(in oklch,var(--sl-ink) 50%,transparent)}}
+
+/* ---- the drawer ---- */
+.sl-panel{pointer-events:none;position:absolute;left:0;right:0;bottom:0;max-height:min(74%,360px);display:flex;flex-direction:column;
+  transform:translateY(calc(100% + 32px));transition:transform .45s var(--ease,ease);
+  background:linear-gradient(180deg,rgba(4,8,6,calc(var(--sl-glass) * .6)) 0,rgba(4,8,6,var(--sl-glass)) 44px,rgba(4,8,6,min(.96,calc(var(--sl-glass) + .1))) 100%);
+  -webkit-backdrop-filter:blur(var(--sl-blur)) saturate(1.5);backdrop-filter:blur(var(--sl-blur)) saturate(1.5);
+  border-top:1px solid rgba(255,255,255,.14);box-shadow:0 -18px 40px rgba(0,0,0,.3)}
+/* the feathered edge: the drawer rises out of the picture */
+.sl-panel::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:30px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(4,8,6,calc(var(--sl-glass) * .45)))}
+.sl[data-open="1"] .sl-panel{transform:none;pointer-events:auto}
+.sl-head{display:flex;align-items:center;gap:8px;padding:8px 10px 6px 12px;flex:none}
+.sl-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1 1 auto;min-width:0}
+.sl-chips::-webkit-scrollbar{display:none}
+.sl-chip{flex:none;height:26px;padding:0 11px;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:rgba(255,255,255,.04);
+  color:rgba(255,255,255,.62);font:800 9.5px/1 var(--f-ui,'Archivo',system-ui,sans-serif);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;
+  transition:background .2s,color .2s}
+.sl-chip:hover{color:#fff;background:rgba(255,255,255,.1)}
+.sl-chip[aria-pressed="true"]{background:rgba(255,255,255,.92);color:#06100b;border-color:transparent}
+.sl-chip:focus-visible,.sl-x:focus-visible{outline:2px solid var(--sl-ink);outline-offset:2px}
+.sl-x{flex:none;position:relative;width:32px;height:28px;border:1px solid rgba(255,255,255,.22);border-radius:8px;background:rgba(255,255,255,.04);color:#fff;cursor:pointer}
+.sl-x::before{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  translate:-50% -70%;rotate:45deg}
+.sl-x:hover{background:rgba(255,255,255,.12)}
+
+.sl-cards{display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scroll-snap-type:x proximity;
+  padding:2px 12px 12px;min-height:0;flex:1 1 auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
+.sl-card{flex:0 0 clamp(220px,31%,300px);scroll-snap-align:start;min-height:0;overflow-y:auto;padding:10px 12px;
+  border:1px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(8,14,11,calc(var(--sl-glass) * .45));
+  transition:background .25s,opacity .25s,border-color .25s}
+/* the card being read goes solid; the others step back into the picture */
+.sl-cards:hover .sl-card{opacity:.66}
+.sl-cards .sl-card:hover,.sl-cards .sl-card:focus-within{opacity:1;background:rgba(6,11,8,.95);border-color:rgba(255,255,255,.26)}
+.sl-card h4{margin:0 0 8px;font:800 9.5px/1 var(--f-ui,'Archivo',system-ui,sans-serif);letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62)}
+.sl-none,.sl-wait{font:600 11px/1.4 var(--f-ui,'Archivo',system-ui,sans-serif);color:rgba(255,255,255,.55)}
+.sl-wait{padding:12px 4px}
+.sl-note{margin:6px 0 0;font:600 9.5px/1.35 var(--f-ui,'Archivo',system-ui,sans-serif);color:rgba(255,255,255,.5)}
+
+/* LEADERS */
+.sl-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sl-tm{display:block;margin-bottom:4px;font:900 10px/1 var(--f-ui,'Archivo',system-ui,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--ink)}
+.sl-ld{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;column-gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.sl-ld:last-child{border-bottom:0}
+.sl-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 11px/1.2 var(--f-ui,'Archivo',system-ui,sans-serif);text-transform:uppercase}
+.sl-big{font:900 18px/1 var(--f-ui,'Archivo',system-ui,sans-serif);color:var(--ink);font-variant-numeric:tabular-nums}
+.sl-ld small{grid-column:1 / -1;font:600 9.5px/1.3 var(--f-ui,'Archivo',system-ui,sans-serif);color:rgba(255,255,255,.56);font-variant-numeric:tabular-nums}
+
+/* BPM */
+.sl-bp{display:grid;grid-template-columns:8px minmax(0,1fr) minmax(54px,.8fr) 40px;align-items:center;gap:7px;padding:4px 0}
+.sl-dot{width:8px;height:8px;border-radius:50%;background:var(--ink);box-shadow:0 0 8px var(--ink)}
+.sl-div{position:relative;height:6px;border-radius:3px;background:rgba(255,255,255,.08)}
+.sl-div::before{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:rgba(255,255,255,.3)}
+.sl-div i{position:absolute;top:0;bottom:0;left:50%;width:calc(var(--v) * 50%);border-radius:0 3px 3px 0;background:var(--ink)}
+.sl-div i.neg{left:auto;right:50%;border-radius:3px 0 0 3px;background:#ff6b6b}
+.sl-bp b{text-align:right;font:900 12px/1 var(--f-ui,'Archivo',system-ui,sans-serif);font-variant-numeric:tabular-nums}
+
+/* RUNS */
+.sl-runs{display:flex;gap:8px;margin-bottom:6px}
+.sl-run,.sl-streak{flex:1 1 0;min-width:0;display:grid;align-content:start;gap:3px;padding:8px 10px;border-radius:8px;
+  border:1px solid color-mix(in oklch,var(--ink) 55%,transparent);
+  background:linear-gradient(135deg,color-mix(in oklch,var(--ink) 34%,transparent),transparent 80%)}
+.sl-run b,.sl-streak b{font:900 28px/1 var(--f-ui,'Archivo',system-ui,sans-serif);font-variant-numeric:tabular-nums;color:#fff;
+  text-shadow:0 0 18px color-mix(in oklch,var(--ink) 75%,transparent)}
+.sl-run span,.sl-streak span{font:900 10.5px/1.1 var(--f-ui,'Archivo',system-ui,sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl-run small,.sl-streak small{font:600 9.5px/1.3 var(--f-ui,'Archivo',system-ui,sans-serif);color:rgba(255,255,255,.66)}
+.sl-run.past,.sl-streak{background:linear-gradient(135deg,color-mix(in oklch,var(--ink) 18%,transparent),transparent 80%)}
+.sl-run.past b,.sl-streak b{font-size:22px}
+@media (prefers-reduced-motion:no-preference){ .sl-run:not(.past) b{animation:sl-pop .7s var(--ease,ease) both} }
+@keyframes sl-pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:none}}
+.sl-worm{display:block;width:100%;height:64px;margin-top:4px;overflow:visible}
+.sl-w-area{opacity:.32}
+.sl-w-line{fill:none;stroke:rgba(255,255,255,.82);stroke-width:1.3;vector-effect:non-scaling-stroke}
+.sl-w-run{fill:none;stroke-width:3;stroke-linecap:round;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 4px currentColor)}
+.sl-w-zero{stroke:rgba(255,255,255,.26);stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.sl-w-now{stroke:rgba(255,255,255,.55);stroke-width:1;vector-effect:non-scaling-stroke}
+
+/* FOUR FACTORS + SHOOTING */
+.sl-ffh{display:flex;justify-content:space-between;margin:-2px 0 4px;font:900 9.5px/1 var(--f-ui,'Archivo',system-ui,sans-serif);letter-spacing:.12em;
+  text-transform:uppercase;color:rgba(255,255,255,.56)}
+.sl-ff{display:grid;grid-template-columns:38px minmax(0,1fr) 38px;align-items:center;gap:6px;padding:4px 0}
+.sl-ff b{font:800 11.5px/1 var(--f-ui,'Archivo',system-ui,sans-serif);color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums}
+.sl-ff b:last-child{text-align:right}
+.sl-ff b.w{color:#fff;text-shadow:0 0 10px var(--ink)}
+.sl-mir{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px}
+.sl-mir i{height:6px;border-radius:3px;background:var(--ink);width:calc(var(--v) * 100%)}
+.sl-mir i.l{justify-self:end}
+.sl-mir em,.sl-sh em{font:800 9px/1 var(--f-ui,'Archivo',system-ui,sans-serif);font-style:normal;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.72);white-space:nowrap}
+.sl-sh{display:grid;grid-template-columns:30px 1fr 1fr;gap:6px;align-items:center;padding:3px 0}
+.sl-sb{position:relative;height:18px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden;display:flex;align-items:center;
+  justify-content:space-between;gap:4px;padding:0 6px;font:800 9.5px/1 var(--f-ui,'Archivo',system-ui,sans-serif);font-variant-numeric:tabular-nums}
+.sl-sb i{position:absolute;left:0;top:0;bottom:0;width:calc(var(--v) * 100%);background:color-mix(in oklch,var(--ink) 52%,transparent)}
+.sl-sb span,.sl-sb b{position:relative}
+.sl-sb span{color:rgba(255,255,255,.75)}
+
+/* ---- a small picture (a phone, a narrow column): the drawer may cover all of it; the cards narrower ---- */
+/* with a pointer the drawer peeks - the game stays in sight above it; a touch screen opened it to read, and on a small
+   picture it may take all of it */
+@media (hover:none){
+  @container sl (max-height:320px){ .sl-panel{max-height:100%} }
+}
+@container sl (max-height:320px){
+  .sl-head{padding:5px 8px 3px;gap:6px}
+  .sl-chip{height:22px;padding:0 9px;font-size:8.5px}
+  .sl-x{width:28px;height:24px}
+  .sl-cards{gap:8px;padding:2px 8px 8px}
+  .sl-card{padding:7px 9px}
+  .sl-card h4{margin-bottom:5px}
+  .sl-ld{padding:2px 0}
+  .sl-big{font-size:15px}
+  .sl-ld small{font-size:9px}
+  .sl-bp{padding:2px 0}
+  .sl-ff,.sl-sh{padding:2px 0}
+  .sl-run,.sl-streak{padding:6px 8px}
+  .sl-run b{font-size:22px}
+  .sl-worm{height:40px}
+}
+@container sl (max-width:560px){
+  .sl-card{flex-basis:min(290px,86%)}
+  .sl-lip{max-width:88%}
+}
+@media (prefers-reduced-motion:reduce){
+  .sl,.sl-lip,.sl-panel,.sl-card,.sl-chip{transition:none}
+  .sl.sl-alert .sl-lip{animation:none}
+}

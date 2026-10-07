@@ -192,13 +192,114 @@
     postHeight();
   });
 
+  /* ---- THE GAME'S STORYLINES, for the host (?story=1: the drawer over a video, storyline.js) ----
+     Worked out here from the replay this frame already holds - the same derive(), team ratings and BPM the box score
+     prints - and posted to the page, so the drawer costs the database nothing: the frame's own 15 s read and its
+     socket keep both current. Posted only when something in it changed. */
+  const STORY = new URLSearchParams(location.search).get('story') === '1';
+  let lastStory = '';
+  const SCORE_PTS = { p2_made: 2, p3_made: 3, ft_made: 1 };
+  function surname(n) {
+    const w = String(n || '').trim().split(/\s+/).filter(Boolean);
+    while (w.length > 1 && /^(jr\.?|sr\.?|ii|iii|iv)$/i.test(w[w.length - 1])) w.pop();
+    return w.length ? w[w.length - 1] : '';
+  }
+  function storyOf(d) {
+    const F = d.format || E.formatOf(S);
+    const per = (p, c) => E.perName(p || 1, F).toUpperCase() + ' ' + E.fmtClock(c || 0);
+    const who = {};
+    S.teams.forEach((t, side) => (t.players || []).forEach(p => { who[p.id] = { id: p.id, name: p.name, short: surname(p.name), num: p.num, side }; }));
+    const line = (id, s) => Object.assign({}, who[id], { pts: s.pts || 0, reb: (s.or || 0) + (s.dr || 0), ast: s.ast || 0,
+      fgm: (s.p2m || 0) + (s.p3m || 0), fga: (s.p2a || 0) + (s.p3a || 0), p3m: s.p3m || 0, p3a: s.p3a || 0, ftm: s.ftm || 0, fta: s.fta || 0,
+      min: Math.round((s.min || 0) / 60000) });
+    /* the leading scorers, three a side */
+    const leaders = [0, 1].map(side => (S.teams[side].players || []).map(p => d.stats[p.id] ? line(p.id, d.stats[p.id]) : null)
+      .filter(r => r && (r.pts > 0 || r.min > 0)).sort((a, b) => b.pts - a.pts || (b.fgm / Math.max(1, b.fga)) - (a.fgm / Math.max(1, a.fga))).slice(0, 3));
+    /* the game's BPM from its box score (bpm.js game(): the box score's own estimate), five best with five minutes or more */
+    let bpm = [];
+    try {
+      const BPM = window.EpinoiaBPM;
+      if (BPM && BPM.game) {
+        const lines = [];
+        S.teams.forEach((t, side) => (t.players || []).forEach(p => { const s = d.stats[p.id]; if (s && s.min > 0) lines.push({ id: p.id, side, stats: s }); }));
+        const m = BPM.game({ lines });
+        bpm = lines.filter(l => l.stats.min >= 5 * 60000 && m.get(l.id) && isFinite(m.get(l.id).bpm))
+          .map(l => Object.assign(line(l.id, l.stats), { bpm: Math.round(m.get(l.id).bpm * 10) / 10 }))
+          .sort((a, b) => b.bpm - a.bpm).slice(0, 5);
+      }
+    } catch (_) { bpm = []; }
+    /* the four factors and the shooting, per side */
+    const ff = [], shoot = [];
+    [0, 1].forEach(t => {
+      try {
+        /* the box score's own calculator (the advanced tab's); the engine's takes the game first */
+        const A = B.teamAdv ? B.teamAdv(d, t) : E.teamAdv(S, d, t), T = A;
+        ff.push({ efg: A.efg, tov: A.tovp, orb: A.orebp, ftr: A.ftr });
+        shoot.push({ p2: [T.fgm - T.fg3m, T.fga - T.fg3a], p3: [T.fg3m, T.fg3a], ft: [T.ftm, T.fta], rim: T.rimA ? [T.rimM, T.rimA] : null });
+      } catch (_) { ff.push(null); shoot.push(null); }
+    });
+    /* the flow: every basket in order - the margin over time, the runs (unanswered points), one player's streak */
+    const pts = [[0, 0]], sc = [0, 0];
+    let run = null, best = null, streak = null, bestStreak = null, changes = 0, prevLead = null;
+    const lead = [0, 0];
+    (S.events || []).forEach(e => {
+      const v = SCORE_PTS[e.t];
+      if (!v || e.team == null) return;
+      sc[e.team] += v;
+      const at = E.cumEl(e.period || 1, e.clock || 0, F);
+      pts.push([Math.round(at / 1000), sc[0] - sc[1]]);
+      if (run && run.side === e.team) { run.n += v; run.by[e.pid] = (run.by[e.pid] || 0) + v; }
+      else run = { side: e.team, n: v, since: per(e.period, e.clock), from: Math.round(at / 1000), by: { [e.pid]: v } };
+      if (!best || run.n > best.n) best = { side: run.side, n: run.n, since: run.since };
+      if (streak && streak.pid === e.pid && e.pid) streak.n += v;
+      else streak = { pid: e.pid, side: e.team, n: v, since: per(e.period, e.clock) };
+      if (streak.pid && (!bestStreak || streak.n > bestStreak.n)) bestStreak = Object.assign({}, streak);
+      const df = sc[0] - sc[1], ld = df > 0 ? 0 : df < 0 ? 1 : null;
+      if (ld != null && prevLead != null && ld !== prevLead) changes++;
+      if (ld != null) prevLead = ld;
+      if (df > lead[0]) lead[0] = df;
+      if (-df > lead[1]) lead[1] = -df;
+    });
+    const scorers = r => Object.keys(r.by).filter(id => who[id]).map(id => ({ short: who[id].short, pts: r.by[id] })).sort((a, b) => b.pts - a.pts);
+    const regMs = Array.from({ length: (F && F.periods) || 4 }, (_, i) => E.PLEN(i + 1, F)).reduce((a, b) => a + b, 0);
+    const nowAt = Math.round(E.cumEl(S.period || 1, S.clockMs || 0, F) / 1000);
+    const live = game.status === 'live' || game.status === 'finalising';
+    return {
+      v: 1, game: gameId, status: game.status, live, score: d.score.slice(),
+      when: game.status === 'final' ? 'FINAL' : live ? per(S.period, S.clockMs) : '',
+      teams: [game.home, game.away].map((t, i) => ({ name: t.name, short: t.short_name || surname(t.name),
+        ink: getComputedStyle(document.documentElement).getPropertyValue('--team' + i).trim() || null,
+        logo: t && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(t.logo_path) : null })),
+      leaders, bpm, ff, shoot,
+      run: run && run.n >= 6 ? { side: run.side, n: run.n, since: run.since, from: run.from, scorers: scorers(run) } : null,
+      bestRun: best && best.n >= 6 ? best : null,
+      streak: streak && streak.pid && who[streak.pid] && streak.n >= 6 ? { short: who[streak.pid].short, side: streak.side, n: streak.n, since: streak.since } : null,
+      bestStreak: bestStreak && who[bestStreak.pid] && bestStreak.n >= 7 ? { short: who[bestStreak.pid].short, side: bestStreak.side, n: bestStreak.n } : null,
+      flow: { pts, len: Math.max(Math.round(regMs / 1000), nowAt, pts.length ? pts[pts.length - 1][0] : 0), now: live ? nowAt : null, lead, changes }
+    };
+  }
+  function postStory(d) {
+    if (!STORY || !game || parent === window) return;
+    let s;
+    try {
+      s = d ? storyOf(d) : { v: 1, game: gameId, status: game.status, empty: true, score: [game.home_score || 0, game.away_score || 0],
+        teams: [game.home, game.away].map((t, i) => ({ name: t.name, short: t.short_name || surname(t.name),
+          ink: getComputedStyle(document.documentElement).getPropertyValue('--team' + i).trim() || null })) };
+    } catch (_) { return; }
+    const k = JSON.stringify(s);
+    if (k === lastStory) return;
+    lastStory = k;
+    try { parent.postMessage({ epinoiaEmbed: 'story', story: s }, location.origin); } catch (_) { /* not ours */ }
+  }
+
   function draw() {
     const d = S.events.length ? window.derive() : null;
+    if (d) postStory(d);
     head(d);
     tabs();
     const host = $('#host');
     host.dataset.side = String(side);
-    if (!d) { host.innerHTML = '<div class="eb-empty">The courts fill in from the first play.</div>'; return postHeight(); }
+    if (!d) { postStory(null); host.innerHTML = '<div class="eb-empty">The courts fill in from the first play.</div>'; return postHeight(); }
     host.innerHTML = MB.courts(d);
     MB.mounted(host);
     faces(host);

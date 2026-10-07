@@ -432,11 +432,14 @@
     const eo = opts || {};
     host.textContent = '';
     const f = document.createElement('iframe');
-    f.src = BASE + 'embed/game/?g=' + encodeURIComponent(gameId) + (eo.theme ? '&theme=' + encodeURIComponent(eo.theme) : '') + (eo.fit ? '&fit=1' : '');
+    f.src = BASE + 'embed/game/?g=' + encodeURIComponent(gameId) + (eo.theme ? '&theme=' + encodeURIComponent(eo.theme) : '') + (eo.fit ? '&fit=1' : '')
+      + (eo.story ? '&story=1' : '');
     /* a frame that keeps its own theme (the VIDEO view's dark): the page's light/dark is not sent to it (teamcolour.js) */
     if (eo.theme) f.setAttribute('data-own-theme', eo.theme);
     f.title = tr('Box score');
-    f.loading = 'lazy';
+    /* eo.story(story): the game's storylines, worked out by the frame from what it holds (embed/game storyOf) for the drawer
+       over the video (storyline.js) - so the frame is loaded at once, not when the page reaches it */
+    f.loading = eo.story ? 'eager' : 'lazy';
     f.className = 'md-embed';
     /* THE HOST SPEAKS FOR THE FRAME: its theme, as the page that holds it - so the reader's own light/dark switch, kept
        for every embed on this site, does not paint a light box score into the black VIDEO view - and, to fit, how tall
@@ -452,6 +455,7 @@
     const onMsg = ev => {
       if (ev.origin !== location.origin || ev.source !== f.contentWindow || !ev.data) return;
       if (ev.data.epinoiaEmbed === 'colourway?') { tell(); return; }
+      if (ev.data.epinoiaEmbed === 'story') { if (eo.story && ev.data.story) { try { eo.story(ev.data.story); } catch (_) { /* the drawer's */ } } return; }
       if (ev.data.epinoiaEmbed !== 'height') return;
       const h = Number(ev.data.height);
       if (isFinite(h) && h >= 60 && h <= 2000) f.style.height = Math.ceil(h) + 'px';
@@ -608,11 +612,28 @@
       wideReset();
       if (boxer) boxer.stop();
       boxer = null; frame = null; cur = null;
+      if (deck) deck.stop();
+      deck = null; deckGame = null; deckStory = null;
     }
     function layout() {
       body.classList.toggle('q-open', open);
       queue.hidden = !open;
       qBtn.setAttribute('aria-expanded', String(open));
+    }
+    /* THE GAME'S STORYLINES at the foot of the video, while the video has a game (storyline.js; the box score frame works
+       them out). The player is drawn afresh into `vid` on every play, so the drawer is put back after it (play). */
+    let deck = null, deckGame = null, deckStory = null;
+    function stageDeck(gid) {
+      if (!gid) { if (deck) deck.stop(); deck = null; deckGame = null; deckStory = null; return; }
+      if (deckGame !== gid) { deckGame = gid; deckStory = null; if (deck) deck.reset(); }
+      if (deck) { if (!vid.contains(deck.el)) vid.appendChild(deck.el); return; }
+      css('kit/storyline.css');
+      load('storyline.js', 'EpinoiaStoryline').then(SL => {
+        if (!SL || deckGame !== gid || stage.hidden || !vid) return;
+        if (!deck) deck = SL.mount(vid, { tr });
+        else if (!vid.contains(deck.el)) vid.appendChild(deck.el);
+        if (deckStory) deck.update(deckStory);
+      }).catch(() => { /* no drawer: the video as it was */ });
     }
     /* the head, the inks, the box score and the list, for `it` */
     function fill(it) {
@@ -628,8 +649,13 @@
         if (boxer) boxer.stop();
         boxer = null;
         box.textContent = '';
-        if (gid) { boxer = embedGame(box, gid, o.dark ? { theme: 'dark', fit: true } : { fit: true }); boxer.game = gid; }
+        if (gid) {
+          boxer = embedGame(box, gid, Object.assign(o.dark ? { theme: 'dark', fit: true } : { fit: true }, {
+            story: s => { if (!s || s.game !== gid) return; deckStory = s; if (deck && deckGame === gid) deck.update(s); } }));
+          boxer.game = gid;
+        }
       }
+      stageDeck(gid);
       box.hidden = !gid;
       cue.hidden = !gid;
       upBar.hidden = !gid;
@@ -742,6 +768,7 @@
       vid.textContent = '';
       const id = idOf(it);
       if (id) player(vid, { id, title: it.title, autoplay: !quiet, group: stage, onEnd: ended, onFrame: f => { frame = f; } });
+      if (deck && deckGame && it.game && it.game.id === deckGame) vid.appendChild(deck.el);
       if (o.onChange) o.onChange(it);
       if (!quiet) stage.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
     }
