@@ -44,6 +44,8 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          # a YouTube channel is read through the Data API (its RSS answers 404); the same key the ingest uses
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           SOURCE: ${{ github.event.inputs.source }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |

@@ -1580,6 +1580,12 @@ jobs:
         # square, and a run's bookkeeping (304s, failures, dry runs)
         run: python scripts/news/fetch_feeds_test.py
 
+      # A channel's videos put on their games (0237, scripts/news/videos.py): what a title says the video is in the
+      # leagues' languages, the clubs it names (kanji, accents, sponsors, a shared city), the game they played at the
+      # right time, what each kind of channel makes of it, and the Data API read that stands in for YouTube's RSS.
+      - name: Videos on games
+        run: python scripts/news/videos_test.py
+
       - name: Load articles now - the news-refresh function, the parser held to the Python's, the button
         # supabase/functions/news-refresh on a fake database and a fake network: the JavaScript parser makes what
         # scripts/news/fetch_feeds.py makes of the same feeds (scripts/news/fixtures/parity/expected.json, written

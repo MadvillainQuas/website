@@ -43,6 +43,9 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import videos as V  # noqa: E402  the matching of a channel's videos to games (0237)
+
 UA = "EpinoiaNews/1.0 (+https://prophesyscouting.co.uk/epinoia/news/)"
 MAX_BYTES = 3 * 1024 * 1024
 HARD_BYTES = 40 * 1024 * 1024  # a feed longer than MAX_BYTES (a podcast's years of episodes) is read to here, then cut
@@ -1059,8 +1062,10 @@ class Supabase:
             self._req("POST", "news_items?on_conflict=source_id,guid", rows,
                       {"Prefer": "resolution=merge-duplicates,return=minimal"})
 
-    def prune(self, source_id: str, before: datetime) -> None:
-        self._req("DELETE", "news_items?source_id=eq.%s&published_at=lt.%s" % (source_id, urllib.parse.quote(before.isoformat())),
+    def prune(self, source_id: str, before: datetime, keep_linked: bool = False) -> None:
+        # a video put on a game is the game's for good (0237): its highlights outlive the feed's four months
+        self._req("DELETE", "news_items?source_id=eq.%s&published_at=lt.%s%s" % (source_id, urllib.parse.quote(before.isoformat()),
+                                                                                 "&game_id=is.null" if keep_linked else ""),
                   None, {"Prefer": "return=minimal"})
 
     def count(self, source_id: str) -> int:
@@ -1071,6 +1076,64 @@ class Supabase:
     def mark(self, source_id: str, fields: dict) -> None:
         self._req("PATCH", "news_sources?id=eq.%s" % source_id, fields, {"Prefer": "return=minimal"})
 
+    # ---- 0237: the videos (videos.py) ----
+    def has_videos(self) -> bool:
+        """whether 0237 is applied (news_items.video_id): before it, nothing here writes a video column"""
+        try:
+            self._req("GET", "news_items?select=video_id&limit=0")
+            return True
+        except urllib.error.HTTPError as e:
+            if e.code in (400, 404):
+                return False
+            raise
+
+    def videos_to_match(self, since: datetime, tried_before: datetime) -> list[dict]:
+        q = ("news_items?select=id,source_id,title,published_at,league_ids&video_id=not.is.null&game_id=is.null"
+             "&game_locked=eq.false&published_at=gte.%s&or=(matched_at.is.null,matched_at.lt.%s)&order=published_at.desc&limit=400"
+             % (urllib.parse.quote(since.isoformat()), urllib.parse.quote(tried_before.isoformat())))
+        return self._req("GET", q)[0] or []
+
+    def video_sources(self, ids: list) -> dict:
+        ids = sorted({str(i) for i in ids if i})
+        if not ids:
+            return {}
+        rows = self._req("GET", "news_sources?select=id,league_id,assigned_leagues,video_mode&id=in.(%s)" % ",".join(ids))[0] or []
+        return {str(r["id"]): r for r in rows}
+
+    def teams_full(self) -> list[dict]:
+        out: list[dict] = []
+        for off in range(0, 40000, 1000):
+            page = self._req("GET", "teams?select=id,league_id,name,short_name,aliases&league_id=not.is.null&order=id"
+                                    "&offset=%d&limit=1000" % off)[0] or []
+            out += page
+            if len(page) < 1000:
+                break
+        return out
+
+    def games_between(self, a: str, b: str, lo: datetime, hi: datetime) -> list[dict]:
+        q = ("games?select=id,status,tipoff_at&or=(and(home_team_id.eq.%s,away_team_id.eq.%s),and(home_team_id.eq.%s,away_team_id.eq.%s))"
+             "&tipoff_at=gte.%s&tipoff_at=lte.%s&order=tipoff_at" % (a, b, b, a, urllib.parse.quote(lo.isoformat()),
+                                                                    urllib.parse.quote(hi.isoformat())))
+        return self._req("GET", q)[0] or []
+
+    def patch_item(self, item_id: str, fields: dict) -> None:
+        self._req("PATCH", "news_items?id=eq.%s&game_locked=eq.false" % item_id, fields, {"Prefer": "return=minimal"})
+
+    def attach_broadcast(self, game_id: str, item: dict) -> bool:
+        """the game's primary video, when it has none: the seeking path (game_videos, as auto_video.attach writes it)"""
+        if self._req("GET", "game_videos?game_id=eq.%s&select=id&limit=1" % game_id)[0]:
+            return False
+        vid = item.get("video_id") or ""
+        if not vid:
+            got = self._req("GET", "news_items?id=eq.%s&select=video_id" % item["id"])[0] or []
+            vid = (got[0] or {}).get("video_id") if got else ""
+        if not vid:
+            return False
+        self._req("POST", "game_videos", {"game_id": game_id, "provider": "youtube", "url": "https://www.youtube.com/watch?v=" + vid,
+                                          "video_ref": vid, "label": "Full game", "is_live": False, "is_primary": True},
+                  {"Prefer": "return=minimal"})
+        return True
+
 
 # ------------------------------------------------------------------------------------------------ a run ---
 def _when_iso(v: str | None) -> datetime | None:
@@ -1080,8 +1143,14 @@ def _when_iso(v: str | None) -> datetime | None:
         return None
 
 
+def http_json(url: str):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
+        return json.loads(r.read().decode("utf-8", "replace") or "null")
+
+
 def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=print, now=None, sleep=time.sleep,
-        page=http_page, look=None) -> dict:
+        page=http_page, look=None, yt_key: str | None = None, get_json=http_json) -> dict:
     now_f = now or (lambda: datetime.now(timezone.utc))
     look = look or (lambda u: page(u, RESOLVE_BYTES))
     done = {"read": 0, "unchanged": 0, "failed": 0, "items": 0, "tagged": 0, "logos": 0, "found": 0}
@@ -1090,6 +1159,13 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
     except Exception as e:                                     # no leagues to hand: the stories go in untagged
         log("  (the leagues could not be read, so no story is matched to one: %s)" % e)
         matcher = LeagueMatcher([], [])
+    # THE VIDEOS (0237): each YouTube item's id and kind are written with it, and after the reads every video
+    # still without a game is matched to one (videos.py). Before 0237 is applied nothing here changes.
+    try:
+        videos_on = bool(getattr(db, "has_videos", None)) and db.has_videos()
+    except Exception as e:
+        log("  (the video columns could not be checked, so videos are not matched this time: %s)" % e)
+        videos_on = False
     for i, s in enumerate(db.sources(only)):
         if i:
             sleep(GAP_S)
@@ -1105,7 +1181,10 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
                 log("  . %s: its link is tried again later (%s)" % (s["name"], s["last_error"]))
                 continue
             try:
-                found = resolve(s["resolve_from"], look, lambda u: get(u, None, None))
+                # a YouTube link through the Data API when there is a key (the channel's page sits behind a consent
+                # wall and its RSS answers 404: videos.py); otherwise, and for every other link, as before
+                api = V.api_channel(s["resolve_from"], yt_key, get_json) if yt_key and "youtube.com" in s["resolve_from"] else None
+                found = (dict(api, platform="youtube") if api else None) or resolve(s["resolve_from"], look, lambda u: get(u, None, None))
                 other = None if dry_run else db.feed_taken(found["feed_url"], s.get("league_id"), s["id"])
                 if other:
                     raise NoFeed("the same feed as %s, which is a source here already" % other)
@@ -1130,19 +1209,34 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
             done["found"] += 1
             log("  ~ %s: %s feed %s" % (s["name"], found.get("platform"), found["feed_url"]))
         try:
-            status, body, headers = get(s["feed_url"], None if found else s.get("etag"), None if found else s.get("last_modified"))
+            if yt_key and str(s.get("feed_url") or "").startswith(YT_FEED) and V.playlist_of(s["feed_url"]):
+                api_rows = V.api_items(s["feed_url"], yt_key, get_json, t)
+                status, body, headers = 200, None, {}
+            else:
+                api_rows = None
+                status, body, headers = get(s["feed_url"], None if found else s.get("etag"), None if found else s.get("last_modified"))
             if status == 304:
                 done["unchanged"] += 1
                 mark.update({"last_ok_at": t.isoformat(), "last_error": None})
                 log("  = %s: unchanged" % s["name"])
             else:
-                meta, items = parse_feed(body, s["feed_url"], t)
+                if api_rows is not None:
+                    meta, items = {"title": next((x["author"] for x in api_rows if x.get("author")), None)}, api_rows
+                else:
+                    meta, items = parse_feed(body, s["feed_url"], t)
                 rows = [dict(x, source_id=s["id"], fetched_at=t.isoformat(),
                              league_ids=matcher.match(x["title"], x["summary"], x["tags"])) for x in items]
+                if videos_on:
+                    for r in rows:                  # every row the same keys: PostgREST refuses a mixed bulk insert
+                        r["video_id"] = V.video_id(r.get("url"), r.get("guid"))
+                        r["video_kind"] = V.classify(r.get("title")) if r["video_id"] else None
                 done["tagged"] += sum(1 for r in rows if r["league_ids"])
                 if not dry_run:
                     db.upsert_items(rows)
-                    db.prune(s["id"], t - timedelta(days=KEEP_DAYS))
+                    if videos_on:
+                        db.prune(s["id"], t - timedelta(days=KEEP_DAYS), True)
+                    else:
+                        db.prune(s["id"], t - timedelta(days=KEEP_DAYS))
                 mark.update({"last_ok_at": t.isoformat(), "last_error": None,
                              "etag": headers.get("etag"), "last_modified": headers.get("last-modified")})
                 if s.get("name_auto"):              # a stand-in name gives way to the source's own
@@ -1178,6 +1272,11 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
                 db.mark(s["id"], mark)
             except Exception as e:
                 log("  ! %s: could not record the read: %s" % (s["name"], e))
+    if videos_on and not only:
+        try:
+            done["videos"] = V.match_videos(db, now_f(), log, dry_run)
+        except Exception as e:                                 # the stories are in; a matching fault waits for the next read
+            log("  ! videos: %s: %s" % (type(e).__name__, e))
     log("news sources: %(read)d read, %(unchanged)d unchanged, %(failed)d failed, %(items)d items (%(tagged)d about a league), "
         "%(logos)d logos found, %(found)d links turned into feeds" % done)
     return done
@@ -1192,7 +1291,7 @@ def main() -> int:
     if not url or not key:
         print("no SUPABASE_URL / SUPABASE_SERVICE_KEY: nothing to do")
         return 0
-    run(Supabase(url, key), dry_run=a.dry_run, only=a.source)
+    run(Supabase(url, key), dry_run=a.dry_run, only=a.source, yt_key=os.environ.get("YOUTUBE_API_KEY") or None)
     return 0
 
 
