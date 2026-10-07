@@ -160,7 +160,8 @@
         const rows = await call('game_chat_read', { p_game: gameId, p_after: lastId || null, p_limit: 80 });
         if (!Array.isArray(rows)) throw new Error('read');
         rows.forEach(m => add(m));
-        if (!lastId && !rows.length) log.appendChild(el('div', 'ch-sys', tr('No messages yet. Say the first thing.')));
+        // once: the 30 s catch-up read of a room still empty added it again each time (2026-10-07)
+        if (!lastId && !rows.length && !log.querySelector('.ch-sys')) log.appendChild(el('div', 'ch-sys', tr('No messages yet. Say the first thing.')));
       } catch (_) { /* before 0237, or a blip: the socket still brings new ones */ }
     }
     function listen() {
@@ -295,14 +296,28 @@
       btns.append(go, no);
       card.append(msg, btns);
       ov.appendChild(card);
-      document.body.appendChild(ov);
+      /* WHERE THE READER IS LOOKING. On FULL SCREEN only the full-screen element is drawn, so a pop-up on <body> was
+         there but unseen until the reader left full screen and scrolled up to it (2026-10-07): it goes inside the
+         full-screen element, and follows it in or out. Its first box takes the focus without scrolling the page -
+         on a phone that moved the page 400 px under the pop-up. */
+      const stage = () => document.fullscreenElement || document.webkitFullscreenElement || document.body;
+      stage().appendChild(ov);
+      const onFs = () => { if (pop && pop.parentNode !== stage()) stage().appendChild(pop); };
+      document.addEventListener('fullscreenchange', onFs);
+      document.addEventListener('webkitfullscreenchange', onFs);
       pop = ov;
-      const close = () => { if (pop) { pop.remove(); pop = null; document.removeEventListener('keydown', onKey); } };
+      const close = () => {
+        if (!pop) return;
+        pop.remove(); pop = null;
+        document.removeEventListener('keydown', onKey);
+        document.removeEventListener('fullscreenchange', onFs);
+        document.removeEventListener('webkitfullscreenchange', onFs);
+      };
       const onKey = e => { if (e.key === 'Escape') close(); };
       document.addEventListener('keydown', onKey);
       ov.addEventListener('click', e => { if (e.target === ov) close(); });
       no.addEventListener('click', close);
-      (nameIn || (adult.disabled ? terms : adult)).focus();
+      try { (nameIn || (adult.disabled ? terms : adult)).focus({ preventScroll: true }); } catch (_) { /* an old browser */ }
       go.addEventListener('click', async () => {
         const bad = t => { msg.textContent = tr(t); msg.className = 'ch-say err'; go.disabled = false; };
         if (nameIn && !nameIn.value.trim()) return bad('Choose your name in the chat.');
