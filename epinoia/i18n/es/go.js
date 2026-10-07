@@ -257,7 +257,19 @@
       'Location only works on a secure page (one that starts https://). Open the site from its normal address.': 'La ubicación solo funciona en una página segura (que empiece por https://). Abre el sitio desde su dirección normal.',
       'Finding where you are took too long. Check that Location is switched on and try again.': 'Localizarte tardó demasiado. Comprueba que la ubicación esté activada e inténtalo de nuevo.',
       'Your device could not work out where it is. Switch Location on in its settings, step outside or away from thick walls, and try again.': 'Tu dispositivo no pudo saber dónde está. Activa la ubicación en los ajustes, sal al exterior o aléjate de paredes gruesas e inténtalo de nuevo.',
-      'Location is blocked for this site. Click the lock icon beside the address, set Location to Allow, then press Stamp game again.': 'La ubicación está bloqueada para este sitio. Haz clic en el candado junto a la dirección, pon Ubicación en Permitir y vuelve a pulsar Sellar este partido.'
+      'Location is blocked for this site. Click the lock icon beside the address, set Location to Allow, then press Stamp game again.': 'La ubicación está bloqueada para este sitio. Haz clic en el candado junto a la dirección, pon Ubicación en Permitir y vuelve a pulsar Sellar este partido.',
+      'Predictions': 'Pronósticos',
+      'Arenas stamped': 'Pabellones sellados',
+      'Fans ranked by the winners they called in this league’s games': 'La afición, por los ganadores que acertó en los partidos de esta liga',
+      'Fans ranked by the winners they called, across every league': 'La afición, por los ganadores que acertó en todas las ligas',
+      'The fans who have stamped the most of the league’s arenas on GO': 'Quienes más pabellones de la liga han sellado en GO',
+      'All time': 'Histórico',
+      'right pick': 'acierto',
+      'right picks': 'aciertos',
+      'your rank': 'Tu puesto',
+      'right': 'Aciertos',
+      'hit rate': '% de acierto',
+      'to the fixtures': 'Al calendario'
     },
     units: {
       'arena': '{n} pabellón',

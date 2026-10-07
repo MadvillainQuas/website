@@ -527,9 +527,13 @@ function render(ctx) {
           '<span class="pv-time">' + esc(w.time) + '</span>' +
           '<span class="pv-v">vs</span>' +
           (ctx.venue ? '<span class="pv-venue">' + esc(ctx.venue) + '</span>' : '') +
+          /* where to watch, filled by the page (watch.js) */
+          '<span class="pv-watch-slot"></span>' +
         '</div>' +
         side('right', ctx.slugB, nameB, ctx.colourB, ctx.crestB, ctx.placeB, B) +
       '</div>' +
+      /* who wins? filled by the page (predict.js) */
+      '<div class="pv-pred-slot"></div>' +
     '</div>' +
 
     startersHTML(ctx) +

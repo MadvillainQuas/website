@@ -845,6 +845,15 @@ function card(g, opts) {
     }
     body.appendChild(c);
   }
+  /* WHERE TO WATCH, a pill under the "v" or the score (watch.js, on the pages that load it): its press opens its own card
+     and never the game */
+  const lgw = leagueOf(g);
+  const wp = root.EpinoiaWatch && lgw && lgw.slug ? root.EpinoiaWatch.pill(lgw.slug) : null;
+  if (wp) {
+    body.className += ' has-watch';
+    wp.classList.add('fxc-watch');
+    body.appendChild(wp);
+  }
   a.appendChild(body);
 
   /* WHEN IT IS, under the two clubs and in full: the day the top line abbreviates and the
@@ -862,6 +871,14 @@ function card(g, opts) {
   foot.appendChild(node('span', 'fxc-go', isLive ? 'watch →' : isFinal
     ? dayLabel(g.tipoff_at, o.now) : 'preview →'));
   a.appendChild(foot);
+
+  /* WHO WINS? A strip hanging under the card (predict.js, on the pages that load it): the fans' split, and a pick */
+  if (root.EpinoiaPredict && g.status !== 'void') {
+    const I = root.EpinoiaInitials;
+    const code = (team, name) => ({ text: (I && team && I.code(team)) || shortName(team, name), team: I && team && team.id ? team.id : null });
+    const ps = root.EpinoiaPredict.strip(g, { codes: [code(g.home, home), code(g.away, away)] });
+    if (ps) { a.classList.add('has-pred'); a.appendChild(ps); }
+  }
 
   wireBadges(a);
   return a;

@@ -2340,6 +2340,17 @@ function dressHead(el, d) {
       b.type = 'button'; b.id = 'csSheet'; b.className = 'bt-sheet'; b.textContent = 'Scoresheet · PDF';
       mid.appendChild(b);
     }
+    /* WHERE TO WATCH (watch.js), under the state plate and above the downloads; the head is redrawn on every update, so
+       it is put back each time */
+    if (window.EpinoiaWatch && S.leagueSlug && !mid.querySelector('.ep-watch')) {
+      const w = window.EpinoiaWatch.pill(S.leagueSlug, { big: true });
+      if (w) {
+        w.classList.add('bt-watch');
+        const sheet = mid.querySelector('#csSheet');
+        if (sheet) mid.insertBefore(w, sheet); else mid.appendChild(w);
+        if (window.EpinoiaWatch.sync) window.EpinoiaWatch.sync();   // an open card follows the new pill
+      }
+    }
   }
   const comp = String(S.competition || '').split(' · ').filter((x, i, a) => x && a.findIndex(y => y.toLowerCase() === x.toLowerCase()) === i).join(' · ');
   if (comp && !head.querySelector('.bt-kick')) {
@@ -3485,6 +3496,17 @@ async function renderPreview() {
     tipoff: m.tipoff_at, venue: m.venue, address: m.venue_address, pin: pin,
     competition: S.competition, leagueSlug: S.leagueSlug
   });
+
+  /* WHERE TO WATCH under the "vs", and WHO WINS? under the two clubs (watch.js, predict.js) */
+  const wSlot = $('#view').querySelector('.pv-watch-slot');
+  const wPill = wSlot && window.EpinoiaWatch && S.leagueSlug ? window.EpinoiaWatch.pill(S.leagueSlug, { big: true }) : null;
+  if (wPill) wSlot.replaceWith(wPill); else if (wSlot) wSlot.remove();
+  const pSlot = $('#view').querySelector('.pv-pred-slot');
+  const pStrip = pSlot && window.EpinoiaPredict ? window.EpinoiaPredict.strip({
+    id: gameId, status: S.status || 'scheduled',
+    home: { name: home.name || S.teams[0].name, colour: colourA }, away: { name: away.name || S.teams[1].name, colour: colourB }
+  }, { big: true, codes: [{ text: home.name || S.teams[0].name }, { text: away.name || S.teams[1].name }] }) : null;
+  if (pStrip) pSlot.replaceWith(pStrip); else if (pSlot) pSlot.remove();
 
   /* The starting five get their photographs, the same ones the box score uses. */
   squadPhotos($('#view')).catch(() => { /* names stay */ });

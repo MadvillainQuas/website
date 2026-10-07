@@ -1,0 +1,123 @@
+/* ============================================================================
+   WHO WINS? (predict.js): the strip under a fixture card, and the larger one on a game's preview.
+
+     [ ADL                WHO WINS?                 MEL ]
+     [ 45%                44 PICKS                  55% ]
+     [ ▮▮▮▮▮▮▮▮▮▮ home colour ▮▮▮▮▮▮|▮▮▮▮▮ away ▮▮▮▮▮▮▮ ]
+
+   A BLACK PLATE, in both themes: the game page's own furniture (the score block, the state plate), so a pick reads
+   as part of the scoreboard rather than as a form. The figures are the scoreboard's face; the side ahead is lit
+   in the scoreboard's yellow. The split runs along the bottom as a pixel bar - the section titles' pixel rule -
+   in the two clubs' colours (--h and --a, set by the card or by the strip itself), lifted so a black or navy
+   club still shows on black.
+
+   Each half is one button, the whole of its half: a thumb anywhere on a side picks it.
+   ============================================================================ */
+.ep-pred{
+  --pl:#0b0d0c; --pi:#f4fff9; --pd:rgba(244,255,249,.62); --py:#ffe14d;
+  --hc:color-mix(in oklch,var(--h,#93f2bf) 78%,#ffffff); --ac:color-mix(in oklch,var(--a,#8ff5ff) 78%,#ffffff);
+  display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;box-sizing:border-box;
+  min-height:44px;padding:0 0 9px;position:relative;overflow:hidden;
+  background:linear-gradient(180deg,#151917,var(--pl) 60%);color:var(--pi);
+  border:1px solid rgba(255,255,255,.08);border-top:0;border-radius:0 0 12px 12px;
+  box-shadow:0 10px 22px -8px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.06);
+  cursor:default;-webkit-tap-highlight-color:transparent}
+.pr-side{position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-width:0;margin:0;
+  padding:7px 11px 4px;border:0;background:transparent;color:inherit;cursor:pointer;touch-action:manipulation;font:inherit;
+  transition:background-color .16s ease}
+.pr-side.a{align-items:flex-end}
+.pr-side.a .pr-code{order:-1}
+.pr-code{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:var(--f-micro);font-weight:400;font-size:8.5px;line-height:1.1;letter-spacing:.12em;text-transform:uppercase;color:var(--pd)}
+.pr-pct{flex:none;font-family:var(--f-score);font-size:21px;line-height:.9;font-variant-numeric:tabular-nums;color:var(--pi);
+  transition:color .2s ease}
+.pr-side.lead .pr-pct{color:var(--py);text-shadow:0 0 12px color-mix(in srgb,var(--py) 35%,transparent)}
+.pr-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 4px 0;pointer-events:none;text-align:center}
+.pr-q{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--py);white-space:nowrap}
+.pr-n{font-family:var(--f-micro);font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:var(--pd);white-space:nowrap}
+.pr-n:empty{display:none}
+
+/* the split: a pixel bar along the foot, each side in its club's colour */
+.pr-bar{position:absolute;left:11px;right:11px;bottom:5px;height:4px;display:flex;gap:2px;
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 7px);mask:repeating-linear-gradient(90deg,#000 0 5px,transparent 5px 7px)}
+.pr-bar i{display:block;height:100%;transition:width .45s var(--ease,ease)}
+.pr-bar .h{width:var(--ph,50%);background:var(--hc)}
+.pr-bar .a{flex:1 1 auto;background:var(--ac)}
+.ep-pred.none .pr-bar{opacity:.28}
+/* nobody has picked yet: the clubs' letters, larger, and no dashes */
+.ep-pred.none .pr-pct{display:none}
+.ep-pred.none .pr-code{font-size:10px;color:var(--pi)}
+
+/* open: a side answers a pointer, washed in its club's colour, with the word for what a press does */
+@media (hover:hover){
+  .ep-pred.open .pr-side.h:hover{background:linear-gradient(90deg,color-mix(in oklch,var(--hc) 26%,transparent),transparent)}
+  .ep-pred.open .pr-side.a:hover{background:linear-gradient(270deg,color-mix(in oklch,var(--ac) 26%,transparent),transparent)}
+  .ep-pred.open .pr-side:not(.mine):hover .pr-code{color:var(--pi)}
+}
+.ep-pred.open .pr-side.h:active{background:color-mix(in oklch,var(--hc) 34%,transparent)}
+.ep-pred.open .pr-side.a:active{background:color-mix(in oklch,var(--ac) 34%,transparent)}
+.pr-side:focus-visible{outline:2px solid var(--py);outline-offset:-3px}
+.pr-side:disabled{cursor:default}
+
+/* the fan's own pick: its club's colour along the inside edge, a tick, and the letters lit */
+.pr-side.mine.h{background:linear-gradient(90deg,color-mix(in oklch,var(--hc) 30%,transparent),transparent 85%);box-shadow:inset 3px 0 0 var(--hc)}
+.pr-side.mine.a{background:linear-gradient(270deg,color-mix(in oklch,var(--ac) 30%,transparent),transparent 85%);box-shadow:inset -3px 0 0 var(--ac)}
+.pr-side.mine .pr-code{color:var(--pi)}
+.pr-side.mine.h .pr-code::before{content:"✓ ";color:var(--py)}
+.pr-side.mine.a .pr-code::after{content:" ✓";color:var(--py)}
+/* played: the winner's side in full, the other dimmed; the fan's verdict in the middle */
+.ep-pred[data-res] .pr-side:not(.won){opacity:.55}
+.ep-pred[data-res] .pr-side.won .pr-pct{color:var(--py)}
+.ep-pred.right .pr-q{color:#5dff9e}
+.ep-pred.wrong .pr-q{color:#ff7a84}
+.ep-pred.shut:not([data-res]) .pr-q{color:var(--pd)}
+/* before the tally lands, or with it unavailable */
+.ep-pred:not(.open):not(.shut) .pr-side{cursor:progress}
+.ep-pred.pr-off{display:none}
+
+/* a word on top of the strip, for a moment */
+.pr-say{position:absolute;inset:0;display:grid;place-items:center;padding:0 10px;background:var(--pl);color:var(--py);
+  font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;text-align:center;
+  opacity:0;pointer-events:none;transition:opacity .16s ease}
+.ep-pred.saying .pr-say{opacity:1}
+
+/* a card two-across on a phone: the percentages and the count; the question goes */
+@container (max-width:210px){
+  .fxc-pred .pr-q{display:none}
+  .fxc-pred .pr-side{padding:7px 8px 4px}
+  .fxc-pred .pr-code{font-size:7.5px}
+  .fxc-pred .pr-pct{font-size:18px}
+  .fxc-pred .pr-bar{left:8px;right:8px}
+}
+
+/* THE PREVIEW'S: a whole band under the two clubs, the clubs named in full */
+.ep-pred.big{min-height:74px;padding-bottom:14px;border:0;border-radius:12px;margin:18px auto 0;max-width:660px;width:100%;
+  box-shadow:0 18px 34px -14px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.07)}
+.ep-pred.big .pr-side{padding:12px 20px 6px;gap:5px}
+.ep-pred.big .pr-code{font-family:var(--f-ui);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:none}
+.ep-pred.big.none .pr-code{font-size:16px}
+.ep-pred.big .pr-pct{font-size:36px}
+.ep-pred.big .pr-q{font-size:10px}
+.ep-pred.big .pr-n{font-size:8px}
+.ep-pred.big .pr-bar{left:20px;right:20px;bottom:8px;height:6px;
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 8px,transparent 8px 10px);mask:repeating-linear-gradient(90deg,#000 0 8px,transparent 8px 10px)}
+
+/* signed out: the card asking to sign in, on the same plate */
+.ep-pred-signin{position:fixed;z-index:1200;left:0;top:0;box-sizing:border-box;display:flex;flex-direction:column;gap:7px;padding:0 0 14px;
+  background:#0b0d0c;color:#f4fff9;border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;
+  box-shadow:0 22px 44px -12px rgba(0,0,0,.6);
+  font-family:var(--f-ui);font-size:13px;line-height:1.45;
+  opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-4px);transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
+.ep-pred-signin.on{opacity:1;visibility:visible;pointer-events:auto;transform:none;transition:opacity .16s ease,transform .16s ease}
+.ep-pred-signin::before{content:"WHO WINS?";display:block;padding:8px 16px 7px;background:#ffe14d;color:#0a0a0a;
+  font-family:var(--f-micro);font-size:8px;letter-spacing:.14em}
+.ep-pred-signin b{padding:4px 16px 0;font-weight:800;font-size:16px}
+.ep-pred-signin span{padding:0 16px;color:rgba(244,255,249,.74)}
+.ep-pred-signin .acts{display:flex;gap:8px;margin-top:6px}
+.ep-pred-signin .go,.ep-pred-signin .no{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 16px;border-radius:999px;
+  font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;text-decoration:none}
+.ep-pred-signin .go{background:#ffe14d;color:#0a0a0a;border:1px solid #ffe14d}
+.ep-pred-signin .go:hover{filter:brightness(1.06)}
+.ep-pred-signin .no{background:transparent;color:#f4fff9;border:1px solid rgba(255,255,255,.28)}
+.ep-pred-signin .no:hover{border-color:#f4fff9}
+@media (prefers-reduced-motion:reduce){ .pr-bar i,.pr-side,.pr-pct,.pr-say,.ep-pred-signin{transition:none} }

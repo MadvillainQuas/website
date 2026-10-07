@@ -257,7 +257,19 @@
       'Location only works on a secure page (one that starts https://). Open the site from its normal address.': '位置情報は安全なページ（https://で始まるもの）でのみ使えます。サイトの通常のアドレスから開いてください。',
       'Finding where you are took too long. Check that Location is switched on and try again.': '位置の取得に時間がかかりすぎました。位置情報がオンか確認して、もう一度お試しください。',
       'Your device could not work out where it is. Switch Location on in its settings, step outside or away from thick walls, and try again.': '端末が現在地を特定できませんでした。設定で位置情報をオンにし、屋外または厚い壁から離れて、もう一度お試しください。',
-      'Location is blocked for this site. Click the lock icon beside the address, set Location to Allow, then press Stamp game again.': 'このサイトでは位置情報がブロックされています。アドレス横の鍵アイコンをクリックし、位置情報を「許可」にして、もう一度「この試合をスタンプ」を押してください。'
+      'Location is blocked for this site. Click the lock icon beside the address, set Location to Allow, then press Stamp game again.': 'このサイトでは位置情報がブロックされています。アドレス横の鍵アイコンをクリックし、位置情報を「許可」にして、もう一度「この試合をスタンプ」を押してください。',
+      'Predictions': '勝敗予想',
+      'Arenas stamped': 'スタンプしたアリーナ',
+      'Fans ranked by the winners they called in this league’s games': 'このリーグの試合で勝者を当てた数によるファンのランキング',
+      'Fans ranked by the winners they called, across every league': '全リーグで勝者を当てた数によるファンのランキング',
+      'The fans who have stamped the most of the league’s arenas on GO': 'GOでこのリーグのアリーナを最も多くスタンプしたファン',
+      'All time': '通算',
+      'right pick': '的中',
+      'right picks': '的中',
+      'your rank': 'あなたの順位',
+      'right': '的中',
+      'hit rate': '的中率',
+      'to the fixtures': '試合日程へ'
     },
     units: {
       'arena': '{n}アリーナ',

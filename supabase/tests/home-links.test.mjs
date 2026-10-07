@@ -294,9 +294,10 @@ const homeBtn = r => (r.nav ? byClass(r.nav, 'home-btn')[0] : null);
   try { hub.click(); } catch (_) { /* the stub DOM may stop short of sizing; the rows are drawn first */ }
   const panel = byClass(r.nav, 'followspanel')[0];
   const rows = panel ? byClass(panel, 'item').map(a => ({ href: a.href, ic: (byClass(a, 'ic')[0] || {}).textContent, tx: a.title })) : [];
-  eq('your hub, opened: PROFILE, then PERSONALISATION, then the creator hub', rows.slice(0, 3).map(x => [x.tx, x.href]),
-     [['profile', '../profile/'], ['personalisation', '../me/'], ['creator hub', '../creators/hub/']]);
-  eq('...PERSONALISATION wears the cog as text', rows[1] && rows[1].ic, '\u2699\uFE0E');
+  /* YOUR PAGE (2026-10-07): what other fans see, to PROFILE until the username is known, then fan/?u= */
+  eq('your hub, opened: PROFILE, YOUR PAGE, then PERSONALISATION, then the creator hub', rows.slice(0, 4).map(x => [x.tx, x.href]),
+     [['profile', '../profile/'], ['your page: what other fans see', '../profile/'], ['personalisation', '../me/'], ['creator hub', '../creators/hub/']]);
+  eq('...PERSONALISATION wears the cog as text', rows[2] && rows[2].ic, '\u2699\uFE0E');
   ok('...then "your follows"', panel && byClass(panel, 'gtitle').some(n => n.textContent === 'your follows'));
 }
 /* the Table page's tab reads "Table / Team Stats" since 2026-09-23 (nav.js PAGES), a no-break

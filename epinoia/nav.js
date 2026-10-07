@@ -353,6 +353,10 @@
        Find a game is there whenever it has games. */
     { href: 'community/',  ic: '☷', tx: 'community',  lg: true, key: 'community',
       match: /\/epinoia\/community\// },
+    /* THE LEAGUE'S LEADERBOARDS: its fans ranked by the winners they called (predictions, 0239) and by the arenas
+       they have stamped (EPINOIA GO, 0166). Every league has one: a pick can be made on any of its fixtures. */
+    { href: 'leaderboards/', ic: '♛', tx: 'leaderboards', lg: true, key: 'leaderboards',
+      match: /\/epinoia\/leaderboards\// },
     /* EVERY WEEK'S FANS' PICKS (epinoia/votes/, migration 0150). Probed like the video
        hub: a league appears here once its first weekly vote has opened, and not
        before, so no league is offered an empty page. */
@@ -679,7 +683,9 @@
     platformRow('▣', 'your stamps', 'go/stamps/', /\/epinoia\/go\/stamps\//,
                 'your stamps: every game, the map, and the distance between them'),
     platformRow('⌖', 'find a game', 'go/nearby/', /\/epinoia\/go\/nearby\//,
-                'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)'));
+                'find a game: the games nearest you, or nearest anywhere you are headed (passport mode)'),
+    platformRow('♛', 'leaderboards', 'go/leaderboards/', /\/epinoia\/go\/leaderboards\//,
+                'the leaderboards: the fans who called the most winners, across every league'));
   goPanel.append(gohead, golist);
 
   /* ---- root panel: the title, then the leagues ---- */
@@ -843,6 +849,11 @@
        the username and the page at fan/?u=), and what was called the profile - the clubs, the colour, the
        notifications, the membership - is PERSONALISATION, under the cog, at me/ */
     flist.appendChild(mk('', '☆', 'profile', root + 'profile/'));
+    /* YOUR PAGE (Louie, 2026-10-07): the page other fans see, fan/?u=<username> (0197). Until the username is known
+       (or for a fan without one yet) it leads to PROFILE, where the username and the page are set up. */
+    const yourPage = mk('', '◉', 'your page', root + 'profile/');
+    yourPage.title = 'your page: what other fans see';
+    flist.appendChild(yourPage);
     flist.appendChild(mk('', COG, 'personalisation', root + 'me/'));
     /* THE CREATOR HUB (0200): a creator's numbers and writing desk, and for anybody a league's storylines, graphics
        and icons */
@@ -866,6 +877,12 @@
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
     };
+    /* your page's address, once the username is known */
+    fetch(cfg.supabaseUrl + '/rest/v1/rpc/my_username', { method: 'POST', cache: 'no-store',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, headers), body: '{}' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(u => { if (typeof u === 'string' && u) yourPage.href = root + 'fan/?u=' + encodeURIComponent(u); })
+      .catch(() => { /* it stays on PROFILE */ });
 
     /* THE FRONT OFFICES (0193 my_front_offices): a button per club the account works for - by a team role in the
        console or a grant from one of the club's officials - where its membership opens the club's analytics. Asked
@@ -1628,6 +1645,7 @@
     { key: 'feed',    ic: '▦', tx: 'feed',    href: 'go/photos/', on: () => /\/epinoia\/go\/photos\//.test(here) },
     { key: 'stamps',  ic: '▣', tx: 'stamps',  href: 'go/stamps/', on: () => /\/epinoia\/go\/stamps\//.test(here) },
     { key: 'nearby',  ic: '⌖', tx: 'find',    href: 'go/nearby/', on: () => /\/epinoia\/go\/nearby\//.test(here) },
+    { key: 'boards',  ic: '♛', tx: 'boards',  href: 'go/leaderboards/', on: () => /\/epinoia\/go\/leaderboards\//.test(here) },
     { key: 'personalisation', ic: COG, tx: 'personalisation', href: 'me/', on: () => false }
   ];
   /* THE SEARCH, ALWAYS ON THE BAR (Louie, 2026-09-30): right after the first key (home, the league, GO's home) on

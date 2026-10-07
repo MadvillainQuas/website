@@ -270,6 +270,8 @@ table.adv th+th, table.adv td+td{ border-left:1px solid rgba(170,255,215,.06) }
   background:transparent; color:var(--ink); font-family:var(--f-micro); font-size:8.5px; letter-spacing:.12em; text-transform:uppercase }
 .bx-scorehead.bt-dressed .bt-sheet:hover{ background:#ffe14d; color:#0a0a0a; border-color:#ffe14d }
 .bx-scorehead.bt-dressed .bt-sheet::before{ content:"\2193  "; }
+/* WHERE TO WATCH (watch.js) on the head: the black plate pill (kit/watch.css), a step clear of the state plate */
+.bx-scorehead.bt-dressed .bt-watch{ margin:4px 0 2px }
 @media (prefers-reduced-motion:reduce){ .bx-scorehead.bt-dressed.bt-live .pacepill::before{ animation:none } }
 @media (max-width:640px){
   .bx-scorehead.bt-dressed{ column-gap:8px; padding:16px 10px 18px }

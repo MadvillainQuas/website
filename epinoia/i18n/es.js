@@ -1791,7 +1791,25 @@
       'Data & models': 'Datos y modelos',
       'Deploy': 'Implantación',
       'Talk to us': 'Hablemos',
-      'Save as PDF': 'Guardar como PDF'
+      'Save as PDF': 'Guardar como PDF',
+      'who wins?': '¿Quién gana?',
+      'tap a side': 'Toca un equipo',
+      'your pick': 'Tu pronóstico',
+      'picks closed': 'Pronósticos cerrados',
+      'your pick is in': 'Pronóstico hecho',
+      '✓ called it': '✓ Acertaste',
+      '✗ not this time': '✗ Esta vez no',
+      'fans picked': 'Pronóstico de la afición',
+      'where to watch': 'Dónde verlo',
+      '▶ where to watch': '▶ Dónde verlo',
+      'Subscription': 'De pago',
+      'Check listings': 'Consulta la programación',
+      'What is shown can differ from country to country.': 'Lo que se emite puede variar según el país.',
+      'Sign in to make your pick': 'Inicia sesión para hacer tu pronóstico',
+      'Your picks go on the leaderboards, for this league and for all of EPINOIA.': 'Tus pronósticos cuentan en las clasificaciones de esta liga y de todo EPINOIA.',
+      'picks have closed for this game': 'Los pronósticos de este partido están cerrados',
+      'that pick could not be saved': 'No se pudo guardar el pronóstico',
+      'not saved — try again': 'No se guardó: inténtalo de nuevo'
     },
 
     ctx: {
@@ -2266,7 +2284,9 @@
         'your stamps': 'tus sellos',
         'find a game': 'buscar partido',
         'search': 'buscar',
-        'search bar': 'barra de búsqueda'
+        'search bar': 'barra de búsqueda',
+        'leaderboards': 'Clasificaciones',
+        'your page': 'Tu página'
       },
       /* the phone bar has a fifth of a phone's width per label */
       tab: {
@@ -2278,7 +2298,8 @@
         'Table / Team Stats': 'Clasif. / Equipos',
         'feed': 'muro',
         'stamps': 'sellos',
-        'find': 'buscar'
+        'find': 'buscar',
+        'boards': 'Tablas'
       },
       /* a column header, as a Spanish box score writes it (Min, Pts, T2, T3, TL, RO, RD, RT, As, Rec, Pér, Tap, Fp, Fr) */
       col: {
@@ -2585,6 +2606,9 @@
         'a game': 'un partido',
         'won': 'victoria',
         'lost': 'derrota'
+      },
+      watch: {
+        'Free': 'Gratis'
       }
     },
 
@@ -2614,7 +2638,9 @@
       'country': '{n} país', 'countries': '{n} países', 'article': '{n} noticia',
       'live': '{n} en directo',
       'competition': '{n} competición',
-      'competitions': '{n} competiciones'
+      'competitions': '{n} competiciones',
+      'pick': '{n} pronóstico',
+      'picks': '{n} pronósticos'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */

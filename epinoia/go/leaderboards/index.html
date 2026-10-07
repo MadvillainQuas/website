@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04100b">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<!-- PUBLIC. EPINOIA GO's leaderboards (go/leaderboards/[?lg=<slug>]): every fan who has picked a winner, ranked across
+     all of EPINOIA (predictions, 0239), or within one league. A league's own page has the same board: leaderboards/?l=. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<title>Leaderboards · EPINOIA GO</title>
+<meta name="description" content="EPINOIA GO's leaderboards: the fans who called the most winners, across every league on Epinoia.">
+<link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
+<script src="../../appmode.js?v=677"></script>
+<script src="../../i18n.js?v=677" data-i18n-packs="go"></script>
+<script src="../../glyphs.js?v=677" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=677">
+<link rel="stylesheet" href="../../kit/nav.css?v=677">
+<link rel="stylesheet" href="../../kit/labeltype.css?v=677">
+<link rel="stylesheet" href="../../kit/numtype.css?v=677">
+<link rel="stylesheet" href="../../kit/motion.css?v=677">
+<script src="../../motion.js?v=677" defer></script>
+<link rel="stylesheet" href="../../kit/page.css?v=677">
+<link rel="stylesheet" href="../../kit/boards.css?v=677">
+<link rel="stylesheet" href="../../kit/face.css?v=677">
+<link rel="stylesheet" href="../../kit/sectitle.css?v=677">
+<link rel="stylesheet" href="../../kit/teletext.css?v=677">
+<link rel="stylesheet" href="../../kit/legibility.css?v=677">
+</head>
+<body>
+<!-- THE PAGE STANDARD (docs/page-standard.md): the centred head, a section per part with its title and subtitle and
+     no number; data-std has nav.js add the teletext line, the quick keys, ON THIS PAGE and each section's SKIP. -->
+<div class="ep-frame lb" id="boards" data-std data-scope="all">
+  <div class="topbar">
+    <a href="../../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span id="ctx" class="ep-micro"></span>
+  </div>
+
+  <header class="hero pg-head" id="lbHead">
+    <p class="pg-kick" id="lbKick"><a href="../" translate="no">EPINOIA GO</a></p>
+    <h1>Leaderboards</h1>
+    <p class="pg-sub" id="lbSub">Every fan who has picked a winner, ranked across every league on EPINOIΛ, or within the league you choose.</p>
+  </header>
+
+  <!-- PREDICTIONS: prediction_board (0239), every league or one (prediction_leagues for the buttons) -->
+  <section class="sec" id="predictions" aria-labelledby="predH">
+    <div class="sec-h"><h2 id="predH">Predictions</h2>
+      <p class="note">Fans ranked by the winners they called, across every league</p></div>
+    <div class="sec-b lb-b">
+      <p class="lb-how">Pick who wins on any fixture card or game preview, up to tip-off. A right pick scores one; level fans are split by how often they are right.</p>
+      <div class="lb-leagues" id="lbLeagues" role="radiogroup" aria-label="Which league"></div>
+      <div class="lb-when" id="lbWhen" role="radiogroup" aria-label="Over what time"></div>
+      <div class="lb-mine" id="lbMine" aria-live="polite"></div>
+      <div class="lb-board" id="lbBoard" aria-busy="true"></div>
+    </div>
+  </section>
+</div>
+<script src="../../config.js?v=677" defer></script>
+<script src="../../access.js?v=677" defer></script>
+<script src="../../teamcolour.js?v=677" defer></script>
+<script src="../../facecircle.js?v=677" defer></script>
+<script src="../../leaderboards/boards.js?v=677" defer></script>
+<script src="../../nav.js?v=677" defer></script>
+</body>
+</html>

@@ -139,19 +139,62 @@ async function mount(o) {
               field('Picture', avatar, 'an https:// address; "From your accounts" fills in the one you have there'), field('Colour', cl));
 
   /* your club: one of the clubs you follow */
+  const clubs = {};                                         // id -> { name, slug, logo_path, colour }: for the circle
   const club = el('select', 'ep-input');
   const none = el('option', null, 'none'); none.value = ''; club.appendChild(none);
   try {
     const { data: prefs } = await sb.from('fan_prefs').select('fav_team_ids').maybeSingle();
     const ids = ((prefs && prefs.fav_team_ids) || []).slice(0, 60);
     if (ids.length) {
-      const { data: ts } = await sb.from('teams').select('id,name').in('id', ids).order('name');
-      (ts || []).forEach(t => { const opt = el('option', null, t.name); opt.value = t.id; club.appendChild(opt); });
+      const { data: ts } = await sb.from('teams').select('id,name,slug,logo_path,colour').in('id', ids).order('name');
+      (ts || []).forEach(t => { clubs[t.id] = t; const opt = el('option', null, t.name); opt.value = t.id; club.appendChild(opt); });
     }
   } catch (_) { /* no clubs to offer */ }
   if (P.club_id && ![...club.options].some(x => x.value === P.club_id)) { const opt = el('option', null, 'your club'); opt.value = P.club_id; club.appendChild(opt); }
   club.value = P.club_id || '';
   form.appendChild(field('Your club', club, 'from the clubs you follow (Your clubs, in PERSONALISATION)'));
+  if (P.club_id && !clubs[P.club_id]) {
+    try { const { data: c1 } = await sb.from('teams').select('id,name,slug,logo_path,colour').eq('id', P.club_id).maybeSingle(); if (c1) clubs[c1.id] = c1; } catch (_) { /* no crest */ }
+  }
+
+  /* THE PHOTO CIRCLE (0239, Louie 2026-10-07): what the leaderboards (and your page) show for you - your picture, your
+     club's crest or your initials, ringed in your colour. "Automatic": the picture, else the crest, else the initials. */
+  const FC = (typeof window !== 'undefined' && window.EpinoiaFace) || null;
+  let circle = null, circleSaved = null, circleOn = false;
+  try { const { data: c, error: ce } = await sb.rpc('my_fan_circle'); if (!ce) { circleOn = true; circle = circleSaved = c || null; } } catch (_) { /* before 0239 */ }
+  const faceNow = mode => {
+    const c = clubs[club.value];
+    return { avatar: https(avatar.value) ? avatar.value.trim() : null, colour: noColour.checked ? null : colour.value, circle: mode,
+             club: c ? { name: c.name, slug: c.slug, logo: c.logo_path, colour: c.colour } : null };
+  };
+  const shownName = () => name.value.trim() || (P.username ? '@' + P.username : 'you');
+  const circles = el('div', 'fp-circles');
+  circles.setAttribute('role', 'radiogroup');
+  circles.setAttribute('aria-label', 'Photo circle');
+  const CIRCLES = [[null, 'automatic'], ['picture', 'my picture'], ['club', 'my club’s crest'], ['initials', 'my initials']];
+  function drawCircles() {
+    circles.textContent = '';
+    CIRCLES.forEach(([k, label]) => {
+      const b = el('button', 'fp-circle' + (k === circle ? ' on' : ''));
+      b.type = 'button';
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(k === circle));
+      if (FC) b.appendChild(FC.circle(faceNow(k), shownName()));
+      b.appendChild(el('span', null, label));
+      /* a choice with nothing to draw yet says what it needs (it would only show the initials) */
+      const missing = (k === 'picture' || k === 'club') && FC && FC.mode(faceNow(k)) !== k;
+      if (missing) {
+        b.classList.add('wants');
+        b.appendChild(el('small', 'fp-circle-need', k === 'picture' ? 'add a picture above' : (club.value ? 'no crest yet' : 'choose your club')));
+      }
+      b.addEventListener('click', () => { circle = k; drawCircles(); paint(); });
+      circles.appendChild(b);
+    });
+  }
+  if (circleOn && FC) {
+    form.appendChild(field('Photo circle', circles, 'what the leaderboards show beside your name, ringed in your colour'));
+    club.addEventListener('change', () => { drawCircles(); paint(); });
+  }
 
   const links = {};
   const lw = el('div', 'fp-links');
@@ -207,7 +250,29 @@ async function mount(o) {
   side.appendChild(el('span', 'fp-label', 'How your page starts'));
   const prev = el('div', 'fp-prev');
   side.appendChild(prev);
+  /* how a leaderboard row will show you */
+  const lbPrev = el('div', 'fp-lbprev');
+  if (circleOn && FC) { side.appendChild(el('span', 'fp-label', 'On the leaderboards')); side.appendChild(lbPrev); }
+  function paintBoard() {
+    if (!circleOn || !FC) return;
+    lbPrev.textContent = '';
+    const f = faceNow(circle);
+    lbPrev.style.setProperty('--fc', FC.tint(f, shownName()));
+    lbPrev.appendChild(el('b', 'fp-lbrk', '1'));
+    lbPrev.appendChild(FC.circle(f, shownName()));
+    const w = el('span', 'fp-lbwho');
+    w.appendChild(el('b', null, P.username ? '@' + P.username : shownName()));
+    if (f.club) {
+      const c = el('span', 'fp-lbclub');
+      if (f.club.logo && typeof window.epinoiaLogoUrl === 'function') { const i = el('img'); i.src = window.epinoiaLogoUrl(f.club.logo, 48); i.alt = ''; c.appendChild(i); }
+      c.appendChild(el('span', null, f.club.name));
+      w.appendChild(c);
+    }
+    lbPrev.appendChild(w);
+    lbPrev.appendChild(el('b', 'fp-lbn', '41'));
+  }
   function paint() {
+    if (circleOn && FC) { drawCircles(); paintBoard(); }
     prev.textContent = '';
     if (!K) return;
     const ls = LINKS.filter(([k]) => https(links[k].value)).map(([k, label]) => ({ href: links[k].value.trim(), text: label + ' ↗', external: true }));
@@ -235,6 +300,11 @@ async function mount(o) {
     save.disabled = false;
     if (e) return say(e.message || 'That did not save.', 'bad');
     if (!r || !r.ok) return say(WHY[(r && r.reason) || 'shape'] || 'That did not save.', 'bad');
+    if (circleOn && circle !== circleSaved) {
+      const { data: rc, error: ec } = await sb.rpc('set_fan_circle', { p: circle });
+      if (ec || !rc || !rc.ok) return say('Saved, but the photo circle did not: try again.', 'bad');
+      circleSaved = circle;
+    }
     say(P.public ? 'Saved: your page shows it now.' : 'Saved. Your page shows it once you go public on EPINOIΛ GO.', 'ok');
   });
 }

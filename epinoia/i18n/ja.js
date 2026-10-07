@@ -1789,7 +1789,25 @@
       'Data & models': 'データとモデル',
       'Deploy': '導入',
       'Talk to us': 'お問い合わせ',
-      'Save as PDF': 'PDFで保存'
+      'Save as PDF': 'PDFで保存',
+      'who wins?': 'どっちが勝つ？',
+      'tap a side': 'タップして予想',
+      'your pick': 'あなたの予想',
+      'picks closed': '予想受付終了',
+      'your pick is in': '予想済み',
+      '✓ called it': '✓ 的中',
+      '✗ not this time': '✗ 外れ',
+      'fans picked': 'ファンの予想',
+      'where to watch': '視聴方法',
+      '▶ where to watch': '▶ 視聴方法',
+      'Subscription': '有料',
+      'Check listings': '放送予定を確認',
+      'What is shown can differ from country to country.': '視聴できる内容は国によって異なります。',
+      'Sign in to make your pick': 'サインインして予想する',
+      'Your picks go on the leaderboards, for this league and for all of EPINOIA.': '予想はこのリーグとEPINOIA全体のランキングに反映されます。',
+      'picks have closed for this game': 'この試合の予想は締め切られました',
+      'that pick could not be saved': '予想を保存できませんでした',
+      'not saved — try again': '保存されませんでした — もう一度お試しください'
     },
 
     ctx: {
@@ -2264,7 +2282,9 @@
         'your stamps': 'あなたのスタンプ',
         'find a game': '試合を探す',
         'search': '検索',
-        'search bar': '検索バー'
+        'search bar': '検索バー',
+        'leaderboards': 'ランキング',
+        'your page': 'あなたのページ'
       },
       /* the phone bar has a fifth of a phone's width per label */
       tab: {
@@ -2276,7 +2296,8 @@
         'Table / Team Stats': '順位',
         'feed': 'フィード',
         'stamps': 'スタンプ',
-        'find': '探す'
+        'find': '探す',
+        'boards': 'ランキング'
       },
       /* a column header: the Latin letters Japanese box scores use */
       col: {
@@ -2584,6 +2605,9 @@
         'a game': '1試合',
         'won': '勝ち',
         'lost': '負け'
+      },
+      watch: {
+        'Free': '無料'
       }
     },
 
@@ -2613,7 +2637,9 @@
       'country': '{n}か国', 'countries': '{n}か国', 'article': '{n}件の記事',
       'live': '{n}試合が試合中',
       'competition': '{n}大会',
-      'competitions': '{n}大会'
+      'competitions': '{n}大会',
+      'pick': '{n}件の予想',
+      'picks': '{n}件の予想'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */

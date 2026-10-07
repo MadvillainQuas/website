@@ -139,6 +139,23 @@
   font-family:var(--f-score);font-size:14px;line-height:1;letter-spacing:.02em;font-variant-numeric:tabular-nums;color:var(--ink-3)}
 .fxc-clk.run{color:var(--ink-2)}
 
+/* WHERE TO WATCH (watch.js), under the "v" or the score, and under the clock when there is one: the same middle column, one row
+   further down (rows: a spring, the score, the clock, the pill, a spring; an empty row takes no room) */
+.fxc-body.has-watch{grid-template-rows:1fr auto auto auto 1fr}
+.fxc-body.has-watch .fxc-tm{grid-row:1 / span 5}
+.fxc-body.has-watch .fxc-tm.h{grid-column:1}
+.fxc-body.has-watch .fxc-tm.a{grid-column:3}
+.fxc-body.has-watch .fxc-mid{grid-column:2;grid-row:2;align-self:end}
+.fxc-body.has-watch .fxc-clk{grid-row:3}
+.fxc-watch{grid-column:2;grid-row:4;justify-self:center;align-self:start;margin-top:7px}
+
+/* WHO WINS? (predict.js): a strip hanging from the card's lower edge, a little narrower than the card. The card lets it out
+   (it clips nothing else that reaches its edge: the state rule along the top is given the card's own corners) and keeps
+   the room under itself for it. */
+.fxc.has-pred{overflow:visible;margin-bottom:58px}
+.fxc.has-pred::before{border-radius:4px 4px 0 0}
+.fxc>.fxc-pred{position:absolute;top:100%;left:12px;right:12px;margin-top:1px}
+
 /* when it is, under the two clubs and in full */
 .fxc-when{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 12px 7px;
   font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}

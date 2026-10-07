@@ -1,0 +1,37 @@
+/* ============================================================================
+   A FAN'S PHOTO CIRCLE (facecircle.js): their picture, their club's crest or their initials, ringed in their colour
+   (--fc). --fs is the size. A gap of the panel's colour between the ring and the picture, as a medal's rim.
+   ============================================================================ */
+.ep-face{--fs:40px;--fc:var(--lume);position:relative;display:inline-grid;place-items:center;flex:none;box-sizing:border-box;
+  width:var(--fs);height:var(--fs);border-radius:50%;overflow:hidden;
+  background:color-mix(in oklch,var(--fc) 18%,var(--panel));
+  box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--fc),0 6px 14px -5px rgba(0,0,0,.45);
+  font-family:var(--f-score);font-size:calc(var(--fs) * .42);line-height:1;color:var(--ink)}
+.ep-face img{display:block;width:100%;height:100%;object-fit:cover}
+.ep-face.m-club{background:#ffffff}
+.ep-face.m-club img{object-fit:contain;padding:15%;box-sizing:border-box}
+.ep-face.m-initials{background:radial-gradient(circle at 30% 25%,color-mix(in oklch,var(--fc) 70%,#ffffff),var(--fc) 70%);
+  color:#ffffff;text-shadow:0 1px 2px rgba(0,0,0,.35);letter-spacing:.02em}
+
+/* YOUR HUB's editor (me/fanprofile.js): the four choices, each drawn as it would look, and a leaderboard row as it will */
+.fp-circles{display:flex;flex-wrap:wrap;gap:10px}
+.fp-circle{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:86px;padding:12px 10px 10px;cursor:pointer;
+  border:1px solid var(--rule);border-radius:12px;background:var(--panel);color:var(--ink-2);
+  font-family:var(--f-micro);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;transition:border-color .14s ease,transform .14s ease}
+.fp-circle .ep-face{--fs:44px}
+@media (hover:hover){ .fp-circle:hover{border-color:var(--ink);transform:translateY(-1px)} }
+.fp-circle.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);color:var(--ink)}
+.fp-circle:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.fp-lbprev{display:flex;align-items:center;gap:14px;margin:6px 0 16px;padding:12px 16px 12px 10px;border-radius:10px;
+  border:1px solid var(--rule);border-left:4px solid var(--fc,var(--rule-2));
+  background:linear-gradient(90deg,color-mix(in oklch,var(--fc,var(--lume)) 12%,var(--panel)),var(--panel) 55%)}
+.fp-lbprev .ep-face{--fs:40px}
+.fp-lbrk{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;background:var(--panel-2);
+  font-family:var(--f-score);font-weight:400;font-size:17px;color:var(--ink)}
+.fp-lbwho{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto}
+.fp-lbwho b{font-family:var(--f-ui);font-weight:800;font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fp-lbclub{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-micro);font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.fp-lbclub img{width:16px;height:16px;object-fit:contain;border-radius:3px;background:#ffffff;padding:1px;box-sizing:border-box}
+.fp-lbn{font-family:var(--f-score);font-weight:400;font-size:24px;color:var(--ink)}
+.fp-circle.wants .ep-face{opacity:.35;filter:grayscale(1)}
+.fp-circle-need{font-family:var(--f-ui);font-size:10px;letter-spacing:0;text-transform:none;color:var(--ink-3)}

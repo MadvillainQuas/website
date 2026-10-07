@@ -1,0 +1,80 @@
+/* ============================================================================
+   WHERE TO WATCH (watch.js): the pill, and the card it opens.
+
+   A BLACK PLATE, as the game page's furniture is (the score block, the state plate): the screen icon, WATCH in the
+   label face, and a dot that says how - green free, amber a subscription, aqua "check". Lit in the scoreboard's
+   yellow when pressed or open.
+
+   The pill is small to see and large to press: an invisible ring around it (::after) takes a finger's worth of
+   room, so a tap a little off it still opens the card rather than the game underneath. The card lives on <body>,
+   fixed, above everything: a yellow band with its name, the league, how its games can be seen, and a tile per
+   service.
+   ============================================================================ */
+.ep-watch{--wd:#3ddc84;position:relative;display:inline-flex;align-items:center;gap:5px;flex:none;
+  padding:4px 8px 4px 7px;border:1px solid rgba(255,255,255,.1);border-radius:999px;cursor:pointer;
+  background:#0b0d0c;color:#f4fff9;box-shadow:0 2px 6px -2px rgba(0,0,0,.45);
+  font-family:var(--f-micro);font-size:7.5px;line-height:1;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  transition:background-color .16s ease,color .16s ease,transform .16s ease,box-shadow .16s ease}
+.ep-watch.k-paid{--wd:#ffb020}
+.ep-watch.k-info{--wd:#5ee7ff}
+.ep-watch::after{content:"";position:absolute;inset:-10px -7px}
+.ep-watch svg{width:11px;height:11px;flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round}
+.ep-watch svg .f{fill:currentColor;stroke:none}
+.ew-dot{width:5px;height:5px;border-radius:50%;background:var(--wd);box-shadow:0 0 6px var(--wd);flex:none}
+@media (hover:hover){ .ep-watch:hover{background:#ffe14d;color:#0a0a0a;transform:translateY(-1px);box-shadow:0 6px 14px -4px rgba(0,0,0,.45)} }
+.ep-watch.on{background:#ffe14d;color:#0a0a0a;border-color:#ffe14d}
+.ep-watch:active{transform:scale(.95)}
+.ep-watch:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
+.ep-watch.big{padding:8px 15px 8px 13px;gap:8px;font-size:9px}
+.ep-watch.big svg{width:15px;height:15px}
+.ep-watch.big .ew-dot{width:6px;height:6px}
+
+/* ------------------------------------------------------------- the card --- */
+.ep-watch-pop{position:fixed;z-index:1200;left:0;top:0;box-sizing:border-box;
+  background:var(--panel);color:var(--ink);border:1px solid var(--rule-2);border-radius:12px;
+  box-shadow:0 24px 48px -14px rgba(0,0,0,.55);
+  opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:var(--ax,50%) 0;pointer-events:none;
+  transition:opacity .16s ease,transform .18s var(--ease,ease),visibility 0s linear .18s}
+.ep-watch-pop.up{transform:translateY(6px) scale(.98);transform-origin:var(--ax,50%) 100%}
+.ep-watch-pop.on{opacity:1;visibility:visible;transform:none;pointer-events:auto;transition:opacity .16s ease,transform .18s var(--ease,ease)}
+/* the nib, pointing at the pill: the band's yellow below a pill, the panel above one */
+.ep-watch-pop::before{content:"";position:absolute;top:-6px;left:calc(var(--ax,50%) - 6px);width:11px;height:11px;
+  background:#ffe14d;transform:rotate(45deg);border-radius:2px 0 0 0}
+.ep-watch-pop.up::before{top:auto;bottom:-6px;background:var(--panel);border-right:1px solid var(--rule-2);border-bottom:1px solid var(--rule-2);border-radius:0 0 2px 0}
+.ew-hd{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px 8px 14px;
+  background:#ffe14d;color:#0a0a0a;border-radius:11px 11px 0 0}
+.ew-k{font-family:var(--f-micro);font-size:8px;letter-spacing:.14em;text-transform:uppercase}
+.ew-x{display:grid;place-items:center;width:24px;height:24px;margin:-4px -4px -4px 0;border:0;border-radius:50%;
+  background:rgba(0,0,0,.08);color:#0a0a0a;font-size:16px;line-height:1;cursor:pointer}
+.ew-x:hover{background:#0a0a0a;color:#ffe14d}
+.ew-bd{padding:12px 14px 13px}
+.ew-lg{font-family:var(--f-ui);font-weight:800;font-size:17px;line-height:1.15;letter-spacing:-.005em;color:var(--ink)}
+.ew-av{display:flex;flex-direction:column;align-items:flex-start;gap:7px;margin-top:8px;
+  font-family:var(--f-ui);font-size:12.5px;line-height:1.45;color:var(--ink-2)}
+.ew-tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-micro);font-weight:400;font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;
+  padding:4px 8px 4px 7px;border-radius:999px;background:#0b0d0c;color:#f4fff9}
+.ew-tag::before{content:"";width:5px;height:5px;border-radius:50%;background:#5ee7ff}
+.ew-tag.k-free::before{background:#3ddc84}
+.ew-tag.k-paid::before{background:#ffb020}
+.ew-lns{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.ew-ln{display:flex;align-items:center;gap:11px;min-height:44px;padding:6px 12px 6px 6px;
+  border:1px solid var(--rule);border-radius:9px;background:var(--panel-2);color:var(--ink);text-decoration:none;
+  transition:border-color .14s ease,transform .14s ease,background-color .14s ease}
+.ew-ic{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:7px;background:#0b0d0c;color:#ffe14d;
+  font-family:var(--f-score);font-size:15px;line-height:1;letter-spacing:.02em}
+.ew-ic.yt{background:#ff0033;color:#ffffff}
+.ew-ic svg{width:15px;height:15px;fill:currentColor}
+.ew-nm{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}
+.ew-nm b{font-family:var(--f-ui);font-weight:800;font-size:13px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ew-nm small{font-family:var(--f-ui);font-size:11px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ew-ln i{font-style:normal;color:var(--ink-3);flex:none;transition:transform .14s ease,color .14s ease}
+@media (hover:hover){
+  .ew-ln:hover{border-color:var(--ink);transform:translateX(2px)}
+  .ew-ln:hover i{color:var(--ink);transform:translate(2px,-2px)}
+}
+.ew-ln:focus-visible{outline:2px solid #ffe14d;outline-offset:1px}
+.ew-ft{margin:11px 0 0;font-family:var(--f-ui);font-size:10.5px;line-height:1.35;color:var(--ink-3)}
+@media (prefers-reduced-motion:reduce){ .ep-watch,.ep-watch-pop,.ew-ln,.ew-ln i{transition:none} }
+:root[data-theme="light"] .ep-watch-pop{box-shadow:0 24px 48px -14px rgba(13,31,23,.32)}
+:root[data-theme="light"] .ew-ln{background:#f4f8f6}
