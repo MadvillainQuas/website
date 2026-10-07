@@ -37,6 +37,12 @@ function el(tag, cls, text) {
   if (text != null) n.textContent = text;
   return n;
 }
+/* NEWS, NOT VIDEOS (2026-10-07): a YouTube video is the video section's (HOME's VIDEO, a league's or a club's Video tab),
+   never the feed's. 0251 leaves them out of the reads; until it is applied (and for any that still come), they are
+   left out here: a creator's post on YouTube, a video with its id, an address on YouTube. */
+const YT = /^https?:\/\/([a-z0-9-]+\.)?(youtube\.com|youtu\.be)\//i;
+function isVideo(r) { return !!r && (r.piece_kind === 'youtube' || !!r.video_id || YT.test(String(r.url || ''))); }
+function newsOnly(rows) { return Array.isArray(rows) ? rows.filter(r => !isVideo(r)) : rows; }
 const token = () => { const F = root.EpinoiaFollow; const s = F && typeof F.session === 'function' ? F.session() : null; return s && s.token; };
 
 /* the switches a scope offers: a league's page has no Followed (the league itself is what is followed there) */
@@ -89,10 +95,12 @@ async function mount(opts) {
     return r.json();
   }
   async function read(mode, n) {
-    if (mode === 'followed') { const t = token(); return t ? call('news_feed_mine', { p_limit: n || N }, t) : null; }
-    const args = { p_limit: n || N };
+    /* asked for a few more than are shown, so the videos left out leave no gap */
+    const want = n || N, ask = Math.min(POOL, Math.max(want, want * 3));
+    if (mode === 'followed') { const t = token(); return t ? call('news_feed_mine', { p_limit: ask }, t).then(r => (newsOnly(r) || []).slice(0, want)) : null; }
+    const args = { p_limit: ask };
     if (lg) args.p_league = lg.id;
-    return call('news_feed', args);
+    return call('news_feed', args).then(r => (newsOnly(r) || []).slice(0, want));
   }
   /* the candidates For you chooses from, read once per page: a league's newest 60; HOME's newest 60 and, signed in,
      the newest 60 of what the reader follows */
@@ -102,7 +110,7 @@ async function mount(opts) {
     const signed = !lg && !!token();
     /* THE OFFICIAL PARTNERS' STORIES OF THE BOOST'S WINDOW (0236), so a partner's story of a few days ago is in the pool for
        its boost to lift; the newest 60 of everything left it out. A database without 0236 answers 404: nothing added. */
-    const partnersRead = call('news_feed_partners', lg ? { p_league: lg.id, p_days: 9, p_limit: 30 } : { p_days: 9, p_limit: 30 }).catch(() => null);
+    const partnersRead = call('news_feed_partners', lg ? { p_league: lg.id, p_days: 9, p_limit: 30 } : { p_days: 9, p_limit: 30 }).then(newsOnly).catch(() => null);
     poolP = Promise.all([read('newest', POOL), signed ? read('followed', POOL).catch(() => null) : null, partnersRead]).then(([rows, mineRows, partnerRows]) => {
       const seen = new Set(), out = [];
       (rows || []).concat(mineRows || [], partnerRows || []).forEach(r => { if (r && r.id && !seen.has(r.id)) { seen.add(r.id); out.push(r); } });
@@ -156,8 +164,8 @@ async function mount(opts) {
     } catch (_) { /* never in the reader's way */ }
   };
   const again = () => { if (stale && !root.document.hidden) { stale = false; draw(mode, true).catch(() => {}); } };
-  root.document.addEventListener('visibilitychange', again);
-  root.addEventListener('pageshow', e => { if (e && e.persisted) again(); });
+  if (typeof root.document.addEventListener === 'function') root.document.addEventListener('visibilitychange', again);
+  if (typeof root.addEventListener === 'function') root.addEventListener('pageshow', e => { if (e && e.persisted) again(); });
   const newsHref = want => lg ? base + 'news/?l=' + encodeURIComponent(lg.slug) : base + 'news/' + (want === 'followed' ? '?k=mine' : '');
 
   let gen = 0;
@@ -264,5 +272,5 @@ async function mount(opts) {
   return true;
 }
 
-return { mount, modesFor, openedRow, N, POOL };
+return { isVideo, newsOnly, mount, modesFor, openedRow, N, POOL };
 }));

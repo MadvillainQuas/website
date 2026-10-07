@@ -95,7 +95,8 @@ ok('three to a row, as the news cards (two on a tablet, one on a phone)',
    /@media \(min-width:1000px\)\{ \.md-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\} \}/.test(css)
    && /@media \(min-width:600px\)\{ \.md-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\} \}/.test(css));
 ok("highlights lead where they are shown with other videos (HOME's All, a league's All videos): a week's lead, older ones move up",
-   /function prioritise\(rows, now\)/.test(media) && /const FRESH_DAYS = 7, LIFT = 8;/.test(media)
+   /function prioritise\(rows, now\)/.test(media) && /const FRESH_DAYS = 7, LIFT = 8, HL_LIFT = 12;/.test(media)
+   && /hl \? \(fresh \? i - HL_LIFT - 0\.5 : i - LIFT \/ 2 - 0\.5\)/.test(media) && /short \? i \+ 1e6/.test(media)
    && /const shown = kind \? picked : prioritise\(picked\)/.test(media) && /const ordered = kind \? ranked : M\.prioritise\(ranked\)/.test(vh));
 ok("a podcast's or a show's series is its newest episode alone on the front pages (feedrank.js latestEpisodes): HOME's video feed and the feeds",
    /R\.latestEpisodes\(ordered\)/.test(vh) && (rd('epinoia', 'feedview.js').match(/FR\.latestEpisodes\(rows\)/g) || []).length === 2

@@ -368,6 +368,17 @@ if (!loaded || !loaded.db) {
        && (await tv(BRI, 'highlights')).every(r => r.video_kind === 'highlights'));
     ok("...another club's are not its own", !(await tv(OTH, null)).some(r => r.id === KV || r.id === NM));
     ok("...newest first", bri.every((r, i) => i === 0 || new Date(bri[i - 1].published_at) >= new Date(r.published_at)));
+    /* THE FEED IS NEWS (0251): the videos are the video section's */
+    const NS = (await one(`insert into public.news_sources (league_id, slug, name, site_url, feed_url, kind, platform)
+        values ($1, 'slb-news', 'SLB News', 'https://example.invalid/', 'https://example.invalid/feed', 'publisher', 'website') returning id`, [L])).id;
+    const STORY = (await one(`insert into public.news_items (source_id, guid, url, title, published_at)
+        values ($1, 'story-1', 'https://example.invalid/story-1', 'Flyers sign a new guard', now()) returning id`, [NS])).id;
+    const YTLINK = (await one(`insert into public.news_items (source_id, guid, url, title, published_at)
+        values ($1, 'story-2', 'https://youtu.be/abcdefghijk', 'Watch: the signing', now()) returning id`, [NS])).id;
+    const nf = await as(null, `select * from public.news_feed($1, null, 60)`, [L]);
+    ok("the news feed: the stories, no YouTube video (with a video id, from a YouTube channel, or at a YouTube address)",
+       nf.some(r => r.id === STORY) && !nf.some(r => r.id === YTLINK || r.id === KV || r.id === I2 || r.url.includes('youtube.com')), nf.map(r => r.title));
+    ok("...the videos are still the video section's", (await as(null, `select * from public.video_feed(null, null, null, 60)`)).some(r => r.id === KV));
     ok("the league's Live tab: a vetted stream carried, an unvetted one not (the game listed with no video)",
        lmV(V1) && lmV(V1).video && (lm2.live || []).find(x => x.id === V1) && !(lm2.live || []).find(x => x.id === V1).video, { lm: lmV(V1) });
   }

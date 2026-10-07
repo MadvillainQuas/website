@@ -250,5 +250,15 @@ console.log('\non a league page, with storage blocked');
   ok('a league with nothing published: no section', res === false && shown === false);
 }
 
+/* NEWS, NOT VIDEOS (2026-10-07; 0251 in the reads): the feed leaves a YouTube video to the video section */
+{
+  const rows = [{ id: 'a', url: 'https://example.com/story' }, { id: 'b', url: 'https://www.youtube.com/watch?v=abcdefghijk' },
+                { id: 'c', url: 'https://youtu.be/abcdefghijk' }, { id: 'd', url: 'https://x.example/p', piece_kind: 'youtube' },
+                { id: 'e', url: 'https://x.example/v', video_id: 'abcdefghijk' }, { id: 'f', url: 'https://notyoutube.com/x', piece_kind: 'podcast' }];
+  const kept = V.newsOnly(rows).map(r => r.id).join();
+  if (kept === 'a,f') { pass++; console.log('  PASS  the feed is news: a YouTube video (by its address, its platform or its video id) is left to the video section'); }
+  else { fail++; console.log('  FAIL  the feed is news  -- saw ' + kept); }
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);
