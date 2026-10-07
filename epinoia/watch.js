@@ -20,6 +20,8 @@
    placed.
    ============================================================================ */
 (function (root) {
+  /* where this file is: the site's own pages are found from it (WATCH HERE's link to HOME's VIDEO view) */
+  const SRC = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : '';
   const DATA = /* WATCH-DATA:BEGIN */
 {
 "aba-league": {"n": "AdmiralBet ABA League", "k": "free", "a": "Free, full replays available on YouTube", "l": [["YouTube · ABAligajtd", "https://www.youtube.com/@ABAligajtd/playlists"]]},
@@ -59,6 +61,8 @@
 
   const TV = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="9" rx="1.5"/><path d="M6.5 5.6v3.8L10 7.5z" class="f"/><path d="M5 14.5h6"/></svg>';
 
+  /* opts.game: the game's id - its card then leads with WATCH HERE when the site has the game to play (below);
+     opts.here(j): the page plays it itself (the game page's own video tab): true when it has */
   function pill(slug, opts) {
     const w = of(slug);
     if (!w || typeof document === 'undefined') return null;
@@ -67,6 +71,8 @@
     b.type = 'button';
     b.className = 'ep-watch' + (o.big ? ' big' : '') + ' k-' + w.k;
     b.setAttribute('data-watch', slug);
+    if (o.game && /^[0-9a-f-]{36}$/i.test(String(o.game))) b.setAttribute('data-game', String(o.game));
+    if (typeof o.here === 'function') b.__here = o.here;
     b.setAttribute('aria-haspopup', 'dialog');
     b.setAttribute('aria-expanded', 'false');
     b.setAttribute('aria-label', 'where to watch ' + w.n);
@@ -99,6 +105,51 @@
       '<span>' + esc(w.a) + '</span></div>' +
       (links ? '<div class="ew-lns">' + links + '</div>' : '') +
       '<p class="ew-ft">What is shown can differ from country to country.</p></div>';
+  }
+  /* WATCH HERE: a game the site has to play - streaming now on a channel it reads, or its stream kept, a channel's full
+     game, its highlights (0244 game_watch) - leads its card with a press straight into the site's own player: HOME's
+     VIDEO view opened on that game (?view=video&play=<game>), or on the game page its own video tab. One small read
+     the first time a game's card opens, kept for the page; before 0244, or for a game with nothing, the card as it was. */
+  const BASE = (SRC || '').replace(/watch\.js(\?.*)?$/, '') || '../';
+  const HERE = new Map();
+  function ask(id) {
+    if (HERE.has(id)) return HERE.get(id);
+    const C = root.EPINOIA_CONFIG;
+    const p = !C || !C.supabaseUrl || typeof fetch !== 'function' ? Promise.resolve(null)
+      : fetch(C.supabaseUrl + '/rest/v1/rpc/game_watch', {
+          method: 'POST',
+          headers: { apikey: C.supabaseAnonKey, Authorization: 'Bearer ' + C.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ p_game: id })
+        }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    HERE.set(id, p);
+    return p;
+  }
+  const HERE_KIND = { live: ['Live now', 'live'], full: ['Full game', 'full'], highlights: ['Highlights', 'hl'] };
+  function hereHTML(id, j) {
+    const v = j.video, k = HERE_KIND[j.live ? 'live' : (v && v.kind)] || HERE_KIND.full;
+    const vid = v && /^[A-Za-z0-9_-]{6,20}$/.test(v.video_id || '') ? v.video_id : null;
+    return '<a class="ew-here k-' + k[1] + '" href="' + esc(BASE + 'home/?view=video&play=' + encodeURIComponent(id)) + '">' +
+      '<span class="ew-here-th">' + (vid ? '<img src="https://i.ytimg.com/vi/' + vid + '/mqdefault.jpg" alt="" loading="lazy" decoding="async">' : '') +
+      '<i aria-hidden="true"></i></span>' +
+      '<span class="ew-here-tx"><b>' + esc(k[0]) + ' · watch here</b><small>' + esc(v && v.title ? v.title : 'on EPINOIΛ’s player') + '</small></span>' +
+      '<em aria-hidden="true">→</em></a>';
+  }
+  function here(btn) {
+    const id = btn.getAttribute('data-game');
+    if (!id) return;
+    ask(id).then(j => {
+      if (!j || !(j.live || j.video) || owner !== btn || !pop || !pop.classList.contains('on')) return;
+      const bd = pop.querySelector('.ew-bd');
+      if (!bd || bd.querySelector('.ew-here')) return;
+      bd.insertAdjacentHTML('afterbegin', hereHTML(id, j));
+      const a = bd.querySelector('.ew-here');
+      a.addEventListener('click', e => {
+        let mine = false;
+        try { mine = typeof btn.__here === 'function' && btn.__here(j) === true; } catch (_) { mine = false; }
+        if (mine) { e.preventDefault(); close(); }
+      });
+      place();
+    });
   }
   function zoom() {
     const z = parseFloat(getComputedStyle(document.body).zoom);
@@ -151,7 +202,8 @@
       });
       document.body.appendChild(pop);
     }
-    if (owner !== btn || !pop.classList.contains('on')) pop.innerHTML = cardHTML(w);
+    const fresh = owner !== btn || !pop.classList.contains('on');
+    if (fresh) pop.innerHTML = cardHTML(w);
     pop.setAttribute('aria-label', 'where to watch ' + w.n);
     pinned = !!pin || (pinned && owner === btn);
     owner = btn;
@@ -159,6 +211,7 @@
     btn.classList.add('on');
     pop.classList.add('on');
     place();
+    if (fresh) here(btn);
   }
   function close() {
     clearTimeout(shutT); clearTimeout(openT);

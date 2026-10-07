@@ -39,7 +39,7 @@ function mount(opts) {
   const host = typeof opts.host === 'string' ? document.querySelector(opts.host) : opts.host;
   if (!host) return;
   const { sb, say } = opts;
-  let targets = [];
+  let targets = [], vids = null;
 
   async function load() {
     const league = opts.league && opts.league();
@@ -54,7 +54,73 @@ function mount(opts) {
       return;
     }
     targets = data || [];
+    /* what each YouTube destination's videos are for (0245); before 0245 the switch is not shown */
+    vids = null;
+    try {
+      const { data: v, error: ve } = await sb.rpc('stream_target_videos', { p_league: league.id });
+      if (!ve) { vids = {}; (v || []).forEach(x => { vids[x.id] = x; }); }
+    } catch (_) { vids = null; }
     render();
+  }
+
+  /* THE CHANNEL'S VIDEOS ON ITS GAMES (0245), as a channel under Creators & news sources has them:
+       Off          its videos are not read
+       Highlights   a video of a game is that game's highlights: the Video tab, the game page, HOME's VIDEO
+       Full games   a video of a game is the whole game: the game's video, seeked to each play (EVENT SEEKING)
+     The channel needs its id (UC...) for it. Switched on, the channel is read at once where the console can. */
+  const VIDEO_MODES = [
+    ['none', 'Off', 'Its videos are not read'],
+    ['highlights', 'Highlights', 'A video of a game is that game’s highlights: the league’s Video tab, the game page and HOME’s VIDEO view'],
+    ['seeking', 'Full games', 'A video of a game is the whole game: the game’s video, seeked to each play (event seeking). A video titled highlights stays highlights']];
+  function videoSwitch(t, m) {
+    const wrap = el('div');
+    wrap.style.cssText = 'flex:1 1 100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--rule)';
+    const lab = el('span', 'ep-micro', 'Its videos on your games:');
+    lab.style.cssText = 'color:var(--ink-2)';
+    wrap.appendChild(lab);
+    const seg = el('span');
+    seg.setAttribute('role', 'radiogroup');
+    seg.setAttribute('aria-label', t.label + ': what its videos are');
+    seg.style.cssText = 'display:inline-flex;gap:4px;flex-wrap:wrap';
+    const okId = /^UC[A-Za-z0-9_-]{22}$/.test(t.channel_ref || '');
+    VIDEO_MODES.forEach(([mode, label, tip]) => {
+      const on = (m.video_mode === mode) || (mode === 'none' && !['highlights', 'seeking'].includes(m.video_mode));
+      const b = el('button', 'ep-btn mini' + (on ? ' pri' : ''), label);
+      b.type = 'button';
+      b.title = tip;
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(on));
+      if (mode !== 'none' && !okId) { b.disabled = true; b.title = 'Give this destination its YouTube channel id (it starts UC) first'; }
+      b.addEventListener('click', async () => {
+        if (on) return;
+        seg.querySelectorAll('button').forEach(x => { x.disabled = true; });
+        const { data: d, error } = await sb.rpc('set_stream_target_videos', { p_target: t.id, p_mode: mode });
+        if (error) { say && say(error.message, true); load(); return; }
+        const NR = globalThis.EpinoiaNewsRefresh;
+        if (mode !== 'none' && NR && d && d.slug) {
+          say && say(t.label + ': ' + label.toLowerCase() + '. Reading the channel now…');
+          try {
+            const out = await NR.call({ sb, source: d.slug });
+            say && say(t.label + ': ' + label.toLowerCase() + '. ' + (out.ok ? out.text + '. ' : '') + 'Its videos are matched to your games at the next half-hourly read.', !out.ok && out.kind !== 'wait');
+          } catch (_) { say && say(t.label + ': ' + label.toLowerCase() + '. Its videos are matched to your games at the next half-hourly read.'); }
+        } else {
+          say && say(t.label + ': ' + (mode === 'none' ? 'its videos are not read from now on.' : label.toLowerCase() + '. Its videos are matched to your games at the next half-hourly read.'));
+        }
+        load();
+      });
+      seg.appendChild(b);
+    });
+    wrap.appendChild(seg);
+    if (['highlights', 'seeking'].includes(m.video_mode)) {
+      const n = el('span', 'ep-micro', (m.videos || 0) + ' videos · ' + (m.matched || 0) + ' on a game');
+      n.style.cssText = 'color:var(--ink-3)';
+      wrap.appendChild(n);
+    } else if (!okId) {
+      const n = el('span', 'ep-micro', 'needs the channel id (UC…)');
+      n.style.cssText = 'color:var(--ink-3)';
+      wrap.appendChild(n);
+    }
+    return wrap;
   }
 
   function render() {
@@ -102,6 +168,7 @@ function mount(opts) {
           load();
         };
         row.appendChild(del);
+        if (vids && t.platform === 'youtube') row.appendChild(videoSwitch(t, vids[t.id] || { video_mode: 'none' }));
         list.appendChild(row);
       });
       host.appendChild(list);

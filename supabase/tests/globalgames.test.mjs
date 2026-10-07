@@ -1100,7 +1100,7 @@ section('HOME: LIVE | UPCOMING | RESULTS, and SHOW MORE');
   const home = rd('epinoia', 'home', 'index.html');
   ok('HOME\'s switch is a tablist: LIVE (hidden until something is live), UPCOMING, RESULTS, each a tab controlling the panel, and a polite announcer',
      /<div class="hm-seg" id="fxSeg" role="tablist"/.test(home) && /data-fx="live"[^>]*hidden>/.test(home)
-     && (home.match(/role="tab" /g) || []).length === 3 && /id="homeDaily" role="tabpanel"/.test(home) && /id="fxSay" aria-live="polite"/.test(home));
+     && ((home.split('id="fxSeg"')[1] || '').split('</div>')[0].match(/role="tab" /g) || []).length === 3 && /id="homeDaily" role="tabpanel"/.test(home) && /id="fxSay" aria-live="polite"/.test(home));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

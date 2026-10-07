@@ -512,6 +512,15 @@ function mountSources(o) {
       } catch (_) { /* before 0237 */ }
     }
 
+    /* EACH SOURCE'S TITLE FILTER (0246): one read for the list; before 0246 nothing */
+    const filters = {};
+    if ((data || []).length) {
+      try {
+        const { data: f, error: fe } = await sb.rpc('news_source_filters', { p_ids: (data || []).map(s => s.id) });
+        if (!fe) (f || []).forEach(x => { filters[x.id] = x; });
+      } catch (_) { /* before 0246 */ }
+    }
+
     /* ---- the list ---- */
     if (!league && (data || []).some(s => s.assigned_leagues === undefined)) {
       box.appendChild(el('p', 'empty', 'Giving a source the leagues it covers arrives with migration 0207: it has not been applied to this database yet.'));
@@ -576,6 +585,7 @@ function mountSources(o) {
       line.append(onoff, edit, del);
       if (!league && Array.isArray(s.assigned_leagues)) line.appendChild(covers(s, leagues));
       if (modes[s.id]) line.appendChild(videoSwitch(s, modes[s.id]));
+      if (filters[s.id]) line.appendChild(titleFilter(s, filters[s.id]));
       box.appendChild(line);
     });
 
@@ -598,6 +608,62 @@ function mountSources(o) {
     more.append(row(mnm, site, feed), row(mlogo, colour, madd));
     box.appendChild(more);
     if (plat) box.appendChild(plat.box);
+  }
+
+  /* A SOURCE'S TITLE FILTER (0246 set_news_source_filter): KEEP ONLY a post whose title has one of these words or
+     phrases, NEVER one with any of those - a channel of many sports gives the site its basketball alone ("Betclic
+     Elite"). Found as words, whatever the case and the accents; saved, the posts already read that do not fit go. */
+  const quoted = l => l.map(w => '“' + w + '”');
+  const filterSummary = f => ((f.title_include || []).length ? 'keep only ' + quoted(f.title_include).join(' or ') : 'every post')
+    + ((f.title_exclude || []).length ? ' · never ' + quoted(f.title_exclude).join(', ') : '');
+  function titleFilter(s, f) {
+    const wrap = el('div');
+    wrap.style.cssText = 'flex:1 1 100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:2px 0 0 36px';
+    const lab = el('span', 'empty', 'Titles:');
+    lab.style.margin = '0';
+    const sum = el('span', 'empty', filterSummary(f));
+    sum.style.cssText = 'margin:0' + ((f.title_include || []).length || (f.title_exclude || []).length ? ';color:var(--ink)' : '');
+    const b = btn('Filter titles');
+    b.title = 'Read only the posts whose titles fit: for a channel of many sports or leagues';
+    b.setAttribute('aria-expanded', 'false');
+    let panel = null;
+    b.addEventListener('click', () => {
+      if (panel) { panel.remove(); panel = null; b.setAttribute('aria-expanded', 'false'); return; }
+      panel = filterPanel(s, f, () => { sum.textContent = filterSummary(f); sum.style.color = (f.title_include.length || f.title_exclude.length) ? 'var(--ink)' : ''; });
+      wrap.after(panel);
+      b.setAttribute('aria-expanded', 'true');
+    });
+    wrap.append(lab, sum, b);
+    return wrap;
+  }
+  function filterPanel(s, f, onSaved) {
+    const p = el('div');
+    p.style.cssText = 'flex:1 1 100%;margin:6px 0 4px 36px;padding:10px 12px;border:1px solid var(--rule);display:flex;flex-direction:column;gap:8px';
+    const note = el('p', 'empty', 'Only the posts whose title has one of the first words are read, and never one with any of the second: '
+      + 'words, not parts of words; capitals and accents do not matter. Separate them with commas. Leave the first empty to read every post.');
+    note.style.margin = '0';
+    const inc = input('keep only: Betclic Elite, Pro A', 600);
+    inc.value = (f.title_include || []).join(', ');
+    const exc = input('never: Espoirs, Pro B', 600);
+    exc.value = (f.title_exclude || []).join(', ');
+    inc.style.flex = exc.style.flex = '1 1 260px';
+    const save = btn('Save the filter', 'pri');
+    const split = v => v.split(',').map(x => x.trim()).filter(Boolean);
+    save.addEventListener('click', async () => {
+      save.disabled = true;
+      const { data: d, error: e } = await sb.rpc('set_news_source_filter', { p_id: s.id, p_include: split(inc.value), p_exclude: split(exc.value) });
+      save.disabled = false;
+      if (e) return say(errText(e), 'err');
+      f.title_include = (d && d.include) || [];
+      f.title_exclude = (d && d.exclude) || [];
+      inc.value = f.title_include.join(', ');
+      exc.value = f.title_exclude.join(', ');
+      const gone = (d && d.removed) || 0;
+      say(s.name + ': ' + filterSummary(f) + '.' + (gone ? ' ' + gone + ' post' + (gone === 1 ? '' : 's') + ' that did not fit taken off.' : ''), 'ok');
+      onSaved();
+    });
+    p.append(note, row(inc), row(exc, save));
+    return p;
   }
 
   /* A YOUTUBE CHANNEL'S VIDEOS (0237 set_news_video_mode), one of three:

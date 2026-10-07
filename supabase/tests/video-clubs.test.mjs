@@ -172,9 +172,150 @@ if (!loaded || !loaded.db) {
     ok("...and nothing of a league the reader may not see (a private league's live stream)", !r.some(x => x.id === LPG), r.map(x => x.id));
   }
 
+  console.log('\nFULL GAMES and the leagues\' strip (0244)');
+  {
+    /* KV is a channel's full game on G (above); L3 a finished game with its own stream; one more finished game streamed,
+       whose stream is the channel's video too (listed once, as the channel's) */
+    await q(`insert into public.game_videos (game_id, provider, url, video_ref, is_primary) values ($1, 'youtube', '', 'aaaaaaaaaa9', true)`, [G]);
+    const full = await as(null, `select * from public.video_full_games(null, null, 30)`);
+    ok('FULL GAMES: a channel\'s full games and the finished games\' own streams, all of them full',
+       full.some(r => r.id === KV) && full.some(r => r.video_id === 'cccccccccc1') && full.every(r => r.video_kind === 'full'), full.map(r => [r.video_id, r.video_kind]));
+    const st = full.find(r => r.video_id === 'cccccccccc1');
+    ok('...a game\'s own stream as a video of the feed: its clubs for a title, its league, its box score, its address',
+       st && st.title === 'Bristol Flyers v Manchester Basketball' && st.league_slug === 'slb' && st.source_name === 'Super League Basketball'
+       && st.game && st.game.id && /youtube\.com\/watch\?v=cccccccccc1$/.test(st.url), st);
+    ok('...a stream that is a channel\'s video too is listed once, as the channel\'s', full.filter(r => r.video_id === 'aaaaaaaaaa9').length === 1
+       && full.find(r => r.video_id === 'aaaaaaaaaa9').id === KV);
+    ok('...a live game\'s stream is not a full game yet (LIVE has it)', !full.some(r => r.video_id === 'cccccccccc1' && r.game && r.game.status === 'live'));
+    ok('...one league\'s alone', (await as(null, `select * from public.video_full_games($1, null, 30)`, [L2])).length === 0
+       && (await as(null, `select * from public.video_full_games($1, null, 30)`, [L])).length === full.length);
+    /* a private league's finished game with a stream: nobody outside it sees it */
+    const LQ = (await one(`insert into public.leagues (slug, name, visibility) values ('priv-q', 'Private Q', 'private') returning id`)).id;
+    const CQ = (await one(`with s as (insert into public.seasons (league_id, name) values ($1, '2026-27') returning id)
+                           insert into public.competitions (season_id, name) select id, 'Q' from s returning id`, [LQ])).id;
+    const QA = (await one(`insert into public.teams (league_id, slug, name) values ($1, 'qa1', 'Q One') returning id`, [LQ])).id;
+    const QB = (await one(`insert into public.teams (league_id, slug, name) values ($1, 'qb1', 'Q Two') returning id`, [LQ])).id;
+    const QG = (await one(`insert into public.games (competition_id, home_team_id, away_team_id, status, tipoff_at) values ($1, $2, $3, 'final', now() - interval '3 hours') returning id`, [CQ, QA, QB])).id;
+    await q(`insert into public.game_videos (game_id, provider, url, video_ref, is_primary) values ($1, 'youtube', '', 'ffffffffff1', true)`, [QG]);
+    ok("...never a private league's game", !(await as(null, `select * from public.video_full_games(null, null, 60)`)).some(r => r.video_id === 'ffffffffff1'));
+    const vids = await as(null, `select * from public.video_feed(null, 'video', null, 60)`);
+    const hl = await as(null, `select * from public.video_feed(null, 'highlights', null, 60)`);
+    ok("video_feed: VIDEOS is what is neither highlights nor a full game; HIGHLIGHTS the highlights",
+       !vids.some(r => r.video_kind === 'full' || r.video_kind === 'highlights') && hl.length > 0 && hl.every(r => r.video_kind === 'highlights'),
+       { vids: vids.map(r => r.video_kind), hl: hl.map(r => r.video_kind) });
+    ok("...and FULL the full games", (await as(null, `select * from public.video_feed(null, 'full', null, 60)`)).every(r => r.video_kind === 'full'));
+    const lf = await as(null, `select * from public.video_leagues('full')`), lh = await as(null, `select * from public.video_leagues('highlights')`);
+    ok("the leagues' strip on FULL GAMES: the league, its full games counted once each (its channel's and its games' streams)",
+       lf.length === 1 && lf[0].slug === 'slb' && lf[0].videos === full.length && lf[0].name === 'Super League Basketball', { lf, n: full.length });
+    ok('...on HIGHLIGHTS, the leagues with highlights', lh.some(x => x.slug === 'slb') && !lh.some(x => x.slug === 'priv-q'), lh);
+
+    /* PRESS CONFERENCES (0244): a kind of their own, on their game, last in its list */
+    /* read as a press conference, then put on its game by the matcher (a matched video keeps its kind: 0241) */
+    const PR = await item(S, 'pppppppppp1', 'Post-game press conference | Bristol Flyers', null, false, new Date().toISOString());
+    await q(`update public.news_items set video_kind = 'press' where id = $1`, [PR]);
+    await q(`update public.news_items set game_id = $2 where id = $1`, [PR, G]);
+    ok('a video may be a press conference now (the check takes it)', (await one(`select video_kind from public.news_items where id = $1`, [PR])).video_kind === 'press');
+    const pf = await as(null, `select * from public.video_feed(null, 'press', null, 60)`);
+    ok('PRESS CONFERENCES: the press conferences alone; VIDEOS has none of them', pf.length === 1 && pf[0].id === PR
+       && !(await as(null, `select * from public.video_feed(null, 'video', null, 60)`)).some(r => r.id === PR), pf.map(r => r.id));
+    ok("...and the leagues' strip on it", (await as(null, `select * from public.video_leagues('press')`)).some(x => x.slug === 'slb'));
+    const gh = await as(null, `select * from public.game_highlights($1)`, [G]);
+    const order = gh.map(r => r.video_kind), rank = { highlights: 0, full: 1, press: 2, video: 3 };
+    ok("the game page's list: the game's highlights, then its whole game, then its press conferences",
+       gh.some(r => r.id === PR) && order.every((k, i) => i === 0 || rank[order[i - 1]] <= rank[k]) && order[order.length - 1] === 'press', order);
+
+    /* WATCH HERE (game_watch); the live section's games found again by their stream */
+    const L3 = (await one(`select g.id from public.games g join public.game_videos v on v.game_id = g.id where v.video_ref = 'cccccccccc1' and g.status = 'final' limit 1`)).id;
+    const L1 = (await one(`select g.id from public.games g join public.game_videos v on v.game_id = g.id where v.video_ref = 'cccccccccc1' and g.status = 'live' and g.stalled_since is null limit 1`)).id;
+    const w1 = (await as(null, `select public.game_watch($1) as j`, [G]))[0].j;
+    ok("WATCH HERE: a finished game's best video - its whole game, the channel's copy first - with its game",
+       w1 && w1.live === false && w1.video && w1.video.kind === 'full' && w1.video.video_id === 'aaaaaaaaaa9' && w1.video.id === KV
+       && w1.game_json && w1.game_json.home && w1.game_json.home.name === 'Bristol Flyers', w1);
+    const w3 = (await as(null, `select public.game_watch($1) as j`, [L3]))[0].j;
+    ok('...a finished game with only its own stream: that stream, as a full game, titled with its clubs',
+       w3 && w3.video && w3.video.kind === 'full' && w3.video.video_id === 'cccccccccc1' && w3.video.title === 'Bristol Flyers v Manchester Basketball', w3);
+    const wl = (await as(null, `select public.game_watch($1) as j`, [L1]))[0].j;
+    ok('...a game streaming now: live, its stream', wl && wl.live === true && wl.video && wl.video.kind === 'live', wl);
+    const wh = (await one(`insert into public.games (competition_id, home_team_id, away_team_id, status, tipoff_at) values ($1, $2, $3, 'final', now() - interval '5 hours') returning id`, [C, MAN, BRI])).id;
+    await item(S, 'hhhhhhhhhh1', 'HIGHLIGHTS: Manchester vs Bristol', wh, false, new Date().toISOString());
+    const w4 = (await as(null, `select public.game_watch($1) as j`, [wh]))[0].j;
+    ok('...a game with highlights alone: its highlights', w4 && w4.video && w4.video.kind === 'highlights' && w4.video.video_id === 'hhhhhhhhhh1', w4);
+    const none = (await one(`insert into public.games (competition_id, home_team_id, away_team_id, status, tipoff_at) values ($1, $2, $3, 'final', now() - interval '6 hours') returning id`, [C, MAN, BRI])).id;
+    const w5 = (await as(null, `select public.game_watch($1) as j`, [none]))[0].j;
+    ok('...a game with nothing to watch: no video, not live', w5 && w5.video === null && w5.live === false, w5);
+    ok("...and a private league's game is nobody else's to ask about", (await as(null, `select public.game_watch($1) as j`, [QG]))[0].j === null);
+  }
+
+  console.log('\na league\'s own channel, its videos on its games (0245)');
+  {
+    const tgt = async (lg, ref) => (await one(`insert into public.league_stream_targets (league_id, label, platform, server, stream_key, channel_ref)
+        values ($1, 'Main channel', 'youtube', 'rtmps://a.rtmps.youtube.com:443/live2', 'secret-key-1234', $2) returning id`, [lg, ref])).id;
+    const T1 = await tgt(L, 'UCaaaaaaaaaaaaaaaaaaaaaa'), TNO = await tgt(L, '');
+    let r = await as(LA, `select * from public.stream_target_videos($1)`, [L]);
+    ok("the console's read: each YouTube destination, its videos not read yet", r.length === 2 && r.every(x => x.video_mode === 'none'), r);
+    ok('...nobody else\'s to read or switch', (await tryAs(FAN, `select * from public.stream_target_videos($1)`, [L])).length === 0
+       && /cannot change/.test((await tryAs(LA2, `select public.set_stream_target_videos($1, 'seeking')`, [T1])).error || '')
+       && (await tryAs(null, `select public.set_stream_target_videos($1, 'seeking')`, [T1])).error);
+    ok('...a destination with no channel id cannot be switched on', /channel id/.test((await tryAs(LA, `select public.set_stream_target_videos($1, 'highlights')`, [TNO])).error || ''));
+    const on = (await as(LA, `select public.set_stream_target_videos($1, 'seeking') as j`, [T1]))[0].j;
+    const s1 = await one(`select * from public.news_sources where id = $1`, [on.source]);
+    ok("FULL GAMES (event seeking): the channel becomes one of the league's channels, read as any other",
+       on.mode === 'seeking' && s1 && s1.league_id === L && s1.video_mode === 'seeking' && s1.enabled && s1.platform === 'youtube'
+       && s1.feed_url === 'https://www.youtube.com/feeds/videos.xml?channel_id=UCaaaaaaaaaaaaaaaaaaaaaa' && on.slug === s1.slug, { on, s1 });
+    r = await as(LA, `select * from public.stream_target_videos($1)`, [L]);
+    ok('...and the console says so', r.find(x => x.id === T1).video_mode === 'seeking' && r.find(x => x.id === T1).source_slug === s1.slug, r);
+    const hi = (await as(LA, `select public.set_stream_target_videos($1, 'highlights') as j`, [T1]))[0].j;
+    ok('HIGHLIGHTS: the same source, its videos highlights now (no second source)', hi.source === on.source
+       && (await one(`select video_mode from public.news_sources where id = $1`, [on.source])).video_mode === 'highlights'
+       && (await one(`select count(*)::int as n from public.news_sources where feed_url like '%UCaaaaaaaaaaaaaaaaaaaaaa%'`)).n === 1);
+    await as(LA, `select public.set_stream_target_videos($1, 'none')`, [T1]);
+    ok('OFF: the source is switched off (kept for the record)', (await one(`select enabled from public.news_sources where id = $1`, [on.source])).enabled === false
+       && (await as(LA, `select * from public.stream_target_videos($1)`, [L])).find(x => x.id === T1).video_mode === 'none');
+    await as(LA, `select public.set_stream_target_videos($1, 'highlights')`, [T1]);
+    ok('...and on again, the same source', (await one(`select enabled from public.news_sources where id = $1`, [on.source])).enabled === true);
+    /* a channel the league reads already under Creators & news sources: that one, not a second */
+    const OWN = (await one(`insert into public.news_sources (league_id, slug, name, site_url, feed_url, kind, platform, video_mode)
+        values ($1, 'slb-own', 'SLB on YouTube', 'https://www.youtube.com/@slb', 'https://www.youtube.com/feeds/videos.xml?channel_id=UCbbbbbbbbbbbbbbbbbbbbbb', 'creator', 'youtube', 'off') returning id`, [L])).id;
+    const T2 = await tgt(L, 'UCbbbbbbbbbbbbbbbbbbbbbb');
+    const re = (await as(LA, `select public.set_stream_target_videos($1, 'seeking') as j`, [T2]))[0].j;
+    ok("a channel the league reads already is used, its mode set (not a second source)", re.source === OWN
+       && (await one(`select video_mode from public.news_sources where id = $1`, [OWN])).video_mode === 'seeking');
+    ok('the platform\'s administrator may switch it too', !(await tryAs(PA, `select public.set_stream_target_videos($1, 'highlights')`, [T2])).error);
+    ok('a mode that is none of the three is refused', /none, highlights or seeking/.test((await tryAs(LA, `select public.set_stream_target_videos($1, 'all')`, [T2])).error || ''));
+  }
+
   console.log('\na video\'s game');
   const gj = (await one(`select public.video_game_json($1) as j`, [G])).j;
   ok('carries each club\'s second colour', gj.home.colour_2 === '#071728' && gj.away.colour_2 === '#4271b7', gj);
+
+  console.log('\na source\'s title filter (0246)');
+  {
+    const tp = async (t, i, e) => (await one(`select public.news_title_passes($1, $2::text[], $3::text[]) as p`, [t, i, e])).p;
+    ok('KEEP ONLY one of, NEVER any of, as words, whatever the case and the accents',
+       await tp('Résumé | Paris - Monaco | Betclic ÉLITE (J3)', ['Betclic Elite'], []) === true && await tp('Ligue 1 : PSG - OM', ['Betclic Elite'], []) === false
+       && await tp('Betclic ELITE Espoirs : Paris - Monaco', ['betclic elite'], ['Espoirs']) === false && await tp('Anything at all', [], []) === true
+       && await tp('Visit elitebasket.fr', ['elite'], []) === false && await tp('Pro B | Rouen - Fos', [], ['Pro B']) === false);
+    const SF = await src(L, 'dazn-france');
+    const it2 = async (guid, title, locked) => (await one(`insert into public.news_items (source_id, guid, url, title, published_at, video_id, video_kind, game_locked, game_id)
+        values ($1, $2, 'https://www.youtube.com/watch?v=' || $2, $3, now(), $2, 'video', $4, case when $4 then $5::uuid end) returning id`, [SF, guid, title, locked, G])).id;
+    const K1 = await it2('dddddddddd1', 'Résumé | Paris - Monaco | Betclic ÉLITE (J3)', false);
+    const K2 = await it2('dddddddddd2', 'Ligue 1 : PSG - OM', false);
+    const K3 = await it2('dddddddddd3', 'Top 14 : Toulouse - La Rochelle', true);
+    ok('nobody but the channel\'s administrators may set it', /not allowed/.test((await tryAs(FAN, `select public.set_news_source_filter($1, array['x1'], null)`, [SF])).error || '')
+       && /not allowed/.test((await tryAs(LA2, `select public.set_news_source_filter($1, array['x1'], null)`, [SF])).error || '')
+       && /not allowed/.test((await tryAs(LA, `select public.set_news_source_filter($1, array['x1'], null)`, [SG])).error || ''));
+    const r = (await as(LA, `select public.set_news_source_filter($1, array['Betclic Elite', ' betclic élite ', ''], array['Espoirs']) as j`, [SF]))[0].j;
+    const left = (await q(`select id from public.news_items where source_id = $1`, [SF])).map(x => x.id);
+    ok('set: each list tidied (a phrase once, whatever its case and accents); the posts already read that fail it taken off, one put on a game by hand kept',
+       JSON.stringify(r.include) === JSON.stringify(['Betclic Elite']) && JSON.stringify(r.exclude) === JSON.stringify(['Espoirs']) && r.removed === 1
+       && left.includes(K1) && !left.includes(K2) && left.includes(K3), { r, left });
+    const f = await as(LA, `select * from public.news_source_filters($1)`, [[SF, S]]);
+    ok("the console's read: the source's filter", f.find(x => x.id === SF).title_include.join() === 'Betclic Elite' && f.find(x => x.id === S).title_include.length === 0, f);
+    ok('a phrase is 2 to 60 characters, twenty at most a list', /2 to 60/.test((await tryAs(LA, `select public.set_news_source_filter($1, array['x'], null)`, [SF])).error || '')
+       && /twenty/.test((await tryAs(LA, `select public.set_news_source_filter($1, (select array_agg('word ' || g) from generate_series(1, 21) g), null)`, [SF])).error || ''));
+    await as(LA, `select public.set_news_source_filter($1, null, null)`, [SF]);
+    ok('...and emptied, every post again', (await one(`select cardinality(title_include) as n from public.news_sources where id = $1`, [SF])).n === 0);
+  }
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

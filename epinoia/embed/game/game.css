@@ -27,6 +27,27 @@ body.ebox{padding:10px 10px 6px;min-height:0}
 .eb-sides button[aria-selected="true"]{background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--text-primary,inherit);font-weight:700}
 .eb-sides button:focus-visible{outline:2px solid var(--c);outline-offset:-2px}
 .eb-host .mv-court{margin-bottom:36px}
+/* BENCH ── 7 PLAYERS · 17 PTS: the label's word, a rule, the count (the game page's theme.css does this there) */
+.eb-host .mv-benchlabel{display:flex;align-items:center;gap:8px}
+.eb-host .mv-benchlabel i{flex:1 1 auto;height:1px;background:currentColor;opacity:.3}
+.eb-host .mv-benchlabel span{white-space:nowrap}
+/* FIT (?fit=1, game.js fit()): the whole box score in one screen - the court as large as the screen allows (--court-w),
+   beside its bench where the frame is wide enough (the bench wraps into the room beside the court), both clubs side by
+   side where it is wider (the club switch is not needed then) */
+body.fit .eb-host .mv-court{width:min(100%,var(--court-w,460px));margin-bottom:30px}
+@media (min-width:600px){
+  body.fit .eb-host .mv-card{display:grid;grid-template-columns:var(--court-w,420px) minmax(140px,1fr);grid-template-rows:auto auto auto 1fr;
+    grid-template-areas:"head head" "court label" "court bench" "court .";column-gap:14px;align-items:start}
+  body.fit .eb-host .mv-head{grid-area:head}
+  body.fit .eb-host .mv-court{grid-area:court;width:var(--court-w,420px);margin:0 0 30px}
+  body.fit .eb-host .mv-benchlabel{grid-area:label}
+  body.fit .eb-host .mv-bench{grid-area:bench;flex-wrap:wrap;overflow:visible;align-content:flex-start;row-gap:10px}
+}
+@media (min-width:1080px){
+  body.fit .eb-sides{display:none}
+  body.fit .eb-host .mv{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  body.fit .eb-host .mv-card.t0,body.fit .eb-host .mv-card.t1{display:grid}
+}
 .eb-empty{padding:28px 0;text-align:center;font-family:var(--f-micro,monospace);font-size:10px;letter-spacing:.06em;color:var(--text-muted,inherit)}
 .eb-foot{display:flex;justify-content:space-between;align-items:center;padding:8px 2px 2px;font-family:var(--f-micro,monospace);font-size:9px;
   letter-spacing:.06em;border-top:1px solid var(--border-subtle,rgba(127,127,127,.25));margin-top:6px}

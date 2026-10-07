@@ -207,6 +207,45 @@ ok("a channel switched off is left alone", "i4" not in db.patched)
 ok("a press conference is put on no game (and is recorded as looked at)", "game_id" not in db.patched["i5"] and "matched_at" in db.patched["i5"], db.patched.get("i5"))
 ok("a channel of no league finds a Japanese game by its kanji", db.patched["i6"].get("game_id") == "jp1", db.patched.get("i6"))
 ok("two clubs that did not meet: no game, and the pair was asked once", "game_id" not in db.patched["i7"] and db.asked.count(("EST", "VAL")) == 1, db.patched.get("i7"))
+
+print("\na source's title filter (0246)")
+TF = [("Résumé | Paris - Monaco | Betclic ÉLITE (J3)", ["Betclic Elite"], [], True), ("Ligue 1 : PSG - OM", ["Betclic Elite"], [], False),
+      ("Betclic ELITE Espoirs : Paris - Monaco", ["betclic elite"], ["Espoirs"], False), ("Anything at all", [], [], True),
+      ("Visit elitebasket.fr", ["elite"], [], False), ("Pro B | Rouen - Fos", [], ["Pro B"], False)]
+ok("KEEP ONLY one of, NEVER any of, as words, whatever the case and the accents (the same cases as the function's)",
+   all(V.title_passes(t, i, e) == want for t, i, e, want in TF), [V.title_passes(t, i, e) for t, i, e, _ in TF])
+
+print("\npress conferences (0244)")
+ok("a press conference in the leagues' languages; a highlight word wins over it, it wins over a live word",
+   all(V.classify(t) == "press" for t in ("Post-game Press Conference | Real Madrid", "Rueda de prensa: Real Madrid - Barça", "Pressekonferenz nach dem Spiel",
+                                           "Konferencja prasowa po meczu", "【記者会見】千葉ジェッツ", "LIVE: postgame press conference"))
+   and V.classify("Highlights + press conference") == "highlights")
+ok("...a press conference is a press conference on either channel's mode, and nothing on one switched off",
+   [V.outcome("press", m) for m in ("highlights", "seeking", "off")] == ["press", "press", None])
+PG = [{"id": "after", "status": "final", "tipoff_at": "2026-10-04T18:00:00+00:00"},
+      {"id": "before", "status": "scheduled", "tipoff_at": "2026-10-07T18:00:00+00:00"},
+      {"id": "old", "status": "final", "tipoff_at": "2026-09-29T18:00:00+00:00"}]
+ok("its game: the one just before it (after the game) or up to three days after it (the one before), never a week old",
+   V.pick_game(PG[:1], PUB, "press")["id"] == "after" and V.pick_game(PG[1:2], PUB, "press")["id"] == "before" and V.pick_game(PG[2:], PUB, "press") is None)
+
+
+class PressDb(FakeDb):
+    def has_press_kind(self):
+        return True
+
+
+items_p = [dict(items[4]),
+           {"id": "p2", "source_id": "sk", "title": "Rueda de prensa previa: Valencia - Joventut", "published_at": P, "league_ids": []},
+           {"id": "p3", "source_id": "hl", "title": "Press conference: our new head coach", "published_at": P, "league_ids": []}]
+dbp = PressDb(items_p, SRC, GAMES)
+resp = V.match_videos(dbp, PUB + timedelta(hours=1), log=lambda *a: None)
+ok("with 0244: the Clásico's press conference is on the Clásico, a press conference",
+   dbp.patched["i5"].get("game_id") == "clasico" and dbp.patched["i5"]["video_kind"] == "press", dbp.patched.get("i5"))
+ok("...the one before a game to come is that game's (a 'previa' too), and never attached for seeking on a seeking channel",
+   dbp.patched["p2"].get("game_id") == "vj" and dbp.patched["p2"]["video_kind"] == "press" and not dbp.attached, (dbp.patched.get("p2"), dbp.attached))
+ok("...one of no game is on no game, still a press conference (HOME's PRESS)", "game_id" not in dbp.patched["p3"] and dbp.patched["p3"].get("video_kind") == "press",
+   dbp.patched.get("p3"))
+ok("...and counted", resp.get("press") == 2, resp)
 ok("the count", res["matched"] == 4 and res["attached"] == 1 and res["highlights"] == 3 and res["full"] == 1, res)
 db2 = FakeDb([items[1]], SRC, GAMES, have_video={"vj"})
 V.match_videos(db2, PUB + timedelta(hours=1), log=lambda *a: None)
@@ -322,6 +361,8 @@ asked = []
 
 def fake_json(url):
     asked.append(url)
+    if "playlistId=UUSH" in url:                    # the channel's Shorts: the vertical clip below
+        return {"items": [{"contentDetails": {"videoId": "sssssssssss"}}]}
     if "playlistItems" in url:
         return {"items": [
             {"snippet": {"title": "Older", "publishedAt": "2026-10-03T10:00:00Z", "channelTitle": "SLB",
@@ -330,6 +371,7 @@ def fake_json(url):
             {"snippet": {"title": "CHAMPIONSHIP HIGHLIGHTS: Manchester Basketball vs. Liverpool Basketball", "publishedAt": "2026-10-05T10:00:00Z",
                          "videoOwnerChannelTitle": "Super League Basketball", "thumbnails": {"medium": {"url": "http://insecure/x.jpg"}}},
              "contentDetails": {"videoId": "bbbbbbbbbbb"}},
+            {"snippet": {"title": "Dunk of the night #shorts", "publishedAt": "2026-10-05T12:00:00Z"}, "contentDetails": {"videoId": "sssssssssss"}},
             {"snippet": {"title": "Private video"}, "contentDetails": {"videoId": "ccccccccccc"}},
             {"snippet": {"title": "Bad id"}, "contentDetails": {"videoId": "<b>"}}]}
     if "channels?" in url:
@@ -345,7 +387,10 @@ ok("its uploads as parse_feed's items: newest first, private and bad ids left ou
 ok("...an https thumbnail only, a description clipped like an excerpt, the same keys as a feed's item",
    A[0]["image_url"] is None and A[1]["image_url"].startswith("https://") and len(A[1]["summary"]) <= 320
    and set(A[0]) == {"guid", "url", "title", "summary", "image_url", "author", "tags", "published_at"}, A[1])
-ok("...one request, for the uploads playlist", len(asked) == 1 and "playlistId=UUAsCfBvGdjAxOzqGOcCxkzg" in asked[0] and "key=KEY" in asked[0], asked)
+ok("...two requests: the uploads playlist, then the channel's Shorts (UUSH...)", len(asked) == 2 and "playlistId=UUAsCfBvGdjAxOzqGOcCxkzg" in asked[0]
+   and "key=KEY" in asked[0] and "playlistId=UUSHAsCfBvGdjAxOzqGOcCxkzg" in asked[1], asked)
+ok("a Short is never read: the API's Shorts left out; a feed's /shorts/ link is one, a watch link is not",
+   V.is_short("https://www.youtube.com/shorts/aaaaaaaaaaa") and not V.is_short("https://www.youtube.com/watch?v=aaaaaaaaaaa"))
 ok("a link by its handle: the channel, its name and picture",
    V.api_channel("https://www.youtube.com/@SuperLeagueBasketball", "KEY", fake_json) ==
    {"feed_url": F.YT_FEED + "?channel_id=UCAsCfBvGdjAxOzqGOcCxkzg", "name": "Super League Basketball",

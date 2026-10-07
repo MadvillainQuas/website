@@ -227,7 +227,7 @@
     if (s < 7 * 86400) return Math.floor(s / 86400) + ' ' + tr('days ago');
     try { return d.toLocaleDateString(document.documentElement.lang || 'en-GB', { day: 'numeric', month: 'short' }); } catch (_) { return String(iso).slice(0, 10); }
   }
-  const KIND = { highlights: ['HIGHLIGHTS', ''], full: ['FULL GAME', 'f'], video: ['VIDEO', 'v'] };
+  const KIND = { highlights: ['HIGHLIGHTS', ''], full: ['FULL GAME', 'f'], press: ['PRESS CONFERENCE', 'p'], video: ['VIDEO', 'v'] };
   /* ONE TILE A VIDEO. A channel added twice (a league's own and the platform's) reads each of its videos twice, as two
      stories; the board shows it once, the copy that is on a game if one is. */
   function uniq(list) {
@@ -408,24 +408,75 @@
      a half court, the bench beneath, a face for each player's full line - with the score over it), live by itself, in a
      frame. The frame says how tall it is (epinoiaEmbed 'height'); teamcolour.js gives it the page's light/dark and
      colours. */
+  /* opts: { theme: 'dark' (the frame keeps it), fit: true (the whole box score in one screen: embed/game fit()) } */
+  const FIT_GAP = 44;                                       // the box's own padding and a little air, above and below
+  /* the screen's height in the frame's own pixels: the kit zooms the page on a wide screen (epinoia-kit.css: 1.25, 1.5)
+     and the frame with it, so a 900px screen holds 600 of the frame's pixels at 1.5 */
+  function zoomOf(node) {
+    try {
+      const r = node.getBoundingClientRect().height, o = node.offsetHeight;
+      if (o > 0 && r > 0) return r / o;
+      return parseFloat(getComputedStyle(document.body).zoom) || 1;
+    } catch (_) { return 1; }
+  }
+  const fitHeight = node => Math.max(300, Math.round((window.innerHeight || 800) / zoomOf(node) - FIT_GAP));
   function embedGame(host, gameId, opts) {
     const eo = opts || {};
     host.textContent = '';
     const f = document.createElement('iframe');
-    f.src = BASE + 'embed/game/?g=' + encodeURIComponent(gameId) + (eo.theme ? '&theme=' + encodeURIComponent(eo.theme) : '');
+    f.src = BASE + 'embed/game/?g=' + encodeURIComponent(gameId) + (eo.theme ? '&theme=' + encodeURIComponent(eo.theme) : '') + (eo.fit ? '&fit=1' : '');
     /* a frame that keeps its own theme (the VIDEO view's dark): the page's light/dark is not sent to it (teamcolour.js) */
     if (eo.theme) f.setAttribute('data-own-theme', eo.theme);
     f.title = tr('Box score');
     f.loading = 'lazy';
     f.className = 'md-embed';
+    /* THE HOST SPEAKS FOR THE FRAME: its theme, as the page that holds it - so the reader's own light/dark switch, kept
+       for every embed on this site, does not paint a light box score into the black VIDEO view - and, to fit, how tall
+       the screen is now. Said when the frame loads, when it asks, and when the window changes size. */
+    const tell = () => {
+      const w = f.contentWindow;
+      if (!w) return;
+      try {
+        if (eo.theme) w.postMessage({ epinoiaEmbed: 'colourway', theme: eo.theme }, location.origin);
+        if (eo.fit) w.postMessage({ epinoiaEmbed: 'fit', height: fitHeight(f) }, location.origin);
+      } catch (_) { /* not ready: it asks */ }
+    };
     const onMsg = ev => {
-      if (ev.origin !== location.origin || ev.source !== f.contentWindow || !ev.data || ev.data.epinoiaEmbed !== 'height') return;
+      if (ev.origin !== location.origin || ev.source !== f.contentWindow || !ev.data) return;
+      if (ev.data.epinoiaEmbed === 'colourway?') { tell(); return; }
+      if (ev.data.epinoiaEmbed !== 'height') return;
       const h = Number(ev.data.height);
       if (isFinite(h) && h >= 60 && h <= 2000) f.style.height = Math.ceil(h) + 'px';
     };
     window.addEventListener('message', onMsg);
+    f.addEventListener('load', tell);
+    let soon = null;
+    const onResize = () => { clearTimeout(soon); soon = setTimeout(tell, 150); };
+    if (eo.fit) window.addEventListener('resize', onResize);
     host.appendChild(f);
-    return { frame: f, stop() { window.removeEventListener('message', onMsg); f.remove(); } };
+    return { frame: f, stop() { window.removeEventListener('message', onMsg); window.removeEventListener('resize', onResize); clearTimeout(soon); f.remove(); } };
+  }
+
+  /* THE WAY DOWN TO THE BOX SCORE: a tab hanging from the foot of the video - "Box score" and an arrow - that takes the
+     reader down to the game's box score, out of sight under a video that fills the screen. target: the box (or a
+     function giving it). */
+  const CUE_ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function boxCue(target) {
+    const bar = el('div', 'md-cuebar');
+    const b = el('button', 'md-cue');
+    b.type = 'button';
+    const a = el('span', 'md-cue-a');
+    a.innerHTML = CUE_ARROW;
+    b.append(el('span', 'md-cue-t', tr('Box score')), a);
+    b.setAttribute('aria-label', tr('Down to the box score'));
+    b.addEventListener('click', () => {
+      const t = typeof target === 'function' ? target() : target;
+      if (!t) return;
+      const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      t.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+    });
+    bar.appendChild(b);
+    return bar;
   }
 
   /* THE STAGE, wherever a tile opens one (the league's board, HOME's video feed): in the video's inks (its edge and its
@@ -447,7 +498,7 @@
     let cur = null, frame = null, boxer = null, timer = null, card = null, held = null, back = [], prevB = null, nextB = null;
     let open = pref(Q_KEY, !(window.matchMedia && matchMedia('(max-width: 720px)').matches));
     let auto = pref(AUTO_KEY, true);
-    let nowKind, titleEl, metaEl, qBtn, body, vid, queue, qList, box, autoBox;
+    let nowKind, titleEl, metaEl, qBtn, body, vid, queue, qList, box, autoBox, qPos, cue;
 
     const playable = it => !!(it && idOf(it));
     function upcoming() {
@@ -495,13 +546,19 @@
       autoBox.addEventListener('change', () => { auto = autoBox.checked; setPref(AUTO_KEY, auto); if (!auto) cancelNext(); });
       const sw = el('label', 'md-auto');
       sw.append(autoBox, el('span', null, tr('Autoplay')));
-      qh.append(el('b', null, tr('Up next')), sw);
+      qPos = el('span', 'md-q-pos');
+      const qt = el('span', 'md-q-ht');
+      qt.append(el('b', null, tr('Up next')), qPos);
+      qh.append(qt, sw);
       qList = el('div', 'md-q-list');
       qin.append(qh, qList);
       queue.appendChild(qin);
       body.append(vid, queue);
       box = el('div', 'md-boxwrap');
-      stage.append(head, body, box);
+      /* the arrow down to the box score, hanging from the foot of the video, while the video has a game */
+      cue = boxCue(box);
+      cue.hidden = true;
+      stage.append(head, body, cue, box);
       stage.__md = { ended, upcoming };                     // the page's own handle (the tests end a video with it)
     }
     function stop() {
@@ -530,13 +587,14 @@
         if (boxer) boxer.stop();
         boxer = null;
         box.textContent = '';
-        if (gid) { boxer = embedGame(box, gid, o.dark ? { theme: 'dark' } : undefined); boxer.game = gid; }
+        if (gid) { boxer = embedGame(box, gid, o.dark ? { theme: 'dark', fit: true } : { fit: true }); boxer.game = gid; }
       }
       box.hidden = !gid;
+      cue.hidden = !gid;
       drawList();
     }
-    function row(it, now) {
-      const b = el('button', 'md-q-row' + (now ? ' now' : ''));
+    function row(it, now, past) {
+      const b = el('button', 'md-q-row' + (now ? ' now' : '') + (past ? ' past' : ''));
       b.type = 'button';
       if (now) b.setAttribute('aria-current', 'true');
       inks(b, it, o.dark);
@@ -551,12 +609,19 @@
       if (!now) b.addEventListener('click', () => go(it));
       return b;
     }
+    /* THE WHOLE LIST, not only what comes next: every video of the view, the one playing marked and brought to the top of
+       the panel, the ones before it above (scroll up for them, a little dimmed), the ones after it below */
     function drawList() {
       const next = upcoming();
+      const L = ((o.list && o.list()) || []).filter(playable);
+      const at = cur ? L.findIndex(x => x.id === cur.id) : -1;
       qList.textContent = '';
-      qList.appendChild(row(cur, true));
-      next.forEach(it => qList.appendChild(row(it, false)));
+      let nowRow = null;
+      if (at < 0) { nowRow = row(cur, true); qList.appendChild(nowRow); next.forEach(it => qList.appendChild(row(it, false))); }
+      else L.forEach((it, j) => { const r = row(it, j === at, j < at); if (j === at) nowRow = r; qList.appendChild(r); });
       if (!next.length) qList.appendChild(el('p', 'md-q-end', tr('Nothing after this one.')));
+      qPos.textContent = at >= 0 && L.length > 1 ? (at + 1) + ' / ' + L.length : '';
+      if (nowRow) requestAnimationFrame(() => { if (nowRow.isConnected) qList.scrollTop = Math.max(0, nowRow.offsetTop - qList.offsetTop - 6); });
       qBtn.textContent = tr('Up next') + (next.length ? ' · ' + next.length : '');
       nextB.disabled = !next.length;
       prevB.disabled = !(back.length || before());
@@ -776,5 +841,5 @@
   /* run fn when the browser is idle (or after a beat where it cannot say) - the probes a page does not wait for */
   const idle = fn => ('requestIdleCallback' in window) ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 600);
 
-  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, videoBoard, stagePlayer, wide, wideButton, wideReset, tile, inks, uniq, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
+  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, boxCue, videoBoard, stagePlayer, wide, wideButton, wideReset, tile, inks, uniq, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
 })();

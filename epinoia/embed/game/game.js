@@ -80,6 +80,51 @@
   }
   try { new ResizeObserver(postHeight).observe(document.body); } catch (_) { /* old browser: posted on each draw */ }
 
+  /* FIT (?fit=1: under a video, on HOME and a league's pages): the whole box score in one screen. The host says how tall
+     the screen is ({ epinoiaEmbed: 'fit', height }) and the court is drawn as large as fits in it (--court-w): beside its
+     bench where the frame is wide enough, both clubs side by side where it is wider (game.css body.fit). Smaller than
+     COURT_MIN the faces crowd each other: the frame is then a little taller than the screen. */
+  const FIT = new URLSearchParams(location.search).get('fit') === '1';
+  if (FIT) document.body.classList.add('fit');
+  const COURT_MAX = 460, COURT_MIN = 280, COURT_RATIO = 1400 / 1500, BENCH_COL = 152;
+  let fitH = 0, fitting = false;
+  function fit() {
+    if (!FIT || !fitH || fitting) return;
+    const court = [...document.querySelectorAll('.mv-court')].find(c => c.offsetParent !== null);
+    if (!court) return;
+    fitting = true;
+    const card = court.closest('.mv-card') || court.parentElement;
+    const cs = getComputedStyle(card);
+    const inner = card.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    const beside = window.matchMedia && matchMedia('(min-width: 600px)').matches;
+    const set = w => document.body.style.setProperty('--court-w', Math.round(w) + 'px');
+    let w = Math.max(COURT_MIN, Math.min(COURT_MAX, inner - (beside ? BENCH_COL : 0)));
+    set(w);
+    /* smaller until it fits; a court whose bench is the taller side gains nothing by shrinking, and is left as it was */
+    for (let i = 0; i < 5; i++) {
+      const h = document.body.offsetHeight, over = h - fitH;
+      if (over <= 1) break;
+      const nw = Math.max(COURT_MIN, Math.floor(w - over / COURT_RATIO));
+      if (nw >= w - 1) break;
+      set(nw);
+      if (document.body.offsetHeight >= h - 1) { set(w); break; }
+      w = nw;
+    }
+    fitting = false;
+    postHeight();
+  }
+  if (FIT) {
+    window.addEventListener('message', ev => {
+      if (ev.source !== window.parent || window.parent === window || !ev.data || ev.data.epinoiaEmbed !== 'fit') return;
+      const h = Number(ev.data.height);
+      if (!isFinite(h) || h < 200 || h > 4000 || Math.abs(h - fitH) < 2) return;
+      fitH = h;
+      fit();
+    });
+    let soon = null;
+    window.addEventListener('resize', () => { clearTimeout(soon); soon = setTimeout(fit, 120); });
+  }
+
   /* the full box score opens in the page on our own pages, in a tab on anybody else's (the same test as embed/game) */
   (function fullTarget() {
     let ours = false;
@@ -143,6 +188,7 @@
     if (MB.hidePop) MB.hidePop();
     $('#host').dataset.side = String(n);
     tabs();
+    fit();
     postHeight();
   });
 
@@ -156,6 +202,7 @@
     host.innerHTML = MB.courts(d);
     MB.mounted(host);
     faces(host);
+    fit();
     postHeight();
   }
 

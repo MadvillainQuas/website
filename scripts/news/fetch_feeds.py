@@ -1031,12 +1031,15 @@ class Supabase:
     def sources(self, only: str | None = None) -> list[dict]:
         base = "news_sources?enabled=eq.true&order=name&select=id,name,feed_url,site_url,logo_url,logo_checked_at,etag,last_modified"
         tail = "&id=eq." + urllib.parse.quote(only) if only else ""
-        try:                                    # 0198's columns: a source added by its link, still to be found
-            return self._req("GET", base + ",league_id,kind,platform,resolve_from,name_auto,last_error,last_fetched_at" + tail)[0] or []
-        except urllib.error.HTTPError as e:
-            if e.code != 400:
-                raise
-            return self._req("GET", base + tail)[0] or []          # before 0198 is applied
+        # 0198's columns: a source added by its link, still to be found; 0246's: its title filter
+        c198 = ",league_id,kind,platform,resolve_from,name_auto,last_error,last_fetched_at"
+        for extra in (c198 + ",title_include,title_exclude", c198):
+            try:
+                return self._req("GET", base + extra + tail)[0] or []
+            except urllib.error.HTTPError as e:
+                if e.code != 400:
+                    raise
+        return self._req("GET", base + tail)[0] or []          # before 0198 is applied
 
     def feed_taken(self, feed_url: str, league_id: str | None, but: str) -> str | None:
         """the name of another source with this feed where this one is (the same league, or every reader's)"""
@@ -1086,6 +1089,20 @@ class Supabase:
             if e.code in (400, 404):
                 return False
             raise
+
+    def has_press_kind(self) -> bool:
+        """whether 0244 is applied (a video's kind may be 'press'): before it, a press conference is written as a video
+        (the database's check would refuse the whole read); asked once"""
+        if getattr(self, "_press_kind", None) is None:
+            try:
+                self._req("GET", "rpc/video_leagues?p_kind=press")
+                self._press_kind = True
+            except urllib.error.HTTPError as e:
+                if e.code in (400, 404):
+                    self._press_kind = False
+                else:
+                    raise
+        return self._press_kind
 
     def videos_to_match(self, since: datetime, tried_before: datetime) -> list[dict]:
         q = ("news_items?select=id,source_id,title,published_at,league_ids&video_id=not.is.null&game_id=is.null"
@@ -1189,6 +1206,10 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
     except Exception as e:
         log("  (the video columns could not be checked, so videos are not matched this time: %s)" % e)
         videos_on = False
+    try:
+        press_on = videos_on and bool(getattr(db, "has_press_kind", None)) and db.has_press_kind()
+    except Exception:
+        press_on = False
     for i, s in enumerate(db.sources(only)):
         if i:
             sleep(GAP_S)
@@ -1247,12 +1268,18 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
                     meta, items = {"title": next((x["author"] for x in api_rows if x.get("author")), None)}, api_rows
                 else:
                     meta, items = parse_feed(body, s["feed_url"], t)
+                # a YouTube Short (a vertical clip) is never read; nor a post the source's title filter does not keep (0246)
+                items = [x for x in items if not V.is_short(x.get("url"))]
+                if s.get("title_include") or s.get("title_exclude"):
+                    items = [x for x in items if V.title_passes(x.get("title"), s.get("title_include"), s.get("title_exclude"))]
                 rows = [dict(x, source_id=s["id"], fetched_at=t.isoformat(),
                              league_ids=matcher.match(x["title"], x["summary"], x["tags"])) for x in items]
                 if videos_on:
                     for r in rows:                  # every row the same keys: PostgREST refuses a mixed bulk insert
                         r["video_id"] = V.video_id(r.get("url"), r.get("guid"))
                         r["video_kind"] = V.classify(r.get("title")) if r["video_id"] else None
+                        if r["video_kind"] == "press" and not press_on:
+                            r["video_kind"] = "video"          # before 0244
                 done["tagged"] += sum(1 for r in rows if r["league_ids"])
                 if not dry_run:
                     db.upsert_items(rows)

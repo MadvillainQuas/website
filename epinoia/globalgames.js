@@ -848,7 +848,7 @@ function card(g, opts) {
   /* WHERE TO WATCH, a pill under the "v" or the score (watch.js, on the pages that load it): its press opens its own card
      and never the game */
   const lgw = leagueOf(g);
-  const wp = root.EpinoiaWatch && lgw && lgw.slug ? root.EpinoiaWatch.pill(lgw.slug) : null;
+  const wp = root.EpinoiaWatch && lgw && lgw.slug ? root.EpinoiaWatch.pill(lgw.slug, { game: g.id }) : null;
   if (wp) {
     body.className += ' has-watch';
     wp.classList.add('fxc-watch');

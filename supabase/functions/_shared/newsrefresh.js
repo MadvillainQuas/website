@@ -28,7 +28,7 @@
    every source it reads, leaves a row: 'news_refresh_call' and 'news_refresh'.
    ============================================================================ */
 import { KEEP_DAYS, checkFeedUrl, isPrivateIp, parseFeed } from './newsfeed.js';
-import { CONSENT_COOKIE, apiChannel, apiItems, apiReason, channelFromPage, classify, feedOfLink, isYouTubeLink, playlistOf, videoIdOf } from './ytvideo.js';
+import { CONSENT_COOKIE, apiChannel, apiItems, apiReason, channelFromPage, classify, feedOfLink, isShort, isYouTubeLink, playlistOf, titlePasses, videoIdOf } from './ytvideo.js';
 
 export const FETCH_TIMEOUT_MS = 10000;
 export const MAX_BYTES = 2 * 1024 * 1024;
@@ -219,6 +219,11 @@ export function createHandler(deps) {
       }
       const cutoff = stamp.getTime() - KEEP_DAYS * 86400000;
       items = items.filter(x => new Date(x.published_at).getTime() >= cutoff);
+      /* a YouTube Short (a vertical clip) is never read; nor a post the source's title filter does not keep (0246) */
+      items = items.filter(x => !isShort(x.url));
+      if ((src.title_include || []).length || (src.title_exclude || []).length) {
+        items = items.filter(x => titlePasses(x.title, src.title_include, src.title_exclude));
+      }
       const had = items.length ? await db.existing(src.id, items.map(x => x.guid)) : new Map();
       const fresh = [], changed = [];
       for (const x of items) {
@@ -237,7 +242,15 @@ export function createHandler(deps) {
         return r;
       });
       try {
-        if (rows.length) await db.upsert(rows);
+        if (rows.length) {
+          try { await db.upsert(rows); } catch (e) {
+            /* before 0244 a video's kind may not be 'press' (the check refuses the lot): its press conferences are
+               written as videos, as the half-hourly reader writes them then */
+            if (!rows.some(r => r.video_kind === 'press') || !/video_kind/.test(String((e && e.message) || e))) throw e;
+            rows.forEach(r => { if (r.video_kind === 'press') r.video_kind = 'video'; });
+            await db.upsert(rows);
+          }
+        }
         const total = await db.count(src.id);
         const mark = Object.assign({}, found || {}, { last_fetched_at: stamp.toISOString(), last_ok_at: stamp.toISOString(), last_error: null, item_count: total });
         if (fresh.length) { mark.etag = null; mark.last_modified = null; }   // the next half-hourly read asks afresh, and tags what came in

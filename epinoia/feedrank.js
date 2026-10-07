@@ -1162,7 +1162,8 @@ const DATE_RES = [
 const words = s => String(s || '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 function seriesKey(it) {
   if (!it || !it.title) return null;
-  if (it.video_kind === 'full' || (it.video_kind === 'highlights' && it.game)) return null;
+  /* a whole game, a game's highlights and a press conference are each their own, never a series' episode */
+  if (it.video_kind === 'full' || it.video_kind === 'press' || (it.video_kind === 'highlights' && it.game)) return null;
   const t = String(it.title).normalize('NFKD').replace(/[̀-ͯ]/g, '').normalize('NFC').toLowerCase();   // accents off, kana whole
   let dated = false;
   const undate = s => DATE_RES.reduce((x, re) => x.replace(re, () => { dated = true; return ' '; }), s);

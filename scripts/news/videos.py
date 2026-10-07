@@ -3,13 +3,17 @@
 WHAT A VIDEO IS, from its title (classify):
     'highlights'  the title says so, in any of the leagues' languages: "Highlights", "Resumen", "Mejores momentos",
                   "Skrót meczu", "Höjdpunkter", "Kohokohdat", "Zusammenfassung", "Temps forts", "ハイライト" ...
+    'press'       a press conference, before or after a game: "Press conference", "Rueda de prensa", "Pressekonferenz",
+                  "Konferencja prasowa", "記者会見" ...
     'full'        a whole game: "Full game", "Partido completo", "LIVE", "En directo", "Livestream", "ライブ配信" ...
     'video'       anything else (an interview, a preview, a feature)
-A highlight word wins over a live word ("Highlights | LIVE from Tokyo" is highlights).
+A highlight word wins over a press word, and a press word over a live word ("Highlights | LIVE from Tokyo" is
+highlights, "LIVE: post-game press conference" a press conference).
 
 WHICH GAME (match_videos): the clubs the title names (ClubFinder, over the leagues the channel and the video are
 about), taken two at a time, best first; the pair that played each other at the right time is the game:
     highlights   tipped off up to six days before the video was published (never after: a preview is no highlight)
+    press        tipped off up to two days before it (after the game) or three days after it (the one before)
     full game    within four days either side (a stream is published when it is scheduled, a replay when uploaded)
 and among those (pick_game): a date the title gives must be the game's ("05/10/2026", "5 Oct", "10月5日"); then the
 soonest before the video went up (a highlight is posted within hours of the final buzzer), the one in the leagues
@@ -24,7 +28,8 @@ a phrase for nobody hides its words from every club. What was found and where th
 video (match_clubs, match_note) for the console to show.
 
 WHAT IT BECOMES (the channel's news_sources.video_mode):
-    'highlights'  a matched video is the game's highlights, unless its title says it is the whole game
+    'highlights'  a matched video is the game's highlights, unless its title says it is the whole game (a press
+                  conference is a press conference on either mode: the game page plays it after the game's others)
     'seeking'     a matched video is the game's broadcast (unless its title says highlights), and becomes the
                   game's primary video when the game has none - the game page then seeks it to each play once its
                   clock is read, as it does for a stream the ingest found
@@ -43,6 +48,7 @@ RETRY_DAYS = 10
 GAP_RETRY = timedelta(hours=3)
 HIGHLIGHT_WINDOW = (timedelta(days=6), timedelta(hours=1))      # (before publication, after it)
 FULL_WINDOW = (timedelta(days=4), timedelta(days=4))
+PRESS_WINDOW = (timedelta(days=2), timedelta(days=3))
 MAX_PAIRS = 6
 
 
@@ -115,6 +121,17 @@ FULL_WORDS = [
     "ζωντανα", "πληρης αγωνας", "на живо", "цял мач",
 ]
 FULL_CJK = ["ライブ", "生中継", "生配信", "フルマッチ", "配信", "생중계", "직캐", "直播", "全场", "全場"]
+PRESS_WORDS = [
+    "press conference", "press conferences", "presser", "post game press", "postgame press", "pre game press",
+    "pregame press", "rueda de prensa", "conferencia de prensa", "conferencia de imprensa", "entrevista coletiva", "conference de presse",
+    "pressekonferenz", "conferenza stampa", "konferencja prasowa", "presskonferens", "pressekonferanse", "pressemode",
+    "lehdistotilaisuus", "persconferentie", "tiskovna konferencija", "tiskova konferenca", "basin toplantisi", "spaudos konferencija",
+    "pressikonverents", "preses konference", "sajtotajekoztato", "conferinta de presa", "συνεντευξη τυπου", "пресс конференция",
+    "прес конференция", "пресконференција", "пресконференция",
+]
+PRESS_CJK = [
+    "記者会見", "会見", "기자회견", "发布会", "新闻发布会", "記者會", "记者会",
+]
 NOT_A_GAME_WORDS = [
     "press conference", "post game press", "postgame press", "rueda de prensa", "conferencia de prensa", "entrevista",
     "interview", "interviews", "preview", "previa", "avance", "trailer", "podcast", "behind the scenes", "vlog",
@@ -132,9 +149,23 @@ def classify(title: str | None) -> str:
     F = wide_fold(title)
     if _has(F, HIGHLIGHT_WORDS, HIGHLIGHT_CJK):
         return "highlights"
+    if _has(F, PRESS_WORDS, PRESS_CJK):
+        return "press"
     if _has(F, FULL_WORDS, FULL_CJK):
         return "full"
     return "video"
+
+
+def title_passes(title: str | None, include=None, exclude=None) -> bool:
+    """A SOURCE'S TITLE FILTER (0246, news_title_passes): KEEP ONLY a title with one of `include` (none: every title),
+    NEVER one with any of `exclude`; a word or a phrase found as words, whatever the case and the accents
+    ("betclic elite" finds "Betclic ÉLITE | Paris - Monaco", never "elitebasket")"""
+    F = wide_fold(title)
+    inc = [w for w in (wide_fold(x).strip() for x in (include or [])) if w]
+    exc = [w for w in (wide_fold(x).strip() for x in (exclude or [])) if w]
+    if inc and not any(" " + w + " " in F for w in inc):
+        return False
+    return not any(" " + w + " " in F for w in exc)
 
 
 def not_a_game(title: str | None) -> bool:
@@ -390,7 +421,7 @@ def pick_game(games: list[dict], published: datetime, kind: str, title: str | No
         within hours: a day later costs a point, six days later almost three), its league among the video's
         leagues (the channel's, the ones it is tagged with) +2, its competition named by the title +1.5, a cup game
         under a title that names no cup -1; and a title that names a cup is never a league game's."""
-    before, after = HIGHLIGHT_WINDOW if kind == "highlights" else FULL_WINDOW
+    before, after = HIGHLIGHT_WINDOW if kind == "highlights" else PRESS_WINDOW if kind == "press" else FULL_WINDOW
     days = title_dates(title, published) if title else set()
     best, best_s = None, None
     for g in games or []:
@@ -407,7 +438,7 @@ def pick_game(games: list[dict], published: datetime, kind: str, title: str | No
         if cname and set(wide_fold(title).split()) & CUP_WORDS and not set(wide_fold(cname).split()) & CUP_WORDS and ckind != "cup":
             continue                                   # a cup's highlights are of no league game (the cup may not be here at all)
         gap_h = abs((published - t).total_seconds()) / 3600
-        score = -min(gap_h, 24 * 7) / 24 * (1.0 if kind == "highlights" else 0.5)
+        score = -min(gap_h, 24 * 7) / 24 * (1.0 if kind in ("highlights", "press") else 0.5)
         lg = str(((comp.get("seasons") or {}).get("league_id")) or g.get("league_id") or "")
         if leagues and lg and lg in leagues:
             score += 2.0
@@ -418,11 +449,13 @@ def pick_game(games: list[dict], published: datetime, kind: str, title: str | No
 
 
 def outcome(classified: str, mode: str) -> str | None:
-    """what a matched video becomes on a channel in `mode`: 'highlights', 'full', or None (left alone)"""
+    """what a matched video becomes on a channel in `mode`: 'highlights', 'press', 'full', or None (left alone)"""
     if mode == "off":
         return None
     if classified == "highlights":
         return "highlights"
+    if classified == "press":
+        return "press"
     if classified == "full":
         return "full"
     return "highlights" if mode == "highlights" else "full"
@@ -447,18 +480,37 @@ def playlist_of(feed_url: str | None) -> str | None:
     return m.group(1) if m else None
 
 
+def is_short(url: str | None) -> bool:
+    """a YouTube Short (a vertical clip): its feed's link is a /shorts/ address. The site takes none of them."""
+    return bool(re.search(r"^https?://(www\.|m\.)?youtube\.com/shorts/", url or "", re.I))
+
+
+def shorts_of(pl: str, key: str, get_json) -> set:
+    """the ids of a channel's newest Shorts: YouTube keeps them in a playlist of their own beside its uploads (UU... is
+    every upload, UUSH... the Shorts alone). One more read of the API's cheapest kind; a channel with none answers
+    'not found', and nothing is taken out."""
+    if not pl or not pl.startswith("UU") or pl.startswith("UUSH"):
+        return set()
+    try:
+        j = get_json(YT_API + "playlistItems?part=contentDetails&maxResults=50&playlistId=UUSH%s&key=%s" % (pl[2:], key))
+    except Exception:
+        return set()
+    return {(it.get("contentDetails") or {}).get("videoId") for it in (j or {}).get("items") or []} - {None}
+
+
 def api_items(feed_url: str, key: str, get_json, now: datetime | None = None) -> list[dict]:
-    """parse_feed's items for a channel's (or playlist's) newest uploads, read with the Data API"""
+    """parse_feed's items for a channel's (or playlist's) newest uploads, read with the Data API; its Shorts left out"""
     pl = playlist_of(feed_url)
     if not pl or not key:
         return []
     j = get_json(YT_API + "playlistItems?part=snippet,contentDetails&maxResults=15&playlistId=%s&key=%s" % (pl, key))
+    shorts = shorts_of(pl, key, get_json) if (j or {}).get("items") else set()
     out = []
     for it in (j or {}).get("items") or []:
         sn, cd = it.get("snippet") or {}, it.get("contentDetails") or {}
         vid = cd.get("videoId") or ((sn.get("resourceId") or {}).get("videoId"))
         title = (sn.get("title") or "").strip()
-        if not vid or not _ID.match(vid) or not title or title in ("Private video", "Deleted video"):
+        if not vid or not _ID.match(vid) or not title or title in ("Private video", "Deleted video") or vid in shorts:
             continue
         th = sn.get("thumbnails") or {}
         img = next(((th.get(k) or {}).get("url") for k in ("high", "medium", "standard", "default") if (th.get(k) or {}).get("url")), None)
@@ -527,7 +579,7 @@ def note_of(becomes: str | None, found: list, game: dict | None) -> str:
 def match_videos(db, now: datetime | None = None, log=print, dry_run: bool = False) -> dict:
     """The pass: every video of the last RETRY_DAYS with no game, not locked, not tried in GAP_RETRY."""
     now = now or datetime.now(timezone.utc)
-    done = {"tried": 0, "matched": 0, "highlights": 0, "full": 0, "attached": 0}
+    done = {"tried": 0, "matched": 0, "highlights": 0, "full": 0, "press": 0, "attached": 0}
     try:
         items = db.videos_to_match(now - timedelta(days=RETRY_DAYS), now - GAP_RETRY)
     except Exception as e:
@@ -546,6 +598,11 @@ def match_videos(db, now: datetime | None = None, log=print, dry_run: bool = Fal
         except Exception as e:
             log("  (videos: the channels' club names not read: %s)" % e)
     games_cache: dict = {}
+    # a press conference is a kind of its own once 0244 is applied; before it, a video on no game as it always was
+    try:
+        press_on = bool(getattr(db, "has_press_kind", None)) and db.has_press_kind()
+    except Exception:
+        press_on = False
     for it in items:
         src = sources.get(str(it["source_id"])) or {}
         mode = src.get("video_mode") or "highlights"
@@ -555,7 +612,9 @@ def match_videos(db, now: datetime | None = None, log=print, dry_run: bool = Fal
         title = it.get("title") or ""
         patch = {"matched_at": now.isoformat()}
         kind = classify(title)
-        if not_a_game(title) and kind != "highlights":
+        if kind == "press" and not press_on:
+            kind = "video"
+        if not_a_game(title) and kind not in ("highlights", "press"):
             kind = None
         game = None
         becomes = outcome(kind, mode) if kind else None
@@ -582,8 +641,10 @@ def match_videos(db, now: datetime | None = None, log=print, dry_run: bool = Fal
         if game:
             patch.update({"game_id": game["id"], "video_kind": becomes})
             done["matched"] += 1
-            done["highlights" if becomes == "highlights" else "full"] += 1
+            done[becomes if becomes in ("highlights", "press") else "full"] += 1
             log("    ~ video %s -> %s game %s" % (title[:60], becomes, game["id"]))
+        elif kind == "press":
+            patch["video_kind"] = "press"                 # a press conference on no game is still one (HOME's PRESS)
         if notes_on:
             patch["match_clubs"] = [t for t, _ in found][:6]
             patch["match_note"] = note_of(becomes, found, game)
@@ -602,6 +663,6 @@ def match_videos(db, now: datetime | None = None, log=print, dry_run: bool = Fal
             except Exception as e:
                 log("  (videos: broadcast not attached: %s)" % e)
     if done["tried"]:
-        log("videos: %(tried)d looked at, %(matched)d put on a game (%(highlights)d highlights, %(full)d full games), "
+        log("videos: %(tried)d looked at, %(matched)d put on a game (%(highlights)d highlights, %(full)d full games, %(press)d press conferences), "
             "%(attached)d attached for seeking" % done)
     return done

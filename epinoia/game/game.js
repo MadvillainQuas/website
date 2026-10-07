@@ -209,6 +209,14 @@ async function loadStored() {
      the engine reads as everyone on the floor having played all of it: two minutes into the
      first quarter the starters read ten minutes each, and kept them until the next play was
      logged, because a clock alone never redraws the tables (reported 2026-09-23). */
+  /* THE GAME'S VIDEOS FROM THE CHANNELS (0237 game_highlights; 0244 adds its whole game and its press conferences): the
+     video tab plays them as one list beside the game's own video. Asked beside the log, so the page waits for nothing
+     more; a game not played yet has none. */
+  const clipsP = (g.status === 'final' || g.status === 'live' || g.status === 'finalising')
+    ? api('rpc/game_highlights?p_game=' + encodeURIComponent(gameId))
+        .then(rows => (Array.isArray(rows) ? rows : []).filter(x => x && /^[A-Za-z0-9_-]{6,20}$/.test(x.video_id || '')))
+        .catch(() => [])
+    : Promise.resolve([]);
   const [events, state] = await Promise.all([
     fetchLog(g.status === 'final'),
     g.status === 'live'
@@ -271,6 +279,7 @@ async function loadStored() {
     leagueId: league.id || null,
     venue: g.venue,
     video: video,
+    clips: await clipsP,
     /* The scoresheet's context, in the shape matchDetailsHTML reads on both
        sides — the scorer keeps the same object on its own S, so one renderer
        serves the statistician's screen and the public page. */
@@ -478,7 +487,7 @@ const BODIES = {
   /* Rendered rather than returned as a string: the video tab owns a player, a
      set of filters and a scroll position, and handing back HTML for the page
      to insert would throw all three away on every redraw. */
-  video:   () => '<div id="vidHost"></div>'
+  video:   () => '<div id="vidClips"></div><div id="vidHost"></div>'
 };
 /* ---------------------------------------------------------- the squads ---
    Beneath the report's headline: two rows of circles a side -- the five starters on one row,
@@ -734,7 +743,7 @@ function tabsFor(status) {
     : atHalf(S) ? [['halftime', 'half-time report']].concat(TABS)
     : TABS;
   const v = S && S.video;
-  return (v && (v.url || v.live_src)) ? base.concat([['video', 'video']]) : base;
+  return ((v && (v.url || v.live_src)) || (S && S.clips && S.clips.length)) ? base.concat([['video', 'video']]) : base;
 }
 
 /* IS IT HALF-TIME? The same rule notify_halftime (0124) uses to send the half-time notice, so
@@ -2360,7 +2369,7 @@ function dressHead(el, d) {
     /* WHERE TO WATCH (watch.js), under the state plate and above the downloads; the head is redrawn on every update, so
        it is put back each time */
     if (window.EpinoiaWatch && S.leagueSlug && !mid.querySelector('.ep-watch')) {
-      const w = window.EpinoiaWatch.pill(S.leagueSlug, { big: true });
+      const w = window.EpinoiaWatch.pill(S.leagueSlug, { big: true, game: gameId, here: watchHere });
       if (w) {
         w.classList.add('bt-watch');
         const sheet = mid.querySelector('#csSheet');
@@ -2536,9 +2545,10 @@ function mountPBP(el, d) {
    the right list rather than on all four hundred plays of the game. */
 function mountVideo(d) {
   const S = window.S;
+  mountClips();
   if (!S || !S.video || !window.EpinoiaVideoTab) {
     const host = document.getElementById('vidHost');
-    if (host) host.innerHTML = '<div class="msg">No video is attached to this game.</div>';
+    if (host) host.innerHTML = S && S.clips && S.clips.length ? '' : '<div class="msg">No video is attached to this game.</div>';
     return;
   }
   const qp2 = new URLSearchParams(location.search);
@@ -2582,6 +2592,80 @@ window.addEventListener('epinoia:watchrun', e => {
   const host = document.getElementById('vidHost');
   if (host && host.scrollIntoView) host.scrollIntoView({ block: 'start', behavior: 'smooth' });
 });
+
+/* THIS GAME'S VIDEOS, AS ONE LIST (media.js stagePlayer, loaded the first time the tab opens): its highlights, its whole
+   game, its press conferences - a press plays it in the site's cinema player, and when it ends the next one plays -
+   over the game's own video, which seeks to each play. Drawn again only when the list itself changes, so a live
+   game's redraws never stop what is playing. */
+let clipsDrawn = '', mediaP = null;
+function mediaKit() {
+  if (window.EpinoiaMedia) return Promise.resolve(window.EpinoiaMedia);
+  if (mediaP) return mediaP;
+  const me = Array.from(document.scripts).find(x => /\/game\/game\.js(\?|$)/.test(x.src || ''));
+  const v = (/[?&]v=(\d+)/.exec((me && me.src) || '') || [])[1];
+  mediaP = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = '../media.js' + (v ? '?v=' + v : '');
+    sc.onload = () => (window.EpinoiaMedia ? res(window.EpinoiaMedia) : rej(new Error('no media.js')));
+    sc.onerror = () => { mediaP = null; rej(new Error('could not load media.js')); };
+    document.head.appendChild(sc);
+  });
+  return mediaP;
+}
+async function mountClips() {
+  const S = window.S, box = document.getElementById('vidClips');
+  if (!box) return;
+  const list = (S && S.clips) || [];
+  const key = list.map(x => x.id).join();
+  if (!list.length) { box.textContent = ''; clipsDrawn = ''; return; }
+  if (key === clipsDrawn && box.firstChild) return;
+  clipsDrawn = key;
+  let M;
+  try { M = await mediaKit(); } catch (_) { clipsDrawn = ''; return; }
+  if (!box.isConnected || clipsDrawn !== key) return;
+  M.css('kit/media.css');
+  box.textContent = '';
+  box.className = 'vid-clips';
+  const head = document.createElement('div');
+  head.className = 'vid-clips-h';
+  const kinds = [...new Set(list.map(x => x.video_kind))];
+  const NAME = { highlights: 'highlights', full: 'the whole game', press: 'press conferences', video: 'videos' };
+  head.innerHTML = '<b>THIS GAME\u2019S VIDEOS</b><span>' + B.esc(kinds.map(k => NAME[k] || 'videos').join(' \u00b7 ')) + ' \u00b7 one after another</span>';
+  const stage = document.createElement('div');
+  stage.className = 'md-stage';
+  stage.hidden = true;
+  const grid = document.createElement('div');
+  grid.className = 'md-grid vid-clips-g';
+  const rows = list.map(x => ({ kind: 'channel', id: x.id, title: x.title, url: x.url, image_url: x.image_url, published_at: x.published_at,
+    source_name: x.source_name, source_logo: x.source_logo, source_slug: x.source_slug, video_id: x.video_id, video_kind: x.video_kind,
+    piece_kind: 'youtube', game: null }));
+  let playing = null;
+  const paint = () => {
+    grid.textContent = '';
+    rows.forEach((it, i) => {
+      const t = M.tile(it, x => sp.go(x), false, { no: i + 1, of: rows.length });
+      if (playing && playing.id === it.id) t.setAttribute('aria-current', 'true');
+      grid.appendChild(t);
+    });
+  };
+  const sp = M.stagePlayer(stage, { list: () => rows, onClose: () => { playing = null; paint(); }, onChange: it => { playing = it; paint(); } });
+  paint();
+  box.append(head, stage, grid);
+}
+
+/* WATCH HERE, from the where-to-watch card (watch.js): a game with its own video, or its channels' videos (highlights,
+   the whole game, press conferences), plays them on this page's video tab; one with none goes on to HOME's VIDEO
+   view (false) */
+function watchHere() {
+  if (!window.S || !(window.S.video || (window.S.clips && window.S.clips.length))) return false;
+  fTab = 'video';
+  document.querySelectorAll('#view .tabbtn[data-tab]').forEach(x => x.classList.toggle('on', x.dataset.tab === 'video'));
+  lastBodyKey = '';
+  renderBody();
+  const host = document.getElementById(window.S.video ? 'vidHost' : 'vidClips');
+  if (host && host.scrollIntoView) host.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  return true;
+}
 
 /* WATCH VIDEO, FROM ONE PLAY (the events tab's after-timeout list). The same route as a
    shared ?vs= link; the video tab's filters are cleared first, because a play the current
@@ -3516,7 +3600,7 @@ async function renderPreview() {
 
   /* WHERE TO WATCH under the "vs", and WHO WINS? under the two clubs (watch.js, predict.js) */
   const wSlot = $('#view').querySelector('.pv-watch-slot');
-  const wPill = wSlot && window.EpinoiaWatch && S.leagueSlug ? window.EpinoiaWatch.pill(S.leagueSlug, { big: true }) : null;
+  const wPill = wSlot && window.EpinoiaWatch && S.leagueSlug ? window.EpinoiaWatch.pill(S.leagueSlug, { big: true, game: gameId, here: watchHere }) : null;
   if (wPill) wSlot.replaceWith(wPill); else if (wSlot) wSlot.remove();
   const pSlot = $('#view').querySelector('.pv-pred-slot');
   const pStrip = pSlot && window.EpinoiaPredict ? window.EpinoiaPredict.strip({

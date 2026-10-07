@@ -492,11 +492,31 @@ console.log('\na YouTube channel, found and read at once (the Data API, as the h
   /* THE WORDS ARE videos.py's OWN: read out of the Python file, compared list by list */
   const py = readFileSync(path.join(root, 'scripts', 'news', 'videos.py'), 'utf8');
   const pyList = name => { const m = new RegExp('^' + name + ' = \\[([^\\]]*)\\]', 'm').exec(py); return m ? [...m[1].matchAll(/"([^"]*)"/g)].map(x => x[1]) : null; };
-  const diff = ['HIGHLIGHT_WORDS', 'HIGHLIGHT_CJK', 'FULL_WORDS', 'FULL_CJK'].filter(n => JSON.stringify(pyList(n)) !== JSON.stringify(YT[n]));
+  const diff = ['HIGHLIGHT_WORDS', 'HIGHLIGHT_CJK', 'PRESS_WORDS', 'PRESS_CJK', 'FULL_WORDS', 'FULL_CJK'].filter(n => JSON.stringify(pyList(n)) !== JSON.stringify(YT[n]));
   ok("the kinds' words are videos.py's, list for list", diff.length === 0 && pyList('HIGHLIGHT_WORDS').length > 50, diff);
   ok('...and read the same way: highlights in any language, a live game, anything else a video, a word inside another no word',
      YT.classify('Resumen: Real Madrid - Barça') === 'highlights' && YT.classify('【ハイライト】千葉ジェッツ') === 'highlights' && YT.classify('Skrót meczu') === 'highlights'
-     && YT.classify('LIVE | Valencia vs Joventut') === 'full' && YT.classify('Meet our new point guard') === 'video' && YT.classify('Delivered to you') === 'video');
+     && YT.classify('LIVE | Valencia vs Joventut') === 'full' && YT.classify('Meet our new point guard') === 'video' && YT.classify('Delivered to you') === 'video'
+     && YT.classify('Post-game Press Conference | Bristol Flyers') === 'press' && YT.classify('LIVE: Rueda de prensa') === 'press'
+     && YT.classify('【記者会見】千葉ジェッツ') === 'press' && YT.classify('Highlights + press conference') === 'highlights');
+  {
+    const T = [['Résumé | Paris - Monaco | Betclic ÉLITE (J3)', ['Betclic Elite'], [], true], ['Ligue 1 : PSG - OM', ['Betclic Elite'], [], false],
+               ['Betclic ELITE Espoirs : Paris - Monaco', ['betclic elite'], ['Espoirs'], false], ['Anything at all', [], [], true],
+               ['Visit elitebasket.fr', ['elite'], [], false], ['Pro B | Rouen - Fos', [], ['Pro B'], false]];
+    const py = T.map(([t, i, e]) => t);   // the same cases are held in videos_test.py
+    ok("a source's title filter: KEEP ONLY one of, NEVER any of, as words, whatever the case and the accents (videos.py title_passes' twin)",
+       T.every(([t, i, e, want]) => YT.titlePasses(t, i, e) === want) && py.length === 6, T.map(([t, i, e]) => YT.titlePasses(t, i, e)));
+  }
+  {
+    const asked = [];
+    const gj = async u => { asked.push(u); if (/playlistId=UUSH/.test(u)) return { items: [{ contentDetails: { videoId: 'sssssssssss' } }] };
+      return { items: [{ snippet: { title: 'A game', publishedAt: '2026-10-05T10:00:00Z' }, contentDetails: { videoId: 'bbbbbbbbbbb' } },
+                       { snippet: { title: 'Dunk #shorts', publishedAt: '2026-10-05T11:00:00Z' }, contentDetails: { videoId: 'sssssssssss' } }] }; };
+    const got = await YT.apiItems('https://www.youtube.com/feeds/videos.xml?channel_id=UCabcdefghijklmnopqrstuv', 'K', gj);
+    ok("a YouTube Short is never read: the channel's Shorts (UUSH...) left out of its uploads; a feed's /shorts/ link is one (videos.py's twins)",
+       got.map(x => x.guid).join() === 'yt:video:bbbbbbbbbbb' && asked.length === 2 && /playlistId=UUSHabcdefghijklmnopqrstuv/.test(asked[1])
+       && YT.isShort('https://www.youtube.com/shorts/sssssssssss') && !YT.isShort('https://www.youtube.com/watch?v=sssssssssss'), { got, asked });
+  }
   ok('the video id from a watch link, a short link, a short, the feed\'s guid; nothing from anything else',
      YT.videoIdOf('https://www.youtube.com/watch?v=dQw4w9WgXcQ') === 'dQw4w9WgXcQ' && YT.videoIdOf('https://youtu.be/dQw4w9WgXcQ') === 'dQw4w9WgXcQ'
      && YT.videoIdOf('https://www.youtube.com/shorts/dQw4w9WgXcQ') === 'dQw4w9WgXcQ' && YT.videoIdOf(null, 'yt:video:dQw4w9WgXcQ') === 'dQw4w9WgXcQ'

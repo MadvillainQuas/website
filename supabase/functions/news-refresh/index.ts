@@ -48,6 +48,7 @@ Deno.serve(async (req: Request) => {
 
 /* ------------------------------------------------------------------ wiring -- */
 const SOURCE_COLS = 'id,slug,name,feed_url,league_id,enabled,resolve_from,name_auto,logo_url,site_url';
+const FILTER_COLS = ',title_include,title_exclude';
 
 /* the addresses a name resolves to, to refuse one that resolves to a private address. Null: this runtime cannot say (the
    literal address checks and the redirect checks still hold); set NEWS_REFRESH_DNS_STRICT=1 to refuse then instead. */
@@ -88,13 +89,16 @@ const handle = createHandler({
     return !error && data === true;
   },
   db: {
+    /* with the title filter (0246); before it, without */
     source: async (slug: string) => {
-      const { data } = await admin.from('news_sources').select(SOURCE_COLS).eq('slug', slug).maybeSingle();
-      return data || null;
+      let r = await admin.from('news_sources').select(SOURCE_COLS + FILTER_COLS).eq('slug', slug).maybeSingle();
+      if (r.error) r = await admin.from('news_sources').select(SOURCE_COLS).eq('slug', slug).maybeSingle();
+      return r.data || null;
     },
     sources: async () => {
-      const { data } = await admin.from('news_sources').select(SOURCE_COLS).eq('enabled', true).order('name');
-      return data || [];
+      let r = await admin.from('news_sources').select(SOURCE_COLS + FILTER_COLS).eq('enabled', true).order('name');
+      if (r.error) r = await admin.from('news_sources').select(SOURCE_COLS).eq('enabled', true).order('name');
+      return r.data || [];
     },
     existing: async (sourceId: string, guids: string[]) => {
       const { data, error } = await admin.from('news_items').select('guid,url,title,summary,image_url,author,tags')

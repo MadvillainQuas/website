@@ -71,9 +71,15 @@
     const screen = el('div', 'vh-screen');
     const bug = el('div', 'vh-bug');
     const box = el('div', 'vh-box');
-    tMain.append(screen, bug, box);
+    /* the arrow down to the box score, hanging from the foot of the stream (media.js boxCue); the box score itself
+       across the whole theatre under the stream and the chat, where it has the room to fit the screen */
+    tMain.append(screen, bug, M.boxCue ? M.boxCue(box) : el('div'));
     const side = el('aside', 'vh-chat');
-    theatre.append(tMain, side);
+    /* the stream and the chat a row of their own, so the chat stays beside the stream as the page scrolls and stops
+       there: it never rides over the box score under them */
+    const tTop = el('div', 'vh-ttop');
+    tTop.append(tMain, side);
+    theatre.append(tTop, box);
     const none = el('div', 'vh-none');
     none.hidden = true;
     none.innerHTML = '<div class="vh-bars" aria-hidden="true"></div><div class="vh-none-t"><b></b><span></span></div>';
@@ -156,7 +162,7 @@
       stream(g);
       drawBug(g);
       box.textContent = '';
-      st.boxer = M.embedGame(box, g.id, { theme: 'dark' });
+      st.boxer = M.embedGame(box, g.id, { theme: 'dark', fit: true });
       side.textContent = '';
       side.hidden = !g.chat;
       theatre.classList.toggle('no-chat', !g.chat);
@@ -206,11 +212,28 @@
     const grid = el('div', 'md-grid has-hero');
     const more = el('button', 'ep-btn md-more', tr('Show more'));
     more.type = 'button'; more.hidden = true;
-    vids.append(vh, stage, grid, more);
+    /* THE LEAGUES WITH HIGHLIGHTS, on HIGHLIGHTS: a strip that scrolls sideways, a button for each league (its logo, its
+       name, how many), the reader's own first - the leagues they follow, then the ones they read most (feedrank.js, on this
+       device) - then the newest. A press shows that league's highlights alone; ALL LEAGUES, or the same press again, all of
+       them. 0244 video_leagues; before it, the leagues of the highlights already read. */
+    const lgs = el('div', 'vh-lgs');
+    lgs.hidden = true;
+    const lgPrev = el('button', 'vh-lgs-arrow prev');
+    lgPrev.type = 'button'; lgPrev.setAttribute('aria-label', tr('Earlier leagues'));
+    const lgNext = el('button', 'vh-lgs-arrow next');
+    lgNext.type = 'button'; lgNext.setAttribute('aria-label', tr('More leagues'));
+    const lgRow = el('div', 'vh-lgs-row');
+    lgRow.setAttribute('role', 'group');
+    lgRow.setAttribute('aria-label', tr('Leagues with highlights'));
+    lgs.append(lgPrev, lgRow, lgNext);
+    vids.append(vh, lgs, stage, grid, more);
     wrap.append(live, vids);
     host.appendChild(wrap);
 
-    let kind = null, rows = [], shown = STEP, playing = null;
+    /* the leagues' strip is over HIGHLIGHTS and FULL GAMES (each kind its own leagues, read once) */
+    const STRIP = { highlights: 1, full: 1, press: 1 };
+    let kind = null, rows = [], shown = STEP, playing = null, league = null, followedLg = new Set();
+    const leaguesBy = {};
     const R = () => window.EpinoiaFeedRank;
     st.sp = M.stagePlayer(stage, {
       dark: true,
@@ -222,24 +245,149 @@
         try { const F = R(); if (F && typeof F.opened === 'function') F.opened(it); } catch (_) { /* never in the way */ }
       }
     });
-    [['All', null], ['Highlights', 'highlights'], ['Videos', 'video']].forEach(([label, k]) => {
+    /* FULL GAMES: whole games already played - a channel's broadcasts and streams kept after they ended ("LIVE: ...",
+       "Full game"), and the games' own streams (0244 video_full_games) */
+    /* PRESS CONFERENCES: before a game and after it, each on the game it is about where the matcher found it (0244) */
+    [['All', null], ['Highlights', 'highlights'], ['Full games', 'full'], ['Press conferences', 'press'], ['Videos', 'video']].forEach(([label, k]) => {
       const b = el('button', 'md-chip', tr(label));
       b.type = 'button';
+      if (k) b.dataset.kind = k;
       b.setAttribute('aria-pressed', String(k === kind));
       b.addEventListener('click', () => {
         if (k === kind) return;
         kind = k;
+        league = null;
         seg.querySelectorAll('.md-chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-        loadVideos();
+        if (!STRIP[kind]) lgs.hidden = true;
+        loadVideos().then(showLeagues);
       });
       seg.appendChild(b);
     });
-    /* WHAT IS SHOWN: the reader's follows first, then everything else, each in the feed's own order */
+    /* ---- the leagues' strip ---- */
+    const HEXC = /^#?[0-9a-f]{6}$/i;
+    async function rankLeagues(list) {
+      followedLg = new Set();
+      try {
+        const F = window.EpinoiaFollow, s = F && F.session ? F.session() : null;
+        if (s && s.token && typeof F.load === 'function') { const pr = await F.load(); ((pr && pr.fav_league_ids) || []).forEach(id => followedLg.add(id)); }
+      } catch (_) { /* signed out */ }
+      const pts = {};
+      try {
+        const FR = R();
+        if (FR && FR.enabled && FR.enabled() && FR.store && FR.decay) {
+          const l = FR.store().profile().l || {}, now = Date.now();
+          Object.keys(l).forEach(k => { pts[k] = FR.decay(l[k], now); });
+        }
+      } catch (_) { /* nothing learned */ }
+      return list.slice().sort((a, b) => (Number(followedLg.has(b.id)) - Number(followedLg.has(a.id)))
+        || ((pts[b.slug] || 0) - (pts[a.slug] || 0)) || ((Date.parse(b.newest) || 0) - (Date.parse(a.newest) || 0)));
+    }
+    async function readLeagues(k) {
+      let list = await rpc('video_leagues', { p_kind: k });
+      if (!Array.isArray(list)) {
+        /* before 0244: the leagues of the videos already read */
+        const by = new Map();
+        rows.forEach(r => { const sl = r.league_slug; if (!sl) return; const e = by.get(sl) || { id: null, slug: sl, name: r.league_name || sl, logo: null, colour: null, videos: 0, newest: r.published_at }; e.videos++; by.set(sl, e); });
+        list = [...by.values()];
+      }
+      return rankLeagues(list.filter(l => l && l.slug && l.name));
+    }
+    function lgButton(l) {
+      const b = el('button', 'vh-lg' + (l ? '' : ' all'));
+      b.type = 'button';
+      const on = l ? !!league && league.slug === l.slug : !league;
+      b.setAttribute('aria-pressed', String(on));
+      const logo = el('span', 'vh-lg-logo');
+      if (l) {
+        if (HEXC.test(l.colour || '')) b.style.setProperty('--lg', l.colour.charAt(0) === '#' ? l.colour : '#' + l.colour);
+        const u = l.logo && typeof window.epinoiaLogoUrl === 'function' ? window.epinoiaLogoUrl(l.logo, 64) : null;
+        if (u) { const im = el('img'); im.src = u; im.alt = ''; im.loading = 'lazy'; im.decoding = 'async'; im.addEventListener('error', () => { im.remove(); logo.textContent = M.abbr({ name: l.name }); }); logo.appendChild(im); }
+        else logo.textContent = M.abbr({ name: l.name });
+        b.append(logo, el('span', 'vh-lg-n', l.name), el('span', 'vh-lg-c', String(l.videos || '')));
+        if (followedLg.has(l.id)) { b.classList.add('is-followed'); b.title = tr('You follow this league'); }
+      } else {
+        b.append(logo, el('span', 'vh-lg-n', tr('All leagues')));
+      }
+      b.addEventListener('click', () => {
+        const want = l && !(league && league.slug === l.slug) ? l : null;
+        if ((want && league && want.slug === league.slug) || (!want && !league)) return;
+        league = want;
+        drawLeagues();
+        loadVideos();
+      });
+      return b;
+    }
+    function drawLeagues() {
+      lgRow.textContent = '';
+      lgRow.appendChild(lgButton(null));
+      (leaguesBy[kind] || []).forEach(l => lgRow.appendChild(lgButton(l)));
+      requestAnimationFrame(arrows);
+    }
+    function arrows() {
+      const over = lgRow.scrollWidth > lgRow.clientWidth + 2;
+      lgPrev.hidden = !over || lgRow.scrollLeft < 4;
+      lgNext.hidden = !over || lgRow.scrollLeft + lgRow.clientWidth > lgRow.scrollWidth - 4;
+    }
+    lgRow.addEventListener('scroll', arrows, { passive: true });
+    window.addEventListener('resize', arrows);
+    st.timers.push(() => window.removeEventListener('resize', arrows));
+    const slide = dir => lgRow.scrollBy({ left: dir * lgRow.clientWidth * 0.8, behavior: 'smooth' });
+    lgPrev.addEventListener('click', () => slide(-1));
+    lgNext.addEventListener('click', () => slide(1));
+    const leaguesFor = async k => (leaguesBy[k] || (leaguesBy[k] = await readLeagues(k)));
+    async function showLeagues() {
+      const k = kind;
+      if (!STRIP[k]) { lgs.hidden = true; return; }
+      const list = await leaguesFor(k);
+      if (!st.alive || kind !== k) return;
+      lgs.hidden = !list.length;
+      lgRow.setAttribute('aria-label', tr(k === 'full' ? 'Leagues with full games' : k === 'press' ? 'Leagues with press conferences' : 'Leagues with highlights'));
+      drawLeagues();
+    }
+    function caption() {
+      vsub.textContent = league ? league.name + ' · ' + tr(kind === 'full' ? 'every full game, newest first in your order'
+        : kind === 'press' ? 'every press conference, newest first in your order' : 'every highlight, newest first in your order')
+        : tr('From what you follow first, then in your feed’s order');
+    }
+    /* the videos of a kind (of one league): FULL GAMES from video_full_games (before 0244: the full games among the
+       videos), the rest from video_feed */
+    async function fetchKind(k, lg) {
+      const one = lg && lg.id ? { p_league: lg.id } : {};
+      if (k === 'full') {
+        const got = await rpc('video_full_games', Object.assign({ p_limit: 60 }, one));
+        if (Array.isArray(got)) return got;
+        return ((await rpc('video_feed', Object.assign({ p_kind: 'video', p_limit: 60 }, one))) || []).filter(r => r.video_kind === 'full');
+      }
+      return rpc('video_feed', Object.assign({ p_kind: k, p_limit: 60 }, one));
+    }
+
+    /* WHAT IS SHOWN: the reader's follows first, then everything else, each in the feed's own order; one league's alone
+       when a league is chosen on the strip */
     async function read() {
+      caption();
+      if (league) {
+        const got = league.id ? await fetchKind(kind, league)
+          : ((await fetchKind(kind, null)) || []).filter(r => r.league_slug === league.slug);
+        const pool = M.uniq(got || []);
+        const FR = R();
+        let ranked = pool;
+        if (FR && typeof FR.rankRows === 'function') { try { ranked = (await FR.rankRows(pool, {})).rows; } catch (_) { /* newest first */ } }
+        return FR && typeof FR.latestEpisodes === 'function' ? FR.latestEpisodes(ranked) : ranked;
+      }
       const F = window.EpinoiaFollow, s = F && F.session ? F.session() : null;
-      const [all, mine] = await Promise.all([rpc('video_feed', { p_kind: kind, p_limit: 60 }),
+      const [all, mine0] = await Promise.all([fetchKind(kind, null),
         s && s.token ? rpc('video_feed_mine', { p_kind: kind, p_limit: 60 }, s.token) : Promise.resolve(null)]);
       if (!all) return [];
+      let mine = mine0;
+      /* FULL GAMES: a game's own stream is followed when its league is (the leagues' strip knows their ids) */
+      if (kind === 'full' && s && s.token) {
+        try {
+          const lg = await leaguesFor('full');
+          const fav = new Set(lg.filter(l => followedLg.has(l.id)).map(l => l.slug));
+          const have = new Set((mine || []).map(r => r.id));
+          mine = (mine || []).concat(all.filter(r => fav.has(r.league_slug) && !have.has(r.id)));
+        } catch (_) { /* in the feed's order */ }
+      }
       const pool = M.uniq((mine || []).concat(all));
       const FR = R();
       let ranked = pool;
@@ -253,7 +401,7 @@
     }
     function paint() {
       grid.textContent = '';
-      if (!rows.length) { grid.appendChild(el('div', 'md-empty', tr(kind === 'highlights' ? 'No highlights yet.' : 'No videos yet.'))); more.hidden = true; return; }
+      if (!rows.length) { grid.appendChild(el('div', 'md-empty', tr(kind === 'highlights' ? 'No highlights yet.' : kind === 'full' ? 'No full games yet.' : kind === 'press' ? 'No press conferences yet.' : 'No videos yet.'))); more.hidden = true; return; }
       rows.slice(0, shown).forEach((it, i) => {
         const t = M.tile(it, x => st.sp.go(x), i === 0, { no: i + 1, of: rows.length, dark: true });
         if (playing && playing.id === it.id) t.setAttribute('aria-current', 'true');
@@ -272,6 +420,31 @@
     more.addEventListener('click', () => { shown += STEP - 1; paint(); });
 
     await Promise.all([readLive(true), loadVideos()]);
+    /* OPENED ON ONE GAME (?view=video&play=<game>: WATCH HERE in a fixture's where-to-watch card, watch.js): streaming
+       now, it is LIVE's game; else its best video (its whole game, else its highlights: 0244 game_watch) plays on the
+       stage, first in the list */
+    const want = new URLSearchParams(location.search).get('play');
+    if (want && /^[0-9a-f-]{36}$/i.test(want) && st.alive) {
+      const g = games.find(x => x.id === want);
+      if (g) {
+        if (!chosen || chosen.id !== g.id) { chosen = g; drawGames(); enter(g); }
+        theatre.scrollIntoView({ block: 'start' });
+      } else {
+        const j = await rpc('game_watch', { p_game: want });
+        const v = j && j.video;
+        if (st.alive && v && /^[A-Za-z0-9_-]{6,20}$/.test(v.video_id || '')) {
+          const gj = j.game_json || null, lg = (gj && gj.league) || {};
+          const row = { kind: 'channel', id: v.id, title: v.title, url: 'https://www.youtube.com/watch?v=' + v.video_id, published_at: v.published_at,
+            source_name: v.source_name, league_slug: lg.slug || null, league_name: lg.name || null, piece_kind: 'youtube',
+            video_id: v.video_id, video_kind: v.kind === 'live' ? 'full' : v.kind, game: gj };
+          rows = [row].concat(rows.filter(r => r.video_id !== row.video_id));
+          shown = STEP;
+          paint();
+          st.sp.go(row);
+          vids.scrollIntoView({ block: 'start' });
+        }
+      }
+    }
     /* LIVE again every minute, while the view is open and seen */
     const iv = setInterval(() => { if (!document.hidden && st.alive) readLive(false); }, LIVE_EVERY);
     st.timers.push(() => clearInterval(iv));

@@ -71,6 +71,17 @@ export const HIGHLIGHT_WORDS = [
   'στιγμιοτυπα', 'περιληψη', 'highlights αγωνα', 'акценти', 'обзор', 'огляд', 'основни моменти'
 ];
 export const HIGHLIGHT_CJK = ['ハイライト', 'ダイジェスト', '하이라이트', '集锦', '精华', '精華', '集錦'];
+export const PRESS_WORDS = [
+  'press conference', 'press conferences', 'presser', 'post game press', 'postgame press', 'pre game press',
+  'pregame press', 'rueda de prensa', 'conferencia de prensa', 'conferencia de imprensa', 'entrevista coletiva', 'conference de presse',
+  'pressekonferenz', 'conferenza stampa', 'konferencja prasowa', 'presskonferens', 'pressekonferanse', 'pressemode',
+  'lehdistotilaisuus', 'persconferentie', 'tiskovna konferencija', 'tiskova konferenca', 'basin toplantisi', 'spaudos konferencija',
+  'pressikonverents', 'preses konference', 'sajtotajekoztato', 'conferinta de presa', 'συνεντευξη τυπου', 'пресс конференция',
+  'прес конференция', 'пресконференција', 'пресконференция'
+];
+export const PRESS_CJK = [
+  '記者会見', '会見', '기자회견', '发布会', '新闻发布会', '記者會', '记者会'
+];
 export const FULL_WORDS = [
   'full game', 'full match', 'full broadcast', 'whole game', 'live', 'livestream', 'live stream', 'en vivo',
   'en directo', 'directo', 'partido completo', 'retransmision', 'transmision', 'jogo completo', 'ao vivo',
@@ -80,26 +91,49 @@ export const FULL_WORDS = [
   'ζωντανα', 'πληρης αγωνας', 'на живо', 'цял мач'
 ];
 export const FULL_CJK = ['ライブ', '生中継', '生配信', 'フルマッチ', '配信', '생중계', '직캐', '直播', '全场', '全場'];
+/* A SOURCE'S TITLE FILTER (0246 news_title_passes; videos.py title_passes): KEEP ONLY a title with one of `include`
+   (none: every title), NEVER one with any of `exclude`; found as words, whatever the case and the accents */
+export function titlePasses(title, include, exclude) {
+  const F = wideFold(title);
+  const ws = l => (Array.isArray(l) ? l : []).map(x => wideFold(x).trim()).filter(Boolean);
+  const inc = ws(include), exc = ws(exclude);
+  if (inc.length && !inc.some(w => F.includes(' ' + w + ' '))) return false;
+  return !exc.some(w => F.includes(' ' + w + ' '));
+}
 const has = (F, words, cjk) => words.some(w => F.includes(' ' + w + ' ')) || cjk.some(c => F.includes(c));
 export function classify(title) {
   const F = wideFold(title);
   if (has(F, HIGHLIGHT_WORDS, HIGHLIGHT_CJK)) return 'highlights';
+  if (has(F, PRESS_WORDS, PRESS_CJK)) return 'press';
   if (has(F, FULL_WORDS, FULL_CJK)) return 'full';
   return 'video';
 }
 
 /* ----------------------------------------------------------------------------------- the YouTube Data API --- */
 /* the reader's items (newsfeed.js parseFeed's shape) for a channel's or a playlist's newest uploads: videos.py api_items */
+/* A YOUTUBE SHORT (a vertical clip): its feed's link is a /shorts/ address. The site takes none of them (videos.py
+   is_short). */
+export const isShort = url => /^https?:\/\/(www\.|m\.)?youtube\.com\/shorts\//i.test(String(url || ''));
+/* the ids of a channel's newest Shorts: YouTube keeps them in a playlist of their own beside its uploads (UU... is every
+   upload, UUSH... the Shorts alone); a channel with none answers 'not found', and nothing is taken out (shorts_of) */
+export async function shortsOf(pl, key, getJson) {
+  if (!pl || !/^UU/.test(pl) || /^UUSH/.test(pl)) return new Set();
+  try {
+    const j = await getJson(YT_API + 'playlistItems?part=contentDetails&maxResults=50&playlistId=UUSH' + encodeURIComponent(pl.slice(2)) + '&key=' + encodeURIComponent(key));
+    return new Set(((j && j.items) || []).map(it => (it.contentDetails || {}).videoId).filter(Boolean));
+  } catch (_) { return new Set(); }
+}
 export async function apiItems(feedUrl, key, getJson, now) {
   const pl = playlistOf(feedUrl);
   if (!pl || !key) return [];
   const j = await getJson(YT_API + 'playlistItems?part=snippet,contentDetails&maxResults=15&playlistId=' + encodeURIComponent(pl) + '&key=' + encodeURIComponent(key));
+  const shorts = j && (j.items || []).length ? await shortsOf(pl, key, getJson) : new Set();
   const out = [];
   for (const it of (j && j.items) || []) {
     const sn = it.snippet || {}, cd = it.contentDetails || {};
     const vid = cd.videoId || (sn.resourceId || {}).videoId;
     const title = String(sn.title || '').trim();
-    if (!vid || !ID.test(vid) || !title || title === 'Private video' || title === 'Deleted video') continue;
+    if (!vid || !ID.test(vid) || !title || title === 'Private video' || title === 'Deleted video' || shorts.has(vid)) continue;
     const th = sn.thumbnails || {};
     const img = ['high', 'medium', 'standard', 'default'].map(k => (th[k] || {}).url).find(Boolean) || null;
     const desc = String(sn.description || '').replace(/\s+/g, ' ').trim();

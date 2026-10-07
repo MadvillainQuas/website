@@ -173,7 +173,7 @@ if (!loaded || !loaded.db) {
 /* --------------------------------------------------------------------- the pages --- */
 console.log('\nthe pages');
 const gg = read('epinoia', 'globalgames.js');
-ok('the card puts the watch pill in its middle column, when watch.js is on the page', /root\.EpinoiaWatch && lgw && lgw\.slug \? root\.EpinoiaWatch\.pill\(lgw\.slug\)/.test(gg) && /body\.className \+= ' has-watch'/.test(gg));
+ok('the card puts the watch pill in its middle column, when watch.js is on the page', /root\.EpinoiaWatch && lgw && lgw\.slug \? root\.EpinoiaWatch\.pill\(lgw\.slug, \{ game: g\.id \}\)/.test(gg) && /body\.className \+= ' has-watch'/.test(gg));
 ok('...and the prediction strip under itself, when predict.js is', /root\.EpinoiaPredict\.strip\(g, \{ codes:/.test(gg) && /a\.classList\.add\('has-pred'\)/.test(gg));
 const fxc = read('epinoia', 'kit', 'fxc.css');
 ok('the strip hangs from the card, which keeps room under itself for it', /\.fxc\.has-pred\{overflow:visible;margin-bottom:\d+px\}/.test(fxc) && /\.fxc>\.fxc-pred\{position:absolute;top:100%/.test(fxc));
