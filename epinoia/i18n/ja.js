@@ -1871,7 +1871,16 @@
       'The highest score': '最多得点',
       'The fans’ record': 'ファン予想の的中率',
       'Unbeaten': '無敗',
-      'Not playing': '欠場中'
+      'Not playing': '欠場中',
+      'The play-offs': 'プレーオフ',
+      'The regular season': 'レギュラーシーズン',
+      'Out of it': '圏外確定',
+      'The sweep': '同一カード連勝',
+      'The split': '1勝1敗',
+      'The knockout': 'トーナメント',
+      'Qualifiers': '予選',
+      'Place secured': '進出圏確定',
+      'Into the next round': '次のラウンドへ'
     },
 
     ctx: {

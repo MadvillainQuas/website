@@ -110,7 +110,7 @@ const GAME_SELECT = 'id,home_team_id,away_team_id,home_score,away_score,tipoff_a
 
 async function readLeague(api, lg, o) {
   const log = o.log;
-  const seasons = await api.rest(`seasons?league_id=eq.${lg.id}&select=id,name,starts_on&order=starts_on.desc&limit=1`);
+  const seasons = await api.rest(`seasons?league_id=eq.${lg.id}&select=id,name,starts_on&order=starts_on.desc&limit=2`);
   const season = seasons && seasons[0];
   if (!season) return null;
   const comps = (await api.rest(`competitions?season_id=eq.${season.id}&select=*&order=name`)) || [];
@@ -121,6 +121,33 @@ async function readLeague(api, lg, o) {
   const nowIso = new Date(o.nowMs).toISOString(), until = new Date(o.nowMs + 21 * DAY).toISOString();
   const fixtures = (await api.rest(`games?competition_id=in.(${ids.join(',')})&status=eq.scheduled&tipoff_at=gte.${encodeURIComponent(nowIso)}` +
     `&tipoff_at=lte.${encodeURIComponent(until)}&select=id,home_team_id,away_team_id,tipoff_at,competition_id&order=tipoff_at&limit=300`)) || [];
+  /* THE REST OF THE REGULAR SEASON: every club's games still to play in the league competitions (two ids a row), for
+     how far through the season the league is and who can still catch whom */
+  const leagueIds = comps.filter(c => (c.kind || 'league') === 'league').map(c => c.id);
+  const rest = [];
+  if (leagueIds.length) {
+    const left = await api.restAll(`games?competition_id=in.(${leagueIds.join(',')})&status=in.(scheduled,live)&select=home_team_id,away_team_id,tipoff_at`).catch(() => null);
+    (left || []).forEach(g => rest.push({ h: g.home_team_id, a: g.away_team_id, at: g.tipoff_at }));
+  }
+  /* LAST SEASON'S PLAY-OFFS: how many clubs they took, when fewer than the league had (said as last season's, never as
+     this season's rule; a competition's own qualifiers number is used instead where it has one) */
+  let lastLine = null, lastTotal = null;
+  const prevSeason = seasons && seasons[1];
+  if (prevSeason) {
+    try {
+      const pc = (await api.rest(`competitions?season_id=eq.${prevSeason.id}&select=id,kind`)) || [];
+      const po = pc.filter(c => c.kind === 'playoff').map(c => c.id), lc = pc.filter(c => (c.kind || 'league') === 'league').map(c => c.id);
+      const st = lc.length ? (await api.rest(`standings?competition_id=in.(${lc.join(',')})&select=team_id,gp`)) || [] : [];
+      /* last season's games a club: how long a season here is, so a feed loading a fortnight ahead is not a run-in */
+      const gps = st.map(r => +r.gp || 0).filter(v => v > 0);
+      if (gps.length >= 4) lastTotal = Math.max(...gps);
+      if (po.length && lc.length && !(+leagueComp.qualifiers > 0)) {
+        const pg = (await api.rest(`games?competition_id=in.(${po.join(',')})&select=home_team_id,away_team_id&limit=500`)) || [];
+        const inPo = new Set(pg.flatMap(g => [g.home_team_id, g.away_team_id]).filter(Boolean)), inLg = new Set(st.map(r => r.team_id).filter(Boolean));
+        if (inPo.size >= 2 && inLg.size > inPo.size) lastLine = { n: inPo.size, of: inLg.size, season: prevSeason.name };
+      }
+    } catch (_) { lastLine = null; }
+  }
   const table = await api.rest(`standings?competition_id=eq.${leagueComp.id}&select=team_id,rank,gp,w,l,pts_for,pts_against,diff,league_points,group_name&order=group_name.asc.nullsfirst,rank.asc.nullslast`).catch(() => []);
   const teamIds = [...new Set(games.concat(fixtures).flatMap(g => [g.home_team_id, g.away_team_id]).concat((table || []).map(r => r.team_id)).filter(Boolean))];
   const teams = {};
@@ -163,8 +190,17 @@ async function readLeague(api, lg, o) {
       (rows || []).forEach(r => { tallies[r.game_id] = { home: +r.home || 0, away: +r.away || 0 }; });
     } catch (_) { tallies = {}; }
   }
-  log && log('  ' + lg.slug + ': ' + games.length + ' games, ' + fixtures.length + ' to come, ' + lines.length + ' player lines, ' + (model ? 'the league’s model' : 'fixed weights'));
-  return { season, comps, leagueComp, games, fixtures, table: { comp: leagueComp, rows: table || [] }, teams, lines, teamLines, names, model, tallies, players };
+  /* THE BRACKET, where the league keeps one: each knockout tie's legs, decider (a best of N, or two legs on aggregate)
+     and winner, so a two-legged tie is never read as a series of wins */
+  const poIds = comps.filter(c => c.kind === 'playoff').map(c => c.id);
+  const ties = poIds.length ? await api.rest(`bracket_ties?competition_id=in.(${poIds.join(',')})&is_bye=eq.false&select=competition_id,round,label,home_team_id,away_team_id,winner_team_id,home_agg,away_agg,legs,decider`).catch(() => []) : [];
+  /* the players a club has said have gone (player_releases): never "not playing" */
+  const released = teamIds.length ? await api.rest(`player_releases?team_id=in.(${teamIds.join(',')})&select=team_id,player_id`).catch(() => []) : [];
+  log && log('  ' + lg.slug + ': ' + games.length + ' games, ' + fixtures.length + ' to come, ' + lines.length + ' player lines, ' + (model ? 'the league’s model' : 'fixed weights') +
+    ', ' + rest.length + ' league games still to play' + (lastLine ? ', last season’s play-offs took ' + lastLine.n + ' of ' + lastLine.of : '') +
+    ((released || []).length ? ', ' + released.length + ' released' : ''));
+  return { season, comps, leagueComp, games, fixtures, table: { comp: leagueComp, rows: table || [] }, teams, lines, teamLines, names, model, tallies, players,
+           rest, lastLine, lastTotal, released: released || [], ties: ties || [] };
 }
 
 /* ONE GAME, REPLAYED: the match report's headline, standfirst, shape, decisive facet and moment, from the events file */
@@ -176,7 +212,20 @@ async function recapOf(api, g, D, lg, o) {
   if (!file || file.game !== g.id || !Array.isArray(file.rows) || !file.rows.length) return null;
   const events = file.rows.map(r => Object.assign({ t: r.t, id: r.seq, seq: r.seq, period: r.period, clock: r.clock }, r.payload || {},
     r.team != null ? { team: r.team } : {}, r.pid != null ? { pid: r.pid } : {}));
-  const S = { teams: row.roster_snapshot.teams, starters: row.starters || [[], []], events, period: row.period || 4, clockMs: 0, phase: 'final',
+  /* THE NAMES THE REST OF THE NEWSDESK USES. The roster snapshot carries the feed's own spellings ("EL CALOR DE CANCÚN",
+     "MIKAHEL  MCKINNEY", a name in another script); the storylines use the league's club names and the register's
+     player names, so a recap must too, or one desk spells one club two ways. A player the register has no name for
+     keeps the feed's, tidied (spaces, and capitals only when the whole name is in capitals). */
+  const tidy = s => {
+    const t = String(s || '').replace(/\s+/g, ' ').trim();
+    return t && t === t.toUpperCase() && /[A-Z]/.test(t) ? t.toLowerCase().replace(/(^|[\s'’.-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()) : t;
+  };
+  const clubIds = [g.home_team_id, g.away_team_id];
+  const teams0 = row.roster_snapshot.teams.map((tm, i) => Object.assign({}, tm, {
+    name: (D.teams[clubIds[i]] && D.teams[clubIds[i]].name) || tidy(tm.name),
+    players: (tm.players || []).map(p => Object.assign({}, p, { name: (D.names[p.id] && D.names[p.id].name) || tidy(p.name) }))
+  }));
+  const S = { teams: teams0, starters: row.starters || [[], []], events, period: row.period || 4, clockMs: 0, phase: 'final',
     tipWinner: row.tip_winner, arrowInit: row.arrow_init };
   const d = E.deriveGame(S);
   const players = [], byId = {};
@@ -209,9 +258,13 @@ async function recapOf(api, g, D, lg, o) {
   const L = fs0.find(f => f.kind === 'ledger');
   const mo = fs0.find(f => f.kind === 'gameWinner') || fs0.find(f => f.kind === 'goAhead' && f.data.left <= 300000);
   const dec = L && L.data.decisive ? { key: L.data.decisive.key, label: L.data.decisive.label, pts: Math.round(Math.abs(L.data.decisive.pts) * 10) / 10 } : null;
+  /* what the season's numbers said before the tip (the home side's margin), for "an upset by the numbers" */
+  const ex = brief.ctx && brief.ctx.expect && isFinite(brief.ctx.expect.margin) ? Math.round(brief.ctx.expect.margin * 10) / 10 : null;
   return { headline: strip(rep.headline), standfirst: strip(rep.standfirst), arc: arc ? arc.data.kind : null, decisive: dec,
-           moment: mo && mo.data.p ? { kind: mo.kind, name: mo.data.p.name, clock: mo.data.clock } : null, v: 1 };
+           moment: mo && mo.data.p ? { kind: mo.kind, name: mo.data.p.name, clock: mo.data.clock } : null, expect: ex, v: RECAP_V };
 }
+/* a recap made by an older version is made again (the names and the expectation came in version 2) */
+const RECAP_V = 2;
 
 /* ----------------------------------------------------------------------------------------------- one build --- */
 export async function buildLeague(api, lg, o) {
@@ -224,7 +277,7 @@ export async function buildLeague(api, lg, o) {
   let replayed = 0;
   for (const g of week.slice().reverse()) {
     const key = g.id + '@' + (g.finalised_at || '');
-    if (cache.recaps[g.id] && cache.recaps[g.id].key === key) continue;
+    if (cache.recaps[g.id] && cache.recaps[g.id].key === key && cache.recaps[g.id].v === RECAP_V) continue;
     if (replayed >= (o.maxReplays || 24)) break;
     try {
       const r = await recapOf(api, g, D, lg, o);
@@ -234,11 +287,14 @@ export async function buildLeague(api, lg, o) {
   /* the cache keeps a fortnight */
   Object.keys(cache.recaps).forEach(id => { if (!D.games.some(g => g.id === id && Date.parse(g.tipoff_at) >= o.nowMs - 15 * DAY)) delete cache.recaps[id]; });
   const recaps = {};
-  Object.keys(cache.recaps).forEach(id => { const r = cache.recaps[id]; recaps[id] = { headline: r.headline, standfirst: r.standfirst, arc: r.arc, decisive: r.decisive, moment: r.moment }; });
+  Object.keys(cache.recaps).forEach(id => { const r = cache.recaps[id]; recaps[id] = { headline: r.headline, standfirst: r.standfirst, arc: r.arc, decisive: r.decisive, moment: r.moment,
+    expect: r.expect != null ? r.expect : null }; });
   const previous = o.previous !== undefined ? o.previous : await api.publicJson('snapshots/narrative/' + lg.id + '.json').catch(() => null);
   const out = N.build({ now: new Date(o.nowMs), league: { id: lg.id, slug: lg.slug, name: lg.name, timezone: lg.timezone || null },
-    season: { id: D.season.id, name: D.season.name }, comp: D.leagueComp, table: D.table, teams: D.teams, games: D.games, fixtures: D.fixtures,
-    lines: D.lines, teamLines: D.teamLines, names: D.names, players: D.players, recaps, model: D.model, tallies: D.tallies, previous });
+    season: { id: D.season.id, name: D.season.name }, comp: D.leagueComp, comps: D.comps.map(c => ({ id: c.id, kind: c.kind || 'league', name: c.name })),
+    table: D.table, teams: D.teams, games: D.games, fixtures: D.fixtures,
+    lines: D.lines, teamLines: D.teamLines, names: D.names, players: D.players, recaps, model: D.model, tallies: D.tallies, previous,
+    rest: D.rest, lastLine: D.lastLine, lastTotal: D.lastTotal, released: D.released, ties: D.ties });
   out.token = D.games.length + '@' + D.games.reduce((m, g) => (g.finalised_at && g.finalised_at > m ? g.finalised_at : m), '');
   o.log && o.log('    ' + out.stories.length + ' storylines, ' + replayed + ' games replayed, top: ' + (out.stories[0] ? out.stories[0].head : '(none)'));
   return { out, cache };

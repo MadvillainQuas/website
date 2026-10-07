@@ -68,6 +68,12 @@ eq('a doubled space goes', L.titleCase('JIMOND  IVEY'), 'Jimond Ivey'); eq('lowe
 eq('a lower-case particle in a typed name is capitalised as before', L.titleCase('de la cruz'), 'De La Cruz');
 eq('McBride is left', L.titleCase('McBride'), 'McBride'); eq('mccormack is McCormack', L.titleCase('mccormack'), 'McCormack'); eq('a roman numeral is capitals', L.titleCase('bristol flyers ii'), 'Bristol Flyers II');
 eq('KK Split is left', L.titleCase('KK Split'), 'KK Split');
+eq('a group letter is not an article ("Group A at", never "Group An at")', L.polish('Neon City are second in Group A at 3–1.'), 'Neon City are second in Group A at 3–1.');
+eq('...nor a league’s letter', L.polish('The best record in Serie A is theirs.'), 'The best record in Serie A is theirs.');
+eq('...but a sentence’s first A still is', L.polish('Neon City won. A eight-point run did it.'), 'Neon City won. An eight-point run did it.');
+eq('a written name keeps its small words', L.titleCase('Dorados de Chihuahua'), 'Dorados de Chihuahua');
+eq('...all of them', L.titleCase('Diablos Rojos del Mexico'), 'Diablos Rojos del Mexico');
+eq('...and a lower-case first word is still raised', L.titleCase('de la Cruz Ada'), 'De la Cruz Ada');
 
 console.log('-- polish repairs what a paragraph got wrong');
 eq('doubled space and space before a comma', L.polish('It was  close , tight.'), 'It was close, tight.');

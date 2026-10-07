@@ -1873,7 +1873,16 @@
       'The highest score': 'La anotación más alta',
       'The fans’ record': 'El acierto de la afición',
       'Unbeaten': 'Invictos',
-      'Not playing': 'Sin jugar'
+      'Not playing': 'Sin jugar',
+      'The play-offs': 'Playoff',
+      'The regular season': 'Liga Regular',
+      'Out of it': 'Sin opciones',
+      'The sweep': 'Doble victoria',
+      'The split': 'Reparto de victorias',
+      'The knockout': 'Eliminatoria',
+      'Qualifiers': 'Fase previa',
+      'Place secured': 'Plaza asegurada',
+      'Into the next round': 'A la siguiente ronda'
     },
 
     ctx: {

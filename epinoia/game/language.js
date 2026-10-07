@@ -148,6 +148,9 @@ function an(word) {
 }
 /* "an 8-0 run": the article with its word */
 const withArticle = word => an(word) + ' ' + word;
+/* the text before a capital A that makes it a label ("Group A", "Serie A"): a capitalised word and a space, with no full
+   stop between (after "City. " the A starts a sentence and is an article) */
+const LABEL_BEFORE = /[A-Z][A-Za-zÀ-ɏ’'-]*\s+$/;
 
 /* ------------------------------------------------------------------ plurals --- */
 const IRREGULAR = { man: 'men', woman: 'women', person: 'people', foot: 'feet', half: 'halves', leaf: 'leaves', shelf: 'shelves',
@@ -319,9 +322,12 @@ function capParts(w) {
 function titleCase(str) {
   const flat = String(str == null ? '' : str).replace(/\s+/g, ' ').trim();
   const un = unshout(flat), shouted = un !== flat;
+  /* a name written with capitals of its own ("Dorados de Chihuahua") kept its small words on purpose; only a name typed
+     all in lower case has every word raised */
+  const written = !shouted && /[A-ZÀ-Þ]/.test(flat);
   return un.split(' ')
     .map((w, i) => !w ? w
-      : shouted && i > 0 && PARTICLES.has(w) ? w                       // "de", "del", "la" stay small in a name that was shouted
+      : (shouted || written) && i > 0 && PARTICLES.has(w) ? w          // "de", "del", "la" stay small in a shouted or written name
       : /^(ii|iii|iv|vi|vii|viii|ix|xi|xii)$/i.test(w) ? w.toUpperCase()
       : capParts(w.charAt(0).toUpperCase() + w.slice(1)))
     .join(' ');
@@ -599,8 +605,10 @@ function polish(html, opts) {
     s = s.replace(/([A-Za-z]s)’s\b/g, '$1' + APOS);                     // Flyers's -> Flyers'
     /* a doubled word: "the the", "and and" (a few doubles are English: "had had", "that that") */
     s = s.replace(/\b([A-Za-z]+)(\s+)\1\b/gi, (m, w) => (KEEP_DOUBLE.has(w.toLowerCase()) ? m : w));
-    /* a or an against the sound of the next word, keeping the capital */
-    s = s.replace(/\b([Aa]n?)\s+([A-Za-z0-9][\wÀ-ɏ’'-]*)/g, (m, art, next) => {
+    /* a or an against the sound of the next word, keeping the capital. A capital A straight after a capitalised word is
+       a label, not an article: "Group A at 3-1", "Serie A", "Pool A" (it was "Group An at") */
+    s = s.replace(/\b([Aa]n?)\s+([A-Za-z0-9][\wÀ-ɏ’'-]*)/g, (m, art, next, off, all) => {
+      if (art === 'A' && LABEL_BEFORE.test(all.slice(Math.max(0, off - 40), off))) return m;
       const want = an(next), was = art.toLowerCase();
       if (was === want) return m;
       return (art.charAt(0) === 'A' ? want.charAt(0).toUpperCase() + want.slice(1) : want) + ' ' + next;
@@ -637,7 +645,10 @@ function lint(html, opts) {
   const dbl = /\b([A-Za-z]+)\s+\1\b/gi;
   while ((m = dbl.exec(plain))) { if (!KEEP_DOUBLE.has(m[1].toLowerCase())) { add('doubled-word', m[0]); break; } }
   const art = /\b([Aa]n?)\s+([A-Za-z0-9][\wÀ-ɏ’'-]*)/g;
-  while ((m = art.exec(plain))) { if (m[1].toLowerCase() !== an(m[2])) { add('article', m[0]); break; } }
+  while ((m = art.exec(plain))) {
+    if (m[1] === 'A' && LABEL_BEFORE.test(plain.slice(Math.max(0, m.index - 40), m.index))) continue;
+    if (m[1].toLowerCase() !== an(m[2])) { add('article', m[0]); break; }
+  }
   const cnt = new RegExp('\\b(\\d+(?:\\.\\d+)?)\\s+(' + COUNTED + ')\\b(?![-\\w])', 'gi');
   while ((m = cnt.exec(plain))) {
     const v = Number(m[1]), noun = m[2].toLowerCase();

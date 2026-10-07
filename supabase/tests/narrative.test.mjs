@@ -127,6 +127,76 @@ console.log('\nthe facets of a game, valued (What Wins)');
   const bf = N.build(Object.assign({}, base, { teamLines, model: { n: 50, home: 1, b: { efg: 1, tovp: -1, orebp: 0.4, ftr: 0.15 } } }));
   ok('every game’s deciding facet is found (here: shooting)', /shooting has been the deciding facet 100%/.test(bf.coverage.bigPicture.join(' ')), bf.coverage.bigPicture);
   ok('the slate says what the matchup turns on', bf.coverage.slate.every(s => s.turn === null || typeof s.turn.label === 'string'));
+  /* every game here was decided by shooting, so every club wins and loses on it: true of everybody, news about nobody */
+  ok('a facet that decides every club’s games is nobody’s story', !bf.stories.some(s => s.kind === 'identity'), bf.stories.filter(s => s.kind === 'identity').map(s => s.head));
+}
+
+console.log('\nthe competitions: the regular season, the play-offs, a two-legged tie');
+{
+  const comps = [{ id: 'c1', kind: 'league', name: 'The League' }, { id: 'po', kind: 'playoff', name: 'Play-offs' }];
+  const reg = games.map(x => Object.assign({}, x, { competition_id: 'c1' }));
+  /* Game 1: Damson City (4th) win at Ash City (1st); Game 2 is filed under the league, as several feeds file a fixture */
+  const po1 = { id: 'po1', home_team_id: 't1', away_team_id: 't4', home_score: 70, away_score: 75, tipoff_at: new Date(NOW - 6 * 3600000).toISOString(), competition_id: 'po' };
+  const fx = [{ id: 'po2', home_team_id: 't1', away_team_id: 't4', tipoff_at: new Date(NOW + 2 * 86400000).toISOString(), competition_id: 'c1' }];
+  const bp = N.build(Object.assign({}, base, { comps, games: reg.concat([po1]), fixtures: fx, rest: [{ h: 't1', a: 't4', at: fx[0].tipoff_at }] }));
+  const ser = bp.stories.find(s => s.kind === 'series');
+  ok('a play-off game is a series, not a regular-season result', ser && ser.head === 'Damson City take Game 1 against Ash City', bp.stories.map(s => s.head));
+  ok('...and a game filed under the league after it is Game 2', ser && /^Game 2 is on .*, with Ash City at home\.$/.test(ser.next || ''), ser && ser.next);
+  ok('...the lower seed leading is why it matters', ser && /^The lower seed has the lead: Ash City finished three places above them\.$/.test(ser.why), ser && ser.why);
+  ok('the regular season is over: who finished top, and no race', bp.stories.some(s => s.kind === 'final') && !bp.stories.some(s => s.kind === 'race'), bp.stories.map(s => s.id));
+  ok('...on the regular season’s record (the play-off defeat is not in it)', bp.stories.some(s => s.kind === 'final' && s.head === 'Ash City finish top at 5–1'), bp.stories.filter(s => s.kind === 'final').map(s => s.head));
+  ok('...and no run or slide carries over into the play-offs', !bp.stories.some(s => ['run', 'skid', 'perfect', 'winless'].includes(s.kind)), bp.stories.map(s => s.id));
+  ok('the slate says which game of the series', bp.coverage.slate.some(s => s.series && s.series.game === 2 && /^Game 2: Damson City lead Ash City 1–0/.test(s.angle)), bp.coverage.slate.map(s => s.angle));
+  ok('the big picture starts with the play-offs', /^The play-offs: Damson City lead Ash City 1–0/.test(bp.coverage.bigPicture[0] || ''), bp.coverage.bigPicture);
+
+  /* a qualifying tie over two legs: 80-67 and 61-73 is 141-140 on aggregate, never "level at 1-1" */
+  const q = [{ id: 'c1', kind: 'league' }, { id: 'q', kind: 'playoff', name: 'Qualifiers' }];
+  const leg1 = { id: 'q1', home_team_id: 't3', away_team_id: 't6', home_score: 80, away_score: 67, tipoff_at: at(9), competition_id: 'q' };
+  const leg2 = { id: 'q2', home_team_id: 't6', away_team_id: 't3', home_score: 73, away_score: 61, tipoff_at: at(6), competition_id: 'q' };
+  const ties = [{ competition_id: 'q', label: 'Qualifiers', home_team_id: 't3', away_team_id: 't6', winner_team_id: 't3', legs: 2, decider: 'aggregate' }];
+  const bq = N.build(Object.assign({}, base, { comps: q, games: reg.concat([leg1, leg2]), ties }));
+  const tie = bq.stories.find(s => s.kind === 'series');
+  ok('a two-legged tie is decided on aggregate, not by wins', tie && tie.head === 'Cedar City go through on aggregate, 141–140', tie && tie.head);
+  ok('...told leg by leg', tie && tie.dek === 'First leg: Cedar City 80–67 Fir City; second leg: Fir City 73–61 Cedar City.', tie && tie.dek);
+  ok('...with how close it was', tie && tie.why === 'Decided by one point over two legs.', tie && tie.why);
+  ok('...under the bracket’s own name', tie && tie.kicker === 'Qualifiers', tie && tie.kicker);
+}
+
+console.log('\nthe season’s shape: how far through it, who can still catch whom');
+{
+  /* a 40-game season eight games in */
+  const early = N.build(Object.assign({}, base, { remaining: { t1: 34, t2: 34, t3: 32, t4: 33, t5: 34, t6: 33 }, lastRegularAt: at(-150) }));
+  const race = early.stories.find(s => s.kind === 'race');
+  ok('early on, the race says how far through the season it is', race && /^Eight games into a 40-game season, the table is a first draft/.test(race.why), race && race.why);
+  ok('...and the big picture says it too', early.coverage.bigPicture.some(p => /^Eight games into a 40-game regular season/.test(p)), early.coverage.bigPicture);
+  /* the run-in: one game each left, the top three go through */
+  const late = N.build(Object.assign({}, base, { comp: { id: 'c1', name: 'The League', qualifiers: 3 }, remaining: { t1: 1, t2: 1, t3: 0, t4: 1, t5: 1, t6: 1 },
+    lastRegularAt: at(-7), lastTotal: 8 }));
+  const r2 = late.stories.find(s => s.kind === 'race');
+  ok('in the run-in, the race says who can still catch the leaders', r2 && r2.why === 'With one game left, two clubs can still catch them.', r2 && r2.why);
+  ok('a club nobody can push out of the top three is through', ['through:t1', 'through:t2'].every(id => late.stories.some(s => s.id === id)), late.stories.map(s => s.id));
+  ok('...one that can no longer reach it is out of it', late.stories.some(s => s.id === 'out:t3') && !late.stories.some(s => s.id === 'out:t4'), late.stories.map(s => s.id));
+  /* the same counts from a feed that loads a fortnight ahead, with no season to compare: not trusted, so no run-in claims */
+  const partial = N.build(Object.assign({}, base, { comp: { id: 'c1', name: 'The League', qualifiers: 3 }, remaining: { t1: 1, t2: 1, t3: 0, t4: 1, t5: 1, t6: 1 }, lastRegularAt: at(-7) }));
+  ok('...but never on a schedule that may be half loaded', !partial.stories.some(s => s.kind === 'through' || s.kind === 'out') && !/can still catch/.test((partial.stories.find(s => s.kind === 'race') || {}).why || ''),
+    partial.stories.map(s => s.id));
+}
+
+console.log('\nthe week’s results, read as a desk reads them');
+{
+  /* Elm City beat Fir City twice in two days: one storyline, not two */
+  const two = games.concat([{ id: 'gx', home_team_id: 't6', away_team_id: 't5', home_score: 70, away_score: 77, tipoff_at: at(1.5) }]);
+  const bw = N.build(Object.assign({}, base, { games: two }));
+  ok('two games against the same side in a few days are one storyline: a sweep', bw.stories.some(s => s.kind === 'sweep' && s.head === 'Elm City sweep Fir City'), bw.stories.map(s => s.head));
+  /* an upset by the numbers: the match report's season context had Damson City by six at home */
+  const bu = N.build(Object.assign({}, base, { recaps: Object.assign({}, base.recaps, { g20: { headline: 'Cedar City stun Damson City 74–70', expect: 6, decisive: { key: 'efg', label: 'the shots that fell', pts: 7 } } }) }));
+  const u = bu.stories.find(s => s.id === 'upset:g20');
+  ok('an upset by the numbers says what the numbers said before the tip', u && /The season’s numbers had Damson City by about six before the tip\./.test(u.dek), u && u.dek);
+  ok('...and a plural facet takes a plural verb', u && /The shots that fell were worth about 7 points to them\./.test(u.dek), u && u.dek);
+  /* a run's next game away from home reads as a sentence */
+  const ba = N.build(Object.assign({}, base, { fixtures: [{ id: 'f9', home_team_id: 't2', away_team_id: 't1', tipoff_at: new Date(NOW + 2 * 86400000).toISOString() }] }));
+  const run = ba.stories.find(s => s.id === 'run:t1');
+  ok('“It goes on the line away at …” reads as a sentence', run && /^It goes on the line away at Birch City on /.test(run.next || ''), run && run.next);
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
