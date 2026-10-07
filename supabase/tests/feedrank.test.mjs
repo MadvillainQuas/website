@@ -603,5 +603,23 @@ console.log('\na series: its newest episode alone on a front page');
      && FR.latestEpisodes(rows.filter(r => r.source_name === 'SLB Show')).length === 2);
 }
 
+/* A YOUTUBE SHORT IS ALWAYS LAST (2026-10-07): tagged #shorts, or on a /shorts/ address - in every order the file makes */
+{
+  console.log('\nshorts last');
+  const now = Date.parse('2026-10-07T12:00:00Z');
+  const rows = [
+    { id: 's1', title: 'Dunk of the night #shorts', url: 'https://www.youtube.com/watch?v=aaaaaaaaaaa', published_at: '2026-10-07T11:59:00Z', kind: 'channel', source_slug: 'x' },
+    { id: 'a1', title: 'Highlights: A v B', url: 'https://www.youtube.com/watch?v=bbbbbbbbbbb', published_at: '2026-10-05T10:00:00Z', kind: 'channel', source_slug: 'x' },
+    { id: 's2', title: 'Clip', url: 'https://www.youtube.com/shorts/ccccccccccc', published_at: '2026-10-07T11:58:00Z', kind: 'channel', source_slug: 'x' },
+    { id: 'a2', title: 'Shorts and socks: the kit launch', url: 'https://www.youtube.com/watch?v=ddddddddddd', published_at: '2026-10-04T10:00:00Z', kind: 'channel', source_slug: 'x' }];
+  const off = FR.rank(rows, { off: true }, now).map(r => r.id);
+  const on = FR.rank(rows, { l: {}, p: {}, r: {}, i: {} }, now).map(r => r.id);
+  ok('the newest, but a Short: last when the feed is not personal', off.slice(-2).sort().join() === 's1,s2' && off.slice(0, 2).sort().join() === 'a1,a2', off);
+  ok('...and when it is', on.slice(-2).sort().join() === 's1,s2', on);
+  ok('a #shorts tag or a /shorts/ address is a Short; the word "shorts" in a title is not',
+     FR.isShort(rows[0]) && FR.isShort(rows[2]) && !FR.isShort(rows[3]) && !FR.isShort(rows[1]));
+  ok('the unranked order too (tidy)', FR.tidy(rows, { store: { enabled: () => false } }).slice(-2).map(r => r.id).sort().join() === 's1,s2');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

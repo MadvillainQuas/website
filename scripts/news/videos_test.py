@@ -352,6 +352,48 @@ ok("each YouTube item with its id and its kind", by.get("abcDEF12345", {}).get("
 ok("...every row the same keys", len({tuple(sorted(r)) for r in fd.rows}) == 1)
 ok("a video on a game survives the clearing of old items, and the matching pass ran", fd.pruned == [True] and fd.matched, (fd.pruned, fd.matched))
 
+print("\nno Shorts (0249)")
+
+
+def shape_json(url):
+    if "videos?part=player" in url:
+        return {"items": [
+            {"id": "vvvvvvvvvv1", "player": {"embedWidth": "360", "embedHeight": "640"}, "contentDetails": {"duration": "PT45S"}},
+            {"id": "llllllllll1", "player": {"embedWidth": "1000", "embedHeight": "563"}, "contentDetails": {"duration": "PT1M5S"}},
+            {"id": "vvvvvvvvvv2", "player": {"embedWidth": "360", "embedHeight": "640"}, "contentDetails": {"duration": "PT2M"}},
+            {"id": "pppppppppp1", "player": {"embedWidth": "360", "embedHeight": "640"}, "contentDetails": {"duration": "PT1H52M"}}]}
+    return {"items": []}
+
+
+SH = V.shorts_by_shape(["vvvvvvvvvv1", "llllllllll1", "vvvvvvvvvv2", "pppppppppp1", "gonegonego1"], "KEY", shape_json)
+ok("a Short by its shape: vertical and three minutes at most; a landscape clip, a vertical two-hour stream from a phone and a gone video are not",
+   SH == {"vvvvvvvvvv1": True, "llllllllll1": False, "vvvvvvvvvv2": True, "pppppppppp1": False, "gonegonego1": False}, SH)
+
+
+class ShapeDb(FeedDb):
+    def __init__(self):
+        super().__init__()
+        self.marked = None
+
+    def unshaped_videos(self, limit=200):
+        return [{"id": "n1", "video_id": "vvvvvvvvvv1", "game_locked": False}, {"id": "n2", "video_id": "llllllllll1", "game_locked": False},
+                {"id": "n3", "video_id": "vvvvvvvvvv2", "game_locked": True}, {"id": "n4", "video_id": "pppppppppp1", "game_locked": False}]
+
+    def mark_shapes(self, shorts, others, keep):
+        self.marked = (shorts, others, keep)
+        return len(shorts)
+
+
+ATOM_SHORT = ATOM.replace(b"</feed>", b"""<entry><id>yt:video:shrt1234567</id><title>Dunk of the night #shorts</title>
+<link rel="alternate" href="https://www.youtube.com/shorts/shrt1234567"/><published>2026-10-05T21:00:00+00:00</published></entry>
+</feed>""")
+sd = ShapeDb()
+res_sd = F.run(sd, get=lambda u, e=None, m=None: (200, ATOM_SHORT, {}), log=lambda *a: None, now=lambda: PUB + timedelta(hours=2),
+               sleep=lambda s: None, page=lambda u, n=0: (404, b"", {}), yt_key="KEY", get_json=shape_json)
+ok("a feed's /shorts/ link is never read", "shrt1234567" not in {r["video_id"] for r in sd.rows} and len(sd.rows) == 2, [r["video_id"] for r in sd.rows])
+ok("the videos read before, looked at for their shape: the Short taken away, one on a game by hand kept, the rest marked as looked at",
+   sd.marked == (["n1"], ["n2", "n4"], ["n3"]) and res_sd.get("shorts") == 1, (sd.marked, res_sd.get("shorts")))
+
 print("\nthe YouTube Data API (YouTube's RSS answers 404)")
 ok("a channel's feed reads its uploads playlist (UC… -> UU…); a playlist's, itself",
    V.playlist_of(F.YT_FEED + "?channel_id=UCAsCfBvGdjAxOzqGOcCxkzg") == "UUAsCfBvGdjAxOzqGOcCxkzg"

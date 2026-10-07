@@ -549,7 +549,24 @@ function partnerSlots(list, isPartner, timedOut, w) {
 /* THE SAME TWO RULES FOR A FEED THAT IS NOT RANKED (Newest, Followed, a league's front page in its newest order): what the
    reader has opened leaves it (when personalisation is on: off, nothing of the reader is kept), and at most
    PARTNER_SHOWN_MAX partners' stories stay in it, the newest that have not timed out first. o: { partners, store, now } */
+/* A YOUTUBE SHORT IS ALWAYS LAST (2026-10-07). The readers take none (a feed's /shorts/ link, the channel's Shorts
+   playlist) and the half-hourly reader takes the ones read before away (scripts/news/videos.py: a vertical video of
+   three minutes at most); what is still about - a title tagged #shorts, a /shorts/ address - goes to the end of every
+   order this file makes, where nobody scrolls to. */
+const SHORT_TITLE = /(^|[\s|(\[])#shorts?\b/i, SHORT_URL = /^https?:\/\/(www\.|m\.)?youtube\.com\/shorts\//i;
+function isShort(it) {
+  return !!it && (it.is_short === true || SHORT_TITLE.test(String(it.title || '')) || SHORT_URL.test(String(it.url || '')));
+}
+function shortsLast(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.some(isShort)) return list;
+  return list.filter(it => !isShort(it)).concat(list.filter(isShort));
+}
+
 function tidy(rows, o) {
+  return shortsLast(tidyOrder(rows, o));
+}
+function tidyOrder(rows, o) {
   const opts = o || {}, c = W;
   const st = opts.store || store();
   const t = opts.now || Date.now();
@@ -570,6 +587,9 @@ function tidy(rows, o) {
    of the rows with { why, score, tier, partner, boosted, read }, best first. Personalisation off (profile.off), or no
    profile: the newest first and no why. */
 function rank(items, profile, now, w) {
+  return shortsLast(rankOrder(items, profile, now, w));
+}
+function rankOrder(items, profile, now, w) {
   const c = w || W;
   const list = (Array.isArray(items) ? items : []).filter(Boolean);
   const t = num(now) || Date.now();
@@ -1200,7 +1220,7 @@ function latestEpisodes(rows) {
 
 return {
   W, HOUR, DAY,
-  seriesKey, latestEpisodes, partnerSlots, tidy,
+  seriesKey, latestEpisodes, partnerSlots, tidy, isShort, shortsLast,
   recency, decay, sat, partnerFade, scoreOf, whyOf, rank, rankRows, GROUPS, groupOf, groupWeights, scoreMax,
   langCode, langOf, langOfKey, siteLang, readerLangs, SOURCE_LANG, LANG_CACHE,
   detectCountry, countryMatch, countryCodes, neighbours, country, TZ, REGIONS,

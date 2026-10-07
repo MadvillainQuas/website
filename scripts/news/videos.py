@@ -498,6 +498,43 @@ def shorts_of(pl: str, key: str, get_json) -> set:
     return {(it.get("contentDetails") or {}).get("videoId") for it in (j or {}).get("items") or []} - {None}
 
 
+SHORT_MAX_S = 180                 # a Short is three minutes at most (YouTube, since October 2024)
+
+
+def _dur_s(d: str | None) -> int:
+    m = re.match(r"P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$", d or "")
+    if not m:
+        return 0
+    dd, h, mi, s = (int(x or 0) for x in m.groups())
+    return ((dd * 24 + h) * 60 + mi) * 60 + s
+
+
+def shorts_by_shape(ids: list, key: str, get_json) -> dict:
+    """{video id: is it a Short} by its shape: a VERTICAL frame (the player's embedHeight over its embedWidth, which the
+    API gives once a maxHeight is asked for) of three minutes at most. A vertical full game streamed from a phone is
+    longer, a landscape clip is not vertical: neither is a Short. One unit of the API for fifty videos; a video the
+    API does not answer for (gone, private) is no Short."""
+    out = {}
+    ids = [i for i in dict.fromkeys(ids) if i and _ID.match(i)]
+    for n in range(0, len(ids), 50):
+        chunk = ids[n:n + 50]
+        try:
+            j = get_json(YT_API + "videos?part=player,contentDetails&maxHeight=1000&id=%s&key=%s" % (",".join(chunk), key))
+        except Exception:
+            continue                                  # asked again at the next read
+        for it in (j or {}).get("items") or []:
+            pl = it.get("player") or {}
+            try:
+                w, h = int(pl.get("embedWidth") or 0), int(pl.get("embedHeight") or 0)
+            except (TypeError, ValueError):
+                w = h = 0
+            dur = _dur_s((it.get("contentDetails") or {}).get("duration"))
+            out[it.get("id")] = bool(w and h and h > w and 0 < dur <= SHORT_MAX_S)
+        for vid in chunk:
+            out.setdefault(vid, False)
+    return out
+
+
 def api_items(feed_url: str, key: str, get_json, now: datetime | None = None) -> list[dict]:
     """parse_feed's items for a channel's (or playlist's) newest uploads, read with the Data API; its Shorts left out"""
     pl = playlist_of(feed_url)

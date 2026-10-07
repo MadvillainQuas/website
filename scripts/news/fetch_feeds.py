@@ -1090,6 +1090,28 @@ class Supabase:
                 return False
             raise
 
+    def unshaped_videos(self, limit: int = 200) -> list[dict] | None:
+        """the videos not yet looked at for their shape (0249 is_short is null), newest first; None before 0249"""
+        try:
+            return self._req("GET", "news_items?video_id=not.is.null&is_short=is.null&select=id,video_id,game_locked"
+                                    "&order=published_at.desc&limit=%d" % limit)[0] or []
+        except urllib.error.HTTPError as e:
+            if e.code in (400, 404):
+                return None
+            raise
+
+    def mark_shapes(self, shorts: list, others: list, keep: list) -> int:
+        """a Short is taken away (a video put on a game by hand is kept, marked); every other video marked as looked at"""
+        gone = 0
+        for i in range(0, len(shorts), 100):
+            ids = ",".join(shorts[i:i + 100])
+            got = self._req("DELETE", "news_items?id=in.(%s)&game_locked=eq.false" % ids, None, {"Prefer": "return=representation"})[0] or []
+            gone += len(got)
+        for rows, val in ((others, False), (keep, True)):
+            for i in range(0, len(rows), 100):
+                self._req("PATCH", "news_items?id=in.(%s)" % ",".join(rows[i:i + 100]), {"is_short": val}, {"Prefer": "return=minimal"})
+        return gone
+
     def has_press_kind(self) -> bool:
         """whether 0244 is applied (a video's kind may be 'press'): before it, a press conference is written as a video
         (the database's check would refuse the whole read); asked once"""
@@ -1327,6 +1349,22 @@ def run(db, get=http_get, dry_run: bool = False, only: str | None = None, log=pr
             done["videos"] = V.match_videos(db, now_f(), log, dry_run)
         except Exception as e:                                 # the stories are in; a matching fault waits for the next read
             log("  ! videos: %s: %s" % (type(e).__name__, e))
+    # NO SHORTS (0249): every video read before is looked at for its shape once - a vertical one of three minutes at most
+    # is a YouTube Short and is taken away (one put on a game by hand is kept, and marked); 200 a read, the newest first.
+    # Without the API key nothing is looked at; before 0249 there is nowhere to remember it.
+    if videos_on and yt_key and not only and getattr(db, "unshaped_videos", None):
+        try:
+            rows = db.unshaped_videos(200)
+            if rows:
+                shape = V.shorts_by_shape([r["video_id"] for r in rows], yt_key, get_json)
+                shorts = [r["id"] for r in rows if shape.get(r["video_id"]) and not r.get("game_locked")]
+                keep = [r["id"] for r in rows if shape.get(r["video_id"]) and r.get("game_locked")]
+                others = [r["id"] for r in rows if r["video_id"] in shape and not shape[r["video_id"]]]
+                gone = 0 if dry_run else db.mark_shapes(shorts, others, keep)
+                done["shorts"] = gone
+                log("videos: %d looked at for their shape, %d Shorts taken away" % (len(shape), gone))
+        except Exception as e:
+            log("  ! shorts: %s: %s" % (type(e).__name__, e))
     log("news sources: %(read)d read, %(unchanged)d unchanged, %(failed)d failed, %(items)d items (%(tagged)d about a league), "
         "%(logos)d logos found, %(found)d links turned into feeds" % done)
     return done

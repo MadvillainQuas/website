@@ -382,7 +382,8 @@
         const got = await rpc('team_videos', { p_team: team.id, p_kind: kind, p_limit: 60 });
         const pool = M.uniq(Array.isArray(got) ? got : []);
         const FR = R();
-        return FR && typeof FR.latestEpisodes === 'function' ? FR.latestEpisodes(pool) : pool;
+        const list = FR && typeof FR.latestEpisodes === 'function' ? FR.latestEpisodes(pool) : pool;
+        return FR && typeof FR.shortsLast === 'function' ? FR.shortsLast(list) : list;   // a YouTube Short last
       }
       if (league) {
         const got = league.id ? await fetchKind(kind, league)
