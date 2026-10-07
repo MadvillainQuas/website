@@ -114,6 +114,51 @@ export async function apiItems(feedUrl, key, getJson, now) {
   return out;
 }
 
+/* A LINK THAT IS ITS OWN FEED: a /channel/UC… address or a playlist's (?list=…) names its feed outright, no lookup.
+   -> {feed_url, name, logo, site_url} with no name or logo, or null */
+export function feedOfLink(link) {
+  let u;
+  try { u = new URL(String(link || '').trim()); } catch (_) { return null; }
+  if (!/(^|\.)youtube\.com$/i.test(u.hostname)) return null;
+  const parts = u.pathname.split('/').filter(Boolean);
+  if (parts[0] === 'channel' && /^UC[A-Za-z0-9_-]{22}$/.test(parts[1] || '')) {
+    return { feed_url: 'https://www.youtube.com/feeds/videos.xml?channel_id=' + parts[1], name: null, logo: null, site_url: 'https://www.youtube.com/channel/' + parts[1] };
+  }
+  const list = u.searchParams.get('list') || '';
+  if (parts[0] === 'playlist' && /^[A-Za-z0-9_-]{10,64}$/.test(list)) {
+    return { feed_url: 'https://www.youtube.com/feeds/videos.xml?playlist_id=' + list, name: null, logo: null, site_url: String(link).trim() };
+  }
+  return null;
+}
+
+/* THE CHANNEL'S OWN PAGE, read as a browser past the consent wall (the request carries YouTube's own "consent given" cookie,
+   CONSENT_COOKIE): its canonical address (/channel/UC…, or the page's externalId), its title and its picture. No key needed,
+   so a channel is found even when the Data API refuses. -> {feed_url, name, logo, site_url} or null */
+export const CONSENT_COOKIE = 'SOCS=CAI';
+const unescapeHtml = s => s == null ? s : String(s).replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+export function channelFromPage(html) {
+  const h = String(html || '');
+  const id = (/<link rel="canonical" href="https:\/\/www\.youtube\.com\/channel\/(UC[A-Za-z0-9_-]{22})"/.exec(h)
+    || /"externalId":"(UC[A-Za-z0-9_-]{22})"/.exec(h) || /<meta itemprop="identifier" content="(UC[A-Za-z0-9_-]{22})"/.exec(h) || [])[1];
+  if (!id) return null;
+  const meta = p => unescapeHtml((new RegExp('<meta property="' + p + '" content="([^"]*)"').exec(h) || [])[1] || null);
+  const logo = meta('og:image');
+  return { feed_url: 'https://www.youtube.com/feeds/videos.xml?channel_id=' + id, name: meta('og:title'),
+           logo: logo && logo.startsWith('https://') ? logo : null, site_url: 'https://www.youtube.com/channel/' + id };
+}
+
+/* WHAT THE DATA API SAID WHEN IT REFUSED: its own reason and message ("accessNotConfigured", "quotaExceeded", "API key not
+   valid", "Requests from this client are blocked"), never the address, which carries the key */
+export function apiReason(body) {
+  try {
+    const j = typeof body === 'string' ? JSON.parse(body) : body;
+    const e = j && j.error;
+    if (!e) return null;
+    const r = ((e.errors || [])[0] || {}).reason || (((e.details || []).find(d => d && d.reason) || {}).reason) || e.status || '';
+    return String((r ? r + ': ' : '') + (e.message || '')).replace(/key=[^&\s]+/gi, 'key=…').slice(0, 160).trim() || null;
+  } catch (_) { return null; }
+}
+
 /* {feed_url, name, logo, site_url} for a YouTube link (/@handle, /channel/UC…, /c/name, /user/name, a playlist), found
    with the Data API: videos.py api_channel. null when it names no channel. */
 export async function apiChannel(link, key, getJson) {

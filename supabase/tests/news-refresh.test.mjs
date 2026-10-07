@@ -434,11 +434,44 @@ console.log('\na YouTube channel, found and read at once (the Data API, as the h
   ok('a channel already found is read through the API too (not its RSS)', r.status === 200 && r.j.added === 2
      && !w.fetched.some(u => u.startsWith('https://www.youtube.com/feeds/')), w.fetched);
 
+  /* THE CHANNEL'S OWN PAGE AND ITS RSS: no key, or a key the API refuses */
+  const PAGE = '<html><head><link rel="canonical" href="https://www.youtube.com/channel/' + CH + '"><meta property="og:title" content="Super League Basketball">'
+    + '<meta property="og:image" content="https://yt3.example/slb2.jpg"></head><body>...</body></html>';
+  const RSS = '<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom" xmlns:yt="http://www.youtube.com/xml/schemas/2015"><title>Super League Basketball</title>'
+    + '<entry><id>yt:video:bbbbbbbbbb1</id><yt:videoId>bbbbbbbbbb1</yt:videoId><title>HIGHLIGHTS | Leicester Riders vs London Lions</title>'
+    + '<link rel="alternate" href="https://www.youtube.com/watch?v=bbbbbbbbbb1"/><published>2026-09-30T08:00:00+00:00</published></entry>'
+    + '<entry><id>yt:video:bbbbbbbbbb2</id><yt:videoId>bbbbbbbbbb2</yt:videoId><title>Top plays of the week</title>'
+    + '<link rel="alternate" href="https://www.youtube.com/watch?v=bbbbbbbbbb2"/><published>2026-09-29T08:00:00+00:00</published></entry></feed>';
+  const watchHeaders = w => { const seen = []; const f = w.deps.fetch; w.deps.fetch = async (u, init) => { seen.push([u, init && init.headers]); return f(u, init); }; return seen; };
   w = mk(null);
+  w.bodies['https://www.youtube.com/@SLB'] = PAGE; w.bodies[FEED] = RSS;
+  let heads = watchHeaders(w);
   r = await w.send('tok-kbl', { source: 'slb-yt' });
-  ok('without the key: the link waits for the half-hourly reader (409 pending), and the source is left as it was (no error to hold that reader off)',
-     r.status === 409 && r.j.code === 'pending' && /half-hourly read/.test(r.j.error) && w.sources.find(x => x.id === 's-yt').last_error === undefined
-     && w.fetched.length === 0, r);
+  let s2 = w.sources.find(x => x.id === 's-yt');
+  ok("without the key: found from the channel's own page (with YouTube's consent cookie, past the wall) and read from its RSS",
+     r.status === 200 && r.j.added === 2 && s2.feed_url === FEED && s2.resolve_from === null && s2.name === 'Super League Basketball' && s2.logo_url === 'https://yt3.example/slb2.jpg'
+     && heads.some(([u, h]) => u === 'https://www.youtube.com/@SLB' && h && /SOCS=CAI/.test(h.Cookie || '')), { r: r.j, s2, heads });
+  ok('...its videos stored with their id and kind, as from the API',
+     w.items.filter(i => i.source_id === 's-yt').map(i => i.video_id + ':' + i.video_kind).sort().join() === 'bbbbbbbbbb1:highlights,bbbbbbbbbb2:video', w.items);
+
+  w = mk(KEY, { resolve_from: 'https://www.youtube.com/channel/' + CH });
+  r = await w.send('tok-kbl', { source: 'slb-yt' });
+  ok('a /channel/ link is its own feed: no lookup at all (neither the API nor the page asked)',
+     r.status === 200 && w.sources.find(x => x.id === 's-yt').feed_url === FEED && !w.fetched.includes(chanUrl) && !w.fetched.includes('https://www.youtube.com/channel/' + CH), w.fetched);
+
+  /* the API refusing: its own reason said; the page and the RSS used instead */
+  const REFUSED = JSON.stringify({ error: { code: 403, message: 'Requests from this client application <empty> are blocked.', errors: [{ reason: 'forbidden' }], status: 'PERMISSION_DENIED' } });
+  const refuse = w => { const f = w.deps.fetch; w.deps.fetch = async (u, init) => (u.startsWith(YT.YT_API) ? res(403, REFUSED, { 'content-type': 'application/json' }) : f(u, init)); };
+  w = mk(KEY);
+  w.bodies['https://www.youtube.com/@SLB'] = PAGE; w.bodies[FEED] = RSS;
+  refuse(w);
+  r = await w.send('tok-kbl', { source: 'slb-yt' });
+  ok('a key the API refuses (restricted, not enabled, over its quota): the page and the RSS do it instead', r.status === 200 && r.j.added === 2, r);
+  w = mk(KEY);
+  refuse(w);
+  r = await w.send('tok-kbl', { source: 'slb-yt' });
+  ok("...and when nothing else works either, the API's own reason is said (never the key)",
+     !r.j.ok && /YouTube API: forbidden: Requests from this client application/.test(r.j.error || '') && !JSON.stringify(r.j).includes(KEY), r.j);
   w = mk(KEY, { resolve_from: 'https://hoops.example/', feed_url: 'https://hoops.example/' });
   r = await w.send('tok-kbl', { source: 'slb-yt' });
   ok("a website's link waits for the reader too (it knows how to look for a site's feed)", r.status === 409 && r.j.code === 'pending' && w.fetched.length === 0, r);

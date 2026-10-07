@@ -28,7 +28,7 @@
    every source it reads, leaves a row: 'news_refresh_call' and 'news_refresh'.
    ============================================================================ */
 import { KEEP_DAYS, checkFeedUrl, isPrivateIp, parseFeed } from './newsfeed.js';
-import { apiChannel, apiItems, classify, isYouTubeLink, playlistOf, videoIdOf } from './ytvideo.js';
+import { CONSENT_COOKIE, apiChannel, apiItems, apiReason, channelFromPage, classify, feedOfLink, isYouTubeLink, playlistOf, videoIdOf } from './ytvideo.js';
 
 export const FETCH_TIMEOUT_MS = 10000;
 export const MAX_BYTES = 2 * 1024 * 1024;
@@ -36,6 +36,7 @@ export const SOURCE_GAP_S = 60;          // one refresh of a source in this many
 export const CALLER_MAX = 10;            // requests from one caller in CALLER_WINDOW_S
 export const CALLER_WINDOW_S = 60;
 export const MAX_HOPS = 3;
+export const PAGE_MAX_BYTES = 4 * 1024 * 1024;   // a YouTube channel's own page (1.6 MB in 2026), read only to find its channel
 export const ALL_CONCURRENCY = 4;
 export const ALL_BUDGET_MS = 100000;     // "all" starts no new source after this long
 export const UA = 'EpinoiaNews/1.0 (+https://prophesyscouting.co.uk/epinoia/news/)';
@@ -86,8 +87,11 @@ async function readCapped(res, max, signal, limit) {
 }
 
 /* THE FEED AT `start`: the stored address, checked, read by hand through at most MAX_HOPS redirects (each hop checked as the
-   first was), 10 s in all, 2 MB at the most. -> { bytes, contentType, url } or throws a RefreshError. */
-export async function fetchFeed(deps, start) {
+   first was), 10 s in all, 2 MB at the most. -> { bytes, contentType, url } or throws a RefreshError.
+   opts (the YouTube routes): headers added to the request (the consent cookie), maxBytes (a channel's page is larger than
+   a feed), errorBody (an answer that is not 200 keeps up to 64 kB of its body on the error, for the API's own reason) */
+export async function fetchFeed(deps, start, opts) {
+  const o = opts || {};
   const ctl = new AbortController();
   const limit = deps.timeoutMs || FETCH_TIMEOUT_MS;
   const timer = setTimeout(() => ctl.abort(), limit);
@@ -107,7 +111,7 @@ export async function fetchFeed(deps, start) {
       try {
         res = await deps.fetch(chk.url, {
           redirect: 'manual', signal: ctl.signal,
-          headers: { 'User-Agent': UA, Accept: 'application/rss+xml, application/atom+xml, application/feed+json, application/xml;q=0.9, */*;q=0.5' }
+          headers: Object.assign({ 'User-Agent': UA, Accept: 'application/rss+xml, application/atom+xml, application/feed+json, application/xml;q=0.9, */*;q=0.5' }, o.headers || {})
         });
       } catch (e) {
         if (ctl.signal.aborted || (e && e.name === 'AbortError')) throw new RefreshError('unreachable', 'timed out after ' + (limit / 1000) + ' s');
@@ -122,10 +126,14 @@ export async function fetchFeed(deps, start) {
         continue;
       }
       if (res.status !== 200) {
-        try { await res.body?.cancel(); } catch (_) { /* nothing */ }
-        throw new RefreshError('unreachable', 'the site answered HTTP ' + res.status);
+        let body = null;
+        if (o.errorBody) { try { body = decodeBody(await readCapped(res, 65536, ctl.signal, limit), res.headers.get('content-type') || ''); } catch (_) { body = null; } }
+        else { try { await res.body?.cancel(); } catch (_) { /* nothing */ } }
+        const err = new RefreshError('unreachable', 'the site answered HTTP ' + res.status);
+        err.status = res.status; err.body = body;
+        throw err;
       }
-      const bytes = await readCapped(res, MAX_BYTES, ctl.signal, limit);
+      const bytes = await readCapped(res, o.maxBytes || MAX_BYTES, ctl.signal, limit);
       return { bytes, contentType: res.headers.get('content-type') || '', url: chk.url };
     }
     throw new RefreshError('unreachable', 'too many redirects');
@@ -149,20 +157,35 @@ export function createHandler(deps) {
   /* A JSON ANSWER FROM THE YOUTUBE DATA API, read under a feed's rules (https to a public host, 10 s, 2 MB). The address
      carries the key; no error made here repeats the address. */
   async function getJson(url) {
-    const got = await fetchFeed(deps, url);
+    let got;
+    try { got = await fetchFeed(deps, url, { errorBody: true }); }
+    catch (e) {
+      /* the API's own reason, so a key it refuses (not enabled for the API, restricted, over its quota) says why */
+      const why = e && e.body ? apiReason(e.body) : null;
+      throw new RefreshError(e.code || 'unreachable', 'YouTube API: ' + (why || (e && e.message) || 'refused'));
+    }
     try { return JSON.parse(decodeBody(got.bytes, got.contentType)); }
     catch (_) { throw new RefreshError('unreachable', 'YouTube answered with something that is not JSON'); }
   }
 
   /* A SOURCE ADDED BY ITS LINK (0198) holds the link in resolve_from until its feed is found. A YouTube link is found here at
-     once, through the Data API, as the half-hourly reader finds it (a channel's page is behind a consent wall, which is
-     what a read of the link itself met: "not a feed: bad tag"). Any other link waits for that reader, which knows how to
-     look for a site's feed. -> the fields to set on the source, with feed_url */
+     once, the first way that works: a /channel/ or playlist link is its own feed; else the Data API (with the key); else
+     the channel's own page, read past the consent wall with YouTube's consent cookie (no key needed; the wall itself is
+     what a plain read of the link met: "not a feed: bad tag"). Any other link waits for the half-hourly reader, which knows
+     how to look for a site's feed. -> the fields to set on the source, with feed_url */
   async function findFeed(src) {
-    const yt = isYouTubeLink(src.resolve_from);
-    if (!yt || !deps.ytKey) throw new RefreshError('pending', 'its feed is found at the next half-hourly read (within half an hour)');
-    const ch = await apiChannel(src.resolve_from, deps.ytKey, getJson);
-    if (!ch) throw new RefreshError('not_feed', 'that link names no YouTube channel');
+    if (!isYouTubeLink(src.resolve_from)) throw new RefreshError('pending', 'its feed is found at the next half-hourly read (within half an hour)');
+    let ch = feedOfLink(src.resolve_from), why = null;
+    if (!ch && deps.ytKey) {
+      try { ch = await apiChannel(src.resolve_from, deps.ytKey, getJson); } catch (e) { why = e.message; }
+    }
+    if (!ch) {
+      try {
+        const got = await fetchFeed(deps, src.resolve_from, { headers: { Cookie: CONSENT_COOKIE, 'Accept-Language': 'en' }, maxBytes: PAGE_MAX_BYTES });
+        ch = channelFromPage(decodeBody(got.bytes, got.contentType));
+      } catch (e) { why = why || e.message; }
+    }
+    if (!ch) throw new RefreshError('not_feed', 'no YouTube channel found at that link' + (why ? ' (' + why + ')' : ''));
     const other = db.feedTaken ? await db.feedTaken(ch.feed_url, src.league_id || null, src.id) : null;
     if (other) throw new RefreshError('not_feed', 'the same feed as ' + other + ', which is a source here already');
     const set = { feed_url: ch.feed_url, site_url: ch.site_url || src.site_url || null, resolve_from: null, platform: 'youtube',
@@ -181,13 +204,16 @@ export function createHandler(deps) {
     try {
       const found = src.resolve_from ? await findFeed(src) : null;
       const feedUrl = found ? found.feed_url : src.feed_url;
-      let items;
+      let items = null, apiWhy = null;
       if (deps.ytKey && playlistOf(feedUrl)) {
         /* A YOUTUBE CHANNEL through the Data API, as the half-hourly reader reads one when it has the key: one quota unit,
-           and it answers when the channel's RSS does not */
-        items = await apiItems(feedUrl, deps.ytKey, getJson, stamp);
-      } else {
-        const got = await fetchFeed(deps, feedUrl);
+           and it answers when the channel's RSS does not. Refused, the RSS is read instead. */
+        try { items = await apiItems(feedUrl, deps.ytKey, getJson, stamp); } catch (e) { apiWhy = e.message; items = null; }
+      }
+      if (!items) {
+        let got;
+        try { got = await fetchFeed(deps, feedUrl); }
+        catch (e) { if (apiWhy && e instanceof RefreshError) e.message += ' (and ' + apiWhy + ')'; throw e; }
         try { [, items] = parseFeed(decodeBody(got.bytes, got.contentType), feedUrl, stamp); }
         catch (e) { throw new RefreshError('not_feed', sentence(e).replace(/^not a feed:?\s*/i, '') || 'this address does not carry a feed'); }
       }
