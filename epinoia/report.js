@@ -489,14 +489,14 @@ function statRowHTML(k, row, R, opt) {
   const s = STATS[k] || { l: k.toUpperCase() };
   if (s.pair) {
     const rv = refOf(s, row), zA = opt && opt.z ? ' data-z="' + opt.z + '"' : '';
-    return '<div class="rp-st rp-st2" data-b="0"' + zA + '><span class="rp-st-l" title="' + esc(s.l) + '">' + esc(s.l) + '</span><span class="rp-st-v">' + pairHTML(k, row) + '</span>' +
+    return '<div class="rp-st rp-st2" data-b="0"' + zA + '><span class="rp-st-l" data-lg="' + esc(k) + '" title="' + esc(s.l) + '">' + esc(s.l) + '</span><span class="rp-st-v">' + pairHTML(k, row) + '</span>' +
       '<span class="rp-st-bar"></span><span class="rp-st-p"></span><span class="rp-st-a">' + esc(pairN(k, row)) + '</span></div>';
   }
   const v = row ? row[k] : null;
   const rv = refOf(s, row);
   const lab = (opt && typeof opt.label === 'function' && opt.label(k)) || s.l;     // a shorter name where the group says the rest
   const zA = opt && opt.z ? ' data-z="' + opt.z + '"' : '';                         // the kind of shot it is about (groupRowsHTML)
-  const head = '<span class="rp-st-l" title="' + esc(s.l) + '">' + esc(lab) + '</span><span class="rp-st-v">' + (s.feed && !isNum(v) ? '<small title="' + esc(FEED_NA) + '">n/a</small>' : fmtStat(k, v)) + '</span>';
+  const head = '<span class="rp-st-l" data-lg="' + esc(k) + '" title="' + esc(s.l) + '">' + esc(lab) + '</span><span class="rp-st-v">' + (s.feed && !isNum(v) ? '<small title="' + esc(FEED_NA) + '">n/a</small>' : fmtStat(k, v)) + '</span>';
   const c = opt && opt.compact ? ' data-c="1"' : '';
   if (s.rank === false && isNum(rv) && isNum(v)) {
     const d = +v - +rv, g = s.low ? -d : d, sc = s.sc || 3;
@@ -562,14 +562,14 @@ function statCellHTML(k, row, R, opt) {
   const s = STATS[k] || { l: k.toUpperCase() };
   if (s.pair) {
     const rv = refOf(s, row);
-    return '<div class="rp-cell rp-cell2" data-b="0"' + (opt && opt.z ? ' data-z="' + opt.z + '"' : '') + '><span class="rp-cell-l">' + esc(s.l) + '</span>' +
+    return '<div class="rp-cell rp-cell2" data-b="0"' + (opt && opt.z ? ' data-z="' + opt.z + '"' : '') + '><span class="rp-cell-l" data-lg="' + esc(k) + '">' + esc(s.l) + '</span>' +
       '<b class="rp-cell-v">' + pairHTML(k, row) + '</b><span class="rp-cell-p">' + esc(pairN(k, row)) + '</span></div>';
   }
   const p = s.rank === false ? null : R.pct(k, row && row.id);
   const v = row ? row[k] : null;
   const rv = refOf(s, row);
   const b = p == null && s.rank === false && isNum(rv) && isNum(v) ? bandVs(v, rv, s.sc || 3, s.low) : band(p, s.style);
-  return '<div class="rp-cell' + (opt && opt.first ? ' zn' : '') + '" data-b="' + b + '"' + (opt && opt.z ? ' data-z="' + opt.z + '"' : '') + '><span class="rp-cell-l">' + esc(s.l) + '</span>' +
+  return '<div class="rp-cell' + (opt && opt.first ? ' zn' : '') + '" data-b="' + b + '"' + (opt && opt.z ? ' data-z="' + opt.z + '"' : '') + '><span class="rp-cell-l" data-lg="' + esc(k) + '">' + esc(s.l) + '</span>' +
     '<b class="rp-cell-v">' + (s.feed && !isNum(v) ? '<small title="' + esc(FEED_NA) + '">n/a</small>' : fmtStat(k, v)) + '</b>' +
     '<span class="rp-cell-p">' + (p == null ? (s.rank === false && isNum(rv) && isNum(v) ? (+v - +rv > 0 ? '+' : +v - +rv < 0 ? '\u2212' : '\u00b1') + Math.abs(+v - +rv).toFixed(1) + ' v ' + fmtStat(typeof s.ref === 'string' && STATS[s.ref] ? s.ref : k, rv) : '') : ordinal(p)) + '</span></div>';
 }
@@ -869,7 +869,7 @@ function coverPage(c, art) {
       '<div class="rp-cv-mid">' + crestHTML(c, 'rp-cv-crest') +
         '<div class="rp-cv-title"><i></i><span>' + esc(c.title || 'Scouting report') + '</span><i></i></div>' +
         '<h1 class="rp-cv-name" style="font-size:' + (n <= 16 ? 50 : n <= 22 ? 42 : n <= 30 ? 34 : 28) + 'px">' + esc(c.name) + '</h1>' +
-        '<div class="rp-cv-sub">' + esc(c.subtitle || '') + '</div></div></div>' +
+        '<div class="rp-cv-sub">' + esc(c.subtitle || '') + '</div><p class="rp-cv-how" hidden></p></div></div>' +
     '<div class="rp-cv-band"></div>' +
     '<div class="rp-cv-low"><div class="rp-cv-art">' + (art || '') + '</div>' +
       '<div class="rp-cv-side"><h4>Report details</h4><dl class="rp-cv-facts">' + facts +
@@ -944,6 +944,68 @@ function layout(host, c, label, blocks, opt) {
   return start;
 }
 
+/* EVERY STAT IS A LINK TO ITS LEGEND ENTRY (Louie, 2026-10-07). A label drawn from a stat key carries it (data-lg, statRowHTML,
+   statCellHTML, the modules' own boxes and tiles); a label printed as plain words - a table's head, a card's name, a section's
+   title - is matched by its words to a legend row's (its label, the stat's other names, or an entry such as FOUR FACTORS); and a
+   column head that matches nothing, in a section the legend explains as a whole (FULL STATS, LINEUP CARDS), goes to that entry.
+   Each one is given data-goto (the legend row's page, raster.js makes it a link in the PDF) and data-goto-y (how far down that
+   page the row starts, so the link lands on the entry, not the top of the page); on the screen a click scrolls to the row and
+   lights it. The legend's own pages, the cover, and anything that is already a link are left alone. */
+const lgNorm = s => String(s || '').replace(/\s+/g, ' ').trim().toUpperCase();
+const LG_PICK = 'th, h3, h4, [data-lg], .rp-st-l, .rp-cell-l, .rp-tile > span:first-of-type, .rp-ffs > span:first-of-type, td.l > b, ' +
+  '[class$="-k"], [class$="-t"], [class$="-h"], [class$="-n"]';
+/* the names a table prints for a stat the legend calls something else (normalised text -> stat key) */
+const LG_ALIAS = { 'FT RATE': 'ftr', 'FTA RATE': 'ftr', 'EFG': 'efg', 'TS': 'ts', 'TOV%': 'tov_pct', 'TO%': 'tov_pct', 'USAGE': 'usg', 'USG': 'usg',
+  'OFF RATING': 'ortg', 'DEF RATING': 'drtg', 'NET RATING': 'net', 'OFF RTG': 'ortg', 'DEF RTG': 'drtg', 'NET RTG': 'net', 'ORTG': 'ortg', 'DRTG': 'drtg', 'NET': 'net',
+  'PACE': 'pace', 'OREB%': 'oreb_pct', 'DREB%': 'dreb_pct', 'AST%': 'ast_pct', 'STL%': 'stl_pct', 'BLK%': 'blk_pct' };
+function linkLegend(stage) {
+  const pgs = [...stage.querySelectorAll('.rp-pg')];
+  const rows = [...stage.querySelectorAll('.rp-lg-row[data-lgk]')];
+  if (!rows.length) return 0;
+  const byKey = new Map(), byText = new Map();
+  rows.forEach(r => {
+    const pg = r.closest('.rp-pg'), n = pgs.indexOf(pg) + 1;
+    if (n < 1) return;
+    const P = pg.getBoundingClientRect(), b = r.getBoundingClientRect();
+    const at = { row: r, page: n, y: P.height > 0 ? Math.max(0, (b.top - P.top - 6) / P.height) : 0 };
+    const k = r.getAttribute('data-lgk');
+    if (!byKey.has(k)) byKey.set(k, at);
+    const label = r.querySelector('b');
+    const names = [label && label.textContent];
+    if (!/^x:/.test(k) && STATS[k]) names.push(STATS[k].l, STATS[k].short, STATS[k].label);
+    names.filter(Boolean).forEach(t => { const u = lgNorm(t); if (u && !byText.has(u)) byText.set(u, at); });
+  });
+  const legendPages = new Set(rows.map(r => r.closest('.rp-pg')));
+  let n = 0;
+  pgs.forEach((pg, i) => {
+    if (i === 0 && pg.querySelector('.rp-cv-toc')) return;                  // the cover: its contents are links already
+    if (legendPages.has(pg)) return;
+    pg.querySelectorAll(LG_PICK).forEach(e => {
+      if (e.hasAttribute('data-goto') || e.closest('[data-goto]') || e.querySelector('[data-goto]')) return;
+      const key = e.getAttribute('data-lg');
+      const text = lgNorm(e.textContent);
+      if (!key && (!text || text.length > 40)) return;
+      let at = key ? byKey.get(key) : null;
+      if (!at && text) at = byText.get(text) || byText.get(text.replace(/\s*[·:(].*$/, '')) || (LG_ALIAS[text] && byKey.get(LG_ALIAS[text])) || null;
+      /* a column head (or a card's key) the legend has no row for, in a section it explains as a whole: the entry named by the
+         section's heading (ZONES, LINEUP CARDS, CLUTCH TIME ...), else by its part of the report (FULL STATS) */
+      if (!at && (e.tagName === 'TH' || /-k$/.test(e.className || ''))) {
+        const blk = e.closest('.rp-blk'), h = blk && blk.querySelector('.rp-h h3');
+        const head = h ? lgNorm(h.textContent) : '';
+        if (head) at = byText.get(head) || [...byText.entries()].find(([t, v]) => /^X:/.test(lgNorm(v.row.getAttribute('data-lgk'))) && t.length > 3 && (head.includes(t) || t.includes(head)))?.[1] || null;
+        if (!at) { const mod = e.closest('[data-mod]'); at = mod ? byText.get(lgNorm(mod.getAttribute('data-mod'))) || null : null; }
+      }
+      if (!at) return;
+      e.setAttribute('data-goto', String(at.page));
+      e.setAttribute('data-goto-y', at.y.toFixed(4));
+      e.setAttribute('data-lgto', at.row.getAttribute('data-lgk'));
+      if (!e.title) e.title = 'What this is: the legend, page ' + at.page;
+      n++;
+    });
+  });
+  return n;
+}
+
 /* THE LEGEND: every statistic the report printed, defined, and how to read the colours */
 function legendBlocks(keys, extra, kind, pooled) {
   const out = [];
@@ -957,18 +1019,19 @@ function legendBlocks(keys, extra, kind, pooled) {
       : 'A player is always ranked among the players of their own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition, and the average shown is theirs. ') +
     (pooled ? esc(pooled) + ' ' : '') +
     'Where smaller is better (turnovers, fouls, what an opponent did with them on the floor, and the share of a player’s or club’s shots that were ASSISTED: a shot you make for yourself is the harder one) the order is turned round, so a high percentile is always good. ' +
-    '± is with them (or the unit) on the floor minus off it. All rates are worked out from the season’s totals, never averaged from games.</p>'));
+    '± is with them (or the unit) on the floor minus off it. All rates are worked out from the season’s totals, never averaged from games. ' +
+    'Every stat named in this report links here: click its name, in the PDF or on the screen, to come to its entry below.</p>'));
   const seen = new Set(), rows = [];
   keys.forEach(k => {
     if (seen.has(k)) return; seen.add(k);
     const d = defOf(k, kind);
     if (!d) return;
     const s = STATS[k];
-    rows.push('<div class="rp-lg-row"><b>' + esc(s ? s.l : k) + '</b><span><em>' + esc(d.title) + '.</em> ' + esc(d.what || '') +
+    rows.push('<div class="rp-lg-row" data-lgk="' + esc(k) + '"><b>' + esc(s ? s.l : k) + '</b><span><em>' + esc(d.title) + '.</em> ' + esc(d.what || '') +
       (d.why ? ' <i class="rp-lg-why"><u>' + d.whyL + ':</u> ' + esc(d.why) + '</i>' : '') +
       (d.formula ? ' <code>' + esc(d.formula) + '</code>' : '') + '</span></div>');
   });
-  (extra || []).forEach(([t, d, w]) => rows.push('<div class="rp-lg-row"><b>' + esc(t) + '</b><span>' + esc(d) + (w ? ' <i class="rp-lg-why"><u>Why look:</u> ' + esc(w) + '</i>' : '') + '</span></div>'));
+  (extra || []).forEach(([t, d, w]) => rows.push('<div class="rp-lg-row" data-lgk="x:' + esc(lgNorm(t)) + '"><b>' + esc(t) + '</b><span>' + esc(d) + (w ? ' <i class="rp-lg-why"><u>Why look:</u> ' + esc(w) + '</i>' : '') + '</span></div>'));
   for (let i = 0; i < rows.length; i += 10) out.push(block('<div class="rp-lg">' + rows.slice(i, i + 10).join('') + '</div>'));
   return out;
 }
@@ -1658,15 +1721,25 @@ function ui(state) {
         toc.push([m.page || m.title, [...pagesNew.querySelectorAll('.rp-pg')].indexOf(at) + 1]);
       }
       const lg = o.modules.find(m => m.key === 'legend');
+      /* every stat a page printed by its key has its entry, whichever module drew it (linkLegend links it there) */
+      if (lg && conf.on.legend) R.legend.push(...[...pagesNew.querySelectorAll('[data-lg]')].map(e => e.getAttribute('data-lg')).filter(Boolean));
       if (lg && conf.on.legend && (R.legend.length || R.legendExtra.length)) {
         toc.push(['LEGEND', pagesNew.querySelectorAll('.rp-pg').length + 1]);
         layout(pagesNew, c, 'LEGEND', legendBlocks(R.legend, R.legendExtra, o.kind, R.pooled));
+        R.lgLinks = linkLegend(pagesNew);
       }
       const tocEl = pagesNew.querySelector('.rp-cv-toc');
       const cap = t => t.charAt(0) + t.slice(1).toLowerCase();
       /* THE CONTENTS ARE LINKS (2026-10-07): each line goes to its page (data-goto: on the screen a scroll, in the PDF a link,
          raster.js), and every page's number goes back to the contents */
       if (tocEl) tocEl.innerHTML = toc.map(([t, n]) => '<li data-goto="' + n + '" title="Go to page ' + n + '"><span>' + esc(cap(t)) + '</span><i></i><b>' + n + '</b></li>').join('');
+      /* HOW TO GET ROUND IT, on the cover under the contents (Louie, 2026-10-07): said only when the stats do link to a legend */
+      const how = pagesNew.querySelector('.rp-cv-how');
+      if (how && R.lgLinks) {
+        how.innerHTML = '<b>How to use this report</b><span>Click any stat’s name to read what it means in the legend · click a line of the ' +
+          'contents to go to that section · a page’s number brings you back here</span>';
+        how.hidden = false;
+      } else if (how) how.remove();
       const all = pagesNew.querySelectorAll('.rp-pg');
       all.forEach((p, i) => { const n = p.querySelector('.rp-no'); if (n) { n.textContent = (i + 1) + ' / ' + all.length; if (tocEl && i > 0) { n.setAttribute('data-goto', '1'); n.title = 'Back to the contents'; } } });
       /* THE BOOKMARKS (raster.js outline): every section at its first page, and the headings in it at theirs */
@@ -1682,6 +1755,15 @@ function ui(state) {
       })));
       pagesNew.addEventListener('click', e => {
         const g = e.target && e.target.closest ? e.target.closest('[data-goto]') : null;
+        /* a stat's name: to its legend row itself, lit for a moment (linkLegend) */
+        const lk = g && g.getAttribute('data-lgto');
+        const row = lk ? [...pagesNew.querySelectorAll('.rp-lg-row[data-lgk]')].find(r => r.getAttribute('data-lgk') === lk) : null;
+        if (row && row.scrollIntoView) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          row.classList.remove('rp-lg-hit'); void row.offsetWidth; row.classList.add('rp-lg-hit');
+          setTimeout(() => row.classList.remove('rp-lg-hit'), 2400);
+          return;
+        }
         const to = g ? pagesNew.querySelectorAll('.rp-pg')[+g.getAttribute('data-goto') - 1] : null;
         if (to && to.scrollIntoView) to.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });

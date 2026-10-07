@@ -306,7 +306,13 @@ function pdfFromJpegs(pages, meta) {
   const pageObj = i => 3 + i * 3, info = 3 + n * 3;
   let next = info + 1;
   const okPage = q => Number.isInteger(+q) && +q >= 1 && +q <= n;
-  const dest = q => '[' + pageObj(+q - 1) + ' 0 R /Fit]';
+  /* a link with ty (how far down its page the target starts, 0 to 1: a stat's legend row, report.js linkLegend) lands there - the
+     page shown from that height down - and anything else shows its whole page */
+  const dest = (q, ty) => {
+    const P = place[+q - 1];
+    if (P && ty != null && ty !== '' && Number.isFinite(+ty) && +ty >= 0 && +ty < 1) return '[' + pageObj(+q - 1) + ' 0 R /XYZ null ' + (P.y + P.h * (1 - +ty)).toFixed(2) + ' null]';
+    return '[' + pageObj(+q - 1) + ' 0 R /Fit]';
+  };
   const annots = pages.map(p => (p.links || []).filter(l => l && okPage(l.page) && l.w > 0 && l.h > 0).map(l => ({ l, id: next++ })));
   const outline = [];
   const walk = (list, parent) => (list || []).filter(o => o && okPage(o.page) && String(o.title || '').trim()).map(o => {
@@ -339,7 +345,7 @@ function pdfFromJpegs(pages, meta) {
   const f2 = v => (+v).toFixed(2);
   annots.forEach((list, i) => list.forEach(({ l, id }) => {
     const P = place[i], x0 = P.x + l.x * P.w, y1 = P.y + P.h - l.y * P.h;
-    obj(id, '<< /Type /Annot /Subtype /Link /Rect [' + f2(x0) + ' ' + f2(y1 - l.h * P.h) + ' ' + f2(x0 + l.w * P.w) + ' ' + f2(y1) + '] /Border [0 0 0] /Dest ' + dest(l.page) + ' >>');
+    obj(id, '<< /Type /Annot /Subtype /Link /Rect [' + f2(x0) + ' ' + f2(y1 - l.h * P.h) + ' ' + f2(x0 + l.w * P.w) + ' ' + f2(y1) + '] /Border [0 0 0] /Dest ' + dest(l.page, l.ty) + ' >>');
   }));
   if (outRoot) {
     const count = list => list.reduce((a, it) => a + 1 + count(it.kids), 0);
@@ -419,7 +425,8 @@ function linksOf(node) {
   if (!(R.width > 0 && R.height > 0)) return [];
   return [...node.querySelectorAll('[data-goto]')].map(e => {
     const r = e.getBoundingClientRect();
-    return { x: (r.left - R.left) / R.width, y: (r.top - R.top) / R.height, w: r.width / R.width, h: r.height / R.height, page: +e.getAttribute('data-goto') };
+    const ty = e.getAttribute('data-goto-y');
+    return { x: (r.left - R.left) / R.width, y: (r.top - R.top) / R.height, w: r.width / R.width, h: r.height / R.height, page: +e.getAttribute('data-goto'), ty: ty == null ? null : +ty };
   }).filter(l => l.w > 0 && l.h > 0 && l.page > 0);
 }
 /* the PDF's bytes, a page per node, without downloading it (report.js PRIME REPORT keeps them for sending, 0229) */

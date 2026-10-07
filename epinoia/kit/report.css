@@ -116,6 +116,9 @@
 .rp-cv-toc li{ display:flex; align-items:baseline; gap:6px; padding:5px 0; font-family:var(--f-ui); font-weight:600; font-size:11px; color:var(--ink) }
 .rp-cv-toc li i{ flex:1; border-bottom:1px dotted var(--rule-2); transform:translateY(-3px) }
 .rp-cv-toc li b{ font-family:var(--f-data,ui-monospace,monospace); font-size:10px; color:var(--rp-ink-a,#08603f) }
+/* how to get round the report: in the cover's hero under the subtitle (report.js, said only when the stats link to the legend) */
+.rp-cv-how{ display:flex; flex-direction:column; align-items:center; gap:4px; max-width:470px; margin:18px auto 0; padding:9px 16px; border:1px solid rgba(255,255,255,.22); border-radius:999px; text-align:center; font-family:var(--f-ui); font-size:9px; line-height:1.4; color:rgba(255,255,255,.82) }
+.rp-cv-how b{ font-weight:800; font-size:7.5px; letter-spacing:.16em; text-transform:uppercase; color:#ffe14d }
 .rp-cv-foot{ flex:none; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 48px 22px; border-top:1px solid var(--rule);
   font-family:var(--f-ui); font-weight:600; font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3) }
 .rp-cv-foot .epinoia-mark{ font-size:11px; color:var(--ink); margin-left:4px }
@@ -856,3 +859,9 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 /* THE CONTENTS AND THE PAGE NUMBERS ARE LINKS (report.js data-goto; in the PDF, raster.js link annotations) */
 .rp-stage [data-goto]{ cursor:pointer }
 .rp-cv-toc li[data-goto]:hover span, .rp-no[data-goto]:hover{ text-decoration:underline }
+/* EVERY STAT'S NAME GOES TO ITS LEGEND ENTRY (report.js linkLegend): underlined on the screen under the pointer, and the entry lit when
+   it is reached; nothing drawn on the page itself, so the PDF reads as it always has */
+.rp-stage [data-lgto]:hover{ text-decoration:underline dotted; text-underline-offset:2px }
+.rp-lg-row.rp-lg-hit{ animation:rpLgHit 2.4s ease-out }
+@keyframes rpLgHit{ 0%,30%{ background:color-mix(in srgb,#ffe14d 70%,transparent); box-shadow:0 0 0 4px color-mix(in srgb,#ffe14d 70%,transparent) } 100%{ background:transparent; box-shadow:none } }
+@media (prefers-reduced-motion:reduce){ .rp-lg-row.rp-lg-hit{ animation:none; background:color-mix(in srgb,#ffe14d 50%,transparent) } }

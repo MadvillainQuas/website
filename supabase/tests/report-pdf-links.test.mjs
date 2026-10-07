@@ -99,5 +99,22 @@ const RJ = require(path.join(ROOT, 'epinoia', 'report.js'));
 const rk = RJ.ranker([{ id: 'a', x: 1 }, { id: 'b', x: 2 }, { id: 'c@0', x: 3, __prior: true }], ['x']);
 ok('a ranker counts the season shown apart (nNow)', rk.n === 3 && rk.nNow === 2, [rk.n, rk.nNow]);
 
+console.log('\n6. every stat\'s name goes to its legend entry (2026-10-07)');
+const pdfLg = X.pdfFromJpegs(pages.map((p, i) => ({ bytes: p.bytes, w: p.w, h: p.h,
+  links: i === 0 ? [{ x: 0.1, y: 0.5, w: 0.2, h: 0.02, page: 3, ty: 0.25 }, { x: 0.1, y: 0.6, w: 0.2, h: 0.02, page: 2 }] : [] })), { title: 'Report' });
+const lgs = Buffer.from(pdfLg).toString('latin1');
+const xyz = /\/Dest \[(\d+) 0 R \/XYZ null ([\d.]+) null\]/.exec(lgs);
+ok('a link with the row\'s height lands on it: the page shown from a quarter of the way down', !!xyz && Math.abs(+xyz[2] - 841.89 * 0.75) < 1.5, xyz && xyz[0]);
+ok('...and a link without one still shows its whole page', /\/Dest \[\d+ 0 R \/Fit\]/.test(lgs));
+ok('raster.js reads the height off the element (data-goto-y)', /e\.getAttribute\('data-goto-y'\)/.test(RS) && /dest\(l\.page, l\.ty\)/.test(RS));
+ok('the stat rows and cells carry their key (data-lg)', (R.match(/class="rp-st-l" data-lg="' \+ esc\(k\) \+ '"/g) || []).length === 2 && (R.match(/class="rp-cell-l" data-lg="' \+ esc\(k\) \+ '"/g) || []).length === 2);
+ok('every legend row carries the key it explains (data-lgk), an entry such as FOUR FACTORS its words', /class="rp-lg-row" data-lgk="' \+ esc\(k\) \+ '"/.test(R) && /data-lgk="x:' \+ esc\(lgNorm\(t\)\) \+ '"/.test(R));
+ok('the legend is linked once it is laid out, and has a row for every keyed stat the pages printed',
+   /legendBlocks\(R\.legend, R\.legendExtra, o\.kind, R\.pooled\)\);\s*R\.lgLinks = linkLegend\(pagesNew\);/.test(R) && /R\.legend\.push\(\.\.\.\[\.\.\.pagesNew\.querySelectorAll\('\[data-lg\]'\)\]/.test(R));
+ok('on the screen a click goes to the row itself and lights it', /const lk = g && g\.getAttribute\('data-lgto'\)/.test(R) && /row\.classList\.add\('rp-lg-hit'\)/.test(R));
+ok('the club report\'s boxes, tiles and shot distribution name their stats', (TP.match(/data-lg="/g) || []).length >= 3);
+ok('the cover says so, under the subtitle, only when the stats do link to a legend',
+   /<p class="rp-cv-how" hidden><\/p>/.test(R) && /if \(how && R\.lgLinks\)/.test(R) && /Click any stat’s name to read what it means in the legend/.test(R) && /else if \(how\) how\.remove\(\)/.test(R));
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -115,10 +115,11 @@ function modules(ctx) {
       const Rk = E.posRanker(poolField, keys, group, mine.id, pools);
       R.legend.push(...keys.filter(k => !(E.STATS[k] && E.STATS[k].optional) || (E.hasStat ? E.hasStat(k, mine) : E.isNum(mine[k]))));
       const tiles = [['GP', 'gp', 0], ['MIN / G', 'mpg', 1], ['PTS / G', 'ppg', 1], ['REB / G', 'rpg', 1], ['AST / G', 'apg', 1], ['BPM', 'bpm', 1, true]];
+      R.legend.push(...tiles.map(t => t[1]));          // the headline tiles have legend entries too, so their names link there
       const Rt = E.posRanker(poolField, tiles.map(t => t[1]).filter(k => k !== 'gp'), group, mine.id, pools);
       const tileHTML = '<div class="rp-tiles rp-tiles-b" style="--n:' + tiles.length + '">' + tiles.map(([l, k, dp, sg]) => {
         const v = mine[k], p = k === 'gp' ? null : Rt.pct(k, mine.id);
-        return '<div class="rp-tile"' + (p == null ? '' : ' data-b="' + E.band(p) + '"') + '><b>' + (E.isNum(v) ? (sg && +v > 0 ? '+' : '') + (+v).toFixed(dp) : '—') + '</b><span>' + l + '</span>' +
+        return '<div class="rp-tile"' + (p == null ? '' : ' data-b="' + E.band(p) + '"') + '><b>' + (E.isNum(v) ? (sg && +v > 0 ? '+' : '') + (+v).toFixed(dp) : '—') + '</b><span data-lg="' + k + '">' + l + '</span>' +
           (p == null ? '' : '<span class="rp-rk" data-b="' + E.band(p) + '">' + E.ordinal(p) + '</span>') + '</div>'; }).join('') + '</div>';
       const needRapm = keys.some(k => E.STATS[k] && E.STATS[k].rapm) && !rapmOk;
       const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + (Rk.nNow || Rk.n) + ' ' + Rk.who + (Rk.nNow && Rk.nNow < Rk.n ? ' this season' : '') + (Rk.group ? ' (adjusted for position)' : '') : ''].filter(Boolean).join(' · ')) + tileHTML +

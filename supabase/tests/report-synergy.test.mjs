@@ -95,7 +95,7 @@ console.log('\nthe defence');
   ok('attacked face-up and post-D eFG% in every position\'s defence, both sets', ['main', 'players'].every(set => ['guard', 'wing', 'big'].every(p =>
     E.TPL[set][p].some(x => /DEFENCE|RIM PROTECTION/.test(x[0]) && x[1].includes('syn_fu_efg') && x[1].includes('syn_post_efg')))));
   const cells = E.groupCellsHTML(g, row, E.ranker([row], g));
-  ok('...drawn where he has them, lower is better against 52.5: face-up 50.0 green-ish, post-D 62.5 red', /ATTACKED FACE-UP eFG%<\/span><b class="rp-cell-v">50\.0/.test(cells) && /data-b="1"[^>]*><span class="rp-cell-l">POST-D eFG%/.test(cells), cells.match(/<div class="rp-cell[^>]*><span class="rp-cell-l">(ATTACKED|POST)[^<]*/g));
+  ok('...drawn where he has them, lower is better against 52.5: face-up 50.0 green-ish, post-D 62.5 red', /ATTACKED FACE-UP eFG%<\/span><b class="rp-cell-v">50\.0/.test(cells) && /data-b="1"[^>]*><span class="rp-cell-l"[^>]*>POST-D eFG%/.test(cells), cells.match(/<div class="rp-cell[^>]*><span class="rp-cell-l"[^>]*>(ATTACKED|POST)[^<]*/g));
   const without = E.groupCellsHTML(g, { id: 'b', stl_pct: 2 }, E.ranker([row], g));
   ok('...and are not there at all for a player with no file', !/FACE-UP|POST-D/.test(without));
 }

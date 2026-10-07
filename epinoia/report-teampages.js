@@ -365,10 +365,10 @@ function modules(ctx) {
       const Rf = E.ranker(teams, ff.flatMap(x => [x[2], x[3]]).concat(['ortg', 'drtg', 'net', 'pace']));
       const chip = (k, row) => { row = row || me; const p = Rf.pct(k, row.id), s = E.STATS[k] || {}; const r = rankOf(teams, k, row.id, s.low);
         return r ? '<span class="rp-rk" data-b="' + E.band(p, s.style) + '">' + rk(r) + '</span>' : ''; };
-      R.legend.push('ff_efg', 'ff_tov', 'ff_oreb', 'ff_ftr');
+      R.legend.push('ff_efg', 'ff_tov', 'ff_oreb', 'ff_ftr', 'dff_efg', 'dff_tov', 'dff_oreb', 'dff_ftr', 'ortg', 'drtg', 'net', 'pace');   // the boxes and tiles below link to these
       /* a pair of boxes: the club's own and what it allowed, or in a single game each club's own */
       const ffs = (k, row, lab, fmt) => { const s = E.STATS[k] || {};
-        return '<div class="rp-ffs" data-b="' + E.band(Rf.pct(k, row.id), s.style) + '"><b>' + (fmt || f1)(row[k]) + '</b><span>' + esc(lab) + '</span>' + chip(k, row) + '</div>'; };
+        return '<div class="rp-ffs" data-b="' + E.band(Rf.pct(k, row.id), s.style) + '"><b>' + (fmt || f1)(row[k]) + '</b><span data-lg="' + esc(k) + '">' + esc(lab) + '</span>' + chip(k, row) + '</div>'; };
       const ffHTML = '<div class="rp-ff">' + ff.map(([l, u, o, d]) => '<div class="rp-ffc"><h4>' + l + ' · ' + u + '</h4><div class="rp-ffp">' +
         (them ? ffs(o, me, c.vs.as) + ffs(o, them, c.vs.bs) : ffs(o, me, 'own') + ffs(d, me, 'allowed')) + '</div></div>').join('') + '</div>';
       const tiles = [['ORTG', 'ortg', 'points scored per 100'], ['DRTG', 'drtg', 'points allowed per 100'], ['NET', 'net', 'the difference'], ['PACE', 'pace', 'possessions a game']];
@@ -389,7 +389,7 @@ function modules(ctx) {
               : '<div class="rp-ffc"><h4>Tempo · PACE</h4><div class="rp-ffp">' + ffs('pace', me, c.vs.as) + ffs('pace', them, c.vs.bs) + '</div></div>') + '</div>'
         : '<div class="rp-tiles rp-tiles-b" style="--n:4;margin-top:10px">' + tiles.map(([l, k, w]) => {
           const s = E.STATS[k] || {}, b = E.band(Rf.pct(k, me.id), s.style);
-          return '<div class="rp-tile" data-b="' + b + '"><b>' + (k === 'net' ? sg1(me[k]) : f1(me[k])) + '</b><span>' + l + '</span><em>' + w + '</em>' + chip(k) + '</div>'; }).join('') + '</div>';
+          return '<div class="rp-tile" data-b="' + b + '"><b>' + (k === 'net' ? sg1(me[k]) : f1(me[k])) + '</b><span data-lg="' + k + '">' + l + '</span><em>' + w + '</em>' + chip(k) + '</div>'; }).join('') + '</div>';
       const out = [block(title('Four factors', them ? 'the same figures for both clubs, this game · each coloured by its place among the ' + N + POOL + ' over the season'
         : [c.scope, 'own and allowed · the chip is the place among the ' + N + POOL + ''].filter(Boolean).join(' · ')) + ffHTML + tileHTML + E.keyHTML('Reading the chips', [
         ['THE CHIP · THE BAR', 'A place such as “4th of 10” is the club’s rank in the field named above (' + N + POOL + '), where first is the best end of the stat: green the top quarter, red the bottom. A blue-to-purple bar is a style, ranked by most: deeper = more of it, neither good nor bad.']], 'one'))];
@@ -481,7 +481,7 @@ function modules(ctx) {
         };
         out.push(block(title('Shot distribution', (them ? 'where each club’s shots came from and how they went in · its place among the ' + N + POOL + '' : 'where the shots come from and how they go in, at both ends · the club’s place among the ' + N + POOL + '') + ' (blue to purple: a style, deeper the more of it)') +
           '<table class="rp-tbl rp-sd"><thead><tr><th class="l">shots</th><th class="o">' + esc(c.name) + ' shooting</th><th class="d">' + (c.vs ? esc(c.vs.b) + ' shooting' : 'opponents shooting against ' + esc(c.name)) + '</th></tr></thead><tbody>' +
-          SD.map(([k, l, w], i) => '<tr' + (i && /_att100$/.test(k) ? ' class="grp"' : '') + '><td class="l"><b>' + esc(l) + '</b><small>' + esc(w) + '</small></td>' + cell('z_' + k) + (them ? cell('z_' + k, them) : cell('zd_' + k)) + '</tr>').join('') +
+          SD.map(([k, l, w], i) => '<tr' + (i && /_att100$/.test(k) ? ' class="grp"' : '') + '><td class="l"><b data-lg="z_' + esc(k) + '">' + esc(l) + '</b><small>' + esc(w) + '</small></td>' + cell('z_' + k) + (them ? cell('z_' + k, them) : cell('zd_' + k)) + '</tr>').join('') +
           '</tbody></table>'));
       }
       try {
