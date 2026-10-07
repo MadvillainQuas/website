@@ -493,6 +493,16 @@ function mountSources(o) {
       if (ctl && (data || []).length) box.appendChild(row(ctl.box));
     }
 
+    /* WHAT EACH YOUTUBE CHANNEL'S VIDEOS ARE FOR (0237): one read for the channels on the list; before 0237 nothing */
+    const ytIds = (data || []).filter(s => s.platform === 'youtube').map(s => s.id);
+    const modes = {};
+    if (ytIds.length) {
+      try {
+        const { data: m, error: me } = await sb.rpc('news_video_modes', { p_ids: ytIds });
+        if (!me) (m || []).forEach(x => { modes[x.id] = x; });
+      } catch (_) { /* before 0237 */ }
+    }
+
     /* ---- the list ---- */
     if (!league && (data || []).some(s => s.assigned_leagues === undefined)) {
       box.appendChild(el('p', 'empty', 'Giving a source the leagues it covers arrives with migration 0207: it has not been applied to this database yet.'));
@@ -556,6 +566,7 @@ function mountSources(o) {
       if (load) line.appendChild(load.box);
       line.append(onoff, edit, del);
       if (!league && Array.isArray(s.assigned_leagues)) line.appendChild(covers(s, leagues));
+      if (modes[s.id]) line.appendChild(videoSwitch(s, modes[s.id]));
       box.appendChild(line);
     });
 
@@ -578,6 +589,48 @@ function mountSources(o) {
     more.append(row(mnm, site, feed), row(mlogo, colour, madd));
     box.appendChild(more);
     if (plat) box.appendChild(plat.box);
+  }
+
+  /* A YOUTUBE CHANNEL'S VIDEOS (0237 set_news_video_mode), one of three:
+       Highlights   a video matched to a game is that game's highlights (the league's Video tab, the game page)
+       Full games   a video matched to a game is its broadcast: the game's video, seeked to each play
+       News only    its videos stay stories, on no game
+     A video whose title says highlights is a game's highlights on either of the first two. */
+  const VIDEO_MODES = [
+    ['highlights', 'Highlights', 'Its videos of a game are that game’s highlights: on the league’s Video tab and the game page'],
+    ['seeking', 'Full games', 'Its videos of a game are the whole game: the game’s video, seeked to each play (a video titled highlights stays highlights)'],
+    ['off', 'News only', 'Its videos stay stories in the news and the video feed, on no game']];
+  function videoSwitch(s, m) {
+    const wrap = el('div');
+    wrap.style.cssText = 'flex:1 1 100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:2px 0 0 36px';
+    const lab = el('span', 'empty', 'Videos:');
+    lab.style.margin = '0';
+    wrap.appendChild(lab);
+    const seg = el('span');
+    seg.setAttribute('role', 'radiogroup');
+    seg.setAttribute('aria-label', s.name + ': what its videos are');
+    seg.style.cssText = 'display:inline-flex;gap:4px';
+    VIDEO_MODES.forEach(([mode, label, tip]) => {
+      const b = btn(label, m.video_mode === mode ? 'pri' : '');
+      b.title = tip;
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', m.video_mode === mode ? 'true' : 'false');
+      b.addEventListener('click', async () => {
+        if (m.video_mode === mode) return;
+        const { error: e } = await sb.rpc('set_news_video_mode', { p_id: s.id, p_mode: mode });
+        if (e) return say(errText(e), 'err');
+        m.video_mode = mode;
+        say(s.name + ': ' + label.toLowerCase() + '. ' + (mode === 'off' ? 'Its videos are put on no game from now on.'
+          : 'Its videos are matched to games at the next read (within half an hour).'), 'ok');
+        wrap.replaceWith(videoSwitch(s, m));
+      });
+      seg.appendChild(b);
+    });
+    wrap.appendChild(seg);
+    const n = el('span', 'empty', (m.videos || 0) + ' videos · ' + (m.matched || 0) + ' on a game');
+    n.style.margin = '0';
+    wrap.appendChild(n);
+    return wrap;
   }
 
   /* a source's logo, small and square */

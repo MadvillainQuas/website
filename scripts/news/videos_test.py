@@ -108,6 +108,41 @@ ok("a highlight: the game before it, inside six days (not the one a fortnight ag
 ok("...and never a game that has not been played", V.pick_game([G[2]], PUB, "highlights") is None)
 ok("a full game: either side, the nearest (a stream published two days ahead)", V.pick_game([G[2], G[1]], PUB, "full")["id"] == "g3")
 ok("nothing in the window: no game", V.pick_game([G[1]], PUB, "highlights") is None and V.pick_game([], PUB, "full") is None)
+print("\nthe date, the league and the competition")
+from datetime import date  # noqa: E402
+NEAR = datetime(2026, 10, 5, 20, 0, tzinfo=timezone.utc)
+ok("a title's date in every form: 05/10/2026, 2026-10-05, 5.10., 5 Oct, October 5th, 5 de octubre, 10月5日",
+   all(date(2026, 10, 5) in V.title_dates(t, NEAR) for t in ("Highlights 05/10/2026", "Highlights | 2026-10-05", "Resumen 5.10.",
+                                                              "Highlights - 5 Oct", "October 5th highlights", "Resumen 5 de octubre",
+                                                              "【ハイライト】10月5日 千葉 vs 宇都宮")),
+   {t: V.title_dates(t, NEAR) for t in ("Resumen 5.10.", "October 5th highlights")})
+ok("...a day/month that could be either way round is read both ways", {date(2026, 10, 5), date(2026, 5, 10)} & V.title_dates("5/10", NEAR) == {date(2026, 10, 5)})
+ok("...no date, no days; a score is no date; a date far from the video is not this season's", V.title_dates("Highlights: A vs B", NEAR) == set()
+   and V.title_dates("Real Madrid 89-76 Barcelona", NEAR) == set() and V.title_dates("Highlights 05/10/2019", NEAR) == set())
+ok("...the year of a date given without one is the one that brings it nearest (a 30 December game, a 2 January video)",
+   date(2025, 12, 30) in V.title_dates("Highlights 30 Dec", datetime(2026, 1, 2, tzinfo=timezone.utc)))
+WEEK = [{"id": "league", "status": "final", "tipoff_at": "2026-10-04T18:00:00+00:00",
+         "competitions": {"name": "Liga Endesa", "seasons": {"league_id": "ES"}}},
+        {"id": "cup", "status": "final", "tipoff_at": "2026-10-01T18:00:00+00:00",
+         "competitions": {"name": "Copa del Rey", "seasons": {"league_id": "ES"}}},
+        {"id": "euro", "status": "final", "tipoff_at": "2026-10-03T18:00:00+00:00",
+         "competitions": {"name": "EuroLeague Regular Season", "seasons": {"league_id": "EL"}}}]
+ok("two clubs who met three times in a week: a plain highlight is of the latest, the one just before it went up",
+   V.pick_game(WEEK, NEAR, "highlights", "Highlights: Real Madrid vs FC Barcelona")["id"] == "league")
+ok("...'Copa' in the title: the cup tie, though it was four days earlier", V.pick_game(WEEK, NEAR, "highlights", "Resumen Copa del Rey: Real Madrid - Barça")["id"] == "cup")
+ok("...'EuroLeague' in the title: the EuroLeague game", V.pick_game(WEEK, NEAR, "highlights", "EuroLeague Highlights: Real Madrid vs Barcelona")["id"] == "euro")
+ok("...the channel's own league outweighs a day's difference (the EuroLeague's channel)",
+   V.pick_game(WEEK, NEAR, "highlights", "Highlights: Real Madrid vs Barcelona", {"EL"})["id"] == "euro")
+ok("...a date in the title decides (1 October: the cup tie), and a date none of them was played on is no game",
+   V.pick_game(WEEK, NEAR, "highlights", "Highlights 01/10/2026 Real Madrid vs Barcelona")["id"] == "cup"
+   and V.pick_game(WEEK, NEAR, "highlights", "Highlights 28/09/2026 Real Madrid vs Barcelona") is None)
+ok("...a cup title is never a league game, even the only one (the cup tie may not be on the site at all)",
+   V.pick_game(WEEK[:1], NEAR, "highlights", "Copa del Rey highlights: Real Madrid - Barça") is None)
+ok("...a competition the schedule calls a cup is one, whatever its name ('Trophy' title, 'SLB Trophy' kind cup)",
+   V.pick_game([{"id": "t", "status": "final", "tipoff_at": "2026-10-04T18:00:00+00:00", "competitions": {"name": "Knockout", "kind": "cup"}}],
+               NEAR, "highlights", "Copa highlights")["id"] == "t")
+ok("competition fit: shared words count, cup against league costs", V.competition_fit("SLB Championship highlights", "SLB Championship") > 0
+   and V.competition_fit("Cup final highlights", "Liga Endesa") < 0 and V.competition_fit("Highlights", "Copa del Rey") < 0)
 ok("what a matched video becomes on each channel",
    [V.outcome(k, m) for k, m in (("highlights", "highlights"), ("video", "highlights"), ("full", "highlights"),
                                  ("highlights", "seeking"), ("video", "seeking"), ("full", "seeking"), ("highlights", "off"))]

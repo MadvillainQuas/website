@@ -11,8 +11,12 @@ WHICH GAME (match_videos): the clubs the title names (ClubFinder, over the leagu
 about), taken two at a time, best first; the pair that played each other at the right time is the game:
     highlights   tipped off up to six days before the video was published (never after: a preview is no highlight)
     full game    within four days either side (a stream is published when it is scheduled, a replay when uploaded)
-A pair that never met in that window is no game, so a title naming three clubs, or one club twice in two
-languages, still finds the one game it is of. Nothing is guessed: no pair, no game.
+and among those (pick_game): a date the title gives must be the game's ("05/10/2026", "5 Oct", "10月5日"); then the
+soonest before the video went up (a highlight is posted within hours of the final buzzer), the one in the leagues
+the channel and the video are about, and the one whose competition the title names (a cup tie and a league game
+between the same clubs in one week: "Copa" says which). A pair that never met in that window is no game, so a title
+naming three clubs, or one club twice in two languages, still finds the one game it is of. Nothing is guessed: no
+pair, no game.
 
 WHAT IT BECOMES (the channel's news_sources.video_mode):
     'highlights'  a matched video is the game's highlights, unless its title says it is the whole game
@@ -242,19 +246,136 @@ def _iso(v) -> datetime | None:
         return None
 
 
-def pick_game(games: list[dict], published: datetime, kind: str) -> dict | None:
-    """the game of a video published at `published`: tipped off inside the kind's window, the nearest"""
+# ------------------------------------------------------------------------------------- a date in the title ---
+MONTHS = {}
+for _i, _names in enumerate([
+        "jan january enero ene janvier janv januar gennaio gen janeiro styczen styczna sty januari tammikuu tammi",
+        "feb february febrero fevrier fev februar febbraio fevereiro luty lutego lut februari helmikuu helmi",
+        "mar march marzo mars marz maerz marco marca marzec kesakuu maaliskuu maalis",
+        "apr april abril avril aprile kwiecien kwietnia kwi huhtikuu huhti",
+        "may mayo mai maggio maio maj maja toukokuu touko mei",
+        "jun june junio juin juni giugno junho czerwiec czerwca cze kesakuu",
+        "jul july julio juillet juli luglio julho lipiec lipca lip heinakuu heina",
+        "aug august agosto aout ago sierpien sierpnia sie elokuu elo augusti",
+        "sep sept september septiembre septembre settembre setembro wrzesien wrzesnia wrz syyskuu syys",
+        "oct october octubre octobre okt oktober ottobre outubro pazdziernik pazdziernika paz lokakuu loka",
+        "nov november noviembre novembre novemb novembro listopad listopada lis marraskuu marras",
+        "dec december diciembre dic decembre dezember dicembre dezembro grudzien grudnia gru joulukuu joulu"], start=1):
+    for _n in _names.split():
+        MONTHS.setdefault(_n, _i)
+
+
+def title_dates(title: str | None, near: datetime) -> set:
+    """the calendar days a title names ("05/10/2026", "2026.10.05", "5 Oct", "October 5th", "5 de octubre",
+    "10月5日"), read both ways round where the order is not certain (5/10 is 5 October or 10 May), with the year
+    of `near` where none is given. Empty when it names none."""
+    from datetime import date
+    F = wide_fold(title)
+    out = set()
+
+    def add(y, m, d):
+        try:
+            y = int(y)
+            y = y + 2000 if y < 100 else y
+            out.add(date(y, int(m), int(d)))
+        except (ValueError, TypeError):
+            pass
+    raw = unicodedata.normalize("NFKC", title or "")
+    for y, m, d in re.findall(r"(\d{4})[./-](\d{1,2})[./-](\d{1,2})", raw):
+        add(y, m, d)
+    for a, b, y in re.findall(r"(?<![\d.])(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})(?![\d.])", raw):
+        add(y, b, a); add(y, a, b)
+    for a, b in re.findall(r"(?<![\d./-])(\d{1,2})[./](\d{1,2})\.?(?![\d/-])(?!\.\d)", raw):
+        add(near.year, b, a); add(near.year, a, b)
+    for m, d in re.findall(r"(\d{1,2})月(\d{1,2})日", raw):
+        add(near.year, m, d)
+    words = F.split()
+    for i, w in enumerate(words):
+        m = MONTHS.get(w)
+        if not m:
+            continue
+        nums = [x for x in words[max(0, i - 2):i] + words[i + 1:i + 3] if re.fullmatch(r"\d{1,2}(st|nd|rd|th)?", x)]
+        yrs = [x for x in words[i + 1:i + 4] if re.fullmatch(r"(19|20)\d\d", x)]
+        for n in nums[:2]:
+            add(yrs[0] if yrs else near.year, m, re.sub(r"\D", "", n))
+    # a year given only by the season around it: a date a year off "near" belongs to the year that brings it closest
+    fixed = set()
+    for d in out:
+        best = min((d.replace(year=y) for y in (d.year - 1, d.year, d.year + 1) if _valid(d, y)),
+                   key=lambda x: abs((x - near.date()).days))
+        fixed.add(best if abs((best - near.date()).days) < abs((d - near.date()).days) else d)
+    return {d for d in fixed if abs((d - near.date()).days) <= 45}
+
+
+def _valid(d, y) -> bool:
+    try:
+        d.replace(year=y)
+        return True
+    except ValueError:
+        return False
+
+
+# --------------------------------------------------------------------------------------- the competition ---
+CUP_WORDS = {"cup", "copa", "coupe", "pokal", "coppa", "puchar", "cupen", "cupa", "kupa", "kup", "trophy", "taca", "taça",
+             "supercopa", "supercup", "supercoppa", "beker", "pokalen"}
+PLAYOFF_WORDS = {"playoff", "playoffs", "play", "final", "finals", "semifinal", "semi", "quarterfinal", "eliminatoria",
+                 "finale", "halbfinale", "playout"}
+COMP_GENERIC = {"league", "liga", "lega", "ligue", "season", "regular", "temporada", "saison", "stagione", "men", "women",
+                "mens", "womens", "basketball", "basket", "division", "group", "grupo", "phase", "fase", "the", "and", "de", "del"}
+
+
+def competition_fit(title: str | None, comp: str | None, kind: str | None = None) -> float:
+    """how well a game's competition fits what the title says: its own words in the title count for it (the
+    'Championship', 'Copa del Rey', 'EuroCup'), and a title about a cup is no league game's, nor the other way"""
+    if not comp:
+        return 0.0
+    T, C = set(wide_fold(title).split()), set(wide_fold(comp).split())
+    s = 0.0
+    shared = {w for w in (C & T) if len(w) >= 4 and w not in COMP_GENERIC}
+    if shared:
+        s += 1.5
+    t_cup, c_cup = bool(T & CUP_WORDS), bool(C & CUP_WORDS) or kind == "cup"
+    if t_cup != c_cup:
+        s -= 2.0 if t_cup else 1.0
+    if (T & PLAYOFF_WORDS) and ((C & PLAYOFF_WORDS) or kind == "playoff"):
+        s += 0.5
+    return s
+
+
+def pick_game(games: list[dict], published: datetime, kind: str, title: str | None = None,
+              leagues: set | None = None) -> dict | None:
+    """THE GAME OF A VIDEO, from the games its two clubs played around the time it was published:
+      * inside the kind's window (a highlight after tip-off, at most six days after; a full game four days either
+        side), and for a highlight only a game that has been played;
+      * a date the title gives decides: the game must be within a day of it, or there is no game;
+      * then the best by score: the sooner after the game the video went up the better (a highlight is posted
+        within hours: a day later costs a point, six days later almost three), its league among the video's
+        leagues (the channel's, the ones it is tagged with) +2, its competition named by the title +1.5, a cup game
+        under a title that names no cup -1; and a title that names a cup is never a league game's."""
     before, after = HIGHLIGHT_WINDOW if kind == "highlights" else FULL_WINDOW
-    best, best_d = None, None
+    days = title_dates(title, published) if title else set()
+    best, best_s = None, None
     for g in games or []:
         t = _iso(g.get("tipoff_at"))
         if not t or not (published - before <= t <= published + after):
             continue
         if kind == "highlights" and g.get("status") not in ("live", "finalising", "final"):
             continue
-        d = abs((published - t).total_seconds())
-        if best_d is None or d < best_d:
-            best, best_d = g, d
+        if days and not any(abs((t.date() - d).days) <= 1 for d in days):
+            continue
+        comp = g.get("competitions") or {}
+        cname = comp.get("name") or g.get("competition")
+        ckind = comp.get("kind")
+        if cname and set(wide_fold(title).split()) & CUP_WORDS and not set(wide_fold(cname).split()) & CUP_WORDS and ckind != "cup":
+            continue                                   # a cup's highlights are of no league game (the cup may not be here at all)
+        gap_h = abs((published - t).total_seconds()) / 3600
+        score = -min(gap_h, 24 * 7) / 24 * (1.0 if kind == "highlights" else 0.5)
+        lg = str(((comp.get("seasons") or {}).get("league_id")) or g.get("league_id") or "")
+        if leagues and lg and lg in leagues:
+            score += 2.0
+        score += competition_fit(title, cname, ckind)
+        if best_s is None or score > best_s:
+            best, best_s = g, score
     return best
 
 
@@ -396,7 +517,7 @@ def match_videos(db, now: datetime | None = None, log=print, dry_run: bool = Fal
                     except Exception as e:
                         log("  (videos: games of a pair not read: %s)" % e)
                         games_cache[key] = []
-                game = pick_game(games_cache[key], published, becomes)
+                game = pick_game(games_cache[key], published, becomes, title, leagues)
                 if game:
                     break
         if game:

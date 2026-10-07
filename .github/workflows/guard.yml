@@ -294,6 +294,14 @@ jobs:
         # stays open to everyone for now
         run: node supabase/tests/previews.test.mjs
 
+      - name: Highlights, the video feed and the live chat (0237)
+        # every migration on PGlite: a channel's mode is its league's or the platform's; a league's Video tab, a game's
+        # videos and HOME's video feed show only what may be seen; the chat's gate and store are the edge function's
+        # alone, a shown message goes out on chat:<game> with no user id, three reports take one down
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/video-chat.test.mjs
+
       - name: Box score renders with nothing but S and derive()
         # catches a helper left behind by the extraction, which otherwise only
         # shows up as a blank public page

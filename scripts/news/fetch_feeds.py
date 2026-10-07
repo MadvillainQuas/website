@@ -1111,7 +1111,8 @@ class Supabase:
         return out
 
     def games_between(self, a: str, b: str, lo: datetime, hi: datetime) -> list[dict]:
-        q = ("games?select=id,status,tipoff_at&or=(and(home_team_id.eq.%s,away_team_id.eq.%s),and(home_team_id.eq.%s,away_team_id.eq.%s))"
+        q = ("games?select=id,status,tipoff_at,competitions(name,kind,seasons(league_id))"
+             "&or=(and(home_team_id.eq.%s,away_team_id.eq.%s),and(home_team_id.eq.%s,away_team_id.eq.%s))"
              "&tipoff_at=gte.%s&tipoff_at=lte.%s&order=tipoff_at" % (a, b, b, a, urllib.parse.quote(lo.isoformat()),
                                                                     urllib.parse.quote(hi.isoformat())))
         return self._req("GET", q)[0] or []
