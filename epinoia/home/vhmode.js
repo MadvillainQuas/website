@@ -115,7 +115,17 @@
         if (!quick) { parts.forEach(n => n.classList.add('vh-in')); setTimeout(() => parts.forEach(n => n.classList.remove('vh-in')), 700); }
       }
       if (o.push !== false) address(to);
+      count(to, o);
     } finally { busy = false; }
+  }
+
+  /* THE PLATFORM'S VISIT COUNTS (track.js): opening VIDEO in place - its tab, the rail's VIDEOS row (which counts its own
+     press, nav.js), Back / Forward - is a view of 'home/video'; going back to MAIN an action, 'main'. A page opening on
+     ?view=video is not counted here: track.js counted that landing as 'home/video' already. */
+  function count(to, o) {
+    const T = window.EpinoiaTrack;
+    if (!T || (o.instant && o.push === false)) return;
+    try { if (to === 'video') T.view(); else T.action('main'); } catch (_) { /* a count is never in the way */ }
   }
 
   tabs.forEach(t => t.addEventListener('click', () => set(t.dataset.mode)));

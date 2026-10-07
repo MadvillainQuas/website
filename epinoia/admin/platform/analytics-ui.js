@@ -36,6 +36,7 @@ const PAGE = {
   splash: 'Splash', home: 'HOME', l: 'League table / team stats', t: 'Club profile', p: 'Player profile',
   game: 'Game (box score)', fixtures: 'Fixtures', stats: 'Statistics', 'stats/wowy': 'WOWY',
   injuries: 'Injury report', news: 'News', video: 'Video hub', games: 'Games (every league)',
+  'home/video': 'HOME · VIDEO view', winning: 'What wins',
   scouting: 'Scouting', go: 'EPINOIA GO', 'go/stamps': 'GO · stamps', 'go/photos': 'GO · photos',
   me: 'Profile', signin: 'Sign in', join: 'Join', invite: 'Invite', learn: 'Learn more', api: 'API',
   contact: 'Contact', privacy: 'Privacy', android: 'Android app', ios: 'iPhone app', app: 'App',
@@ -46,6 +47,20 @@ const GAME_TAB = {
   flow: 'Game flow', connections: 'Connections', events: 'Events', shotclock: 'Shot clock analysis',
   video: 'Video', report: 'Match report', preview: 'Preview'
 };
+/* what is done in the VIDEO view (HOME's, and a club page's Video tab) and the chat, as track.js action() names it */
+const VIDEO_ACT = {
+  'rail-videos': 'Rail: VIDEOS pressed', main: 'Back to MAIN',
+  'kind-all': 'Chose ALL', 'kind-highlights': 'Chose HIGHLIGHTS', 'kind-full': 'Chose FULL GAMES',
+  'kind-press': 'Chose PRESS CONFERENCES', 'kind-video': 'Chose VIDEOS',
+  'league-pick': 'Picked a league', 'league-all': 'All leagues again',
+  'play-highlights': 'Played a highlight', 'play-full': 'Played a full game', 'play-press': 'Played a press conference',
+  'play-video': 'Played a video', 'play-live': 'Played a past stream',
+  'live-game': 'Chose a live game', 'live-play': 'Started a live stream', 'live-fullscreen': 'Live in full screen',
+  more: 'Show more', 'watch-here': 'Came by WATCH HERE', 'chat-join': 'Joined a game chat', 'chat-send': 'Sent a chat message'
+};
+const isVideoAct = k => Object.prototype.hasOwnProperty.call(VIDEO_ACT, k) || /^(play|kind|live)-/.test(k || '');
+/* a tab or action key in words: a box score's tabs by their names, the VIDEO view's actions by theirs */
+const tabName = (page, tab) => (page === 'game' ? GAME_TAB[tab] : VIDEO_ACT[tab]) || tab;
 const DEVICE = { phone: 'Phone', tablet: 'Tablet', desktop: 'Desktop', unknown: 'Unknown' };
 const LANG = { en: 'English', ja: 'Japanese', es: 'Spanish', unknown: 'Unknown' };
 const APP = { web: 'Browser', android: 'Android app', ios: 'iPhone app' };
@@ -390,6 +405,29 @@ function render(host, r) {
   grid4.appendChild(card('EPINOIA GO', goCard));
   host.appendChild(grid4);
 
+  /* ---- VIDEO: HOME's VIDEO view, a club page's Video tab, the game chat (track.js action keys) ---- */
+  const vActs = {};
+  (r.tabs || []).forEach(x => {
+    if (!isVideoAct(x.tab)) return;
+    const a = vActs[x.tab] || (vActs[x.tab] = { tab: x.tab, clicks: 0, sessions: 0, pages: new Set() });
+    a.clicks += +x.clicks || 0; a.sessions += +x.sessions || 0; a.pages.add(PAGE[x.page] || x.page);
+  });
+  const vRows = Object.values(vActs);
+  const vPage = (r.pages || []).find(p => p.page === 'home/video') || {};
+  const plays = vRows.filter(a => /^play-/.test(a.tab)).reduce((n, a) => n + a.clicks, 0);
+  const vCard = el('div');
+  const vTiles = el('div', 'tiles');
+  [[fmt(+vPage.sessions || 0), 'visits to VIDEO'], [fmt(+vPage.views || 0), 'views'], [fmt(plays), 'videos played'],
+   [fmt((vActs['live-play'] || {}).clicks || 0), 'live streams started']].forEach(([n, k]) => {
+    const d = el('div', 'tile'); d.append(el('div', 'n', n), el('div', 'k', k)); vTiles.appendChild(d);
+  });
+  vCard.appendChild(vTiles);
+  vCard.appendChild(ranked(vRows, [
+    ['What', x => VIDEO_ACT[x.tab] || x.tab], ['Where', x => [...x.pages].join(', ')],
+    ['Times', x => fmt(x.clicks), 'num'], ['Visits', x => fmt(x.sessions), 'num']], x => +x.clicks,
+    'HOME’s VIDEO view (home/?view=video), a club page’s Video tab and the game chat. A visit is counted once per action.'));
+  host.appendChild(card('VIDEO', vCard));
+
   /* ---- who, roughly, and from where ---- */
   const grid5 = el('div', 'an-grid');
   grid5.appendChild(card('Devices (visits)', ranked(r.devices, [
@@ -407,7 +445,7 @@ function render(host, r) {
   host.appendChild(grid5);
 
   host.appendChild(card('Other tabs used', ranked(r.tabs, [
-    ['Page', x => PAGE[x.page] || x.page], ['Tab', x => x.tab],
+    ['Page', x => PAGE[x.page] || x.page], ['Tab', x => tabName(x.page, x.tab)],
     ['Clicks', x => fmt(x.clicks), 'num'], ['Visits', x => fmt(x.sessions), 'num']], x => +x.clicks)));
 }
 
@@ -421,8 +459,7 @@ function doing(v) {
   if (v.page === 'game' && (v.home || v.away)) what = page + ': ' + (v.home || '?') + ' v ' + (v.away || '?');
   else if (v.club) what = page + ': ' + v.club;
   else if (v.league && v.page === 'l') what = page + ': ' + v.league;
-  if (v.tab && v.page === 'game') what += ' - ' + (GAME_TAB[v.tab] || v.tab);
-  else if (v.tab) what += ' - ' + v.tab;
+  if (v.tab) what += ' - ' + tabName(v.page, v.tab);
   const who = [DEVICE[v.device] || v.device, APP[v.app] || v.app, LANG[v.lang] || v.lang, v.signed_in ? 'signed in' : null]
     .filter(Boolean).join(' · ');
   return { what, who };
@@ -582,7 +619,8 @@ function renderLive(host, r, stale) {
 
   host.appendChild(card('Latest activity', plain(r.feed, [
     ['When', x => ago(x.ago_s) + ' ago'],
-    ['What', x => (x.kind === 'tab' ? 'opened the ' + (GAME_TAB[x.tab] || x.tab) + ' tab on ' : 'opened ') +
+    ['What', x => (x.kind === 'tab' ? (isVideoAct(x.tab) && x.page !== 'game' ? (VIDEO_ACT[x.tab] || x.tab) + ' on '
+      : 'opened the ' + (GAME_TAB[x.tab] || x.tab) + ' tab on ') : 'opened ') +
       doing({ page: x.page, club: x.club, league: x.league, home: x.home, away: x.away }).what]], 'Nothing in the last half hour.')));
 }
 
@@ -721,5 +759,5 @@ function shortDay(d) {
   return isNaN(x) ? String(d) : x.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
-return { mount, _test: { niceMax, PAGE, GAME_TAB, doing, ago, LIVE_EVERY_MS, LIVE_MAX_MS, ROWS_SHOWN } };
+return { mount, _test: { niceMax, PAGE, GAME_TAB, VIDEO_ACT, tabName, doing, ago, LIVE_EVERY_MS, LIVE_MAX_MS, ROWS_SHOWN } };
 }));

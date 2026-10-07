@@ -70,6 +70,8 @@
   const MIN_KEY = 'epinoia.chat.min';
 
   function mount(host, gameId, opts) {
+    /* the platform's visit counts (track.js): joining the chat and each message sent, on the game - never what was said */
+    const count = k => { try { const T = window.EpinoiaTrack; if (T && T.action) T.action(k, { game: gameId }); } catch (_) { /* no count */ } };
     opts = opts || {};
     const el = M().el, tr = M().tr, base = opts.base || M().BASE;
     let stopped = false, lastId = 0, me = null, poll = null, unwatch = [], seen = new Set(), adultTicked = false;
@@ -223,6 +225,7 @@
             body: JSON.stringify({ gameId, body, adult: !!((adultBox && adultBox.checked) || adultTicked) }) });
           const j = await r.json().catch(() => ({}));
           if (j && j.ok) {
+            count('chat-send');
             input.value = '';
             say('');
             if (adultBox) { me.adult = true; adultBox.parentNode.remove(); adultBox = null; }
@@ -335,6 +338,7 @@
         else if (!a || a.error !== undefined) return bad('That did not work - try again.');
         else if (!a.ok) return bad(REASONS[a.reason] || 'That did not work - try again.');
         me.adult = true; me.terms = true;
+        count('chat-join');
         close();
         if (!me.on) return gate(REASONS.not_now);
         composer();

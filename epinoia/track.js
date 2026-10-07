@@ -126,6 +126,17 @@ function pageKey(pathname) {
   return (key || 'splash').slice(0, 40);
 }
 
+/* WHERE THE READER IS, which is more than the path in one place: HOME's VIDEO view (home/vhmode.js, ?view=video) is a page of
+   its own to a reader - the rail's VIDEOS row goes there - so it is counted as 'home/video', not as HOME. */
+function here() {
+  const loc = g('location') || {};
+  const key = pageKey(loc.pathname);
+  if (key === 'home') {
+    try { if (new URLSearchParams(String(loc.search || '')).get('view') === 'video') return 'home/video'; } catch (_) { /* HOME */ }
+  }
+  return key;
+}
+
 const clean = v => { const x = String(v == null ? '' : v).trim().toLowerCase(); return SLUG.test(x) ? x : null; };
 /* the page says who it is about, once it knows: { league, team, player } as slugs (a player as his or her id) */
 function entity(o) {
@@ -312,8 +323,8 @@ function piece(o) {
   const kind = o && ['seen', 'open', 'out'].indexOf(o.kind) >= 0 ? o.kind : null;
   if (!UUID.test(post) || !kind || mine(o.outlet)) return;
   if (kind === 'seen') { if (seenOnce.has(post)) return; seenOnce.add(post); }
-  const here = pageKey((g('location') || {}).pathname);
-  const at = kind === 'open' ? openedFrom() : { source: here && !STAFF.test(here) ? here : null, ref: null };
+  const on = here();
+  const at = kind === 'open' ? openedFrom() : { source: on && !STAFF.test(on) ? on : null, ref: null };
   pieceQueue.push({ post, kind, source: at.source, ref: at.ref });
   if (!pieceHooked) {
     pieceHooked = true;
@@ -349,15 +360,35 @@ function onClick(e) {
                 /(^|\s)(ep-tab|tabbtn)(\s|$)/.test(t.className || '');
   if (!isTab) return;
   const key = String(t.dataset.tab || t.dataset.p || t.dataset.key || '').toLowerCase();
-  const page = pageKey((g('location') || {}).pathname);
+  const page = here();
   if (!page || STAFF.test(page) || !TAB.test(key)) return;
   const c = context();
   push({ kind: 'tab', page, tab: key, league: c.league, team: c.team, player: c.player, game: c.game });
 }
 
+/* AN ACTION A PAGE NAMES ITSELF, for the controls that are not tabs (2026-10-07: the VIDEO view's chips, plays, live games,
+   full screen, WATCH HERE, the chat). Recorded exactly as a tab is - kind 'tab', a KEY, never words - on the page it happens
+   on; o = { league, game } when the action is about one (a video's league, a live game), else the page's own. */
+function action(key, o) {
+  const k = String(key || '').toLowerCase();
+  const page = here();
+  if (!page || STAFF.test(page) || !TAB.test(k)) return;
+  const c = context();
+  const lg = clean(o && o.league), gm = String((o && o.game) || '');
+  push({ kind: 'tab', page, tab: k, league: lg || c.league, team: c.team, player: c.player,
+         game: UUID.test(gm) ? gm.toLowerCase() : c.game });
+}
+/* A VIEW THAT CHANGES WITHOUT A NEW PAGE: HOME's MAIN -> VIDEO is a page view of 'home/video' (the address has already changed) */
+function view() {
+  const page = here();
+  if (!page || STAFF.test(page)) return;
+  const c = context();
+  push({ kind: 'view', page, league: c.league, team: c.team, player: c.player, game: c.game });
+}
+
 function boot() {
   if (!enabled()) return;
-  const page = pageKey((g('location') || {}).pathname);
+  const page = here();
   if (!page || STAFF.test(page)) return;
   const c = context();
   push(Object.assign({ kind: 'view', page, league: c.league, team: c.team, player: c.player, game: c.game }, landingTags()));
@@ -379,11 +410,11 @@ function setCounting(on) {
 function counting() { return !optedOut(); }
 
 return {
-  boot, flush, entity, setCounting, counting, search, piece, flushPieces, MINE_KEY,
+  boot, flush, entity, setCounting, counting, search, piece, flushPieces, action, view, MINE_KEY,
   _test: {
     env(e) { ENV = e || null; ENTITY = {}; sentOnce = false; queue.length = 0; stopped = false; searchStopped = false; session = null; ref = undefined; timer = null;
              pieceQueue.length = 0; seenOnce.clear(); pieceStopped = false; pieceTimer = null; pieceHooked = false; },
-    pageKey, context, signedIn, device, app, lang, referrerHost, optedOut, enabled, automated, staffSignedIn, onClick, queue,
+    pageKey, here, context, signedIn, device, app, lang, referrerHost, optedOut, enabled, automated, staffSignedIn, onClick, queue,
     pieceQueue, openedFrom, mine
   }
 };

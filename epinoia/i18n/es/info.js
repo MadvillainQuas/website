@@ -603,7 +603,6 @@
       'below.': 'más abajo.',
       'Visit counts': 'Recuento de visitas',
       'What is counted': 'Qué se cuenta',
-      'Which pages of the site are opened and which tabs on them are chosen, so we can see what is read and make it better: the page, the league, club or game already named in its address, and the name of a tab.': 'Qué páginas del sitio se abren y qué pestañas se eligen en ellas, para saber qué se lee y mejorarlo: la página, la liga, el club o el partido que ya figura en su dirección, y el nombre de la pestaña.',
       'What each count carries': 'Qué lleva cada registro',
       'Four facts about the visit that describe no one: whether you are signed in (yes or no, never who), whether it is a phone, a tablet or a computer, the language the site is shown in, and whether it is the app or a browser. If you came from another website, that website’s name, never the page.': 'Cuatro datos de la visita que no describen a nadie: si has iniciado sesión (sí o no, nunca quién), si es un móvil, una tableta o un ordenador, el idioma en que se muestra el sitio y si es la app o un navegador. Si llegaste desde otra web, el nombre de esa web, nunca la página.',
       'What is never kept': 'Qué no se guarda nunca',
@@ -643,7 +642,8 @@
       'A one-way code made from your network address with a secret key, never the address itself, so that the week’s previews cannot be had again by clearing the browser. Everyone on the same network shares them.': 'Un código de un solo sentido creado a partir de tu dirección de red con una clave secreta, nunca la dirección en sí, para que las vistas previas de la semana no se recuperen borrando el navegador. Todos los que usan la misma red las comparten.',
       'How many': 'Cuántas',
       'Ten previews a week, plus one free player report and one free club report a week. Opening the same thing again in the same week is free.': 'Diez vistas previas a la semana, más un informe de jugador y un informe de club gratis a la semana. Volver a abrir lo mismo en la misma semana es gratis.',
-      'A week, and then it is deleted.': 'Una semana, y después se borra.'
+      'A week, and then it is deleted.': 'Una semana, y después se borra.',
+      'Which pages of the site are opened, which tabs on them are chosen and what is done in the video view (a kind of video or a league chosen, a video or a live stream played, a game’s chat joined or a message sent, never what is written), so we can see what is read and watched and make it better: the page, the league, club or game it is about, and the name of the tab or of what was done.': 'Qué páginas del sitio se abren, qué pestañas se eligen en ellas y qué se hace en la vista de vídeo (un tipo de vídeo o una liga elegidos, un vídeo o una emisión en directo reproducidos, el chat de un partido al que se une o un mensaje enviado, nunca lo que se escribe), para saber qué se lee y se ve y mejorarlo: la página, la liga, el club o el partido al que se refiere, y el nombre de la pestaña o de lo que se hizo.'
     },
 
     ctx: {

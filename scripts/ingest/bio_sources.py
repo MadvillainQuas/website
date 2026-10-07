@@ -46,6 +46,9 @@ What each source gives, found by looking, not assumed (2026-09-27):
   nbb, liga-ouro         lnb.com.br: each club's page (the box score's display names, shirt, height), then the athlete's page per new
                          player (date, weight), which is the site's 'not found' page for about half of them
   bnxt-league            date of birth only (no height, no weight anywhere in the feed), read out of recent box scores, capped
+  basketball-champions-league, fiba-europe-cup
+                         FIBA's event site: the clubs at <base>/teams, then each club's page (its squad in the flight data): date,
+                         height; no weight. Keyed by personId, the game feed's own player key
 
 Every league in config/ingest-sources.json has a reader, or is in NO_BIO with the reason it cannot; docs/player-bio.md.
 """
@@ -1181,8 +1184,60 @@ def lnb_br(path: str, label: str) -> Callable[..., Iterator[dict]]:
     return read
 
 
+# ----------------------------------------------------- FIBA's own competitions ---
+# Every FIBA event site (www.championsleague.basketball/en, www.fiba.basketball/en/events/<event>) lists its clubs at <base>/teams, and
+# each club's page (<base>/teams/<slug>) carries its whole squad in the page's flight data (adapters/fiba_events.py decodes it):
+# personId - the key the game feed keys every player on, so a record is matched by key, never by name - date of birth, height in
+# centimetres, the shirt where the club has registered one. No weight anywhere on the site. One request for the list, one per club
+# (2026-10-07: 32 BCL clubs, 16 players each on AEK BC's page).
+_FIBA_TEAM_LINK = re.compile(r'href="(/en/(?:[^"]*/)?teams/[a-z0-9-]+)"')
+
+
+def fiba_event(base: str) -> Callable[..., Iterator[dict]]:
+    """`base` is the competition's root (no trailing slash), with {season} for an event whose address carries it (fiba-europe-cup-26-27)."""
+    def read(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+        from adapters.fiba_events import find_dicts, rsc_rows, rsc_text
+        y = _season_start(today)
+        root = base.replace("{season}", f"{y % 100:02d}-{(y + 1) % 100:02d}").rstrip("/")
+        host = re.match(r"https?://[^/]+", root).group(0)
+        listing = get_text(root + "/teams")
+        if not listing:
+            log(f"     {root}/teams: not answered")
+            return
+        path = root[len(host):]
+        clubs = [p for p in dict.fromkeys(_FIBA_TEAM_LINK.findall(listing)) if p.startswith(path + "/teams/")]
+        got = 0
+        for club in clubs:
+            page = get_text(host + club)
+            if not page:
+                continue
+            # the same person can be on the page more than once (the squad, a leaders card): every copy is merged, the first
+            # value of each field that has one kept
+            people: dict = {}
+            for d in find_dicts(rsc_rows(rsc_text(page)), "heightInCm"):
+                pid = d.get("personId")
+                if pid in (None, "") or not (d.get("firstName") or d.get("lastName")):
+                    continue
+                into = people.setdefault(str(pid), {})
+                for k, v in d.items():
+                    if into.get(k) in (None, "", 0) and v not in (None, ""):
+                        into[k] = v
+            for pid, d in sorted(people.items()):
+                first, last = (d.get("firstName") or "").strip(), (d.get("lastName") or "").strip()
+                h = d.get("heightInCm")
+                got += 1
+                yield {"first": first, "last": last, "team": (d.get("clubName") or _title(club.rsplit("/", 1)[-1])).strip(),
+                       "key": pid, "number": d.get("uniformNumber") or None,
+                       "height_cm": h if isinstance(h, (int, float)) and h > 0 else None,
+                       "birth": (str(d.get("dateOfBirth") or "")[:10] or None), "label": f"{first} {last}".strip()}
+        log(f"     {root}: {len(clubs)} clubs, {got} players")
+    return read
+
+
 # Keyed by the league's slug (config/ingest-sources.json league_slug).
 READERS: dict = {
+    "basketball-champions-league": fiba_event("https://www.championsleague.basketball/en"),
+    "fiba-europe-cup": fiba_event("https://www.fiba.basketball/en/events/fiba-europe-cup-{season}"),
     "euroleague": euroleague("E"),
     "eurocup": euroleague("U"),
     "basketligaen": basketligaen,
@@ -1268,10 +1323,6 @@ NO_BIO = {
     "cebl": "the league's own API (api.data.cebl.ca, where its schedule comes from) answers the players list with one empty "
             "record for every season asked (2024 to 2026, tried 30 Sep 2026), its team rows carry no roster, and the "
             "LiveStats data carries no bio",
-    "basketball-champions-league": "not built yet: the game page's rosters (playersTeamA/B in its flight data) carry dateOfBirth, "
-                                   "heightInCm and nationality per player, which a reader can take from adapters/fiba_events.py; "
-                                   "the live-info feed the games come from carries names only",
-    "fiba-europe-cup": "as basketball-champions-league (the same FIBA site)",
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).

@@ -658,6 +658,8 @@
   try { lightVideo(atHome && new URLSearchParams(location.search).get('view') === 'video'); } catch (_) { /* no address */ }
   if (document.addEventListener) document.addEventListener('ep:homeview', e => lightVideo(!!(e.detail && e.detail.mode === 'video')));
   videosRow.addEventListener('click', e => {
+    /* how readers reach VIDEO, for the platform's visit counts (track.js): the press, on the page it was made on */
+    try { if (window.EpinoiaTrack && window.EpinoiaTrack.action) window.EpinoiaTrack.action('rail-videos'); } catch (_) { /* never in the way */ }
     if (!atHome || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     if (!document.querySelector('.hm-strip, [data-mode]')) return;     // no view switch on this page: follow the link
     e.preventDefault();

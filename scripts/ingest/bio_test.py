@@ -380,5 +380,30 @@ st_ = bio.Stash(SBS(), "x", [], today=TODAY, log=log.append, detail_cap=1)
 bio.sync(SBS(), [], [{"name": "A B", "team": "T", "detail": det}, {"name": "C D", "team": "T", "detail": det}], dry=False, log=log.append, today=TODAY, stash=st_)
 ok("a player not on the site yet costs a detail page too, but only up to the cap", len(calls) == 1 and len(st_.put) == 1, (calls, st_.put))
 
+print("\n-- FIBA's own competitions: the clubs' list, then each club's squad from its page's flight data")
+
+
+def _flight(obj):
+    """A page whose flight data holds `obj` as one row, the way FIBA's Next.js pages serve it."""
+    return "<script>self.__next_f.push([1," + json.dumps("5:" + json.dumps(obj) + "\n") + "])</script>"
+
+
+FIBA = "https://www.fiba.basketball/en/events/fiba-europe-cup-26-27"
+fiba_pages = {
+    FIBA + "/teams": '<a href="/en/events/fiba-europe-cup-26-27/teams/bc-parnu">P</a>'
+                     '<a href="/en/events/fiba-europe-cup-26-27/teams/bc-parnu">again</a><a href="/en/teams/elsewhere">x</a>',
+    "https://www.fiba.basketball/en/events/fiba-europe-cup-26-27/teams/bc-parnu": _flight({"roster": [
+        {"personId": 343429, "firstName": "Mads", "lastName": "Ziegler", "dateOfBirth": "2007-01-30", "heightInCm": 187,
+         "uniformNumber": "7", "clubName": "BC Parnu"},
+        {"personId": 343429, "firstName": "Mads", "lastName": "Ziegler", "dateOfBirth": "2007-01-30", "heightInCm": 187},
+        {"personId": 9, "firstName": "No", "lastName": "Height", "dateOfBirth": "2001-02-03", "heightInCm": 0}]})}
+fr = with_pages(fiba_pages, lambda: bio_sources.READERS["fiba-europe-cup"](today=TODAY, log=lambda *_: None))
+ok("the Europe Cup's season in the address, one club read once, keyed by personId (the box score's own key)",
+   sorted((r["key"], r["first"], r["last"], r["team"], r["birth"], r["height_cm"], r["number"]) for r in fr) ==
+   [("343429", "Mads", "Ziegler", "BC Parnu", "2007-01-30", 187, "7"), ("9", "No", "Height", "Bc Parnu", "2001-02-03", None, None)],
+   fr)
+ok("...and the Champions League reads its own domain", "basketball-champions-league" in bio_sources.READERS
+   and "basketball-champions-league" not in bio_sources.NO_BIO)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

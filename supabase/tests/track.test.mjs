@@ -371,5 +371,47 @@ console.log('\nwhere a visit came from (2026-10-06)');
      /analytics_sources_report[\s\S]*is_platform_admin\(\)/.test(sql) && /revoke all on function public\.analytics_sources_report\(int\) from public, anon/.test(sql));
 }
 
+console.log('\n-- the VIDEO view (2026-10-07): its own page, and what is done in it as action keys');
+{
+  ok('HOME on ?view=video is the page home/video; HOME itself, and any other page with a view= in its address, are not',
+     (browser({ path: '/epinoia/home/', search: '?view=video&play=x' }), X.here()) === 'home/video'
+     && (browser({ path: '/epinoia/home/' }), X.here()) === 'home'
+     && (browser({ path: '/epinoia/t/', search: '?view=video' }), X.here()) === 't');
+  const b = browser({ path: '/epinoia/home/', search: '?view=video' });
+  T.boot();
+  T.action('play-highlights', { league: 'BCL-x', game: '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0' });
+  T.action('kind-full');
+  T.action('Not A Key!');                                 // words, not a key: never sent
+  T.action('chat-send', { game: 'not-a-game' });           // an id that is not a game id: the page's own (none)
+  T.view();
+  await T.flush(true);
+  const ev = b.calls.length ? b.calls[0].body.p_events : [];
+  ok('the landing is a view of home/video, the actions tabs on it, the view switch a second view',
+     ev.map(e => e.kind + ':' + e.page + ':' + (e.tab || '')).join(' ') ===
+     'view:home/video: tab:home/video:play-highlights tab:home/video:kind-full tab:home/video:chat-send view:home/video:', ev);
+  const play = ev.find(e => e.tab === 'play-highlights') || {};
+  ok('an action carries the league and game it was about (a bad slug or id falls back to the page\'s, here none)',
+     play.league === 'bcl-x' && play.game === '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0'
+     && (ev.find(e => e.tab === 'chat-send') || {}).game === null, ev);
+  const s = browser({ path: '/epinoia/score/' });
+  T.action('play-video');
+  await T.flush(true);
+  ok('a staff tool counts no action either', s.calls.length === 0);
+  const off = browser({ path: '/epinoia/home/', search: '?view=video', nav: { globalPrivacyControl: true } });
+  T.action('play-video'); T.view();
+  await T.flush(true);
+  ok('...and Global Privacy Control still stops everything', off.calls.length === 0);
+  const vh = readFileSync(path.join(ROOT, 'epinoia', 'home', 'videohub.js'), 'utf8');
+  const keys = ['live-game', 'live-play', 'live-fullscreen', "'kind-' + (k || 'all')", 'league-pick', 'league-all', "'play-' +", "act('more')", 'watch-here'];
+  ok('the video hub names every control it counts: ' + keys.join(', '), keys.every(k => vh.includes(k)), keys.filter(k => !vh.includes(k)));
+  const chat = readFileSync(path.join(ROOT, 'epinoia', 'gamechat.js'), 'utf8');
+  ok('the chat counts joining and sending, on its game, never the words', /count\('chat-join'\)/.test(chat) && /count\('chat-send'\)/.test(chat)
+     && /T\.action\(k, \{ game: gameId \}\)/.test(chat));
+  const mode = readFileSync(path.join(ROOT, 'epinoia', 'home', 'vhmode.js'), 'utf8');
+  const nav = readFileSync(path.join(ROOT, 'epinoia', 'nav.js'), 'utf8');
+  ok('MAIN -> VIDEO in place is a view, back to MAIN an action, the rail\'s VIDEOS row counts its press',
+     /if \(to === 'video'\) T\.view\(\); else T\.action\('main'\)/.test(mode) && /EpinoiaTrack\.action\('rail-videos'\)/.test(nav));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

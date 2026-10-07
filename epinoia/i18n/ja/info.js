@@ -600,7 +600,6 @@
       'below.': 'をご覧ください。',
       'Visit counts': '訪問の集計',
       'What is counted': '数えているもの',
-      'Which pages of the site are opened and which tabs on them are chosen, so we can see what is read and make it better: the page, the league, club or game already named in its address, and the name of a tab.': 'サイトのどのページが開かれ、そのページでどのタブが選ばれたかです。何が読まれているかを把握し、サイトを良くするためです。記録するのは、ページ、そのアドレスにすでに含まれているリーグ・クラブ・試合、そしてタブの名前です。',
       'What each count carries': '記録に含まれる情報',
       'Four facts about the visit that describe no one: whether you are signed in (yes or no, never who), whether it is a phone, a tablet or a computer, the language the site is shown in, and whether it is the app or a browser. If you came from another website, that website’s name, never the page.': '誰のことも表さない、訪問についての4つの事実です。ログインしているかどうか（はい・いいえのみで、誰かは記録しません）、スマホ・タブレット・パソコンのどれか、サイトの表示言語、アプリかブラウザかです。他のウェブサイトから来た場合は、そのサイトの名前だけを記録し、ページは記録しません。',
       'What is never kept': '決して保存しないもの',
@@ -640,7 +639,8 @@
       'A one-way code made from your network address with a secret key, never the address itself, so that the week’s previews cannot be had again by clearing the browser. Everyone on the same network shares them.': 'ネットワークアドレスと秘密鍵から作られる一方向のコードで数えます。アドレスそのものは保存しません。ブラウザを消去しても週のプレビューが戻らないようにするためです。同じネットワークの人は全員で共有します。',
       'How many': '回数',
       'Ten previews a week, plus one free player report and one free club report a week. Opening the same thing again in the same week is free.': '週に10回のプレビューに加え、選手レポートとクラブレポートをそれぞれ週に1件無料で開けます。同じ週に同じものを開き直すのは無料です。',
-      'A week, and then it is deleted.': '1週間保存し、その後削除します。'
+      'A week, and then it is deleted.': '1週間保存し、その後削除します。',
+      'Which pages of the site are opened, which tabs on them are chosen and what is done in the video view (a kind of video or a league chosen, a video or a live stream played, a game’s chat joined or a message sent, never what is written), so we can see what is read and watched and make it better: the page, the league, club or game it is about, and the name of the tab or of what was done.': 'サイトのどのページが開かれ、そのページでどのタブが選ばれ、動画ビューで何が行われたか（動画の種類やリーグの選択、動画やライブ配信の再生、試合チャットへの参加やメッセージの送信。書かれた内容は記録しません）です。何が読まれ、視聴されているかを把握し、サイトを良くするためです。記録するのは、ページ、それが関わるリーグ・クラブ・試合、そしてタブまたは行われたことの名前です。'
     },
 
     ctx: {

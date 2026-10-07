@@ -54,6 +54,10 @@
     const st = S = { host, M, timers: [], chat: null, boxer: null, sp: null, alive: true };
     const team = opts && opts.team && opts.team.id ? opts.team : null;
     const isTeam = g => !!team && [g.home, g.away].some(t => t && team.slug && t.slug === team.slug);
+    /* THE PLATFORM'S VISIT COUNTS (track.js action): what is done here, as keys - on HOME's VIDEO view ('home/video') or the
+       club page's Video tab ('t') - with the league and game it was about. Anonymous, and never in the way. */
+    const act = (k, o) => { try { const T = window.EpinoiaTrack; if (T && T.action) T.action(k, o); } catch (_) { /* no count */ } };
+    const about = g => ({ game: g && g.id, league: g && g.league && g.league.slug });
     host.textContent = '';
     const wrap = el('div', 'vh-wrap');
 
@@ -114,7 +118,7 @@
       const st = el('span', 'vh-game-st');
       st.append(el('i'), document.createTextNode(g.status === 'finalising' ? tr('Final minutes') : tr('Live')));
       b.append(lg, row, st);
-      b.addEventListener('click', () => { if (!chosen || chosen.id !== g.id) { chosen = g; drawGames(); enter(g); } });
+      b.addEventListener('click', () => { if (!chosen || chosen.id !== g.id) { chosen = g; drawGames(); enter(g); act('live-game', about(g)); } });
       return b;
     }
     function drawGames() {
@@ -200,7 +204,13 @@
       const fs = document.fullscreenElement || document.webkitFullscreenElement;
       if (fs) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
       (theatre.requestFullscreen || theatre.webkitRequestFullscreen).call(theatre);
+      act('live-fullscreen', about(chosen));
     });
+    /* a stream started: the first press on the screen of each game chosen (YouTube's cover, a channel's) */
+    let liveStarted = null;
+    screen.addEventListener('click', () => {
+      if (chosen && liveStarted !== chosen.id) { liveStarted = chosen.id; act('live-play', about(chosen)); }
+    }, true);
     const onFs = () => { full.textContent = (document.fullscreenElement === theatre) ? tr('Exit full screen') : tr('Full screen'); };
     document.addEventListener('fullscreenchange', onFs);
     st.timers.push(() => document.removeEventListener('fullscreenchange', onFs));
@@ -253,6 +263,9 @@
       onChange: it => {
         playing = it;
         paint();
+        /* a video played, by its kind (highlights, full, press, video), with its league and game */
+        const vk = String((it && (it.video_kind || it.piece_kind)) || 'video').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 30) || 'video';
+        act('play-' + (vk === 'youtube' ? 'video' : vk), { league: it && it.league_slug, game: it && it.game && it.game.id });
         try { const F = R(); if (F && typeof F.opened === 'function') F.opened(it); } catch (_) { /* never in the way */ }
       }
     });
@@ -268,6 +281,7 @@
         if (k === kind) return;
         kind = k;
         league = null;
+        act('kind-' + (k || 'all'));
         seg.querySelectorAll('.md-chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
         if (!STRIP[kind] || team) lgs.hidden = true;
         loadVideos().then(showLeagues);
@@ -323,6 +337,7 @@
         const want = l && !(league && league.slug === l.slug) ? l : null;
         if ((want && league && want.slug === league.slug) || (!want && !league)) return;
         league = want;
+        act(want ? 'league-pick' : 'league-all', { league: want && want.slug });
         drawLeagues();
         loadVideos();
       });
@@ -438,7 +453,7 @@
       rows = got; shown = STEP;
       paint();
     }
-    more.addEventListener('click', () => { shown += STEP - 1; paint(); });
+    more.addEventListener('click', () => { shown += STEP - 1; paint(); act('more'); });
 
     await Promise.all([readLive(true), loadVideos()]);
     /* OPENED ON ONE GAME (?view=video&play=<game>: WATCH HERE in a fixture's where-to-watch card, watch.js): streaming
@@ -446,6 +461,7 @@
        stage, first in the list */
     const want = team ? null : new URLSearchParams(location.search).get('play');
     if (want && /^[0-9a-f-]{36}$/i.test(want) && st.alive) {
+      act('watch-here', { game: want });
       const g = games.find(x => x.id === want);
       if (g) {
         if (!chosen || chosen.id !== g.id) { chosen = g; drawGames(); enter(g); }
