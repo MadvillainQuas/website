@@ -80,6 +80,34 @@ function five(g, ids) {
 }
 
 
+/* FULL NAME FIRST, THE SURNAME AFTER: the way a match report names people. The first mention in the body is the whole
+   name; every later one is the surname alone, unless two players in the game share it (then the whole name again). The
+   headline and the standfirst stand on their own and always carry the full name; report() starts the count after them. */
+let MENTIONED = new Set(), SURNAMES = new Map();
+/* "St John", "Van Persie", "De Colo", "Mac Lean": a surname that starts with a particle keeps it (Maeve Marie St John was
+   "John" in the read-through, 2026-10-07) */
+const NAME_PARTICLES = new Set(['st', 'st.', 'saint', 'van', 'von', 'de', 'da', 'di', 'del', 'della', 'der', 'den', 'le', 'la', 'du', 'dos', 'das',
+  'mac', 'ter', 'ten', 'el', 'al', 'bin', 'ben', 'abu', 'af', 'av', 'zu', 'lo', 'los', 'las', 'o']);
+function surnameOf(full) {
+  const parts = String(full || '').split(/\s+/).filter(Boolean);
+  while (parts.length > 1 && /^(jr|sr|ii|iii|iv)\.?$/i.test(parts[parts.length - 1])) parts.pop();
+  if (!parts.length) return String(full || '');
+  let i = parts.length - 1;
+  while (i > 1 && NAME_PARTICLES.has(parts[i - 1].toLowerCase())) i--;
+  return parts.slice(i).join(' ');
+}
+function setCast(g) {
+  MENTIONED = new Set(); SURNAMES = new Map();
+  (g.players || []).forEach(p => { const k = surnameOf(tc(p.name)).toLowerCase(); SURNAMES.set(k, (SURNAMES.get(k) || 0) + 1); });
+}
+function person(name) {
+  const full = tc(String(name || ''));
+  const key = full.toLowerCase();
+  if (!MENTIONED.has(key)) { MENTIONED.add(key); return esc(full); }
+  const last = surnameOf(full);
+  return esc(full.split(/\s+/).length > 1 && (SURNAMES.get(last.toLowerCase()) || 0) === 1 && last.length > 2 ? last : full);
+}
+
 /* ============================================================== referring ===
    How a club is named THIS time. See the note in the commit: the writer had
    one expression per team and used it for every sentence, which is what made
@@ -315,7 +343,22 @@ function ledeAngles(g, fs) {
       text: N + ' shot ' + Math.round(hi) + '% eFG to ' + Math.round(lo) + '%',
       head: side === w ? () => W + ' out-shoot ' + Lo + ' ' + Math.round(hi) + '% to ' + Math.round(lo) + '% eFG' : null });
   }
-  const pa = fs.find(f => f.kind === 'pointsAdded');
+  /* ONE ACCOUNTING: with the ledger, the facet worth most (quality and making apart) is the angle, in the ledger's own
+     figures, so the standfirst and "What decided it" can never give two different numbers for the same shooting */
+  const LG = fs.find(f => f.kind === 'ledger');
+  const pa = LG ? null : fs.find(f => f.kind === 'pointsAdded');
+  if (LG) {
+    const top = LG.data.rows.filter(r => ['quality', 'making', 'efg', 'tovp', 'orebp', 'ftr', 'ft'].indexOf(r.key) >= 0)
+      .slice().sort((x, y) => Math.abs(y.pts) - Math.abs(x.pts))[0];
+    if (top && Math.abs(top.pts) >= 8) {
+      const side = top.pts > 0 ? 0 : 1, n = Math.round(Math.abs(top.pts));
+      const label = { quality: 'The quality of their shots', making: 'Shot-making', efg: 'Shooting', tovp: 'The turnover battle',
+        orebp: 'The offensive glass', ftr: 'Getting to the line', ft: 'Free-throw shooting' }[top.key];
+      const facetKey = { quality: 'efg', making: 'efg', efg: 'efg', tovp: 'tov', orebp: 'oreb', ftr: 'ftr', ft: 'ftr' }[top.key];
+      out.push({ cat: 'stat', key: 'pa', side, strength: 58 + Math.min(27, (Math.abs(top.pts) - 8) * 2.2), spend: ['factor:' + facetKey],
+        text: label + ' alone was worth ' + n + ' points to ' + nm(g, side), head: null });
+    }
+  }
   if (pa) {
     const top = pa.data.rows.slice().sort((x, y) => Math.abs(y.net) - Math.abs(x.net))[0];
     if (top && Math.abs(top.net) >= 8) {
@@ -359,6 +402,38 @@ function ledeAngles(g, fs) {
           : name + '\u2019s ' + pts + ' is not enough for ' + club) });
     }
   }
+
+  /* THE SEASON AROUND IT, AND THE MOMENT (story.js factContext, factMoments): a streak made or ended, the top of the
+     table, an upset, a record, a basket at the death. These are what a reader who follows the league wants first. */
+  const ctxA = (f, strength, head) => {
+    const t = stakesLine(g, f, false);
+    if (t) out.push({ cat: 'stakes', key: 'ctx:' + f.kind, strength, text: t.replace(/\.$/, ''), spend: ['ctx:' + f.kind], head });
+  };
+  fs.forEach(f => {
+    const d = f.data;
+    if (f.kind === 'firstDefeat') ctxA(f, 86, () => W + ' hand ' + Lo + ' their first defeat of the season');
+    else if (f.kind === 'wentTop') ctxA(f, 82, () => W + ' go top with ' + sc + ' win over ' + Lo);
+    else if (f.kind === 'upset') ctxA(f, 80 + Math.min(8, d.rank[0] - d.rank[1]), () => W + ' stun ' + Lo + ' ' + sc);
+    else if (f.kind === 'streakEnded') ctxA(f, 76 + Math.min(10, d.n), () => W + ' end ' + possOf(Lo) + ' ' + d.n + '-game winning run');
+    else if (f.kind === 'skidEnded') ctxA(f, 70 + Math.min(10, d.n), () => W + ' end ' + d.n + '-game losing run against ' + Lo);
+    else if (f.kind === 'firstWin') ctxA(f, 80, () => W + ' off the mark at last against ' + Lo);
+    else if (f.kind === 'winStreak' && d.n >= 4) ctxA(f, 64 + Math.min(16, 2 * d.n), () => W + ' make it ' + d.n + ' straight with ' + sc + ' win over ' + Lo);
+    else if (f.kind === 'unbeaten' && d.w >= 5) ctxA(f, 70, () => W + ' stay perfect with ' + sc + ' win over ' + Lo);
+    else if (f.kind === 'expectation' && d.toWinner <= -6) ctxA(f, 74, () => 'Underdogs ' + W + ' beat ' + Lo + ' ' + sc);
+    else if (f.kind === 'leagueRecord' && d.stat === 'pts' && d.p) {
+      const name = esc(tc(d.p.name)), club = nm(g, d.p.team), won = d.p.team === w;
+      out.push({ cat: 'player', key: 'record', side: d.p.team, strength: d.shared > 1 ? 70 : 88, spend: ['player'],
+        text: possOf(name) + ' ' + d.v + ' points ' + (d.shared > 1 ? 'equalled the most' : 'were the most') + ' by anyone in a game in this league this season',
+        head: () => (won ? possOf(name) + ' league season-best ' + d.v + ' carries ' + club + ' past ' + Lo
+                         : possOf(name) + ' league season-best ' + d.v + ' is not enough for ' + club) });
+    } else if (f.kind === 'gameWinner' && d.p) {
+      const name = esc(tc(d.p.name)), secs = Math.max(1, Math.round((d.clock || 0) / 1000));
+      const what = d.kind === 'three' ? 'three' : d.kind === 'free throw' ? 'free throw' : 'basket';
+      out.push({ cat: 'moment', key: 'moment', side: w, strength: 96, spend: ['moment'],
+        text: possOf(name) + ' ' + what + ' with ' + spell(secs) + (secs === 1 ? ' second' : ' seconds') + ' left won it for ' + W,
+        head: () => name + ' wins it for ' + W + ' at the death against ' + Lo });
+    }
+  });
   return out.sort((a, b) => b.strength - a.strength);
 }
 
@@ -376,6 +451,9 @@ function headline(g, fs) {
   const turned = fs.find(f => f.kind === 'turnedAfterHalf');
   const pulled = fs.find(f => f.kind === 'pulledAway');
   if (r.data.margin === 0) return nm(g, 0) + ' and ' + nm(g, 1) + ' tie ' + sc;
+  /* the season around it, or a basket at the death, when it is the biggest thing about the night */
+  const lead0 = ledeAngles(g, fs).filter(a => a.head && (a.cat === 'stakes' || a.cat === 'moment' || a.key === 'record') && a.strength >= 84)[0];
+  if (lead0) { HEAD_ANGLE = lead0; return lead0.head(); }
   if (ot) return nm(g, w) + ' outlast ' + nm(g, l) + ' in overtime, ' + sc;
   if (stolen) return nm(g, w) + ' steal it late from ' + nm(g, l) + ', ' + sc;
   if (comeback) return nm(g, w) + ' overturn ' + comeback.data.deficit +
@@ -607,6 +685,15 @@ function sectionFlow(g, fs, R) {
     : null;
   out.push(joinSentences([opening, second], 'plain'));
 
+  /* WHY IT MATTERS: the one or two things about this result that reach past the forty minutes -- a run made or ended,
+     the top of the table, an upset, a meeting turned round (story.js factContext). What a paper calls the nut graf. */
+  const stakes = stakesOf(fs, 2, 60);
+  if (stakes.length) {
+    R.neutral();
+    const lines = stakes.map(f => { SPENT.add('ctx:' + f.kind); return stakesLine(g, f, seedOf(f.kind + hi + lo) % 2 === 1); }).filter(Boolean);
+    if (lines.length) out.push(lines.join(' '));
+  }
+
   /* THE HALF. Every match report in every paper says what the score was at the
      break, because it is the one number a reader uses to picture the game's
      shape. Said once, plainly, unless the standfirst already spent it. */
@@ -734,6 +821,12 @@ function sectionFlow(g, fs, R) {
     mid.push(R.subj(early.side, { allowRole: true }) + ' were ' + early.data.score[early.side] + '\u2013' + early.data.score[1 - early.side] + ' up early' +
       (early.side !== r.data.winner ? ', and it did not last.' : '.'));
   }
+  /* a three at the buzzer that ended a period: a scene, said once */
+  const bz = fs.find(f => f.kind === 'buzzer');
+  if (bz && mid.length < 3) {
+    const atHalf = (bz.data.reg === 2 && bz.data.period === 1) || (bz.data.reg !== 2 && bz.data.period === 2);
+    mid.push(person(bz.data.p.name) + ' hit a three at the ' + (atHalf ? 'half-time' : ordinal(bz.data.period) + '-quarter') + ' buzzer for ' + nm(g, bz.side) + '.');
+  }
   const ties = fs.find(f => f.kind === 'ties');
   if (lc) {
     R.neutral();
@@ -831,6 +924,24 @@ function sectionFlow(g, fs, R) {
       /* the standfirst gave the score with five to play; say what the finish looked like */
       endBits.push('The last five minutes went ' + late[w] + '\u2013' + late[l] + ' to ' + R.obj(w) + '.');
     }
+  }
+  /* THE MOMENT: the basket that put the winners ahead for good, when it came late (story.js factMoments), and the man
+     who scored their points when it was there to be won */
+  const mo = fs.find(f => f.kind === 'gameWinner') || fs.find(f => f.kind === 'goAhead' && f.data.left <= 300000);
+  if (mo && mo.data.p) {
+    const d = mo.data, who = person(d.p.name), club = nm(g, mo.side);
+    const what = d.kind === 'three' ? 'three' : d.kind === 'free throw' ? 'free throw' : 'basket';
+    const secs = Math.max(1, Math.round((d.clock || 0) / 1000));
+    const when = d.period > d.reg ? ' in overtime' : '';
+    endBits.push(mo.kind === 'gameWinner'
+      ? possOf(who) + ' ' + what + ' with ' + spell(secs) + (secs === 1 ? ' second' : ' seconds') + ' left' + when + ' won it for ' + club + '.'
+      : possOf(who) + ' ' + what + ' with ' + (d.clock < 60000 ? spell(secs) + ' seconds' : mins(d.clock)) + ' left' + when + ' put ' + club + ' ahead for good.');
+    SPENT.add('moment');
+  }
+  const closer = fs.find(f => f.kind === 'closer');
+  if (closer && !(mo && mo.data.p && closer.data.p.id === mo.data.p.id && closer.data.pts < 8)) {
+    const d = closer.data, [a1, b1] = L().spellSet([d.pts, d.team]);
+    endBits.push(person(d.p.name) + ' scored ' + a1 + ' of ' + possOf(nm(g, closer.side)) + ' ' + b1 + ' points in the last five minutes.');
   }
   if (lastPts && (!fin || fin.kind !== 'pulledAway')) {
     endBits.push(R.subj(lastPts.side) + ' scored the last ' + spell(lastPts.data.n) + ' points of the game.');
@@ -968,6 +1079,12 @@ function sectionNumbers(g, fs, R) {
   const fb = covered === 'transition' || SPENT.has('stat:break') ? null : fs.find(f => f.kind === 'fastBreak');
   const careless = fs.find(f => f.kind === 'careless');
   const drought = fs.filter(f => f.kind === 'drought').sort((a, b) => b.data.dur - a.data.dur)[0];
+  /* THE ORDER FOLLOWS THE VALUE (2026-10-07). Each paragraph below is a block about one facet of the game, and the blocks
+     are written in the order the league's model values their facets (story.js factLedger): the facet that decided it
+     first, a facet worth nothing last. Each block names its club afresh, because the block before it is no longer fixed. */
+  const blocks = [];
+  const block = (facet, fn) => blocks.push({ facet, fn, at: blocks.length });
+  block('efg', () => {
   const box = [];
   if (floor && Math.abs(floor.data.a - floor.data.b) >= 5) {
     const hiP = Math.max(floor.data.a, floor.data.b), loP = Math.min(floor.data.a, floor.data.b);
@@ -991,13 +1108,14 @@ function sectionNumbers(g, fs, R) {
     R.neutral();
     out.push(R.subj(drought.side) + ' went ' + mins(drought.data.dur) + ' without a field goal in the ' + ordinal(drought.data.period) + '.');
   }
+  });
 
   /* not a second shooting claim for the side the field-goal line has just credited: "The
      winners shot 47% to 37%" followed by "They shot it better, 54.2% eFG" is one fact twice */
   const saidFloor = floor && Math.abs(floor.data.a - floor.data.b) >= 5 ? floor.side : null;
   const factors = fs.filter(f => f.kind === 'factor' && !SPENT.has('factor:' + f.data.factor) &&
     !(f.data.factor === 'efg' && f.side === saidFloor)).slice(0, 3);
-  if (factors.length) {
+  if (factors.length) block({ efg: 'efg', tov: 'tovp', oreb: 'orebp', ftr: 'ftr' }[factors[0].data.factor] || null, () => {
     /* EACH FACTOR IS A DIFFERENT SENTENCE, because each is a different thing.
        "The winners won this at shooting, 55.7% against 49.3%" is not something
        anybody says about basketball, and free-throw rate is not a percentage
@@ -1060,12 +1178,13 @@ function sectionNumbers(g, fs, R) {
     else if (also.length > 1) sentence += (dashed ? '. ' + listOf(also).replace(/^./, c => c.toUpperCase()) + ' went their way as well'
       : ', with ' + also.slice(0, -1).join(', ') + ' and ' + also[also.length - 1] + ' going the same way');
     out.push(sentence + '.');
-  }
+  });
 
   /* how they scored, not just how well */
   const zone = fs.find(f => f.kind === 'fromRange' || f.kind === 'atRim');
   const asShare = fs.find(f => f.kind === 'assistedShare');
   const share = asShare ? null : fs.find(f => f.kind === 'sharing');
+  block('efg', () => {
   const shapeBits = [];
   if (zone) {
     /* SHARE OF ATTEMPTS, which is what rimr/p3r measure — the accuracy is a
@@ -1097,10 +1216,11 @@ function sectionNumbers(g, fs, R) {
   if (shapeBits.length) {
     out.push((shapeBits.some(b => b.indexOf('—') >= 0) ? shapeBits.join('. ') : joinSentences(shapeBits, 'plain')) + '.');
   }
+  });
 
   /* WHAT BECAME OF THE MISSES: a second shot is worth saying once, and not when the offensive-glass factor above already did */
   const mf = fs.find(f => f.kind === 'missFate');
-  if (mf && covered !== 'second' && !factors.some(f => f.data.factor === 'oreb')) {
+  if (mf && covered !== 'second' && !factors.some(f => f.data.factor === 'oreb')) block('orebp', () => {
     R.neutral();
     const d = mf.data, who = R.subj(mf.side, { allowRole: true, noPronoun: true });
     const [o1, m1, o2, m2] = L().spellSet([d.orb, d.misses, d.theirs.orb, d.theirs.misses]);      // one style for all four figures
@@ -1108,17 +1228,20 @@ function sectionNumbers(g, fs, R) {
       who + ' won the ball back on ' + o1 + ' of their ' + m1 + ' misses, against ' + o2 + ' of ' + m2 + ' for ' + nm(g, 1 - mf.side) + '.',
       'Misses were not the end of it for ' + midCase(who) + ': ' + o1 + ' of ' + m1 + ' came back to them, to ' + o2 + ' of ' + m2 + ' for the other side.'
     ]));
-  }
+  });
 
   /* where the points came from, as one paragraph */
-  R.neutral();
-  const sitBits = sitSentences(g, fs, R, 'past');
-  if (sitBits.length) out.push(sitBits.join(' '));
+  const edgeSit = fs.find(f => f.kind === 'sitEdge');
+  block(edgeSit ? ({ offTo: 'tovp', second: 'orebp' }[edgeSit.data.key] || 'efg') : 'efg', () => {
+    const sitBits = sitSentences(g, fs, R, 'past');
+    if (sitBits.length) out.push(sitBits.join(' '));
+  });
 
   /* the defensive half, which the report used never to mention */
   const dr = fs.find(f => f.kind === 'defRating');
   const forced = fs.find(f => f.kind === 'forcedTurnovers');
   const disrupt = fs.find(f => f.kind === 'disruption');
+  block(forced || disrupt ? 'tovp' : 'efg', () => {
   const defBits = [];
   if (dr) {
     defBits.push(R.subj(dr.side, { allowRole: true }) + ' defended better, allowing ' +
@@ -1140,6 +1263,7 @@ function sectionNumbers(g, fs, R) {
      ball loose" runs the causation backwards -- the forced turnovers are part of WHY the
      rating was low. */
   if (defBits.length) out.push(joinSentences(defBits, 'plain') + '.');
+  });
 
   /* the team-shape numbers */
   let shape = fs.filter(f =>
@@ -1152,19 +1276,17 @@ function sectionNumbers(g, fs, R) {
   if (scBoth.length === 2) {
     shape = shape.filter(f => f.kind !== 'secondChance');
     const a = scBoth.find(f => f.side === 0), b = scBoth.find(f => f.side === 1);
-    R.neutral();
-    out.push('Both sides lived off second chances \u2014 ' + a.data.sc + ' points for ' + nm(g, 0) + ', ' + b.data.sc + ' for ' + nm(g, 1) + '.');
+    block('orebp', () => out.push('Both sides lived off second chances \u2014 ' + a.data.sc + ' points for ' + nm(g, 0) + ', ' + b.data.sc + ' for ' + nm(g, 1) + '.'));
   }
   const potBoth = shape.filter(f => f.kind === 'pointsOffTurnovers');
   if (potBoth.length === 2) {
     shape = shape.filter(f => f.kind !== 'pointsOffTurnovers');
     const a = potBoth.find(f => f.side === 0), b = potBoth.find(f => f.side === 1);
-    R.neutral();
-    out.push('Turnovers were punished at both ends: ' + a.data.pot + ' points off them for ' + nm(g, 0) + ', ' + b.data.pot + ' for ' + nm(g, 1) + '.');
+    block('tovp', () => out.push('Turnovers were punished at both ends: ' + a.data.pot + ' points off them for ' + nm(g, 0) + ', ' + b.data.pot + ' for ' + nm(g, 1) + '.'));
   }
-  shape = shape.slice(0, 3);
-  if (shape.length) {
-    out.push(joinSentences(shape.map(f =>
+  const shape3 = shape.slice(0, 3);
+  if (shape3.length) block({ pointsOffTurnovers: 'tovp', secondChance: 'orebp', paint: 'efg' }[shape3[0].kind] || null, () => {
+    out.push(joinSentences(shape3.map(f =>
       f.kind === 'bench' ? R.poss(f.side) + ' bench put up ' + f.data.bench +
         ' to ' + f.data.other
     : f.kind === 'pointsOffTurnovers' ? R.subj(f.side) + ' turned giveaways into ' +
@@ -1173,14 +1295,23 @@ function sectionNumbers(g, fs, R) {
         ' in the paint to ' + f.data.b
     : R.subj(f.side) + ' found ' + f.data.sc + ' second-chance points'
     ), 'plain') + '.');
-  }
+  });
 
   /* the whistle, when it fell one way */
   const w = fs.find(f => f.kind === 'whistle');
-  if (w) {
+  if (w) block('ftr', () => {
     out.push('The whistle fell one way: ' + midCase(R.subj(w.side, { allowRole: true, noPronoun: true })) +
       ' were called for ' + w.data.mine + ' fouls to ' + w.data.theirs + '.');
-  }
+  });
+
+  /* write them, the most valuable facet first (a facet worth under two points keeps its place) */
+  const worth = {};
+  const LG = fs.find(f => f.kind === 'ledger');
+  if (LG) LG.data.rows.forEach(r => { const k = r.key === 'quality' || r.key === 'making' ? 'efg' : r.key; worth[k] = (worth[k] || 0) + r.pts; });
+  const weight = b => { const v = b.facet && worth[b.facet] != null ? Math.abs(worth[b.facet]) : 0; return v >= 2 ? v : 0; };
+  /* built in the order they are printed, each naming its club again: a paragraph that opened on "They" after the order
+     changed pointed across the break at whoever the last clause happened to be about (read-through, 2026-10-07) */
+  blocks.slice().sort((a, b) => weight(b) - weight(a) || a.at - b.at).forEach(b => { R.neutral(); b.fn(); });
   return out;
 }
 
@@ -1261,11 +1392,227 @@ function sectionFactors(g, fs, R) {
 }
 
 /* ============================================================================
+   WHAT DECIDED IT: the value ledger (story.js factLedger), every facet of the game in points of the margin, said in the
+   order of its size. This is where the league's What Wins model stops being an accounting appendix and becomes the
+   argument of the piece: the facet worth most is named first, with what it was worth, then what came next and what the
+   losers won back; then the margin against what the season's numbers expected before the tip; then what is left over.
+   ============================================================================ */
+const placeWord = n => {
+  const v = Math.round(+n);
+  const W = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+  if (v >= 1 && v <= 10) return W[v];
+  const t = v % 100;
+  return v + (t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th'));
+};
+const ptsWords = n => { const v = Math.max(1, Math.round(Math.abs(n))); return spell(v) + (v === 1 ? ' point' : ' points'); };
+function sectionLedger(g, fs, R) {
+  const L0 = fs.find(f => f.kind === 'ledger');
+  if (!L0 || L0.data.winner == null) return sectionFactors(g, fs, R);
+  R.neutral();
+  const d = L0.data, w = d.winner, l = 1 - w, sgn = w === 0 ? 1 : -1;
+  const W = nm(g, w), Lo = nm(g, l);
+  const toW = r => r.pts * sgn;
+  const margin = Math.abs(d.actual);
+  const out = [];
+  const top = d.decisive, second = d.second, back = d.against;
+  const mdl = d.model, mn = mdl && mdl.n ? ' (built on ' + mdl.n + ' of its games)' : '';
+  const by = mdl ? pick('ledby' + w + margin, ['By this league’s own model of what wins' + mn + ', ', 'Weighed the way this league’s games are decided' + mn + ', '])
+                 : 'Counted factor by factor, ';
+  const one1 = v => (Math.round(v * 10) / 10).toFixed(1);
+  if (top && toW(top) >= 2) {
+    const v = toW(top), share = margin > 0 ? v / margin : 0;
+    /* the facet's points against the margin: "about 16 of the 21 points between them", or more than the whole of it */
+    const worth = (share >= 0.3 && share <= 1 && margin >= 4) ? 'about ' + spell(Math.round(v)) + ' of the ' + spell(margin) + ' points between them'
+      : share > 1 && margin >= 2 ? 'about ' + ptsWords(v) + ', more than the whole margin' : 'about ' + ptsWords(v);
+    const where = d.rates === 'league' ? 'in this league' : 'at this game’s make rates';
+    let lead;
+    if (top.key === 'quality') {
+      lead = by + 'the shots ' + midCase(W) + ' got decided it: ' + where + ' their attempts were worth ' + Math.round(top.x[w]) + '% eFG and ' + possOf(Lo) + ' ' + Math.round(top.x[l]) + '%, ' + worth + '.';
+    } else if (top.key === 'making') {
+      lead = by + 'it came down to making shots: ' + midCase(W) + ' hit ' + Math.round(top.efg[w]) + '% eFG on shots that usually go at ' + Math.round(top.x[w]) + '% ' + where + ', worth ' + worth + '.';
+    } else if (top.key === 'ft') {
+      const [m1, a1] = L().spellSet([top.made[w], top.att[w]]);
+      lead = by + 'the free throws decided it: ' + midCase(W) + ' made ' + m1 + ' of ' + a1 + ', worth ' + worth + ' against the usual rate.';
+    } else {
+      const what = { efg: 'shooting', tovp: 'the turnover battle', orebp: 'the offensive glass', ftr: 'getting to the line' }[top.key] || top.label;
+      lead = by + what + ' decided it, worth ' + worth + (/between them|whole margin/.test(worth) ? '' : ' to ' + midCase(W)) + '.';
+    }
+    const bits = [lead];
+    if (second && toW(second) >= 2) {
+      bits.push(pick('led2' + second.key + w, [
+        'Next came ' + second.label + ', worth ' + spell(Math.round(toW(second))) + ' more.',
+        second.label.charAt(0).toUpperCase() + second.label.slice(1) + ' added about ' + ptsWords(toW(second)) + '.'
+      ]));
+    }
+    if (back && toW(back) <= -2) {
+      bits.push(Lo + ' won about ' + ptsWords(-toW(back)) + ' back on ' + back.label + '.');
+    }
+    out.push(bits.join(' '));
+  } else {
+    out.push('No single facet decided this: on the league’s own weights nothing was worth more than a point or two either way, and the margin was made in the margins.');
+  }
+
+  /* the shooting, split, when the two halves point different ways: the shots were the losers', the making was not */
+  const q = d.rows.find(r => r.key === 'quality'), mk = d.rows.find(r => r.key === 'making');
+  if (q && mk && top && top.key !== 'quality' && top.key !== 'making' && Math.abs(q.pts) >= 2 && Math.abs(mk.pts) >= 2 && Math.sign(q.pts) !== Math.sign(mk.pts)) {
+    const qs = q.pts > 0 ? 0 : 1, ms = mk.pts > 0 ? 0 : 1;
+    out.push(nm(g, qs) + ' got the better shots, worth about ' + ptsWords(q.pts) + ', but ' + nm(g, ms) + ' made more of theirs, about ' + ptsWords(mk.pts) + ' the other way.');
+  }
+
+  /* against what the season said before the tip */
+  const X = d.expect;
+  if (X && num(X.margin) != null) {
+    const xw = w === 0 ? X.margin : -X.margin;                 // the season's expectation, from the winners' end
+    const big = Math.abs(xw) >= 1.5;
+    if (!big) out.push('Before the tip, the season’s numbers had almost nothing between them; ' + midCase(W) + ' won by ' + spell(margin) + '.');
+    else if (xw > 0) {
+      const gap = margin - xw;
+      out.push('Before the tip, the season’s numbers made ' + W + ' about ' + ptsWords(xw) + ' better. ' +
+        (Math.abs(gap) <= 3 ? 'That is roughly how it went.' : gap > 0 ? 'They beat that by ' + ptsWords(gap) + '.' : 'They won by less than that.'));
+    } else {
+      out.push('Before the tip, the season’s numbers made ' + Lo + ' about ' + ptsWords(-xw) + ' better: ' + W + ' won this as the underdogs.');
+    }
+  }
+
+  /* what the ledger does not see */
+  const rest = d.rows.find(r => r.key === 'rest'), home = d.rows.find(r => r.key === 'home');
+  const restW = rest ? toW(rest) : 0;
+  const tail = [];
+  if (home && Math.abs(home.pts) >= 0.5) tail.push('Home court is worth about ' + one1(Math.abs(home.pts)) + ' points in this league, and it was ' + possOf(nm(g, 0)) + '.');
+  /* only with the league's own weights: the fixed ones are a rule of thumb, and what they leave over is theirs, not the game's */
+  if (mdl && restW >= 4 && margin >= 6) tail.push('The last ' + spell(Math.round(restW)) + ' points of the margin are in no facet at all: the part of a game no factor measures.');
+  else if (mdl && restW <= -4) tail.push('On these facets alone ' + W + ' would have won by more; ' + spell(Math.round(-restW)) + ' points went back to ' + Lo + ' in what no factor measures.');
+  if (tail.length) out.push(tail.join(' '));
+  return out;
+}
+
+/* ============================================================================
+   THE GAME IN ITS SEASON, SAID (story.js factContext). One sentence a fact, each naming its club, each built only from a
+   fact context.js could work out from games that tipped off before this one. stakesLine() is shared by the paragraph
+   near the top (why it matters) and the section at the end (what it means); whichever says a fact first spends it.
+   ============================================================================ */
+const STAKES = ['firstDefeat', 'wentTop', 'upset', 'streakEnded', 'skidEnded', 'firstWin', 'lostTop', 'unbeaten',
+  'winStreak', 'expectation', 'h2h', 'climbed', 'loseStreak', 'winless', 'teamRecord', 'teamSeasonHigh', 'stingiest', 'stayTop',
+  'bigCrowd', 'fansWrong', 'backToBack'];
+const groupWords = gname => (gname ? (/\s/.test(gname) ? ' in ' + esc(gname) : ' in Group ' + esc(gname)) : '');
+function stakesLine(g, f, alt) {
+  const d = f.data, w = g.score[0] > g.score[1] ? 0 : 1, l = 1 - w;
+  const W = nm(g, w), Lo = nm(g, l), T = f.side == null ? null : nm(g, f.side);
+  const a = alt ? 1 : 0;
+  switch (f.kind) {
+    case 'firstDefeat': return [Lo + ' had won their first ' + spell(d.w) + ' games; this was their first defeat.',
+                                'It was the first defeat of the season for ' + Lo + ', after ' + spell(d.w) + ' straight wins.'][a];
+    case 'wentTop': return ['The win takes ' + W + ' top' + groupWords(d.group) + ', at ' + d.w + '–' + d.l + '.',
+                            W + ' go top' + groupWords(d.group) + ' with it, ' + d.w + '–' + d.l + '.'][a];
+    case 'lostTop': return [Lo + ' lose top spot with the defeat.', 'The defeat costs ' + Lo + ' first place.'][a];
+    case 'stayTop': return [W + ' stay top' + groupWords(d.group) + ' at ' + d.w + '–' + d.l + '.', 'It keeps ' + W + ' top' + groupWords(d.group) + '.'][a];
+    case 'climbed': return [W + ' climb to ' + placeWord(d.to) + groupWords(d.group) + '.', 'The win lifts ' + W + ' to ' + placeWord(d.to) + groupWords(d.group) + '.'][a];
+    case 'upset': return [W + ' started the night ' + placeWord(d.rank[0]) + ' in the table and beat the side in ' + placeWord(d.rank[1]) + '.',
+                          'On the table this was an upset: ' + W + ' were ' + placeWord(d.rank[0]) + ', ' + Lo + ' ' + placeWord(d.rank[1]) + '.'][a];
+    case 'expectation':
+      if (d.toWinner > -5) return null;
+      return ['On the season’s numbers this should have been ' + possOf(Lo) + ' game by about ' + ptsWords(-d.toWinner) + '.',
+              'The season’s four factors had ' + Lo + ' about ' + ptsWords(-d.toWinner) + ' better going in.'][a];
+    case 'streakEnded': return ['It ended ' + possOf(Lo) + ' run of ' + spell(d.n) + ' straight wins.', Lo + ' had won ' + spell(d.n) + ' in a row coming in.'][a];
+    case 'skidEnded': return ['It ended a run of ' + spell(d.n) + ' straight defeats for ' + W + '.', W + ' had lost ' + spell(d.n) + ' in a row before this.'][a];
+    case 'winStreak': return ['It is ' + spell(d.n) + ' wins in a row for ' + W + '.', W + ' have now won ' + spell(d.n) + ' straight.'][a];
+    case 'loseStreak': return [Lo + ' have now lost ' + spell(d.n) + ' straight.', 'That is ' + spell(d.n) + ' defeats in a row for ' + Lo + '.'][a];
+    case 'firstWin': return ['It was ' + possOf(W) + ' first win of the season, at the ' + placeWord(d.gp) + ' attempt.', W + ' are off the mark at last, at the ' + placeWord(d.gp) + ' attempt.'][a];
+    case 'unbeaten': return [W + ' are still unbeaten, ' + d.w + '–0.', 'Nobody has beaten ' + W + ' yet: ' + d.w + ' games, ' + d.w + ' wins.'][a];
+    case 'winless': return [Lo + ' are still looking for a first win, ' + spell(d.l) + ' games in.', 'It is ' + spell(d.l) + ' games and no wins for ' + Lo + '.'][a];
+    case 'teamRecord': {
+      const eq = d.shared > 1;
+      const what = { pts: d.v + ' points ' + (eq ? 'equal the most' : 'are the most') + ' any side has scored in this league this season',
+                     margin: d.v + '-point win ' + (eq ? 'equals the widest' : 'is the widest') + ' in this league this season',
+                     p3m: d.v + ' threes ' + (eq ? 'equal the most' : 'are the most') + ' by any side in a game this season',
+                     ast: d.v + ' assists ' + (eq ? 'equal the most' : 'are the most') + ' by any side in a game this season',
+                     reb: d.v + '-rebound edge ' + (eq ? 'equals the widest' : 'is the widest') + ' in this league this season' }[d.stat];
+      return what ? possOf(T) + ' ' + what + '.' : null;
+    }
+    case 'teamSeasonHigh': return [possOf(W) + ' ' + d.pts + ' points were their most of the season.', W + ' had not scored ' + d.pts + ' all season.'][a];
+    case 'stingiest': return [W + ' have not allowed fewer all season than the ' + d.pts + ' they gave up here.', possOf(Lo) + ' ' + d.pts + ' is the fewest ' + W + ' have allowed this season.'][a];
+    case 'h2h': {
+      const s = d.series, sc = d.lastScore || [], hi = Math.max(sc[0], sc[1]), lo = Math.min(sc[0], sc[1]);
+      if (d.sweep) return W + ' have won all ' + spell(d.meetings) + ' meetings this season.';
+      if (d.revenge && isFinite(hi)) return Lo + ' had won the last meeting ' + hi + '–' + lo + '; this was ' + possOf(W) + ' reply.';
+      if (s[w] === s[l]) return 'The season series between them is level at ' + s[w] + '–' + s[l] + '.';
+      return 'The season series is ' + s[w] + '–' + s[l] + ' to ' + W + '.';
+    }
+    case 'bigCrowd': return 'The crowd of ' + d.crowd + ' was ' + possOf(nm(g, 0)) + ' biggest of the season.';
+    case 'fansWrong': return 'Only ' + Math.round(d.share) + '% of the ' + d.n + ' fans who picked a winner had gone with ' + W + '.';
+    case 'backToBack': return T + ' were playing for the second time in two days.';
+    default: return null;
+  }
+}
+/* the strongest stakes facts, in order, that nothing has said yet */
+function stakesOf(fs, n, minSal) {
+  return fs.filter(f => STAKES.indexOf(f.kind) >= 0 && f.salience >= (minSal || 0) && !SPENT.has('ctx:' + f.kind) &&
+    !(f.kind === 'expectation' && !(f.data.toWinner <= -5))).slice(0, n);
+}
+
+/* the dates the next games are on, in the league's own time zone */
+function dayWords(iso, tz) {
+  const d = new Date(iso);
+  if (isNaN(d)) return null;
+  try {
+    return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz || undefined }).format(d);
+  } catch (_) {
+    return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(d);
+  }
+}
+
+/* WHAT IT MEANS: the table, the runs, the meetings, the fans, and what comes next */
+function sectionMeans(g, fs, R) {
+  const out = [];
+  const C = g.ctx;
+  if (!C || g.score[0] === g.score[1]) return out;
+  R.neutral();
+  const w = g.score[0] > g.score[1] ? 0 : 1, l = 1 - w;
+  const first = [];
+  stakesOf(fs, 3, 0).forEach(f => {
+    const s = stakesLine(g, f, seedOf(f.kind + g.score.join('')) % 2 === 1);
+    if (s) { first.push(s); SPENT.add('ctx:' + f.kind); }
+  });
+  /* where both now stand, when the table has them and the paragraph has not already said so */
+  const st = fs.find(f => f.kind === 'standing');
+  if (st && !first.some(s => /\btop\b|first place|climb|lifts/.test(s))) {
+    const d = st.data;
+    const rec = t => d.rec[t][0] + '–' + d.rec[t][1];
+    if (d.ranks[w] != null && d.ranks[l] != null) {
+      first.push((d.inTable ? '' : 'In the league, ') + nm(g, w) + ' are ' + placeWord(d.ranks[w]) + groupWords(d.groups[w]) + ' at ' + rec(w) + ', ' +
+        nm(g, l) + ' ' + placeWord(d.ranks[l]) + (d.groups[l] !== d.groups[w] ? groupWords(d.groups[l]) : '') + ' at ' + rec(l) + '.');
+    }
+  }
+  if (first.length) out.push(first.join(' '));
+  /* what comes next */
+  const nx = fs.find(f => f.kind === 'nextUp');
+  if (nx) {
+    const tz = g.meta && g.meta.timezone;
+    const bits = [];
+    const N = nx.data.next;
+    if (N[0] && N[1] && N[0].rematch && N[0].id === N[1].id) {
+      const day = dayWords(N[0].at, tz);
+      if (day) bits.push('The two meet again on ' + day + ', ' + (N[0].home ? 'at ' + possOf(nm(g, 0)) + ' place' : 'at ' + possOf(nm(g, 1)) + ' place') + '.');
+    } else {
+      [w, l].forEach(t => {
+        const n = N[t];
+        if (!n || !n.oppName) return;
+        const day = dayWords(n.at, tz);
+        if (!day) return;
+        bits.push('Next for ' + nm(g, t) + ': ' + (n.home ? esc(tc(n.oppName)) + ' at home' : 'away at ' + esc(tc(n.oppName))) + ' on ' + day + '.');
+      });
+    }
+    if (bits.length) out.push(bits.join(' '));
+  }
+  return out;
+}
+
+/* ============================================================================
    HOW THE BALL MOVED: the connections tab. Every player sentence names a club.
    ============================================================================ */
 function sectionPassing(g, fs, R) {
   const out = [];
-  const nameOf = n => esc(tc(n));
+  const nameOf = n => person(n);
   R.neutral();
   const duos = fs.filter(f => f.kind === 'duo').sort((a, b) => b.data.count - a.data.count);
   const hubs = fs.filter(f => f.kind === 'passingHub');
@@ -1276,9 +1623,10 @@ function sectionPassing(g, fs, R) {
     used.add(d.scorer);
     const all3 = d.threes === d.count && d.count >= 2;
     const n = spell(d.count), p = spell(d.points);
+    const A = nameOf(d.assister), B = nameOf(d.scorer);          // once each, before the options (person() counts mentions)
     out.push(pick('duo' + f.side + d.count + d.points, [
-      'The most productive pairing was ' + nameOf(d.assister) + ' to ' + nameOf(d.scorer) + ' for ' + nm(g, f.side) + ': ' + n + ' baskets worth ' + p + ' points' + (all3 ? ', every one of them a three' : '') + '.',
-      nameOf(d.assister) + ' found ' + nameOf(d.scorer) + ' ' + n + ' times for ' + nm(g, f.side) + ', ' + p + ' points in all' + (all3 ? ' and all of them threes' : '') + '.'
+      'The most productive pairing was ' + A + ' to ' + B + ' for ' + nm(g, f.side) + ': ' + n + ' baskets worth ' + p + ' points' + (all3 ? ', every one of them a three' : '') + '.',
+      A + ' found ' + B + ' ' + n + ' times for ' + nm(g, f.side) + ', ' + p + ' points in all' + (all3 ? ' and all of them threes' : '') + '.'
     ]));
     const second = duos.find(x => x.side !== f.side && x.data.count >= 3);
     if (second) {
@@ -1304,7 +1652,7 @@ function sectionPassing(g, fs, R) {
 function sectionPlayTypes(g, fs, R) {
   const out = [];
   R.neutral();
-  const nameOf = n => esc(tc(n));
+  const nameOf = n => person(n);
   fs.filter(f => f.kind === 'sitLeader').forEach(f => {
     const d = f.data, [p, t] = L().spellSet([d.pts, d.teamPts]);
     out.push(nameOf(d.name) + ' scored ' + p + ' of ' + nm(g, f.side) + '\u2019s ' + t + ' points ' + d.where + '.');
@@ -1498,7 +1846,7 @@ function fromField(fgm, fga) {
 function sectionPlayers(g, fs, R) {
   const out = [];
   const byKind = k => fs.filter(f => f.kind === k);
-  const nameOf = p => esc(tc(p.name));
+  const nameOf = p => person(p.name);
   const club = t => nm(g, t);
 
   const topScorer = [0, 1].map(t => g.players
@@ -1550,24 +1898,33 @@ function sectionPlayers(g, fs, R) {
   const tdP = tdF && tdF.data.p;
   const tdMark = p => (tdP && p.id === tdP.id ? ', a triple-double' : '');
   const tailA = leaders[0] ? lineTail(leaders[0]) : '';
+  /* A SEASON HIGH RIDES ON THE PLAYER'S OWN LINE ("with a season-high 27"), said once, where the points are: a sentence of
+     its own a paragraph later restated the same 27 (read-through, 2026-10-07) */
+  const hiF = new Map(byKind('careerNight').filter(f => f.data.stat === 'pts' && !f.data.matched).map(f => [f.data.p.id, f]));
+  const ptsOf = p => { if (hiF.has(p.id) && !SPENT.has('hi:' + p.id)) { SPENT.add('hi:' + p.id); return 'a season-high ' + p.pts; } return String(p.pts); };
   if (leaders.length === 2) {
     const [a, b] = leaders;
     const tailB = lineTail(b, { rebMin: 7, astMin: 5 });
+    const na = nameOf(a), nb = nameOf(b), pa = ptsOf(a), pb = ptsOf(b);      // resolved once, before the options
     const first = pickVaried('lead' + a.id + b.id, [
-      nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts + ' points' + tailA + tdMark(a) + '.',
-      nameOf(a) + ' top-scored for ' + club(a.team) + ' with ' + a.pts + tailA + tdMark(a) + '.',
-      club(a.team) + ' had ' + a.pts + ' points' + tailA + ' from ' + nameOf(a) + tdMark(a) + '.'
+      na + ' led ' + club(a.team) + ' with ' + pa + ' points' + tailA + tdMark(a) + '.',
+      na + ' top-scored for ' + club(a.team) + ' with ' + pa + tailA + tdMark(a) + '.',
+      club(a.team) + ' had ' + pa + ' points' + tailA + ' from ' + na + tdMark(a) + '.'
     ]);
     const second = pickVaried('lead2' + b.id, [
-      nameOf(b) + ' answered with ' + b.pts + tailB + tdMark(b) + ' for ' + club(b.team) + '.',
-      'For ' + club(b.team) + ', ' + nameOf(b) + ' had ' + b.pts + tailB + tdMark(b) + '.',
-      nameOf(b) + ' finished with ' + b.pts + tailB + tdMark(b) + ' for ' + club(b.team) + '.'
+      nb + ' answered with ' + pb + tailB + tdMark(b) + ' for ' + club(b.team) + '.',
+      'For ' + club(b.team) + ', ' + nb + ' had ' + pb + tailB + tdMark(b) + '.',
+      nb + ' finished with ' + pb + tailB + tdMark(b) + ' for ' + club(b.team) + '.'
     ]);
     out.push(first + ' ' + second);
   } else if (leaders.length === 1) {
+    /* NOT "a season high" for scoring six over an average (a published claim, 2026-10-07): a season high is said only when
+       context.js found the player's best before this game and this beat it (careerNight, below); above the average is
+       said as that */
     const a = leaders[0];
-    out.push(nameOf(a) + ' led ' + club(a.team) + ' with ' + a.pts + ' points' + tailA +
-      (aboveAverage(a) ? ', a season high' : '') + tdMark(a) + '.');
+    const high = hiF.has(a.id);
+    out.push(nameOf(a) + ' led ' + club(a.team) + ' with ' + ptsOf(a) + ' points' + tailA +
+      (!high && aboveAverage(a) ? ', well clear of their usual' : '') + tdMark(a) + '.');
   }
   if (tdP && !leaders.some(p => p.id === tdP.id)) {
     const cats = [[tdP.pts || 0, 'points'], [(tdP.or || 0) + (tdP.dr || 0), 'rebounds'], [tdP.ast || 0, 'assists'],
@@ -1582,7 +1939,7 @@ function sectionPlayers(g, fs, R) {
   const deedSeen = new Set(leaders.map(p => p.id).concat(tdP ? [tdP.id] : []));
   byKind('benchSpark').slice(0, 2).forEach(f => {
     const p = f.data.p; if (deedSeen.has(p.id)) return; deedSeen.add(p.id);
-    deeds.push({ side: p.team, txt: nameOf(p) + ' came off the bench for ' + p.pts + lineTail(p, { rebMin: 7, astMin: 5 }) });
+    deeds.push({ side: p.team, txt: nameOf(p) + ' came off the bench for ' + ptsOf(p) + lineTail(p, { rebMin: 7, astMin: 5 }) });
   });
   byKind('spree').slice(0, 1).forEach(f => {
     const p = f.data.p; if (deedSeen.has(p.id)) return; deedSeen.add(p.id);
@@ -1605,6 +1962,7 @@ function sectionPlayers(g, fs, R) {
       list(grp.items.map(x => x.txt)) + ' for ' + club(grp.t))) + '.');
   }
 
+
   /* ---- who else contributed -------------------------------------------- */
   const seen = new Set(Array.from(deedSeen));
   const support = [];
@@ -1612,8 +1970,9 @@ function sectionPlayers(g, fs, R) {
     const p = f.data.p;
     if (seen.has(p.id) || isLeader(p)) return;
     seen.add(p.id);
-    support.push({ side: p.team, p: p, txt: nameOf(p) + ' added ' + p.pts,
-                   short: nameOf(p) + ' ' + p.pts });
+    const nmP = nameOf(p), pp = ptsOf(p);
+    support.push({ side: p.team, p: p, txt: nmP + ' added ' + pp,
+                   short: nmP + ' ' + pp });
   });
   if (support.length) {
     const clauses = sides(support.slice(0, 4)).map(grp => {
@@ -1636,17 +1995,19 @@ function sectionPlayers(g, fs, R) {
     const p = f.data.p;
     if (specialSeen.has(p.id) || inLine.has(p.id)) return;
     specialSeen.add(p.id);
-    specials.push({ side: p.team, who: nameOf(p),
+    const who = nameOf(p);            // once: a second call would be the surname (person())
+    specials.push({ side: p.team, who,
                     did: 'had ' + spell(p.ast || 0) + ' assists',
-                    txt: nameOf(p) + ' had ' + spell(p.ast || 0) + ' assists' });
+                    txt: who + ' had ' + spell(p.ast || 0) + ' assists' });
   });
   byKind('shooter').slice(0, 2).forEach(f => {
     const p = f.data.p;
     if (specialSeen.has(p.id)) return;
     specialSeen.add(p.id);
-    specials.push({ side: p.team, who: nameOf(p),
+    const who = nameOf(p);
+    specials.push({ side: p.team, who,
                     did: 'hit ' + spell(p.p3m || 0) + ' from three',
-                    txt: nameOf(p) + ' hit ' + spell(p.p3m || 0) + ' from three' });
+                    txt: who + ' hit ' + spell(p.p3m || 0) + ' from three' });
   });
   byKind('defender').slice(0, 2).forEach(f => {
     const p = f.data.p;
@@ -1655,9 +2016,10 @@ function sectionPlayers(g, fs, R) {
     const bits = [];
     if ((p.stl || 0) >= 3) bits.push(spell(p.stl) + ' steals');
     if ((p.blk || 0) >= 3) bits.push(spell(p.blk) + ' blocks');
-    if (bits.length) specials.push({ side: p.team, who: nameOf(p),
+    const who = bits.length ? nameOf(p) : null;
+    if (bits.length) specials.push({ side: p.team, who,
       did: 'finished with ' + bits.join(' and '),
-      txt: nameOf(p) + ' finished with ' + bits.join(' and ') });
+      txt: who + ' finished with ' + bits.join(' and ') });
   });
   if (specials.length) {
     /* TWO PLAYERS WHO DID THE SAME THING GET ONE PREDICATE.
@@ -1683,6 +2045,46 @@ function sectionPlayers(g, fs, R) {
     out.push(joinClauses(sides(specials.slice(0, 4)).map(grp =>
       list(merge(grp.items)) + ' for ' + club(grp.t))) + '.');
   }
+
+  /* ---- the night against the season: records, season highs, runs, returns, milestones, the numbers' player of the
+     game (story.js factContext, factBPM). One sentence each, the strongest three, every one naming the club. */
+  const STAT_WORD = { pts: 'points', reb: 'rebounds', ast: 'assists', stl: 'steals', blk: 'blocks', p3m: 'threes' };
+  const ctxLines = [];
+  const ctxSeen = new Set();
+  fs.filter(f => ['leagueRecord', 'careerNight', 'hotStreak', 'returned', 'milestone', 'bpmTop'].indexOf(f.kind) >= 0)
+    .slice().sort((a, b) => b.salience - a.salience).forEach(f => {
+      const p = f.data.p;
+      if (!p || ctxLines.length >= 3) return;
+      const key = f.kind + ':' + p.id;
+      if (ctxSeen.has(key)) return;
+      ctxSeen.add(key);
+      const who = nameOf(p), cl = club(p.team), d = f.data;
+      let s = null;
+      if (f.kind === 'leagueRecord') {
+        if (!STAT_WORD[d.stat]) return;
+        s = possOf(who) + ' ' + d.v + ' ' + STAT_WORD[d.stat] + ' for ' + cl + (d.shared > 1 ? ' equalled the most' : ' were the most') +
+          ' by anyone in a game in this league this season';
+        SPENT.add(d.stat === 'pts' ? 'hi:' + p.id : 'hi:' + d.stat + ':' + p.id);
+      } else if (f.kind === 'careerNight') {
+        /* a points high is said on the player's own line (ptsOf) when he has one; the boards, assists and threes here */
+        const hk = d.stat === 'pts' ? 'hi:' + p.id : 'hi:' + d.stat + ':' + p.id;
+        if (SPENT.has(hk) || !STAT_WORD[d.stat]) return;
+        SPENT.add(hk);
+        s = d.matched ? who + ' matched their season high of ' + d.v + ' ' + STAT_WORD[d.stat] + ' for ' + cl
+          : possOf(who) + ' ' + d.v + ' ' + STAT_WORD[d.stat] + ' for ' + cl + ' were a season high, ' + spell(d.v - d.before) + ' more than their best before';
+      } else if (f.kind === 'hotStreak') {
+        s = who + ' has now scored 20 or more in ' + spell(d.n) + ' straight games for ' + cl;
+      } else if (f.kind === 'returned') {
+        s = who + ' was back for ' + cl + ' after missing ' + spell(d.missed) + ' games, and played ' + spell(Math.round((p.min || 0) / 60000)) + ' minutes';
+      } else if (f.kind === 'milestone') {
+        s = possOf(who) + ' points took their season total past ' + d.mark + ' for ' + cl;
+      } else if (f.kind === 'bpmTop') {
+        if (!d.notScorer) return;
+        s = 'By box plus-minus the best game on the floor was ' + possOf(who) + ' for ' + cl + ', ' + (d.bpm > 0 ? '+' : '') + (Math.round(d.bpm * 10) / 10).toFixed(1);
+      }
+      if (s) ctxLines.push(s + '.');
+    });
+  if (ctxLines.length) out.push(ctxLines.join(' '));
 
   /* ---- who struggled ---------------------------------------------------- */
   const rough = [];
@@ -1962,10 +2364,11 @@ function halftime(g) {
   PROPER = new Set(g.names.map(n => tc(String(n)).split(' ')[0]));
   SPENT = new Set();
   lastPick = null; RECENT = [];
+  setCast(g);
   const [a, b] = g.score;
   const L = a > b ? 0 : a < b ? 1 : null, T = L == null ? null : 1 - L;
   const m = Math.abs(a - b), hi = Math.max(a, b), lo = Math.min(a, b);
-  const nameOf = p => esc(tc(p.name));
+  const nameOf = p => person(p.name);
   const run = fs.find(f => f.kind === 'run');
 
   /* ---- headline ---- */
@@ -2136,8 +2539,16 @@ function verifyClaims(g, fs, text) {
   const tl = fs.find(f => f.kind === 'timeLed');
   const byName = {};
   (g.players || []).forEach(p => { byName[tc(p.name)] = p; });
+  /* a later mention is the surname alone (person()): a surname only one player in the game has is his name too */
+  const sn = {};
+  (g.players || []).forEach(p => { const k = surnameOf(tc(p.name)); sn[k] = sn[k] ? null : p; });
+  Object.keys(sn).forEach(k => { if (sn[k] && k.length > 2 && !byName[k] && N.indexOf(k) < 0) byName[k] = sn[k]; });
 
   sents.forEach(sn => {
+    /* 0. NOTHING HALF-FILLED IS PRINTED: a slot that never got its value ("undefined", "NaN", "[object Object]", a
+       template's braces) is the one fault a machine-written report shows that a person's never does, and the sentence
+       goes rather than the reader seeing it */
+    if (/\b(?:undefined|NaN|Infinity|null)\b|\[object |\{\{|\}\}|\[\[|\]\]/.test(sn)) flag('placeholder', 'an empty slot reached the text', sn);
     /* 1. a team is named first where the sentence says it won */
     if (WIN_VERBS.test(sn) && !/\bnot enough\b|\bnever\b|\bfor\b.+\bnot\b/.test(sn)) {
       const iw = sn.indexOf(N[w]), il = sn.indexOf(N[l]);
@@ -2252,6 +2663,7 @@ function report(g) {
   HEAD_ANGLE = null;
   const hl = headline(g, fs);         // first: the standfirst leaves out whatever the headline has said
   const stand = standfirst(g, fs);
+  setCast(g);                         // the body names each player in full once, then by surname
   const secs = [];
   const add = (heading, paras, card) => {
     if (paras && paras.length) secs.push({ heading, paras, card });
@@ -2260,13 +2672,17 @@ function report(g) {
     add(heading, (paras || []).map(capitalise), card);
   };
   addCapped('How it was won', sectionFlow(g, fs, R), 'quarters');
+  /* WHAT DECIDED IT comes second, in the order the league's own model values each facet (story.js factLedger); a game
+     with no possessions to count gets the older four-factor accounting under its old heading */
+  const hasLedger = fs.some(f => f.kind === 'ledger' && f.data.winner != null);
+  addCapped(hasLedger ? 'What decided it' : 'What the four factors were worth', sectionLedger(g, fs, R), hasLedger ? 'ledger' : 'pointsAdded');
   addCapped('The numbers that decided it', sectionNumbers(g, fs, R), 'factors');
-  addCapped('What the four factors were worth', sectionFactors(g, fs, R), 'pointsAdded');
   addCapped('How the ball moved', sectionPassing(g, fs, R), null);
   addCapped('Play types and rebounds', sectionPlayTypes(g, fs, R), null);
   addCapped('The shot clock', sectionClock(g, fs, R), null);
   addCapped('On the floor', sectionLineups(g, fs, R), 'lineups');
   addCapped('The performances', sectionPlayers(g, fs, R), 'players');
+  addCapped('What it means', sectionMeans(g, fs, R), 'next');
   addCapped('The scout’s note', sectionScout(g, fs, R), 'scout');
   let sc = null;
   try { sc = st.scout ? st.scout(g) : null; } catch (_) { sc = null; }

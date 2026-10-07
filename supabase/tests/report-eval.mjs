@@ -212,14 +212,25 @@ const show = (() => { const i = process.argv.indexOf('--show');
 /* --only <id prefix>: print that one game in full (and still measure everything) */
 const only = (() => { const i = process.argv.indexOf('--only'); return i > 0 ? String(process.argv[i + 1] || '') : ''; })();
 
+/* --league <slug>: that league's most recent finished games only (to read, say, a league whose What Wins model is out) */
+const leagueOnly = (() => { const i = process.argv.indexOf('--league'); return i > 0 ? String(process.argv[i + 1] || '') : ''; })();
+const limitN = (() => { const i = process.argv.indexOf('--limit'); return i > 0 ? Math.max(1, parseInt(process.argv[i + 1], 10) || 30) : 30; })();
+let leagueComps = null;
+if (leagueOnly) {
+  const lg = (await api(`leagues?slug=eq.${encodeURIComponent(leagueOnly)}&select=id`))[0];
+  const ss = lg ? await api(`seasons?league_id=eq.${lg.id}&select=id&order=starts_on.desc&limit=2`) : [];
+  leagueComps = ss.length ? (await api(`competitions?season_id=in.(${ss.map(x => x.id).join(',')})&select=id`)).map(c => c.id) : [];
+}
 const games = await api('games?status=eq.final&select=id,home_team_id,away_team_id' +
-  ',competition_id,venue,attendance,tipoff_at,competitions(name,seasons(leagues(name,slug)))&order=tipoff_at.desc&limit=30');
+  ',competition_id,venue,attendance,tipoff_at,competitions(name,seasons(leagues(name,slug)))' +
+  (leagueComps ? '&competition_id=in.(' + (leagueComps.join(',') || '00000000-0000-0000-0000-000000000000') + ')' : '') +
+  '&order=tipoff_at.desc&limit=' + limitN);
 
 /* Season aggregates, exactly as the page loads them, so the evaluator
    measures the prose the reader actually gets rather than a version
    missing its context. */
 const Season = require(path.join(ROOT, 'epinoia', 'season.js'));
-require(path.join(ROOT, 'epinoia', 'bpm.js'));
+globalThis.EpinoiaBPM = require(path.join(ROOT, 'epinoia', 'bpm.js'));
 async function seasonFor(games) {
   const ids = games.map(g => g.id);
   const chunks = [];
@@ -234,8 +245,73 @@ async function seasonFor(games) {
 const SEASON = await seasonFor(games);
 if (!games.length) { console.log('no finished games to evaluate'); process.exit(0); }
 
+/* --ctx: THE GAME IN ITS SEASON and THE LEAGUE'S MODEL, as the game page gives them (game.js addSeasonContext,
+   ensureWinModel): the season's finished games, their team lines and named player keys, the table, the next fixtures,
+   the fans' picks, the records board, and the What Wins weights from the CDN. One read of each per season, cached;
+   player rows by named keys, never the stats blob. */
+const CTX = process.argv.includes('--ctx');
+const Context = require(path.join(G, 'context.js'));
+const TablePos = require(path.join(ROOT, 'epinoia', 'tablepos.js'));
+const Records = (() => { try { globalThis.window = globalThis; return require(path.join(ROOT, 'epinoia', 'records.js')); } catch (_) { return null; } })();
+async function post(p, body) {
+  const r = await fetch(CFG.url + '/rest/v1/' + p, { method: 'POST',
+    headers: { apikey: CFG.key, Authorization: 'Bearer ' + CFG.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(r.status + ' on ' + p);
+  return r.json();
+}
+const seasonCache = new Map();
+async function seasonCtx(compId) {
+  if (seasonCache.has(compId)) return seasonCache.get(compId);
+  const job = (async () => {
+    const [c] = await api(`competitions?id=eq.${compId}&select=id,season_id,seasons(league_id,leagues(slug,timezone))`);
+    if (!c) return null;
+    const comps = (await api(`competitions?season_id=eq.${c.season_id}&select=id`)).map(x => x.id);
+    const sg = await api(`games?competition_id=in.(${comps.join(',')})&status=eq.final&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at,attendance,competition_id&order=tipoff_at&limit=1000`);
+    const ids = sg.map(x => x.id), chunks = [];
+    for (let i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
+    const tgs = (await Promise.all(chunks.map(ch => api(`team_game_stats?game_id=in.(${ch.join(',')})&select=game_id,team_idx,stats->adv`)))).flat()
+      .map(r => ({ game_id: r.game_id, team_idx: r.team_idx, stats: { adv: r.adv || {} } }));
+    const PK = 'game_id,team_idx,player_uuid,player_id,min:stats->min,pts:stats->pts,or:stats->or,dr:stats->dr,ast:stats->ast,stl:stats->stl,blk:stats->blk,p3m:stats->p3m';
+    const pgs = (await Promise.all(chunks.map(ch => api(`player_game_stats?game_id=in.(${ch.join(',')})&select=${PK}`)))).flat()
+      .map(r => ({ game_id: r.game_id, team_idx: r.team_idx, player_uuid: r.player_uuid, player_id: r.player_id,
+                   stats: { min: r.min, pts: r.pts, or: r.or, dr: r.dr, ast: r.ast, stl: r.stl, blk: r.blk, p3m: r.p3m } }));
+    const league = c.seasons && c.seasons.league_id;
+    let model = null;
+    try {
+      const r = await fetch(CFG.url + '/storage/v1/object/public/snapshots/whatwins-explain/' + league + '.json');
+      if (r.ok) { const m = await r.json(); if (m && m.b && String(m.league) === String(league)) model = m; }
+    } catch (_) { /* no model */ }
+    const table = await TablePos.load(p => api(p), compId).catch(() => null);
+    let records = null;
+    if (Records && Records.board) {
+      try { const b = await Records.board({ get: p => api(p) }, [compId], 'all'); records = b ? Records.fromBoard(b) : null; } catch (_) { records = null; }
+    }
+    return { comps, games: sg, tgs, pgs, model, table, records, timezone: c.seasons && c.seasons.leagues && c.seasons.leagues.timezone };
+  })();
+  seasonCache.set(compId, job);
+  return job;
+}
+async function gameCtx(g, score) {
+  const s = await seasonCtx(g.competition_id);
+  if (!s) return { ctx: null, model: null };
+  const ids = [g.home_team_id, g.away_team_id];
+  let fixtures = [], tally = null, names = {};
+  try {
+    fixtures = await api(`games?status=eq.scheduled&or=(home_team_id.in.(${ids.join(',')}),away_team_id.in.(${ids.join(',')}))` +
+      `&tipoff_at=gt.${encodeURIComponent(g.tipoff_at)}&order=tipoff_at&limit=12&select=id,home_team_id,away_team_id,tipoff_at`);
+    const opp = [...new Set(fixtures.flatMap(f => [f.home_team_id, f.away_team_id]))];
+    if (opp.length) (await api(`teams?id=in.(${opp.join(',')})&select=id,name`)).forEach(t => { names[t.id] = t.name; });
+  } catch (_) { /* no fixtures */ }
+  try { const t = await post('rpc/prediction_tally', { p_games: [g.id] }); tally = t && t[0] ? { home: t[0].home, away: t[0].away } : null; } catch (_) { tally = null; }
+  const ctx = Context.build({ gameId: g.id, tipoff: g.tipoff_at, home: g.home_team_id, away: g.away_team_id, score,
+    games: s.games, pgs: s.pgs, tgs: s.tgs, table: s.table, fixtures, tally, records: s.records, model: s.model,
+    competitionId: g.competition_id, attendance: g.attendance, teamNames: names });
+  return { ctx, model: s.model, timezone: s.timezone };
+}
+
 const summarise = xs => { const c = {}; xs.forEach(x => { c[x] = (c[x] || 0) + 1; }); return Object.entries(c).map(([k, v]) => k + ' x' + v).join(', ') || 'none'; };
 const rows = [];
+const CROSS = new Map();          // five-word phrase -> how many reports used it
 let shown = 0;
 for (const g of games) {
   let S, d;
@@ -262,9 +338,28 @@ for (const g of games) {
   const b = brief(S, d);
   b.season = { players: SEASON.players, teams: SEASON.teams,
                teamIndex: { [g.home_team_id]: 0, [g.away_team_id]: 1 } };
+  if (CTX) {
+    try {
+      const c = await gameCtx(g, b.score);
+      b.ctx = c.ctx; b.model = c.model;
+      if (c.timezone && b.meta) b.meta.timezone = c.timezone;
+    } catch (e) { console.warn('ctx', g.id.slice(0, 8), e.message); }
+  }
   const rep = Report.report(b);
   const m = measure(rep, b);
-  rows.push({ id: g.id.slice(0, 8), score: b.score.join('-'), ...m });
+  rows.push({ id: g.id.slice(0, 8), score: b.score.join('-'), ...m, model: !!b.model, ctx: !!b.ctx });
+  /* the phrases this report shares with the others: five-word runs with the names and figures taken out */
+  {
+    const prose = [rep.standfirst].concat(rep.sections.flatMap(x => x.paras)).join(' ').replace(/<[^>]*>/g, '');
+    const strip = prose.replace(/\b[A-Z][\w’'.-]*(?:\s+[A-Z][\w’'.-]*)*/g, 'X').replace(/\d+(?:[.,:]\d+)?%?/g, 'N').toLowerCase();
+    const w = strip.split(/[^a-z’'xn-]+/).filter(Boolean);
+    const mine = new Set();
+    for (let i = 0; i + 5 <= w.length; i++) {
+      const k = w.slice(i, i + 5).join(' ');
+      if (!/^(x|n)( (x|n|the|a|of|to|and|in|for|with))*$/.test(k)) mine.add(k);
+    }
+    mine.forEach(k => { CROSS.set(k, (CROSS.get(k) || 0) + 1); });
+  }
   if (process.argv.includes('--logic')) {
     (rep.quality.logic || []).forEach(x => console.log('  CAUGHT ' + g.id.slice(0, 8) + ' [' + x.rule + '] in ' + x.section + ': ' + x.why + (x.fixed ? ' (dropped)' : ' (STILL THERE)')));
     [rep.headline, rep.standfirst].concat(rep.sections.flatMap(x => x.paras)).forEach(p => Report.verifyClaims(b, rep.facts, p).forEach(f =>
@@ -287,7 +382,8 @@ for (const g of games) {
 if (!rows.length) { console.log('no replayable games'); process.exit(0); }
 
 const avg = k => (rows.reduce((a, r) => a + r[k], 0) / rows.length);
-console.log('\nREPORT QUALITY over ' + rows.length + ' finished games');
+console.log('\nREPORT QUALITY over ' + rows.length + ' finished games' +
+  (CTX ? '  (season context on ' + rows.filter(r => r.ctx).length + ', the league’s What Wins model on ' + rows.filter(r => r.model).length + ')' : ''));
 console.log('  words / report        ' + avg('words').toFixed(0));
 console.log('  sentences / report    ' + avg('sentences').toFixed(1));
 console.log('  facts found           ' + avg('facts').toFixed(1));
@@ -317,6 +413,13 @@ const sometimes = Object.keys(FAMILIES).filter(k =>
   rows.some(r => r.missing.indexOf(k) >= 0) && neverCovered.indexOf(k) < 0);
 console.log('\n  never mentioned:  ' + (neverCovered.join(', ') || '(none)'));
 console.log('  sometimes missed: ' + (sometimes.join(', ') || '(none)'));
+/* THE SAME WORDS IN EVERY REPORT: what a reader who follows a league notices first (five-word runs, names and figures out) */
+{
+  const n = rows.length;
+  const common = [...CROSS.entries()].filter(([, c]) => c >= Math.max(3, Math.ceil(n * 0.3))).sort((a, b) => b[1] - a[1]);
+  console.log('\n  stock phrases (in 30%+ of reports): ' + common.length +
+    (common.length ? '\n    ' + common.slice(0, 12).map(([k, c]) => '"' + k + '" x' + c).join('\n    ') : ''));
+}
 console.log('\n  worst repeated sentence opener seen: ' +
   rows.map(r => r.worstOpen).sort((a, b) =>
     parseInt(b.split('x')[1]) - parseInt(a.split('x')[1]))[0]);

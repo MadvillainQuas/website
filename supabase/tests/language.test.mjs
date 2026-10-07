@@ -189,7 +189,13 @@ console.log('-- the facts from the connections, play type + rebounds and shot cl
   const efg = pa.data.rows.find(r => r.key === 'efg');
   ok('the efg row is (efg - the average) x 2.0 x possessions / 100 for each side', efg && Math.abs(efg.pts[0] - (55 - 51.5) * 2 * 0.8) < 1e-9, efg && efg.pts);
   const rep4 = Report.report(g4);
-  ok('the report has a section for the four factors, with its card', rep4.sections.some(s => /four factors were worth/i.test(s.heading) && s.card === 'pointsAdded'), rep4.sections.map(s => s.heading));
+  /* 2026-10-07: the four factors are counted in the value ledger, "What decided it" (story.js factLedger) */
+  ok('the report has a section for the four factors, with its card', rep4.sections.some(s => (/four factors were worth/i.test(s.heading) && s.card === 'pointsAdded') ||
+    (/what decided it/i.test(s.heading) && s.card === 'ledger')), rep4.sections.map(s => s.heading));
+  const lg4 = Story.facts(g4).find(f => f.kind === 'ledger');
+  ok('the ledger’s rows add up to the scoreboard margin exactly', lg4 && Math.abs(lg4.data.rows.reduce((s, r) => s + r.pts, 0) - (g4.score[0] - g4.score[1])) < 1e-9, lg4 && lg4.data.rows);
+  ok('...and its four factor rows are the points-added rows (one accounting)', lg4 && pa && ['tovp', 'orebp', 'ftr'].every(k =>
+    Math.abs(lg4.data.rows.find(r => r.key === k).pts - pa.data.rows.find(r => r.key === k).net) < 1e-9), lg4 && lg4.data.rows);
   const rep1 = Report.report(Object.assign(base(), { connections: g.connections }));
   const moved = rep1.sections.filter(s => /ball moved/i.test(s.heading))[0];
   ok('and one for how the ball moved, naming a club with every player', moved && moved.paras.every(p => /Neon City|Harbour Bay/.test(p)), moved && moved.paras);

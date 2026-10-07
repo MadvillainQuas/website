@@ -85,7 +85,9 @@ function brief(S, d, B) {
        simply omits its season sentences when it is absent */
     season: S.season || null,
     /* the league's What wins weights (game.js ensureWinModel, 2026-10-07): story.js weighs the four factors by them */
-    model: S.winModel || null
+    model: S.winModel || null,
+    /* the game in its season (context.js, game.js ensureGameContext): null until it lands, and at the break */
+    ctx: S.ctx || null
   };
 }
 

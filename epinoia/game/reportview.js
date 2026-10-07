@@ -236,7 +236,74 @@ function cardPointsAdded(g, facts) {
     '<div class="sn-key">points added by each factor against ' + (d.baseline === 'league' ? 'the league average' : 'the average of the two sides') + ', worked as on the full stats tab \u00b7 margin is the home side\u2019s minus the away side\u2019s</div></div>';
 }
 
+/* ---- WHAT DECIDED IT: every facet of the game in points of the margin (story.js factLedger), a bar out to the side it
+   favoured, largest first; the rows add up to the scoreboard margin, which is the last line ------------------------------ */
+function cardLedger(g, facts) {
+  const f = facts.find(x => x.kind === 'ledger');
+  if (!f) return cardPointsAdded(g, facts);
+  const d = f.data;
+  const rows = d.rows.filter(r => r.key !== 'rest' && r.key !== 'home').slice().sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts))
+    .concat(d.rows.filter(r => r.key === 'home'), d.rows.filter(r => r.key === 'rest'));
+  const max = Math.max(1, ...rows.map(r => Math.abs(r.pts)));
+  const sg = v => (v > 0.05 ? '+' : v < -0.05 ? '−' : '') + Math.abs(v).toFixed(1);
+  const LABEL = { quality: 'Shot quality', making: 'Shot making', efg: 'Shooting', tovp: 'Turnovers', orebp: 'Offensive glass',
+    ftr: 'Getting to the line', ft: 'Free-throw shooting', home: 'Home court', rest: 'Everything else' };
+  const line = r => {
+    const w = Math.max(0, Math.min(100, Math.abs(r.pts) / max * 100)).toFixed(0);
+    const side = r.pts > 0.05 ? 0 : r.pts < -0.05 ? 1 : -1;
+    return '<div class="lg-row' + (r.key === 'rest' || r.key === 'home' ? ' lg-quiet' : '') + '">' +
+      '<div class="lg-l">' + esc(LABEL[r.key] || r.label) + '</div>' +
+      '<div class="lg-bar"><span class="lg-half a">' + (side === 0 ? '<i style="width:' + w + '%"></i>' : '') + '</span>' +
+        '<span class="lg-half b">' + (side === 1 ? '<i style="width:' + w + '%"></i>' : '') + '</span></div>' +
+      '<div class="lg-v">' + sg(r.pts) + '</div></div>';
+  };
+  const x = d.expect && num(d.expect.margin) != null ? d.expect : null;
+  return '<div class="rcard"><div class="rcard-h">What decided it, in points</div>' +
+    '<div class="lg"><div class="lg-row lg-head"><div class="lg-l"></div><div class="lg-bar"><span class="lg-half a">' + esc(g.names[0]) +
+      '</span><span class="lg-half b">' + esc(g.names[1]) + '</span></div><div class="lg-v">margin</div></div>' +
+      rows.map(line).join('') +
+      '<div class="lg-row lg-total"><div class="lg-l">Final margin</div><div class="lg-bar"></div><div class="lg-v">' + sg(d.actual) + '</div></div>' +
+      (x ? '<div class="lg-row lg-quiet"><div class="lg-l">The season said</div><div class="lg-bar"></div><div class="lg-v">' + sg(x.margin) + '</div></div>' : '') +
+    '</div>' +
+    /* each part is a fixed phrase, so a language pack translates the line piece by piece (i18n.js splits on " · ") */
+    '<div class="sn-key">' + (d.model ? 'each facet weighed by this league’s own model of what wins' : 'each factor at its usual weight in points per 100 possessions') +
+    ' · ' + (d.rates === 'league' ? 'shot quality is what the shots taken are worth at the league’s make rates, shot making the rest'
+      : 'shot quality is what the shots taken are worth at this game’s make rates, shot making the rest') +
+    ' · the rows add up to the final margin, the home side’s minus the away side’s</div></div>';
+}
+
+/* ---- WHAT IT MEANS: each club's form (the last five, this game last), record, place and next game (context.js) ---- */
+function cardNext(g, facts) {
+  const C = g.ctx;
+  if (!C || !C.sides) return '';
+  const tz = g.meta && g.meta.timezone;
+  const day = iso => {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    try { return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: tz || undefined }).format(d); }
+    catch (_) { return d.toDateString(); }
+  };
+  const won = t => g.score[t] > g.score[1 - t];
+  const col = t => {
+    const s = C.sides[t];
+    const form = (s.results || []).slice(-4).map(x => (x.won ? 'W' : 'L')).concat([won(t) ? 'W' : 'L']);
+    const T = C.table && C.table[t];
+    const n = C.next && C.next[t];
+    return '<div class="nx-col' + (t ? ' t1' : '') + '">' +
+      '<div class="nx-team">' + esc(g.names[t]) + '</div>' +
+      '<div class="nx-form">' + form.map((x, i) => '<i class="' + (x === 'W' ? 'w' : 'l') + (i === form.length - 1 ? ' now' : '') + '">' + x + '</i>').join('') + '</div>' +
+      '<div class="nx-rec">' + (s.after ? s.after.w + '–' + s.after.l : '') + (T && T.rank ? ' · ' + esc(String(T.rank)) + (T.of ? '/' + T.of : '') : '') +
+        (s.after && s.after.streak && s.after.streak.n >= 2 ? ' · ' + (s.after.streak.won ? 'W' : 'L') + s.after.streak.n : '') + '</div>' +
+      (n ? '<div class="nx-next"><span>next game</span>' + (n.home ? 'v ' : '@ ') + esc(n.oppName || '') + ' · ' + esc(day(n.at)) + '</div>' : '') +
+    '</div>';
+  };
+  return '<div class="rcard"><div class="rcard-h">Form and what comes next</div><div class="nx">' + col(0) + col(1) + '</div>' +
+    '<div class="sn-key">the last five results, this game last · record, place in the table and run · the next fixture</div></div>';
+}
+
 const CARDS = {
+  ledger: cardLedger,
+  next: cardNext,
   pointsAdded: cardPointsAdded,
   quarters: cardQuarters,
   factors:  cardFactors,

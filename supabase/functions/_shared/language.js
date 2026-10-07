@@ -801,6 +801,9 @@ function opSplit(text) {
   const cut = cuts.length >= 2 ? cuts[1] : cuts.sort((a, b) => Math.abs(a.at - mid) - Math.abs(b.at - mid))[0];
   const left = sn.slice(0, cut.at), right = sn.slice(cut.at + cut.len);
   if (left.split(/\s+/).length < 5 || right.split(/\s+/).length < 4) return text;
+  /* a clause that starts on a preposition or a conjunction has borrowed the verb of the one before it ("..., and for
+     Bristol Flyers' Joseph Anderson"): cut off, it is a fragment, not a sentence */
+  if (/^(for|or|nor|to|in|on|at|with|from|of|by|against|and|but|as|than|while|whereas|neither|either)\b/i.test(right.trim())) return text;
   sents[worst] = left.replace(/[,;]$/, '') + '. ' + right.charAt(0).toUpperCase() + right.slice(1);
   return joinBack(sents);
 }

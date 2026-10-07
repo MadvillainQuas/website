@@ -430,6 +430,7 @@ const BODIES = {
     /* THE SQUADS UNDER THE HEADLINE: both sides, every player who played, the starters first */
     ensureSeasonPositions();
     ensureWinModel();
+    ensureGameContext();          // the season around it (context.js): drawn again when it lands
     const strip = squadsHTML(d);
     setTimeout(squadPhotos, 0);
     return strip ? html.replace('</p></div>', '</p></div>' + strip) : html;   // the standfirst is the last thing in .rep-head
@@ -445,7 +446,8 @@ const BODIES = {
     const S = window.S;
     /* the half is two quarters, or the first of two halves (NCAA men) */
     const F = E.formatOf(S), H = F.periods / 2;
-    const hS = Object.assign({}, S, { format: F, events: (S.events || []).filter(e => (e.period || 1) <= H), period: H });
+    /* no season context at the break: a streak, a table and a season high are claims about a RESULT */
+    const hS = Object.assign({}, S, { format: F, events: (S.events || []).filter(e => (e.period || 1) <= H), period: H, ctx: null });
     const hd = E.deriveGame(hS);
     ensureWinModel();
     const g = window.EpinoiaGameFacts.brief(hS, hd, B);
@@ -627,17 +629,20 @@ let seasonAsked = false;
 /* WHAT WINS IN THIS LEAGUE, FOR THE MATCH REPORT (2026-10-07): the league's What wins weights (the builder's public
    snapshots/whatwins-explain/<league>.json, winmodel.js explainOf) on S.winModel, so story.js weighs the four factors by
    the league's own model; read once a page, the report drawn again when they arrive. None (no model yet): as before */
-let winModelAsked = false;
+let winModelAsked = false, winModelP = null;
 function ensureWinModel() {
   const S = window.S, CFG = window.EPINOIA_CONFIG;
-  if (winModelAsked || !S || !S.leagueId || !CFG || !CFG.supabaseUrl) return;
+  if (winModelAsked || !S || !S.leagueId || !CFG || !CFG.supabaseUrl) return winModelP;
   winModelAsked = true;
-  fetch(CFG.supabaseUrl + '/storage/v1/object/public/snapshots/whatwins-explain/' + encodeURIComponent(S.leagueId) + '.json')
+  /* one read a page: the season context (ensureGameContext) waits on this same promise */
+  winModelP = fetch(CFG.supabaseUrl + '/storage/v1/object/public/snapshots/whatwins-explain/' + encodeURIComponent(S.leagueId) + '.json')
     .then(r => (r.ok ? r.json() : null)).catch(() => null).then(m => {
-      if (!m || !m.b || String(m.league) !== String(S.leagueId)) return;
+      if (!m || !m.b || String(m.league) !== String(S.leagueId)) return null;
       S.winModel = m;
       if (fTab === 'report' || fTab === 'halftime') { lastBodyKey = ''; renderBody(); }
+      return m;
     });
+  return winModelP;
 }
 function ensureSeasonPositions() {
   if (seasonAsked || !window.EpinoiaModernBox || !window.S) return;
@@ -3418,54 +3423,96 @@ function mergeLive(game, events, removed, full) {
    just without the statistics half. That is the honest result rather than an
    error: the venue, the time and the map are the part somebody actually came
    for. */
-/* THE SEASON, FOR CONTEXT.
+/* THE GAME IN ITS SEASON, FOR THE MATCH REPORT (context.js, 2026-10-07).
 
-   Shared by the preview (which is entirely about the season) and the match
-   report (which uses it to say whether a performance was normal). "24 points"
-   is a fact; "24 points, nine clear of his average" is the sentence somebody
-   reads — and the evaluator found the report mentioning season context in
-   exactly none of twelve games, because nothing ever handed it any.
+   The report reads S.ctx (streaks made and ended, the table before and after, the meetings, the next games, the fans'
+   picks, the league's season bests, each player's season before tonight) and S.season (the season lines: averages and
+   BPM). This used to be addSeasonContext(), which read every player row of the season with its whole stats blob - and
+   was never called, so no published report had ever said whether a night was normal for anybody.
 
-   Scoped to the SEASON rather than the competition: a cup tie belongs to a
-   competition with few finished games, and scoping to it leaves a player with
-   no average to be measured against. */
-async function loadSeason(competitionId) {
-  if (!competitionId || !window.EpinoiaData) return null;
-  try {
-    const comps = await window.EpinoiaData.all(
-      'competitions?id=eq.' + encodeURIComponent(competitionId) + '&select=season_id');
-    const seasonId = comps && comps[0] && comps[0].season_id;
-    if (!seasonId) return null;
-    const sibling = await window.EpinoiaData.all(
-      'competitions?season_id=eq.' + encodeURIComponent(seasonId) + '&select=id');
-    const ids = (sibling || []).map(c => c.id);
-    if (!ids.length) return null;
-    const games = await window.EpinoiaData.all(
-      'games?competition_id=in.(' + ids.join(',') + ')&status=eq.final' +
-      '&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at');
-    if (!games.length) return null;
-    const S = await window.EpinoiaData.statsForGames(games);
-    try {
-      const meta = await window.EpinoiaData.playerMeta((S.players || []).map(p => p.id));
-      (S.players || []).forEach(p => Object.assign(p, meta[p.id] || {}));
-    } catch (_) { /* names are a nicety here; the numbers are the point */ }
-    return S;
-  } catch (e) { console.warn('[season]', e); return null; }
+   WHAT IT READS, all after the first paint, the report drawn again when it lands:
+     the season's finished games            light columns, one read
+     the two clubs' games' player lines     by named keys (pts, min, boards, assists, steals, blocks, threes), never the blob
+     the same games' team lines             the adv block only (the four factors at both ends, for what the season expected)
+     the season file                        the latest built (EpinoiaData.latestSeason): the season lines, never the rows
+     the next fixtures, the fans' picks (prediction_tally), the season bests (records_board), the players' ages (player_bio)
+   Anything that fails is simply not there, and the report says nothing about it. */
+let ctxAsked = false;
+function ensureGameContext() {
+  const S = window.S, m = (S && S.meta) || {};
+  if (ctxAsked || !S || !window.EpinoiaContext || !m.competitionId || !m.homeTeamId || !m.awayTeamId) return;
+  ctxAsked = true;
+  buildGameContext(S, m).then(ok => {
+    if (ok && fTab === 'report') { lastBodyKey = ''; renderBody(); }
+  }).catch(e => console.warn('[report context]', e));
 }
-
-/* The report reads season context off S.season. Fetched AFTER the first paint
-   and the body redrawn when it lands: the report is worth reading without it,
-   and making the page wait on a second round trip to add one clause to two
-   sentences is the wrong trade. */
-async function addSeasonContext() {
-  const m = (window.S && window.S.meta) || {};
-  const S = await loadSeason(m.competitionId);
-  if (!S || !window.S) return;
-  const idx = {};
-  if (m.homeTeamId) idx[m.homeTeamId] = 0;
-  if (m.awayTeamId) idx[m.awayTeamId] = 1;
-  window.S.season = { players: S.players || [], teams: S.teams || [], teamIndex: idx };
-  if (fTab === 'report') { lastBodyKey = ''; renderBody(); }
+async function buildGameContext(S, m) {
+  const enc = encodeURIComponent;
+  const own = await api('competitions?id=eq.' + enc(m.competitionId) + '&select=season_id');
+  const seasonId = own && own[0] && own[0].season_id;
+  if (!seasonId) return false;
+  const comps = (await api('competitions?season_id=eq.' + enc(seasonId) + '&select=id')).map(c => c.id);
+  if (!comps.length) return false;
+  const games = await api('games?competition_id=in.(' + comps.join(',') + ')&status=eq.final' +
+    '&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at,attendance,competition_id&order=tipoff_at&limit=3000');
+  const ids = [m.homeTeamId, m.awayTeamId];
+  const mine = games.filter(g => ids.indexOf(g.home_team_id) >= 0 || ids.indexOf(g.away_team_id) >= 0).map(g => g.id);
+  if (gameId && mine.indexOf(gameId) < 0) mine.push(gameId);
+  const chunks = [];
+  for (let i = 0; i < mine.length; i += 40) chunks.push(mine.slice(i, i + 40));
+  const PK = 'game_id,team_idx,player_uuid,player_id,min:stats->min,pts:stats->pts,or:stats->or,dr:stats->dr,ast:stats->ast,' +
+    'stl:stats->stl,blk:stats->blk,p3m:stats->p3m';
+  const safe = p => p.catch(() => null);
+  const at = m.tipoff_at || new Date().toISOString();
+  const [pgsP, tgsP, latest, fixtures, tally, model] = await Promise.all([
+    Promise.all(chunks.map(c => safe(api('player_game_stats?game_id=in.(' + c.join(',') + ')&select=' + PK)))),
+    Promise.all(chunks.map(c => safe(api('team_game_stats?game_id=in.(' + c.join(',') + ')&select=game_id,team_idx,adv:stats->adv')))),
+    window.EpinoiaData && window.EpinoiaData.latestSeason ? safe(window.EpinoiaData.latestSeason(comps)) : null,
+    safe(api('games?status=eq.scheduled&or=(home_team_id.in.(' + ids.join(',') + '),away_team_id.in.(' + ids.join(',') + '))' +
+      '&tipoff_at=gt.' + enc(at) + '&order=tipoff_at&limit=10&select=id,home_team_id,away_team_id,tipoff_at')),
+    gameId ? safe(rpcCall('prediction_tally', { p_games: [gameId] }, CFG.supabaseAnonKey)) : null,
+    /* NOT records_board: for a big competition it runs into the statement timeout as a signed-out reader (EuroLeague,
+       2026-10-07: 3 s, and four tries), which is load the database cannot afford on every report view. The league's
+       season bests are the narrative builder's (tools/build-narratives.mjs), from the games it has replayed. */
+    S.winModel ? Promise.resolve(S.winModel) : (ensureWinModel() || Promise.resolve(null))
+  ]);
+  void model;                                 // ensureWinModel has put it on S.winModel
+  const pgs = [].concat(...(pgsP || []).map(x => x || [])).map(r => ({ game_id: r.game_id, team_idx: r.team_idx,
+    player_uuid: r.player_uuid, player_id: r.player_id,
+    stats: { min: r.min, pts: r.pts, or: r.or, dr: r.dr, ast: r.ast, stl: r.stl, blk: r.blk, p3m: r.p3m } }));
+  const tgs = [].concat(...(tgsP || []).map(x => x || [])).map(r => ({ game_id: r.game_id, team_idx: r.team_idx, stats: { adv: r.adv || {} } }));
+  /* the next opponents' names, and the ages of the night's players (player_bio answers only what may be shown) */
+  const fx = Array.isArray(fixtures) ? fixtures : [];
+  const opp = [...new Set(fx.flatMap(f => [f.home_team_id, f.away_team_id]).filter(id => id && ids.indexOf(id) < 0))];
+  const names = {};
+  if (opp.length) ((await safe(api('teams?id=in.(' + opp.join(',') + ')&select=id,name'))) || []).forEach(t => { names[t.id] = t.name; });
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const pids = (S.teams || []).flatMap(t => (t.players || []).map(p => p.id)).filter(id => UUID.test(String(id))).slice(0, 60);
+  const bios = {};
+  if (pids.length) ((await safe(rpcCall('player_bio', { p_ids: pids }, CFG.supabaseAnonKey))) || []).forEach(r => {
+    if (r && r.player_id && r.age != null) bios[r.player_id] = { age: r.age, height_cm: r.height_cm };
+  });
+  /* the final score as the games row has it (the season list, or the row itself for a game finalised a moment ago) */
+  let row = games.find(g => g.id === gameId);
+  if (!row && gameId) row = ((await safe(api('games?id=eq.' + enc(gameId) + '&select=home_score,away_score'))) || [])[0];
+  if (!row || row.home_score == null || row.away_score == null) return false;
+  /* the table, if the hero has not read it yet (tablePlace asks once; this is the same small read) */
+  if (!TABLE && window.EpinoiaTablePos) { const T = await safe(window.EpinoiaTablePos.load(api, m.competitionId)); if (T && !TABLE) TABLE = T; }
+  const C = window.EpinoiaContext.build({
+    gameId, tipoff: m.tipoff_at, home: m.homeTeamId, away: m.awayTeamId,
+    score: [+row.home_score, +row.away_score],
+    games, pgs, tgs, table: TABLE, fixtures: fx, teamNames: names,
+    tally: Array.isArray(tally) && tally[0] ? { home: tally[0].home, away: tally[0].away } : null,
+    bios, model: S.winModel || null, competitionId: m.competitionId,
+    attendance: (S.details && S.details.attendance) || null,
+    rates: latest && latest.teams && window.EpinoiaContext.ratesFromTeams ? window.EpinoiaContext.ratesFromTeams(latest.teams) : null
+  });
+  if (!C) return false;
+  S.ctx = C;
+  if (latest && Array.isArray(latest.players) && latest.players.length) {
+    S.season = { players: latest.players, teams: latest.teams || [], teamIndex: { [m.homeTeamId]: 0, [m.awayTeamId]: 1 } };
+  }
+  return true;
 }
 
 /* --------------------------------------------- the preview's injury report ---

@@ -288,6 +288,39 @@
 .pa-total .pa-l{ font-weight:700 } .pa-total .pa-net{ font-size:14px }
 @media (max-width:640px){ .pa-row{ grid-template-columns:minmax(70px,1fr) minmax(0,1.2fr) minmax(0,1.2fr) 46px; gap:6px } .pa-v{ min-width:36px; font-size:11px } }
 
+/* ---- what decided it, in points (reportview.js cardLedger): a bar out from the middle to the side each facet favoured ---- */
+.lg{ display:flex; flex-direction:column; margin-top:6px }
+.lg-row{ display:grid; grid-template-columns:minmax(110px,1fr) minmax(0,2.4fr) 56px; gap:10px; align-items:center; padding:5px 0;
+  border-top:1px solid color-mix(in srgb,var(--text-primary,#fff) 8%,transparent) }
+.lg-head{ border-top:0; font-family:var(--f-micro,var(--f-mono)); font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted,#889) }
+.lg-head .lg-half{ background:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; height:auto }
+.lg-head .lg-half.a{ text-align:right }
+.lg-l{ font-family:var(--f-ui,var(--f-head)); font-size:12px }
+.lg-bar{ display:grid; grid-template-columns:1fr 1fr; gap:2px; min-width:0 }
+.lg-half{ height:7px; background:color-mix(in srgb,var(--text-primary,#fff) 7%,transparent); display:flex; min-width:0 }
+.lg-half.a{ justify-content:flex-end }
+.lg-half i{ display:block; height:100%; background:var(--ra,var(--team0,#93f2bf)) }
+.lg-half.b i{ background:var(--rb,var(--team1,#8ff5ff)) }
+.lg-v{ text-align:right; font-family:var(--f-data,var(--f-mono)); font-size:12px; font-weight:700; font-variant-numeric:tabular-nums }
+.lg-quiet .lg-l, .lg-quiet .lg-v{ color:var(--text-muted,#889); font-weight:400 }
+.lg-total .lg-l{ font-weight:700 } .lg-total .lg-v{ font-size:14px }
+@media (max-width:640px){ .lg-row{ grid-template-columns:minmax(84px,1fr) minmax(0,1.6fr) 46px; gap:6px } }
+
+/* ---- form and what comes next (reportview.js cardNext) ---- */
+.nx{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:4px }
+.nx-col{ border-left:3px solid var(--ra,var(--team0,#93f2bf)); padding:2px 0 2px 10px; min-width:0 }
+.nx-col.t1{ border-left-color:var(--rb,var(--team1,#8ff5ff)) }
+.nx-team{ font-family:var(--f-ui,var(--f-head)); font-weight:800; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.nx-form{ display:flex; gap:3px; margin:7px 0 6px }
+.nx-form i{ font-style:normal; width:18px; height:18px; display:grid; place-items:center; font-family:var(--f-data,var(--f-mono)); font-size:10px; font-weight:700;
+  background:color-mix(in srgb,var(--text-primary,#fff) 8%,transparent); color:var(--text-muted,#889) }
+.nx-form i.w{ background:color-mix(in srgb,var(--good,#34d399) 22%,transparent); color:var(--ink,#fff) }
+.nx-form i.now{ outline:1px solid var(--ink,#fff) }
+.nx-rec{ font-family:var(--f-data,var(--f-mono)); font-size:12px; font-variant-numeric:tabular-nums; color:var(--ink-2,#ccd) }
+.nx-next{ margin-top:6px; font-size:12px; color:var(--ink-2,#ccd); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.nx-next span{ font-family:var(--f-micro,var(--f-mono)); font-size:8.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted,#889); margin-right:6px }
+@media (max-width:520px){ .nx{ grid-template-columns:1fr } }
+
 /* ============================================================================
    THE REPORT IN THE PREVIEW'S DRESS (reportview.js heroHTML, render): the head is
    a scoreboard card after the fact (the clubs in their colours, crests over names,

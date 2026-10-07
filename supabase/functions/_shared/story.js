@@ -813,8 +813,13 @@ function factSeasonContext(g) {
   const out = [];
   const S = g.season;
   if (!S) return out;
+  /* THE AVERAGE BEFORE THIS GAME where context.js could work it out (the season line read after a final already has
+     the night in it, which pulls the average toward the very score it is compared with) */
+  const before = g.ctx && g.ctx.players ? g.ctx.players : null;
 
-  (S.players || []).forEach(sp => {
+  (S.players || []).forEach(sp0 => {
+    const pre = before && before[sp0.id];
+    const sp = pre && pre.gp >= 3 ? { id: sp0.id, gp: pre.gp, ppg: pre.ppg } : sp0;
     const p = g.byId[sp.id];
     if (!p || !p.min || !sp.gp || sp.gp < 3) return;
     const avg = num(sp.ppg);
@@ -1130,11 +1135,412 @@ function ordinal(n) {
        : n === 4 ? 'fourth' : n + 'th';
 }
 
+/* ============================================================================
+   WHAT DECIDED IT, IN POINTS (What Wins, 2026-10-07).
+
+   The four factors were already counted in points (factEstimatedMargin). This is the full ledger the league's own
+   model makes possible (docs/what-wins-model.md §7.11, "causes of a result"), every facet of the game given a value in
+   points of the final margin, home side's view:
+
+     the shots they got     b_efg x (expected eFG of the shots taken - the other side's): rim, mid-range and three at
+                            the league's make rates (two zones when the shots were not placed)
+     the shots that fell    the rest of the shooting: what was made beyond what those shots usually give
+     turnovers, the offensive glass, getting to the line     b x the difference, as factEstimatedMargin
+     free-throw shooting    free throws made beyond the league's rate, in points (each is one)
+     home court             the model's home edge, where it has one
+     everything else        whatever the margin was beyond all of that (garbage time, a model's error, the rest)
+
+   The rows sum to the scoreboard margin exactly, which is what lets a sentence say "shooting was worth nine of the
+   twelve". Each row is also a FACET, and every other fact about that facet is promoted by its share of the margin
+   (weighFacets below): a game the model says was decided on turnovers is reported as one.
+   ============================================================================ */
+const FACET_LABEL = { quality: 'the shots they got', making: 'the shots that fell', efg: 'shooting', tovp: 'turnovers',
+  orebp: 'the offensive glass', ftr: 'getting to the line', ft: 'free-throw shooting', home: 'home court', rest: 'everything else' };
+function ledgerRates(g) {
+  const C = g.ctx && g.ctx.rates;
+  if (C && num(C.three) != null && num(C.two) != null) return Object.assign({ from: 'league' }, C);
+  const A = g.adv[0], B = g.adv[1];
+  const s = k => (num(A[k]) || 0) + (num(B[k]) || 0);
+  const fga = s('fga'), fgm = s('fgm'), fg3a = s('fg3a'), fg3m = s('fg3m');
+  return { from: 'game', rim: s('rimA') ? s('rimM') / s('rimA') : null, mid: s('midA') ? s('midM') / s('midA') : null,
+           three: fg3a ? fg3m / fg3a : null, two: fga - fg3a > 0 ? (fgm - fg3m) / (fga - fg3a) : null,
+           ft: s('fta') ? s('ftm') / s('fta') : null };
+}
+/* the eFG% a side's shots would have given at the baseline's make rates */
+function xefgOf(A, R) {
+  const fga = num(A.fga), fg3a = num(A.fg3a);
+  if (!fga || fg3a == null || R.three == null || R.two == null) return null;
+  const twos = fga - fg3a, placed = (num(A.rimA) || 0) + (num(A.midA) || 0);
+  const zones = twos > 0 && placed / twos >= 0.6 && R.rim != null && R.mid != null;
+  const made2 = zones ? (num(A.rimA) || 0) * R.rim + (num(A.midA) || 0) * R.mid + Math.max(0, twos - placed) * R.two : twos * R.two;
+  return { x: 100 * (made2 + 1.5 * fg3a * R.three) / fga, zones };
+}
+function factLedger(g) {
+  const out = [];
+  if (!g.adv || !g.adv[0] || !g.adv[1] || !(num(g.adv[0].possessions) > 0) || !(num(g.adv[1].possessions) > 0)) return out;
+  const net = {};
+  for (const k of Object.keys(PA_W)) {
+    const a = paSide(g, k, 0), b = paSide(g, k, 1);
+    if (a == null || b == null) return out;
+    net[k] = a - b;
+  }
+  const R = ledgerRates(g), MB = modelB(g);
+  const poss = (num(g.adv[0].possessions) + num(g.adv[1].possessions)) / 2;
+  const cE = MB ? MB.efg : PA_W.efg * poss / 100;                 // margin points per point of eFG between the sides
+  const x0 = xefgOf(g.adv[0], R), x1 = xefgOf(g.adv[1], R);
+  const rows = [];
+  if (x0 && x1) {
+    const quality = cE * (x0.x - x1.x);
+    rows.push({ key: 'quality', pts: quality, x: [x0.x, x1.x], zones: x0.zones && x1.zones });
+    rows.push({ key: 'making', pts: net.efg - quality, efg: [num(g.adv[0].efg), num(g.adv[1].efg)], x: [x0.x, x1.x] });
+  } else rows.push({ key: 'efg', pts: net.efg });
+  rows.push({ key: 'tovp', pts: net.tovp }, { key: 'orebp', pts: net.orebp }, { key: 'ftr', pts: net.ftr });
+  if (R.ft != null) {
+    const f = t => (num(g.adv[t].ftm) || 0) - (num(g.adv[t].fta) || 0) * R.ft;
+    rows.push({ key: 'ft', pts: f(0) - f(1), made: [num(g.adv[0].ftm), num(g.adv[1].ftm)], att: [num(g.adv[0].fta), num(g.adv[1].fta)] });
+  }
+  const home = g.model && num(g.model.home) != null && !(g.meta && g.meta.neutral) ? +g.model.home : null;
+  if (home != null) rows.push({ key: 'home', pts: home });
+  const actual = g.score[0] - g.score[1];
+  const explained = rows.reduce((s, r) => s + r.pts, 0);
+  rows.push({ key: 'rest', pts: actual - explained });
+  rows.forEach(r => { r.label = FACET_LABEL[r.key]; });
+  const w = actual === 0 ? null : actual > 0 ? 0 : 1, sgn = w === 1 ? -1 : 1;
+  /* the facets that mattered, from the winners' end: what won it, and what they gave back */
+  const play = rows.filter(r => r.key !== 'home' && r.key !== 'rest');
+  const forW = play.filter(r => r.pts * sgn >= 1).sort((a, b) => b.pts * sgn - a.pts * sgn);
+  const against = play.filter(r => r.pts * sgn <= -1).sort((a, b) => a.pts * sgn - b.pts * sgn);
+  const expect = g.ctx && g.ctx.expect && num(g.ctx.expect.margin) != null ? g.ctx.expect : null;
+  out.push(F('ledger', w, 74, {
+    rows, actual, explained, winner: w, decisive: forW[0] || null, second: forW[1] || null, against: against[0] || null,
+    rates: R.from, model: modelTag(g), expect, possessions: poss
+  }, 'what decided it, in points'));
+  return out;
+}
+
+/* WHICH FACET A FACT IS ABOUT: the four factors and what hangs off them. A player's scoring is not a facet (it is the
+   result of all of them); his shooting, his boards, his steals and his trips to the line are. */
+const FACET_OF_KIND = {
+  floor: 'efg', hotThree: 'efg', coldThree: 'efg', efficient: 'efg', inefficient: 'efg', shooter: 'efg', efficientTeam: 'efg',
+  midCold: 'efg', atRim: 'efg', fromRange: 'efg', paint: 'efg', halfCourt: 'efg', assistedShare: 'efg', sharing: 'efg',
+  forcedTurnovers: 'tovp', careless: 'tovp', pointsOffTurnovers: 'tovp', disruption: 'tovp', turnoverProne: 'tovp', defender: 'tovp',
+  boards: 'orebp', missFate: 'orebp', zoneBoards: 'orebp', secondChance: 'orebp', rebounder: 'orebp',
+  whistle: 'ftr', drawsFouls: 'ftr', lineLiving: 'ftr', poorLine: 'ft', icedIt: 'ft', lineCostThem: 'ft'
+};
+function facetOf(f) {
+  if (!f) return null;
+  if (f.kind === 'factor') return { efg: 'efg', tov: 'tovp', oreb: 'orebp', ftr: 'ftr' }[f.data.factor] || null;
+  if (f.kind === 'sitEdge') return { offTo: 'tovp', second: 'orebp' }[f.data.key] || null;
+  return FACET_OF_KIND[f.kind] || null;
+}
+/* each fact on a facet carries the facet's value (points toward the fact's own side) and is promoted by the facet's share
+   of everything the ledger counted: up to 14 for the facet that decided it, 4 more when the fact is about the side it
+   favoured. The order of the report then follows what the model says mattered. */
+function weighFacets(fs) {
+  const L = fs.find(f => f.kind === 'ledger');
+  if (!L) return fs;
+  const val = {};
+  L.data.rows.forEach(r => {
+    const k = r.key === 'quality' || r.key === 'making' ? 'efg' : r.key;
+    val[k] = (val[k] || 0) + r.pts;
+  });
+  const tot = Object.keys(val).filter(k => k !== 'home' && k !== 'rest').reduce((s, k) => s + Math.abs(val[k]), 0);
+  if (!(tot > 0)) return fs;
+  fs.forEach(f => {
+    const k = facetOf(f);
+    if (!k || val[k] == null) return;
+    const toward = f.side === 1 ? -val[k] : val[k];
+    f.facet = k;
+    f.value = f.side == null ? Math.abs(val[k]) : toward;
+    f.salience += Math.round(14 * Math.abs(val[k]) / tot) + (toward > 0 ? 4 : 0);
+  });
+  return fs;
+}
+
+/* ============================================================================
+   THE MOMENTS: the basket that won it, the man who closed it, the shot at the buzzer. A report that only has totals has
+   no scene in it; these are the three a person who was there would tell first. All from the log, so only for a game
+   whose log carries a clock.
+   ============================================================================ */
+function factMoments(g) {
+  const out = [];
+  const ev = g.events || [];
+  if (!clocked(ev) || g.score[0] === g.score[1]) return out;
+  const H = halvesOf(g), reg = regOf(g), last = g.periods || reg;
+  let total = 0;
+  for (let p = 1; p <= last; p++) total += PLEN_(p, H);
+  const w = g.score[0] > g.score[1] ? 0 : 1;
+  const s = [0, 0];
+  let take = null, at5 = null;
+  const late = {};                                            // points per player in the last five minutes of the last period
+  const buzz = [];
+  ev.forEach(e => {
+    const v = SCORE_PTS[e.t];
+    if (e.period === last && e.clock != null && at5 == null && e.clock <= 300000) at5 = s.slice();
+    if (!v || e.team == null) return;
+    const before = s[w] - s[1 - w];
+    s[e.team] += v;
+    const after = s[w] - s[1 - w];
+    if (e.team === w && before <= 0 && after > 0) take = { e, score: s.slice(), before };
+    else if (after <= 0) take = null;
+    if (e.period === last && e.clock != null && e.clock <= 300000 && e.pid != null) {
+      late[e.team + ':' + e.pid] = (late[e.team + ':' + e.pid] || 0) + v;
+    }
+    if (e.t !== 'ft_made' && e.clock != null && e.clock <= 2000) buzz.push({ e, score: s.slice(), before, after });
+  });
+  /* THE GO-AHEAD BASKET FOR GOOD: after it the winners were never level or behind again */
+  if (take) {
+    const e = take.e, el = elapsed(e.period, e.clock, H), left = total - el;
+    const p = e.pid != null ? g.byId[e.pid] : null;
+    const kind = e.t === 'p3_made' ? 'three' : e.t === 'ft_made' ? 'free throw' : 'basket';
+    /* early in the game it is not a moment: it is the start of a lead that held, which factTimeLed tells */
+    if (el / total >= 0.5) {
+      const winner = e.period === last && e.clock <= 10000;
+      out.push(F(winner ? 'gameWinner' : 'goAhead', w, winner ? 97 : left <= 300000 ? 85 : 62,
+        { p, kind, period: e.period, clock: e.clock, left, score: take.score, wasLevel: take.before === 0, last, reg },
+        (p ? p.name : g.names[w]) + ' put them ahead for good'));
+    }
+  }
+  /* THE CLOSER: who scored the winners' points when the game was there to be won */
+  if (at5 && Math.abs(at5[0] - at5[1]) <= 6) {
+    const lateW = g.score[w] - at5[w];
+    const best = Object.keys(late).filter(k => +k.split(':')[0] === w).map(k => ({ pid: k.split(':').slice(1).join(':'), pts: late[k] }))
+      .sort((a, b) => b.pts - a.pts)[0];
+    if (best && best.pts >= 6 && lateW > 0 && best.pts / lateW >= 0.4 && g.byId[best.pid]) {
+      out.push(F('closer', w, 72, { p: g.byId[best.pid], pts: best.pts, team: lateW, at5 }, g.byId[best.pid].name + ' closed it'));
+    }
+  }
+  /* AT THE BUZZER: a basket in the last two seconds of a period (the game's last is the winner above, or a consolation) */
+  buzz.forEach(b => {
+    const e = b.e;
+    if (e.period === last) return;
+    const p = e.pid != null ? g.byId[e.pid] : null;
+    if (!p || e.t !== 'p3_made') return;
+    out.push(F('buzzer', e.team, 54, { p, period: e.period, reg, score: b.score }, p.name + ' hit a three at the buzzer'));
+  });
+  return out.slice(0, 4);
+}
+
+/* ============================================================================
+   THE SHAPE OF THE GAME: one word for how it went, read off the score line minute by minute, so the writer can choose
+   its register before it writes a sentence (a rout is not told like a see-saw). Kinds, in the order they are tested:
+     overtime   it needed extra time                       comeback   the winners were down ten or more
+     heist      down at five to play and won it            collapse   a lead of fifteen or more, thrown away (comeback,
+                                                                      told from the other side: the winners' view wins)
+     wire       never behind, and won by ten or more       rout       won by twenty or more
+     pulledAway close with five to play, won by twelve     heldOn     ten up with five to play, won by five or fewer
+     seesaw     ten lead changes or more                   grind      under 130 points between them and close
+     shootout   190 or more between them                   tight      four points or fewer
+     control    everything else: in front, kept there
+   ============================================================================ */
+function factArc(g) {
+  const ev = g.events || [];
+  const w = g.score[0] >= g.score[1] ? 0 : 1, l = 1 - w;
+  const margin = Math.abs(g.score[0] - g.score[1]), total = g.score[0] + g.score[1];
+  const s = [0, 0];
+  let maxW = 0, maxL = 0, changes = 0, prev = null, at5 = null;
+  const last = g.periods || regOf(g);
+  const clockedLog = clocked(ev);
+  ev.forEach(e => {
+    const v = SCORE_PTS[e.t];
+    if (clockedLog && e.period === last && e.clock != null && at5 == null && e.clock <= 300000) at5 = s.slice();
+    if (!v || e.team == null) return;
+    s[e.team] += v;
+    const d = s[w] - s[l];
+    if (d > maxW) maxW = d;
+    if (-d > maxL) maxL = -d;
+    const leader = d > 0 ? w : d < 0 ? l : null;
+    if (leader != null && prev != null && leader !== prev) changes++;
+    if (leader != null) prev = leader;
+  });
+  const lead5 = at5 ? at5[w] - at5[l] : null;
+  const reg = regOf(g);
+  const kind = margin === 0 ? 'tie'
+    : (g.periods || reg) > reg ? 'overtime'
+    : maxL >= 15 ? 'collapse'
+    : lead5 != null && lead5 <= -4 ? 'heist'
+    : maxL >= 10 ? 'comeback'
+    : margin >= 20 ? 'rout'
+    : maxL === 0 && margin >= 10 && ev.length ? 'wire'
+    : lead5 != null && Math.abs(lead5) <= 6 && margin >= 12 ? 'pulledAway'
+    : lead5 != null && lead5 >= 10 && margin <= 5 ? 'heldOn'
+    : changes >= 10 ? 'seesaw'
+    : total <= 130 && margin <= 8 ? 'grind'
+    : total >= 190 ? 'shootout'
+    : margin <= 4 ? 'tight'
+    : 'control';
+  return [F('arc', w, 30, { kind, maxW, maxL, changes, lead5, margin, total, winner: w }, 'the shape of it: ' + kind)];
+}
+
+/* ============================================================================
+   THE GAME IN ITS SEASON (g.ctx, context.js): streaks made and ended, the table, upsets, the meetings between them,
+   the schedule, the fans' picks, season highs, returns and milestones. Every one of these is a claim about OTHER games,
+   so each is only made when context.js could work it out from games that tipped off before this one.
+   ============================================================================ */
+function factContext(g) {
+  const out = [];
+  const C = g.ctx;
+  if (!C || !C.sides || !C.sides[0] || !C.sides[1] || g.score[0] === g.score[1]) return out;
+  const w = g.score[0] > g.score[1] ? 0 : 1, l = 1 - w;
+  const W = C.sides[w], Lo = C.sides[l];
+
+  /* STREAKS: extended, or ended */
+  const sw = W.after && W.after.streak, sb = W.before && W.before.streak;
+  if (sw && sw.won && sw.n >= 3) out.push(F('winStreak', w, 70 + Math.min(16, 2 * sw.n), { n: sw.n, record: [W.after.w, W.after.l] }, g.names[w] + ' have won ' + sw.n + ' in a row'));
+  if (sb && !sb.won && sb.n >= 3) out.push(F('skidEnded', w, 74 + Math.min(12, 2 * sb.n), { n: sb.n, record: [W.after.w, W.after.l] }, g.names[w] + ' ended a run of ' + sb.n + ' defeats'));
+  const lb = Lo.before && Lo.before.streak, la = Lo.after && Lo.after.streak;
+  if (lb && lb.won && lb.n >= 3) out.push(F('streakEnded', l, 78 + Math.min(12, 2 * lb.n), { n: lb.n, record: [Lo.after.w, Lo.after.l] }, g.names[w] + ' ended ' + g.names[l] + '’s run of ' + lb.n + ' wins'));
+  if (la && !la.won && la.n >= 3) out.push(F('loseStreak', l, 62 + Math.min(14, 2 * la.n), { n: la.n, record: [Lo.after.w, Lo.after.l] }, g.names[l] + ' have lost ' + la.n + ' in a row'));
+  /* the season's first and the unbeaten */
+  if (W.after && W.after.w === 1 && W.before.gp >= 2) out.push(F('firstWin', w, 82, { gp: W.after.gp }, g.names[w] + ' won for the first time this season'));
+  if (W.after && W.after.l === 0 && W.after.w >= 4) out.push(F('unbeaten', w, 72 + Math.min(10, W.after.w), { w: W.after.w }, g.names[w] + ' are still unbeaten'));
+  if (Lo.after && Lo.after.w === 0 && Lo.after.l >= 4) out.push(F('winless', l, 60, { l: Lo.after.l }, g.names[l] + ' are still looking for a first win'));
+  if (Lo.before && Lo.before.l === 0 && Lo.before.w >= 3) out.push(F('firstDefeat', l, 84, { w: Lo.before.w }, g.names[l] + ' lost for the first time'));
+
+  /* THE TABLE: where the result leaves them (only for a game in the table the league page shows, and not before three
+     games each: "climb to third in Group C" after a club's first game is a table that has not formed yet) */
+  const T = C.table;
+  if (T && T[w] && T[l] && (T[w].gp || 0) >= 3 && (T[l].gp || 0) >= 3) {
+    const tw = T[w], tl = T[l];
+    if (tw.leader && tw.before && tw.before.rank != null && !tw.before.leader && C.inTable) {
+      out.push(F('wentTop', w, 86, { rank: 1, of: tw.of, w: tw.w, l: tw.l, group: tw.group }, g.names[w] + ' went top'));
+    } else if (tl.before && tl.before.leader && !tl.leader && C.inTable) {
+      out.push(F('lostTop', l, 80, { rank: tl.rank, w: tl.w, l: tl.l, group: tl.group }, g.names[l] + ' lost top spot'));
+    } else if (tw.leader && C.inTable) {
+      out.push(F('stayTop', w, 58, { of: tw.of, w: tw.w, l: tw.l, next: tw.next, group: tw.group }, g.names[w] + ' stay top'));
+    }
+    if (C.inTable && tw.before && tw.before.rank != null && tw.rank < tw.before.rank && !tw.leader) {
+      out.push(F('climbed', w, 60, { from: tw.before.rank, to: tw.rank, of: tw.of, w: tw.w, l: tw.l, group: tw.group }, g.names[w] + ' climbed to ' + tw.rank));
+    }
+    out.push(F('standing', null, 20, { ranks: [T[0].rank, T[1].rank], of: [T[0].of, T[1].of], rec: [[T[0].w, T[0].l], [T[1].w, T[1].l]],
+      gbTop: [T[0].gbTop, T[1].gbTop], groups: [T[0].group, T[1].group], inTable: !!C.inTable }, 'where they stand'));
+    /* AN UPSET BY THE TABLE: the winners four or more places below, both with a few games behind them */
+    const bw = tw.before && tw.before.rank, bl = tl.before && tl.before.rank;
+    if (C.inTable && bw != null && bl != null && bw - bl >= 4 && (W.before.gp || 0) >= 3 && (Lo.before.gp || 0) >= 3) {
+      out.push(F('upset', w, 84 + Math.min(8, bw - bl), { by: 'table', rank: [bw, bl], of: tw.of }, g.names[w] + ' beat a side ' + (bw - bl) + ' places above them'));
+    }
+  }
+  /* AN UPSET BY THE NUMBERS: the season's four factors made the other side favourites by a distance */
+  const X = C.expect;
+  if (X && num(X.margin) != null) {
+    const toW = w === 0 ? X.margin : -X.margin;               // what the season said, from the winners' end
+    out.push(F('expectation', w, toW <= -5 ? 80 : 36, { toWinner: toW, margin: X.margin, actual: g.score[w] - g.score[l], model: !!X.model, n: X.n },
+      'the season’s numbers said ' + (toW >= 0 ? g.names[w] : g.names[l]) + ' by ' + Math.abs(toW).toFixed(1)));
+  }
+
+  /* THE MEETINGS: a series, a revenge, a sweep */
+  const H = C.h2h;
+  if (H && H.meetings && H.meetings.length) {
+    const prevW = H.last.won;                                     // 0 or 1 in brief sides
+    const series = [H.wins[0] + (w === 0 ? 1 : 0), H.wins[1] + (w === 1 ? 1 : 0)];
+    out.push(F('h2h', w, prevW === l ? 66 : 48, { meetings: H.meetings.length + 1, series, revenge: prevW === l, lastScore: H.last.score, lastAt: H.last.at,
+      sweep: series[l] === 0 && series[w] >= 2 }, prevW === l ? g.names[w] + ' turned round the last meeting' : 'the meetings this season'));
+  } else if (C.sides[0].before.gp >= 1 && C.sides[1].before.gp >= 1) {
+    out.push(F('h2hFirst', null, 22, {}, 'the first meeting this season'));
+  }
+
+  /* THE SCHEDULE: the second game in two days, and the next one */
+  [0, 1].forEach(t => {
+    const r = C.sides[t].rest;
+    if (r != null && r < 1.5 && r > 0) out.push(F('backToBack', t, t === l ? 52 : 44, { rest: r }, g.names[t] + ' were playing on the second night of two'));
+  });
+  if (C.next && (C.next[0] || C.next[1])) out.push(F('nextUp', null, 25, { next: C.next }, 'what comes next'));
+
+  /* THE CROWD: the home side's biggest of the season */
+  const hc = C.sides[0].before;
+  if (num(C.crowd) > 0 && hc && hc.homeCrowds >= 3 && hc.bestCrowd && C.crowd > hc.bestCrowd) {
+    out.push(F('bigCrowd', 0, 50, { crowd: C.crowd, before: hc.bestCrowd }, 'the biggest crowd of ' + g.names[0] + '’s season'));
+  }
+  /* WHAT THEY SCORED AND ALLOWED, against their own season */
+  if (W.before && W.before.gp >= 4 && W.before.highFor != null && g.score[w] > W.before.highFor) {
+    out.push(F('teamSeasonHigh', w, 64, { pts: g.score[w], before: W.before.highFor }, g.names[w] + ' scored their most of the season'));
+  }
+  if (W.before && W.before.gp >= 4 && W.before.lowAgainst != null && g.score[l] < W.before.lowAgainst) {
+    out.push(F('stingiest', w, 60, { pts: g.score[l], before: W.before.lowAgainst }, g.names[w] + ' allowed their fewest of the season'));
+  }
+
+  /* THE FANS' PICKS: who the people who predicted it backed */
+  const P = C.tally;
+  if (P && P.n >= 12) {
+    const forW = w === 0 ? P.home : P.away, share = 100 * forW / P.n;
+    if (share <= 35) out.push(F('fansWrong', w, 68, { share, n: P.n }, 'most fans picked ' + g.names[l]));
+    else if (share >= 80) out.push(F('fansRight', w, 34, { share, n: P.n }, 'the fans saw it coming'));
+  }
+
+  /* THE PLAYERS, against their own season: a season high, a run of big nights, a return, a milestone */
+  const PL = C.players || {};
+  const back = C.back || {};
+  (g.players || []).forEach(p => {
+    const c = PL[p.id];
+    if (!p.min) return;
+    const reb = (p.or || 0) + (p.dr || 0);
+    if (c && c.gp >= 3) {
+      const hi = c.high || {};
+      if ((p.pts || 0) >= 15 && hi.pts != null && p.pts > hi.pts) out.push(F('careerNight', p.team, 76 + Math.min(10, p.pts - hi.pts), { p, stat: 'pts', v: p.pts, before: hi.pts }, p.name + ' set a season high'));
+      else if ((p.pts || 0) >= 18 && hi.pts != null && p.pts === hi.pts) out.push(F('careerNight', p.team, 60, { p, stat: 'pts', v: p.pts, before: hi.pts, matched: true }, p.name + ' matched a season high'));
+      if (reb >= 10 && hi.reb != null && reb > hi.reb) out.push(F('careerNight', p.team, 64, { p, stat: 'reb', v: reb, before: hi.reb }, p.name + ' set a season high on the boards'));
+      if ((p.ast || 0) >= 8 && hi.ast != null && p.ast > hi.ast) out.push(F('careerNight', p.team, 62, { p, stat: 'ast', v: p.ast, before: hi.ast }, p.name + ' set a season high in assists'));
+      if ((p.p3m || 0) >= 5 && hi.p3m != null && p.p3m > hi.p3m) out.push(F('careerNight', p.team, 60, { p, stat: 'p3m', v: p.p3m, before: hi.p3m }, p.name + ' set a season high from three'));
+      if (c.run20 >= 3) out.push(F('hotStreak', p.team, 66 + Math.min(10, 2 * c.run20), { p, n: c.run20 }, p.name + ' has scored 20 or more ' + c.run20 + ' games running'));
+      /* a milestone: the season's points passing a hundred, from 200 up */
+      const before = c.totalBefore || 0, after = before + (p.pts || 0);
+      const mark = Math.floor(after / 100) * 100;
+      if (mark >= 200 && before < mark) out.push(F('milestone', p.team, 52, { p, mark, total: after, gp: c.gp + 1 }, p.name + ' passed ' + mark + ' points for the season'));
+    }
+    const b = back[p.id];
+    if (b && b.missed >= 2 && (p.min || 0) >= 600000) out.push(F('returned', p.team, 58 + Math.min(8, b.missed), { p, missed: b.missed }, p.name + ' was back'));
+  });
+  /* THE LEAGUE'S SEASON BESTS, set or matched in this game (records_board, read after it) */
+  const RC = C.records || {};
+  (RC.player || []).forEach(r => {
+    const p = (g.players || []).find(x => x.id === r.pid) || (g.players || []).find(x => r.name && String(x.name).toLowerCase() === String(r.name).toLowerCase());
+    if (!p) return;
+    out.push(F('leagueRecord', p.team, r.shared > 1 ? 70 : 88, { p, stat: r.k, v: r.v, shared: r.shared }, p.name + ' set the league’s season best'));
+  });
+  (RC.team || []).forEach(r => {
+    if (r.side !== 0 && r.side !== 1) return;
+    out.push(F('teamRecord', r.side, r.shared > 1 ? 58 : 74, { stat: r.k, v: r.v, shared: r.shared }, g.names[r.side] + ' set a league season best'));
+  });
+  /* AGE, where the register gives it: the youngest and the oldest who mattered (never for a player without a bio) */
+  const BI = C.bios || {};
+  const aged = (g.players || []).filter(p => p.min && BI[p.id] && num(BI[p.id].age) != null);
+  if (aged.length) {
+    const top = aged.slice().sort((a, b) => (b.pts || 0) - (a.pts || 0))[0];
+    const age = num(BI[top.id].age);
+    if (top && (top.pts || 0) >= 20 && (age <= 20 || age >= 35)) out.push(F('ageNote', top.team, 46, { p: top, age }, top.name + ' is ' + age));
+  }
+  return out;
+}
+
+/* ============================================================================
+   THE NUMBERS' PLAYER OF THE GAME: game box plus-minus (bpm.js game(), the figure the box score's own circles print),
+   when bpm.js is loaded. The points leader is the obvious answer; this is the other one, and it is only said when it
+   is somebody else or a clear margin.
+   ============================================================================ */
+function factBPM(g) {
+  const B = typeof globalThis !== 'undefined' && globalThis.EpinoiaBPM;
+  if (!B || !B.game) return [];
+  let res = null;
+  try {
+    const season = g.season && Array.isArray(g.season.players) ? new Map(g.season.players.map(r => [r.id, r])) : null;
+    res = B.game({ lines: (g.players || []).map(p => ({ id: p.id, side: p.team, stats: p })), clubs: g.adv && g.adv[0] && g.adv[1] ? [g.adv[0], g.adv[1]] : null, season });
+  } catch (_) { return []; }
+  if (!res || !res.size) return [];
+  const rows = (g.players || []).filter(p => res.has(p.id) && (p.min || 0) >= 900000).map(p => ({ p, bpm: res.get(p.id).bpm }))
+    .filter(x => x.bpm != null && isFinite(x.bpm)).sort((a, b) => b.bpm - a.bpm);
+  if (!rows.length) return [];
+  const top = rows[0], second = rows[1] || null;
+  if (top.bpm < 8) return [];
+  const scorer = (g.players || []).slice().sort((a, b) => (b.pts || 0) - (a.pts || 0))[0];
+  return [F('bpmTop', top.p.team, scorer && scorer.id !== top.p.id ? 63 : 41, { p: top.p, bpm: top.bpm, next: second && { p: second.p, bpm: second.bpm }, notScorer: !!(scorer && scorer.id !== top.p.id) },
+    top.p.name + ' had the best game by box plus-minus')];
+}
+
 /* ================================================================== facts ===
    Everything, ranked. Callers take the top of the list; nothing downstream
    needs to know how many extractors there were. */
 function facts(g) {
-  return [].concat(
+  const all = [].concat(
     factResult(g), factQuarters(g), factFlow(g), factFactors(g),
     factLineups(g), factPlayers(g), factTeamShape(g), factSituations(g),
     factDefence(g), factFouls(g), factPassing(g), factZones(g),
@@ -1144,8 +1550,11 @@ function facts(g) {
     /* 2026-09-07: the half, the finish, the box score in words, fuller player
        lines, ties/droughts/early leads, and the dateline */
     factHalf(g), factClosing(g), factTeamLines(g), factPlayerLines(g),
-    factTexture(g), factMeta(g)
-  ).filter(Boolean).sort((a, b) => b.salience - a.salience);
+    factTexture(g), factMeta(g),
+    /* 2026-10-07: what each facet was worth (the league's own model), the moments, the shape, the season around it */
+    factLedger(g), factMoments(g), factArc(g), factContext(g), factBPM(g)
+  ).filter(Boolean);
+  return weighFacets(all).sort((a, b) => b.salience - a.salience);
 }
 
 /* ============================================================================
@@ -1265,12 +1674,13 @@ function scout(g, opts) {
    behind a seam: everything here is numbers with names attached and can be
    tested for being right, everything there is phrasing and cannot. It is also
    where a language model would be handed the brief. */
-return { facts, scout, SCOUT, F, esc, num, one, pct1, mins, ordinal, plural,
+return { facts, scout, SCOUT, F, esc, num, one, pct1, mins, ordinal, plural, facetOf, FACET_LABEL,
          __x: { factResult, factQuarters, factFlow, factFactors,
                 factLineups, factPlayers, factTeamShape,
                 factDefence, factFouls, factPassing, factZones,
                 factTempo, factSeasonContext,
-                factHalf, factClosing, factTeamLines, factPlayerLines, factTexture, factMeta } };
+                factHalf, factClosing, factTeamLines, factPlayerLines, factTexture, factMeta,
+                factLedger, factMoments, factArc, factContext, factBPM, weighFacets, xefgOf, ledgerRates } };
 }));
 
 /* ---------------------------------------------------------------------------

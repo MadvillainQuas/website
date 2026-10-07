@@ -1817,7 +1817,9 @@
       'Not enough games yet this season to compare them.': '今季はまだ比較できるほどの試合がありません。',
       'The season could not be read just now.': 'シーズンを読み込めませんでした。',
       'videos': '動画',
-      'videos: highlights, full games, press conferences and every game streaming now, from every league': '動画：全リーグのハイライト、フルゲーム、記者会見、配信中の試合'
+      'videos: highlights, full games, press conferences and every game streaming now, from every league': '動画：全リーグのハイライト、フルゲーム、記者会見、配信中の試合',
+      'What decided it': '勝敗を分けたもの',
+      'What it means': 'この結果の意味'
     },
 
     ctx: {
