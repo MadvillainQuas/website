@@ -1863,7 +1863,15 @@
       'What wins here': 'このリーグの勝因',
       'The best player, by the numbers': '数字で見る最優秀選手',
       'The foot of the table': '最下位争い',
-      'The line': 'プレーオフ圏争い'
+      'The line': 'プレーオフ圏争い',
+      'Best in close games': '接戦に強いチーム',
+      'The fortress': 'ホームで無敗',
+      'Best on the road': 'アウェーに強いチーム',
+      'The biggest crowd': '最多観客数',
+      'The highest score': '最多得点',
+      'The fans’ record': 'ファン予想の的中率',
+      'Unbeaten': '無敗',
+      'Not playing': '欠場中'
     },
 
     ctx: {

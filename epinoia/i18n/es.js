@@ -1865,7 +1865,15 @@
       'What wins here': 'Lo que gana aquí',
       'The best player, by the numbers': 'El mejor jugador, según los números',
       'The foot of the table': 'La zona baja',
-      'The line': 'La línea de corte'
+      'The line': 'La línea de corte',
+      'Best in close games': 'Los mejores en partidos igualados',
+      'The fortress': 'El fortín',
+      'Best on the road': 'Los mejores a domicilio',
+      'The biggest crowd': 'La mayor asistencia',
+      'The highest score': 'La anotación más alta',
+      'The fans’ record': 'El acierto de la afición',
+      'Unbeaten': 'Invictos',
+      'Not playing': 'Sin jugar'
     },
 
     ctx: {

@@ -153,10 +153,13 @@ async function readLeague(api, lg, o) {
   });
   const players = season0 && Array.isArray(season0.players) ? season0.players : [];
   const model = await api.publicJson('snapshots/whatwins-explain/' + lg.id + '.json').then(m => (m && m.b && String(m.league) === String(lg.id) ? m : null)).catch(() => null);
+  /* the fans' picks: for the games to come (the slate) and the last three weeks' results (the fans' record) */
   let tallies = {};
-  if (fixtures.length) {
+  const recent = games.filter(g => Date.parse(g.tipoff_at) >= o.nowMs - 21 * DAY).map(g => g.id).slice(-100);
+  const pickIds = fixtures.slice(0, 100).map(f => f.id).concat(recent);
+  if (pickIds.length) {
     try {
-      const rows = await api.rest('rpc/prediction_tally', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_games: fixtures.slice(0, 200).map(f => f.id) }) });
+      const rows = await api.rest('rpc/prediction_tally', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_games: pickIds }) });
       (rows || []).forEach(r => { tallies[r.game_id] = { home: +r.home || 0, away: +r.away || 0 }; });
     } catch (_) { tallies = {}; }
   }

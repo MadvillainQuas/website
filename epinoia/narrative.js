@@ -52,7 +52,7 @@ const plural = (n, a, b) => spell(n) + ' ' + (Math.round(+n) === 1 ? a : (b || a
 const one = v => (Math.round(v * 10) / 10).toFixed(1);
 const signed = v => (v > 0 ? '+' : v < 0 ? '−' : '') + one(Math.abs(v));
 const half = x => { const w = Math.floor(x), h = x - w >= 0.5; return (w ? String(w) : h ? '' : '0') + (h ? '½' : ''); };
-const gamesWord = n => (n === 1 ? 'one game' : half(n) + ' games');
+const gamesWord = n => (n === 1 ? 'one game' : Number.isInteger(n) && n <= 12 ? spell(n) + ' games' : half(n) + ' games');
 const list = xs => { const a = xs.filter(Boolean); return a.length <= 1 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; };
 const cap = s => String(s || '').replace(/^\s*([a-z])/, (m, c) => m.replace(c, c.toUpperCase()));
 const possOf = n => String(n) + (/s$/i.test(String(n)) ? '’' : '’s');
@@ -356,9 +356,13 @@ function build(input) {
     const grp = g ? (/\s/.test(g) ? g : 'Group ' + g) : null;
     const where = grp ? ' in ' + grp : '';
     const gap = gb(lead, second);
-    const meet = fixtures.filter(f => bunch.some(r => r.team_id === f.home_team_id) && bunch.some(r => r.team_id === f.away_team_id));
+    /* half the table within a game and a half of the top is a table that has not formed: said as that, and ranked low */
+    const unformed = bunch.length > Math.max(3, Math.ceil(played.length / 2));
+    const meet = unformed ? [] : fixtures.filter(f => bunch.some(r => r.team_id === f.home_team_id) && bunch.some(r => r.team_id === f.away_team_id));
     const lc = C.get(lead.team_id);
-    const head = bunch.length >= 3 ? plural(bunch.length, 'club') + ' within ' + (gb(lead, bunch[bunch.length - 1]) <= 1 ? 'a game' : 'a game and a half') + ' of the top' + where
+    const head = unformed ? 'Nobody has broken away yet' + where
+      : bunch.length >= 3 ? (bunch.length > 12 ? 'A crowded top' + where + ': ' + bunch.length + ' clubs within ' : plural(bunch.length, 'club') + ' within ') +
+          (gb(lead, bunch[bunch.length - 1]) <= 1 ? 'a game' : 'a game and a half') + (bunch.length > 12 ? ' of first' : ' of the top' + where)
       : gap === 0 ? name(lead.team_id) + ' and ' + name(second.team_id) + ' level at the top' + where
       : name(lead.team_id) + ' ' + (gap >= 3 ? 'pull clear' : 'lead') + where + ', ' + gamesWord(gap) + ' ahead';
     story({
@@ -372,7 +376,7 @@ function build(input) {
       next: meet.length ? 'The contenders meet on ' + dayWords(meet[0].tipoff_at, tz) + ': ' + name(meet[0].home_team_id) + ' v ' + name(meet[0].away_team_id) + '.'
         : nextText(lead.team_id) ? 'Next for ' + name(lead.team_id) + ': ' + nextText(lead.team_id) + '.' : null,
       teams: bunch.map(r => r.team_id).slice(0, 4), games: meet.map(f => f.id).slice(0, 3),
-      tracks: { metric: 'gap', value: gap }, importance: 9, magnitude: Math.min(1, bunch.length / 5 + (gap >= 3 ? 0.4 : 0)), stakes: 1,
+      tracks: { metric: 'gap', value: gap }, importance: unformed ? 3 : 9, magnitude: unformed ? 0.2 : Math.min(1, bunch.length / 5 + (gap >= 3 ? 0.4 : 0)), stakes: unformed ? 0.4 : 1,
       lastAt: lc ? lc.lastAt : null, angles: ['the race, in a table and a paragraph', 'a preview of the next meeting between the contenders', 'a weekly "state of the race" column'],
       links: [teamLink(lead.team_id), teamLink(second.team_id)].filter(Boolean)
     });
@@ -458,7 +462,7 @@ function build(input) {
     story({
       id: 'luck:' + id, kind: 'luck', kicker: lucky ? 'Living on the edge' : 'Better than the record', head: lucky
         ? name(id) + ' are winning more than their points say they should'
-        : name(id) + ' are better than ' + rec(c.w, c.l),
+        : name(id) + (c.w / Math.max(1, c.gp) >= 0.6 ? ' are even better than ' : ' are better than ') + rec(c.w, c.l),
       dek: 'Points for and against say about ' + spell(Math.round(exp)) + ' wins from ' + spell(c.gp) + ' games; they have ' + spell(c.w) + '.',
       why: lucky ? 'Records built on close finishes tend to drift back towards the points.' : 'A side that outscores people like this usually gets the wins in the end.',
       numbers: [{ label: 'record', value: rec(c.w, c.l) }, { label: 'expected wins', value: one(exp) }, { label: 'points for, a game', value: one(c.ppg) }, { label: 'against', value: one(c.papg) },
@@ -517,6 +521,28 @@ function build(input) {
         teams: [p.team], players: [pid], tracks: { metric: 'need', value: need }, importance: 3.5, magnitude: Math.min(1, next / 1000), stakes: 0.3, lastAt: p.lastAt,
         angles: ['a social post ready for the night it happens'], links: [playerLink(pid)].filter(Boolean) });
     }
+  });
+
+  /* ---- WHO IS MISSING: a rotation player (twenty minutes a game over three or more) who has not played in his club's
+     last two games or more. Said as what the box scores show - not playing - never as a reason nobody has given. ---- */
+  PL.forEach((p, pid) => {
+    const nm = pname(pid);
+    if (!nm || p.gp < 3 || p.mpg < 20 || !p.team) return;
+    const c = C.get(p.team);
+    if (!c) return;
+    const after = c.games.filter(x => x.at > p.lastAt);
+    if (after.length < 2 || after.length > 6) return;
+    const res = after.filter(x => !x.tied);
+    const w = res.filter(x => x.won).length;
+    story({ id: 'absence:' + pid, kind: 'absence', kicker: 'Not playing', head: nm + ' has not played in ' + possOf(name(p.team)) + ' last ' + spell(after.length) + ' games',
+      dek: 'Before that: ' + one(p.mpg) + ' minutes and ' + one(p.ppg) + ' points a game. ' + name(p.team) + ' are ' + rec(w, res.length - w) + ' without them.',
+      why: 'A player taking this many minutes is a big part of how a side plays; how they cope without them is the story.',
+      numbers: [{ label: 'games missed', value: String(after.length) }, { label: 'minutes before', value: one(p.mpg) }, { label: 'points before', value: one(p.ppg) },
+        { label: 'record without', value: rec(w, res.length - w) }],
+      counter: null, next: nextText(p.team) ? 'Next: ' + nextText(p.team) + '.' : null,
+      teams: [p.team], players: [pid], games: after.map(x => x.id), tracks: { metric: 'missed', value: after.length },
+      importance: 4.5 + Math.min(1.5, p.mpg / 20), magnitude: Math.min(1, after.length / 4), stakes: 0.5, lastAt: c.lastAt,
+      angles: ['how the rotation has changed without them'], links: [playerLink(pid), teamLink(p.team)].filter(Boolean) });
   });
 
   /* ---- THE BEST PLAYER BY THE NUMBERS, AND THE ONE NOBODY TALKS ABOUT (the season lines' box plus-minus) ------- */
@@ -605,7 +631,8 @@ function build(input) {
     const gap = pw && pl ? pw.pos - pl.pos : 0;
     const cw = C.get(w), cl = C.get(l);
     if (gap >= 4 && cw && cl && cw.gp >= 4 && cl.gp >= 4) {
-      story({ id: 'upset:' + g.id, kind: 'upset', kicker: 'Upset', head: r && r.headline ? r.headline : name(w) + ' beat ' + name(l) + ' ' + Math.max(hs, as) + '–' + Math.min(hs, as),
+      story({ id: 'upset:' + g.id, kind: 'upset', kicker: 'Upset', head: r && r.headline ? r.headline
+          : name(w) + ', ' + ordShort(pw.pos) + ', beat ' + name(l) + ', ' + ordShort(pl.pos) + ', ' + Math.max(hs, as) + '–' + Math.min(hs, as),
         dek: name(w) + ' (' + ordShort(pw.pos) + ') beat ' + name(l) + ' (' + ordShort(pl.pos) + ').' + (r && r.decisive ? ' ' + cap(r.decisive.label) + ' was worth about ' + Math.round(r.decisive.pts) + ' points to them.' : ''),
         why: 'Results like this are where tables get rearranged.', teams: [w, l], games: [g.id], tracks: { metric: 'game', value: g.id },
         importance: 6 + Math.min(2, gap / 4), magnitude: Math.min(1, gap / 8), stakes: 0.7, lastAt: time(g.tipoff_at),
@@ -659,6 +686,23 @@ function build(input) {
     s.score = Math.round(100 * (s.importance || 3) * (0.5 + (s.magnitude || 0)) * (0.6 + 0.4 * (s.stakes || 0)) * fade * stat) / 100;
   });
   out.sort((a, b) => b.score - a.score);
+  /* A DESK, NOT A DUMP: a few of each kind and two dozen in all (a late season can open forty upsets and runs). What is
+     cut is the least newsworthy of its kind; a resolved storyline counts against nothing. */
+  const PER_KIND = { upset: 3, run: 4, skid: 3, scoring: 3, form: 3, milestone: 3, identity: 3, luck: 3, perfect: 3, winless: 2, race: 4, absence: 3 };
+  const kinds = new Map();
+  const kept = out.filter(s => {
+    if (s.status === 'resolved') return true;
+    const n = (kinds.get(s.kind) || 0) + 1;
+    kinds.set(s.kind, n);
+    return n <= (PER_KIND[s.kind] || 2);
+  });
+  out.length = 0;
+  /* the second of a kind ranks a little lower than its score, the third lower again: a page of four "what wins for them"
+     cards in a row reads as a list, not a desk */
+  const nth = new Map();
+  kept.forEach(s => { const k = (nth.get(s.kind) || 0); nth.set(s.kind, k + 1); s.order = s.score * Math.pow(0.82, k); });
+  kept.sort((a, b) => b.order - a.order);
+  kept.filter(s => s.status !== 'resolved').slice(0, 24).concat(kept.filter(s => s.status === 'resolved').slice(0, 6)).forEach(s => { delete s.order; out.push(s); });
   const used = new Map(), ranked = [], later = [];
   out.forEach(s => {
     const over = (s.teams || []).some(t => (used.get(t) || 0) >= 2);
@@ -881,6 +925,12 @@ function coverage(stories, X) {
   const hi = X.games.slice().sort((a, b) => (Math.max(+b.home_score, +b.away_score)) - (Math.max(+a.home_score, +a.away_score)))[0];
   if (hi && X.games.length >= 5) notes.push({ head: 'The highest score', line: Math.max(+hi.home_score, +hi.away_score) + ' points, by ' + X.name(+hi.home_score > +hi.away_score ? hi.home_team_id : hi.away_team_id) + ' against ' + X.name(+hi.home_score > +hi.away_score ? hi.away_team_id : hi.home_team_id) + '.' });
   if (X.LENS && X.LENS.home != null) notes.push({ head: 'Home court', line: 'Worth about ' + one(X.LENS.home) + ' points a game here, beyond the four factors.' });
+  /* THE FANS' RECORD: how often the side most fans picked won, over the finished games with a real number of picks */
+  const picked = X.games.filter(g => X.tallies[g.id] && (+X.tallies[g.id].home + +X.tallies[g.id].away) >= 10 && +g.home_score !== +g.away_score);
+  if (picked.length >= 8) {
+    const right = picked.filter(g => { const t = X.tallies[g.id]; return (+t.home >= +t.away) === (+g.home_score > +g.away_score); }).length;
+    notes.push({ head: 'The fans’ record', line: 'The side most fans picked has won ' + right + ' of the last ' + picked.length + ' games with ten or more picks (' + Math.round(100 * right / picked.length) + '%).' });
+  }
 
   /* THE CALENDAR: what to publish, day by day, for the next week */
   const days = new Map();

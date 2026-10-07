@@ -69,6 +69,23 @@ ok('the copy carries the why and what is next', byId('run:t1') && /Why it matter
    league is too small to fill six without one, so it is the sixth at the earliest) */
 ok('a club’s third storyline waits behind the others', (() => { const c = {}; return b1.stories.slice(0, 5).every(s => (s.teams || []).every(t => { c[t] = (c[t] || 0) + 1; return c[t] <= 2; })); })(), b1.stories.slice(0, 6).map(s => s.id + ':' + s.teams));
 
+console.log('\nwho is missing, and how many of a kind');
+{
+  /* p9 played 30 minutes in t1's first four games and none of the last two */
+  const t1g = games.filter(x => x.home_team_id === 't1' || x.away_team_id === 't1');
+  const extra = t1g.slice(0, 4).map(x => ({ game_id: x.id, team_idx: x.home_team_id === 't1' ? 0 : 1, pid: 'p9', min: 1800000, pts: 11, reb: 4, ast: 2, stl: 0, blk: 0, p3m: 1 }));
+  const bm = N.build(Object.assign({}, base, { lines: lines.concat(extra), names: Object.assign({}, names, { p9: { name: 'Mo Ash' } }) }));
+  const ab = bm.stories.find(s => s.id === 'absence:p9');
+  ok('a rotation player who has missed the last two games is a storyline', ab && ab.tracks.value === 2, bm.stories.map(s => s.id));
+  ok('...said as not playing, never as a reason', ab && /has not played in Ash City’s last two games/.test(ab.head) && !/injur|hurt|ill\b/i.test(JSON.stringify(ab)), ab && ab.head);
+  ok('...with the record without them', ab && ab.numbers.some(x => x.label === 'record without' && x.value === '2–0'), ab && ab.numbers);
+  /* forty upsets do not make a desk: no kind past its cap, no more than two dozen running */
+  const many = N.build(Object.assign({}, base, { now: new Date(NOW) }));
+  const counts = {};
+  many.stories.filter(s => s.status !== 'resolved').forEach(s => { counts[s.kind] = (counts[s.kind] || 0) + 1; });
+  ok('no kind past its cap, and no more than 24 running', Object.keys(counts).every(k => counts[k] <= 4) && many.stories.filter(s => s.status !== 'resolved').length <= 24, counts);
+}
+
 console.log('\nthreading, from one build to the next');
 {
   /* an hour later t1 has won again: the run is the same storyline, developing, version 2 */
