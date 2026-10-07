@@ -96,7 +96,13 @@
     const sp = M.stagePlayer(stage, {
       list: () => rows,
       onClose: () => { playing = null; paint(); },
-      onChange: it => { playing = it; paint(); }
+      onChange: it => {
+        playing = it;
+        paint();
+        /* A VIDEO PLAYED IS A STORY OPENED (feedrank.js noteOpen): its channel and its leagues rise for this reader, on this
+           device, and it is read - the next time the feed is drawn it has left it, as a read story leaves the news feed */
+        try { const R = window.EpinoiaFeedRank; if (R && typeof R.opened === 'function') R.opened(it); } catch (_) { /* never in the way */ }
+      }
     });
     const play = it => sp.go(it);
     function paint() {

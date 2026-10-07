@@ -141,7 +141,23 @@ async function mount(opts) {
   if (ctl && seg) seg.after(ctl.button);
   let partners = new Set();
   /* a press on a card: the story is read (the feed's "opened"), and its group gets a click */
-  const onOpen = it => { try { if (FR) FR.opened(openedRow(it, partners)); } catch (_) { /* never in the reader's way */ } };
+  let stale = false;
+  const onOpen = it => {
+    try { if (FR) FR.opened(openedRow(it, partners)); } catch (_) { /* never in the reader's way */ }
+    /* A STORY OPENED LEAVES THE FEED AT ONCE (2026-10-07): its card folds away a moment after the press (the link has gone
+       where it goes), and the feed is drawn again when the reader comes back to the page, a freed partner's place taken by
+       the next. Only with personalisation on: off, nothing of the reader is kept, so nothing is taken away. */
+    try {
+      if (!FR || !FR.enabled()) return;
+      const id = it && it.row && it.row.id;
+      const card = id ? [...box.querySelectorAll('[data-rid]')].find(c => c.dataset.rid === String(id)) : null;
+      if (card) setTimeout(() => { card.classList.add('pc-gone'); setTimeout(() => card.remove(), 320); }, 250);
+      stale = true;
+    } catch (_) { /* never in the reader's way */ }
+  };
+  const again = () => { if (stale && !root.document.hidden) { stale = false; draw(mode, true).catch(() => {}); } };
+  root.document.addEventListener('visibilitychange', again);
+  root.addEventListener('pageshow', e => { if (e && e.persisted) again(); });
   const newsHref = want => lg ? base + 'news/?l=' + encodeURIComponent(lg.slug) : base + 'news/' + (want === 'followed' ? '?k=mine' : '');
 
   let gen = 0;
@@ -209,6 +225,7 @@ async function mount(opts) {
       at += shown.length;
       const g = K.grid(shown.map(r => Object.assign(K.fromFeed(r, base, media, crest), { why: ranked ? r.why : '' })),
         { lead: false, now: Date.now(), partners, onOpen, showLeague: !lg, hideTag: lg ? lg.slug : undefined });
+      [...g.children].forEach((c, i) => { if (shown[i]) c.dataset.rid = String(shown[i].id); });   // a card by its story, for onOpen
       box.insertBefore(g, wrap.parentNode === box ? wrap : null);
       if (!first) { g.style.marginTop = 'calc(var(--u, 4px) * 3)'; fadeIn(g); }
       if (ranked && FR && !(first && quiet)) FR.shown(shown.map(r => r.id));
