@@ -316,5 +316,22 @@ free = Offline()
 ok("...and with no official result to hold it to (a row with no category), the feed's own final is read",
    free.fetch(f"{PREP_W}_{fx}", {}) is not None)
 
+print("\n-- a game being played: periods as a list, no play-by-play yet (Lahti v Kataja, 7 Oct 2026)")
+from adapters.lnb import LnbAdapter  # noqa: E402
+live_periods = [{"periodId": 1, "started": True, "ended": True, "teamScore": {"H": 27, "A": 23}},
+                {"periodId": 2, "started": True, "ended": False, "teamScore": {"H": 0, "A": 3}},
+                {"periodId": 3, "started": False, "ended": False, "teamScore": {"H": 0, "A": 0}}]
+ok("the live list shape is read per period, an unstarted one left out",
+   LnbAdapter._quarters(live_periods) == {"H": {1: 27, 2: 0}, "A": {1: 23, 2: 3}}, LnbAdapter._quarters(live_periods))
+ok("...and the finished game's dict shape as before",
+   LnbAdapter._quarters({"teamScores": {"H": [{"periodId": 2, "score": 20}]}}) == {"H": {2: 20}})
+board = {}
+LnbAdapter._scoreboard(board, {"clock": {"main": "PT9M49S"}, "status": {"periodId": 2}})
+ot = {}
+LnbAdapter._scoreboard(ot, {"clock": {"main": "PT0S"}, "status": {"periodId": 11}})
+ok("the scoreboard's clock and period onto the payload, overtime as OVERTIME 1",
+   board == {"clock": "09:49", "period": 2, "periodType": "REGULAR"} and ot == {"clock": "00:00", "period": 1, "periodType": "OVERTIME"},
+   (board, ot))
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

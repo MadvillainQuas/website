@@ -110,6 +110,8 @@ EVENT_TYPE = {
 FINAL_STATUS = {"CONFIRMED", "COMPLETE", "COMPLETED", "FINAL", "FINISHED"}
 #: played, but the result is not signed off yet — believed only when the last period has ended
 PROVISIONAL_STATUS = {"UNCONFIRMED", "PROVISIONAL"}
+#: a fixture being played: the feed's own word, which is all a game has before its play-by-play exists
+LIVE_STATUS = {"IN_PROGRESS", "INPROGRESS", "LIVE", "STARTED", "HALFTIME", "BREAK", "INTERRUPTED"}
 
 
 def _season_year(config: dict) -> int:
@@ -291,8 +293,12 @@ class LnbAdapter(FibaLiveStatsAdapter):
         comps = {c.get("entityId"): c for c in sides}
         home_id = next((c["entityId"] for c in sides if c.get("isHome")), sides[0].get("entityId"))
         away_id = next((c["entityId"] for c in sides if c.get("entityId") != home_id), None)
-        quarters = self._quarters(feeds["statistics"].get("periodData") or {})
+        quarters = self._quarters(feeds["statistics"].get("periodData") or feeds["pbp"].get("periodData") or {})
         pbp = feeds["pbp"].get("pbp") or {}
+        # the scoreboard: the live score, clock and period, newer than the competitors' own score
+        summary = feeds["statistics"].get("summary") or feeds["pbp"].get("summary") or {}
+        live_now = str(fixture.get("status") or "").upper() in LIVE_STATUS
+        board = (summary.get("entities") or {}) if live_now else {}
 
         # The box score's own "home"/"away" keys are the EMBED's display order, which the feed can
         # reverse (reverseTeamOrder); every box row carries its club's entityId, so the two halves
@@ -317,7 +323,9 @@ class LnbAdapter(FibaLiveStatsAdapter):
             qs = quarters.get(eid) or {}
             t = S.team(
                 self._club_name(c), self._club_code(c),
-                score=c.get("score"),           # the club's official final, not a re-sum
+                # the club's official final, not a re-sum; while live, the scoreboard's (the
+                # competitor's own score trails it by a basket or two)
+                score=(board.get(eid) or {}).get("score", c.get("score")),
                 quarters=[qs.get(i) for i in (1, 2, 3, 4)],
                 players=rosters.get(eid) or {},
                 shots=shots.get(tno, []),
@@ -344,11 +352,32 @@ class LnbAdapter(FibaLiveStatsAdapter):
         # A game still running has no sentinel and so reads as live off its own events; a game
         # that has not tipped has no events at all, which reads as never-started.
         raw = S.game(tm[0], tm[1], played=played, pbp=events)
+        if live_now and not played:
+            # THE CLOCK, from the scoreboard (ISO duration "PT9M49S", time left in the period), where
+            # run_ingest's live checks read it - and in the payload, so a moving clock is a new payload
+            self._scoreboard(raw, summary)
         b = self.bundle_from_raw(raw, str(external_id), config)
+        if live_now and not played and b.status == "scheduled":
+            # A GAME BEING PLAYED WITH NO PLAY-BY-PLAY YET IS LIVE, NOT SCHEDULED. Some leagues on this
+            # embed (Finland's) publish no plays until the game is over - liveDataAvailable false - but
+            # the box score and the scoreboard all game long; status was read off the plays alone, so
+            # the site showed such a game as upcoming, 0-0, until it finished.
+            b.status = "live"
         # startTimeUTC is the venue-confirmed tip-off; the schedule's match_time_utc is the
         # announced one, so it is only the fallback.
         b.tipoff_at = self._utc(fixture.get("startTimeUTC")) or config.get("_tipoff_at")
         return b
+
+    @staticmethod
+    def _scoreboard(raw: dict, summary: dict) -> None:
+        """clock / period / periodType onto a payload from the EUI's summary block."""
+        m = re.match(r"^PT(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$", str(((summary.get("clock") or {}).get("main")) or ""))
+        if m:
+            raw["clock"] = f"{int(m.group(1) or 0):02d}:{int(float(m.group(2) or 0)):02d}"
+        p = S.num(((summary.get("status") or {}).get("periodId")), 0)
+        if p:
+            raw["period"] = p - 10 if p > 10 else p          # Sportradar keys overtime 11, 12, ...
+            raw["periodType"] = "OVERTIME" if p > 10 else "REGULAR"
 
     # ------------------------------------------------------------------ pieces ---
     def _club_name(self, competitor: dict) -> str:
@@ -420,15 +449,28 @@ class LnbAdapter(FibaLiveStatsAdapter):
         return out
 
     @staticmethod
-    def _quarters(period_data: dict) -> dict:
+    def _quarters(period_data) -> dict:
         """{entityId: {1: q1, … 4: q4}} from teamScores, the points scored IN each period.
 
         KEYED BY periodId, NEVER BY POSITION: the list is not guaranteed to start at Q1 (one game
         publishes Q2 alone), so reading it in order would file Q2's points as the first quarter.
         Overtime is keyed 11, 12, … by Sportradar and is dropped here, because the platform's
-        quarter line — for every league — is four wide."""
+        quarter line — for every league — is four wide.
+
+        TWO SHAPES. A finished game's periodData is {"teamScores": {entityId: [{periodId, score}]}};
+        a game being played sends a LIST of periods, [{periodId, started, ended, teamScore:
+        {entityId: points}}]. Reading the list as the dict crashed every live read, so a Finnish game
+        in its second quarter stayed "upcoming, 0-0" on the site (Korisliiga, 7 Oct 2026)."""
         out: dict = {}
-        for eid, rows in (period_data.get("teamScores") or {}).items():
+        if isinstance(period_data, list):
+            for per in period_data:
+                p = S.num((per or {}).get("periodId"))
+                if p not in (1, 2, 3, 4) or not (per or {}).get("started"):
+                    continue
+                for eid, pts in ((per or {}).get("teamScore") or {}).items():
+                    out.setdefault(eid, {})[p] = S.num(pts)
+            return out
+        for eid, rows in ((period_data or {}).get("teamScores") or {}).items():
             got = {}
             for r in rows or []:
                 p = S.num(r.get("periodId"))
