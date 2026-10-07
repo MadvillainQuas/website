@@ -235,7 +235,8 @@
         /* the box score's own calculator (the advanced tab's); the engine's takes the game first */
         const A = B.teamAdv ? B.teamAdv(d, t) : E.teamAdv(S, d, t), T = A;
         ff.push({ efg: A.efg, tov: A.tovp, orb: A.orebp, ftr: A.ftr });
-        shoot.push({ p2: [T.fgm - T.fg3m, T.fga - T.fg3a], p3: [T.fg3m, T.fg3a], ft: [T.ftm, T.fta], rim: T.rimA ? [T.rimM, T.rimA] : null });
+        /* the shot profile, as the game page's (game/modern.js shotsHTML): at the rim, mid-range, three - teamAdv's zones */
+        shoot.push({ rim: [T.rimM || 0, T.rimA || 0], mid: [T.midM || 0, T.midA || 0], p3: [T.fg3m || 0, T.fg3a || 0], fga: T.fga || 0 });
       } catch (_) { ff.push(null); shoot.push(null); }
     });
     /* the flow: every basket in order - the margin over time, the runs (unanswered points), one player's streak */

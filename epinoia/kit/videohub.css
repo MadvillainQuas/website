@@ -116,18 +116,29 @@
 /* the way in: a tab hanging from the stream's foot at the right, beside BOX SCORE - inside the theatre, so cinema mode
    keeps it lit while the stream plays; the word beside the icon where there is room for it */
 .vh-landtabs,.vh-landfloat,.vh-tmain .vh-landcue{display:none}
-.vh-tmain .md-cuebar{position:relative}
-.vh-landcue{position:absolute;right:12px;top:0;gap:7px;padding:6px 10px 8px}
+/* the row under the stream: BOX SCORE in the middle, the full-screen tab at the right - in columns, so a narrow stream
+   cannot lay one over the other (absolutely placed, FULL SCREEN covered BOX SCORE on a laptop at 150%) */
+.vh-tmain{container:vhm / inline-size}
+.vh-tmain .md-cuebar{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:start;column-gap:8px}
+.vh-tmain .md-cuebar > .md-cue:not(.vh-landcue){grid-column:2}
+.vh-landcue{grid-column:3;justify-self:end;gap:7px;padding:6px 10px 8px}
+/* the word beside the icon only where BOX SCORE, centred, leaves it the room (about 460px of stream) */
+@container vhm (max-width:470px){ .vh-landcue-t{display:none!important} }
 .vh-landcue svg{width:20px;height:20px;display:block}
-.vh-landcue-t{display:none}
+/* a phone's is LANDSCAPE (the turning phone), a desktop's FULL SCREEN (the corners): the same mode */
+.vh-tmain .vh-landcue:not([hidden]){display:inline-flex}
+.vh-landcue .ph,.vh-landcue-t.ph{display:none}
+.vh-landcue-t.dk{display:inline}
 @media (max-width:719px),(max-height:500px) and (orientation:landscape){
-  .vh-tmain .vh-landcue:not([hidden]){display:inline-flex}
+  .vh-landcue .dk,.vh-landcue-t.dk{display:none}
+  .vh-landcue svg.ph{display:block}
   /* a phone's full screen is LANDSCAPE: the header's FULL SCREEN was the desktop's (a 380px chat column beside the
      stream - on a phone, the chat and a sliver of picture) and sat under cinema mode's veil once play was pressed */
   .vh-h .vh-full{display:none}
 }
+@media (max-width:429px){ .vh-landcue-t{display:none!important} }
 @media (min-width:430px) and (max-width:719px),(max-height:500px) and (orientation:landscape){
-  .vh-landcue-t{display:inline}
+  .vh-landcue-t.ph{display:inline}
 }
 /* a narrow screen in FULL SCREEN however it got there: the stream across the top, the chat under it */
 @media (max-width:719px){
@@ -143,8 +154,9 @@ html.vh-land-on,html.vh-land-on body{overflow:hidden}
   container-type:normal!important;content-visibility:visible!important;will-change:auto!important;z-index:auto!important}
 /* over cinema mode's veil (2147483000) and its lit group (…001): a stream playing in landscape is the whole screen, and
    CHAT | BOX SCORE and the ✕ answer the finger (at the veil's own height they were under it once play was pressed) */
+/* sized by its insets, not 100vw/100vh: a desktop's kit zooms body (1.25/1.5) and a zoomed 100vw is wider than the screen */
 .vh-theatre.vh-land.vh-land{position:fixed;inset:0;z-index:2147483050;margin:0;border:0;box-shadow:none;overflow:hidden;
-  width:100vw;height:100vh;height:100dvh;padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  width:auto;height:auto;padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
   display:grid;grid-template-columns:minmax(0,1fr) clamp(220px,34%,340px);grid-template-rows:auto minmax(0,1fr);
   grid-template-areas:"main tabs" "main panel"}
 .vh-theatre.vh-land.vh-land.rot{inset:auto;top:0;left:100vw;width:100vh;width:100dvh;height:100vw;transform-origin:0 0;transform:rotate(90deg);padding:0}
@@ -195,6 +207,38 @@ html.vh-land-on,html.vh-land-on body{overflow:hidden}
 .vh-landfloat > .vh-landx{width:36px;border-left:1px solid rgba(255,255,255,.22)}
 .vh-landhide:hover,.vh-landfloat > button:hover{background:rgba(255,255,255,.1)}
 .vh-landhide:focus-visible,.vh-landfloat > button:focus-visible{outline:2px solid var(--lume);outline-offset:-3px}
+
+/* ---- A DESKTOP'S THEATRE, LANDSCAPE'S WAY: the column beside the stream holds the CHAT or the BOX SCORE under the
+   same tabs; with the box score in the column, the room under the stream holds the team board (storyline.js board:
+   four factors with their margins, the shooting, the game's flow). Everything is placed by the grid and nothing is
+   moved in the page: a box score frame moved would load again. The column is as tall as the stream beside it
+   (contain: size - its own content does not stretch the row) and scrolls inside. ---- */
+.vh-stats{display:none}
+@media (min-width:1000px){
+  .vh-theatre:not(.vh-land){display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto minmax(0,1fr) auto auto;
+    grid-template-areas:"main tabs" "main side" "under under" "up up"}
+  .vh-theatre:not(.vh-land)[hidden]{display:none}
+  .vh-theatre:not(.vh-land) .vh-ttop{display:contents}
+  .vh-theatre:not(.vh-land) .vh-tmain{grid-area:main;min-width:0}
+  .vh-theatre:not(.vh-land) .vh-landtabs{grid-area:tabs;display:flex;align-items:stretch;background:#050b08;
+    border-left:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+  .vh-theatre:not(.vh-land) .vh-landhide,.vh-theatre:not(.vh-land) .vh-landx{display:none}
+  .vh-theatre:not(.vh-land) .vh-chat{grid-area:side;position:static;align-self:stretch;min-height:0;max-height:none;contain:size;
+    border-left:1px solid var(--rule)}
+  .vh-theatre:not(.vh-land) .vh-chat .ch{min-height:0;height:100%}
+  .vh-theatre:not(.vh-land) .vh-box{grid-area:under}
+  /* the box score in the column, the team board under the stream */
+  .vh-theatre.land-box:not(.vh-land) .vh-box{grid-area:side;align-self:stretch;contain:size;overflow:auto;padding:6px;border-top:0;
+    border-left:1px solid var(--rule)}
+  .vh-theatre.land-box:not(.vh-land) .vh-chat{display:none}
+  .vh-theatre.land-box:not(.vh-land) .vh-stats{display:block;grid-area:under;background:#020504;border-top:1px solid var(--rule)}
+  .vh-theatre.land-box:not(.vh-land) .vh-tmain .md-cuebar > .md-cue:not(.vh-landcue){visibility:hidden}
+  .vh-theatre:not(.vh-land) .md-cuebar.up{grid-area:up}
+  /* the chat folded away (gamechat.js .chat-min): the column a slim tab the height of the stream, no tabs over it */
+  .vh-theatre:not(.vh-land):not(.land-box):has(.vh-ttop.chat-min){grid-template-columns:minmax(0,1fr) 48px}
+  .vh-theatre:not(.vh-land):not(.land-box):has(.vh-ttop.chat-min) .vh-landtabs{display:none}
+  .vh-theatre:not(.vh-land):not(.land-box):has(.vh-ttop.chat-min) .vh-chat{grid-area:auto;grid-column:2;grid-row:1 / span 2}
+}
 
 /* ---- nothing live: a test card ---- */
 .vh-none{position:relative;display:grid;place-items:center;aspect-ratio:16/6;min-height:200px;overflow:hidden;border:1px solid var(--rule)}

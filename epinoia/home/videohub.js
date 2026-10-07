@@ -74,14 +74,18 @@
     /* LANDSCAPE, a phone's (kit/videohub.css shows it there alone): the theatre across the whole screen, on its side.
        A tab hanging from the foot of the stream, beside BOX SCORE - inside the theatre, so it stays lit and can be
        pressed while the stream plays (in the header it was under cinema mode's veil the moment play was pressed) */
+    /* ON A DESKTOP THE SAME TAB IS FULL SCREEN: the stream and the column beside it over the whole screen (the same mode,
+       unturned) - pressable while the stream plays, where the header's button is under the veil */
     const landB = el('button', 'md-cue vh-landcue');
     landB.type = 'button'; landB.hidden = true;
-    landB.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="9" width="19" height="11.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/>'
+    landB.innerHTML = '<svg class="ph" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="9" width="19" height="11.5" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/>'
       + '<path d="M6.5 6.2a8 8 0 0 1 10.6-1.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
-      + '<path d="M17.6 1.6v3.6H14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    landB.append(el('span', 'vh-landcue-t', tr('Landscape')));
-    landB.setAttribute('aria-label', tr('Landscape view'));
-    landB.title = tr('Landscape view');
+      + '<path d="M17.6 1.6v3.6H14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      + '<svg class="dk" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    landB.append(el('span', 'vh-landcue-t ph', tr('Landscape')), el('span', 'vh-landcue-t dk', tr('Full screen')));
+    const phone = () => !!(window.matchMedia && matchMedia('(max-width: 719px), (max-height: 500px) and (orientation: landscape)').matches);
+    const landLabel = () => { const t = tr(phone() ? 'Landscape view' : 'Full screen: the stream and the column beside it'); landB.setAttribute('aria-label', t); landB.title = t; };
+    landLabel();
     lh.append(lt, lsub, wideB, full);
     const gamesRow = el('div', 'vh-games');
     gamesRow.setAttribute('role', 'tablist');
@@ -103,8 +107,13 @@
        there: it never rides over the box score under them */
     const tTop = el('div', 'vh-ttop');
     tTop.append(tMain, side);
+    /* THE TEAM BOARD (storyline.js board): on a desktop, when the box score has gone into the column beside the stream,
+       the room under the stream holds the team side of the story - four factors with their margins, the shooting, the
+       game's flow */
+    const statsEl = el('section', 'vh-stats');
+    statsEl.setAttribute('aria-label', tr('Team stats'));
     /* and on a phone, at the box score's foot, the arrow back up to the stream (media.js upCue) */
-    theatre.append(tTop, box, M.upCue ? M.upCue(tMain) : el('div'));
+    theatre.append(tTop, box, statsEl, M.upCue ? M.upCue(tMain) : el('div'));
     /* LANDSCAPE's own head, over the column beside the stream: CHAT | BOX SCORE, and the way out */
     const landTabs = el('div', 'vh-landtabs');
     landTabs.setAttribute('role', 'group');
@@ -204,14 +213,17 @@
     /* THE STORYLINES, a drawer at the foot of the stream (storyline.js): a lip at rest, up on a resting pointer or a press */
     async function mountDeck(g) {
       if (st.deck) { try { st.deck.stop(); } catch (_) { /* gone */ } st.deck = null; }
+      if (st.board) { try { st.board.stop(); } catch (_) { /* gone */ } st.board = null; }
       st.deckFor = g.id;
+      landLabel();
       if (!st.story || st.story.game !== g.id) st.story = null;
       try {
         M.css('kit/storyline.css');
         const SL = await M.load('storyline.js', 'EpinoiaStoryline');
         if (!st.alive || !SL || !chosen || chosen.id !== g.id || st.deckFor !== g.id) return;
         st.deck = SL.mount(screen, { tr });
-        if (st.story) st.deck.update(st.story);
+        if (SL.board) st.board = SL.board(statsEl, { tr });
+        if (st.story) { st.deck.update(st.story); if (st.board) st.board.update(st.story); }
       } catch (_) { /* no drawer: the stream as it was */ }
     }
     async function enter(g) {
@@ -222,7 +234,9 @@
       full.hidden = !(theatre.requestFullscreen || theatre.webkitRequestFullscreen);
       landB.hidden = false;
       tabChat.hidden = !g.chat;
-      if (land) panel(g.chat ? landPanel : 'box');
+      /* the column beside the stream holds the CHAT or the BOX SCORE (a desktop's, and landscape's): a game with no chat
+         has the box score there */
+      panel(g.chat ? landPanel : 'box');
       M.inks(theatre, { game: g }, true);
       stream(g);
       drawBug(g);
@@ -233,6 +247,7 @@
         if (!s || s.game !== g.id) return;
         st.story = s;
         if (st.deck && st.deckFor === g.id) st.deck.update(s);
+        if (st.board && st.deckFor === g.id) st.board.update(s);
       } });
       side.textContent = '';
       side.hidden = !g.chat;
@@ -260,10 +275,10 @@
       else if (first || !chosen) { chosen = games[0]; drawGames(); enter(chosen); }
       else drawGames();
     }
+    /* FULL SCREEN is the one full screen: the stream and the column beside it (landOn), as the tab under the stream */
     full.addEventListener('click', () => {
-      const fs = document.fullscreenElement || document.webkitFullscreenElement;
-      if (fs) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
-      (theatre.requestFullscreen || theatre.webkitRequestFullscreen).call(theatre);
+      if (land) { landOff(); return; }
+      landOn();
       act('live-fullscreen', about(chosen));
     });
     /* a stream started: the first press on the screen of each game chosen (YouTube's cover, a channel's) */
@@ -272,7 +287,7 @@
       if (chosen && liveStarted !== chosen.id) { liveStarted = chosen.id; act('live-play', about(chosen)); }
     }, true);
     const onFs = () => {
-      full.textContent = (document.fullscreenElement === theatre) ? tr('Exit full screen') : tr('Full screen');
+      full.textContent = land ? tr('Exit full screen') : tr('Full screen');
       /* full screen left by the phone's own back gesture: landscape goes with it */
       if (land && landFs && !(document.fullscreenElement || document.webkitFullscreenElement)) landOff();
     };
@@ -290,7 +305,8 @@
          * Where the lock is refused (Samsung Internet, 2026-10-07) or there is no full screen (an iPhone), the theatre
            turns itself a quarter (.rot) while the phone is held upright, and stops the moment the phone is turned.
        The way out: the ✕, Escape, or leaving full screen. */
-    let land = false, landFs = false, landPanel = 'chat';
+    const SIDE_KEY = 'epinoia.vh.side';
+    let land = false, landFs = false, landPanel = (() => { try { return localStorage.getItem(SIDE_KEY) === 'box' ? 'box' : 'chat'; } catch (_) { return 'chat'; } })();
     function panel(p) {                           // what shows; landPanel is the reader's own choice, kept for a game with a chat
       theatre.classList.toggle('land-box', p === 'box');
       tabChat.setAttribute('aria-pressed', String(p === 'chat'));
@@ -318,6 +334,7 @@
     async function landOn() {
       if (land) return;
       land = true; landFs = false;
+      full.textContent = tr('Exit full screen');
       free(true);
       theatre.classList.add('vh-land', 'md-land');
       document.documentElement.classList.add('vh-land-on');
@@ -339,7 +356,8 @@
     function landOff() {
       if (!land) return;
       land = false;
-      theatre.classList.remove('vh-land', 'md-land', 'rot', 'land-box', 'land-wide');
+      full.textContent = tr('Full screen');
+      theatre.classList.remove('vh-land', 'md-land', 'rot', 'land-wide');
       document.documentElement.classList.remove('vh-land-on');
       free(false);
       window.removeEventListener('resize', landTurn);
@@ -355,8 +373,9 @@
     landX2.addEventListener('click', landOff);
     landHide.addEventListener('click', () => videoOnly(true));
     landShow.addEventListener('click', () => videoOnly(false));
-    tabChat.addEventListener('click', () => { landPanel = 'chat'; panel('chat'); });
-    tabBox.addEventListener('click', () => { landPanel = 'box'; panel('box'); });
+    const choose = p => { landPanel = p; panel(p); try { localStorage.setItem(SIDE_KEY, p); } catch (_) { /* private mode */ } };
+    tabChat.addEventListener('click', () => choose('chat'));
+    tabBox.addEventListener('click', () => choose('box'));
     st.timers.push(() => landOff());
 
     /* --------------------------------------------------------------------------------------- VIDEOS --- */
@@ -644,6 +663,7 @@
     try { if (st.chat) st.chat.stop(); } catch (_) { /* nothing */ }
     try { if (st.boxer) st.boxer.stop(); } catch (_) { /* nothing */ }
     try { if (st.deck) st.deck.stop(); } catch (_) { /* nothing */ }
+    try { if (st.board) st.board.stop(); } catch (_) { /* nothing */ }
     st.timers.forEach(f => { try { f(); } catch (_) { /* nothing */ } });
     try { if (document.fullscreenElement) document.exitFullscreen(); } catch (_) { /* nothing */ }
     if (st.host) st.host.textContent = '';
