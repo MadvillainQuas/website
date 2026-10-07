@@ -50,18 +50,57 @@ console.log('\ncinema');
 ok('playing (1) or buffering (3) darkens; paused (2) or ended (0) brings it back after a moment',
    /if \(st === 1 \|\| st === 3\) cineEnter\(group\)/.test(media) && /else if \(st === 2 \|\| st === 0\) cineExitSoon\(\)/.test(media) && /setTimeout\(\(\) => cineExit\(\), 900\)/.test(media));
 ok('Esc and a press on the dark bring it back; a closed stage and another tab too',
-   /e\.key === 'Escape' && CINE\.group/.test(media) && /veil\.onclick = \(\) => cineExit\(\)/.test(media) && /M\.cineExit\(true\); stage\.hidden = true/.test(tabs)
+   /e\.key === 'Escape' && CINE\.group/.test(media) && /veil\.onclick = \(\) => cineExit\(\)/.test(media) && /cineExit\(true\); stage\.hidden = true/.test(media)
    && /forEach\(b => b\.addEventListener\('click', \(\) => \{ if \(window\.EpinoiaMedia\) window\.EpinoiaMedia\.cineExit\(true\)/.test(tabs));
 ok('what the dark covers is not painted (visibility, so nothing moves), and given back on the way out',
    /\.md-unlit\{visibility:hidden !important\}/.test(css) && /s\.classList\.add\('md-unlit'\)/.test(media) && /CINE\.off\.forEach\(s => s\.classList\.remove\('md-unlit'\)\)/.test(media));
 ok('the veil above everything, the group above the veil, no fade under reduced motion',
    /\.md-veil\{position:fixed;inset:0;z-index:2147483000/.test(css) && /\.md-lit\{position:relative;z-index:2147483001/.test(css) && /prefers-reduced-motion:reduce\)\{ \.md-veil,\.md-lit\{transition:none\}/.test(css));
 ok('the lit group: the stage on the Video tab, the whole room (stream, box score, chat) on the Live tab',
-   /group: stage \}/.test(tabs) && /group: room \}/.test(tabs) && /tr\('Live stream'\), room\)/.test(tabs));
+   /group: stage \}/.test(media) && /group: room \}/.test(tabs) && /tr\('Live stream'\), room\)/.test(tabs));
 
-console.log('\nthe box score, once');
-ok('the game is the site\'s own embed in a frame, sized by its message', /BASE \+ 'embed\/game\/\?g='/.test(media) && /epinoiaEmbed !== 'height'/.test(media)
-   && !/deriveGame/.test(media + tabs) && !/gamebox/.test(tabs));
+console.log('\nthe board, one for every page of a league');
+const front = rd('epinoia', 'index.html'), fjs = rd('epinoia', 'home.js');
+ok('the stats page\'s Video tab and the league\'s front page draw the same board (media.js videoBoard)',
+   /M\.videoBoard\(pane\('video'\), \{ leagueId: league\.id \}\)/.test(tabs) && /M\.videoBoard\(host, \{ leagueId: LEAGUE\.id, limit: 7/.test(fjs)
+   && /function videoBoard\(host, opts\)/.test(media));
+ok('the front page: a Video section under the news, shut until there is video, its frames allowed',
+   /<section class="sec hide" id="videoSec"/.test(front) && front.indexOf('id="videoSec"') > front.indexOf('id="newsSec"')
+   && /frame-src 'self' https:\/\/www\.instagram\.com https:\/\/w\.soundcloud\.com https:\/\/www\.youtube-nocookie\.com https:\/\/www\.youtube\.com/.test(front));
+ok('...watched only once the page is laid out, read only when the reader comes near, media.js loaded then',
+   /renumber\(\);\s*\/\*[^]*?\*\/\s*if \(!wall\.walled\) video\(\)/.test(fjs) && /rootMargin: '400px 0px'/.test(fjs) && /near\(\)\.then\(media\)/.test(fjs));
+const home = rd('epinoia', 'home', 'index.html'), vh = rd('epinoia', 'home', 'videos-home.js');
+ok('HOME: the video feed under the feed - All, Highlights, Videos - read near it, ranked as the feed',
+   /id="videos"/.test(home) && /data-vk="highlights"/.test(home) && /rpc\('video_feed'/.test(vh) && /rankRows\(pool/.test(vh)
+   && /feed\.then\(\(\) => run\('videos'\)\)/.test(rd('epinoia', 'home', 'front.js')) && /frame-src 'self' https:\/\/www\.youtube-nocookie\.com/.test(home));
+
+console.log('\nthe tiles, printed like the site\'s cards');
+const tileCss = css.slice(0, css.indexOf('/* -------------------------------------------------------------------------------------- the chat'));
+ok('in their clubs\' inks (teamcolour.js card, the surface variants for edges), the clash printed in a second colour',
+   /inks\(b, it\)/.test(media) && /TC\.card\(node, A, B\)/.test(media) && /'--ink-s', TC\.surface\(A\)/.test(media) && /TC\.contrast\(A, B\) < 1\.6/.test(media));
+ok('the plate\'s print: halftone, registration crosses, the kind tag, the stencil band, the edition mark',
+   ['md-tone', 'md-reg', 'md-kind', 'md-band', 'md-ed'].every(c => new RegExp("'" + c).test(media) && new RegExp('\\.' + c + '[{ .]').test(tileCss))
+   && /'NO ' \+ String\(pos\.no\)/.test(media));
+ok('a game\'s video has the scorebug: a row per club, its score in a cell at the end of the row',
+   /function board\(g\)/.test(media) && /\.md-side\.a\{grid-row:2;flex-direction:row-reverse/.test(tileCss) && /\.md-pts > span:last-child\{grid-row:2\}/.test(tileCss));
+ok('no LATEST stamp; the words are Archivo (no pixel faces on the board)',
+   !/md-stamp|'Latest'/.test(media + css) && !/--f-micro|--f-score/.test(tileCss));
+ok('the large tile is not the page hero (its own class), a feature where the board is wide',
+   /' md-lead'/.test(media) && !/'hero'|' hero'/.test(media) && /@container \(min-width:720px\)\{\s*\.md-tile\.md-lead\{display:grid/.test(css));
+
+console.log('\nthe box score: the modern view, as the game embed');
+const eg = rd('epinoia', 'embed', 'game', 'game.js'), egh = rd('epinoia', 'embed', 'game', 'index.html'), mod = rd('epinoia', 'game', 'modern.js');
+ok('the frame shows the game embed, sized by its message, never a second box score',
+   /BASE \+ 'embed\/game\/\?g='/.test(media) && /epinoiaEmbed !== 'height'/.test(media) && !/deriveGame/.test(media + tabs));
+ok('embed/game is the modern view: the game page\'s courts (modern.js courts) with its cards (mounted)',
+   /MB\.courts\(d\)/.test(eg) && /MB\.mounted\(host\)/.test(eg) && /function courts\(d\)/.test(mod) && /game\/modern\.js/.test(egh) && /game\/modern\.css/.test(egh));
+ok('one club at a time, a switch under the score, remembered for the game', /id="sides"/.test(egh) && /SIDE_KEY = 'epinoia_ebox_side_' \+ gameId/.test(eg)
+   && /\.eb-host\[data-side="0"\] \.mv-card\.t1/.test(rd('epinoia', 'embed', 'game', 'game.css')));
+ok('a player\'s card opens beside the face in a frame (no sheet below the reader\'s view), never on the face',
+   /window\.EPINOIA_MV_NO_SHEET = true/.test(eg) && /!window\.EPINOIA_MV_NO_SHEET && window\.matchMedia/.test(mod) && /r\.bottom \+ gap/.test(mod));
+ok('the clubs\' own colours win over the snapshot\'s kit defaults', /color: clubColour\(i\) \|\| t\.color/.test(eg));
+ok('its height is the body\'s (a floating card is not part of it); Esc inside it is the page\'s too',
+   /document\.body\.offsetHeight/.test(eg) && /epinoiaEmbed: 'escape'/.test(eg) && /ev\.data\.epinoiaEmbed === 'escape'/.test(media));
 
 console.log('\nthe chat');
 ok('posts through the function, reads with game_chat_read, follows chat:<game> on the small socket',

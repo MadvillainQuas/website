@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="EPINOIΛ">
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com">
 <!-- seo:head -->
 <title>Basketball Scores Today, Results &amp; Top Players | Epinoia</title>
 <meta name="description" content="Today&#x27;s live basketball scores and results from every league on Epinoia, plus the best-performing players, the leagues you follow and the standings.">
@@ -145,6 +145,19 @@
     <div class="hm-mount fv-mount" id="homeFeed" aria-busy="true"></div>
   </section>
 
+  <!-- THE VIDEO FEED (0237, videos-home.js): every league's new videos, ranked as the feed is; ALL, HIGHLIGHTS (a game's,
+       matched by the news reader) or VIDEOS. Read only as the reader comes near; shut while there are none. -->
+  <section class="sec fv" id="videos" aria-labelledby="hmVideosH" hidden>
+    <div class="sec-h"><span class="idx">04</span><h2 id="hmVideosH">Video</h2>
+      <p class="note">Highlights and videos from every league, in your order</p>
+      <div class="hm-seg" id="videosSeg" role="group" aria-label="All, highlights or videos">
+        <button type="button" data-vk="" aria-pressed="true">All</button>
+        <button type="button" data-vk="highlights" aria-pressed="false">Highlights</button>
+        <button type="button" data-vk="video" aria-pressed="false">Videos</button>
+      </div></div>
+    <div class="hm-mount fv-mount" id="homeVideos"></div>
+  </section>
+
   <!-- EPINOIA GO ------------------------------------------------------------
        The arenas in the reader's country they have not stamped yet, sliding past: the GO page's own strip
        (go.js), in its cards (go/arenas.css), and an arena with a game open to stamp just now says so, the
@@ -267,6 +280,7 @@
 <script src="../feedrank.js?v=685" defer></script>
 <script src="../feedview.js?v=685" defer></script>
 <script src="feed-home.js?v=685" defer></script>
+<script src="videos-home.js?v=685" defer></script>
 <script src="../go/geo.js?v=685" defer></script>
 <script src="../go/logo.js?v=685" defer></script>
 <script src="../go/go.js?v=685" defer></script>

@@ -37,13 +37,14 @@
 const NOW = new Date();
 const BASE = '../';
 const MOUNTS = {
-  fixtures: 'homeDaily', followed: 'homeFollowed', feed: 'homeFeed', go: 'homeGoStrip', stars: 'homeStars', records: 'homeRecords',
+  fixtures: 'homeDaily', followed: 'homeFollowed', feed: 'homeFeed', videos: 'homeVideos', go: 'homeGoStrip', stars: 'homeStars', records: 'homeRecords',
   leagues: 'homeLeagues', privateLeagues: 'homePrivateLeagues'
 };
 const QUIET = {
   fixtures: 'Fixtures could not be loaded just now.',
   followed: 'What you follow could not be loaded just now.',
   feed: 'The feed could not be loaded just now.',
+  videos: 'The videos could not be loaded just now.',
   go: 'EPINOIA GO could not be loaded just now.',
   stars: 'The best performers could not be loaded just now.',
   records: 'The records could not be loaded just now.',
@@ -338,6 +339,8 @@ function boot() {
   /* THE FEED (feed-home.js): one small read, after the fixtures a reader came for */
   const feed = fixtures.then(() => run('feed'));
   firstRuns.feed = feed;
+  /* THE VIDEO FEED (videos-home.js): wired after the feed, read only when the reader comes near it */
+  feed.then(() => run('videos'));
   /* EPINOIA GO (go-home.js): today's games and the arenas to tick off, under the feed and after it */
   const go = feed.then(() => run('go'));
   const priv = run('privateLeagues');

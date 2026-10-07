@@ -144,7 +144,7 @@ function hexA(hex, a) {
 }
 
 const SECTION_OF = {
-  news: '#newsSec', clubs: '#clubsSec', toty: '#totySec', fanvote: '#fvSec', stars: '#starsSec', records: '#recordsSec',
+  news: '#newsSec', video: '#videoSec', clubs: '#clubsSec', toty: '#totySec', fanvote: '#fvSec', stars: '#starsSec', records: '#recordsSec',
   games: '#gamesSec', season: '#seasonSec', merch: '#merchSec',
   socials: '#socialSec', takepart: '#takepartSec'
 };
@@ -1669,6 +1669,38 @@ async function news() {
   } catch (_) { sec.classList.add('hide'); /* news is not load-bearing for the rest of the page */ }
 }
 
+/* THE LEAGUE'S VIDEO (0237), under its news: media.js's board (the same one the league's stats page has as its Video
+   tab). Nothing is read, and media.js is not loaded, until the reader is within 400 px of where it starts (a one-pixel
+   marker, laid out while the section is shut); a league with no video keeps it shut. */
+function video() {
+  const sec = $('#videoSec'), host = $('#leagueVideos');
+  if (!LEAGUE || !sec || !host || !sectionOn('video')) return Promise.resolve();
+  const wire = document.createElement('div');
+  wire.setAttribute('aria-hidden', 'true');
+  wire.style.cssText = 'height:1px;margin-top:-1px;pointer-events:none';
+  sec.parentNode.insertBefore(wire, sec);
+  const near = () => new Promise(res => {
+    if (typeof IntersectionObserver !== 'function') return res();
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); res(); } }, { rootMargin: '400px 0px' });
+    io.observe(wire);
+  });
+  const media = () => window.EpinoiaMedia ? Promise.resolve(window.EpinoiaMedia) : new Promise((res, rej) => {
+    const v = (/[?&]v=(\d+)/.exec(((document.querySelector('script[src*="home.js"]') || {}).src) || '') || [])[1];
+    const s = document.createElement('script');
+    s.src = 'media.js' + (v ? '?v=' + v : '');
+    s.onload = () => res(window.EpinoiaMedia); s.onerror = rej;
+    document.head.appendChild(s);
+  });
+  near().then(media).then(M => {
+    M.css('kit/media.css');
+    let any = false;
+    sec.classList.remove('hide');            // laid out for the board; shut again below if the league has nothing
+    return M.videoBoard(host, { leagueId: LEAGUE.id, limit: 7, empty: () => { if (!any) sec.classList.add('hide'); } })
+      .then(n => { any = n > 0; if (!n && !host.querySelector('.md-tile')) sec.classList.add('hide'); renumber(); });
+  }).catch(() => sec.classList.add('hide'));
+  return Promise.resolve();
+}
+
 /* THE LEAGUE'S CREATORS (0194), under its own news: their three most recent pieces on the post card, each to its
    page, and a row of the outlets, each to theirs. Absent while the league has creators off or nothing is published:
    the public reads answer nothing then, and the section stays hidden. (Its switch is the creators switch itself, in
@@ -1935,6 +1967,9 @@ function renumber() {
     await merch(roster, star).catch(() => null);
     applySections();
     renumber();
+    /* the video is watched for only now that every section above it has its height: earlier, the page is short and the
+       marker would be on screen at once */
+    if (!wall.walled) video().catch(() => null);
     /* The games list keeps itself current from here on: the announcement for
        the moment a game starts or finishes, the timer for everything else. */
     watchGames();

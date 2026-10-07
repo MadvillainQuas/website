@@ -545,7 +545,9 @@
      screen and divided back by the card's scale, read off the card itself rather than
      assumed, which is right at any zoom and in a browser that has none. */
   function place(el, anchor) {
-    const phone = window.matchMedia('(max-width: 720px)').matches;
+    /* IN A FRAME (embed/game sets EPINOIA_MV_NO_SHEET) there is no bottom of the screen to dock to: the frame is as tall
+       as the courts, so a sheet would open below the reader's view. The card sits beside the face there at every width. */
+    const phone = !window.EPINOIA_MV_NO_SHEET && window.matchMedia('(max-width: 720px)').matches;
     el.classList.toggle('sheet', phone);
     if (phone) { el.style.left = el.style.top = el.style.maxHeight = ''; return; }
     const r = anchor.getBoundingClientRect();
@@ -554,7 +556,11 @@
     const w = box.width || 320 * k, h = box.height || 300 * k, gap = 12 * k, edge = 8 * k;
     let left = r.right + gap, top = r.top - edge;
     if (left + w > window.innerWidth - edge) left = r.left - w - gap;
-    if (left < edge) left = Math.max(edge, Math.min(window.innerWidth - w - edge, r.left));
+    if (left < edge) {
+      left = Math.max(edge, Math.min(window.innerWidth - w - edge, r.left));
+      /* no room either side (a narrow frame): under the face, or over it, never on it - the face stays there to tap again */
+      if (window.EPINOIA_MV_NO_SHEET) top = (r.bottom + gap + h <= window.innerHeight - edge || r.top - gap - h < edge) ? r.bottom + gap : r.top - gap - h;
+    }
     if (top + h > window.innerHeight - edge) top = Math.max(edge, window.innerHeight - h - edge);
     el.style.left = (left / k) + 'px'; el.style.top = (top / k) + 'px';
     refit(el);
@@ -791,5 +797,14 @@
     } catch (_) { return false; }
   }
 
-  window.EpinoiaModernBox = { render, mounted, loadListed, loadSeason, season: () => seasonRows, hidePop, listedToNumber, nameLabels, SLOTS, placed, _pos: () => posByPid };
+  /* THE TWO COURTS ALONE (the five on each floor and the benches), without the factors, the shots or the margin under
+     them: what the game's embed (embed/game, beside a highlight or a live stream) draws. The same faces, the same
+     popover, the same rules as the game page's modern view. */
+  function courts(d) {
+    compute(d);
+    labelsFor(window.S);
+    return '<div class="mv">' + teamHTML(d, 0) + teamHTML(d, 1) + '</div>';
+  }
+
+  window.EpinoiaModernBox = { render, courts, mounted, loadListed, loadSeason, season: () => seasonRows, hidePop, listedToNumber, nameLabels, SLOTS, placed, _pos: () => posByPid };
 }());

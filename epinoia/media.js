@@ -114,6 +114,10 @@
   /* a pause is not an exit until it has lasted a moment (a seek reports a pause too) */
   const cineExitSoon = () => { clearTimeout(CINE.exitT); CINE.exitT = setTimeout(() => cineExit(), 900); };
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && CINE.group) cineExit(); });
+  /* ...and in the game's embed, where a tap leaves the focus (embed/game passes it up) */
+  window.addEventListener('message', ev => {
+    if (ev.origin === location.origin && ev.data && ev.data.epinoiaEmbed === 'escape' && CINE.group) cineExit();
+  });
 
   /* YouTube's frame reports its state to a page that says it is listening: 1 playing, 3 buffering, 2 paused, 0 ended */
   const YT_ORIGINS = ['https://www.youtube-nocookie.com', 'https://www.youtube.com'];
@@ -193,14 +197,74 @@
     try { return d.toLocaleDateString(document.documentElement.lang || 'en-GB', { day: 'numeric', month: 'short' }); } catch (_) { return iso.slice(0, 10); }
   }
   const KIND = { highlights: ['HIGHLIGHTS', ''], full: ['FULL GAME', 'f'], video: ['VIDEO', 'v'] };
+  /* a day as the band prints it: 04 OCT 2026 (day, month, year in the page's language; Japanese keeps its own order) */
+  function day(iso) {
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d)) return '';
+    const lang = document.documentElement.lang || 'en-GB';
+    try {
+      if (/^(ja|zh|ko)/i.test(lang)) return d.toLocaleDateString(lang, { year: 'numeric', month: 'short', day: 'numeric' });
+      const p = {};
+      new Intl.DateTimeFormat(lang, { day: '2-digit', month: 'short', year: 'numeric' }).formatToParts(d).forEach(x => { p[x.type] = x.value; });
+      return (p.day + ' ' + p.month + ' ' + p.year).replace(/\./g, '').toUpperCase();
+    } catch (_) { return String(iso).slice(0, 10); }
+  }
 
-  /* A TILE: the thumbnail with its kind and, for a game's video, the two crests and the score over it; the title and
-     where it is from under it. onOpen(it) on a press; a tile is a button. */
-  function tile(it, onOpen, big) {
+  /* IN ITS CLUBS' INKS, as the club plates are printed (kit/card.css reads the same variables; teamcolour.js card() sets
+     them, the text-safe ink for each on the page's light or dark): the home club's colour is the tile's ink - its
+     edge, its shadow, the halftone - and the away club's the band and its half of the scoreboard. Two clubs in one
+     colour (a red against a red) print the away side in its second colour. A video with no game takes its channel's
+     colour; with neither, the page's accent stands. */
+  const HEX = /^#?[0-9a-f]{6}$/i;
+  function inks(node, it) {
+    const TC = window.EpinoiaTeamColour, g = it && it.game, h = g && g.home, a = g && g.away;
+    const A = h && HEX.test(h.colour || '') ? h.colour : (HEX.test((it && it.source_colour) || '') ? it.source_colour : null);
+    if (!A) return;
+    let B = a && HEX.test(a.colour || '') ? a.colour : null;
+    if (B && TC && TC.contrast && TC.contrast(A, B) < 1.6) {
+      B = [a.colour_2, h && h.colour_2].find(c => HEX.test(c || '') && TC.contrast(A, c) >= 1.6) || B;
+    }
+    if (TC && TC.card) {
+      TC.card(node, A, B);
+      /* the same inks as surfaces (an edge, a shadow, a ring): a white club on the light page, a black one on the dark,
+         nudged until it shows */
+      if (TC.surface) { node.style.setProperty('--ink-s', TC.surface(A)); node.style.setProperty('--ink-s2', TC.surface(B || TC.derived(A))); }
+    } else { node.style.setProperty('--ink-c', A); if (B) node.style.setProperty('--ink-c2', B); }
+  }
+
+  /* THE SCOREBUG under a game's video, as a broadcast draws it: a row for each club, its crest in a ring of its colour
+     and its whole name in its ink, its score in a black cell at the end of the row (the winner's lit) */
+  function board(g) {
+    const hs = g.home_score, as = g.away_score, played = hs != null && as != null && g.status !== 'scheduled';
+    const side = (t, c) => {
+      const s = el('span', 'md-side ' + c);
+      const n = el('b', 'md-nm', t.name || abbr(t));
+      n.setAttribute('translate', 'no');
+      if (c === 'h') s.append(crest(t), n); else s.append(n, crest(t));
+      return s;
+    };
+    const pts = el('span', 'md-pts');
+    if (played) pts.append(el('span', hs >= as ? 'w' : 'l', String(hs)), el('i', null, '–'), el('span', as >= hs ? 'w' : 'l', String(as)));
+    else pts.append(el('span', 'w', tr('VS')));
+    const b = el('div', 'md-board');
+    b.append(side(g.home, 'h'), pts, side(g.away, 'a'));
+    return b;
+  }
+
+  /* A TILE, PRINTED LIKE THE SITE'S OTHER CARDS (the club plate's halftone and registration crosses, the news cards'
+     corner tag, the games list's scoreboard): the video's own picture with its home club's ink rising into its foot as
+     a halftone, the printer's crosses at its corners, its kind in a black tag, a square play mark; a stencil band
+     across the seam (the competition and the day); for a game's video the scoreboard; the title; where it is from, how
+     long ago, and its edition mark (NO 03/07). The large tile adds scan lines. The words are the kit's Archivo; all of
+     it is CSS over the one picture: nothing more is fetched for it. onOpen(it) on a press; a tile is a button.
+     pos: {no, of}. */
+  function tile(it, onOpen, big, pos) {
     const id = idOf(it);
-    const b = el('button', 'md-tile');
+    const k = KIND[it.video_kind] || KIND.video;
+    const b = el('button', 'md-tile' + (big ? ' md-lead' : ''));
     b.type = 'button';
     b.dataset.id = it.id;
+    inks(b, it);
     const th = el('div', 'md-thumb');
     if (id) {
       const img = el('img'); img.alt = ''; img.loading = big ? 'eager' : 'lazy'; img.decoding = 'async';
@@ -214,26 +278,24 @@
       th.appendChild(img);
     }
     else if (it.image_url) { const img = el('img'); img.src = it.image_url; img.alt = ''; img.loading = 'lazy'; th.appendChild(img); }
-    th.appendChild(el('span', 'md-play'));
-    const k = KIND[it.video_kind] || KIND.video;
-    th.appendChild(el('span', 'md-kind' + (k[1] ? ' ' + k[1] : ''), tr(k[0])));
-    const g = it.game;
-    if (g && g.home && g.away) {
-      const sc = el('div', 'md-score');
-      const hs = g.home_score, as = g.away_score, played = hs != null && as != null && g.status !== 'scheduled';
-      const pts = el('span', 'md-pts');
-      if (played) {
-        pts.append(el('span', hs >= as ? 'w' : 'l', String(hs)), document.createTextNode(' – '), el('span', as >= hs ? 'w' : 'l', String(as)));
-      }
-      sc.append(crest(g.home), pts, crest(g.away));
-      th.appendChild(sc);
-    }
+    th.appendChild(el('span', 'md-tone'));
+    ['tl', 'tr', 'bl', 'br'].forEach(c => th.appendChild(el('i', 'md-reg ' + c)));
+    if (big) th.appendChild(el('span', 'md-scan'));
+    th.append(el('span', 'md-kind' + (k[1] ? ' ' + k[1] : ''), tr(k[0])), el('span', 'md-play'));
     b.appendChild(th);
+    const g = it.game && it.game.home && it.game.away ? it.game : null;
+    const band = el('div', 'md-band');
+    band.setAttribute('aria-hidden', 'true');
+    band.appendChild(el('span', null, [g ? g.competition : it.source_name, day(g ? g.tipoff_at : it.published_at)].filter(Boolean).join('  ·  ')));
+    b.appendChild(band);
+    if (g) b.appendChild(board(g));
+    else b.classList.add('no-game');
     const cap = el('div', 'md-cap');
     const t = el('div', 'md-title', it.title || '');
     const m = el('div', 'md-meta');
     if (it.source_logo) { const i = el('img', 'md-src'); i.src = String(it.source_logo).replace(/#fill$/, ''); i.alt = ''; i.loading = 'lazy'; m.appendChild(i); }
-    m.appendChild(el('span', null, (it.source_name || '') + (it.published_at ? ' · ' + when(it.published_at) : '')));
+    m.appendChild(el('span', 'md-from', (it.source_name || '') + (it.published_at ? ' · ' + when(it.published_at) : '')));
+    if (pos && pos.no) m.appendChild(el('span', 'md-ed', 'NO ' + String(pos.no).padStart(2, '0') + '/' + String(pos.of || pos.no).padStart(2, '0')));
     cap.append(t, m);
     b.appendChild(cap);
     b.setAttribute('aria-label', (it.title || 'video') + (it.source_name ? ', ' + it.source_name : ''));
@@ -241,9 +303,10 @@
     return b;
   }
 
-  /* THE GAME, AS ITS EMBED: the site's own single-game card (embed/game: score, period and clock, the quarters, each
-     side's top scorer, the way to the full box score), live by itself, in a frame - the box score is never drawn twice.
-     The frame says how tall it is (epinoiaEmbed 'height'); teamcolour.js gives it the page's light/dark and colours. */
+  /* THE GAME, AS ITS EMBED: the modern box score (embed/game: the game page's modern view - the five on each floor on
+     a half court, the bench beneath, a face for each player's full line - with the score over it), live by itself, in a
+     frame. The frame says how tall it is (epinoiaEmbed 'height'); teamcolour.js gives it the page's light/dark and
+     colours. */
   function embedGame(host, gameId) {
     host.textContent = '';
     const f = document.createElement('iframe');
@@ -259,6 +322,133 @@
     window.addEventListener('message', onMsg);
     host.appendChild(f);
     return { frame: f, stop() { window.removeEventListener('message', onMsg); f.remove(); } };
+  }
+
+  /* THE STAGE, wherever a tile opens one (the league's board, HOME's video feed): in the video's inks (its edge and its
+     viewfinder corners), its head a NOW PLAYING mark with the video's kind, the title, where it is from and when, and
+     Close. Returns the head; the caller puts the player and the game's embed under it. */
+  function stageOpen(stage, it, onClose) {
+    stage.hidden = false;
+    stage.textContent = '';
+    stage.style.cssText = '';
+    inks(stage, it);
+    const k = KIND[it.video_kind] || KIND.video;
+    const head = el('div', 'md-stage-h');
+    const words = el('div', 'md-stage-w');
+    const now = el('div', 'md-now');
+    now.append(el('span', 'md-dot'), el('span', null, tr('Now playing')), el('span', 'md-kind' + (k[1] ? ' ' + k[1] : ''), tr(k[0])));
+    words.append(now, el('div', 'md-title', it.title || ''), el('div', 'md-yt', (it.source_name || '') + (it.published_at ? ' · ' + when(it.published_at) : '')));
+    const close = el('button', 'ep-btn mini md-close', tr('Close'));
+    close.type = 'button';
+    close.addEventListener('click', onClose);
+    head.append(words, close);
+    stage.appendChild(head);
+    return head;
+  }
+
+  /* A LEAGUE'S VIDEO BOARD, wherever a league shows its videos (the stats page's Video tab, the league's front page):
+     HIGHLIGHTS or ALL VIDEOS, a club picker, the tiles (the newest large), MORE, and the stage above them - the video
+     (nothing of YouTube until play) over the game's own embed, the page dark around them while it plays.
+     opts: {leagueId, limit (a page, 24), param (the address key that opens one, 'vid'), empty (called when there is
+     nothing at all to show)}. Resolves with how many videos the first page had. */
+  function videoBoard(host, opts) {
+    const o = Object.assign({ limit: 24, param: 'vid' }, opts || {});
+    host.textContent = '';
+    const wrap = el('div', 'md-wrap');
+    const stage = el('section', 'md-stage');
+    stage.hidden = true;
+    stage.setAttribute('aria-label', tr('Now playing'));
+    const bar = el('div', 'md-bar');
+    const grid = el('div', 'md-grid has-hero');
+    const more = el('button', 'ep-btn md-more', tr('More videos'));
+    more.type = 'button'; more.hidden = true;
+    wrap.append(stage, bar, grid, more);
+    host.appendChild(wrap);
+    const getParam = () => o.param ? new URLSearchParams(location.search).get(o.param) : null;
+    const setParam = v => {
+      if (!o.param) return;
+      const u = new URL(location.href);
+      if (v) u.searchParams.set(o.param, v); else u.searchParams.delete(o.param);
+      history.replaceState(null, '', u.toString());
+    };
+    let kind = 'highlights', club = '', items = [], last = null, playing = null, boxer = null, first = true;
+    const chip = (label, k) => {
+      const b = el('button', 'md-chip', tr(label));
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(kind === k));
+      b.addEventListener('click', () => {
+        if (kind === k) return;
+        kind = k; items = []; last = null;
+        bar.querySelectorAll('.md-chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        page();
+      });
+      return b;
+    };
+    const pick = el('select', 'md-select');
+    pick.setAttribute('aria-label', tr('Club'));
+    pick.addEventListener('change', () => { club = pick.value; paint(); });
+    const seg = el('div', 'md-seg');
+    seg.setAttribute('role', 'group');
+    seg.append(chip('Highlights', 'highlights'), chip('All videos', null));
+    /* how many are on the board, beside a little level meter (the kit's pixel bars) */
+    const count = el('span', 'md-note');
+    count.setAttribute('aria-live', 'polite');
+    bar.append(seg, pick, count);
+
+    function clubsOf() {
+      const seen = new Map();
+      items.forEach(it => { const g = it.game; if (g) [g.home, g.away].forEach(t => t && t.slug && seen.set(t.slug, t.name)); });
+      const keep = club;
+      pick.textContent = '';
+      const all = el('option', null, tr('Every club')); all.value = ''; pick.appendChild(all);
+      [...seen].sort((a, b) => a[1].localeCompare(b[1])).forEach(([slug, name]) => { const op = el('option', null, name); op.value = slug; pick.appendChild(op); });
+      pick.value = seen.has(keep) ? keep : '';
+      pick.hidden = seen.size < 2;
+    }
+    function paint() {
+      grid.textContent = '';
+      const shown = items.filter(it => !club || (it.game && [it.game.home, it.game.away].some(t => t && t.slug === club)));
+      count.textContent = shown.length ? String(shown.length).padStart(2, '0') + ' ' + tr(kind === 'highlights' ? 'highlights' : 'videos') : '';
+      if (!shown.length) { grid.appendChild(el('div', 'md-empty', tr(kind === 'highlights' ? 'No highlights yet.' : 'No videos yet.'))); return; }
+      shown.forEach((it, i) => {
+        const t = tile(it, play, i === 0, { no: i + 1, of: shown.length });
+        if (playing && playing.id === it.id) t.setAttribute('aria-current', 'true');
+        grid.appendChild(t);
+      });
+    }
+    async function page() {
+      if (!items.length) { grid.textContent = ''; for (let i = 0; i < 6; i++) grid.appendChild(el('div', 'md-skel')); }
+      const rows = (await rpc('league_videos', { p_league: o.leagueId, p_kind: kind, p_before: last, p_limit: o.limit }).catch(() => null)) || [];
+      items = items.concat(rows);
+      last = rows.length ? rows[rows.length - 1].published_at : last;
+      more.hidden = rows.length < o.limit;
+      clubsOf(); paint();
+      const want = getParam();
+      if (want && !playing) { const it = items.find(x => x.id === want); if (it) play(it, null, true); }
+      if (first) {
+        first = false;
+        /* no highlights yet but other videos: open on all of them */
+        if (!rows.length && kind === 'highlights') { bar.querySelectorAll('.md-chip')[1].click(); return 0; }
+        if (!rows.length && o.empty) o.empty();
+      }
+      return rows.length;
+    }
+    more.addEventListener('click', page);
+    function play(it, _btn, quiet) {
+      playing = it;
+      stageOpen(stage, it, () => { cineExit(true); stage.hidden = true; stage.textContent = ''; if (boxer) boxer.stop(); boxer = null; playing = null; setParam(null); paint(); });
+      const vid = el('div');
+      stage.appendChild(vid);
+      const id = idOf(it);
+      if (id) player(vid, { id, title: it.title, autoplay: !quiet, group: stage });
+      if (boxer) boxer.stop();
+      boxer = null;
+      if (it.game && it.game.id) { const box = el('div', 'md-boxwrap'); stage.appendChild(box); boxer = embedGame(box, it.game.id); }
+      setParam(it.id);
+      paint();
+      if (!quiet) stage.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+    }
+    return page();
   }
 
   /* the public REST and RPC, with the signed-in reader's token where there is one (for chat_my_status, video_feed_mine) */
@@ -285,5 +475,5 @@
   /* run fn when the browser is idle (or after a beat where it cannot say) - the probes a page does not wait for */
   const idle = fn => ('requestIdleCallback' in window) ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 600);
 
-  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, tile, crest, abbr, when, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
+  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, videoBoard, stageOpen, tile, inks, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
 })();

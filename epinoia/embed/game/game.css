@@ -1,0 +1,34 @@
+/* embed/game: the frame's own few rules around the game page's modern view (game/modern.css does the courts) */
+html,body{margin:0;background:transparent}
+body.ebox{padding:10px 10px 6px;min-height:0}
+.eb-head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin:0 0 10px}
+.eb-side{display:flex;align-items:center;gap:10px;min-width:0}
+.eb-side.away{flex-direction:row-reverse;text-align:right}
+.eb-side b{font-family:var(--f-head,var(--f-ui));font-weight:800;font-size:15px;line-height:1.15;overflow:hidden;text-overflow:ellipsis;
+  color:var(--text-primary,inherit)}
+.eb-side b.lose{opacity:.6}
+.eb-crest{width:38px;height:38px;flex:none;border-radius:6px;background:#fff;display:grid;place-items:center;overflow:hidden;
+  font:700 10px var(--f-micro,monospace);color:#04100b}
+.eb-crest img{width:86%;height:86%;object-fit:contain}
+.eb-mid{text-align:center}
+.eb-sc{font-family:var(--f-score,var(--f-head));font-size:clamp(28px,7vw,44px);line-height:1;white-space:nowrap;color:var(--text-primary,inherit)}
+.eb-sc i{font-style:normal;opacity:.5;margin:0 .15em}
+.eb-clk{font-family:var(--f-micro,monospace);font-size:9px;letter-spacing:.08em;color:var(--text-muted,inherit);margin-top:4px}
+.eb-clk.live{color:var(--flare,#ff5f6b)}
+/* one club at a time (game.js tabs): the other card is not drawn, and the one shown takes the width */
+.eb-host .mv{gap:10px;grid-template-columns:1fr}
+.eb-host[data-side="0"] .mv-card.t1,.eb-host[data-side="1"] .mv-card.t0{display:none}
+.eb-sides{display:flex;justify-content:center;gap:0;margin:0 auto 10px;width:max-content;max-width:100%;
+  border:1px solid var(--border-subtle,rgba(127,127,127,.3));border-radius:999px;overflow:hidden}
+.eb-sides button{display:flex;align-items:center;gap:7px;border:0;background:none;cursor:pointer;padding:7px 16px;
+  font-family:var(--f-micro,monospace);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary,inherit)}
+.eb-sides button + button{border-left:1px solid var(--border-subtle,rgba(127,127,127,.3))}
+.eb-sides button i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.eb-sides button[aria-selected="true"]{background:color-mix(in srgb,var(--c) 22%,transparent);color:var(--text-primary,inherit);font-weight:700}
+.eb-sides button:focus-visible{outline:2px solid var(--c);outline-offset:-2px}
+.eb-host .mv-court{margin-bottom:36px}
+.eb-empty{padding:28px 0;text-align:center;font-family:var(--f-micro,monospace);font-size:10px;letter-spacing:.06em;color:var(--text-muted,inherit)}
+.eb-foot{display:flex;justify-content:space-between;align-items:center;padding:8px 2px 2px;font-family:var(--f-micro,monospace);font-size:9px;
+  letter-spacing:.06em;border-top:1px solid var(--border-subtle,rgba(127,127,127,.25));margin-top:6px}
+.eb-foot a{color:var(--team0,inherit);text-decoration:none}
+.eb-foot .epinoia-mark{color:var(--text-muted,inherit)}

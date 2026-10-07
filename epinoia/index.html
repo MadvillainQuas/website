@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="EPINOIΛ">
 <!-- PUBLIC. No gate.js, no topnav.js. -->
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self' https://w.soundcloud.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://www.instagram.com https://w.soundcloud.com">
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self' https://w.soundcloud.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://www.instagram.com https://w.soundcloud.com https://www.youtube-nocookie.com https://www.youtube.com">
 <!-- seo:head -->
 <title>Epinoia – live basketball scores, fixtures &amp; advanced stats</title>
 <meta name="description" content="Follow live basketball scores, fixtures, standings and box scores for leagues around the world, with advanced player stats, scouting tools and shot charts.">
@@ -744,6 +744,16 @@
       </div>
       <a class="showall" id="newsAll" href="news/">all news →</a></div>
     <div class="hm-mount fv-mount" id="news"></div>
+  </section>
+
+  <!-- the league's video (0237, home.js video() with media.js's board) ---------
+       Its games' highlights as tiles (the newest large), ALL VIDEOS beside them, a club picker; a tile opens the video
+       over the game's own embed, the page dark around them while it plays. Read only when the reader comes near it,
+       and shut while the league has no video. -->
+  <section class="sec hide" id="videoSec" aria-labelledby="videoH">
+    <div class="sec-h"><h2 id="videoH">Video</h2>
+      <p class="note">Highlights of the league's games, and its videos</p></div>
+    <div class="hm-mount" id="leagueVideos"></div>
   </section>
 
   <!-- the league's creators (league splash only, 0194) ----------------------
