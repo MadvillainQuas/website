@@ -237,10 +237,13 @@ for (const [js, html] of rowsOn) {
   ok(html + ' loads watch.js, gamepeek.js and predict.js, with their sheets', ['watch.js', 'gamepeek.js', 'predict.js'].every(f => H.includes(f + '?v=')) && ['watch.css', 'predict.css', 'gamepeek.css'].every(f => H.includes(f + '?v=')));
 }
 ok('a row\'s bar is the row\'s own: no plate, its ink, the clubs\' colours', /o\.row \? ' row-pred'/.test(P) && /\(o\.big \|\| o\.row\) && hc/.test(P) && /\.ep-pred\.row-pred\{--pl:var\(--panel\);--pi:var\(--ink\)/.test(read('epinoia', 'kit', 'predict.css')));
-const CS = read('epinoia', 'cardstrip.js');
-ok('the strip on a league\'s and a club\'s page is HOME\'s cards: live, then next, then the latest results', /G\.card\(g, \{ base: o\.base, now, state/.test(CS) && /status=in\.\(live,finalising\)/.test(CS) && /status=eq\.scheduled/.test(CS) && /status=eq\.final&order=tipoff_at\.desc/.test(CS));
-ok('...the frame comes back if the cards cannot be drawn', /else \{ cs\.remove\(\); strip\.hidden = false; frameStrip\(\); \}/.test(read('epinoia', 'home.js')) && /else \{ cs\.remove\(\); frame\.hidden = false; frameIt\(\); \}/.test(read('epinoia', 't', 'team.js')));
-ok('YOUR HUB has YOUR PAGE: to fan/?u= once the username is known', /mk\('', '[^']+', 'your page', root \+ 'profile\/'\)/.test(nav) && /yourPage\.href = root \+ 'fan\/\?u='/.test(nav));
+/* THE EMBEDDED STRIP (2026-10-07): WATCH and PICK on each card, each a panel over its own card - it is a frame on other sites */
+const ST = read('epinoia', 'embed', 'strip', 'strip.js');
+ok('the strip\'s cards carry WATCH and PICK under the "v" or the score', /mid\.appendChild\(actsFor\(g\)\)/.test(ST) && /chip\('watch', '▶ watch'/.test(ST) && /chip\('pick', 'pick'/.test(ST));
+ok('...each opens a panel over its own card, never outside the frame, and never the game behind it', /cardEl\.appendChild\(pop\)/.test(ST) && /e\.preventDefault\(\); e\.stopPropagation\(\);/.test(ST) && /\.ep-card \.ec-pop\{ position:absolute; inset:0;/.test(read('epinoia', 'kit', 'embed.css')));
+ok('...the drift waits while one is open; the split read once a render', /!POP\.open && \(Date\.now\(\) - lastTouch > IDLE_MS\)/.test(ST) && /askTally\(gs\.map\(g => g\.id\)\)/.test(ST));
+ok('...without a session (another site keeps the frame\'s storage apart) the pick is offered on EPINOIA, in a new tab', /pick on EPINOIΛ ↗/.test(ST) && /a\.target = '_blank'; a\.rel = 'noopener';/.test(ST));
+ok('the embed page loads watch.js for its data; league and club pages keep the frame', /watch\.js\?v=/.test(read('epinoia', 'embed', 'strip', 'index.html')) && /strip\.src = 'embed\/strip\/\?n=24&l='/.test(read('epinoia', 'home.js')) && /frame\.src = src;/.test(read('epinoia', 't', 'team.js')));ok('YOUR HUB has YOUR PAGE: to fan/?u= once the username is known', /mk\('', '[^']+', 'your page', root \+ 'profile\/'\)/.test(nav) && /yourPage\.href = root \+ 'fan\/\?u='/.test(nav));
 const ed = read('epinoia', 'me', 'fanprofile.js');
 ok('the page editor offers the photo circle and saves it', /'Photo circle'/.test(ed) && /sb\.rpc\('set_fan_circle', \{ p: circle \}\)/.test(ed) && /On the leaderboards/.test(ed));
 const fcs = read('epinoia', 'facecircle.js');

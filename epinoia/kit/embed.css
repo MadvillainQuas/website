@@ -546,3 +546,62 @@
 .ep-league:hover, .ep-league:focus-visible{ color:var(--ep-accent-ink, var(--ep-accent)); outline:none }
 .cse[data-theme="light"] .ep-league{ color:rgba(13,31,23,.72) }
 .cse[data-theme="light"] .ep-league:hover, .cse[data-theme="light"] .ep-league:focus-visible{ color:var(--ep-accent-ink, #0c7a54) }
+
+/* WHERE TO WATCH AND WHO WINS ON THE CARD (strip.js actsFor, 2026-10-07): two small buttons under the "v" or the score,
+   each opening a panel OVER ITS OWN CARD - never outside it: the strip is a frame on another site's page and anything
+   drawn past its edge is cut off. The card keeps its height; the buttons use the room beside the clubs. */
+.ep-card .mid{ display:flex; flex-direction:column; align-items:center; gap:4px }
+.ep-card .acts{ display:flex; gap:3px; justify-content:center }
+.ep-card .ec-chip{ position:relative; appearance:none; margin:0; padding:3px 5px 2px; border-radius:999px; cursor:pointer;
+  border:1px solid rgba(147,242,191,.3); background:rgba(4,16,11,.55); color:var(--ep-ink);
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:5.5px; line-height:1; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation }
+/* a finger's worth of room around a small button */
+.ep-card .ec-chip::after{ content:''; position:absolute; inset:-7px -2px }
+.ep-card .ec-chip:hover, .ep-card .ec-chip:focus-visible{ background:#ffe14d; color:#0a0a0a; border-color:#ffe14d; outline:none }
+.ep-card .ec-chip.pick.mine{ border-color:#93f2bf; color:#93f2bf }
+.ep-card.popped{ transform:none }
+
+/* the panel: the pick strip's black plate, over the whole card */
+.ep-card .ec-pop{ position:absolute; inset:0; z-index:6; display:flex; flex-direction:column; gap:4px; padding:6px 8px 7px;
+  background:linear-gradient(180deg,#151917,#0b0d0c 55%); color:#f4fff9; border-radius:inherit; cursor:default;
+  opacity:0; transform:translateY(4px); transition:opacity .15s ease, transform .18s ease }
+.ep-card .ec-pop.on{ opacity:1; transform:none }
+.ep-card .ec-hd{ display:flex; align-items:center; justify-content:space-between; gap:6px;
+  font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px; letter-spacing:.12em; text-transform:uppercase; color:#ffe14d }
+.ep-card .ec-x{ appearance:none; border:0; background:rgba(255,255,255,.08); color:#f4fff9; width:16px; height:16px; border-radius:50%;
+  font-size:11px; line-height:1; cursor:pointer; display:grid; place-items:center; padding:0 }
+.ep-card .ec-x:hover{ background:#ffe14d; color:#0a0a0a }
+/* who wins: the two sides as buttons, the split under them in the clubs' colours */
+.ep-card .ec-sides{ display:grid; grid-template-columns:1fr 1fr; gap:4px }
+.ep-card .ec-side{ appearance:none; margin:0; display:flex; align-items:baseline; justify-content:space-between; gap:4px; padding:5px 6px 4px;
+  border:1px solid rgba(255,255,255,.1); border-radius:6px; background:rgba(255,255,255,.04); color:#f4fff9; cursor:pointer; font:inherit }
+.ep-card .ec-side.away{ flex-direction:row-reverse }
+.ep-card .ec-side .cd{ font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px; letter-spacing:.1em; color:rgba(244,255,249,.7) }
+.ep-card .ec-side .pc{ font-family:'Jersey25',ui-monospace,monospace; font-weight:400; font-size:16px; line-height:.9 }
+.ep-card .ec-side.lead .pc, .ep-card .ec-side.won .pc{ color:#ffe14d }
+.ep-card .ec-side.home.mine{ box-shadow:inset 0 0 0 1px color-mix(in oklch, var(--h,#93f2bf) 80%, #fff); background:color-mix(in oklch, var(--h,#93f2bf) 22%, transparent) }
+.ep-card .ec-side.away.mine{ box-shadow:inset 0 0 0 1px color-mix(in oklch, var(--a,#8ff5ff) 80%, #fff); background:color-mix(in oklch, var(--a,#8ff5ff) 22%, transparent) }
+.ep-card .ec-side.mine .cd::before{ content:'✓ '; color:#ffe14d }
+@media (hover:hover){ .ep-card .ec-side:not(:disabled):hover{ border-color:#ffe14d } }
+.ep-card .ec-side:disabled{ cursor:default }
+.ep-card .ec-bar{ height:3px; background:linear-gradient(90deg, color-mix(in oklch, var(--h,#93f2bf) 78%, #fff) var(--ph,50%), color-mix(in oklch, var(--a,#8ff5ff) 78%, #fff) var(--ph,50%));
+  -webkit-mask:repeating-linear-gradient(90deg,#000 0 4px,transparent 4px 6px); mask:repeating-linear-gradient(90deg,#000 0 4px,transparent 4px 6px) }
+.ep-card .ec-note{ margin-top:auto; font-family:'Silkscreen',ui-monospace,monospace; font-size:5.5px; letter-spacing:.08em; text-transform:uppercase; color:rgba(244,255,249,.6);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.ep-card .ec-note a{ color:#ffe14d; text-decoration:none }
+.ep-card .ec-note a:hover{ text-decoration:underline }
+/* where to watch: the league, how it is shown, and up to three links */
+.ep-card .ec-lg{ font-weight:800; font-size:10px; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.ep-card .ec-av{ font-size:7.5px; line-height:1.3; color:rgba(244,255,249,.78); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.ep-card .ec-tag{ font-family:'Silkscreen',ui-monospace,monospace; font-weight:400; font-size:5.5px; letter-spacing:.1em; text-transform:uppercase;
+  padding:2px 4px; border-radius:999px; background:rgba(255,255,255,.1); color:#f4fff9; vertical-align:1px }
+.ep-card .ec-tag.k-free{ background:#3ddc84; color:#04100b }
+.ep-card .ec-tag.k-paid{ background:#ffb020; color:#1a1200 }
+.ep-card .ec-links{ display:flex; flex-wrap:wrap; gap:4px; margin-top:auto }
+.ep-card .ec-ln{ padding:3px 6px 2px; border-radius:999px; background:rgba(255,255,255,.08); color:#f4fff9; text-decoration:none;
+  font-size:7px; font-weight:700; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis }
+.ep-card .ec-ln:hover{ background:#ffe14d; color:#0a0a0a }
+@media (prefers-reduced-motion:reduce){ .ep-card .ec-pop{ transition:none } }
+.cse[data-theme="light"] .ep-card .ec-chip{ background:#ffffff; color:#0d1f17; border-color:rgba(13,31,23,.25) }
+.cse[data-theme="light"] .ep-card .ec-chip.pick.mine{ color:#0b6b40; border-color:#0b6b40 }

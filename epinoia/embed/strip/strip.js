@@ -638,6 +638,166 @@ function fmtTime(iso) {
     .replace(/^0/, '').toUpperCase();
 }
 
+/* ============================================================================
+   WHERE TO WATCH AND WHO WINS, ON THE CARD (Louie, 2026-10-07).
+
+   Two small buttons under the "v" or the score - WATCH (where the league's games can be seen: watch.js's data, the
+   streaming spreadsheet) and PICK (who wins: the fans' split, and a pick) - each opening a small panel OVER ITS OWN
+   CARD. Never a pop-up outside it: this strip is a frame on somebody else's page, and anything drawn past the frame's
+   edge is cut off. The card does not grow for them; the drift stops while one is open.
+
+   A PICK NEEDS A SIGNED-IN FAN. Inside EPINOIA's own pages the frame shares the site's session; on another site the
+   browser keeps the frame's storage apart from the site's own (third-party storage is partitioned), so there is no
+   session to use - the panel shows the split and offers the game on EPINOIA, in a new tab, to pick there.
+   ============================================================================ */
+const PRED = new Map();          // game id -> { home, away, mine, open }
+const POP = { open: false };
+const leagueSlugOf = g => {
+  const c = Array.isArray(g.competitions) ? g.competitions[0] : g.competitions;
+  const s = c && (Array.isArray(c.seasons) ? c.seasons[0] : c.seasons);
+  const l = s && (Array.isArray(s.leagues) ? s.leagues[0] : s.leagues);
+  return (l && l.slug) || null;
+};
+const watchOf = g => { const W = window.EpinoiaWatch, s = leagueSlugOf(g); return W && s ? W.of(s) : null; };
+function predToken() {
+  try { const A = window.EpinoiaAccess, s = A && A.session && A.session(); return s && s.token ? s.token : null; } catch (_) { return null; }
+}
+async function predRpc(fn, body) {
+  const t = predToken();
+  const h = { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json' };
+  if (t) h.Authorization = 'Bearer ' + t;
+  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`, { method: 'POST', cache: 'no-store', headers: h, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+/* the split for every card on the strip, once a render; a game that is not there is simply not asked about */
+async function askTally(ids) {
+  if (!ids.length) return;
+  try {
+    const rows = await predRpc('prediction_tally', { p_games: ids.slice(0, 200) });
+    (rows || []).forEach(r => PRED.set(r.game_id, { home: +r.home || 0, away: +r.away || 0, mine: r.mine || null, open: !!r.open }));
+    paintPicks();
+  } catch (_) { /* before 0239, or offline: the PICK button stays, its panel says so */ }
+}
+const pcts = t => { const n = t ? t.home + t.away : 0; if (!n) return null; const h = Math.round(100 * t.home / n); return [h, 100 - h]; };
+function paintPicks() {
+  document.querySelectorAll('.ep-card .ec-chip.pick').forEach(b => {
+    const t = PRED.get(b.closest('.ep-card').getAttribute('data-game'));
+    b.classList.toggle('mine', !!(t && t.mine));
+    b.textContent = t && t.mine ? '✓ picked' : 'pick';
+  });
+  document.querySelectorAll('.ep-card .ec-pop.pick').forEach(p => fillPick(p, ROWS.get(p.closest('.ep-card').getAttribute('data-game'))));
+}
+function actsFor(g) {
+  const acts = el('div', 'acts');
+  const chip = (k, t, label) => { const b = el('button', 'ec-chip ' + k, t); b.type = 'button'; b.setAttribute('aria-label', label); return b; };
+  if (watchOf(g)) acts.appendChild(chip('watch', '▶ watch', 'where to watch'));
+  if (g.status !== 'void') acts.appendChild(chip('pick', 'pick', 'who wins? the fans\' picks'));
+  return acts;
+}
+function fillWatch(pop, g) {
+  const w = watchOf(g);
+  if (!w) return;
+  const KIND = (window.EpinoiaWatch && window.EpinoiaWatch.KIND) || {};
+  pop.innerHTML = '';
+  const hd = el('div', 'ec-hd'); hd.append(el('span', null, 'where to watch'), Object.assign(el('button', 'ec-x', '×'), { type: 'button' }));
+  pop.appendChild(hd);
+  const lg = el('div', 'ec-lg', w.n); lg.setAttribute('translate', 'no');
+  pop.appendChild(lg);
+  const av = el('div', 'ec-av'); av.append(el('b', 'ec-tag k-' + w.k, KIND[w.k] || 'check'), document.createTextNode(' ' + w.a));
+  pop.appendChild(av);
+  const ls = el('div', 'ec-links');
+  (w.l || []).slice(0, 3).forEach(l => {
+    const a = el('a', 'ec-ln', l[0] + ' ↗'); a.href = l[1]; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.setAttribute('translate', 'no');
+    ls.appendChild(a);
+  });
+  pop.appendChild(ls);
+}
+function fillPick(pop, g) {
+  if (!g) return;
+  const t = PRED.get(g.id), p = pcts(t), final = statusOf(g) === 'final';
+  const res = final && g.home_score !== g.away_score ? (+g.home_score > +g.away_score ? 'home' : 'away') : null;
+  const open = !!(t && t.open);
+  pop.innerHTML = '';
+  const hd = el('div', 'ec-hd');
+  hd.append(el('span', null, res && t && t.mine ? (t.mine === res ? '✓ called it' : 'not this time') : open ? 'who wins?' : 'fans picked'),
+            Object.assign(el('button', 'ec-x', '×'), { type: 'button' }));
+  pop.appendChild(hd);
+  const sides = el('div', 'ec-sides');
+  [['home', g.home], ['away', g.away]].forEach(([k, tm], i) => {
+    const b = el('button', 'ec-side ' + k + (t && t.mine === k ? ' mine' : '') + (p && p[i] > p[1 - i] ? ' lead' : '') + (res === k ? ' won' : ''));
+    b.type = 'button'; b.setAttribute('data-side', k); b.disabled = !open;
+    b.append(el('span', 'cd', abbr(tm)), el('b', 'pc', p ? p[i] + '%' : '–'));
+    b.setAttribute('translate', 'no');
+    sides.appendChild(b);
+  });
+  pop.appendChild(sides);
+  const bar = el('div', 'ec-bar'); bar.style.setProperty('--ph', (p ? p[0] : 50) + '%');
+  pop.appendChild(bar);
+  const n = t ? t.home + t.away : 0;
+  const note = el('div', 'ec-note');
+  if (open && !predToken()) {
+    note.append(document.createTextNode((n ? n + (n === 1 ? ' pick · ' : ' picks · ') : '')));
+    const a = el('a', null, 'pick on EPINOIΛ ↗');
+    a.href = new URL('../../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase', location.href).href; a.target = '_blank'; a.rel = 'noopener';
+    note.appendChild(a);
+  } else note.textContent = n ? n + (n === 1 ? ' pick' : ' picks') + (open ? ' · tap a side' : '') : (open ? 'no picks yet · tap a side' : 'no picks');
+  pop.appendChild(note);
+}
+function openPop(cardEl, kind) {
+  closePop();
+  const g = ROWS.get(cardEl.getAttribute('data-game'));
+  if (!g) return;
+  const pop = el('div', 'ec-pop ' + kind);
+  pop.setAttribute('role', 'dialog');
+  if (kind === 'watch') fillWatch(pop, g); else fillPick(pop, g);
+  const hx = (g.home && g.home.colour) || '', ax = (g.away && g.away.colour) || '';
+  if (/^#[0-9a-f]{6}$/i.test(hx)) pop.style.setProperty('--h', hx);
+  if (/^#[0-9a-f]{6}$/i.test(ax)) pop.style.setProperty('--a', ax);
+  cardEl.appendChild(pop);
+  cardEl.classList.add('popped');
+  POP.open = true;
+  requestAnimationFrame(() => pop.classList.add('on'));
+  if (kind === 'pick') askTally([g.id]);
+}
+function closePop() {
+  document.querySelectorAll('.ep-card .ec-pop').forEach(p => { const c = p.closest('.ep-card'); if (c) c.classList.remove('popped'); p.remove(); });
+  POP.open = false;
+}
+async function pickSide(g, k) {
+  const t = PRED.get(g.id);
+  if (!t || !t.open || !predToken()) return;
+  try {
+    const r = await predRpc('predict_game', { p_game: g.id, p_pick: t.mine === k ? null : k });
+    if (r && r.home != null) PRED.set(g.id, { home: +r.home || 0, away: +r.away || 0, mine: r.mine || null, open: !!r.open });
+  } catch (_) { /* the panel stays as it was */ }
+  paintPicks();
+}
+/* one listener for every card (the rail is rebuilt, and holds each card twice): the buttons and the panels never open
+   the game behind them */
+document.addEventListener('click', e => {
+  const tgt = e.target;
+  const chip = tgt.closest && tgt.closest('.ec-chip');
+  const pop = tgt.closest && tgt.closest('.ec-pop');
+  if (chip) {
+    e.preventDefault(); e.stopPropagation();
+    const c = chip.closest('.ep-card');
+    const kind = chip.classList.contains('watch') ? 'watch' : 'pick';
+    if (c.querySelector('.ec-pop.' + kind)) closePop(); else openPop(c, kind);
+    return;
+  }
+  if (pop) {
+    if (tgt.closest('a')) return;                                     // a link out: let it open
+    e.preventDefault(); e.stopPropagation();
+    if (tgt.closest('.ec-x')) { closePop(); return; }
+    const side = tgt.closest('.ec-side');
+    if (side && !side.disabled) pickSide(ROWS.get(pop.closest('.ep-card').getAttribute('data-game')), side.getAttribute('data-side'));
+    return;
+  }
+  if (POP.open) closePop();
+}, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && POP.open) closePop(); });
+
 function card(g) {
   const phase = statusOf(g);
   const live = phase === 'live', final = phase === 'final';
@@ -715,6 +875,7 @@ function card(g) {
   } else {
     mid.appendChild(el('div', 'vs', 'v'));
   }
+  mid.appendChild(actsFor(g));                    // WATCH and PICK (above): each opens a panel over this card
   row.appendChild(mid);
   row.appendChild(side(g.away, g.away_score, g.home_score));
   a.appendChild(row);
@@ -961,6 +1122,7 @@ async function load() {
   paint();
   postHeight();
   startMotion();
+  askTally(gs.map(g => g.id));                    // the fans' split for every card (PICK)
 }
 
 
@@ -995,7 +1157,7 @@ const MIN_V = 0.04;        // below this, momentum has finished
 let lastTouch = 0;
 const IDLE_MS = 1400;
 const touch = () => { lastTouch = Date.now(); };
-const idle = () => !REDUCED && (Date.now() - lastTouch > IDLE_MS);
+const idle = () => !REDUCED && !POP.open && (Date.now() - lastTouch > IDLE_MS);    // a card's panel open: the drift waits
 
 let velocity = 0;
 let dragging = false;

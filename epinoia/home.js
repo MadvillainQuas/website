@@ -1918,22 +1918,9 @@ function renumber() {
     /* the strip narrows to this league too */
     const strip = document.querySelector('#strip');
     /* the strip opens in the page's colourway, and teamcolour.js keeps it there */
-    /* HOME'S CARDS IN PLACE OF THE FRAME (cardstrip.js, 2026-10-07): the same games as the strip, as HOME draws them -
-       the clubs' tiles, where to watch, who wins - none of which fits a 129px frame. The frame comes back if the cards
-       cannot be drawn (an older page without the scripts, a read that fails). */
-    const frameStrip = () => {
-      if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + embedLook();
-      /* not drawn while the reader is a screen or more from it (teamcolour.js drawDistance) */
-      if (strip && window.EpinoiaTeamColour && window.EpinoiaTeamColour.drawDistance) window.EpinoiaTeamColour.drawDistance(strip);
-    };
-    if (strip && window.EpinoiaCardStrip) {
-      const cs = document.createElement('div');
-      strip.hidden = true;
-      strip.insertAdjacentElement('afterend', cs);
-      window.EpinoiaCardStrip.mount(cs, { league: LEAGUE.slug, base: '', n: 12 })
-        .then(ok => { if (ok) { const w = strip.closest('.stripwrap'); if (w) w.classList.add('has-cards'); strip.remove(); } else { cs.remove(); strip.hidden = false; frameStrip(); } })
-        .catch(() => { cs.remove(); strip.hidden = false; frameStrip(); });
-    } else frameStrip();
+    if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + embedLook();
+    /* not drawn while the reader is a screen or more from it (teamcolour.js drawDistance) */
+    if (strip && window.EpinoiaTeamColour && window.EpinoiaTeamColour.drawDistance) window.EpinoiaTeamColour.drawDistance(strip);
 
     const head = document.querySelector('#leaguesHead');
     if (head) head.textContent = 'This season';
