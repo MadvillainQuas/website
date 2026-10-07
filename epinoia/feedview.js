@@ -165,6 +165,9 @@ async function mount(opts) {
       if (FR) { partners = await FR.partners(); await FR.net().languages(lg ? { cachedOnly: true } : undefined).catch(() => ({})); }
     }
     if (mine !== gen) return;
+    /* A SERIES IS ITS NEWEST EPISODE on a front page (feedrank.js latestEpisodes): a podcast's weekly show once, not
+       every week of it; the others stay on its page and the news page */
+    if (rows && FR && typeof FR.latestEpisodes === 'function') rows = FR.latestEpisodes(rows);
     box.textContent = '';
     if (rows === null) {                                          // Followed, signed out
       const d = el('div', 'pc-empty');
@@ -179,6 +182,7 @@ async function mount(opts) {
       /* nothing from what they follow yet, and they never asked for Followed: the newest, said so */
       rows = await read('newest', POOL);
       if (mine !== gen) return;
+      if (rows && FR && typeof FR.latestEpisodes === 'function') rows = FR.latestEpisodes(rows);
       mode = 'newest';
       live.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === 'newest')));
       all.href = newsHref('newest');

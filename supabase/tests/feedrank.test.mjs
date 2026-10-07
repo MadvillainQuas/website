@@ -566,5 +566,39 @@ console.log('\na league away from the reader is less likely to lead (2026-10-06)
   ok('...unless the reader has shown interest in that league: then it leads again', R([pAu, gb], Object.assign({}, pr, { l: { nbl: [60, NOW] } }))[0].id === pAu.id);
 }
 
+console.log('\na series: its newest episode alone on a front page');
+{
+  const K = (title, src, extra) => FR.seriesKey(Object.assign({ title, source_name: src || 'Sunday Night Breakdown' }, extra || {}));
+  ok('an episode mark leading the title: the series is what follows it, dates out',
+     K('S7E3 - Sunday Night Breakdown 04 Oct 2026') === 'sunday night breakdown|sunday night breakdown'
+     && K('S7E3 - Sunday Night Breakdown 04 Oct 2026') === K('S7E1 - Sunday Night Breakdown 21 Sep 2026'));
+  ok('...a mark after the name: the series is what stands before it',
+     K('EAGLES ALL IN - THE SIXTH EAGLE- Ep 3- SLB Predictions.', 'E') === K('EAGLES ALL IN - THE SIXTH EAGLE - Ep 4 - Playoff talk', 'E')
+     && /\|eagles all in the sixth eagle$/.test(K('EAGLES ALL IN - THE SIXTH EAGLE- Ep 3- SLB Predictions.', 'E')));
+  ok('...in other forms: Episode 12, Odcinek 4, #45, Part 2, Week 6, 第3回',
+     K('Courtside Talk Episode 12 - guests') === K('Courtside Talk Episode 13') && K('Rozmowa odcinek 4') === K('Rozmowa odcinek 5')
+     && K('Hoops Pod #45') === K('Hoops Pod #46') && K('Week 6 Power Rankings') === K('Week 7 Power Rankings')
+     && K('【第3回】Bリーグ談話') === K('【第4回】Bリーグ談話') && /リーグ/.test(K('【第3回】Bリーグ談話')));
+  ok('no mark but a date: the title without it ("Weekly Wrap 27 Sep" and "Weekly Wrap - October 4th, 2026")',
+     K('Weekly Wrap 27 Sep') === K('Weekly Wrap - October 4th, 2026') && K('Resumen jornada 5 de octubre') === K('Resumen jornada 12 de octubre'));
+  ok('a title with neither is no episode: nothing merged', K('SLB Early Season Review: Who\'s Up, Who\'s Down?') === null
+     && K('Do We Have a New North West Derby? + Monthly Mailbag') === null && K('Top 10 dunks of the season') === null);
+  ok('...and two dated titles about different things stay apart',
+     K('Interview: John Smith 04 Oct 2026') !== K('Interview: Jane Doe 27 Sep 2026'));
+  ok("a series is its source's: two channels' Weekly Wrap are two series", K('Weekly Wrap 27 Sep', 'A') !== K('Weekly Wrap 27 Sep', 'B'));
+  ok("a game's highlights and a whole game are never episodes",
+     K('Round 5 Highlights 04 Oct 2026', 'L', { video_kind: 'highlights', game: { id: 1 } }) === null
+     && K('LIVE: Round 5 04 Oct 2026', 'L', { video_kind: 'full' }) === null);
+  const row = (id, title, h, src) => ({ id, title, source_name: src || 'Sunday Night Breakdown', published_at: ago(h) });
+  const rows = [row('old', 'S7E1 - Sunday Night Breakdown 21 Sep 2026', 24 * 16), row('a', 'SLB Early Season Review', 24 * 3, 'SLB Show'),
+                row('new', 'S7E3 - Sunday Night Breakdown 04 Oct 2026', 24 * 2), row('b', 'Do We Have a New North West Derby?', 24 * 2, 'SLB Show'),
+                row('mid', 'S7E2 - Sunday Night Breakdown 28 Sep 2026', 24 * 9)];
+  const out = FR.latestEpisodes(rows).map(r => r.id);
+  ok('the front page keeps the newest episode only, where the series ranked best; everything else as it was',
+     out.join() === 'new,a,b', out);
+  ok('...rows that are no episodes pass untouched; nothing in, nothing out', FR.latestEpisodes([]).length === 0
+     && FR.latestEpisodes(rows.filter(r => r.source_name === 'SLB Show')).length === 2);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

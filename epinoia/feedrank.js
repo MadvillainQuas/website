@@ -1091,8 +1091,72 @@ function control(opts) {
   return { button, panel };
 }
 
+/* ===================================================================================== a series (pure) === */
+/* ONE EPISODE OF A SERIES ON A FRONT PAGE (2026-10-07). A podcast or a show posts the same programme again and again -
+   "S7E3 - Sunday Night Breakdown 04 Oct 2026", "S7E1 - Sunday Night Breakdown 21 Sep 2026", "EAGLES ALL IN - THE SIXTH
+   EAGLE - Ep 3 - SLB Predictions" - and a front page (HOME's feed and its video feed, a league's front page) shows only its
+   newest episode, in the place the best of its episodes was ranked. The rest stay on the source's page and the news page.
+
+   AN EPISODE is known by its title: an episode mark (S7E3, Ep 3, Episode 12, Odcinek 4, #45, Part 2, Vol. 4, Week 6, 第3回)
+   or a date (04 Oct 2026, October 4th, 5 de octubre, 2026-10-04, 4/10/2026, 10月4日). A title with neither is no episode,
+   and nothing is merged with it. ITS SERIES is
+     * what stands before the episode mark ("eagles all in the sixth eagle"); or, when the mark leads the title, the first
+       part after it, up to a dash, a colon or a bar ("sunday night breakdown"); the dates taken out either way;
+     * with no mark, the whole title with its dates taken out ("Weekly Wrap 27 Sep" is "weekly wrap"),
+   and the source's own: two channels' "Weekly Wrap" are two series. A game's highlights and a whole game are never
+   episodes (each is of another game). */
+const MONTHS = 'jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?'
+  + '|nov(?:ember)?|dec(?:ember)?|enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre';
+const EP_MARK = /\bs\d{1,2}\s*[,.]?\s*e\d{1,3}\b|\b(?:ep|eps|episode|episodio|episodi|odcinek|jakso|folge|aflevering|afl|part|pt|vol|volume|week|semana)\.?\s*#?\d{1,4}\b|#\d{1,4}\b|第\s*\d{1,4}\s*[回話]/i;
+const DATE_RES = [
+  /\b\d{4}[-./]\d{1,2}[-./]\d{1,2}\b/g,
+  /\b\d{1,2}[-./]\d{1,2}(?:[-./]\d{2,4})?\b/g,
+  new RegExp('\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:de\\s+)?(?:' + MONTHS + ')\\.?(?:\\s+(?:de\\s+)?\\d{2,4})?\\b', 'gi'),
+  new RegExp('\\b(?:' + MONTHS + ')\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?\\b', 'gi'),
+  /\d{4}\s*年|\d{1,2}\s*月\s*\d{1,2}\s*日/g,
+  /\b(?:19|20)\d{2}\b/g
+];
+const words = s => String(s || '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+function seriesKey(it) {
+  if (!it || !it.title) return null;
+  if (it.video_kind === 'full' || (it.video_kind === 'highlights' && it.game)) return null;
+  const t = String(it.title).normalize('NFKD').replace(/[̀-ͯ]/g, '').normalize('NFC').toLowerCase();   // accents off, kana whole
+  let dated = false;
+  const undate = s => DATE_RES.reduce((x, re) => x.replace(re, () => { dated = true; return ' '; }), s);
+  let base;
+  const m = EP_MARK.exec(t);
+  if (m) {
+    base = words(undate(t.slice(0, m.index)));
+    if (base.replace(/[^\p{L}]/gu, '').length < 4) {
+      base = (undate(t.slice(m.index + m[0].length)).split(/\s[-–—]\s|[|:–—]/).map(words).find(s => /\p{L}/u.test(s))) || '';
+    }
+  } else {
+    base = words(undate(t));
+    if (!dated) return null;
+  }
+  if (base.replace(/[^\p{L}]/gu, '').length < 4) return null;
+  return String(it.source_name || it.source_slug || it.outlet_slug || '').toLowerCase().trim() + '|' + base;
+}
+/* the rows with each series down to its newest episode, put where the series' best-ranked episode stood */
+function latestEpisodes(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const keys = list.map(seriesKey), newest = new Map();
+  list.forEach((r, i) => {
+    const k = keys[i];
+    if (k && (!newest.has(k) || dateOf(r) > dateOf(newest.get(k)))) newest.set(k, r);
+  });
+  const done = new Set();
+  return list.reduce((out, r, i) => {
+    const k = keys[i];
+    if (!k) out.push(r);
+    else if (!done.has(k)) { done.add(k); out.push(newest.get(k)); }
+    return out;
+  }, []);
+}
+
 return {
   W, HOUR, DAY,
+  seriesKey, latestEpisodes,
   recency, decay, sat, partnerFade, scoreOf, whyOf, rank, rankRows, GROUPS, groupOf, groupWeights, scoreMax,
   langCode, langOf, langOfKey, siteLang, readerLangs, SOURCE_LANG, LANG_CACHE,
   detectCountry, countryMatch, countryCodes, neighbours, country, TZ, REGIONS,

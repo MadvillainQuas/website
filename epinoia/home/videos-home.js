@@ -85,8 +85,10 @@
       if (R && typeof R.rankRows === 'function') {
         try { ranked = (await R.rankRows(pool, { followedIds: (mine || []).map(r => r.id) })).rows; } catch (_) { /* newest first */ }
       }
-      /* ALL: the games' highlights lead the reader's order (media.js prioritise) */
-      return kind ? ranked : M.prioritise(ranked);
+      /* ALL: the games' highlights lead the reader's order (media.js prioritise); and a podcast's or a show's series is its
+         newest episode alone (feedrank.js latestEpisodes) */
+      const ordered = kind ? ranked : M.prioritise(ranked);
+      return R && typeof R.latestEpisodes === 'function' ? R.latestEpisodes(ordered) : ordered;
     }
     function play(it) {
       M.stageOpen(stage, it, () => { M.cineExit(true); if (boxer) boxer.stop(); boxer = null; stage.hidden = true; stage.textContent = ''; });
