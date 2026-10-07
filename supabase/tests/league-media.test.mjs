@@ -42,13 +42,13 @@ ok('the tab code arrives with the first opening', /s\.src = '\.\.\/media\.js'/.t
    && /load\('gamechat\.js', 'EpinoiaGameChat'\)/.test(tabs));
 
 console.log('\nthe player');
-ok('a thumbnail until pressed, then youtube-nocookie', /md-play/.test(media) && /youtube-nocookie\.com\/embed\//.test(media) && /addEventListener\('click', \(\) => \{\s*playFrame\(/.test(media));
+ok('a thumbnail until pressed, then youtube-nocookie', /md-play/.test(media) && /youtube-nocookie\.com\/embed\//.test(media) && /addEventListener\('click', \(\) => \{\s*const f = playFrame\(/.test(media));
 ok('its state from the frame\'s own messages (enablejsapi), never the iframe_api script',
    /enablejsapi=1&origin=/.test(media) && /event: 'listening'/.test(media) && /onStateChange/.test(media) && !/iframe_api/.test(media.replace(/its iframe_api script/, '')));
 
 console.log('\ncinema');
 ok('playing (1) or buffering (3) darkens; paused (2) or ended (0) brings it back after a moment',
-   /if \(st === 1 \|\| st === 3\) cineEnter\(group\)/.test(media) && /else if \(st === 2 \|\| st === 0\) cineExitSoon\(\)/.test(media) && /setTimeout\(\(\) => cineExit\(\), 900\)/.test(media));
+   /if \(st === 1 \|\| st === 3\) cineEnter\(group\)/.test(media) && /else if \(st === 2\) cineExitSoon\(\)/.test(media) && /else if \(st === 0\) \{ if \(!\(onEnd && onEnd\(\)\)\) cineExitSoon\(\)/.test(media) && /setTimeout\(\(\) => cineExit\(\), 900\)/.test(media));
 ok('Esc and a press on the dark bring it back; a closed stage and another tab too',
    /e\.key === 'Escape' && CINE\.group/.test(media) && /veil\.onclick = \(\) => cineExit\(\)/.test(media) && /cineExit\(true\); stage\.hidden = true/.test(media)
    && /forEach\(b => b\.addEventListener\('click', \(\) => \{ if \(window\.EpinoiaMedia\) window\.EpinoiaMedia\.cineExit\(true\)/.test(tabs));
@@ -57,7 +57,7 @@ ok('what the dark covers is not painted (visibility, so nothing moves), and give
 ok('the veil above everything, the group above the veil, no fade under reduced motion',
    /\.md-veil\{position:fixed;inset:0;z-index:2147483000/.test(css) && /\.md-lit\{position:relative;z-index:2147483001/.test(css) && /prefers-reduced-motion:reduce\)\{ \.md-veil,\.md-lit\{transition:none\}/.test(css));
 ok('the lit group: the stage on the Video tab, the whole room (stream, box score, chat) on the Live tab',
-   /group: stage \}/.test(media) && /group: room \}/.test(tabs) && /tr\('Live stream'\), room\)/.test(tabs));
+   /group: stage, onEnd: ended/.test(media) && /group: room \}/.test(tabs) && /tr\('Live stream'\), room\)/.test(tabs));
 
 console.log('\nthe board, one for every page of a league');
 const front = rd('epinoia', 'index.html'), fjs = rd('epinoia', 'home.js');
@@ -102,6 +102,18 @@ ok("a podcast's or a show's series is its newest episode alone on the front page
    && /function latestEpisodes\(rows\)/.test(rd('epinoia', 'feedrank.js')));
 ok('one tile a video: a channel added twice shows each video once, the copy on a game first',
    /function uniq\(list\)/.test(media) && /items = uniq\(items\.concat\(rows\)\)/.test(media) && /M\.uniq\(\(mine \|\| \[\]\)\.concat\(all\)\)/.test(vh));
+
+console.log('\nthe stage as a playlist (stagePlayer)');
+ok('the board and HOME play down their own lists: UP NEXT beside the player, Autoplay and the toggle remembered',
+   /function stagePlayer\(stage, o\)/.test(media) && /list: \(\) => shownNow/.test(media) && /list: \(\) => rows/.test(vh)
+   && /Q_KEY = 'epinoia\.md\.upnext', AUTO_KEY = 'epinoia\.md\.autoplay'/.test(media) && /@container \(min-width:600px\)\{\s*\.md-stage-b\.q-open/.test(css));
+ok('a video ends: the page takes it only with Autoplay on and something next; a card counts NEXT_IN down, Cancel holds it',
+   /else if \(st === 0\) \{ if \(!\(onEnd && onEnd\(\)\)\) cineExitSoon\(\); \}/.test(media) && /if \(!auto \|\| !cur \|\| held === cur\.id\) return false;/.test(media)
+   && /const NEXT_IN = 5/.test(media));
+ok('...the next plays in the same player (loadVideoById through the frame), nothing loaded again; the box score follows its game',
+   /func: 'loadVideoById', args: \[idOf\(it\)\]/.test(media) && /if \(!boxer \|\| boxer\.game !== gid\)/.test(media));
+ok("the player's cover rules are its own button's alone (the card's buttons are not covers)", /\.md-player > iframe,\.md-player > button\{/.test(css)
+   && !/\.md-player button\{/.test(css));
 
 console.log('\nthe console: a channel\'s own names for clubs (0240)');
 const cui = rd('epinoia', 'admin', 'creators-ui.js');

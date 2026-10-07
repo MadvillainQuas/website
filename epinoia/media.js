@@ -121,7 +121,8 @@
 
   /* YouTube's frame reports its state to a page that says it is listening: 1 playing, 3 buffering, 2 paused, 0 ended */
   const YT_ORIGINS = ['https://www.youtube-nocookie.com', 'https://www.youtube.com'];
-  function watchYouTube(f, group) {
+  /* onEnd(): called when the video ends; true when the page has taken it (the next of a list is coming), so the dark stays */
+  function watchYouTube(f, group, onEnd) {
     if (!group) return;
     const hello = () => {
       try {
@@ -135,7 +136,8 @@
       if (!d) return;
       const st = d.event === 'onStateChange' ? d.info : (d.event === 'infoDelivery' && d.info && typeof d.info.playerState === 'number') ? d.info.playerState : null;
       if (st === 1 || st === 3) cineEnter(group);
-      else if (st === 2 || st === 0) cineExitSoon();
+      else if (st === 0) { if (!(onEnd && onEnd())) cineExitSoon(); }
+      else if (st === 2) cineExitSoon();
     };
     window.addEventListener('message', onMsg);
     f.addEventListener('load', () => { hello(); setTimeout(hello, 800); });
@@ -147,7 +149,7 @@
   }
 
   /* A FRAME A PRESS HAS OPENED: a YouTube one is watched for play and pause, any other goes dark at once */
-  function playFrame(at, src, title, group) {
+  function playFrame(at, src, title, group, onEnd) {
     const f = document.createElement('iframe');
     const yt = /^https:\/\/www\.youtube(-nocookie)?\.com\//.test(src);
     f.src = yt ? src + (src.includes('?') ? '&' : '?') + 'enablejsapi=1&origin=' + encodeURIComponent(location.origin) : src;
@@ -156,12 +158,13 @@
     f.allowFullscreen = true;
     f.referrerPolicy = 'strict-origin-when-cross-origin';
     at.replaceWith(f);
-    if (yt) watchYouTube(f, group); else if (group) cineEnter(group);
+    if (yt) watchYouTube(f, group, onEnd); else if (group) cineEnter(group);
     return f;
   }
 
   /* THE PLAYER: the cover until pressed, then youtube-nocookie with autoplay.
-     opts: {id, title, start (s), autoplay, group (what stays lit with it while it plays)} */
+     opts: {id, title, start (s), autoplay, group (what stays lit with it while it plays), onEnd (the video ended: true
+     when the page has taken it), onFrame(f) (the frame, once it is made)} */
   function player(host, opts) {
     host.textContent = '';
     host.classList.add('md-player');
@@ -171,8 +174,9 @@
     const img = el('img'); img.src = thumb(opts.id, true); img.alt = ''; img.decoding = 'async';
     b.append(img, el('span', 'md-play'));
     b.addEventListener('click', () => {
-      playFrame(b, 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(opts.id) + '?autoplay=1&rel=0&modestbranding=1&playsinline=1'
-        + (opts.start ? '&start=' + Math.max(0, Math.floor(opts.start)) : ''), opts.title, opts.group);
+      const f = playFrame(b, 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(opts.id) + '?autoplay=1&rel=0&modestbranding=1&playsinline=1'
+        + (opts.start ? '&start=' + Math.max(0, Math.floor(opts.start)) : ''), opts.title, opts.group, opts.onEnd);
+      if (opts.onFrame) opts.onFrame(f);
     }, { once: true });
     host.appendChild(b);
     if (opts.autoplay) b.click();
@@ -382,23 +386,194 @@
   /* THE STAGE, wherever a tile opens one (the league's board, HOME's video feed): in the video's inks (its edge and its
      viewfinder corners), its head a NOW PLAYING mark with the video's kind, the title, where it is from and when, and
      Close. Returns the head; the caller puts the player and the game's embed under it. */
-  function stageOpen(stage, it, onClose) {
-    stage.hidden = false;
-    stage.textContent = '';
-    stage.style.cssText = '';
-    inks(stage, it);
-    const k = KIND[it.video_kind] || KIND.video;
-    const head = el('div', 'md-stage-h');
-    const words = el('div', 'md-stage-w');
-    const now = el('div', 'md-now');
-    now.append(el('span', 'md-dot'), el('span', null, tr('Now playing')), el('span', 'md-kind' + (k[1] ? ' ' + k[1] : ''), tr(k[0])));
-    words.append(now, el('div', 'md-title', it.title || ''), el('div', 'md-yt', (it.source_name || '') + (it.published_at ? ' · ' + when(it.published_at) : '')));
-    const close = el('button', 'ep-btn mini md-close', tr('Close'));
-    close.type = 'button';
-    close.addEventListener('click', onClose);
-    head.append(words, close);
-    stage.appendChild(head);
-    return head;
+  /* THE STAGE, PLAYING DOWN A LIST: the videos in the order the board or the feed shows them (o.list()), as a playlist.
+       * the head: NOW PLAYING with the video's kind, its title, where it is from; Up next (the list's toggle) and Close;
+       * the player, and beside it (under it on a phone) UP NEXT - the video playing, then what comes after it, each a
+         press away - with an Autoplay switch; the toggle and the switch are remembered on this device;
+       * when a video ends and Autoplay is on, a card over the player says what is next and counts NEXT_IN seconds down
+         (Play now, Cancel), then the next one plays IN THE SAME PLAYER (YouTube's own loadVideoById, through the frame's
+         messages): nothing is loaded again, the sound stays on, and the page stays dark;
+       * the game's box score under it follows the video (the same game kept, another game's swapped in, none taken away).
+     o: { list: () => [videos], onClose(), onChange(it) (a video is now the stage's) } -> { play(it, quiet), go(it) } */
+  const NEXT_IN = 5, Q_KEY = 'epinoia.md.upnext', AUTO_KEY = 'epinoia.md.autoplay';
+  const pref = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v === '1'; } catch (_) { return d; } };
+  const setPref = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0'); } catch (_) { /* private mode */ } };
+  function stagePlayer(stage, o) {
+    let cur = null, frame = null, boxer = null, timer = null, card = null, held = null;
+    let open = pref(Q_KEY, !(window.matchMedia && matchMedia('(max-width: 720px)').matches));
+    let auto = pref(AUTO_KEY, true);
+    let nowKind, titleEl, metaEl, qBtn, body, vid, queue, qList, box, autoBox;
+
+    const playable = it => !!(it && idOf(it));
+    function upcoming() {
+      const L = ((o.list && o.list()) || []).filter(playable);
+      const i = cur ? L.findIndex(x => x.id === cur.id) : -1;
+      return i >= 0 ? L.slice(i + 1) : L.filter(x => !cur || x.id !== cur.id);
+    }
+    function build() {
+      stage.hidden = false;
+      stage.textContent = '';
+      const head = el('div', 'md-stage-h');
+      const words = el('div', 'md-stage-w');
+      const now = el('div', 'md-now');
+      nowKind = el('span', 'md-kind');
+      now.append(el('span', 'md-dot'), el('span', null, tr('Now playing')), nowKind);
+      titleEl = el('div', 'md-title');
+      metaEl = el('div', 'md-yt');
+      words.append(now, titleEl, metaEl);
+      const ctl = el('div', 'md-stage-ctl');
+      qBtn = el('button', 'ep-btn mini md-qbtn');
+      qBtn.type = 'button';
+      qBtn.addEventListener('click', () => { open = !open; setPref(Q_KEY, open); layout(); });
+      const close = el('button', 'ep-btn mini md-close', tr('Close'));
+      close.type = 'button';
+      close.addEventListener('click', () => { stop(); if (o.onClose) o.onClose(); });
+      ctl.append(qBtn, close);
+      head.append(words, ctl);
+      body = el('div', 'md-stage-b');
+      vid = el('div');
+      queue = el('aside', 'md-q');
+      queue.setAttribute('aria-label', tr('Up next'));
+      const qin = el('div', 'md-q-in');
+      const qh = el('div', 'md-q-h');
+      autoBox = el('input');
+      autoBox.type = 'checkbox';
+      autoBox.checked = auto;
+      autoBox.addEventListener('change', () => { auto = autoBox.checked; setPref(AUTO_KEY, auto); if (!auto) cancelNext(); });
+      const sw = el('label', 'md-auto');
+      sw.append(autoBox, el('span', null, tr('Autoplay')));
+      qh.append(el('b', null, tr('Up next')), sw);
+      qList = el('div', 'md-q-list');
+      qin.append(qh, qList);
+      queue.appendChild(qin);
+      body.append(vid, queue);
+      box = el('div', 'md-boxwrap');
+      stage.append(head, body, box);
+      stage.__md = { ended, upcoming };                     // the page's own handle (the tests end a video with it)
+    }
+    function stop() {
+      cancelNext();
+      cineExit(true); stage.hidden = true; stage.textContent = '';
+      if (boxer) boxer.stop();
+      boxer = null; frame = null; cur = null;
+    }
+    function layout() {
+      body.classList.toggle('q-open', open);
+      queue.hidden = !open;
+      qBtn.setAttribute('aria-expanded', String(open));
+    }
+    /* the head, the inks, the box score and the list, for `it` */
+    function fill(it) {
+      stage.style.cssText = '';
+      inks(stage, it);
+      const k = KIND[it.video_kind] || KIND.video;
+      nowKind.className = 'md-kind' + (k[1] ? ' ' + k[1] : '');
+      nowKind.textContent = tr(k[0]);
+      titleEl.textContent = it.title || '';
+      metaEl.textContent = (it.source_name || '') + (it.published_at ? ' · ' + when(it.published_at) : '');
+      const gid = it.game && it.game.id;
+      if (!boxer || boxer.game !== gid) {
+        if (boxer) boxer.stop();
+        boxer = null;
+        box.textContent = '';
+        if (gid) { boxer = embedGame(box, gid); boxer.game = gid; }
+      }
+      box.hidden = !gid;
+      drawList();
+    }
+    function row(it, now) {
+      const b = el('button', 'md-q-row' + (now ? ' now' : ''));
+      b.type = 'button';
+      if (now) b.setAttribute('aria-current', 'true');
+      inks(b, it);
+      const th = el('span', 'md-q-th');
+      const id = idOf(it);
+      if (id) { const im = el('img'); im.src = thumb(id); im.alt = ''; im.loading = 'lazy'; im.decoding = 'async'; th.appendChild(im); }
+      const k = KIND[it.video_kind] || KIND.video;
+      const tx = el('span', 'md-q-tx');
+      tx.append(el('span', 'md-q-k' + (k[1] ? ' ' + k[1] : ''), now ? tr('Now playing') : tr(k[0])), el('span', 'md-q-t', it.title || ''),
+                el('span', 'md-q-m', (it.source_name || '') + (it.published_at ? ' · ' + when(it.published_at) : '')));
+      b.append(th, tx);
+      if (!now) b.addEventListener('click', () => go(it));
+      return b;
+    }
+    function drawList() {
+      const next = upcoming();
+      qList.textContent = '';
+      qList.appendChild(row(cur, true));
+      next.forEach(it => qList.appendChild(row(it, false)));
+      if (!next.length) qList.appendChild(el('p', 'md-q-end', tr('Nothing after this one.')));
+      qBtn.textContent = tr('Up next') + (next.length ? ' · ' + next.length : '');
+      layout();
+    }
+    /* A VIDEO ENDED. With Autoplay on and something after it: the card, the count, then the next. True: the page has it. */
+    function ended() {
+      if (!auto || !cur || held === cur.id) return false;
+      if (timer) return true;
+      const nx = upcoming()[0];
+      if (!nx) return false;
+      let n = NEXT_IN;
+      card = el('div', 'md-next');
+      card.setAttribute('role', 'status');
+      const im = el('img'); im.src = thumb(idOf(nx)); im.alt = '';
+      const count = el('span', 'md-next-n');
+      const tx = el('span', 'md-next-tx');
+      tx.append(el('span', 'md-next-k', tr('Up next')), el('span', 'md-next-t', nx.title || ''), count);
+      const now = el('button', 'ep-btn mini pri', tr('Play now'));
+      now.type = 'button';
+      now.addEventListener('click', () => swap(nx));
+      const no = el('button', 'ep-btn mini', tr('Cancel'));
+      no.type = 'button';
+      no.addEventListener('click', () => { held = cur && cur.id; cancelNext(); cineExitSoon(); });
+      const btns = el('span', 'md-next-b');
+      btns.append(now, no);
+      card.append(im, tx, btns);
+      vid.appendChild(card);
+      const tick = () => {
+        if (n <= 0) { swap(nx); return; }
+        count.textContent = tr('in') + ' ' + n + ' s';
+        n -= 1;
+        timer = setTimeout(tick, 1000);
+      };
+      tick();
+      return true;
+    }
+    function cancelNext() { clearTimeout(timer); timer = null; if (card) card.remove(); card = null; }
+    /* the next video IN THE SAME PLAYER: the frame is told to load it, so it plays at once, sound and all */
+    function swap(it) {
+      cancelNext();
+      if (!frame || !frame.isConnected) return play(it);
+      try {
+        frame.contentWindow.postMessage(JSON.stringify({ event: 'command', func: 'loadVideoById', args: [idOf(it)], id: 'md', channel: 'widget' }), '*');
+      } catch (_) { return play(it); }
+      held = null;
+      cur = it;
+      frame.title = it.title || 'video';
+      fill(it);
+      if (o.onChange) o.onChange(it);
+    }
+    /* A VIDEO ON THE STAGE, from its cover (quiet: opened by the address, so nothing plays and nothing scrolls) */
+    function play(it, quiet) {
+      cancelNext();
+      if (stage.hidden || !body || !stage.contains(body)) build();
+      held = null;
+      cur = it;
+      frame = null;
+      fill(it);
+      vid.textContent = '';
+      const id = idOf(it);
+      if (id) player(vid, { id, title: it.title, autoplay: !quiet, group: stage, onEnd: ended, onFrame: f => { frame = f; } });
+      if (o.onChange) o.onChange(it);
+      if (!quiet) stage.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+    }
+    /* a tile or a row pressed: into the playing player when one is playing, else onto the stage */
+    function go(it) {
+      if (frame && frame.isConnected && playable(it) && !stage.hidden) {
+        swap(it);
+        stage.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'nearest' });
+      } else play(it);
+    }
+    return { play, go, stop, refresh: () => { if (cur && !stage.hidden) drawList(); } };
   }
 
   /* A LEAGUE'S VIDEO BOARD, wherever a league shows its videos (the stats page's Video tab, the league's front page):
@@ -426,7 +601,13 @@
       if (v) u.searchParams.set(o.param, v); else u.searchParams.delete(o.param);
       history.replaceState(null, '', u.toString());
     };
-    let kind = 'highlights', club = '', items = [], last = null, playing = null, boxer = null, first = true;
+    let kind = 'highlights', club = '', items = [], last = null, playing = null, first = true, shownNow = [];
+    /* the stage plays down the board, in the order its tiles stand (a club picked: that club's) */
+    const sp = stagePlayer(stage, {
+      list: () => shownNow,
+      onClose: () => { playing = null; setParam(null); paint(); },
+      onChange: it => { playing = it; setParam(it.id); paint(); }
+    });
     const chip = (label, k) => {
       const b = el('button', 'md-chip', tr(label));
       b.type = 'button';
@@ -464,6 +645,8 @@
       grid.textContent = '';
       const picked = items.filter(it => !club || (it.game && [it.game.home, it.game.away].some(t => t && t.slug === club)));
       const shown = kind ? picked : prioritise(picked);           // All videos: the games' highlights lead
+      shownNow = shown;
+      sp.refresh();
       count.textContent = shown.length ? String(shown.length).padStart(2, '0') + ' ' + tr(kind === 'highlights' ? 'highlights' : 'videos') : '';
       if (!shown.length) { grid.appendChild(el('div', 'md-empty', tr(kind === 'highlights' ? 'No highlights yet.' : 'No videos yet.'))); return; }
       shown.forEach((it, i) => {
@@ -490,19 +673,9 @@
       return rows.length;
     }
     more.addEventListener('click', page);
+    /* a tile pressed: onto the stage, or into its player when one is playing; quiet: opened by the address */
     function play(it, _btn, quiet) {
-      playing = it;
-      stageOpen(stage, it, () => { cineExit(true); stage.hidden = true; stage.textContent = ''; if (boxer) boxer.stop(); boxer = null; playing = null; setParam(null); paint(); });
-      const vid = el('div');
-      stage.appendChild(vid);
-      const id = idOf(it);
-      if (id) player(vid, { id, title: it.title, autoplay: !quiet, group: stage });
-      if (boxer) boxer.stop();
-      boxer = null;
-      if (it.game && it.game.id) { const box = el('div', 'md-boxwrap'); stage.appendChild(box); boxer = embedGame(box, it.game.id); }
-      setParam(it.id);
-      paint();
-      if (!quiet) stage.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+      if (quiet) sp.play(it, true); else sp.go(it);
     }
     return page();
   }
@@ -531,5 +704,5 @@
   /* run fn when the browser is idle (or after a beat where it cannot say) - the probes a page does not wait for */
   const idle = fn => ('requestIdleCallback' in window) ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 600);
 
-  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, videoBoard, stageOpen, tile, inks, uniq, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
+  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, videoBoard, stagePlayer, tile, inks, uniq, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
 })();

@@ -71,7 +71,7 @@
     const grid = el('div', 'md-grid');
     const more = el('button', 'ep-btn md-more', tr('Show more'));
     more.type = 'button';
-    let rows = [], shown = STEP, boxer = null;
+    let rows = [], shown = STEP;
 
     async function read() {
       const F = window.EpinoiaFollow, s = F && F.session ? F.session() : null;
@@ -90,20 +90,22 @@
       const ordered = kind ? ranked : M.prioritise(ranked);
       return R && typeof R.latestEpisodes === 'function' ? R.latestEpisodes(ordered) : ordered;
     }
-    function play(it) {
-      M.stageOpen(stage, it, () => { M.cineExit(true); if (boxer) boxer.stop(); boxer = null; stage.hidden = true; stage.textContent = ''; });
-      const vid = el('div');
-      stage.appendChild(vid);
-      const id = M.idOf(it);
-      if (id) M.player(vid, { id, title: it.title, autoplay: true, group: stage });
-      if (boxer) boxer.stop();
-      boxer = null;
-      if (it.game && it.game.id) { const box = el('div', 'md-boxwrap'); stage.appendChild(box); boxer = M.embedGame(box, it.game.id); }
-      stage.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
-    }
+    /* THE STAGE PLAYS DOWN THE FEED, in the reader's order (media.js stagePlayer): a video ends, the next one plays in the
+       same player, and UP NEXT beside it lists the rest */
+    let playing = null;
+    const sp = M.stagePlayer(stage, {
+      list: () => rows,
+      onClose: () => { playing = null; paint(); },
+      onChange: it => { playing = it; paint(); }
+    });
+    const play = it => sp.go(it);
     function paint() {
       grid.textContent = '';
-      rows.slice(0, shown).forEach((it, i) => grid.appendChild(M.tile(it, play, false, { no: i + 1, of: rows.length })));
+      rows.slice(0, shown).forEach((it, i) => {
+        const t = M.tile(it, play, false, { no: i + 1, of: rows.length });
+        if (playing && playing.id === it.id) t.setAttribute('aria-current', 'true');
+        grid.appendChild(t);
+      });
       more.hidden = rows.length <= shown;
     }
     async function load() {
