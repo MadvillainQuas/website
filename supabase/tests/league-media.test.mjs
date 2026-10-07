@@ -78,9 +78,9 @@ console.log('\nthe tiles, printed like the site\'s cards');
 const tileCss = css.slice(0, css.indexOf('/* -------------------------------------------------------------------------------------- the chat'));
 ok('in their clubs\' inks (teamcolour.js card, the surface variants for edges), the clash printed in a second colour',
    /inks\(b, it, dark\)/.test(media) && /TC\.card\(node, A, B\)/.test(media) && /'--ink-s', TC\.surface\(A\)/.test(media) && /TC\.contrast\(A, B\) < 1\.6/.test(media));
-ok('the plate\'s print: halftone, registration crosses, the kind tag, the stencil band, the edition mark',
-   ['md-tone', 'md-reg', 'md-kind', 'md-band', 'md-ed'].every(c => new RegExp("'" + c).test(media) && new RegExp('\\.' + c + '[{ .]').test(tileCss))
-   && /'NO ' \+ String\(pos\.no\)/.test(media));
+ok('the plate\'s print: halftone, registration crosses, the kind tag, the stencil band - and no numbering (no "NO 01/04")',
+   ['md-tone', 'md-reg', 'md-kind', 'md-band'].every(c => new RegExp("'" + c).test(media) && new RegExp('\\.' + c + '[{ .]').test(tileCss))
+   && !/'NO ' \+ String\(pos\.no\)/.test(media) && !/el\('span', 'md-ed'/.test(media));
 ok('a game\'s video has the scorebug: a row per club, its score in a cell at the end of the row',
    /function board\(g\)/.test(media) && /\.md-side\.a\{grid-row:2;flex-direction:row-reverse/.test(tileCss) && /\.md-pts > span:last-child\{grid-row:2\}/.test(tileCss));
 ok('no LATEST stamp; the words are Archivo (no pixel faces on the board)',

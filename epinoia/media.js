@@ -347,8 +347,8 @@
   /* A TILE, PRINTED LIKE THE SITE'S OTHER CARDS (the club plate's halftone and registration crosses, the news cards'
      corner tag, the games list's scoreboard): the video's own picture with its home club's ink rising into its foot as
      a halftone, the printer's crosses at its corners, its kind in a black tag, a square play mark; a stencil band
-     across the seam (the competition and the day); for a game's video the scoreboard; the title; where it is from, how
-     long ago, and its edition mark (NO 03/07). The large tile adds scan lines. The words are the kit's Archivo; all of
+     across the seam (the competition and the day); for a game's video the scoreboard; the title; where it is from and how
+     long ago (no numbering since 2026-10-07). The large tile adds scan lines. The words are the kit's Archivo; all of
      it is CSS over the one picture: nothing more is fetched for it. onOpen(it) on a press; a tile is a button.
      pos: {no, of}. */
   function tile(it, onOpen, big, pos) {
@@ -385,14 +385,14 @@
     b.appendChild(band);
     if (g) b.appendChild(board(g));
     else b.classList.add('no-game');
-    /* THE WORDS, AS A NEWS CARD SETS THEM (kit/newscard.css): the kicker - the channel in its colour, how long ago, the
-       edition mark - then the headline; the foot under a dashed rule, the channel's logo and name and the call to watch */
+    /* THE WORDS, AS A NEWS CARD SETS THEM (kit/newscard.css): the kicker - the channel in its colour, how long ago - then
+       the headline (no "NO 01/04" numbering: 2026-10-07); the foot under a dashed rule, the channel's logo and name and the
+       call to watch */
     const cap = el('div', 'md-cap');
     const kick = el('div', 'md-kick');
     kick.appendChild(el('b', null, it.source_name || tr(k[0])));
     const ago = when(it.published_at);
     if (ago) kick.appendChild(el('span', null, ago));
-    if (pos && pos.no) kick.appendChild(el('span', 'md-ed', 'NO ' + String(pos.no).padStart(2, '0') + '/' + String(pos.of || pos.no).padStart(2, '0')));
     cap.append(kick, el('div', 'md-title', it.title || ''));
     b.appendChild(cap);
     const foot = el('div', 'md-foot');
