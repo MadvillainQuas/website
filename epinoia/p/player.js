@@ -647,6 +647,21 @@ async function vsCompute(ids, pid) {
    possessions it rests on. Behind the splits lock, as the club page's is. */
 const P_CLUTCH_MIN_SEC = 300;
 let CLUTCH_RUN = 0;
+/* DATA (2026-10-07): the replay engine (vsunits.js loadEngine) is fetched for this only once the reader comes near the
+   bottom of the page (the shot chart, a screen or so away); a visit that reads the top and leaves fetches nothing for it.
+   A later scope change draws it again at once */
+let clutchArgs = null, clutchArmed = false, clutchSeen = false;
+function clutchWhenNear(ids, pid, club) {
+  clutchArgs = [ids, pid, club];
+  const go = () => { clutchSeen = true; paintClutch.apply(null, clutchArgs).catch(() => {}); };
+  if (clutchSeen) { go(); return; }
+  if (clutchArmed) return;
+  clutchArmed = true;
+  const node = $('#shotsec') || $('#clutchsec');
+  if (!node || typeof IntersectionObserver !== 'function') { go(); return; }
+  const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); go(); } }, { rootMargin: '600px 0px' });
+  io.observe(node);
+}
 async function paintClutch(ids, pid, club) {
   const sec = $('#clutchsec'), host = $('#pclutch'), CL = window.EpinoiaClutch, VU = window.EpinoiaVsUnits;
   if (!sec || !host) return;
@@ -1697,7 +1712,7 @@ async function seasonLog(ids, sn) {
       } catch (e) { console.warn('[season]', e); }
       paintTiles(mine, field);
       paintBars(mine, field);
-      paintClutch(ids, pl.id, team).catch(() => {});
+      clutchWhenNear(ids, pl.id, team);
       if (window.EpinoiaSosChip) window.EpinoiaSosChip.paint(null, { games: sosGames, teamId: team && team.id });
       /* ---- events ----
          The season's situations (second chance, transition, off turnovers,

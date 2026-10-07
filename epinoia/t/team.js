@@ -1008,7 +1008,8 @@ async function frontOffice(team) {
     const FM = window.EpinoiaFoModel;
     const g = X.gm({ team, teams: S.teams || [], players: mine, ages: new Map(Object.entries(ages)),
                      heights: new Map(people.filter(p => p.height).map(p => [p.id, +p.height])),
-                     model: fo && FM ? FM.gmModel(fo, team.id) : undefined });
+                     /* the model's values, and each position against the league's (fomodel.js posGaps, 2026-10-07) */
+                     model: fo && FM ? Object.assign(FM.gmModel(fo, team.id), { pos: FM.posGaps ? FM.posGaps(fo, club) : null }) : undefined });
     hostG.innerHTML = X.gmHTML(g);
     const note = $('#gmNote');
     if (note && g.of) note.textContent = 'against the ' + g.of + ' clubs of the league';

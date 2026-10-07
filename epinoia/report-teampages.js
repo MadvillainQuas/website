@@ -301,7 +301,13 @@ function modules(ctx) {
       try { me.tm_hc_ast_pct = await halfCourtAst(); if (them) them.tm_hc_ast_pct = await halfCourtAst(true); } catch (_) { /* without it */ }
       /* every other club's over the scope's games (a single game's two clubs keep this game's own), so the club's is ranked
          among them; the club's own is taken from the same games where it has enough there */
-      try {
+      /* DATA (Louie, 2026-10-07: as little as can be read): every club's needs the competition's play-by-play, which the
+         players' cards read anyway when their template has a half-court or transition AST% (ctx.fieldGames, read once and
+         kept); it is read for this only then, never for a single game's analysis. Without it the club's own value stands,
+         unranked */
+      const needField = !c.vs && R.conf && R.conf.on && R.conf.on.players && ['guard', 'wing', 'big'].some(gg =>
+        (E.groupsFor(R.state, 'players', gg) || []).some(x => (x[1] || []).some(k => k === 'hc_ast_pct' || k === 'tr_ast_pct')));
+      if (needField) try {
         const HT = await hcTeams(S.games);
         if (HT) teams.forEach(r => {
           if (r === them) return;

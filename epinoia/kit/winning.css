@@ -181,3 +181,13 @@ a.plain{color:inherit;text-decoration:none}
   .ww-blocks i.on{background:Highlight;forced-color-adjust:none}
   .ww-chip{border-color:CanvasText}
 }
+
+/* ---- BY POSITION AGAINST THE LEAGUE (page.js posStatsHTML, 2026-10-07): each position's differentiator as a card, and the
+   winners' +/- coloured by whether it leans the way that goes with winning ---- */
+.ww-levers{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:10px 0 2px}
+.ww-lever{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--rule);border-left:3px solid var(--lume);border-radius:10px;background:var(--panel)}
+.ww-lever span{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.ww-lever b{font-family:var(--f-ui);font-size:14px;color:var(--ink)}
+.ww-lever em{font-style:normal;font-family:var(--f-data);font-size:11.5px;color:var(--ink-2)}
+.ww-pos td.ww-up{color:var(--good);font-weight:700}
+.ww-pos td.ww-dn{color:var(--bad);font-weight:700}

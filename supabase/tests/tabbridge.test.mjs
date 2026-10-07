@@ -77,5 +77,27 @@ console.log('-- the edge function’s brief and the report written from it');
   ok('the article the server files is the article the page shows: same words for the same brief', JSON.stringify(report(brief).sections) === JSON.stringify(withTabs.sections));
 }
 
+console.log('-- weighed by the league’s own win model (What wins, 2026-10-07)');
+{
+  const { gameBrief } = await import(new URL('../functions/_shared/matchreport.ts', import.meta.url));
+  const d = E.deriveGame(game);
+  const TA = [E.teamAdv(game, d, 0), E.teamAdv(game, d, 1)];
+  const base = gameBrief(game, d, TA, E.lineupAgg, { leagueSlug: 'slb-men', competition: 'Championship', league: 'SLB', sits: T.sits }, T);
+  const model = { v: 1, league: 'L', n: 240, b: { efg: 1.5, tovp: -1.1, orebp: 0.4, ftr: 0.25 } };
+  const withM = Object.assign({}, base, { model });
+  const S = globalThis.EpinoiaStory, near = (a, b) => Math.abs(a - b) < 1e-9;
+  const pa = S.facts(withM).find(f => f.kind === 'pointsAdded'), A = withM.adv;
+  ok('each factor’s part is the league model’s b × the gap between the sides (turnovers’ b already negative)', pa && ['efg', 'tovp', 'orebp', 'ftr'].every(k => near(pa.data.rows.find(r => r.key === k).net, model.b[k] * (A[0][k] - A[1][k]))) &&
+    pa.data.model && pa.data.model.n === 240, pa && pa.data.rows.map(r => [r.key, r.net]));
+  const p0 = S.facts(base).find(f => f.kind === 'pointsAdded');
+  ok('...without the model the fixed weights stand, and the fact says it has no model', p0 && p0.data.model === null && !['efg', 'tovp'].every(k => near(p0.data.rows.find(r => r.key === k).net, pa.data.rows.find(r => r.key === k).net)));
+  const half = { v: 1, b: { efg: 1.5, tovp: -1.1, orebp: 0.4 } };
+  ok('...a model short of a factor is not used', S.facts(Object.assign({}, base, { model: half })).find(f => f.kind === 'pointsAdded').data.model === null);
+  const rep = report(withM), sec = rep.sections.find(s => s.heading === 'What the four factors were worth');
+  const em = S.facts(withM).find(f => f.kind === 'estMargin');
+  ok('the report says the four factors are weighed by what wins in this league, and on how many games', !em || (sec && /what wins in this league|this league’s own win model|what decides games in this league/.test(sec.paras.join(' ')) && /240 of its games/.test(sec.paras.join(' '))), sec && sec.paras[0]);
+  ok('...and the article still passes the facts check', [rep.headline, rep.standfirst].concat(rep.sections.flatMap(x => x.paras)).every(p => verifyClaims(withM, rep.facts, p).length === 0));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

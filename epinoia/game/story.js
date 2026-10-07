@@ -543,12 +543,22 @@ function paBase(g, k) {
   if (mu != null) return { v: mu, league: true };
   return { v: ((num(g.adv[0][k]) || 0) + (num(g.adv[1][k]) || 0)) / 2, league: false };
 }
+/* THE LEAGUE'S OWN WIN MODEL (Louie, 2026-10-07): where the brief carries the league's What wins weights (g.model,
+   winmodel.js explainOf: b in points of margin for one percentage point of difference between the sides, its
+   competitive margin = home + Σ b Δ factor), a factor's part is b × (the side's factor − the baseline): the model's own
+   equation for this league in place of the fixed weights, the turnovers' b already negative. Without them, as before */
+const modelB = g => {
+  const b = g && g.model && g.model.b;
+  return b && ['efg', 'tovp', 'orebp', 'ftr'].every(k => num(b[k]) != null) ? b : null;
+};
 function paSide(g, k, t) {
   const A = g.adv[t], v = num(A[k]), poss = num(A.possessions);
   if (v == null || poss == null) return null;
-  const b = paBase(g, k).v;
+  const b = paBase(g, k).v, MB = modelB(g);
+  if (MB) return MB[k] * (v - b);
   return (k === 'tovp' ? b - v : v - b) * PA_W[k] * poss / 100;
 }
+const modelTag = g => (modelB(g) ? { n: num(g.model.n), season: g.model.season || null } : null);
 function factEstimatedMargin(g) {
   const out = [];
   if (!g.adv || !g.adv[0] || !g.adv[1]) return out;
@@ -564,7 +574,7 @@ function factEstimatedMargin(g) {
   /* EVERY FACTOR, BOTH SIDES: what each gained or lost in it, and what it was worth to the margin (home minus away) */
   out.push(F('pointsAdded', null, 70, {
     rows: Object.keys(PA_W).map(k => ({ key: k, label: PA_LABEL[k], pts: [paSide(g, k, 0), paSide(g, k, 1)], net: net[k] })),
-    estimated: est, actual, baseline: paBase(g, 'efg').league ? 'league' : 'game'
+    estimated: est, actual, baseline: paBase(g, 'efg').league ? 'league' : 'game', model: modelTag(g)
   }, 'the four factors, in points'));
   if (Math.abs(est) < 3) return out;
   const side = est > 0 ? 0 : 1, sgn = side === 0 ? 1 : -1;
@@ -575,7 +585,7 @@ function factEstimatedMargin(g) {
   out.push(F('estMargin', side, 79, {
     estimated: Math.abs(est), actual: Math.abs(actual), actualSide: actual === 0 ? null : (actual > 0 ? 0 : 1),
     agrees: actual !== 0 && (actual > 0) === (est > 0), lead, second, against,
-    baseline: paBase(g, 'efg').league ? 'league' : 'game'
+    baseline: paBase(g, 'efg').league ? 'league' : 'game', model: modelTag(g)
   }, g.names[side] + ' were worth ' + Math.round(Math.abs(est)) + ' points on the four factors'));
   return out;
 }

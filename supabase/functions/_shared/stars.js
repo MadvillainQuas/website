@@ -92,6 +92,48 @@ async function boxScores(gameIds) {
   };
 }
 
+/* THE STARS ARE RANKED BY SINGLE-GAME BPM (2026-10-06), not by a season-style BPM worked over the window. Every game of the window is
+   put through bpm.js game() - the figure on each player's circle in the box score, Basketball-Reference's game-level BPM - and a
+   player's number is the mean of his games' BPMs weighted by the minutes he played in each. The season-style figure the window's
+   totals give (attachBPM) stays on the row as `seasonBpm`: it is also what each game's position, role and regression are read from,
+   as the window's rows are the only "season" this module has. A player with no game BPM (a game with one side's lines only) keeps
+   the window figure rather than dropping off the podium, and so does everyone where bpm.js is not on the page. */
+function singleGameBPM(rows, P) {
+  const B = root.EpinoiaBPM;
+  rows.forEach(p => { p.seasonBpm = p.bpm; });
+  if (!B || !B.game) return;
+  const season = new Map(rows.map(p => [p.id, p]));
+  const lines = new Map(), adv = new Map();
+  P.pgs.forEach(r => {
+    const id = r.player_uuid || r.player_id;
+    if (!id || !r.stats) return;
+    if (!lines.has(r.game_id)) lines.set(r.game_id, []);
+    lines.get(r.game_id).push({ id, side: r.team_idx === 1 ? 1 : 0, stats: r.stats });
+  });
+  P.tgs.forEach(r => {
+    const a = r.stats && r.stats.adv;
+    if (!a) return;
+    if (!adv.has(r.game_id)) adv.set(r.game_id, [null, null]);
+    adv.get(r.game_id)[r.team_idx === 1 ? 1 : 0] = a;
+  });
+  const sum = new Map();
+  lines.forEach((ls, gid) => {
+    const a = adv.get(gid);
+    const out = B.game({ lines: ls, clubs: a && a[0] && a[1] ? a : null, season });
+    ls.forEach(l => {
+      const b = out.get(l.id), m = (+l.stats.min || 0) / 60000;
+      if (!b || b.bpm == null || isNaN(b.bpm) || !(m > 0)) return;
+      const s = sum.get(l.id) || { w: 0, v: 0 };
+      s.w += m; s.v += b.bpm * m;
+      sum.set(l.id, s);
+    });
+  });
+  rows.forEach(p => {
+    const s = sum.get(p.id);
+    if (s && s.w > 0) p.bpm = s.v / s.w;
+  });
+}
+
 /* ------------------------------------------------------------- the maths ---
    computeWindow(pgs, tgs, games, {leagueOf})
 
@@ -132,6 +174,7 @@ function computeWindow(pgs, tgs, games, opts) {
       teamOf.set(pid, r.team_idx === 0 ? g.home_team_id : g.away_team_id);
     });
     S.attachBPM(rows, teamRows, teamOf);
+    if (!(opts && opts.seasonStyle)) singleGameBPM(rows, P);   // opts.seasonStyle: the window's own totals only (kept for the parity test)
     rows.forEach(p => { if (P.league) p._league = P.league; players.push(p); });
     teamOf.forEach((v, k) => teamOfPlayer.set(k, v));
   });

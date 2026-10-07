@@ -499,6 +499,40 @@ function gm(o) {
   const seen = new Set();
   /* three at most: a GM's list of needs is a priority order, not a wish list */
   weak.forEach(r => { const n = NEED[r.key]; if (n && !seen.has(n) && out.needs.length < 3) { seen.add(n); out.needs.push(entry(r, { key: r.key, text: cap(n), why: r.label + ' ' + ordinal(r.rank) + ' of ' + r.of })); } });
+  /* EACH POSITION AGAINST THE LEAGUE (Louie, 2026-10-07; o.model.pos = fomodel.js posGaps over the model's files): not the
+     team's four factors alone but where its guards, wings and bigs stand against the league's at their own positions,
+     each gap in wins over 30 games. The two biggest positional weaknesses and strengths join the lists; the needs are
+     ranked again with them by what each is worth, a guard who creates first where the club is short of creation */
+  const PG = o.model && o.model.pos;
+  if (PG) {
+    const GRP = { G: 'guards', F: 'wings', C: 'bigs' };
+    const f2 = v => (num(v) == null ? '—' : (+v).toFixed(Math.abs(v) < 10 ? 2 : 1));
+    const sd = v => (num(v) == null ? '' : ', ' + (v > 0 ? '+' : '') + (+v).toFixed(1) + ' SD');
+    const lab = r => cap(GRP[r.g]) + ': ' + r.label;
+    const det = r => f2(r.v) + ' against the league\'s ' + f2(r.avg) + sd(r.z);
+    (PG.weak || []).slice(0, 2).forEach(r => out.weaknesses.push({ key: 'pos:' + r.g + ':' + r.k, text: lab(r), detail: det(r), wins: r.wins, pos: true }));
+    (PG.strong || []).slice(0, 2).forEach(r => out.strengths.push({ key: 'pos:' + r.g + ':' + r.k, text: lab(r), detail: det(r), wins: r.wins, pos: true }));
+    const cand = out.needs.slice();
+    (PG.weak || []).forEach(r => { if (r.need && !seen.has(r.need)) { seen.add(r.need); cand.push({ key: 'pos:' + r.g + ':' + r.k, text: cap(r.need), why: lab(r) + ' ' + det(r), wins: r.wins }); } });
+    const absW = x => (typeof x.wins === 'number' && isFinite(x.wins) ? Math.abs(x.wins) : -1);
+    cand.sort((a, b) => absW(b) - absW(a));
+    const C = PG.creation;
+    /* how well the club creates: its ball handlers and high-usage players, their points a play against the league's */
+    const pe = C && C.eff ? (C.eff.find(e => e.k === 'ppp') || C.eff.find(e => e.k === 'ts')) : null, she = C && C.eff ? C.eff.find(e => e.k === 'share') : null;
+    if (pe) {
+      const d = (pe.k === 'ppp' ? f2(pe.v) + ' points a play' : (+pe.v).toFixed(1) + ' TS%') + ' against the league\'s ' + (pe.k === 'ppp' ? f2(pe.avg) : (+pe.avg).toFixed(1)) +
+        (she ? ', on ' + (+she.v).toFixed(1) + '% of the plays' : '');
+      if (C.inefficient) out.weaknesses.push({ key: 'creation:eff', text: 'Inefficient creation: its ball handlers and high-usage players', detail: d, wins: pe.wins, pos: true });
+      else if (C.efficient) out.strengths.push({ key: 'creation:eff', text: 'Efficient creation: its ball handlers and high-usage players', detail: d, wins: pe.wins, pos: true });
+    }
+    if (C && C.lacking) {
+      const why = (C.rows || []).map(r => r.label + ' ' + f2(r.v) + ' v ' + f2(r.avg)).join(', ') +
+        (num(C.handlers) != null ? (C.rows && C.rows.length ? '; ' : '') + (+C.handlers).toFixed(1) + ' ball handlers in the rotation' : '');
+      cand.unshift({ key: 'creation', text: 'A ball-handler who creates: his own shot and other people\'s', why: 'short of creation from the guards: ' + why, wins: null });
+    }
+    out.needs = cand.slice(0, 3);
+    out.positions = true;
+  }
   /* identity: the styles, read as choices */
   const style = k => ranked.find(r => r.key === k);
   const pace = style('pace'), three = style('p3_share'), rim = style('rim_share');
@@ -614,7 +648,8 @@ function gmHTML(g) {
     block('identity', 'style', g.identity) + block('the roster', 'roster', g.roster) +
     block('what it needs', 'need', g.needs, 'why') + '</div>' +
     '<div class="gm-note">every rank is among the ' + g.of + ' clubs of this competition, this season · a style is a choice, not a grade' +
-    (g.model ? ' · ordered by what each is worth in wins (the win model, F3)' : '') + '</div>';
+    (g.model ? ' · ordered by what each is worth in wins (the win model, F3)' : '') +
+    (g.positions ? ' · each position is also read against the league\'s at that position (guards against guards)' : '') + '</div>';
 }
 
 return { chart, slotChart, splitChart, floorPos, gameMinutes, scaleTo, roundTo, gm, chartHTML, gmHTML, projectedMinutes, positionOf, rank, SLOTS, MEASURES, NEED,

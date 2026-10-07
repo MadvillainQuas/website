@@ -420,6 +420,7 @@ const BODIES = {
     const html = window.EpinoiaReportView.render(g, window.EpinoiaReport.report(g), reportLook());
     /* THE SQUADS UNDER THE HEADLINE: both sides, every player who played, the starters first */
     ensureSeasonPositions();
+    ensureWinModel();
     const strip = squadsHTML(d);
     setTimeout(squadPhotos, 0);
     return strip ? html.replace('</p></div>', '</p></div>' + strip) : html;   // the standfirst is the last thing in .rep-head
@@ -437,6 +438,7 @@ const BODIES = {
     const F = E.formatOf(S), H = F.periods / 2;
     const hS = Object.assign({}, S, { format: F, events: (S.events || []).filter(e => (e.period || 1) <= H), period: H });
     const hd = E.deriveGame(hS);
+    ensureWinModel();
     const g = window.EpinoiaGameFacts.brief(hS, hd, B);
     return window.EpinoiaReportView.render(g, window.EpinoiaReport.halftime(g), reportLook());
   },
@@ -613,6 +615,21 @@ function boxSwitchHTML() {
     '</div>';
 }
 let seasonAsked = false;
+/* WHAT WINS IN THIS LEAGUE, FOR THE MATCH REPORT (2026-10-07): the league's What wins weights (the builder's public
+   snapshots/whatwins-explain/<league>.json, winmodel.js explainOf) on S.winModel, so story.js weighs the four factors by
+   the league's own model; read once a page, the report drawn again when they arrive. None (no model yet): as before */
+let winModelAsked = false;
+function ensureWinModel() {
+  const S = window.S, CFG = window.EPINOIA_CONFIG;
+  if (winModelAsked || !S || !S.leagueId || !CFG || !CFG.supabaseUrl) return;
+  winModelAsked = true;
+  fetch(CFG.supabaseUrl + '/storage/v1/object/public/snapshots/whatwins-explain/' + encodeURIComponent(S.leagueId) + '.json')
+    .then(r => (r.ok ? r.json() : null)).catch(() => null).then(m => {
+      if (!m || !m.b || String(m.league) !== String(S.leagueId)) return;
+      S.winModel = m;
+      if (fTab === 'report' || fTab === 'halftime') { lastBodyKey = ''; renderBody(); }
+    });
+}
 function ensureSeasonPositions() {
   if (seasonAsked || !window.EpinoiaModernBox || !window.S) return;
   seasonAsked = true;

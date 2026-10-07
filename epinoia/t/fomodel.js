@@ -110,7 +110,7 @@ const ROLES = ['handler', 'passer', 'shooter', 'slasher', 'crasher', 'glass', 'p
 const ROLE_LABEL = { shooter: 'Shooters', handler: 'Ball handlers', passer: 'Passers', slasher: 'Rim pressure', crasher: 'Offensive rebounders', glass: 'Defensive rebounders',
   protector: 'Rim protectors', disruptor: 'Turnover generators', big: 'Bigs', creator: 'Creators' };
 const ROLE_HOW = {
-  handler: 'AST%, unassisted points share and usage percentiles, weighted 45 / 30 / 25, at 0.70 or more',
+  handler: 'AST%, usage and the self-created share of his points, percentiles weighted 35 / 25 / 40, at 0.70 or more',
   passer: 'A/U (AST% ÷ USG%) in the top quarter, AST% at least the median',
   shooter: '40 threes or more, 3PA rate in the top 40%, 3P% (shrunk) at least the median',
   slasher: 'rim rate and FT attempt rate percentiles averaging 0.75 or more',
@@ -289,6 +289,80 @@ function gmModel(fo, teamId) {
   return { wins };
 }
 
+/* POSITIONAL GAPS (Louie, 2026-10-07: not the four factors alone, but how each position stands against the league's):
+   the club file's posv (its line at G / F / C on every per-position statistic: value, z against the league's clubs, the
+   wins over 30 games the gap goes with) beside the fo file's posLg (the league's mean, SD, winners' line, wins for one SD
+   more, ★). A gap is read only where it is worth a fifth of a win or more and the statistic counts there (★, or half a
+   win or more for one SD). CREATION: the guards' self-created points, their self-created share and their AST% against
+   the league, with the ball handlers in the rotation against the winners' band: short of creation when two of the
+   three guard lines sit half an SD or more under the league, or the rotation has fewer handlers than the band. */
+const POS_STAT_LABEL = { ast_pct: 'AST%', usg: 'usage', ts: 'TS%', efg: 'eFG%', p3r: '3PA rate', p3p: '3P%', rimr: 'rim rate', midr: 'mid-range rate', ftr: 'FT attempt rate',
+  una: 'unassisted share of makes', ups: 'unassisted points share', orb_pct: 'ORB%', drb_pct: 'DRB%', tov_pct: 'TOV%', stl_pct: 'STL%', blk_pct: 'BLK%',
+  un_pg: 'unassisted makes a game', unp_pg: 'self-created points a game', upp: 'self-created share of points', rim40: 'rim attempts per 40', p3a40: 'threes per 40',
+  fga40: 'shots per 40', ast40: 'assists per 40', a3s: 'assists that make a three', ftp: 'FT%', rimp: 'rim FG%', midp: 'mid-range FG%', bpm: 'BPM', vorp: 'VORP' };
+/* the player who would close a gap, by position and statistic (the rest: a better player at that position) */
+const POS_NEED = {
+  G: { unp_pg: 'a guard who creates his own shot', un_pg: 'a guard who creates his own shot', upp: 'a guard who creates his own shot', ups: 'a guard who creates his own shot',
+       ast_pct: 'a playmaking guard who creates for others', ast40: 'a playmaking guard who creates for others', rim40: 'a guard who gets to the rim', rimr: 'a guard who gets to the rim',
+       ftr: 'a guard who draws fouls', p3p: 'a shooting guard', p3a40: 'a guard who lets it fly from three', ts: 'an efficient scoring guard', efg: 'an efficient scoring guard',
+       tov_pct: 'a guard who protects the ball', stl_pct: 'a guard who pressures the ball', a3s: 'a guard who finds shooters',
+       ftp: 'a guard who makes his free throws', rimp: 'a guard who finishes at the rim', bpm: 'a better guard', vorp: 'a better guard' },
+  F: { p3p: 'a wing who shoots it', p3a40: 'a wing who stretches the floor', ts: 'an efficient scoring wing', rim40: 'a wing who attacks the basket', unp_pg: 'a wing who creates his own shot',
+       drb_pct: 'a wing who rebounds', stl_pct: 'a disruptive wing defender', ftr: 'a wing who draws fouls', rimp: 'a wing who finishes at the rim', bpm: 'a better wing', vorp: 'a better wing' },
+  C: { blk_pct: 'a rim protector', drb_pct: 'a big who owns the defensive glass', orb_pct: 'a big who crashes the offensive glass', ts: 'a big who finishes', efg: 'a big who finishes',
+       rim40: 'a big who rolls to the rim', ast_pct: 'a big who passes out of the post', p3p: 'a stretch big', tov_pct: 'a big with safe hands',
+       rimp: 'a big who finishes at the rim', ftp: 'a big who makes his free throws', bpm: 'a better big', vorp: 'a better big' }
+};
+const POS_TEXT_GROUP = { G: 'guards', F: 'wings', C: 'bigs' };
+function posGaps(fo, club) {
+  const L = fo && fo.posLg, P = club && club.posv;
+  if (!L || !P || !Array.isArray(P.stats)) return null;
+  const rows = [];
+  ['G', 'F', 'C'].forEach(g => P.stats.forEach((k, j) => {
+    const x = P[g] && P[g][j], li = (L.stats || []).indexOf(k), l = li >= 0 && L[g] ? L[g][li] : null;
+    if (!x || !l || !isNum(x[0]) || !isNum(l[0])) return;
+    rows.push({ g, k, label: POS_STAT_LABEL[k] || k, v: x[0], z: x[1], wins: isNum(x[2]) ? x[2] : null, avg: l[0], sd: l[1], top: l[2], per: l[3], star: !!l[4],
+      need: (POS_NEED[g] && POS_NEED[g][k]) || '' });
+  }));
+  const counts = r => isNum(r.wins) && Math.abs(r.wins) >= 0.2 && (r.star || (isNum(r.per) && Math.abs(r.per) >= 0.5));
+  const weak = rows.filter(r => counts(r) && r.wins < 0).sort((a, b) => (a.wins - b.wins) || a.k.localeCompare(b.k)).slice(0, 5);
+  const strong = rows.filter(r => counts(r) && r.wins > 0).sort((a, b) => (b.wins - a.wins) || a.k.localeCompare(b.k)).slice(0, 4);
+  const gl = k => rows.find(r => r.g === 'G' && r.k === k) || null;
+  const cre = ['unp_pg', 'upp', 'ast_pct'].map(gl).filter(Boolean);
+  const hand = club.squad && isNum(club.squad.handlers) ? club.squad.handlers : null, band = fo.squad && fo.squad.bands ? fo.squad.bands.handlers : null;
+  const under = cre.filter(r => isNum(r.z) && r.z <= -0.5).length, fewHand = isNum(hand) && band && isNum(band.p25) && hand < band.p25;
+  /* HOW WELL IT CREATES (2026-10-07): its creators' (ball handlers and high-usage players) share of the plays, their TS% and
+     points a play against the league's clubs (club.creation beside fo.creation); inefficient when their points a play or
+     TS% sits half an SD or more under the league's while they carry at least the league's share of the plays */
+  const CF = club.creation, CL = fo.creation;
+  const eff = ['share', 'ppp', 'ts', 'hand_ppp', 'hand_ts'].map(k => {
+    const x = CF && CF[k], l = CL && CL[k];
+    return x && l && isNum(x[0]) ? { k, label: CREATION_TXT[k], v: x[0], z: x[1], wins: isNum(x[2]) ? x[2] : null, avg: l.avg, top: l.top, per: l.w30 } : null;
+  }).filter(Boolean);
+  const ef = k => eff.find(e => e.k === k) || null, sh = ef('share'), pp = ef('ppp') || ef('ts');
+  const inefficient = !!(pp && isNum(pp.z) && pp.z <= -0.5 && (!sh || !isNum(sh.z) || sh.z >= 0));
+  const efficient = !!(pp && isNum(pp.z) && pp.z >= 0.5);
+  const creation = cre.length || isNum(hand) || eff.length ? { lacking: under >= 2 || (fewHand && under >= 1), rows: cre, handlers: hand, band: band || null, fewHandlers: !!fewHand,
+    eff, inefficient, efficient, creators: CF && isNum(CF.n) ? CF.n : null } : null;
+  return { rows, weak, strong, creation };
+}
+const CREATION_TXT = { share: 'creators’ share of the plays', ppp: 'creators’ points a play', ts: 'creators’ TS%', hand_ppp: 'ball handlers’ points a play', hand_ts: 'ball handlers’ TS%' };
+const creationFmt = (k, v) => (k === 'ppp' || k === 'hand_ppp' ? f2(v) : f1(v) + (k === 'share' ? '%' : ''));
+/* one sentence: how much the creators carry and how well */
+function creationLine(C) {
+  if (!C || !C.eff || !C.eff.length) return '';
+  const sh = C.eff.find(e => e.k === 'share'), pp = C.eff.find(e => e.k === 'ppp'), ts = C.eff.find(e => e.k === 'ts');
+  const part = e => creationFmt(e.k, e.v) + ' (league ' + creationFmt(e.k, e.avg) + ')';
+  const bits = [];
+  if (sh) bits.push('carry ' + part(sh) + ' of the plays');
+  if (pp) bits.push('at ' + part(pp) + ' points a play');
+  if (ts) bits.push(part(ts) + ' TS%');
+  const w = pp && isNum(pp.wins) ? pp.wins : ts && isNum(ts.wins) ? ts.wins : null;
+  return 'Its creators (ball handlers and high-usage players' + (isNum(C.creators) ? ', ' + C.creators : '') + ') ' + bits.join(', ') +
+    (isNum(w) && Math.abs(w) >= 0.05 ? ': their efficiency ' + (w > 0 ? 'adds' : 'costs') + ' about ' + f1(Math.abs(w)) + ' wins per 30 games' : '');
+}
+const posLine = r => cap(POS_TEXT_GROUP[r.g]) + ': ' + r.label + ' ' + f2(r.v) + ' against the league’s ' + f2(r.avg) + (isNum(r.z) ? ' (' + sg(r.z, 1) + ' SD)' : '');
+
 /* the season's end: wins so far plus the exact distribution over the fixtures to come (Poisson-binomial) */
 function projection(done, mus) {
   let dist = [1];
@@ -345,7 +419,10 @@ function view(o) {
   if (N.length) charts.needs = { kind: 'bars', data: N.map(n => ({ id: n.key, label: n.label + ' · ' + END[n.end], v: n.wins, lo: n.lo, hi: n.hi, dir: 1 })),
     o: { x: { label: 'wins' } }, label: 'Wins from reaching the league’s P75' };
 
-  /* (4) slots */
+  /* (4) slots, and every position against the league (posGaps) */
+  const posG = posGaps(fo, club);
+  if (posG && (posG.weak.length || posG.strong.length)) charts.posGaps = { kind: 'bars', data: posG.weak.concat(posG.strong).sort((a, b) => a.wins - b.wins).map(r => ({ id: 'pos:' + r.g + ':' + r.k,
+    label: GROUP[r.g] + ' · ' + r.label, v: r.wins, dir: 1 })), o: { x: { label: 'wins per 30 games against the league average' } }, label: 'Each position against the league, in wins' };
   const slots = slotsView(fo, club);
   if (slots && slots.rows.length) charts.slots = { kind: 'bars', data: slots.rows.filter(r => isNum(r.pts)).map(r => ({ id: r.g + ':' + r.stat, label: GROUP[r.g] + ' · ' + (P1_LABEL[r.stat] || r.stat), v: r.pts, dir: 1 })),
     o: { x: { label: 'points of margin a game' } }, label: 'Each group against what winners get, in points' };
@@ -353,6 +430,7 @@ function view(o) {
   /* (5) squad */
   const squad = squadView(fo, club, nameOf);
   if (squad && squad.grid) charts.grid = { kind: 'heatmap', data: squad.grid, o: { label: 'net per 100 against the reference five' }, label: 'Shooters and bigs on the floor: net per 100 possessions' };
+  if (squad && squad.gridH) charts.gridH = { kind: 'heatmap', data: squad.gridH, o: { label: 'net per 100 against the reference five' }, label: 'Shooters and ball handlers on the floor: net per 100 possessions' };
 
   /* (6) losses */
   const losses = lossesView(fo, club);
@@ -378,7 +456,7 @@ function view(o) {
   const whatIf = t ? { dials: DIALS, end: (o.wi && o.wi.end) || 'off', vals: (o.wi && o.wi.vals) || {}, roster: rosterOptions(fo, club, nameOf) } : null;
 
   return { ok: true, fo, club, team: { id, name: team.name || (club && club.team && club.team.name) || (t && t.name) || '' }, t, sigma, mus,
-    verdict, ledger: L, needs: N, slots, squad, losses, next, whatIf, charts, names, nameOf,
+    verdict, ledger: L, needs: N, slots, posGaps: posG, squad, losses, next, whatIf, charts, names, nameOf,
     lens: { forecast: !!fo.predLive, calibrated: !!(fo.sim && fo.sim.calibrated) }, n: fo.n || null };
 }
 
@@ -436,12 +514,19 @@ function squadView(fo, club, nameOf) {
     grid = { rows: ss.map(s => s + (s === 1 ? ' shooter' : ' shooters')), cols: bs.map(b => b + (b === '1' ? ' big' : ' bigs')), mode: 'div',
       cells: ss.map(s => bs.map(b => { const c = at(s, b); return c ? { v: c.net, lo: c.lo, hi: c.hi, hatch: c.poss < 200 } : null; })) };
   }
+  let gridH = null;
+  if (LU && Array.isArray(LU.gridH) && LU.gridH.length) {
+    const ss = [...new Set(LU.gridH.map(c => c.s))].sort((a, b) => a - b), hs = ['0', '1', '2+'];
+    const at = (s, h) => LU.gridH.find(c => c.s === s && c.h === h);
+    gridH = { rows: ss.map(s => s + (s === 1 ? ' shooter' : ' shooters')), cols: hs.map(h => h + (h === '1' ? ' handler' : ' handlers')), mode: 'div',
+      cells: ss.map(s => hs.map(h => { const c = at(s, h); return c ? { v: c.net, lo: c.lo, hi: c.hi, hatch: c.poss < 200 } : null; })) };
+  }
   const fives = club && Array.isArray(club.lineups) ? club.lineups.slice(0, 5).map(l => ({ names: (l.ids || []).map(nameOf).filter(Boolean), s: l.s, b: l.b, poss: l.poss, net: l.net, pred: l.pred })) : [];
   /* A.3: the club's players by role (its rotation first: the file lists them by minutes), named here, never in a file */
   const pl = club && Array.isArray(club.players) ? club.players : [];
   const roles = ROLES.map(k => ({ k, label: ROLE_LABEL[k], how: ROLE_HOW[k], names: pl.filter(p => (p.roles || []).includes(k)).map(p => nameOf(p.id)).filter(Boolean) })).filter(r => pl.length);
   if (!rows.length && !grid && !fives.length && !roles.length) return null;
-  return { rows, n: Q ? Q.n : null, power: Q ? Q.power : null, grid, fives, roles, terms: LU ? LU.terms || [] : [] };
+  return { rows, n: Q ? Q.n : null, power: Q ? Q.power : null, grid, gridH, fives, roles, terms: LU ? LU.terms || [] : [] };
 }
 
 /* (6) THE LOSSES: exact parts (m = xm + Σ parts), the last ten, the mean over every loss with its interval */
@@ -529,23 +614,46 @@ H.ledger = vm => {
   }
   return html;
 };
+/* the positions' needs under the factors' (2026-10-07): creation first where the guards are short of it */
+const posNeedsHTML = vm => {
+  const G = vm.posGaps;
+  if (!G) return '';
+  let html = '';
+  const C = G.creation;
+  const cl = creationLine(C);
+  if (cl) html += '<p class="fm-' + (C.inefficient ? 'say' : 'p') + '">' + esc(cl + (C.inefficient ? '. They carry the offence without the efficiency to: more creation, or better creators.' : C.efficient ? '. Efficient creation: build around it.' : '.')) + '</p>';
+  if (C && C.lacking) html += '<p class="fm-say">' + esc('Short of ball-handling creation: ' + C.rows.map(r => posLine(r)).join('; ') +
+    (isNum(C.handlers) ? '; ' + f1(C.handlers) + ' ball handlers in the rotation' + (C.band && isNum(C.band.p25) ? ' (winners ' + f1(C.band.p25) + '–' + f1(C.band.p75) + ')' : '') : '') +
+    '. A guard who makes his own shot and sets others up is the first need.') + '</p>';
+  if (G.weak.length) html += '<h4 class="fm-h4">' + esc('At each position, against the league') + '</h4><ol class="fm-needs">' + G.weak.map(r => '<li><b>' + esc(posLine(r)) + '</b> <span class="fm-w">' +
+    esc('costs about ' + winsTxt(-r.wins).replace(/^\+/, '') + ' wins per 30 games') + '</span>' + (r.need ? '<span class="fm-need">' + esc(cap(r.need)) + '</span>' : '') + '</li>').join('') + '</ol>';
+  return html;
+};
 H.needs = vm => {
   const N = vm.needs;
-  if (!N || !N.length) return empty('Every factor the model can value is at the league’s P75 or better, or too uncertain to rank');
+  if (!N || !N.length) return (posNeedsHTML(vm) || empty('Every factor the model can value is at the league’s P75 or better, or too uncertain to rank'));
   const per = N[0].perSeason ? 'over a season of ' + N[0].G + ' games against an average side' : 'over the ' + N[0].games + (N[0].games === 1 ? ' game to play' : ' games to play');
   let html = '<p class="fm-p">' + esc('Ranked by the wins each adds ' + per + ', reaching the league’s P75 alone') + ' ' +
     chip(N.some(n => n.src === 'sim') ? 'model' : (vm.lens.forecast ? 'forecast' : 'elo')) + '</p>' + slot('needs');
   html += '<ol class="fm-needs">' + N.map(n => '<li><b>' + esc(n.label + ' on ' + END[n.end]) + '</b> <span class="fm-p">' +
     esc('from ' + unitFmt(n.unit, n.x) + ' to ' + unitFmt(n.unit, n.target)) + '</span> <span class="fm-w">' +
     esc('worth ' + winsTxt(n.wins) + ' wins (± ' + (isNum(n.se) && n.se < 0.1 ? f2(n.se) : f1(n.se)) + ')') + '</span>' + (n.need ? '<span class="fm-need">' + esc(cap(n.need)) + '</span>' : '') + '</li>').join('') + '</ol>';
-  return html;
+  return html + posNeedsHTML(vm);
 };
 H.slots = vm => {
   const S = vm.slots;
   const btns = '<div class="fm-slotb">' + SLOT_KEYS.map(k => '<button type="button" class="ep-btn mini" data-slot="' + k + '">' + k + '</button>').join('') +
     '<span class="fm-p fm-mute">' + esc('press a position for its league view') + '</span></div>';
-  if (!S || !S.rows.length) return empty('The slot targets need the positions model: not built for this league yet') + btns;
-  let html = '';
+  /* every position against the league's average, in wins (posGaps): the club's strongest and weakest lines */
+  const G = vm.posGaps;
+  const posHTML = G && (G.weak.length || G.strong.length) ? '<h4 class="fm-h4">' + esc('Each position against the league') + '</h4>' + slot('posGaps') +
+    tw('<table class="fm-t"><thead><tr><th scope="col">group</th><th scope="col">statistic</th><th scope="col">club</th><th scope="col">league</th><th scope="col">winners</th><th scope="col">SD</th>' +
+      '<th scope="col">wins per 30</th></tr></thead><tbody>' + G.strong.concat(G.weak).map(r => '<tr><th scope="row">' + esc(GROUP[r.g]) + '</th><td>' + esc(r.label) + (r.star ? ' ★' : '') +
+      '</td><td translate="no">' + esc(f2(r.v)) + '</td><td translate="no">' + esc(f2(r.avg)) + '</td><td translate="no">' + esc(f2(r.top)) + '</td><td translate="no" class="' + (r.wins >= 0 ? 'fm-good' : 'fm-bad') + '">' +
+      esc(sg(r.z, 1)) + '</td><td translate="no" class="' + (r.wins >= 0 ? 'fm-good' : 'fm-bad') + '">' + esc(winsTxt(r.wins)) + '</td></tr>').join('') + '</tbody></table>') +
+    '<p class="fm-p fm-mute">' + esc('Each line is the position’s own (its players’ season rates weighted by their minutes there) against the league’s clubs at that position; wins per 30 is what the gap goes with there. Only gaps worth a fifth of a win or more, on statistics that count at that position') + '</p>' : '';
+  if (!S || !S.rows.length) return (posHTML || empty('The slot targets need the positions model: not built for this league yet')) + btns;
+  let html = posHTML;
   if (S.gaps.length) html += '<p class="fm-say">' + esc('The two largest gaps: ' + S.gaps.map(r => GROUP[r.g].toLowerCase() + ' ' + low(P1_LABEL[r.stat] || r.stat) + ' (' + sg(r.pts, 1) + ' points)').join(' and ')) + '</p>';
   html += slot('slots');
   html += tw('<table class="fm-t"><thead><tr><th scope="col">group</th><th scope="col">statistic</th><th scope="col">club</th><th scope="col">winners</th><th scope="col">league</th>' +
@@ -570,6 +678,7 @@ H.squad = vm => {
     Q.roles.map(r => '<tr><th scope="row">' + esc(r.label) + '</th><td translate="no" class="fm-five">' + esc(r.names.join(', ') || '–') + '</td><td>' + esc(r.how) + '</td></tr>').join('') + '</tbody></table>') +
     '<p class="fm-p fm-mute">' + esc('Each cut is a percentile within this league-season; What wins shows the values and how each role goes with winning') + '</p>';
   if (Q.grid) html += '<h4 class="fm-h4">' + esc('Shooters and bigs on the floor') + '</h4>' + slot('grid');
+  if (Q.gridH) html += '<h4 class="fm-h4">' + esc('Shooters and ball handlers on the floor') + '</h4>' + slot('gridH');
   if (Q.fives.length) html += '<h4 class="fm-h4">' + esc('The club’s most used fives') + '</h4>' + tw('<table class="fm-t"><thead><tr><th scope="col">five</th><th scope="col">shooters</th><th scope="col">bigs</th>' +
     '<th scope="col">possessions</th><th scope="col">net per 100</th><th scope="col">model</th></tr></thead><tbody>' + Q.fives.map(f => '<tr><td translate="no" class="fm-five">' + esc(f.names.join(', ') || '–') +
       '</td><td translate="no">' + esc(f.s) + '</td><td translate="no">' + esc(f.b) + '</td><td translate="no">' + esc(Math.round(f.poss)) + '</td><td translate="no">' + esc(sg(f.net, 1)) +
@@ -1070,7 +1179,7 @@ function whatIfHTML(vm, rn, ra) {
   return '<ul class="fm-list">' + lines.map(s => '<li>' + esc(s) + '</li>').join('') + '</ul>';
 }
 
-return { KEYMAP, CORE, LEVERS, DIALS, BLOCKS, STAGES, LABEL, MSG, view, ledger, needs, gmModel, mount, statusLine, makeWorker, encodeWi, decodeWi,
+return { KEYMAP, CORE, LEVERS, DIALS, BLOCKS, STAGES, LABEL, MSG, view, ledger, needs, gmModel, posGaps, creationLine, POS_NEED, mount, statusLine, makeWorker, encodeWi, decodeWi,
   fixtureMus, projection, rosterWhatIf, neededByMargin, contribution, targetOf, panel, neededText, whatIfHTML,
   html: { verdict: H.verdict, ledger: H.ledger, needs: H.needs, slots: H.slots, squad: H.squad, losses: H.losses, next: H.next, whatIf: H.whatIf } };
 }));

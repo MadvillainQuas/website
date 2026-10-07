@@ -174,7 +174,9 @@ ok('it loads clutch.js and the shared clutch styles (both pages)', /src="\.\.\/c
    !/\.tclx\{/.test(rd('epinoia', 'kit', 'teampage.css')) && /\.tclx\{/.test(rd('epinoia', 'kit', 'clutch.css')));
 ok('shown only from five minutes of his clutch time, behind the splits lock', /const P_CLUTCH_MIN_SEC = 300;/.test(PJ) && /if \(!p \|\| !\(p\.sec >= P_CLUTCH_MIN_SEC\)\) \{ show\(false\); return; \}/.test(PJ) &&
    /if \(pLocked\('splits'\)\) \{\s*host\.innerHTML = accessTeaser\(\{ compact: true, key: 'splits', title: 'Clutch time'/.test(PJ));
-ok('drawn again with the scope (season, competition)', /paintBars\(mine, field\);\s*paintClutch\(ids, pl\.id, team\)/.test(PJ));
+ok('drawn again with the scope (season, competition)', /paintBars\(mine, field\);\s*clutchWhenNear\(ids, pl\.id, team\)/.test(PJ));
+ok('...and only once the reader comes near the bottom of the page: the replay engine is not fetched for a visit that reads the top', /new IntersectionObserver\(es => \{ if \(es\.some\(e => e\.isIntersecting\)\) \{ io\.disconnect\(\); go\(\); \} \}, \{ rootMargin: '600px 0px' \}\)/.test(PJ) &&
+   /const node = \$\('#shotsec'\)/.test(PJ));
 ok('the club with him on is every five he was in', /f\.ids\.indexOf\(pid\) < 0/.test(PJ));
 
 const M = rd('supabase', 'migrations', '0238_career_ft.sql');

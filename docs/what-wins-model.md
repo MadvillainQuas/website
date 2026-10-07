@@ -1516,3 +1516,69 @@ refused one costing nothing else), ww-gate (0213: the CHECK and analytics_check 
    `npx supabase functions deploy finalise-game` (st.u on every new line).
 3. Optional, for the unassisted shares of past games: Actions → backfill-features with `force` (about 250 MB once).
 4. The next scheduled builds rebuild each due unit's store once (STORE_V 2) and publish the mix files.
+
+## A.4 Positions against the league, ball handlers, creation and the match reports (Oct 2026)
+
+Asked for by Louie on 7 October 2026: every per-position statistic against the league's average and what it is worth in
+wins; self-created scoring, shot volume and balance, and the passes that make threes; ball handlers beside shooters and
+bigs; the efficiency of a club's creation; the Front office reading a club by its positions, not the four factors alone;
+the match reports explaining a result by what wins in its league.
+
+### A.4.1 The feature row and the store (STORE_V 3)
+`features.js` st.u is now `{player: [unassisted FGM, unassisted FG points, assisted FGM, threes he assisted, twos he
+assisted]}`, the passers included (paired as situations.js assistedShots pairs them). The store's player sidecar carries
+`a3, a2` (PGX_COLS, 8 bytes; a v2 store decodes with them unknown and is rebuilt). Rows written before the change have
+three numbers and the a3s rate is null for those games (a `force` backfill fills them).
+
+### A.4.2 New player rates (PLAYER_STATS, POS_STATS)
+`un_pg` unassisted makes a game, `unp_pg` self-created points a game, `upp` the unassisted share of his own FG points,
+`rim40` rim attempts per 40 (minutes with zones), `p3a40`, `fga40`, `ast40`, `a3s` the share of his assists that made a
+three (5 or more assists of known kind).
+
+### A.4.3 By position against the league (`wins.positions.stats`)
+Each cell adds `avg` (the league's mean), `top` / `bot` (the top and bottom quarter of club seasons by net), `dTop` (the
+winners' +/-) and `w30` (with `w30lo`, `w30hi`): wins over 30 games for one club-season SD more, 30 (Φ(b pace / 100 /
+σ_pred) − ½). `levers[g]`: each position's differentiator, the stat whose SD moves wins most there (★ first).
+The club file's `posv` is the club's line at G / F / C on every POS_STATS stat as [value, z, wins over 30 the gap goes
+with]; the fo file's `posLg` the league's [mean, SD, winners', wins for one SD, ★].
+
+### A.4.4 The ball handler, and the handlers grid
+Handler = 0.35 pct(AST%) + 0.25 pct(USG%) + 0.40 pct(UPP) ≥ 0.70 (renormalised without UPP). `wins.lineup.gridH`: the
+lineup model's expectation for 0 / 1 / 2+ handlers with 0..5 shooters (one big, one protector) against the reference
+five, with the possessions played so.
+
+### A.4.5 Creation and how well it works (`wins.creation`, club `creation`, fo `creation`)
+The creators are the players tagged handler or creator. Per club season: their share of the club's plays (FGA + 0.44 FTA
++ TOV), their TS% and points a play (points / plays), and the handlers' alone (`hand_ts`, `hand_ppp`); 50 plays or more.
+Each with the league's mean, SD, winners' and strugglers' lines, r with net (within league) and w30.
+
+### A.4.6 The Front office
+`fomodel.js posGaps(fo, club)`: the club's positional gaps worth 0.2 wins or more on stats that count there (★ or 0.5 wins
+for one SD), the costliest first with the player who would close each (POS_NEED); `creation`: short of creation when two of
+the guards' self-created points, self-created share and AST% sit half an SD under the league or the rotation holds fewer
+handlers than the winners' band; inefficient when the creators' points a play (or TS%) sits half an SD under while they
+carry at least the league's share of the plays. Drawn in By position (the club against the league), in What the club
+needs (creation first, then the positional needs) and in the GM's view (depth.js gm o.model.pos: the two biggest
+positional weaknesses and strengths, efficient or inefficient creation, the needs ranked again by wins).
+
+### A.4.7 The match reports
+`winmodel.js explainOf(wins)`: the current season's core4c b (points of margin for one percentage point of difference),
+the home term and n, published by the builder at `snapshots/whatwins-explain/<league>.json` (public: four numbers a
+league, no club's). The game page (game.js ensureWinModel) and finalise-game read it onto the brief (`g.model`); story.js
+then weighs the four factors by b × (side − baseline), in place of the fixed weights, and report.js says it is the
+league's own model and on how many games. Without the file, as before.
+
+### A.4.8 Runbook (owner)
+1. `npx supabase functions deploy finalise-game` (the new st.u, and the report's weights) and
+   `npx supabase functions deploy analytics-file` (the shared winmodel copy).
+2. The next build rebuilds each store once (STORE_V 3) and publishes the weights files.
+3. Optional, for the assisted threes of past games: Actions → backfill-features with `force`.
+
+### A.4.9 Data (as little read as can be)
+No new database reads on the pages: By position, creation and posGaps come in the files the pages already fetch (the
+club file's posv + creation add about 1-2 KB; the club budget's trim drops positional gaps under 0.1 wins first); the match
+report's weights are one public file of a few hundred bytes a league, cached an hour, fetched only when the report tab is
+opened; the finalise function reads it from storage, no database. The club report ranks every club's half-court AST% only
+when its players' cards already read the competition's play-by-play (else the club's own value, unranked), never for a
+single game's analysis; the player page's clutch section waits for the reader to come near it before fetching the replay
+engine, and reads no logs of its own (the club logs "on the floor with" reads).

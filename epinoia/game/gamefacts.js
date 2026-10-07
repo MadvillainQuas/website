@@ -82,7 +82,9 @@ function brief(S, d, B) {
     },
     /* set by game.js once the season aggregates land; the fact engine
        simply omits its season sentences when it is absent */
-    season: S.season || null
+    season: S.season || null,
+    /* the league's What wins weights (game.js ensureWinModel, 2026-10-07): story.js weighs the four factors by them */
+    model: S.winModel || null
   };
 }
 

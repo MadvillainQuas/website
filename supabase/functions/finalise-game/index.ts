@@ -631,6 +631,13 @@ Deno.serve(async (req) => {
           timezone: comp?.seasons?.leagues?.timezone ?? null,
           sits: SITC ? [SITC.side[0].sits, SITC.side[1].sits] : null
         }, tabInputs(game));
+        /* WHAT WINS IN THIS LEAGUE (2026-10-07): the league's What wins weights, which the builder publishes beside the
+           teaser (snapshots/whatwins-explain/<league>.json); story.js weighs the four factors by them. None: as before */
+        try {
+          const { data: wf } = await admin.storage.from('snapshots').download('whatwins-explain/' + target.league_id + '.json');
+          const wm = wf ? JSON.parse(await wf.text()) : null;
+          if (wm && wm.b && String(wm.league) === String(target.league_id)) (brief as any).model = wm;
+        } catch (_) { /* the report without the league's weights */ }
         const rep = buildReport(brief);
         const slug = reportSlug(gameId);
         const { error } = await admin.from('news_articles').upsert({

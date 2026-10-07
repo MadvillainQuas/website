@@ -1202,7 +1202,13 @@ function sectionFactors(g, fs, R) {
   if (em) {
     const e = em.data, est = Math.round(e.estimated), who = R.subj(em.side, { allowRole: true, noPronoun: true });
     const other = nm(g, 1 - em.side);
-    out.push(pick('estm' + em.side + est, [
+    /* weighed by the league's own win model (story.js modelB, 2026-10-07): said so, with the games it rests on */
+    const mdl = e.model, mn = mdl && mdl.n ? ' (built on ' + mdl.n + ' of its games)' : '';
+    out.push(mdl ? pick('estmM' + em.side + est, [
+      'Weighed by what wins in this league' + mn + ', the four factors were worth about ' + pts(est) + ' to ' + midCase(who) + '.',
+      'By this league’s own win model' + mn + ', ' + midCase(who) + ' came out roughly ' + pts(est) + ' ahead on the four factors.',
+      'Put through what decides games in this league' + mn + ', the four factors make it about ' + pts(est) + ' to ' + midCase(who) + '.'
+    ]) : pick('estm' + em.side + est, [
       'Add up the four factors and the game was worth about ' + pts(est) + ' to ' + midCase(who) + '.',
       'Weighed factor by factor, ' + midCase(who) + ' came out roughly ' + pts(est) + ' ahead.',
       'The four factors alone make it about ' + pts(est) + ' to ' + midCase(who) + '.'
@@ -1617,7 +1623,7 @@ function sectionPlayers(g, fs, R) {
       return (rest.length ? first + ' and ' + list(rest) : first) + ' for ' + club(grp.t);
     });
     const solo = support.length === 1 && aboveAverage(support[0].p);
-    out.push(joinClauses(clauses) + (solo ? ', well up on his usual.' : '.'));
+    out.push(joinClauses(clauses) + (solo ? ', well up on their usual.' : '.'));
   }
 
   /* ---- the specialists -------------------------------------------------- */

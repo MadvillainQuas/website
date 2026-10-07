@@ -136,6 +136,13 @@ for (const [name, game] of Object.entries(variants)) {
     near(floor[t], g(out, t, 'minutes') * 60, 0.5 * out.st[t].s.length) && out.st[t].s.every(r => r.length === 6 && r.slice(1).every(i => i >= 0 && i < out.st[t].p.length))),
     floor);
   ok('...and the stints carry ids, never names', !JSON.stringify(out.st).includes(game.teams[0].players[0].name));
+  /* 2026-10-07: st.u carries each passer's assists by the basket they made, [unFgm, unPts, astFgm, threes assisted, twos assisted] */
+  const U = [0, 1].map(t => out.st[t].u || {});
+  ok('st.u: five numbers a player, the passers included; the threes and twos assisted add up to the side\'s assisted makes',
+    [0, 1].every(t => Object.values(U[t]).every(a => Array.isArray(a) && a.length === 5) &&
+      Object.values(U[t]).reduce((s, a) => s + a[3] + a[4], 0) === Object.values(U[t]).reduce((s, a) => s + a[2], 0)),
+    [0, 1].map(t => [Object.values(U[t]).reduce((s, a) => s + a[3] + a[4], 0), Object.values(U[t]).reduce((s, a) => s + a[2], 0)]));
+  ok('...and someone assisted a three in the fixture game', [0, 1].some(t => Object.values(U[t]).some(a => a[3] > 0)));
 }
 
 console.log('\nwhat each variant changes');

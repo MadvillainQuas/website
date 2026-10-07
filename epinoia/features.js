@@ -407,14 +407,27 @@ function extract(game, pre) {
         });
         out.st[t] = { p: list, s: rows };
         /* A.3: each scorer's unassisted makes, from situations.js's assist pairing (the same one fgm_ast / fgm_unast
-           count): {player id: [unassisted FGM, unassisted FG points, assisted FGM]}, players with a make only. Read by
+           count): {player id: [unassisted FGM, unassisted FG points, assisted FGM, threes he assisted, twos he assisted]},
+           players with a make or an assist only (rows written before 2026-10-07 have the first three). Read by
            the builder (select u:st->u) for the players' self-created shares; absent where situations did not run */
         const PL = C && C.side && C.side[t] && C.side[t].players;
         if (PL) {
+          /* 2026-10-07: and each PASSER's assists by the basket they made, [.., threes assisted, twos assisted] (Louie: a
+             guard who finds shooters is not the one who feeds the post), paired as situations.js assistedShots pairs them:
+             an assist is the made basket just before it, same side. A passer with no make of his own has [0, 0, 0, a3, a2] */
+          const giv = {};
+          let last = null;
+          plays.forEach(ev => {
+            if ((ev.t === 'p2_made' || ev.t === 'p3_made') && ev.pid) last = ev;
+            else if (ev.t === 'ast') {
+              if (ev.pid && last && last.team === ev.team && ev.team === t) { const a = giv[ev.pid] = giv[ev.pid] || [0, 0]; a[last.t === 'p3_made' ? 0 : 1]++; }
+              last = null;
+            }
+          });
           const u = {};
-          Object.keys(PL).sort().forEach(pid => {
-            const x = PL[pid] || {}, un = x.unast || {}, as = x.ast || {};
-            if ((+un.fgm || 0) + (+as.fgm || 0) > 0) u[pid] = [+un.fgm || 0, +un.pts || 0, +as.fgm || 0];
+          Array.from(new Set(Object.keys(PL).concat(Object.keys(giv)))).sort().forEach(pid => {
+            const x = PL[pid] || {}, un = x.unast || {}, as = x.ast || {}, g = giv[pid] || [0, 0];
+            if ((+un.fgm || 0) + (+as.fgm || 0) + g[0] + g[1] > 0) u[pid] = [+un.fgm || 0, +un.pts || 0, +as.fgm || 0, g[0], g[1]];
           });
           out.st[t].u = u;
         }

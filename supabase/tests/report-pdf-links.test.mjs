@@ -95,6 +95,7 @@ ok('a unit\'s place is among this season\'s ratings', /LGRnow\[k\] = teams\.filt
 ok('the field named is this season\'s clubs', /const N = teams\.filter\(r => !r\.__prior\)\.length/.test(TP));
 ok('half-court AST% is ranked (not the gap to all baskets)', /tm_hc_ast_pct: \{ l: 'HALF-COURT AST%', dp: 1, style: true \}/.test(TP));
 ok('every club\'s half-court AST% from the scope\'s games', /async function hcTeams\(games\)/.test(TP) && /await hcTeams\(S\.games\)/.test(TP));
+ok('...read only when the players\' cards read the competition\'s play-by-play anyway (never for one game\'s analysis)', /const needField = !c\.vs && R\.conf && R\.conf\.on && R\.conf\.on\.players/.test(TP) && /if \(needField\) try \{\s*const HT = await hcTeams/.test(TP));
 const RJ = require(path.join(ROOT, 'epinoia', 'report.js'));
 const rk = RJ.ranker([{ id: 'a', x: 1 }, { id: 'b', x: 2 }, { id: 'c@0', x: 3, __prior: true }], ['x']);
 ok('a ranker counts the season shown apart (nNow)', rk.n === 3 && rk.nNow === 2, [rk.n, rk.nNow]);

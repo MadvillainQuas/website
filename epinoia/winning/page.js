@@ -79,7 +79,21 @@ const PSTAT = {
   drb_pct: ['DRB%', 'Defensive rebound percentage: the share of the opponents’ misses he rebounded while on the floor'],
   stl_pct: ['STL%', 'Steal percentage: steals per 100 opponent possessions while on the floor'],
   blk_pct: ['BLK%', 'Block percentage: blocks per 100 of the opponents’ two-point attempts while on the floor'],
-  tov_pct: ['TOV%', 'Turnover percentage: turnovers per 100 of his plays, TOV ÷ (FGA + 0.44 × FTA + TOV)']
+  tov_pct: ['TOV%', 'Turnover percentage: turnovers per 100 of his plays, TOV ÷ (FGA + 0.44 × FTA + TOV)'],
+  /* 2026-10-07: self-creation, shot volume and balance, and the passes that make threes */
+  un_pg: ['Unassisted FGM a game', 'Made field goals no one assisted, a game: the baskets he makes for himself'],
+  unp_pg: ['Self-created points a game', 'Points from unassisted field goals, a game: the scoring he creates for himself'],
+  upp: ['Self-created share of points', 'The share of his own field-goal points that were unassisted: how much of his scoring he makes himself'],
+  rim40: ['Rim attempts per 40', 'Shots at the rim per 40 minutes on the floor: rim pressure as volume (a guard who gets to the basket), where the feed has shot locations'],
+  p3a40: ['3PA per 40', 'Three-point attempts per 40 minutes on the floor: three-point volume'],
+  fga40: ['FGA per 40', 'Field-goal attempts per 40 minutes on the floor: shot volume'],
+  ast40: ['Assists per 40', 'Assists per 40 minutes on the floor'],
+  ftp: ['FT%', 'Free-throw %: FTM ÷ FTA'],
+  rimp: ['Rim FG%', 'Field-goal % on shots at the rim (within 125 cm), where the feed has shot locations'],
+  midp: ['Mid-range FG%', 'Field-goal % on twos away from the rim, where the feed has shot locations'],
+  bpm: ['BPM', 'Box Plus/Minus: points per 100 possessions a player adds over a league-average player, from the box score; the group’s is its players’ BPM weighted by their minutes there'],
+  vorp: ['VORP', 'Value over replacement player: (BPM + 2) × his share of the club’s minutes, over the league’s season; the group’s is the sum of its players’ VORP for the minutes they played there'],
+  a3s: ['Assists to threes', 'Of his assists, the share that set up a three rather than a two: a passer who finds shooters against one who feeds the paint (games from 7 October 2026)']
 };
 const pstatLabel = k => (PSTAT[k] ? PSTAT[k][0] : k);
 const SLOT = { 1: 'Slot 1 (point guard)', 2: 'Slot 2 (shooting guard)', 3: 'Slot 3 (small forward)', 4: 'Slot 4 (power forward)', 5: 'Slot 5 (centre)' };
@@ -91,7 +105,7 @@ const ROLE_ONE = { shooter: 'shooter', handler: 'ball handler', passer: 'passer'
   protector: 'rim protector', disruptor: 'turnover generator', big: 'big', creator: 'creator' };
 const ROLE_RULE = {
   shooter: 'At least 40 three-point attempts, a 3PA rate in the top 40% and a 3P% at or above the median once shrunk toward the league',
-  handler: 'A ball-handling score of 0.70 or more: 45% his AST% percentile, 30% his unassisted points share percentile, 25% his usage percentile',
+  handler: 'A ball-handling score of 0.70 or more: 35% his AST% percentile, 25% his usage percentile, 40% the percentile of the share of his own points that were unassisted (he creates for others and for himself)',
   passer: 'A/U (AST% ÷ USG%) in the top quarter and an AST% at or above the median',
   slasher: 'His rim rate and FT attempt rate percentiles average 0.75 or more, on 40 field-goal attempts or more',
   crasher: 'An ORB% in the top quarter',
@@ -107,7 +121,7 @@ function roleHere(cuts, k) {
   if (!c) return '';
   switch (k) {
     case 'shooter': return '3PA rate ≥ ' + f(c.p3r) + ' · 3P% ≥ ' + f(c.p3p);
-    case 'handler': return 'AST% P50 ' + f(c.ast50) + ' · USG% P50 ' + f(c.usg50) + (c.ups ? ' · UPS P50 ' + f(c.ups50) : ' · no UPS');
+    case 'handler': return 'AST% P50 ' + f(c.ast50) + ' · USG% P50 ' + f(c.usg50) + (c.upp ? ' · self-created P50 ' + f(c.upp50) : c.ups ? ' · UPS P50 ' + f(c.ups50) : ' · no assist data');
     case 'passer': return 'A/U ≥ ' + f(c.au) + ' · AST% ≥ ' + f(c.ast);
     case 'slasher': return (c.zones ? 'rim rate P75 ' + f(c.rimr) + ' · ' : '') + 'FTA/FGA ' + (c.zones ? 'P75 ' : '≥ ') + f(c.ftr);
     case 'crasher': return 'ORB% ≥ ' + f(c.orb);
@@ -305,7 +319,7 @@ function posStatsHTML(W, st, charts) {
   const stats = (S.stats || []).filter(k => S.cells.some(c => c.k === k && groups.indexOf(c.g) >= 0));
   const cell = (g, k) => S.cells.find(c => c.g === g && c.k === k);
   const rOf = c => (out === 'win' ? { v: c.rw, lo: c.rwlo, hi: c.rwhi } : { v: c.r, lo: c.lo, hi: c.hi });
-  let html = '<h3 class="ww-h3">Each group’s own numbers against winning</h3><p class="ww-lead">' + chip('explain', S.n) + ' <span class="ww-legend">' +
+  let html = '<h3 class="ww-h3">Each group’s own numbers against the league, and against winning</h3><p class="ww-lead">' + chip('explain', S.n) + ' <span class="ww-legend">' +
     esc('club seasons; each group’s statistic is its players’ season rates weighted by their minutes in it, set against the club’s results within its league') + '</span>' +
     (S.n < 20 ? ' <span class="ww-chipx">few club seasons: the ranges are wide</span>' : '') + '</p>';
   html += '<div class="pg-row ww-ctl">' + seg('posSet', [['grp', 'Guards, wings and bigs'], ['slot', 'The five slots']], set, 'Positions') + seg('posOut', [['net', 'Net rating'], ['win', 'Share of games won']], out, 'Against') + '</div>';
@@ -316,17 +330,57 @@ function posStatsHTML(W, st, charts) {
     o: { dp: 2, title: 'Group statistics against winning', desc: 'Correlation (r) of each group’s minutes-weighted statistic with ' + (out === 'win' ? 'the share of games won' : 'net rating') + ', within league; ★ where the range leaves out 0 after the false-discovery check' } }, charts);
   const g = groups.indexOf(st.posS) >= 0 ? st.posS : groups[0];
   html += '<div class="pg-row ww-ctl">' + seg('posS', groups.map(x => [x, set === 'slot' ? 'Slot ' + x : GROUP[x]]), g, 'Group') + '</div>';
+  /* EACH POSITION'S DIFFERENTIATOR (2026-10-07): the stat whose one SD moves wins most at each group shown */
+  const lev = S.levers || {};
+  const levs = groups.filter(x => lev[x] && isNum(lev[x].w30));
+  if (levs.length) html += '<div class="ww-levers">' + levs.map(x => { const L = lev[x]; return '<div class="ww-lever"><span>' + esc(set === 'slot' ? 'Slot ' + x : GROUP[x]) + '</span><b>' + esc(pstatLabel(L.lever)) + (L.star ? ' ★' : '') + '</b><em translate="no">' +
+    (L.w30 > 0 ? '+' : '') + f1(L.w30) + ' wins / 30 games for one SD more</em></div>'; }).join('') + '</div><p class="ww-note">Each position’s differentiator: the statistic whose one-SD difference at that position goes with the most wins over 30 games here (★ where the range leaves out 0 after the false-discovery check).</p>';
   const rows = stats.map(k => cell(g, k)).filter(c => c && isNum(c.b)).sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
+  /* +/- AGAINST THE LEAGUE: the winners' (top quarter by net) line at this position against the league's mean, and the
+     wins over 30 games one SD more of each is worth here, the biggest first */
+  const wrows = stats.map(k => cell(g, k)).filter(c => c && isNum(c.w30)).sort((a, b) => Math.abs(b.w30) - Math.abs(a.w30));
+  if (wrows.length) html += chartSlot({ kind: 'forest', label: 'Wins over 30 games for one SD more, ' + groupLabel(g).toLowerCase(), data: wrows.map(c => ({ id: 'w:' + c.k, label: pstatLabel(c.k), v: c.w30, lo: c.w30lo, hi: c.w30hi,
+    muted: !(isNum(c.lo) && isNum(c.hi) && (c.lo > 0 || c.hi < 0)), badge: c.star ? 'strong evidence' : '',
+    detail: 'league ' + f2s(c.avg) + ', winners ' + f2s(c.top) + ' (' + (isNum(c.dTop) && c.dTop > 0 ? '+' : '') + f2s(c.dTop) + '); one SD is ' + f2s(c.sd) })),
+    o: { x: { label: 'wins over 30 games for one club-season SD more' }, title: 'Each statistic’s worth in wins, by position', desc: 'Wins over 30 games that go with one standard deviation more of each statistic at this position, with 95% ranges, the biggest first' } }, charts);
   if (rows.length) html += chartSlot({ kind: 'forest', label: 'What one SD more in each statistic goes with, for ' + groupLabel(g).toLowerCase(), data: rows.map(c => ({ id: c.k, label: pstatLabel(c.k), v: c.b, lo: c.blo, hi: c.bhi,
     muted: !(isNum(c.lo) && isNum(c.hi) && (c.lo > 0 || c.hi < 0)), badge: c.star ? 'strong evidence' : '', detail: 'r = ' + f2(c.r) + ' (' + rng(c.lo, c.hi, f2) + '); one SD is ' + f2s(c.sd) })),
     o: { x: { label: 'net per 100 for one club-season SD more' }, title: 'Group statistics in points', desc: 'Net rating per 100 possessions that goes with one standard deviation more of each statistic, with 95% ranges, sorted by strength' } }, charts);
-  html += '<div class="ep-tw"><table class="ww-tbl"><thead><tr><th scope="col">' + esc(groupLabel(g)) + '</th><th scope="col">Typical</th><th scope="col">Middle half</th><th scope="col">SD</th>' +
-    '<th scope="col">r with net rating</th><th scope="col">r with games won</th><th scope="col">Club seasons</th></tr></thead><tbody>' +
-    stats.map(k => { const c = cell(g, k); if (!c) return ''; return '<tr><th scope="row">' + esc(pstatLabel(k)) + '</th><td translate="no">' + f2s(c.med) + '</td><td translate="no">' + rng(c.p25, c.p75, f2s) +
+  const pm = v => (isNum(v) ? (v > 0 ? '+' : v < 0 ? '−' : '±') + f2s(Math.abs(v)) : '–');
+  const tone = c => (!isNum(c.dTop) || !isNum(c.r) ? '' : (c.dTop > 0) === (c.r > 0) ? ' class="ww-up"' : ' class="ww-dn"');
+  html += '<div class="ep-tw"><table class="ww-tbl ww-pos"><thead><tr><th scope="col">' + esc(groupLabel(g)) + '</th><th scope="col">League average</th><th scope="col">Winners</th><th scope="col">Winners +/-</th>' +
+    '<th scope="col">Wins / 30 for one SD</th><th scope="col">Middle half</th><th scope="col">SD</th><th scope="col">r with net rating</th><th scope="col">r with games won</th><th scope="col">Club seasons</th></tr></thead><tbody>' +
+    stats.map(k => { const c = cell(g, k); if (!c) return ''; return '<tr><th scope="row">' + esc(pstatLabel(k)) + '</th><td translate="no">' + f2s(isNum(c.avg) ? c.avg : c.med) + '</td><td translate="no">' + f2s(c.top) +
+      '</td><td translate="no"' + tone(c) + '>' + pm(c.dTop) + '</td><td translate="no">' + (isNum(c.w30) ? (c.w30 > 0 ? '+' : '') + f1(c.w30) + (c.star ? ' ★' : '') : '–') + '</td><td translate="no">' + rng(c.p25, c.p75, f2s) +
       '</td><td translate="no">' + f2s(c.sd) + '</td><td translate="no">' + f2(c.r) + (c.star ? ' ★' : '') + ' <small>' + rng(c.lo, c.hi, f2) + '</small></td><td translate="no">' + f2(c.rw) + ' <small>' + rng(c.rwlo, c.rwhi, f2) +
-      '</small></td><td translate="no">' + c.n + '</td></tr>'; }).join('') + '</tbody></table></div>';
+      '</small></td><td translate="no">' + c.n + '</td></tr>'; }).join('') + '</tbody></table></div>' +
+    '<p class="ww-note">Every figure is this position’s own: its players’ season rates weighted by their minutes there, so a guard is set against guards. Winners are the top quarter of club seasons by net rating; +/- is their line against the league’s average, green where it leans the way that goes with winning. Wins / 30 is what one SD more of the statistic at this position goes with, over 30 games.</p>';
   html += '<details class="ww-details ww-gloss"><summary>What each statistic means</summary><dl class="ww-dl">' + stats.map(k => '<dt>' + esc(pstatLabel(k)) + '</dt><dd>' + esc(PSTAT[k] ? PSTAT[k][1] : '') + '</dd>').join('') + '</dl></details>';
   html += '<p class="ww-note">A correlation across club seasons is not a cause: better clubs differ in many ways at once. Where a statistic needs shot locations or assist data the feeds lack, its group is left out.</p>';
+  return html;
+}
+
+/* ------------------------------------------------------------------ creation and how well it works (2026-10-07) --- */
+/* the club's creators (its ball handlers and high-usage players): how much of the offence they carry and how efficiently,
+   against the league's clubs and against winning (winmodel.js creation) */
+const CREATION_LABEL = { share: 'Creators’ share of the plays', ts: 'Creators’ TS%', ppp: 'Creators’ points a play', hand_ts: 'Ball handlers’ TS%', hand_ppp: 'Ball handlers’ points a play' };
+function creationHTML(W, charts) {
+  const C = W.creation;
+  if (!C || !C.stats || !Object.keys(C.stats).length) return '';
+  const keys = (C.keys || Object.keys(C.stats)).filter(k => C.stats[k]);
+  const fmt = (k, v) => (k === 'ppp' || k === 'hand_ppp' ? f2(v) : f1(v));
+  let html = '<h3 class="ww-h3">Creation and how well it works</h3><p class="ww-lead">' + chip('explain', C.n) + ' <span class="ww-legend">' +
+    esc('club seasons; the creators are the ball handlers and the high-usage players, ' + f1(C.creators) + ' in a squad on average') + '</span></p>';
+  const fr = keys.map(k => Object.assign({ k }, C.stats[k])).filter(s => isNum(s.w30));
+  if (fr.length) html += chartSlot({ kind: 'forest', label: 'Creation against winning', data: fr.map(s => ({ id: 'cr:' + s.k, label: CREATION_LABEL[s.k] || s.k, v: s.w30, lo: s.w30lo, hi: s.w30hi,
+    muted: !(isNum(s.lo) && isNum(s.hi) && (s.lo > 0 || s.hi < 0)), detail: 'league ' + fmt(s.k, s.avg) + ', winners ' + fmt(s.k, s.top) + '; one SD is ' + fmt(s.k, s.sd) })),
+    o: { x: { label: 'wins over 30 games for one club-season SD more' }, title: 'Creation against winning', desc: 'Wins over 30 games that go with one standard deviation more of the creators’ share of the plays and of their efficiency, with 95% ranges' } }, charts);
+  html += '<div class="ep-tw"><table class="ww-tbl ww-pos"><thead><tr><th scope="col">Creation</th><th scope="col">League average</th><th scope="col">Winners</th><th scope="col">Winners +/-</th><th scope="col">Wins / 30 for one SD</th><th scope="col">r with net rating</th></tr></thead><tbody>' +
+    keys.map(k => { const s = C.stats[k], d = isNum(s.top) && isNum(s.avg) ? s.top - s.avg : null;
+      return '<tr><th scope="row">' + esc(CREATION_LABEL[k] || k) + '</th><td translate="no">' + fmt(k, s.avg) + '</td><td translate="no">' + fmt(k, s.top) + '</td><td translate="no"' +
+        (isNum(d) && isNum(s.r) ? ((d > 0) === (s.r > 0) ? ' class="ww-up"' : ' class="ww-dn"') : '') + '>' + (isNum(d) ? (d > 0 ? '+' : '') + fmt(k, d) : '–') + '</td><td translate="no">' +
+        (isNum(s.w30) ? (s.w30 > 0 ? '+' : '') + f1(s.w30) : '–') + '</td><td translate="no">' + f2(s.r) + ' <small>' + rng(s.lo, s.hi, f2) + '</small></td></tr>'; }).join('') + '</tbody></table></div>';
+  html += '<p class="ww-note">Points a play: the creators’ points divided by the plays they end (FGA + 0.44 × FTA + TOV); TS% is their true shooting. A club that leans on its creators needs them efficient: high usage at a low points a play costs possessions.</p>';
   return html;
 }
 
@@ -626,6 +680,14 @@ const views = {
         cells: [0, 1, 2, 3, 4, 5].map(s => ['0', '1', '2+'].map(b => { const c = L.grid.find(x => x.s === s && x.b === b); return c ? { v: c.net, lo: c.lo, hi: c.hi, hatch: c.poss < 200, label: sg(c.net), detail: c.poss + ' possessions' } : null; })) },
         o: { dp: 1, transpose: false, title: 'Lineup mixes', desc: 'Net per 100 possessions by shooters on the floor and bigs, against the reference five' } }, charts);
       html += '<p class="ww-note">The opposing five is not controlled for.</p>';
+      /* BALL HANDLERS ON THE FLOOR (2026-10-07): the same lineup model by handlers (assists, usage and self-created points) */
+      if (L.gridH && L.gridH.length) {
+        html += '<h3 class="ww-h3">Shooters and ball handlers on the floor</h3><p class="ww-lead">' + chip('explain', L.n) + ' <span class="ww-legend">net per 100 possessions against two shooters and one handler (one big, one protector); hatched under 200 possessions</span></p>';
+        html += chartSlot({ kind: 'heatmap', label: 'Lineup net rating by shooters and ball handlers', data: { rows: [0, 1, 2, 3, 4, 5].map(s => s + (s === 1 ? ' shooter' : ' shooters')), cols: ['0 handlers', '1 handler', '2+ handlers'], mode: 'div',
+          cells: [0, 1, 2, 3, 4, 5].map(s => ['0', '1', '2+'].map(h => { const c = L.gridH.find(x => x.s === s && x.h === h); return c ? { v: c.net, lo: c.lo, hi: c.hi, hatch: c.poss < 200, label: sg(c.net), detail: Math.round(c.poss) + ' possessions' } : null; })) },
+          o: { dp: 1, transpose: false, title: 'Ball handlers and shooters', desc: 'Net per 100 possessions by shooters on the floor and ball handlers, against the reference five' } }, charts);
+        html += '<p class="ww-note">A ball handler creates for others and for himself: his assist percentage, his usage and the share of his own points that were unassisted (Roles below says how the tag is earned here).</p>';
+      }
       if (L.terms && L.terms.length) html += chartSlot({ kind: 'forest', label: 'Lineup terms', data: L.terms.map(t => ({ id: t.k, label: TERM_LABEL[t.k] || t.k, v: t.b, lo: t.lo, hi: t.hi })),
         o: { x: { label: 'net per 100 possessions' }, title: 'Lineup terms', desc: 'Each term of the lineup model' } }, charts);
     }
@@ -642,6 +704,7 @@ const views = {
       if (Object.keys(pd).length) html += chartSlot({ kind: 'smallMultiples', label: 'Partial dependence', data: Object.keys(pd).map(k => ({ title: SQUAD_LABEL[k] || k, kind: 'line', data: [{ k, label: '', pts: pd[k] }], o: { y: { label: 'net' }, ref: 0 } })),
         o: { panelH: 170, title: 'Partial dependence', desc: 'Net per 100 across each feature, the others held' } }, charts);
     }
+    html += creationHTML(W, charts);
     html += rolesHTML(W, charts);
     return { state: 'ok', html, charts };
   },

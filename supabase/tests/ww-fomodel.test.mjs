@@ -166,6 +166,38 @@ console.log('\nthe GM\'s view and the depth chart');
   ok('...the real one fills all five positions, each led by its biggest minutes there', cs && cs.slots.every((s, i) => s.players.length && s.players[0].slotMin === Math.max(...pos.players.map(p => p.min[i]))));
 }
 
+/* ------------------------------------------------------------------ each position against the league (2026-10-07) --- */
+console.log('\neach position against the league, and the club\'s creation (posGaps)');
+{
+  const stats = ['unp_pg', 'upp', 'ast_pct', 'blk_pct', 'p3p'];
+  /* the league's line: [mean, SD, winners', wins / 30 for one SD, ★] */
+  const posLg = { stats, G: [[5, 1, 6, 0.9, 1], [40, 8, 46, 0.7, 1], [20, 4, 23, 0.6, 0], [1, 0.5, 1, 0.1, 0], [34, 3, 36, 0.4, 0]],
+    F: stats.map(() => [1, 1, 1, 0.1, 0]), C: [[2, 1, 2, 0.1, 0], [10, 5, 10, 0.1, 0], [8, 3, 8, 0.1, 0], [4, 1, 5, 0.8, 1], [30, 5, 30, 0.1, 0]] };
+  /* the club's: [value, z, wins over 30]: guards short of self-creation and assists, bigs strong at the rim */
+  const posv = { stats, G: [[3.8, -1.2, -1.1], [33, -0.9, -0.6], [17, -0.75, -0.45], [1, 0, 0], [34, 0, 0]], F: stats.map(() => null), C: [null, null, null, [5.4, 1.4, 1.1], [30, 0, 0.01]] };
+  const foP = { posLg, squad: { bands: { handlers: { p25: 2, p50: 2.5, p75: 3 } } },
+    creation: { share: { avg: 45, sd: 6, top: 47, w30: 0.3 }, ppp: { avg: 1.0, sd: 0.06, top: 1.05, w30: 1.1 }, ts: { avg: 54, sd: 2.5, top: 56, w30: 0.9 } } };
+  const clubP = { posv, squad: { handlers: 1 }, creation: { n: 3, share: [52, 1.2, 0.2], ppp: [0.93, -1.2, -1.0], ts: [51, -1.2, -0.8] } };
+  const PG = F.posGaps(foP, clubP);
+  ok('posGaps: the gaps that count, the costliest first (guards\' self-created points), the strengths (bigs\' BLK%)', PG && PG.weak[0].g === 'G' && PG.weak[0].k === 'unp_pg' && PG.weak[0].avg === 5 &&
+    PG.weak.every(r => r.wins < 0) && PG.strong[0].g === 'C' && PG.strong[0].k === 'blk_pct' && !PG.weak.concat(PG.strong).some(r => r.k === 'p3p'), PG && JSON.stringify(PG.weak.map(r => r.g + r.k)));
+  ok('...each gap names the player who closes it', PG.weak[0].need === 'a guard who creates his own shot' && PG.strong[0].need === 'a rim protector');
+  ok('...short of creation: the guards under the league on self-creation and assists, the rotation under the winners\' handlers', PG.creation.lacking && PG.creation.fewHandlers && PG.creation.handlers === 1);
+  ok('...and the creators carry more than the league\'s share of the plays at fewer points a play: inefficient', PG.creation.inefficient && !PG.creation.efficient && PG.creation.eff.find(e => e.k === 'ppp').avg === 1.0);
+  const line = F.creationLine(PG.creation);
+  ok('...said in one line: how much the creators carry, how well, and what it costs', /carry 52\.0% \(league 45\.0%\) of the plays/.test(line) && /0\.93 \(league 1\.00\) points a play/.test(line) && /costs about 1\.0 wins per 30 games/.test(line), line);
+  ok('...no positional lines in the club file: nothing', F.posGaps(foP, {}) === null && F.posGaps({}, clubP) === null);
+  const g = X.gm({ team: { id: 'me' }, teams: [{ id: 'me', gp: 10, ortg: 100 }, { id: 'a', gp: 10, ortg: 105 }, { id: 'b', gp: 10, ortg: 95 }, { id: 'c', gp: 10, ortg: 101 }], players: [],
+    model: { wins: {}, pos: PG } });
+  ok('the GM\'s view: the positional weaknesses and strengths join its lists, with their wins', g.weaknesses.some(w => w.key === 'pos:G:unp_pg' && w.wins === -1.1) && g.strengths.some(s => s.key === 'pos:C:blk_pct'));
+  ok('...the inefficient creation is a weakness, and the first need is a ball-handler who creates', g.weaknesses.some(w => w.key === 'creation:eff') && g.needs[0].key === 'creation' && g.needs.length <= 3 && g.positions === true);
+  ok('...and the note says each position is read against the league\'s', /each position is also read against the league/.test(X.gmHTML(g)));
+  /* the panel's blocks draw them */
+  const vmP = F.view({ fo: Object.assign({}, fo, foP), club: Object.assign({}, club, clubP), team: { id: TID } });
+  ok('the panel: the By position block has the club against the league, the needs block the creation line and the positional needs', vmP.ok && vmP.posGaps &&
+    /Each position against the league/.test(F.html.slots(vmP)) && /Its creators/.test(F.html.needs(vmP)) && /At each position, against the league/.test(F.html.needs(vmP)) && !!vmP.charts.posGaps);
+}
+
 /* ------------------------------------------------------------------ the Front office path --- */
 console.log('\nthe Front office path (team.js, t/index.html)');
 const TEAMJS = read(EP, 't/team.js'), HTML = read(EP, 't/index.html');
@@ -209,7 +241,7 @@ const TEAMJS = read(EP, 't/team.js'), HTML = read(EP, 't/index.html');
      /status=in\.\(scheduled,live\)` \+\s*`&select=id,home_team_id,away_team_id,tipoff_at` \+ inSeason\(\)/.test(TEAMJS));
   ok('F3 mounted with the Worker, RECALCULATE refreshing the fo file', /FM\.mount\(host, FM\.view\(input\), \{ input, worker: FM\.makeWorker\(\)/.test(TEAMJS) && /WF\.refresh\(Object\.assign\(\{ scope: 'fo' \}, unit\)/.test(TEAMJS));
   ok('the [data-slot] handler is wired on #wmodel too', /hostM\.addEventListener\('click', onSlot\)/.test(TEAMJS) && /hostD\.addEventListener\('click', onSlot\)/.test(TEAMJS));
-  ok('depth.gm gets gmModel; the depth chart is filled from the pos file where it arrives', /model: fo && FM \? FM\.gmModel\(fo, team\.id\)/.test(TEAMJS) && /X\.slotChart\(Object\.assign\(\{ pos, gameMin \}, chartIn\)\)/.test(TEAMJS));
+  ok('depth.gm gets gmModel; the depth chart is filled from the pos file where it arrives', /model: fo && FM \? Object\.assign\(FM\.gmModel\(fo, team\.id\), \{ pos: FM\.posGaps \? FM\.posGaps\(fo, club\) : null \}\)/.test(TEAMJS) && /X\.slotChart\(Object\.assign\(\{ pos, gameMin \}, chartIn\)\)/.test(TEAMJS));
   ok('team.js names none of I1\'s tables beside what it read before (no game_features, lineup_stints from the Front office)', !/game_features/.test(TEAMJS));
   const fosec = HTML.slice(HTML.indexOf('id="fosec"'), HTML.indexOf('id="foshare"'));
   ok('t/index.html: F3 in #fosec after the GM\'s view, its header and note as §12', fosec.indexOf('id="gmview"') < fosec.indexOf('<span class="idx">F3</span>') &&

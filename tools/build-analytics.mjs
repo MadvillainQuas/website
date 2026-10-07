@@ -473,6 +473,15 @@ export async function run(opts) {
         if (prevRow && stripBucket(prevRow.path) !== p) (x.scope === 'mix' ? mixStale : stale).push(stripBucket(prevRow.path));
         out.built.push({ scope: x.scope, unit: u.key, team: x.team || undefined, bytes: text.length, games: st.n });
       }
+      /* THE GAME REPORT'S WEIGHTS (2026-10-07, winmodel.js explainOf): the current season's four numbers, public, for the
+         match reports (game page and finalise-game) to explain a result by what wins in its league. Never fails the unit */
+      if (u.current && M.explainOf) {
+        const ex = M.explainOf(r.wins, { league: u.league, season: u.season, now: nowIso });
+        if (ex) {
+          try { await write('upload snapshots/whatwins-explain/' + u.league + '.json', () => api.upload(PUBLIC_BUCKET, 'whatwins-explain/' + u.league + '.json', JSON.stringify(ex), { maxAge: 3600 })); }
+          catch (e) { out.warnings.push(label(u) + ': the game report weights were not written'); }
+        }
+      }
       st.carry = r.carry; st.ci_at = nowIso;
       await write('upload ' + sp, async () => { await api.upload(BUCKET, sp, JSON.stringify(st), { maxAge: 60 }); if (cacheDir) cacheWrite(cacheDir, sp, st); });
       rows.push(storeRow(u, sp, st, M, FV, nowIso, nowIso));

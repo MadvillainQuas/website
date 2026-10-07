@@ -672,5 +672,20 @@ await (async () => {
 /* ------------------------------------------------------------------ real files, if given --- */
 if (process.env.WW_PAGE_FILES) drawFiles(path.resolve(process.env.WW_PAGE_FILES), path.basename(path.resolve(process.env.WW_PAGE_FILES)));
 
+/* 2026-10-07: by position against the league, ball handlers and creation, drawn from a file the model builds now (the
+   real fixtures predate them) */
+console.log('\nby position against the league, ball handlers, creation (a synthetic league built by winmodel.js)');
+{
+  const WMm = require(path.join(EP, 'winmodel.js'));
+  const Wn = WMm.buildUnit(WMm.synthUnit({ teams: 12, games: 264, seed: 5 }), { now: '2026-10-07T12:00:00Z', B: 40, sim: false }).wins;
+  const pos = P.views.positions(ctxOf({ W: Wn })), sq = P.views.squad(ctxOf({ W: Wn }));
+  ok('By position: the league\'s average, the winners, their +/- and the wins for one SD, in the table', pos.state === 'ok' && /League average/.test(pos.html) && /Winners \+\/-/.test(pos.html) && /Wins \/ 30 for one SD/.test(pos.html));
+  ok('...each position\'s differentiator, and the wins chart', /class="ww-lever"/.test(pos.html) && pos.charts.some(c => c.kind === 'forest' && /^Wins over 30 games for one SD more/.test(c.label)));
+  ok('...the new statistics are named', ['Self-created points a game', 'Unassisted FGM a game', 'Assists to threes', 'Rim attempts per 40'].every(l => pos.html.includes(l)));
+  ok('Building a squad: shooters and ball handlers on the floor beside shooters and bigs', sq.state === 'ok' && /Shooters and ball handlers on the floor/.test(sq.html) && sq.charts.some(c => c.kind === 'heatmap' && /ball handlers/.test(c.label)));
+  ok('...and creation: the creators\' share of the plays, their TS% and points a play against winning', /Creation and how well it works/.test(sq.html) && /Creators’ points a play/.test(sq.html) && sq.charts.some(c => c.label === 'Creation against winning'));
+  ok('...the handler rule says how it is earned now', /35% his AST% percentile, 25% his usage percentile, 40%/.test(sq.html));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
