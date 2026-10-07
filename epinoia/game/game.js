@@ -3555,6 +3555,22 @@ async function venuePin(m) {
   } catch (_) { return null; }
 }
 
+/* THE SEASON, READ FOR THIS GAME (context.js preview, 2026-10-07): where the two stand and how they come in, the
+   meetings and the rest, what the season's four factors expect here weighed by the league's own What Wins model, and who
+   carries each side's form. All from the season renderPreview has just read; the model is one small public file. */
+async function previewSeason(S, m, season, table) {
+  const pnames = {};
+  try {
+    const CX = window.EpinoiaContext;
+    if (!CX || !CX.preview || !season.games || !season.games.length) return { pre: null, pnames };
+    const model = (await Promise.resolve(ensureWinModel()).catch(() => null)) || S.winModel || null;
+    const pre = CX.preview({ home: m.homeTeamId, away: m.awayTeamId, tipoff: m.tipoff_at, games: season.games, pgs: season.pgs, tgs: season.tgs,
+      table, model, competitionId: m.competitionId });
+    (season.players || []).forEach(p => { if (p.name) pnames[p.id] = p.name; });
+    return { pre, pnames };
+  } catch (e) { console.warn('[preview] the season, read for this game', e); return { pre: null, pnames }; }
+}
+
 async function renderPreview() {
   const S = window.S, m = S.meta || {};
   let season = { players: [], teams: [], teamOfPlayer: new Map() };
@@ -3632,6 +3648,8 @@ async function renderPreview() {
   ]);
   const TP = window.EpinoiaTablePos;
   const placeOf = id => (TP && table && id ? TP.place(table, id) : null);
+
+  const { pre, pnames } = await previewSeason(S, m, season, table);
   const crestOf = c => (c && c.logo_path && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(c.logo_path) : null);
 
   /* Names come from the club rows, not the roster snapshot — a scheduled game
@@ -3660,6 +3678,7 @@ async function renderPreview() {
        not render. */
     startersA: startingFive(S, 0), startersB: startingFive(S, 1), nameLabels: gameNameLabels(S),
     outA: out.A, outB: out.B,
+    pre: pre, names: pnames,
     tipoff: m.tipoff_at, venue: m.venue, address: m.venue_address, pin: pin,
     competition: S.competition, leagueSlug: S.leagueSlug
   });

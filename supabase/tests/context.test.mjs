@@ -162,6 +162,40 @@ console.log('\nthe expectation from the season’s four factors');
   ok('...on every factor', c2.expect && ['efg', 'orebp', 'ftr'].every(k => c2.expect.parts[k].pts > 0) && c2.expect.parts.tovp.pts > 0, c2.expect && c2.expect.parts);
 }
 
+console.log('\nbefore a game: the preview’s season (context.js preview, preview.js valuedParas)');
+{
+  const Preview = require(path.join(G, 'preview.js'));
+  /* the season above, read before a fixture between A and B a few days later */
+  const all = season.concat([{ id: 'me', home_team_id: A, away_team_id: B, home_score: 84, away_score: 79, tipoff_at: ME.tipoff }]);
+  const tg = [];
+  all.forEach((g, i) => {
+    const hw = g.home_score > g.away_score;
+    tg.push({ game_id: g.id, team_idx: 0, stats: { adv: { fgm: hw ? 33 : 28, fga: 66, fg3m: 8, fta: 18, tov: 12, oreb: 10, dreb: 26 } } });
+    tg.push({ game_id: g.id, team_idx: 1, stats: { adv: { fgm: hw ? 28 : 33, fga: 66, fg3m: 8, fta: 18, tov: 12, oreb: 10, dreb: 26 } } });
+  });
+  const pv = Context.preview({ home: B, away: A, tipoff: day(14), games: all, pgs, tgs: tg, table, model: null });
+  ok('records come from the games before the fixture', pv.sides[0].w === 4 && pv.sides[0].l === 1 && pv.sides[1].w === 1 && pv.sides[1].l === 3, pv.sides);
+  ok('...the meetings, from the home side’s end', pv.meetings.length === 2 && pv.meetings[1].won === 1, pv.meetings);
+  ok('...the rest: four days for both', Math.abs(pv.sides[0].rest - 4) < 1e-9 && Math.abs(pv.sides[1].rest - 4) < 1e-9, pv.sides.map(s => s.rest));
+  ok('...each side’s players, the best scorer first', pv.players[0][0] && pv.players[0][0].id === 'p3' && pv.players[1].some(p => p.id === 'p1'), pv.players);
+  ok('...and a run of 20-point games carried into it', pv.players[0][0].run20 === 5, pv.players[0][0]);
+  const ctxP = { nameA: 'Bees', nameB: 'Aces', pre: pv, names: { p1: 'Ada Aces', p3: 'Di Bees', p2: 'Bo Aces' } };
+  const paras = Preview.__test.valuedParas(ctxP);
+  const txt = paras.join(' ');
+  ok('the valued preview says where they stand', /Bees are first at 4–1|First against/.test(txt), txt);
+  ok('...the meetings', /season series is level at 1–1/.test(txt), txt);
+  ok('...the season’s expectation, with a lean', /better here\./.test(txt) && /(toss-up|lean|favourites|comfortably)/.test(txt), txt);
+  ok('...and who carries the form', /Di Bees has scored 20 or more in/.test(txt), txt);
+  ok('...with no empty slot', !/\b(undefined|NaN|null|Infinity)\b|\[object/.test(txt), txt);
+  /* a facet bigger than the whole edge is not "most of that" */
+  const big = { nameA: 'Hosts', nameB: 'Visitors', names: {}, pre: { sides: [{ gp: 5, w: 3, l: 2, streak: null, last5: 'WWLWL' }, { gp: 5, w: 3, l: 2, streak: null, last5: 'LWWLW' }],
+    meetings: [], table: [null, null], players: [[], []],
+    expect: { margin: 2, alpha: null, model: true, parts: { efg: { home: 55, away: 50, pts: 5 }, tovp: { home: 14, away: 12, pts: -3 }, orebp: { home: 28, away: 28, pts: 0 }, ftr: { home: 25, away: 25, pts: 0 } } } } };
+  const t2 = Preview.__test.valuedParas(big).join(' ');
+  ok('a facet bigger than the whole edge is said as one', /the shooting alone is worth more than that|The shooting alone is worth more than that/.test(t2) && !/Most of that/.test(t2), t2);
+  ok('...and the possessive of a name in s', /Visitors’ edge is the turnover battle/.test(t2), t2);
+}
+
 console.log('\nthe league make rates');
 {
   const tg = [];

@@ -192,8 +192,8 @@ function injuriesHTML(ctx) {
 }
 
 /* ------------------------------------------------------------ four factors ---
-   The four things that decide a basketball game, in the order Dean Oliver
-   weighted them. `low` marks the ones where a smaller number is better, so a
+   The four things that decide a basketball game, in their usual order of
+   weight. `low` marks the ones where a smaller number is better, so a
    comparison never has to know which way each factor runs. */
 const FACTORS = [
   { k: 'efg',  off: 'ff_efg',  def: 'dff_efg',  label: 'shooting',
@@ -342,9 +342,146 @@ function playerNote(p, teamName) {
          esc(teamName) + ' — ' + bits.slice(0, 2).join(' and ') + '.';
 }
 
+/* ============================================================================
+   THE MATCHUP, VALUED (2026-10-07): what the season says about THIS game, from context.js preview() (ctx.pre) - where
+   the two stand and how they come in (runs, the meetings, the rest), what the season's four factors expect when this
+   offence meets that defence (the league's own What Wins weights where it has them), which facet the game turns on and
+   who carries each side's form - and then an honest lean, with what argues against it. Every figure is one context.js
+   worked out from games already played; nothing is a prediction dressed as a fact.
+   ============================================================================ */
+const PWORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const pspell = n => { const v = Math.round(+n); return v >= 0 && v <= 12 ? PWORDS[v] : String(v); };
+const ptsW = n => { const v = Math.max(1, Math.round(Math.abs(n) * 2) / 2); return (v % 1 ? String(v) : pspell(v)) + (v === 1 ? ' point' : ' points'); };
+const PLACE = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+const placeW = n => { const v = Math.round(+n); if (v >= 1 && v <= 10) return PLACE[v]; const t = v % 100; return v + (t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th')); };
+const FACET_W = { efg: 'the shooting', tovp: 'the turnover battle', orebp: 'the offensive glass', ftr: 'getting to the line' };
+const recW = s => s.w + '–' + s.l;
+function valuedParas(ctx) {
+  const pre = ctx.pre;
+  const nameA = esc(ctx.nameA), nameB = esc(ctx.nameB);
+  const N = [nameA, nameB];
+  const S = pre.sides, T = pre.table || [null, null];
+  const out = [];
+
+  /* 1. WHERE THEY STAND AND HOW THEY COME IN */
+  const st = [];
+  if (T[0] && T[1] && T[0].gp >= 3 && T[1].gp >= 3) {
+    const a = T[0], b = T[1];
+    if (Math.max(a.rank, b.rank) <= 2) st.push(cap(placeW(Math.min(a.rank, b.rank))) + ' against ' + placeW(Math.max(a.rank, b.rank)) + ': ' + N[0] + ' (' + recW(a) + ') host ' + N[1] + ' (' + recW(b) + ').');
+    else st.push(N[0] + ' are ' + placeW(a.rank) + ' at ' + recW(a) + ', ' + N[1] + ' ' + placeW(b.rank) + ' at ' + recW(b) + '.');
+  }
+  /* a run that is the whole season is said as what it is: unbeaten, or still without a win */
+  const whole = t => S[t].streak && S[t].streak.n === S[t].gp && S[t].gp >= 2;
+  const run = t => {
+    const s = S[t].streak;
+    if (!s || s.n < 3) return null;
+    if (whole(t)) return s.won ? N[t] + ' are unbeaten in ' + pspell(s.n) : N[t] + ' are still without a win in ' + pspell(s.n);
+    return s.won ? N[t] + ' have won ' + pspell(s.n) + ' straight' : N[t] + ' have lost their last ' + pspell(s.n);
+  };
+  const runs = [run(0), run(1)].filter(Boolean);
+  if (runs.length === 2 && whole(0) && whole(1) && S[0].streak.won && S[1].streak.won) st.push('Neither has lost yet.');
+  else if (runs.length === 2) st.push(runs.join('; ') + '.');
+  else if (runs.length === 1) st.push(runs[0] + '.');
+  else {
+    const f = t => (S[t].last5 || '').length === 5 ? (S[t].last5.match(/W/g) || []).length : null;
+    const fa = f(0), fb = f(1);
+    if (fa != null && fb != null && Math.abs(fa - fb) >= 3) {
+      const hi = fa > fb ? 0 : 1;
+      st.push(N[hi] + ' have won ' + pspell(Math.max(fa, fb)) + ' of their last five; ' + N[1 - hi] + ' ' + pspell(Math.min(fa, fb)) + '.');
+    }
+  }
+  const M = pre.meetings || [];
+  if (M.length === 1) {
+    const m = M[0], w = m.won, sc = [Math.max(m.score[0], m.score[1]), Math.min(m.score[0], m.score[1])];
+    if (w != null) st.push(N[w] + ' won the only meeting so far, ' + sc[0] + '–' + sc[1] + '.');
+  } else if (M.length > 1) {
+    const wA = M.filter(m => m.won === 0).length, wB = M.filter(m => m.won === 1).length;
+    st.push(wA === wB ? 'The season series is level at ' + wA + '–' + wB + '.' : 'The season series is ' + Math.max(wA, wB) + '–' + Math.min(wA, wB) + ' to ' + N[wA > wB ? 0 : 1] + '.');
+  }
+  const r0 = S[0].rest, r1 = S[1].rest;
+  if (r0 != null && r1 != null) {
+    if (r0 < 1.5 && r1 >= 2.5) st.push(N[0] + ' play for the second time in two days; ' + N[1] + ' have had ' + pspell(Math.floor(r1)) + ' days off.');
+    else if (r1 < 1.5 && r0 >= 2.5) st.push(N[1] + ' play for the second time in two days; ' + N[0] + ' have had ' + pspell(Math.floor(r0)) + ' days off.');
+  }
+  if (st.length) out.push(st.join(' '));
+
+  /* 2. THE MATCHUP, VALUED */
+  const X = pre.expect;
+  if (X && isFinite(X.margin)) {
+    const fav = X.margin >= 0 ? 0 : 1, m = Math.abs(X.margin);
+    const by = X.model ? 'Weighed by what wins in this league, the season’s numbers make ' : 'On the season’s four factors, ';
+    const lead = X.model ? by + N[fav] + ' about ' + ptsW(m) + ' better here.' : by + N[fav] + ' are about ' + ptsW(m) + ' better here.';
+    const parts = Object.keys(X.parts).map(k => ({ k, pts: X.parts[k].pts, a: X.parts[k].home, b: X.parts[k].away }))
+      .sort((p, q) => Math.abs(q.pts) - Math.abs(p.pts));
+    const forFav = parts.filter(p => (fav === 0 ? p.pts : -p.pts) >= 1);
+    const against = parts.filter(p => (fav === 0 ? p.pts : -p.pts) <= -1);
+    const bits = [lead];
+    if (forFav.length && m >= 1) {
+      const p = forFav[0], mine = fav === 0 ? p.a : p.b, theirs = fav === 0 ? p.b : p.a;
+      const what = p.k === 'efg' ? 'expect ' + N[fav] + ' to shoot about ' + Math.round(mine) + '% eFG to ' + Math.round(theirs) + '%'
+        : p.k === 'tovp' ? N[fav] + ' should turn it over on about ' + Math.round(mine) + '% of possessions to ' + Math.round(theirs) + '%'
+        : p.k === 'orebp' ? N[fav] + ' should get about ' + Math.round(mine) + '% of their misses back to ' + Math.round(theirs) + '%'
+        : N[fav] + ' should get to the line more, about ' + Math.round(mine) + ' free throws per hundred shots to ' + Math.round(theirs);
+      const share = Math.abs(p.pts) / m;
+      const opener = share > 1.15 ? cap(FACET_W[p.k]) + ' alone is worth more than that' : share >= 0.5 ? 'Most of that is ' + FACET_W[p.k] : 'The biggest part is ' + FACET_W[p.k];
+      bits.push(opener + ': ' + what + ', worth about ' + ptsW(Math.abs(p.pts)) + '.');
+    }
+    const possN = n => n + (/s$/i.test(String(n).replace(/<[^>]*>/g, '')) ? '’' : '’s');
+    if (against.length) bits.push(possN(N[1 - fav]) + ' edge is ' + FACET_W[against[0].k] + ', about ' + ptsW(Math.abs(against[0].pts)) + ' back.');
+    if (X.alpha != null && Math.abs(X.alpha) >= 0.5) bits.push('Home court is worth about ' + (Math.round(X.alpha * 10) / 10).toFixed(1) + ' in this league.');
+    /* the lean, said honestly, and what argues against it */
+    const lean = m < 2 ? 'On these numbers it is close to a toss-up.'
+      : m < 5 ? 'The numbers lean ' + N[fav] + ', but not by much: a single run settles games closer than that.'
+      : m < 9 ? 'The numbers make ' + N[fav] + ' clear favourites.'
+      : 'On these numbers ' + N[fav] + ' should win comfortably.';
+    bits.push(lean);
+    const dog = 1 - fav, ds = S[dog].streak;
+    if (m >= 2 && ds && ds.won && ds.n >= 3) bits.push('Yes, but ' + N[dog] + ' come in on ' + pspell(ds.n) + ' straight wins.');
+    else if (m >= 2 && T[dog] && T[fav] && T[dog].rank < T[fav].rank && T[dog].gp >= 3) bits.push('Yes, but the table has ' + N[dog] + ' above them.');
+    out.push(bits.join(' '));
+  }
+
+  /* 3. WHO CARRIES THE FORM */
+  const names = ctx.names || {};
+  const who = (t) => {
+    const list = (pre.players && pre.players[t]) || [];
+    for (const p of list.slice(0, 6)) {
+      const nm = names[p.id];
+      if (!nm || p.gp < 3) continue;
+      const last3 = (p.last3 || []).length === 3 ? p.last3.reduce((a, b) => a + b, 0) / 3 : null;
+      if (p.run20 >= 2) return esc(nm) + ' has scored 20 or more in ' + (p.run20 === p.gp ? 'every game this season' : 'each of the last ' + pspell(p.run20)) + ' for ' + N[t];
+      if (last3 != null && last3 - p.ppg >= 5 && last3 >= 12) return esc(nm) + ' is averaging ' + (Math.round(last3 * 10) / 10).toFixed(1) + ' over the last three for ' + N[t] + ', up from ' + (Math.round(p.ppg * 10) / 10).toFixed(1) + ' for the season';
+    }
+    const top = list.find(p => names[p.id] && p.gp >= 3);
+    return top ? esc(names[top.id]) + ' leads ' + N[t] + ' with ' + (Math.round(top.ppg * 10) / 10).toFixed(1) + ' points a game' : null;
+  };
+  const ps = [who(0), who(1)].filter(Boolean);
+  if (ps.length) out.push(ps.join('; ') + '.');
+  /* a milestone in reach on either side */
+  const ms = [];
+  [0, 1].forEach(t => ((pre.players && pre.players[t]) || []).forEach(p => {
+    const nm = names[p.id];
+    if (!nm || p.total == null || p.total < 180 || !p.ppg) return;
+    const next = Math.floor(p.total / 100) * 100 + 100, need = next - p.total;
+    if (need <= Math.max(6, Math.round(p.ppg))) ms.push(esc(nm) + ' of ' + N[t] + ' needs ' + pspell(need) + ' for ' + next + ' points this season');
+  }));
+  if (ms.length) out.push(ms.slice(0, 2).join('; ') + '.');
+  return out;
+}
+const cap = s => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+
 function narrative(ctx) {
   const nameA = ctx.nameA, nameB = ctx.nameB;
   const A = teamShape(ctx.teamA), B = teamShape(ctx.teamB);
+  /* THE SEASON, READ FOR THIS GAME (ctx.pre): the valued matchup first, then the tempo and shot-diet observations the
+     season's averages still say best */
+  if (ctx.pre && A && B && A.gp >= MIN_GP && B.gp >= MIN_GP) {
+    const v = valuedParas(ctx);
+    if (v.length) {
+      const extra = observations(A, B, nameA, nameB).filter(o => o.strength <= 7).slice(0, 2).map(o => o.text);
+      return v.concat(extra);
+    }
+  }
 
   /* Nothing to say yet, and saying so beats inventing a storyline from one
      result. */
@@ -594,6 +731,6 @@ function render(ctx) {
 
 return { render: render, narrative: narrative, startersHTML: startersHTML, mapQuery: mapQuery, directionsHref: directionsHref,
          injuriesHTML: injuriesHTML, FACTORS: FACTORS, MIN_GP: MIN_GP,
-         __test: { observations: observations, teamShape: teamShape,
+         __test: { observations: observations, teamShape: teamShape, valuedParas: valuedParas,
                    playerNote: playerNote, edge: edge, whenText: whenText, compLine: compLine, vsRow: vsRow } };
 }));

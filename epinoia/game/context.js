@@ -369,6 +369,57 @@ function ratesFromTeams(teams) {
            efg: (s.fgm + 0.5 * s.fg3m) / s.fga, games: Math.round(s.gp / 2) };
 }
 
+/* ============================================================================
+   BEFORE A GAME: the same season, read for a fixture (game/preview.js). Each club's record, form and run, the days of
+   rest, the meetings so far, where both stand, what the season's four factors expect (the league's model weighing them),
+   and each player's season and last five, with a milestone in reach.
+
+     EpinoiaContext.preview({ home, away, tipoff, games, pgs, tgs, table, model, competitionId, neutral })
+   ============================================================================ */
+function preview(o) {
+  const x = o || {};
+  const ids = [x.home || null, x.away || null];
+  if (!ids[0] || !ids[1]) return null;
+  const at = time(x.tipoff) || Date.now();
+  const games = (Array.isArray(x.games) ? x.games : []).filter(g => g && g.home_score != null && g.away_score != null && time(g.tipoff_at) != null && time(g.tipoff_at) < at);
+  /* a club's season so far, with a dummy "this game" that clubLine never counts */
+  const sides = ids.map(id => {
+    const L = clubLine(games, id, { id: '__next', at, home: id === ids[0], for: 0, against: 0, won: false, tied: true }, at);
+    return { id, gp: L.before.gp, w: L.before.w, l: L.before.l, streak: L.before.streak, last5: L.before.last5,
+             ppg: L.before.ppg, papg: L.before.papg, home: { w: L.before.homeW, l: L.before.homeL }, rest: L.rest,
+             lastAt: L.results.length ? L.results[L.results.length - 1].at : null };
+  });
+  const meetings = games.filter(g => (g.home_team_id === ids[0] && g.away_team_id === ids[1]) || (g.home_team_id === ids[1] && g.away_team_id === ids[0]))
+    .sort((a, b) => time(a.tipoff_at) - time(b.tipoff_at))
+    .map(g => { const s = sideOf(g, ids[0]); return { id: g.id, at: s.at, score: [s.for, s.against], won: s.won ? 0 : s.tied ? null : 1 }; });
+  const table = standing(x.table, ids, null, false);
+  const P = profiles(x.tgs, games, '__next', at + 1);
+  const expect = expectation(P, ids, x.model || null, x.neutral ? false : true);
+  /* the players: each one's season and last five before the game, from the per-game rows */
+  const PL = playerLines(x.pgs, games, '__next', at) || {};
+  const sideOfPlayer = {};
+  (Array.isArray(x.pgs) ? x.pgs : []).forEach(r => {
+    const g = games.find(y => y.id === r.game_id);
+    if (!g || !r) return;
+    const team = r.team_idx === 0 ? g.home_team_id : g.away_team_id;
+    const pid = pidOf(r);
+    if (pid) sideOfPlayer[pid] = team;               // the last game read wins: where he plays now
+  });
+  const players = [[], []];
+  Object.keys(PL).forEach(pid => {
+    const t = ids.indexOf(sideOfPlayer[pid]);
+    if (t < 0) return;
+    const p = PL[pid];
+    if (!p.gp) return;
+    players[t].push({ id: pid, gp: p.gp, ppg: p.ppg, rpg: p.rpg, apg: p.apg, last3: p.last3, high: p.high.pts, total: p.totalBefore,
+      run20: (() => { let n = 0; const xs = (x.pgs || []).filter(r => pidOf(r) === pid && games.some(g => g.id === r.game_id) && num(r.stats && r.stats.min) > 0)
+        .map(r => ({ at: time((games.find(g => g.id === r.game_id) || {}).tipoff_at), pts: num(r.stats.pts) || 0 })).sort((a, b) => a.at - b.at);
+        for (let i = xs.length - 1; i >= 0 && xs[i].pts >= 20; i--) n++; return n; })() });
+  });
+  players.forEach(list => list.sort((a, b) => (b.ppg || 0) - (a.ppg || 0)));
+  return { v: 1, ids, sides, meetings, table, expect, players, rates: x.rates || rates(x.tgs, '__next') };
+}
+
 /* THE LEAGUE'S MAKE RATES, pooled over the season's team lines (this game left out): what a shot at the rim, from
    mid-range, from three and at the line usually gives in this league. story.js weighs a side's shot diet by them to
    split its shooting into the shots it got and the shots that fell. Null under 20 games, or without the zones. */
@@ -390,5 +441,5 @@ function rates(tgs, me) {
            efg: (s.fgm + 0.5 * s.fg3m) / s.fga, games: games.size };
 }
 
-return { build, rates, ratesFromTeams, __x: { clubLine, streakOf, standing, playerLines, returns, profiles, expectation, ordered } };
+return { build, preview, rates, ratesFromTeams, __x: { clubLine, streakOf, standing, playerLines, returns, profiles, expectation, ordered } };
 }));
