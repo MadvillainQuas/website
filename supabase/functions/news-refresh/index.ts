@@ -14,8 +14,10 @@
    address the database holds for the source. Everything it decides is in ../_shared/newsrefresh.js (and the parser, held to
    the same fixtures as scripts/news/fetch_feeds.py, in ../_shared/newsfeed.js): this file is the wiring.
 
-   NEEDS: nothing new. It uses the project's own SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY, and the
-   tables and functions of migration 0194 (no migration of its own). Deploy: npx supabase functions deploy news-refresh
+   NEEDS: the project's own SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY, and the tables and functions
+   of migration 0194 (no migration of its own). YOUTUBE_API_KEY, set as a function secret (the same key the half-hourly
+   reader has in GitHub): with it, a YouTube channel added by its link is found and read at once, through the Data API
+   (../_shared/ytvideo.js); without it, a channel's link waits for that reader. Deploy: npx supabase functions deploy news-refresh
    ============================================================================ */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { createHandler } from '../_shared/newsrefresh.js';
@@ -45,7 +47,7 @@ Deno.serve(async (req: Request) => {
 });
 
 /* ------------------------------------------------------------------ wiring -- */
-const SOURCE_COLS = 'id,slug,name,feed_url,league_id,enabled';
+const SOURCE_COLS = 'id,slug,name,feed_url,league_id,enabled,resolve_from,name_auto,logo_url,site_url';
 
 /* the addresses a name resolves to, to refuse one that resolves to a private address. Null: this runtime cannot say (the
    literal address checks and the redirect checks still hold); set NEWS_REFRESH_DNS_STRICT=1 to refuse then instead. */
@@ -57,7 +59,8 @@ async function resolve(host: string): Promise<string[] | null> {
     const out: string[] = [];
     for (const type of ['A', 'AAAA']) {
       try { out.push(...(await d.resolveDns(host, type))); } catch (e) {
-        if (/NotCapable|PermissionDenied|NotSupported|not implemented/i.test(String(e && (e.name || e.message || e)))) return null;
+        const x = e as { name?: string; message?: string } | null;
+        if (/NotCapable|PermissionDenied|NotSupported|not implemented/i.test(String(x && (x.name || x.message || x)))) return null;
       }
     }
     return out;
@@ -69,6 +72,8 @@ const handle = createHandler({
   fetch: (u: string, init: RequestInit) => fetch(u, init),
   resolve,
   strictDns: Deno.env.get('NEWS_REFRESH_DNS_STRICT') === '1',
+  ytKey: Deno.env.get('YOUTUBE_API_KEY') || null,
+  videos: true,                                   // news_items has the video columns (0237, applied)
   isService: (token: string) => token === SERVICE,
   getUser: async (token: string) => {
     const { data: { user } } = await asUser(token).auth.getUser();
@@ -101,6 +106,13 @@ const handle = createHandler({
     upsert: async (rows: unknown[]) => {
       const { error } = await admin.from('news_items').upsert(rows, { onConflict: 'source_id,guid' });
       if (error) throw new Error(error.message);
+    },
+    /* the name of another source with this feed where this one is (the same league, or every reader's): fetch_feeds.py feed_taken */
+    feedTaken: async (feedUrl: string, leagueId: string | null, but: string) => {
+      let q = admin.from('news_sources').select('name').eq('feed_url', feedUrl).neq('id', but).limit(1);
+      q = leagueId ? q.eq('league_id', leagueId) : q.is('league_id', null);
+      const { data } = await q;
+      return data && data[0] ? data[0].name : null;
     },
     count: async (sourceId: string) => {
       const { count } = await admin.from('news_items').select('id', { count: 'exact', head: true }).eq('source_id', sourceId);

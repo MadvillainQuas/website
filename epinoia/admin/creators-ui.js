@@ -481,7 +481,16 @@ function mountSources(o) {
         return say(/add_news_link|schema cache|does not exist/i.test(errText(e))
           ? 'Adding by link arrives with migration 0198: it has not been applied to this database yet.' : errText(e), 'err');
       }
-      say('Added ' + ((d && d.name) || 'it') + ': its feed is found at the next read (within half an hour), and its posts arrive from then on.', 'ok');
+      /* A YOUTUBE CHANNEL IS FOUND AND READ AT ONCE (news-refresh, with the YouTube key): no wait for the half-hourly read,
+         which GitHub can run hours late. Anything else, and a channel before the key is set, waits for that read. */
+      if (NR() && d && d.slug && /(^|\.)youtube\.com\//i.test(link.value.trim().replace(/^https?:\/\//i, ''))) {
+        say('Added ' + (d.name || 'it') + ': reading its channel now…', 'ok');
+        const out = await NR().call({ sb, source: d.slug });
+        say(out.ok ? 'Added ' + ((out.raw && out.raw.name) || d.name || 'it') + ': ' + out.text + '. Its videos are matched to games at the next half-hourly read.'
+                   : 'Added ' + (d.name || 'it') + ': ' + out.text + '.', out.ok ? 'ok' : (out.kind === 'wait' ? 'ok' : 'err'));
+      } else {
+        say('Added ' + ((d && d.name) || 'it') + ': its feed is found at the next read (within half an hour), and its posts arrive from then on.', 'ok');
+      }
       draw();
     });
     box.appendChild(row(link, kind, nm, add));

@@ -130,6 +130,19 @@ if (!loaded || !loaded.db) {
   ok('rematch: every video of its ten days goes back, matched or not', n === 2 && after.find(x => x.id === I2).game_id === null, { n, after });
   ok('...never one linked by hand, nor one older than the matcher looks', after.find(x => x.id === I3).game_id === G && after.find(x => x.id === I4).game_id === G, after);
 
+  console.log('\na video on a game keeps its kind');
+  const KV = await item(S, 'aaaaaaaaaa9', 'Valencia vs Joventut', G, false, new Date().toISOString());
+  await q(`update public.news_items set video_kind = 'highlights' where id = $1`, [KV]);
+  await q(`insert into public.news_items (source_id, guid, url, title, published_at, video_id, video_kind)
+           values ($1, 'aaaaaaaaaa9', 'https://www.youtube.com/watch?v=aaaaaaaaaa9', 'Valencia vs Joventut', now(), 'aaaaaaaaaa9', 'video')
+           on conflict (source_id, guid) do update set title = excluded.title, video_kind = excluded.video_kind`, [S]);
+  ok("a channel's next read (its upsert, the kind from the title again) leaves a matched video's kind as the matcher set it",
+     (await one(`select video_kind from public.news_items where id = $1`, [KV])).video_kind === 'highlights');
+  await q(`update public.news_items set game_id = null, video_kind = 'video' where id = $1`, [KV]);
+  ok('...a video taken off its game takes a new kind as before', (await one(`select video_kind from public.news_items where id = $1`, [KV])).video_kind === 'video');
+  await q(`update public.news_items set game_id = $2, video_kind = 'full' where id = $1`, [KV, G]);
+  ok('...and the matcher putting it on a game sets its kind', (await one(`select video_kind from public.news_items where id = $1`, [KV])).video_kind === 'full');
+
   console.log('\na video\'s game');
   const gj = (await one(`select public.video_game_json($1) as j`, [G])).j;
   ok('carries each club\'s second colour', gj.home.colour_2 === '#071728' && gj.away.colour_2 === '#4271b7', gj);

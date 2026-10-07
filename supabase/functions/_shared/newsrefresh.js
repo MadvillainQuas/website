@@ -28,6 +28,7 @@
    every source it reads, leaves a row: 'news_refresh_call' and 'news_refresh'.
    ============================================================================ */
 import { KEEP_DAYS, checkFeedUrl, isPrivateIp, parseFeed } from './newsfeed.js';
+import { apiChannel, apiItems, classify, isYouTubeLink, playlistOf, videoIdOf } from './ytvideo.js';
 
 export const FETCH_TIMEOUT_MS = 10000;
 export const MAX_BYTES = 2 * 1024 * 1024;
@@ -40,7 +41,7 @@ export const ALL_BUDGET_MS = 100000;     // "all" starts no new source after thi
 export const UA = 'EpinoiaNews/1.0 (+https://prophesyscouting.co.uk/epinoia/news/)';
 
 const STATUS = { auth: 401, forbidden: 403, no_source: 404, bad_request: 400, method: 405, off: 409, rate: 429, rate_caller: 429,
-  blocked: 422, unreachable: 502, not_feed: 502, too_big: 502, server: 500 };
+  blocked: 422, unreachable: 502, not_feed: 502, too_big: 502, server: 500, pending: 409 };
 
 export class RefreshError extends Error {
   constructor(code, message) { super(message); this.code = code; }
@@ -145,6 +146,32 @@ export function createHandler(deps) {
   const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...(deps.cors || {}), 'Content-Type': 'application/json' } });
   const fail = (code, message, extra) => json({ ok: false, code, error: message, ...extra }, STATUS[code] || 500);
 
+  /* A JSON ANSWER FROM THE YOUTUBE DATA API, read under a feed's rules (https to a public host, 10 s, 2 MB). The address
+     carries the key; no error made here repeats the address. */
+  async function getJson(url) {
+    const got = await fetchFeed(deps, url);
+    try { return JSON.parse(decodeBody(got.bytes, got.contentType)); }
+    catch (_) { throw new RefreshError('unreachable', 'YouTube answered with something that is not JSON'); }
+  }
+
+  /* A SOURCE ADDED BY ITS LINK (0198) holds the link in resolve_from until its feed is found. A YouTube link is found here at
+     once, through the Data API, as the half-hourly reader finds it (a channel's page is behind a consent wall, which is
+     what a read of the link itself met: "not a feed: bad tag"). Any other link waits for that reader, which knows how to
+     look for a site's feed. -> the fields to set on the source, with feed_url */
+  async function findFeed(src) {
+    const yt = isYouTubeLink(src.resolve_from);
+    if (!yt || !deps.ytKey) throw new RefreshError('pending', 'its feed is found at the next half-hourly read (within half an hour)');
+    const ch = await apiChannel(src.resolve_from, deps.ytKey, getJson);
+    if (!ch) throw new RefreshError('not_feed', 'that link names no YouTube channel');
+    const other = db.feedTaken ? await db.feedTaken(ch.feed_url, src.league_id || null, src.id) : null;
+    if (other) throw new RefreshError('not_feed', 'the same feed as ' + other + ', which is a source here already');
+    const set = { feed_url: ch.feed_url, site_url: ch.site_url || src.site_url || null, resolve_from: null, platform: 'youtube',
+                  etag: null, last_modified: null };
+    if (ch.logo && !src.logo_url) { set.logo_url = ch.logo; set.logo_checked_at = now().toISOString(); }
+    if (src.name_auto && ch.name) { set.name = String(ch.name).slice(0, 80); set.name_auto = false; }
+    return set;
+  }
+
   /* ONE SOURCE, read and stored. Never throws: -> { ok, ... } with `code` when it did not work. */
   async function refreshOne(src, actor, all) {
     const t0 = now().getTime();
@@ -152,10 +179,18 @@ export function createHandler(deps) {
     const took = () => now().getTime() - t0;
     let result;
     try {
-      const got = await fetchFeed(deps, src.feed_url);
+      const found = src.resolve_from ? await findFeed(src) : null;
+      const feedUrl = found ? found.feed_url : src.feed_url;
       let items;
-      try { [, items] = parseFeed(decodeBody(got.bytes, got.contentType), src.feed_url, stamp); }
-      catch (e) { throw new RefreshError('not_feed', sentence(e).replace(/^not a feed:?\s*/i, '') || 'this address does not carry a feed'); }
+      if (deps.ytKey && playlistOf(feedUrl)) {
+        /* A YOUTUBE CHANNEL through the Data API, as the half-hourly reader reads one when it has the key: one quota unit,
+           and it answers when the channel's RSS does not */
+        items = await apiItems(feedUrl, deps.ytKey, getJson, stamp);
+      } else {
+        const got = await fetchFeed(deps, feedUrl);
+        try { [, items] = parseFeed(decodeBody(got.bytes, got.contentType), feedUrl, stamp); }
+        catch (e) { throw new RefreshError('not_feed', sentence(e).replace(/^not a feed:?\s*/i, '') || 'this address does not carry a feed'); }
+      }
       const cutoff = stamp.getTime() - KEEP_DAYS * 86400000;
       items = items.filter(x => new Date(x.published_at).getTime() >= cutoff);
       const had = items.length ? await db.existing(src.id, items.map(x => x.guid)) : new Map();
@@ -164,23 +199,34 @@ export function createHandler(deps) {
         const e = had.get(x.guid);
         if (!e) fresh.push(x); else if (!same(e, x)) changed.push(x);
       }
-      const rows = fresh.concat(changed).map(x => ({
-        source_id: src.id, guid: x.guid, url: x.url, title: x.title, summary: x.summary, image_url: x.image_url, author: x.author,
-        tags: x.tags, published_at: x.published_at, fetched_at: stamp.toISOString()
-      }));
+      const rows = fresh.concat(changed).map(x => {
+        const r = { source_id: src.id, guid: x.guid, url: x.url, title: x.title, summary: x.summary, image_url: x.image_url, author: x.author,
+                    tags: x.tags, published_at: x.published_at, fetched_at: stamp.toISOString() };
+        if (deps.videos) {
+          /* THE VIDEO COLUMNS (0237), as the half-hourly reader writes them: every row the same keys (a bulk insert with
+             mixed keys is refused). The game is the matcher's, at that reader's next pass. */
+          r.video_id = videoIdOf(x.url, x.guid);
+          r.video_kind = r.video_id ? classify(x.title) : null;
+        }
+        return r;
+      });
       try {
         if (rows.length) await db.upsert(rows);
         const total = await db.count(src.id);
-        const mark = { last_fetched_at: stamp.toISOString(), last_ok_at: stamp.toISOString(), last_error: null, item_count: total };
+        const mark = Object.assign({}, found || {}, { last_fetched_at: stamp.toISOString(), last_ok_at: stamp.toISOString(), last_error: null, item_count: total });
         if (fresh.length) { mark.etag = null; mark.last_modified = null; }   // the next half-hourly read asks afresh, and tags what came in
         await db.mark(src.id, mark);
-        result = { ok: true, slug: src.slug, name: src.name, added: fresh.length, updated: changed.length, total, fetched: items.length, last_error: null, took_ms: took() };
+        result = { ok: true, slug: src.slug, name: mark.name || src.name, added: fresh.length, updated: changed.length, total, fetched: items.length,
+                   found: !!found, last_error: null, took_ms: took() };
       } catch (e) { throw new RefreshError('server', sentence(e) || 'the database refused'); }
     } catch (e) {
       const code = e instanceof RefreshError ? e.code : 'unreachable';
       const msg = e instanceof RefreshError ? e.message : sentence(e);
       const line = errLine(code, msg).slice(0, 300);
-      try { await db.mark(src.id, { last_fetched_at: stamp.toISOString(), last_error: line }); } catch (_) { /* the answer still goes */ }
+      /* a link still waiting for the reader is left as it is: an error on it would hold that reader off for hours */
+      if (code !== 'pending') {
+        try { await db.mark(src.id, { last_fetched_at: stamp.toISOString(), last_error: line }); } catch (_) { /* the answer still goes */ }
+      }
       result = { ok: false, slug: src.slug, name: src.name, code, error: line, message: msg, last_error: line, took_ms: took() };
     }
     try {

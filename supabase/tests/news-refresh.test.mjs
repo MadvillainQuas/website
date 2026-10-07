@@ -390,5 +390,91 @@ console.log('-- the wiring of the function (index.ts)');
   ok('CORS: POST and OPTIONS, and the headers supabase-js sends', /'Access-Control-Allow-Methods': 'POST, OPTIONS'/.test(ts) && /authorization, x-client-info, apikey, content-type/.test(ts));
 }
 
+/* ------------------------------------------------------------------------------------------------------------------ */
+console.log('\na YouTube channel, found and read at once (the Data API, as the half-hourly reader)');
+{
+  const YT = await import('../functions/_shared/ytvideo.js');
+  const KEY = 'KEY123secret';
+  const CH = 'UCabcdefghijklmnopqrstuv', FEED = 'https://www.youtube.com/feeds/videos.xml?channel_id=' + CH;
+  const href = u => new URL(u).href;
+  const chanUrl = href(YT.YT_API + 'channels?part=snippet&forHandle=%40SLB&key=' + KEY);
+  const listUrl = href(YT.YT_API + 'playlistItems?part=snippet,contentDetails&maxResults=15&playlistId=UUabcdefghijklmnopqrstuv&key=' + KEY);
+  const CHAN = JSON.stringify({ items: [{ id: CH, snippet: { title: 'Super League Basketball', thumbnails: { high: { url: 'https://yt3.example/slb.jpg' } } } }] });
+  const vid = (id, title, at) => ({ snippet: { title, description: 'Watch it.', channelTitle: 'Super League Basketball', thumbnails: { high: { url: 'https://i.ytimg.com/vi/' + id + '/hq.jpg' } } },
+                                    contentDetails: { videoId: id, videoPublishedAt: at } });
+  const LIST = JSON.stringify({ items: [vid('aaaaaaaaaa1', 'CHAMPIONSHIP HIGHLIGHTS: Bristol Flyers vs Manchester', '2026-09-30T09:00:00Z'),
+                                        vid('aaaaaaaaaa2', 'Coach interview', '2026-09-29T09:00:00Z'), vid('aaaaaaaaaa3', 'Private video', '2026-09-28T09:00:00Z')] });
+  const linkSrc = { id: 's-yt', slug: 'slb-yt', name: 'slb', name_auto: true, feed_url: 'https://www.youtube.com/@SLB', resolve_from: 'https://www.youtube.com/@SLB',
+                    league_id: 'L-kbl', enabled: true, logo_url: null, site_url: 'https://www.youtube.com/@SLB' };
+  const mk = (key, extra) => {
+    const w = world({ deps: { ytKey: key, videos: true } });
+    w.sources.push(Object.assign({}, linkSrc, extra || {}));
+    w.bodies[chanUrl] = CHAN; w.bodies[listUrl] = LIST;
+    w.deps.db.feedTaken = async () => null;
+    return w;
+  };
+
+  let w = mk(KEY);
+  let r = await w.send('tok-kbl', { source: 'slb-yt' });
+  const s = w.sources.find(x => x.id === 's-yt');
+  ok('a channel added by its link: found through the API and read at once, by the league\'s own administrator',
+     r.status === 200 && r.j.ok && r.j.added === 2 && r.j.found === true, r);
+  ok('...the source now has its feed, its platform, its logo and its own name; the link is done with',
+     s.feed_url === FEED && s.resolve_from === null && s.platform === 'youtube' && s.logo_url === 'https://yt3.example/slb.jpg'
+     && s.name === 'Super League Basketball' && s.name_auto === false && s.site_url === 'https://www.youtube.com/channel/' + CH, s);
+  ok("...the channel's page (behind a consent wall: \"not a feed: bad tag\") is never fetched, nor its RSS",
+     !w.fetched.includes('https://www.youtube.com/@SLB') && !w.fetched.some(u => u.startsWith('https://www.youtube.com/feeds/')), w.fetched);
+  const its = w.items.filter(i => i.source_id === 's-yt');
+  ok('...its videos stored as the reader stores them: the video id and kind (a private video left out)',
+     its.length === 2 && its.find(i => i.guid === 'yt:video:aaaaaaaaaa1').video_id === 'aaaaaaaaaa1'
+     && its.find(i => i.guid === 'yt:video:aaaaaaaaaa1').video_kind === 'highlights' && its.find(i => i.guid === 'yt:video:aaaaaaaaaa2').video_kind === 'video', its);
+
+  w = mk(KEY, { id: 's-yt2', slug: 'slb-yt2', resolve_from: null, feed_url: FEED, name_auto: false, name: 'SLB' });
+  r = await w.send('tok-kbl', { source: 'slb-yt2' });
+  ok('a channel already found is read through the API too (not its RSS)', r.status === 200 && r.j.added === 2
+     && !w.fetched.some(u => u.startsWith('https://www.youtube.com/feeds/')), w.fetched);
+
+  w = mk(null);
+  r = await w.send('tok-kbl', { source: 'slb-yt' });
+  ok('without the key: the link waits for the half-hourly reader (409 pending), and the source is left as it was (no error to hold that reader off)',
+     r.status === 409 && r.j.code === 'pending' && /half-hourly read/.test(r.j.error) && w.sources.find(x => x.id === 's-yt').last_error === undefined
+     && w.fetched.length === 0, r);
+  w = mk(KEY, { resolve_from: 'https://hoops.example/', feed_url: 'https://hoops.example/' });
+  r = await w.send('tok-kbl', { source: 'slb-yt' });
+  ok("a website's link waits for the reader too (it knows how to look for a site's feed)", r.status === 409 && r.j.code === 'pending' && w.fetched.length === 0, r);
+
+  w = mk(KEY);
+  w.deps.db.feedTaken = async () => 'SLB Show';
+  r = await w.send('tok-kbl', { source: 'slb-yt' });
+  ok('a channel that is a source here already is said so, and not read twice', r.j.code === 'not_feed' && /same feed as SLB Show/.test(r.j.error)
+     && !w.fetched.includes(listUrl), r);
+
+  w = mk(KEY);
+  delete w.bodies[listUrl];
+  r = await w.send('tok-kbl', { source: 'slb-yt' });
+  const saved = w.sources.find(x => x.id === 's-yt').last_error || '';
+  ok('the API refusing (a bad key, the quota): said, and the key is in no answer and no stored error',
+     !r.j.ok && !JSON.stringify(r.j).includes(KEY) && !saved.includes(KEY) && /HTTP 404/.test(saved), { r: r.j, saved });
+
+  /* THE WORDS ARE videos.py's OWN: read out of the Python file, compared list by list */
+  const py = readFileSync(path.join(root, 'scripts', 'news', 'videos.py'), 'utf8');
+  const pyList = name => { const m = new RegExp('^' + name + ' = \\[([^\\]]*)\\]', 'm').exec(py); return m ? [...m[1].matchAll(/"([^"]*)"/g)].map(x => x[1]) : null; };
+  const diff = ['HIGHLIGHT_WORDS', 'HIGHLIGHT_CJK', 'FULL_WORDS', 'FULL_CJK'].filter(n => JSON.stringify(pyList(n)) !== JSON.stringify(YT[n]));
+  ok("the kinds' words are videos.py's, list for list", diff.length === 0 && pyList('HIGHLIGHT_WORDS').length > 50, diff);
+  ok('...and read the same way: highlights in any language, a live game, anything else a video, a word inside another no word',
+     YT.classify('Resumen: Real Madrid - Barça') === 'highlights' && YT.classify('【ハイライト】千葉ジェッツ') === 'highlights' && YT.classify('Skrót meczu') === 'highlights'
+     && YT.classify('LIVE | Valencia vs Joventut') === 'full' && YT.classify('Meet our new point guard') === 'video' && YT.classify('Delivered to you') === 'video');
+  ok('the video id from a watch link, a short link, a short, the feed\'s guid; nothing from anything else',
+     YT.videoIdOf('https://www.youtube.com/watch?v=dQw4w9WgXcQ') === 'dQw4w9WgXcQ' && YT.videoIdOf('https://youtu.be/dQw4w9WgXcQ') === 'dQw4w9WgXcQ'
+     && YT.videoIdOf('https://www.youtube.com/shorts/dQw4w9WgXcQ') === 'dQw4w9WgXcQ' && YT.videoIdOf(null, 'yt:video:dQw4w9WgXcQ') === 'dQw4w9WgXcQ'
+     && YT.videoIdOf('https://vimeo.com/123456') === null);
+  ok("a channel's feed address gives its uploads playlist; a playlist's its own; anything else none",
+     YT.playlistOf(FEED) === 'UUabcdefghijklmnopqrstuv' && YT.playlistOf('https://www.youtube.com/feeds/videos.xml?playlist_id=PLabcdefghij') === 'PLabcdefghij'
+     && YT.playlistOf('https://hoops.example/feed?channel_id=' + CH) === null);
+  const ts2 = readFileSync(path.join(root, 'supabase', 'functions', 'news-refresh', 'index.ts'), 'utf8');
+  ok('the function takes the key from its own secret, and reads resolve_from with the source', /ytKey: Deno\.env\.get\('YOUTUBE_API_KEY'\)/.test(ts2)
+     && /SOURCE_COLS = '[^']*resolve_from[^']*'/.test(ts2) && /feedTaken: async/.test(ts2));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

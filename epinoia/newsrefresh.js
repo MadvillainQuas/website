@@ -56,6 +56,8 @@ function normalise(status, j) {
   if (code === 'too_big') return { ok: false, kind: 'err', text: 'feed too large (over 2 MB)', raw: b };
   if (code === 'blocked') return { ok: false, kind: 'err', text: 'feed address not allowed' + (b.detail ? ': ' + b.detail : ''), raw: b };
   if (code === 'off') return { ok: false, kind: 'err', text: 'switched off: switch it on first', raw: b };
+  /* a link whose feed only the half-hourly reader can find (a website's; a YouTube channel's before the key is set) */
+  if (code === 'pending') return { ok: false, kind: 'wait', text: b.error || 'its feed is found at the next half-hourly read', raw: b };
   if (code === 'auth' || status === 401) return { ok: false, kind: 'err', text: 'sign in again to load articles', raw: b };
   if (code === 'forbidden' || status === 403) return { ok: false, kind: 'err', text: 'you may not load this publisher', raw: b };
   if (code === 'no_source') return { ok: false, kind: 'err', text: 'that publisher is not on the site any more', raw: b };
