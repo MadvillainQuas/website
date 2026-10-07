@@ -172,6 +172,10 @@ const W = Object.freeze({
   /* variety */
   MAX_RUN: 2,                          // never more than two in a row from one source
   PARTNER_TOP_N: 6, PARTNER_TOP_MAX: 2,   // and no more than two boosted partner items in the first six
+  /* AT MOST TWO OFFICIAL PARTNERS' STORIES IN A FEED AT ONCE (2026-10-07), anywhere in it: the best two that have not timed
+     out (shown PARTNER_DROP_AT times, never opened), the timed-out ones only when nothing fresher waits. One read (it leaves
+     the feed) or timed out gives its place to the next partner's story. */
+  PARTNER_SHOWN_MAX: 2,
 
   /* the profile's size */
   READS_MAX: 600, READS_TTL_DAYS: 60, IMPRESSIONS_MAX: 400, IMPRESSIONS_TTL_DAYS: 14,
@@ -531,6 +535,36 @@ function whyOf(it, s, profile, w) {
   return 'League news';
 }
 
+/* THE PARTNERS' PLACES: at most c.PARTNER_SHOWN_MAX of the list's partner stories stay - those that have not timed out
+   first, in the list's own order, then the timed-out ones - and the rest wait outside it until a place frees (one read, one
+   timed out). Everything else keeps its place. */
+function partnerSlots(list, isPartner, timedOut, w) {
+  const c = w || W;
+  const ps = list.filter(isPartner);
+  if (ps.length <= c.PARTNER_SHOWN_MAX) return list;
+  const keep = new Set(ps.filter(x => !timedOut(x)).concat(ps.filter(timedOut)).slice(0, c.PARTNER_SHOWN_MAX));
+  return list.filter(x => !isPartner(x) || keep.has(x));
+}
+
+/* THE SAME TWO RULES FOR A FEED THAT IS NOT RANKED (Newest, Followed, a league's front page in its newest order): what the
+   reader has opened leaves it (when personalisation is on: off, nothing of the reader is kept), and at most
+   PARTNER_SHOWN_MAX partners' stories stay in it, the newest that have not timed out first. o: { partners, store, now } */
+function tidy(rows, o) {
+  const opts = o || {}, c = W;
+  const st = opts.store || store();
+  const t = opts.now || Date.now();
+  let P = null;
+  try { P = st.enabled() ? st.profile() : null; } catch (_) { P = null; }
+  const ps = partnerSet(opts.partners);
+  let list = (Array.isArray(rows) ? rows : []).filter(Boolean);
+  if (P) list = list.filter(it => !readKeys(it).some(k => isRead(P, k, t, c)));
+  const shownOf = it => {
+    const e = P && P.i && P.i[it && it.id];
+    return Array.isArray(e) && t - num(e[1]) < c.PARTNER_DROP_KEEP_DAYS * DAY ? num(e[0]) : 0;
+  };
+  return partnerSlots(list, it => !!pkeyOf(it) && ps.has(pkeyOf(it)), it => shownOf(it) >= c.PARTNER_DROP_AT, c);
+}
+
 /* THE ORDER. items: the feed's rows, any number; profile: what the reader is (see the file's head: l, p, r, i as
    stored, and country, leagueCountry, partners, followedIds, followedLeagues, sig as fetched); now: ms. Returns COPIES
    of the rows with { why, score, tier, partner, boosted, read }, best first. Personalisation off (profile.off), or no
@@ -539,17 +573,24 @@ function rank(items, profile, now, w) {
   const c = w || W;
   const list = (Array.isArray(items) ? items : []).filter(Boolean);
   const t = num(now) || Date.now();
-  if (!profile || profile.off) return list.slice().sort(newestFirst).map(it => Object.assign({}, it, { why: '', score: 0 }));
+  if (!profile || profile.off) {
+    /* personalisation off: the newest first, nothing of the reader read; the partners still two at a time */
+    const ps = partnerSet(profile && profile.partners);
+    return partnerSlots(list.slice().sort(newestFirst), it => !!pkeyOf(it) && ps.has(pkeyOf(it)), () => false, c)
+      .map(it => Object.assign({}, it, { why: '', score: 0 }));
+  }
 
   /* a slow pool: freshness against the pool's own median age (never quicker than RECENCY_HALF_LIFE_H) */
   const ages = list.map(it => Math.max(0, t - dateOf(it)) / HOUR).sort((a, b) => a - b);
   const median = ages.length ? ages[Math.floor((ages.length - 1) / 2)] : 0;
   const cs = median * c.RECENCY_STRETCH > c.RECENCY_HALF_LIFE_H ? Object.assign({}, c, { RECENCY_HALF_LIFE_H: median * c.RECENCY_STRETCH }) : c;
   const prof = Object.assign({}, profile, { groupW: groupWeights(profile, t, c) });
-  const scored = list.map(it => {
+  let scored = list.map(it => {
     const s = scoreOf(it, prof, t, cs);
     return { it, s, source: sourceOf(it), at: dateOf(it) };
-  }).filter(x => !x.s.dropped);          // an official partner's story shown five times and never opened is off the feed
+  /* A STORY THE READER HAS OPENED LEAVES THE FEED (2026-10-07): read is done with; what they read has already taught the
+     feed what they like (noteOpen). A much-shown partner's story is weakened, not dropped (dropped is never set now). */
+  }).filter(x => !x.s.dropped && !x.s.read);
   /* ONE STORY PER PARTNER LEADS: the best-scoring boosted story of each publisher or creator keeps its boost, the next of the same
      source half of it, the next a quarter... (the boost's lost share comes off the score; the rest of the score is untouched) */
   {
@@ -564,6 +605,8 @@ function rank(items, profile, now, w) {
     });
   }
   scored.sort((a, b) => b.s.score - a.s.score || b.at - a.at || String(a.it.id || '').localeCompare(String(b.it.id || '')));
+  /* at most PARTNER_SHOWN_MAX partners' stories in the whole feed: the best two not timed out, then the timed-out ones */
+  scored = partnerSlots(scored, x => x.s.partner, x => x.s.weakened, c);
 
   /* variety: greedy, the best that breaks neither rule; if nothing can honour both (a feed of two sources), the best that
      keeps the partner cap, and if not even that, the best */
@@ -953,7 +996,7 @@ async function rankRows(rows, opts) {
   const st = o.store || store(), n = o.net || net();
   let partners = new Set();
   try { partners = await n.partners(); } catch (_) { /* none */ }
-  if (!st.enabled()) return { rows: rank(rows, { off: true }, t), ranked: false, partners };
+  if (!st.enabled()) return { rows: rank(rows, { off: true, partners }, t), ranked: false, partners };
   try {
     const co = { cachedOnly: !!o.cachedOnly };
     const [lm0, sig, langMap] = await Promise.all([n.leagueMap(co), n.significance(rows, co), n.languages(co).catch(() => ({}))]);
@@ -969,7 +1012,7 @@ async function rankRows(rows, opts) {
       langMap, readLangs: o.readLangs || readerLangs(), langAll: st.langAll ? st.langAll() : false });
     return { rows: rank(rows, P, t), ranked: true, partners };
   } catch (_) {
-    return { rows: rank(rows, { off: true }, t), ranked: false, partners };
+    return { rows: rank(rows, { off: true, partners }, t), ranked: false, partners };
   }
 }
 
@@ -1156,7 +1199,7 @@ function latestEpisodes(rows) {
 
 return {
   W, HOUR, DAY,
-  seriesKey, latestEpisodes,
+  seriesKey, latestEpisodes, partnerSlots, tidy,
   recency, decay, sat, partnerFade, scoreOf, whyOf, rank, rankRows, GROUPS, groupOf, groupWeights, scoreMax,
   langCode, langOf, langOfKey, siteLang, readerLangs, SOURCE_LANG, LANG_CACHE,
   detectCountry, countryMatch, countryCodes, neighbours, country, TZ, REGIONS,

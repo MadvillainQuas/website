@@ -127,8 +127,8 @@ const partners = new Set(['source:eurohoops', 'outlet:kbl/hoops-pod']);
   ok('opening it (noteOpen) is the read', FR.noteOpen(prof, rd, NOW) === true && S(rd, prof).read === true);
   ok('...a read partner story loses the boost and is scored as any story of its age (the same as with no partners at all, but for the group click the open made)',
      S(rd, prof).boost === 0 && near(S(rd, prof).score / S(rd, prof).kindMul, S(rd, Object.assign({}, prof, { partners: new Set() })).score / S(rd, Object.assign({}, prof, { partners: new Set() })).kindMul));
-  ok('...and falls behind an unread partner story of the same age, and its own why is no longer "Official partner"',
-     (() => { const other = story({ h: 5 }); const out = FR.rank([rd, other], prof, NOW); return out[0].id === other.id && out.find(x => x.id === rd.id).why !== 'Official partner'; })());
+  ok('...and a story the reader has opened leaves the feed (2026-10-07): an unread partner story of the same age is all that is left',
+     (() => { const other = story({ h: 5 }); const out = FR.rank([rd, other], prof, NOW); return out.length === 1 && out[0].id === other.id && out[0].why === 'Official partner'; })());
   ok('a read from long ago (past 60 days) is forgotten: the boost is back if it is still in the window', (() => {
     const old = story({ h: 5 }); const pr = Object.assign(state(), { partners }); pr.r[old.id] = NOW - 61 * DAY; return S(old, pr).boost > 0; })());
   /* a creator's piece is read by its page's slugs too */
@@ -145,7 +145,8 @@ console.log('\nvariety');
   const out = R(a.concat(b), p);
   const top6 = out.slice(0, 6);
   ok('no more than two boosted partner items in the first six', top6.filter(x => x.boosted).length <= 2 && top6.filter(x => x.source_slug === 'eurohoops').length <= 3, top6.map(x => x.source_slug));
-  ok('...and the rest of the partner stories come after, still on top of the ordinary ones after the first six', out.slice(6).some(x => x.source_slug === 'eurohoops'));
+  ok('...and no more than two partner stories in the whole feed (2026-10-07): the rest wait for a place', out.filter(x => x.source_slug === 'eurohoops').length === W.PARTNER_SHOWN_MAX
+     && out.length === 2 + b.length, out.map(x => x.source_slug));
   const runs = rows => { let worst = 1, cur = 1; for (let i = 1; i < rows.length; i++) { cur = rows[i].source_slug === rows[i - 1].source_slug ? cur + 1 : 1; worst = Math.max(worst, cur); } return worst; };
   const many = []; for (let i = 0; i < 12; i++) many.push(story({ h: 1 + i })); for (let i = 0; i < 12; i++) many.push(story({ h: 6 + i, source_slug: 'y' + (i % 3), source_name: 'Y' }));
   ok('never more than two in a row from one source', runs(R(many, {})) <= 2, R(many, {}).map(x => x.source_slug).join(' '));
@@ -523,7 +524,7 @@ console.log('\nan official partner shown four times and never opened keeps a qua
   const five = Object.assign(state(), { partners, i: { [ps.id]: [W.PARTNER_DROP_AT, NOW - HOUR] } });
   ok('the fourth showing without an open weakens its boost to a quarter, and it stays on the feed', S(ps, five).weakened === true && near(S(ps, five).boost, W.PARTNER_BOOST * W.PARTNER_WEAK) && R([ps, other], five).some(r => r.id === ps.id));
   const opened = Object.assign(state(), { partners, i: { [ps.id]: [9, NOW] }, r: { [ps.id]: NOW - HOUR } });
-  ok('one the reader opened is never dropped', S(ps, opened).dropped === false && R([ps, other], opened).some(r => r.id === ps.id));
+  ok('one the reader opened is not timed out but read: it leaves the feed for being read', S(ps, opened).dropped === false && !R([ps, other], opened).some(r => r.id === ps.id));
   ok('an ordinary story shown ten times is only held back a little, not dropped', (() => { const q = Object.assign(state(), { partners, i: { [other.id]: [10, NOW] } }); return R([ps, other], q).some(r => r.id === other.id); })());
   ok('the weakening is remembered for two months, past the ordinary impressions\' fortnight', S(ps, Object.assign(state(), { partners, i: { [ps.id]: [5, NOW - 40 * DAY] } })).weakened === true && S(ps, Object.assign(state(), { partners, i: { [ps.id]: [5, NOW - 70 * DAY] } })).weakened === false);
   const pruned = FR.prune({ v: 1, l: {}, p: {}, r: {}, g: {}, k: {}, i: { a: [5, NOW - 40 * DAY], b: [2, NOW - 40 * DAY], c: [2, NOW - 2 * DAY] } }, NOW);
@@ -533,12 +534,14 @@ console.log('\nan official partner shown four times and never opened keeps a qua
   {
     const a = story({ h: 2 }), b2 = story({ h: 3 }), c3 = story({ h: 4 }), x = story({ h: 2, source_slug: 'cv', source_name: 'Court Vision' });
     const both = new Set(['source:eurohoops', 'source:cv']);
-    const out = R([a, b2, c3, x], Object.assign(state(), { partners: both }));
+    /* (with room for all four: the places are a rule of their own, tested below) */
+    const out = FR.rank([a, b2, c3, x], Object.assign(state(), { partners: both }), NOW, Object.assign({}, W, { PARTNER_SHOWN_MAX: 99 }));
     const sc = id => out.find(r => r.id === id).score;
     ok('one story per partner takes the whole boost: the next of the same source half, the third a quarter',
        near(S(a, { partners: both }).score - sc(a.id), 0) && near(S(b2, { partners: both }).score - sc(b2.id), W.PARTNER_BOOST * 0.5, 1e-6) &&
        near(S(c3, { partners: both }).score - sc(c3.id), W.PARTNER_BOOST * 0.75, 1e-6), out.map(r => r.id + ':' + r.score.toFixed(2)));
     ok('...so two partners\' best stories lead before either\'s second', out.slice(0, 2).map(r => r.id).sort().join() === [a.id, x.id].sort().join(), out.map(r => r.id));
+    ok('...and with two places, those two are the feed\'s partners: the others wait', R([a, b2, c3, x], Object.assign(state(), { partners: both })).map(r => r.id).sort().join() === [a.id, x.id].sort().join());
   }
 }
 
