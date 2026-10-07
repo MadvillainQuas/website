@@ -332,6 +332,7 @@ async function chooseSeason(team, lg) {
     whenNear($('#teamrot'), () => teamRotations(team));
     whenNear($('#wowy') || $('#lulist'), () => { lineupPanels(team).catch(() => {}); });
     whenNear($('#lucards'), () => { lineupCards(team).catch(e => console.warn('[lineup cards]', e)); });
+    whenNear($('#teamclutch'), () => { teamClutch(team).catch(e => console.warn('[clutch]', e)); });
     reportTab(team);
     await videoPanel(team);
     frontOfficeTab(team);
@@ -1882,6 +1883,87 @@ async function lineupCards(team) {
   draw();
   const note = $('#lucardsNote');
   if (note) note.textContent = 'fives with ' + floor + '+ minutes together · coloured against the club';
+}
+
+/* ------------------------------------------------------- clutch time --- */
+/* CLUTCH TIME (Louie, 2026-10-07; clutch.js, as the report's Clutch page reads it): the club's offence, defence and net
+   rating in the last four minutes of the fourth quarter and overtime while within five points, each against its own over
+   the season, and the five players who take the most of its plays then (usage) with how well they score them (TS%). The
+   section is left out, header and all, until the club has had some clutch time. Behind the splits lock, as the starters
+   and bench ratings are. */
+/* a player's usage is read once it rests on something: two minutes of clutch time and three plays of his own (a turnover in
+   five minutes is not a 35% usage worth leading the list with) */
+const CLUTCH_MIN_SEC = 120, CLUTCH_MIN_PLAYS = 3;
+async function teamClutch(team) {
+  const host = $('#teamclutch'), hdr = $('#clutchHdr'), CL = window.EpinoiaClutch;
+  if (!host || ACCESS.paywall) return;
+  const hide = () => { host.style.display = 'none'; if (hdr) hdr.style.display = 'none'; };
+  if (!CL) { hide(); return; }
+  if (sectionLocked('splits')) {
+    host.innerHTML = accessTeaser({ compact: true, key: 'splits', title: 'Clutch time',
+      lines: ['The club’s ratings in the last four minutes of a close game, and who takes its plays.'] });
+    return;
+  }
+  host.innerHTML = '<div class="empty">reading the close finishes…</div>';
+  try {
+    const { gs, byG, sideOf } = await seasonLogs(team);
+    const S = CL.season((gs || []).filter(g => Array.isArray(g.starters)).map(g => ({
+      game: { id: g.id, starters: g.starters, period: g.period, events: byG[g.id] || [] }, side: sideOf[g.id] })));
+    if (!S.games || !(S.dur > 0)) { hide(); return; }
+    const Rt = CL.ratings(S.own, S.opp), clubTs = CL.shooting(S.own).ts;
+    const T = await rpGet('season', 15000).catch(() => null);
+    const me = (T && T.mine) || {};
+    const num = v => v != null && v !== '' && isFinite(+v);
+    const f1 = v => (num(v) ? (+v).toFixed(1) : '—'), sg = v => (num(v) ? (+v > 0 ? '+' : '') + (+v).toFixed(1) : '—');
+    /* better or worse than the club's own over the season: by a point either way, or level */
+    const tone = (v, ref, low) => (!num(v) || !num(ref) ? '' : Math.abs(v - ref) < 1 ? 'lv' : ((v > ref) !== !!low ? 'up' : 'dn'));
+    host.innerHTML = '';
+    const wrap = el('div', 'tclx');
+    const tiles = el('div', 'tclx-tiles');
+    const tile = (lab, v, ref, low, signed) => {
+      const t = el('div', 'tclx-tile ' + tone(v, ref, low));
+      t.append(el('b', null, signed ? sg(v) : f1(v)), el('span', null, lab), el('em', null, num(ref) ? 'season ' + (signed ? sg(ref) : f1(ref)) : ''));
+      return t;
+    };
+    tiles.append(tile('CLUTCH NET', Rt.net, me.net, false, true), tile('CLUTCH ORTG', Rt.ortg, me.ortg, false), tile('CLUTCH DRTG', Rt.drtg, me.drtg, true));
+    const rec = el('div', 'tclx-tile st');
+    const pm = S.own.pts - S.opp.pts;
+    rec.append(el('b', null, S.wins + '–' + S.losses), el('span', null, 'CLUTCH RECORD'), el('em', null, (pm > 0 ? '+' : '') + pm + ' points in it'));
+    tiles.appendChild(rec);
+    wrap.appendChild(tiles);
+    /* the five who end the most of the club's plays while on the floor in clutch time */
+    const top = Object.keys(S.players).map(id => ({ id, p: S.players[id], usg: CL.usage(S.players[id]), ts: CL.shooting(S.players[id]).ts }))
+      .filter(x => x.p.sec >= CLUTCH_MIN_SEC && num(x.usg) && x.p.mine >= CLUTCH_MIN_PLAYS).sort((a, b) => b.usg - a.usg).slice(0, 5);
+    if (top.length) {
+      const meta = await window.EpinoiaData.playerMeta(top.map(x => x.id)).catch(() => ({}));
+      const box = el('div', 'tclx-use');
+      box.appendChild(el('h4', null, 'Who takes the plays'));
+      const mx = Math.max(30, ...top.map(x => x.usg));
+      const head = el('div', 'tclx-r tclx-h');
+      ['player', 'clutch usage', 'TS%', 'pts', 'min'].forEach(t => head.appendChild(el('span', null, t)));
+      box.appendChild(head);
+      top.forEach(x => {
+        const r = el('div', 'tclx-r');
+        const a = el('a', 'plain', (meta[x.id] && meta[x.id].name) || 'Player');
+        a.href = '../p/?p=' + encodeURIComponent(x.id);
+        const bar = el('span', 'tclx-bar');
+        const fill = el('i'); fill.style.width = Math.max(3, 100 * x.usg / mx).toFixed(1) + '%';
+        bar.append(fill, el('b', null, f1(x.usg) + '%'));
+        const ts = el('span', 'tclx-ts ' + tone(x.ts, clubTs, false), f1(x.ts));
+        const secs = Math.round(x.p.sec);
+        r.append(a, bar, ts, el('span', 'tclx-n', String(x.p.pts)), el('span', 'tclx-n', Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0')));
+        box.appendChild(r);
+      });
+      wrap.appendChild(box);
+    }
+    wrap.appendChild(el('p', 'tclx-note', 'Clutch time is the last four minutes of the fourth quarter (the second half, in halves) and all of overtime, while the score is within five points going into the play, worked out from the play-by-play. Ratings are per 100 possessions (estimated), each against the club’s own over the season. Usage is the share of the club’s plays a player ended while on the floor in it (one in five is a fair share); TS% is coloured against the club’s clutch TS% (' + f1(clubTs) + '). Players with two minutes or more of clutch time and three plays or more of their own.'));
+    host.appendChild(wrap);
+    const note = $('#clutchNote');
+    if (note) note.textContent = S.games + ' of the last ' + S.of + ' games · ' + Math.round(S.dur / 60) + ' minutes';
+  } catch (e) {
+    console.warn('[clutch]', e);
+    hide();
+  }
 }
 
 /* ------------------------------------------------------- lineups & WOWY --- */

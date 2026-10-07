@@ -148,6 +148,18 @@ ok('every page that loads the club report loads clutch.js first', pages.length >
   const s = rd(p), i = s.indexOf('clutch.js'), j = s.indexOf('report-teampages.js');
   return i > 0 && i < j;
 }), pages);
+ok('with no clutch time the report keeps the free throws and nothing else (an empty page is left out)', /if \(!S\.games\) return out;/.test(TP) && !/None of the club’s last/.test(TP));
+ok('...and the free throws lose their clutch column', /S\.games \? '<span class="v cl">'/.test(TP) && /' nocl'/.test(TP));
+
+console.log('\n6. the club page\'s clutch section');
+const TI = rd('epinoia', 't', 'index.html'), TJ = rd('epinoia', 't', 'team.js');
+ok('the page has the section, under the lineups, its header named so it can be hidden', /id="clutchHdr"[\s\S]*<h2>Clutch time<\/h2>[\s\S]*id="teamclutch"/.test(TI) && TI.indexOf('id="teamclutch"') > TI.indexOf('id="lulist"'));
+ok('it starts when it comes near, as the other heavy sections do', /whenNear\(\$\('#teamclutch'\), \(\) => \{ teamClutch\(team\)/.test(TJ));
+ok('with no clutch time, the section and its header are hidden', /if \(!S\.games \|\| !\(S\.dur > 0\)\) \{ hide\(\); return; \}/.test(TJ));
+ok('behind the splits lock, as starters and bench are', /sectionLocked\('splits'\)\) \{\s*host\.innerHTML = accessTeaser\(\{ compact: true, key: 'splits', title: 'Clutch time'/.test(TJ));
+ok('net, offence and defence against the season, and the top five by usage on a floor of time and plays', /tile\('CLUTCH NET'/.test(TJ) && /tile\('CLUTCH ORTG'/.test(TJ) && /tile\('CLUTCH DRTG'/.test(TJ) &&
+   /x\.p\.sec >= CLUTCH_MIN_SEC && num\(x\.usg\) && x\.p\.mine >= CLUTCH_MIN_PLAYS\)\.sort\(\(a, b\) => b\.usg - a\.usg\)\.slice\(0, 5\)/.test(TJ));
+
 const M = rd('supabase', 'migrations', '0238_career_ft.sql');
 ok('0238: anyone can read a career FT%', /for select to anon, authenticated using \(true\)/.test(M));
 ok('0238: nobody writes the table directly', /revoke all on public\.player_career_ft from anon, authenticated/.test(M) && !/grant (insert|update|delete)/i.test(M));

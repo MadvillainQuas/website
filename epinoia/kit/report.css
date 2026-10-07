@@ -817,6 +817,7 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 /* FREE THROWS: a player a row, the track 40 to 100%, this season the bar, clutch the dot, career the diamond */
 .rp-ft{ display:grid; gap:3px }
 .rp-ft-r{ --b:var(--b0); display:grid; grid-template-columns:96px minmax(0,1fr) 54px 38px 48px; align-items:center; gap:8px; min-height:15px }
+.rp-ft.nocl .rp-ft-r{ grid-template-columns:96px minmax(0,1fr) 54px 48px }
 .rp-ft-r[data-b="4"]{ --b:var(--b4) } .rp-ft-r[data-b="3"]{ --b:var(--b3) } .rp-ft-r[data-b="2"]{ --b:var(--b2) } .rp-ft-r[data-b="1"]{ --b:var(--b1) }
 .rp-ft-r .n{ font-family:var(--f-ui); font-weight:700; font-size:9px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .rp-ft-r.few .n, .rp-ft-r.few .v{ color:var(--ink-3) }

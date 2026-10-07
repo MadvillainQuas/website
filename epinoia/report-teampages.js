@@ -1028,12 +1028,15 @@ function modules(ctx) {
     },
     async build(c, R) {
       const CL = root.EpinoiaClutch;
-      const L = await ctx.logs().catch(() => null);
-      if (!CL || !L || !L.gs || !L.gs.length) return [block('<div class="rp-empty">No play-by-play for this club yet.</div>')];
+      /* WITH NO CLUTCH TIME YET (Louie, 2026-10-07) the page is the free throws alone, and with nothing at all it is left out
+         of the report (an empty module is skipped, and is not in the contents) */
+      const L0 = await ctx.logs().catch(() => null);
+      const L = L0 && L0.gs ? L0 : { gs: [], byG: {}, sideOf: {} };
       const Q = await squadOf().catch(() => null);
       const me = Q && Q.T.mine ? Q.T.mine : {};
-      const S = CL.season(L.gs.filter(g => Array.isArray(g.starters)).map(g => ({
-        game: { id: g.id, starters: g.starters, period: g.period, events: L.byG[g.id] || [] }, side: L.sideOf[g.id] })));
+      const S = CL ? CL.season(L.gs.filter(g => Array.isArray(g.starters)).map(g => ({
+        game: { id: g.id, starters: g.starters, period: g.period, events: L.byG[g.id] || [] }, side: L.sideOf[g.id] })))
+        : { games: 0, of: 0, dur: 0, players: {}, fives: {}, seqs: new Map() };
       const out = [];
       const pct = (m, a) => (a > 0 ? 100 * m / a : null);
       const mins = sec => Math.floor(sec / 60) + ':' + String(Math.round(sec % 60)).padStart(2, '0');
@@ -1067,7 +1070,7 @@ function modules(ctx) {
             const marks = []; for (let t = LO; t <= HI; t += 10) marks.push(t);
             const ticks = marks.slice(1, -1).map(t => '<i class="t" style="left:' + at(t).toFixed(1) + '%"></i>').join('') +
               (E.isNum(lgPct) ? '<i class="lg" style="left:' + at(lgPct).toFixed(1) + '%"></i>' : '');
-            const axis = '<div class="rp-ft-r rp-ft-ax"><span></span><div class="rp-ft-tr">' + marks.map(t => '<em style="left:' + at(t).toFixed(1) + '%">' + t + '</em>').join('') + '</div><span></span><span></span><span></span></div>';
+            const axis = '<div class="rp-ft-r rp-ft-ax"><span></span><div class="rp-ft-tr">' + marks.map(t => '<em style="left:' + at(t).toFixed(1) + '%">' + t + '</em>').join('') + '</div><span></span>' + (S.games ? '<span></span>' : '') + '<span></span></div>';
             const line = x => {
               const b = E.isNum(x.season) && x.fta >= 10 ? E.bandVs(x.season, lgPct, 5, false) : 0;
               const few = !sure(x);
@@ -1076,23 +1079,20 @@ function modules(ctx) {
               return '<div class="rp-ft-r' + (few ? ' few' : '') + '" data-b="' + b + '"><span class="n">' + esc(short(x.k)) + '</span>' +
                 '<div class="rp-ft-tr">' + ticks + (E.isNum(x.season) ? '<b style="width:' + at(x.season).toFixed(1) + '%"></b>' : '') + dot + dia + '</div>' +
                 '<span class="v"><b>' + (E.isNum(x.season) ? f1(x.season) : '—') + '</b><small>' + x.ftm + '/' + x.fta + '</small></span>' +
-                '<span class="v cl">' + (x.ca ? '<b>' + x.cm + '/' + x.ca + '</b>' : '<b class="nil">—</b>') + '</span>' +
+                (S.games ? '<span class="v cl">' + (x.ca ? '<b>' + x.cm + '/' + x.ca + '</b>' : '<b class="nil">—</b>') + '</span>' : '') +
                 '<span class="v ca">' + (x.car ? '<b>' + f1(x.car.pct) + '</b>' + (E.isNum(x.car.fta) ? '<small>' + (E.isNum(x.car.ftm) ? x.car.ftm + '/' : '') + x.car.fta + '</small>' : '') : '<b class="nil">—</b>') + '</span></div>';
             };
-            const head = '<div class="rp-ft-r rp-ft-h"><span>player</span><span>FT% this season (bar) · clutch (dot) · career (diamond)</span><span>season</span><span>clutch</span><span>career</span></div>';
+            /* no clutch time yet: no clutch column (Louie, 2026-10-07: the free throws stay, the rest of the page goes) */
+            const head = '<div class="rp-ft-r rp-ft-h"><span>player</span><span>FT% this season (bar)' + (S.games ? ' · clutch (dot)' : '') + ' · career (diamond)</span><span>season</span>' + (S.games ? '<span>clutch</span>' : '') + '<span>career</span></div>';
             out.push(block(title('Free throws', 'who to send to the line: lowest best guess first · ' + (E.isNum(lgPct) ? 'the line is the league’s ' + f1(lgPct) + '%' : 'this season')) +
-              '<div class="rp-ft">' + head + rows.map(line).join('') + axis + '</div>' +
-              '<p class="rp-note">Each bar is the player’s free-throw % this season, coloured against the league’s (green above, red below; grey under ten attempts). The dot is their clutch free throws, the diamond their career % where one has been entered. The order is the best guess at each shooter: this season’s free throws with the career figure added in as so many more attempts at its percentage, lowest first. Under ten attempts and no career figure, the player is at the foot, too few to read.</p>'));
+              '<div class="rp-ft' + (S.games ? '' : ' nocl') + '">' + head + rows.map(line).join('') + axis + '</div>' +
+              '<p class="rp-note">Each bar is the player’s free-throw % this season, coloured against the league’s (green above, red below; grey under ten attempts). ' + (S.games ? 'The dot is their clutch free throws, the diamond' : 'The diamond is') + ' their career % where one has been entered. The order is the best guess at each shooter: this season’s free throws with the career figure added in as so many more attempts at its percentage, lowest first. Under ten attempts and no career figure, the player is at the foot, too few to read.</p>'));
             R.legendExtra.push(['FREE THROWS', 'This season’s free-throw % (the bar, coloured against the league’s average, the line), the clutch free throws (the dot) and a career % entered by hand (the diamond: college or other leagues). The order is the best guess at each shooter, lowest first: this season’s makes and attempts with the career figure counted as its own attempts (or 100 where only the % was entered).']);
           }
         }
       } catch (e) { if (root.console) root.console.warn('[report clutch FT]', e); }
 
-      if (!S.games) {
-        out.push(block(title('Clutch time', 'the last four minutes of the fourth quarter and overtime, within five points') +
-          '<div class="rp-empty">None of the club’s last ' + L.gs.length + ' games with a play-by-play was within five points in the last four minutes.</div>'));
-        return out;
-      }
+      if (!S.games) return out;
 
       /* ---- RATINGS: the club's clutch offence, defence and net against its own over every minute ---- */
       const Rt = CL.ratings(S.own, S.opp), sh = CL.shooting(S.own), shO = CL.shooting(S.opp);
@@ -1227,7 +1227,7 @@ function modules(ctx) {
             '<p class="rp-note">Ratings per 100 possessions (estimated) in the clutch time each five played together; a handful of possessions swings them a long way, so read the minutes and the margin beside them.</p>'));
         }
       } catch (e) { if (root.console) root.console.warn('[report clutch fives]', e); }
-      return out.length ? out : [block('<div class="rp-empty">No play-by-play for this club yet.</div>')];
+      return out;
     }
   };
 

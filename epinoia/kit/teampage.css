@@ -101,3 +101,32 @@ body.themed .tlu-more{color:var(--team-a-ink)}
   .tlu{padding:0 calc(var(--u)*2) calc(var(--u)*3)}
   .tlu .pg-seg button{min-height:40px;padding:0 16px}
 }
+
+/* ---- CLUTCH TIME (team.js teamClutch, clutch.js; 2026-10-07): the ratings as tiles, then the five who take the plays ---- */
+.tclx{display:grid;gap:14px;padding:14px 12px}
+.tclx-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tclx-tile{display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 6px 10px;border:1px solid var(--rule);border-radius:10px;
+  background:var(--panel);box-shadow:inset 0 -3px 0 var(--rule-2)}
+.tclx-tile b{font-family:var(--f-score);font-weight:400;font-size:26px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.tclx-tile span{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;color:var(--ink-3);text-align:center}
+.tclx-tile em{font-style:normal;font-family:var(--f-data);font-size:10px;color:var(--ink-3)}
+.tclx-tile.up{box-shadow:inset 0 -3px 0 var(--good);background:color-mix(in srgb,var(--good) 10%,var(--panel))}
+.tclx-tile.dn{box-shadow:inset 0 -3px 0 var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--panel))}
+.tclx-tile.st{box-shadow:inset 0 -3px 0 var(--lume)}
+.tclx-use h4{margin:0 0 6px;font-family:var(--f-micro);font-weight:400;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--lume)}
+.tclx-r{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,2fr) 48px 36px 48px;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--rule)}
+.tclx-r > a{font-family:var(--f-ui);font-weight:700;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tclx-h{border-top:0;padding-top:0}
+.tclx-h span{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;color:var(--ink-3)}
+.tclx-h span:nth-child(n+3){text-align:right}
+.tclx-bar{position:relative;display:flex;align-items:center;gap:8px;height:16px}
+.tclx-bar i{display:block;height:9px;border-radius:5px;background:var(--lume);min-width:3px}
+.tclx-bar b{font-family:var(--f-data);font-size:11.5px;font-weight:700;color:var(--ink);white-space:nowrap}
+.tclx-ts, .tclx-n{font-family:var(--f-data);font-size:12px;text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.tclx-ts.up{color:var(--good);font-weight:700} .tclx-ts.dn{color:var(--bad);font-weight:700}
+.tclx-note{margin:0;font-size:11px;line-height:1.5;color:var(--ink-3)}
+@media (max-width:640px){
+  .tclx-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tclx-r{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) 40px 30px;gap:8px}
+  .tclx-r > :nth-child(5){display:none}
+}
