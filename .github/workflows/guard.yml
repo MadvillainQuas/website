@@ -1021,6 +1021,11 @@ jobs:
         # the site's club codes over the operator's); women: the Genius-hosted schedule on tenant DAM
         run: python scripts/ingest/dbl_test.py
 
+      - name: Liga Nationala de Baschet Masculin (Romania) on FIBA LiveStats
+        # the Genius-hosted page of the season's competition on tenant FRB, pinned (the client's own list names it
+        # "English"); each side of a hosted fixture read inside its own div (FRB prints the home code bare)
+        run: python scripts/ingest/romania_test.py
+
       - name: CEBL (Canada) on FIBA LiveStats via the league's own API
         # fiba_site_schedule site "cebl": api.data.cebl.ca's season (the calendar year) names every game's
         # LiveStats match; the regular season and the finals apart, cancelled if-necessary games left out,

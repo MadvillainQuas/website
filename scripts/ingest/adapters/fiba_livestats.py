@@ -157,6 +157,13 @@ class FibaLiveStatsAdapter(BaseAdapter):
     _TIME = re.compile(r'match-time.*?<span>([^<]+)</span>', re.S)
     _VENUE = re.compile(r'class="venuename">([^<]+)<', re.S)
     _SIDE = re.compile(r'class="(home|away)-team".*?team-name-full">([^<]*)<.*?team-name-code">([^<]*)<(?:.*?fake-cell">([^<]*)<)?', re.S)
+    # EACH SIDE READ INSIDE ITS OWN DIV. Romania's client (FRB) prints the home club's code bare -
+    #   <span class="team-name-full">CS Valcea 1924 Ramnicu Valcea</span>VAL</span>
+    # - so _SIDE, looking for the next team-name-code, ran on into the away side: the home club took
+    # the away club's code and score and the away club was read as nobody. Between class="home-team"
+    # and class="away-team" is the home side and nothing else; _SIDE stays for markup without both.
+    _SIDE_NAME = re.compile(r'team-name-full">([^<]*)</span>\s*(?:<span class\s*=\s*"team-name-code">)?([^<]*)<', re.S)
+    _SIDE_SCORE = re.compile(r'fake-cell">([^<]*)<')
     # each side's crest: <div class="home-team-logo team-logo"> <a ...><img src = "https://images.statsengine…/…T1.png" alt="Club">
     _SIDE_LOGO = re.compile(r'class="(home|away)-team-logo[^"]*".*?<img\s+src\s*=\s*"([^"]+)"', re.S)
     # the competition picker on a hosted schedule: one <option> per competition the client runs
@@ -233,8 +240,16 @@ class FibaLiveStatsAdapter(BaseAdapter):
                     except ValueError:
                         continue
             sides = {}
-            for sm in self._SIDE.finditer(body):
-                sides[sm.group(1)] = {"name": sm.group(2).strip(), "code": sm.group(3).strip(), "score": sm.group(4)}
+            hi, ai = body.find('class="home-team"'), body.find('class="away-team"')
+            if 0 <= hi < ai:
+                for side, seg in (("home", body[hi:ai]), ("away", body[ai:])):
+                    nm = self._SIDE_NAME.search(seg)
+                    if nm:
+                        sc = self._SIDE_SCORE.search(seg)
+                        sides[side] = {"name": nm.group(1).strip(), "code": nm.group(2).strip(), "score": sc.group(1) if sc else None}
+            else:
+                for sm in self._SIDE.finditer(body):
+                    sides[sm.group(1)] = {"name": sm.group(2).strip(), "code": sm.group(3).strip(), "score": sm.group(4)}
             for lm in self._SIDE_LOGO.finditer(body):
                 if lm.group(2).startswith("https://"):
                     sides.setdefault(lm.group(1), {})["logo"] = lm.group(2)

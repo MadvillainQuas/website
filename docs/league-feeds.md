@@ -686,6 +686,34 @@ Copenhagen time. The same path as SLB and WBBL: source `KBL`, adapter `fiba_live
   serves `fiba_livestats` sources; a game fed through `fiba_site_schedule` (the men's, like Kosovo's) has no
   LiveStats link on its game page.
 
+## Romania: Liga Nationala de Baschet Masculin (LNBM)
+
+Added 2026-10-07. Test `scripts/ingest/romania_test.py` (in guard). Source `LNBM`, adapter `fiba_livestats`,
+`client_code FRB`, `timezone Europe/Bucharest`; league slug `lnbm`, country RO (`brand/flags/ro.svg`). The games
+are the ordinary data.json path (box, play-by-play, shots, stints).
+
+- **The federation's site is not the source.** frbaschet.ro draws its schedule and game centre with BasketHotel
+  widgets (`widgets.baskethotel.com/widget-service/show`, league 25493, season 133412). Their game ids (6189488)
+  are not LiveStats ids, there is no fixed offset between the two, and no widget names a LiveStats id (the game
+  widget 400 has none; the live-stream widget 405 answers "Widget is empty").
+- **Genius's hosted page of the season's competition is.** `https://hosted.wh.geniussports.com/FRB/en/competition/50100/schedule?roundNumber=-1&`
+  lists all 182 games of 2026-27 with their LiveStats ids (`extfix_<id>`), clubs, codes, crests and Bucharest
+  times. Not yet played, a game's `data.json` answers 403 and the fetch returns None; the live lane covers it.
+- **The competition is pinned, and must be changed each season.** The client's landing page lists only 2016's
+  league (competition 11929), its bare `/FRB/en/schedule` shows that 2016 season, and its competition picker
+  calls this season's competition "English" — so the per-competition expansion would find nothing for the
+  season. The row names the competition outright (a `/competition/` URL is never expanded). **For 2027-28:** open
+  any LNBM game's LiveStats page (`fibalivestats.dcd.shared.geniussports.com/u/FRB/<gameId>/`): its `<body>` class
+  carries `page_comp_id_<N>`; put N in the row's URL. The picker on the old competition's page may also list it.
+- FRB's hosted template prints the home club's code bare (`<span class="team-name-full">…</span>VAL</span>`).
+  `FibaLiveStatsAdapter.parse_schedule` now reads each side inside its own `home-team` / `away-team` div; before,
+  the home club took the away club's code and score and every away club was read as nobody. Every other saved
+  hosted page parses identically (30 games across SLB, DAM, CIBA, Albania).
+- No `sync_clubs`: it keys clubs on the hosted `/team/<id>` links and FRB's schedule links none (`<a href="">`).
+  The schedule's own codes and crests make each club before its first game.
+- Play-offs: not yet seen. Check the hosted page near the end of the regular season (a new competition, or phases
+  of 50100) and add a play-off row if needed.
+
 ## Czech Republic: ŽBL and 1. liga mužů (FIBA LiveStats via the federation's system)
 
 ### host
