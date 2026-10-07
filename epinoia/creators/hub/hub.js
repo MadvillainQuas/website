@@ -349,6 +349,8 @@
       (rows || []).forEach(t => teams.set(t.id, t));
     }
     loading.remove();
+    /* the coverage plan reads the league's newsdesk; without one, it is built from these same reads */
+    coverage({ comp, standings, teams, results: results || [], fixtures: fixtures || [] }).catch(e => console.warn('[coverage]', e));
     const cards = S.build({ comp, standings, teams, leaders: { ppg: ppg || [], rpg: rpg || [], apg: apg || [], totals: totals || [] },
                             records, results: results || [], fixtures: fixtures || [], now: new Date() });
     if (!cards.length) { body.appendChild(empty('Nothing to say yet: ' + league.name + ' has no games finished in ' + (ctx.season ? ctx.season.name : 'this season') + '.')); return; }
@@ -373,6 +375,67 @@
         w.href = studio('&new=article&title=' + encodeURIComponent(c.head));
       }
     });
+  }
+
+  /* ======================================================= COVERAGE PLAN === */
+  /* THE LEAGUE'S NEWSDESK, AS A PLAN (newsdesk.js): the hourly file (narrative.js, tools/build-narratives.mjs) drawn in
+     full - the big picture, today, the storylines to run with their evidence, counterpoints and ways to cover them, what
+     is under the radar, the week ahead game by game, the recaps worth writing, players and clubs to feature, data notes
+     and a calendar. A league with no file yet gets the plan built here from the reads above (no player lines and no
+     recaps: a lighter one, and it says so). Each storyline can be copied or, for a writer, opened as a new article. */
+  let covRun = 0;
+  async function coverage(read) {
+    const host = $('#covBody'), acts = $('#covActs');
+    const ND = window.EpinoiaNewsdesk, NB = window.EpinoiaNarrative;
+    if (!host || !ND || !league) return;
+    const run = ++covRun;
+    host.textContent = ''; if (acts) acts.textContent = '';
+    host.appendChild(empty('Reading ' + league.name + '’s newsdesk…'));
+    let b = await ND.load(league.id), light = false;
+    if (run !== covRun) return;
+    if (!b && NB) {
+      try {
+        const tmap = {};
+        (read.teams || new Map()).forEach((t, id) => { tmap[id] = t; });
+        b = NB.build({ now: new Date(), league: { id: league.id, slug: league.slug, name: league.name, timezone: league.timezone || null },
+          season: ctx && ctx.season ? { id: ctx.season.id, name: ctx.season.name } : null, comp: read.comp,
+          table: { comp: read.comp, rows: read.standings || [] }, teams: tmap, games: read.results || [], fixtures: read.fixtures || [] });
+        light = true;
+      } catch (e) { console.warn('[coverage] build', e); b = null; }
+    }
+    host.textContent = '';
+    if (!b || !b.stories.length) { host.appendChild(empty('Nothing to plan yet: ' + league.name + ' has no games to read in ' + (ctx && ctx.season ? ctx.season.name : 'this season') + '.')); return; }
+    /* the whole plan, to paste into a document */
+    if (acts) {
+      const cp = acts.appendChild(el('button', 'ep-btn mini', 'Copy the whole plan'));
+      cp.type = 'button';
+      cp.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(ND.planText(b)); cp.textContent = 'Copied'; } catch (_) { cp.textContent = 'Could not copy'; }
+        setTimeout(() => { cp.textContent = 'Copy the whole plan'; }, 2200);
+      });
+    }
+    const note = host.appendChild(el('p', 'nd-note'));
+    note.textContent = light
+      ? 'Built here from the table and the results: the hourly newsdesk for this league, with every player line and the recaps of the week, is not out yet.'
+      : 'From the league’s newsdesk, ' + ND.ago(b.built).replace(/^updated /, 'built ') + ', from every game’s box and play-by-play' +
+        (b.stats && b.stats.model ? ' and the league’s own model of what wins.' : ' and the usual weights of the four factors (the league’s own model is not out yet).');
+    host.insertAdjacentHTML('beforeend', ND.coverageHTML(b, { base: BASE, write: true }));
+    /* each storyline: copy it, and for a writer, start a piece from it */
+    host.querySelectorAll('.nd-acts[data-story]').forEach(span => {
+      const s = b.stories.find(x => x.id === span.dataset.story);
+      if (!s) return;
+      const cp = span.appendChild(el('button', 'ep-btn mini', 'Copy'));
+      cp.type = 'button';
+      cp.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(s.copy || s.head); cp.textContent = 'Copied'; } catch (_) { cp.textContent = 'Select it above'; }
+        setTimeout(() => { cp.textContent = 'Copy'; }, 2200);
+      });
+      if (outlet) {
+        const w = span.appendChild(el('a', 'ep-btn mini', 'Write about it'));
+        w.href = studio('&new=article&title=' + encodeURIComponent(s.head));
+      }
+    });
+    try { window.dispatchEvent(new Event('epinoia:sections')); } catch (_) { /* fine */ }
   }
 
   /* ============================================================ GRAPHICS === */

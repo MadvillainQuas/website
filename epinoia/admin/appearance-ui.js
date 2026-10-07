@@ -54,6 +54,7 @@ function countryName(code) {
    settings list you have to translate. */
 const SECTIONS = [
   ['news',     'News',            'up to five headline cards'],
+  ['storylines', 'Storylines',    'the newsdesk: running storylines and the day in the league'],
   ['clubs',    'Clubs',           'the club plates'],
   ['toty',     'Team of the Year', 'the selected team and the ballot'],
   ['fanvote',  'Fans\u2019 vote',   'the weekly vote panel and the fans\u2019 picks'],

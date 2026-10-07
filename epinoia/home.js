@@ -144,7 +144,7 @@ function hexA(hex, a) {
 }
 
 const SECTION_OF = {
-  news: '#newsSec', video: '#videoSec', clubs: '#clubsSec', toty: '#totySec', fanvote: '#fvSec', stars: '#starsSec', records: '#recordsSec',
+  news: '#newsSec', storylines: '#storySec', video: '#videoSec', clubs: '#clubsSec', toty: '#totySec', fanvote: '#fvSec', stars: '#starsSec', records: '#recordsSec',
   games: '#gamesSec', season: '#seasonSec', merch: '#merchSec',
   socials: '#socialSec', takepart: '#takepartSec'
 };
@@ -955,6 +955,34 @@ async function records(clubsP) {
     sec.classList.remove('hide');
     renumber();
   }
+}
+
+/* ------------------------------------------------------------ the storylines ---
+   The league's newsdesk (newsdesk.js): the hourly file narrative.js builds for the league, its running storylines as
+   cards and the day in the league beside them. Only for the season now running (the file is about this season), and
+   hidden when the league has no file yet. What this browser has seen is remembered, so the next visit marks what is new
+   or has moved on. */
+async function storylines() {
+  const sec = $('#storySec'), host = $('#storylines');
+  const ND = window.EpinoiaNewsdesk;
+  if (!sec || !host || !LEAGUE || !ND) return;
+  /* a past season being looked back on has no running storylines: the file is the season now */
+  const season = await seasonNow().catch(() => null);
+  if (season && SEASON_CURRENT && season.id !== SEASON_CURRENT.id) return;
+  const b = await ND.load(LEAGUE.id);
+  if (!b || !b.stories.some(s => s.status !== 'resolved')) return;
+  if (season && b.season && b.season.id && b.season.id !== season.id) return;
+  const seen = ND.seen(LEAGUE.id);
+  host.innerHTML = '<div class="nd-front">' + ND.briefingHTML(b, { base: '' }) + ND.storiesHTML(b, { base: '', max: 6, seen, resolved: 1 }) + '</div>';
+  sec.classList.remove('hide');
+  renumber();
+  try { window.dispatchEvent(new Event('epinoia:sections')); } catch (_) { /* ON THIS PAGE redraws on its own early on */ }
+  /* marked as seen once the reader has had the section in front of them */
+  const mark = () => ND.markSeen(LEAGUE.id, b);
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); setTimeout(mark, 4000); } });
+    io.observe(sec);
+  } else setTimeout(mark, 8000);
 }
 
 /* ------------------------------------------------------- the fans' vote ---
@@ -1973,6 +2001,7 @@ function renumber() {
       wall.walled ? null : stars().catch(() => null),
       wall.walled ? null : records(clubsP).catch(() => null),
       wall.walled ? null : news().catch(() => null),
+      wall.walled ? null : storylines().catch(() => null),
       wall.walled ? null : creators().catch(() => null),
       wall.walled ? null : teamOfTheYear().catch(() => null),
       socialsP

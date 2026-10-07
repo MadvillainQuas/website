@@ -1,0 +1,58 @@
+name: League newsdesks (the storylines and the coverage plans)
+
+# Builds each league's newsdesk (epinoia/narrative.js) into the PUBLIC file snapshots/narrative/<league id>.json, which a
+# league's front page draws as its storylines and the creator hub as its coverage plan (epinoia/newsdesk.js), and the
+# index snapshots/narrative/index.json. See tools/build-narratives.mjs.
+#
+# EVERY READ IS A SIGNED-OUT READER'S (the publishable key): a private or a members-only league never reaches a public
+# file, nor this public log. The service key only writes: the public files, and the builder's own cache of match-report
+# recaps in the private bucket (analytics/narrative-cache/, so a game is replayed once). Reads are small: light columns,
+# named keys out of the stats, the season files and the events files from the CDN.
+#
+# Hourly at :50 (the other hourly jobs take :02, :07, :25, :37 and :40). A league is built when it has a new result,
+# when its file is six hours old, or when it has none; a run stops cleanly past its budget and the rest stay due.
+on:
+  schedule:
+    - cron: "50 * * * *"
+  workflow_dispatch:
+    inputs:
+      league:
+        description: "Only this league (its slug), whether it is due or not (optional)"
+        required: false
+      dry_run:
+        description: "Read and build, write nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: narratives
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 40
+    steps:
+      # the page's own modules and the builder, not the repository's archived feeds
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            epinoia
+            tools
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      # NO actions/cache: the recaps cache lives in the private bucket, read with the service role (docs/data-protection.md)
+      - name: Build the newsdesks
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          LEAGUE: ${{ github.event.inputs.league }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          args=(--budget-min 30)
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          if [ -n "$LEAGUE" ]; then args+=(--league "$LEAGUE"); fi
+          node tools/build-narratives.mjs "${args[@]}"

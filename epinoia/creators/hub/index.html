@@ -20,18 +20,19 @@
 <meta name="description" content="Epinoia's creator hub: how your work does on the site, your writing desk, a league's storylines, graphics to post and a basketball icon set.">
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
-<script src="../../appmode.js?v=725"></script>
-<script src="../../i18n.js?v=725"></script>
-<script src="../../glyphs.js?v=725" defer></script>
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=725">
-<link rel="stylesheet" href="../../kit/nav.css?v=725">
-<link rel="stylesheet" href="../../kit/labeltype.css?v=725">
-<link rel="stylesheet" href="../../kit/newscard.css?v=725">
-<link rel="stylesheet" href="../../kit/page.css?v=725">
-<link rel="stylesheet" href="../../kit/creatorhub.css?v=725">
-<link rel="stylesheet" href="../../kit/sectitle.css?v=725">
-<link rel="stylesheet" href="../../kit/teletext.css?v=725">
-<link rel="stylesheet" href="../../kit/legibility.css?v=725">
+<script src="../../appmode.js?v=726"></script>
+<script src="../../i18n.js?v=726"></script>
+<script src="../../glyphs.js?v=726" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=726">
+<link rel="stylesheet" href="../../kit/nav.css?v=726">
+<link rel="stylesheet" href="../../kit/labeltype.css?v=726">
+<link rel="stylesheet" href="../../kit/newscard.css?v=726">
+<link rel="stylesheet" href="../../kit/page.css?v=726">
+<link rel="stylesheet" href="../../kit/creatorhub.css?v=726">
+<link rel="stylesheet" href="../../kit/newsdesk.css?v=726">
+<link rel="stylesheet" href="../../kit/sectitle.css?v=726">
+<link rel="stylesheet" href="../../kit/teletext.css?v=726">
+<link rel="stylesheet" href="../../kit/legibility.css?v=726">
 </head>
 <body>
 <!-- THE PAGE STANDARD (docs/page-standard.md): the centred head, a section per part with its title and subtitle and
@@ -74,6 +75,17 @@
     <div class="sec-b" id="stBody"><div class="pg-empty">Choose a league.</div></div>
   </section>
 
+  <!-- THE COVERAGE PLAN: the league's newsdesk (narrative.js, built hourly; newsdesk.js draws it) - how a desk that
+       followed this league would cover it: the big picture, today, the storylines to run, what is under the radar, the
+       week ahead with an angle for every game, the recaps worth writing, players and clubs to feature, data notes and a
+       calendar; each storyline to copy or write about, and the whole plan to copy -->
+  <section class="sec" id="coverage" aria-labelledby="covH">
+    <div class="sec-h"><h2 id="covH">Coverage plan</h2>
+      <p class="note">How to cover the league this week, storyline by storyline and game by game</p>
+      <div class="pg-row" id="covActs"></div></div>
+    <div class="sec-b" id="covBody"><div class="pg-empty">Choose a league above.</div></div>
+  </section>
+
   <!-- GRAPHICS: the league's week drawn by socialcard.js, and backgrounds in its colours -->
   <section class="sec" id="graphics" aria-labelledby="gfxH">
     <div class="sec-h"><h2 id="gfxH">Graphics</h2>
@@ -91,20 +103,23 @@
   </section>
 </div>
 
-<script src="../../config.js?v=725" defer></script>
-<script src="../../vendor/supabase.js?v=725" defer></script>
-<script src="../../teamcolour.js?v=725" defer></script>
-<script src="../../data.js?v=725" defer></script>
-<script src="../../records.js?v=725" defer></script>
-<script src="../../reportcard.js?v=725" defer></script>
-<script src="../../silhouette.js?v=725" defer></script>
+<script src="../../config.js?v=726" defer></script>
+<script src="../../vendor/supabase.js?v=726" defer></script>
+<script src="../../teamcolour.js?v=726" defer></script>
+<script src="../../data.js?v=726" defer></script>
+<script src="../../records.js?v=726" defer></script>
+<script src="../../reportcard.js?v=726" defer></script>
+<script src="../../silhouette.js?v=726" defer></script>
 <!-- each game's BPM, which picks the player of the game and the stars (socialcard.js gameBPMs) -->
-<script src="../../bpm.js?v=725" defer></script>
-<script src="../../socialcard.js?v=725" defer></script>
-<script src="../../admin/socialgfx-ui.js?v=725" defer></script>
-<script src="../../icons.js?v=725" defer></script>
-<script src="../../storylines.js?v=725" defer></script>
-<script src="hub.js?v=725" defer></script>
-<script src="../../nav.js?v=725" defer></script>
+<script src="../../bpm.js?v=726" defer></script>
+<script src="../../socialcard.js?v=726" defer></script>
+<script src="../../admin/socialgfx-ui.js?v=726" defer></script>
+<script src="../../icons.js?v=726" defer></script>
+<script src="../../storylines.js?v=726" defer></script>
+<!-- the newsdesk: the coverage plan (narrative.js builds it here when the league has no hourly file yet) -->
+<script src="../../narrative.js?v=726" defer></script>
+<script src="../../newsdesk.js?v=726" defer></script>
+<script src="hub.js?v=726" defer></script>
+<script src="../../nav.js?v=726" defer></script>
 </body>
 </html>
