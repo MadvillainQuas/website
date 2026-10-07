@@ -88,6 +88,15 @@ ok('no LATEST stamp; the words are Archivo (no pixel faces on the board)',
 ok('the large tile is not the page hero (its own class), a feature where the board is wide',
    /' md-lead'/.test(media) && !/'hero'|' hero'/.test(media) && /@container \(min-width:720px\)\{\s*\.md-tile\.md-lead\{display:grid/.test(css));
 
+ok('the words as a news card sets them: the channel on a block of its colour (its own, else one made from its name), how long ago, the headline, the foot',
+   /el\('div', 'md-kick'\)/.test(media) && /el\('div', 'md-foot'\)/.test(media) && /'hsl\(' \+ h \+ ' 52% 46%\)'/.test(media)
+   && /\.md-title\{margin:0;font-family:var\(--f-ui\);font-weight:800;font-size:15\.5px/.test(tileCss) && /\.md-kick b\{/.test(tileCss));
+ok('three to a row, as the news cards (two on a tablet, one on a phone)',
+   /@media \(min-width:1000px\)\{ \.md-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\} \}/.test(css)
+   && /@media \(min-width:600px\)\{ \.md-grid\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)\} \}/.test(css));
+ok("highlights lead where they are shown with other videos (HOME's All, a league's All videos): a week's lead, older ones move up",
+   /function prioritise\(rows, now\)/.test(media) && /const FRESH_DAYS = 7, LIFT = 8;/.test(media)
+   && /const shown = kind \? picked : prioritise\(picked\)/.test(media) && /return kind \? ranked : M\.prioritise\(ranked\)/.test(vh));
 ok('one tile a video: a channel added twice shows each video once, the copy on a game first',
    /function uniq\(list\)/.test(media) && /items = uniq\(items\.concat\(rows\)\)/.test(media) && /M\.uniq\(\(mine \|\| \[\]\)\.concat\(all\)\)/.test(vh));
 

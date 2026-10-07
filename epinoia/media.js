@@ -188,13 +188,17 @@
     return c;
   }
   const abbr = t => ((t && (t.short || t.name)) || '?').replace(/[^\p{L}\p{N} ]/gu, '').trim().slice(0, 3).toUpperCase();
+  /* how long ago, in the news cards' words (newscard.js ago): just now, 2 h ago, yesterday, 3 days ago, 12 Sep */
   function when(iso) {
-    if (!iso) return '';
-    const d = new Date(iso), s = (Date.now() - d.getTime()) / 1000;
-    if (s < 3600) return Math.max(1, Math.round(s / 60)) + ' ' + tr('min ago');
-    if (s < 86400) return Math.round(s / 3600) + ' ' + tr('h ago');
-    if (s < 86400 * 7) return Math.round(s / 86400) + ' ' + tr('d ago');
-    try { return d.toLocaleDateString(document.documentElement.lang || 'en-GB', { day: 'numeric', month: 'short' }); } catch (_) { return iso.slice(0, 10); }
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d.getTime())) return '';
+    const s = Math.max(0, (Date.now() - d.getTime()) / 1000);
+    if (s < 60) return tr('just now');
+    if (s < 3600) return Math.floor(s / 60) + ' ' + tr('min ago');
+    if (s < 86400) return Math.floor(s / 3600) + ' ' + tr('h ago');
+    if (s < 2 * 86400) return tr('yesterday');
+    if (s < 7 * 86400) return Math.floor(s / 86400) + ' ' + tr('days ago');
+    try { return d.toLocaleDateString(document.documentElement.lang || 'en-GB', { day: 'numeric', month: 'short' }); } catch (_) { return String(iso).slice(0, 10); }
   }
   const KIND = { highlights: ['HIGHLIGHTS', ''], full: ['FULL GAME', 'f'], video: ['VIDEO', 'v'] };
   /* ONE TILE A VIDEO. A channel added twice (a league's own and the platform's) reads each of its videos twice, as two
@@ -208,6 +212,19 @@
       else if (r.game && !out[at.get(k)].game) out[at.get(k)] = r;
     });
     return out;
+  }
+
+  /* HIGHLIGHTS FIRST, wherever a game's highlights and other videos are shown together (HOME's All, a league's All
+     videos). The rows keep the order they came in (the feed's ranking, or newest first), except that a game's
+     highlights from the last FRESH_DAYS lead, in that order, and an older one moves up LIFT places. */
+  const FRESH_DAYS = 7, LIFT = 8;
+  function prioritise(rows, now) {
+    const t = now || Date.now();
+    return (rows || []).map((r, i) => {
+      const hl = r && r.video_kind === 'highlights' && r.game;
+      const fresh = hl && (t - new Date(r.published_at).getTime()) <= FRESH_DAYS * 86400000;
+      return { r, k: fresh ? i - 1e6 : hl ? i - LIFT - 0.5 : i };
+    }).sort((a, b) => a.k - b.k).map(x => x.r);
   }
 
   /* a day as the band prints it: 04 OCT 2026 (day, month, year in the page's language; Japanese keeps its own order) */
@@ -244,6 +261,16 @@
       if (TC.surface) { node.style.setProperty('--ink-s', TC.surface(A)); node.style.setProperty('--ink-s2', TC.surface(B || TC.derived(A))); }
     } else { node.style.setProperty('--ink-c', A); if (B) node.style.setProperty('--ink-c2', B); }
   }
+  /* THE CHANNEL'S COLOUR, as a news card colours its brand (newscard.js: its own colour, else one made from its name, so
+     a channel's videos and its stories wear the same block in the kicker) */
+  function brand(node, it) {
+    const own = HEX.test((it && it.source_colour) || '') ? it.source_colour : null;
+    let h = 0;
+    for (const ch of String((it && it.source_name) || '')) h = (h * 31 + ch.charCodeAt(0)) % 360;
+    node.style.setProperty('--bc', own || 'hsl(' + h + ' 52% 46%)');
+    const TC = window.EpinoiaTeamColour;
+    node.style.setProperty('--bc-on', own && TC && TC.on ? TC.on(own) : '#fff');
+  }
 
   /* THE SCOREBUG under a game's video, as a broadcast draws it: a row for each club, its crest in a ring of its colour
      and its whole name in its ink, its score in a black cell at the end of the row (the winner's lit) */
@@ -278,6 +305,7 @@
     b.type = 'button';
     b.dataset.id = it.id;
     inks(b, it);
+    brand(b, it);
     const th = el('div', 'md-thumb');
     if (id) {
       const img = el('img'); img.alt = ''; img.loading = big ? 'eager' : 'lazy'; img.decoding = 'async';
@@ -303,14 +331,28 @@
     b.appendChild(band);
     if (g) b.appendChild(board(g));
     else b.classList.add('no-game');
+    /* THE WORDS, AS A NEWS CARD SETS THEM (kit/newscard.css): the kicker - the channel in its colour, how long ago, the
+       edition mark - then the headline; the foot under a dashed rule, the channel's logo and name and the call to watch */
     const cap = el('div', 'md-cap');
-    const t = el('div', 'md-title', it.title || '');
-    const m = el('div', 'md-meta');
-    if (it.source_logo) { const i = el('img', 'md-src'); i.src = String(it.source_logo).replace(/#fill$/, ''); i.alt = ''; i.loading = 'lazy'; m.appendChild(i); }
-    m.appendChild(el('span', 'md-from', (it.source_name || '') + (it.published_at ? ' · ' + when(it.published_at) : '')));
-    if (pos && pos.no) m.appendChild(el('span', 'md-ed', 'NO ' + String(pos.no).padStart(2, '0') + '/' + String(pos.of || pos.no).padStart(2, '0')));
-    cap.append(t, m);
+    const kick = el('div', 'md-kick');
+    kick.appendChild(el('b', null, it.source_name || tr(k[0])));
+    const ago = when(it.published_at);
+    if (ago) kick.appendChild(el('span', null, ago));
+    if (pos && pos.no) kick.appendChild(el('span', 'md-ed', 'NO ' + String(pos.no).padStart(2, '0') + '/' + String(pos.of || pos.no).padStart(2, '0')));
+    cap.append(kick, el('div', 'md-title', it.title || ''));
     b.appendChild(cap);
+    const foot = el('div', 'md-foot');
+    const from = el('span', 'md-from');
+    if (it.source_logo) {
+      const lg = el('span', 'md-src');
+      const i = el('img'); i.src = String(it.source_logo).replace(/#fill$/, ''); i.alt = ''; i.loading = 'lazy'; i.decoding = 'async';
+      i.addEventListener('error', () => lg.remove());
+      lg.appendChild(i);
+      from.appendChild(lg);
+    }
+    from.appendChild(el('span', null, it.source_name || ''));
+    foot.append(from, el('span', 'md-go', tr('Watch') + ' · YouTube →'));
+    b.appendChild(foot);
     b.setAttribute('aria-label', (it.title || 'video') + (it.source_name ? ', ' + it.source_name : ''));
     b.addEventListener('click', () => onOpen && onOpen(it, b));
     return b;
@@ -420,7 +462,8 @@
     }
     function paint() {
       grid.textContent = '';
-      const shown = items.filter(it => !club || (it.game && [it.game.home, it.game.away].some(t => t && t.slug === club)));
+      const picked = items.filter(it => !club || (it.game && [it.game.home, it.game.away].some(t => t && t.slug === club)));
+      const shown = kind ? picked : prioritise(picked);           // All videos: the games' highlights lead
       count.textContent = shown.length ? String(shown.length).padStart(2, '0') + ' ' + tr(kind === 'highlights' ? 'highlights' : 'videos') : '';
       if (!shown.length) { grid.appendChild(el('div', 'md-empty', tr(kind === 'highlights' ? 'No highlights yet.' : 'No videos yet.'))); return; }
       shown.forEach((it, i) => {
@@ -488,5 +531,5 @@
   /* run fn when the browser is idle (or after a beat where it cannot say) - the probes a page does not wait for */
   const idle = fn => ('requestIdleCallback' in window) ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 600);
 
-  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, videoBoard, stageOpen, tile, inks, uniq, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
+  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, videoBoard, stageOpen, tile, inks, uniq, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
 })();

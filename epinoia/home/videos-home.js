@@ -81,10 +81,12 @@
       /* one tile a video (a channel added twice reads each video twice) */
       const pool = M.uniq((mine || []).concat(all));
       const R = window.EpinoiaFeedRank;
+      let ranked = pool;
       if (R && typeof R.rankRows === 'function') {
-        try { return (await R.rankRows(pool, { followedIds: (mine || []).map(r => r.id) })).rows; } catch (_) { /* newest first */ }
+        try { ranked = (await R.rankRows(pool, { followedIds: (mine || []).map(r => r.id) })).rows; } catch (_) { /* newest first */ }
       }
-      return pool;
+      /* ALL: the games' highlights lead the reader's order (media.js prioritise) */
+      return kind ? ranked : M.prioritise(ranked);
     }
     function play(it) {
       M.stageOpen(stage, it, () => { M.cineExit(true); if (boxer) boxer.stop(); boxer = null; stage.hidden = true; stage.textContent = ''; });
