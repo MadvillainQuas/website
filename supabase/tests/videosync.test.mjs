@@ -632,8 +632,16 @@ console.log('\nthe search allowance is rationed');
      /_SEARCH_SEEN\[seen_key\] = \(time\.time\(\), None\)/.test(av));
   ok('...and not repeated for twenty minutes', /SEARCH_RETRY_S = 20 \* 60/.test(av) &&
      /time\.time\(\) - hit\[0\] < SEARCH_RETRY_S/.test(av));
-  ok('...keyed on the fixture, so a different game still gets its own search',
-     /seen_key = \(\(home or ""\)\.lower\(\), \(away or ""\)\.lower\(\), tip\.date\(\)\.isoformat\(\)\)/.test(av));
+  ok('...keyed on the fixture (and the channel searched), so a different game still gets its own search',
+     /seen_key = \(\(home or ""\)\.lower\(\), \(away or ""\)\.lower\(\), tip\.date\(\)\.isoformat\(\), channel_id\)/.test(av));
+  /* 0247: a stranger's stream is never a fixture's - "Live Score" channels streaming an animated scoreboard */
+  ok('the search is never of all of YouTube: a registered channel, or no search at all',
+     /if not key or not tip or not channel_id:\s*\n\s*return None/.test(av) && /"channelId": channel_id\}/.test(av)
+     && !/if channel_id:\s*\n\s*params\["channelId"\]/.test(av));
+  ok('...the registered channels are the league\'s (vetted_channels_for_game), and with none nothing is searched',
+     /sb\.rpc\("vetted_channels_for_game"/.test(av) && /if not chans:\s*\n\s*return False/.test(av));
+  ok('...and the channel a stream was found on is written with it (channel_ref), before 0247 without it',
+     /row\["channel_ref"\] = found\["channel"\]/.test(av) && /row\.pop\("channel_ref"\)/.test(av));
   ok('a quota refusal switches the search off rather than hammering it',
      /if r\.status_code == 403 and re\.search\(r"quota\|dailyLimit\|rateLimit"/.test(av) &&
      /_SEARCH_DEAD_UNTIL = _next_quota_reset\(\)/.test(av));

@@ -16,8 +16,16 @@ TWO WAYS IN, NEITHER NEEDS A HUMAN:
   so the shared matcher's team scoring picks the game out.
 
   THE DATA API, WITH A KEY. A free read-only YouTube Data API key (repo secret YOUTUBE_API_KEY)
-  reaches further back than fifteen videos and searches beyond one channel. Used when present,
-  the channel feed is tried first either way because it is free and exact.
+  reaches further back than fifteen videos. Used when present, the channel feed is tried first
+  either way because it is free and exact.
+
+ONLY THE LEAGUE'S OWN CHANNELS (0247, 2026-10-07). This used to search the whole of YouTube when the
+league's channel had nothing, and attached "KP Brno Women vs Slovanka Women Live Score" from a
+channel streaming an animated scoreboard. It searches the channels the league has registered and
+nothing else: the ingest's own (adapter_config.youtube_channel), its stream destinations and its
+YouTube sources (vetted_channels_for_game). No registered channel, no search. The channel a stream
+was found on is written with it (game_videos.channel_ref), and the site shows a stream only when it
+is vetted (game_video_vetted).
 
 WHAT GETS WRITTEN. One game_videos row per game (never replacing one somebody attached):
   provider youtube, url, video_ref, is_live, stream_started_at (the stream's real start),
@@ -112,7 +120,7 @@ def watch_details(video_id: str) -> dict:
     if hit and (hit[1].get("started_at") or time.time() - hit[0] < 300):
         return hit[1]
     d = {"live": False, "started_at": None, "scheduled_at": None, "ended_at": None,
-         "duration_s": 0, "title": None, "upcoming": False}
+         "duration_s": 0, "title": None, "upcoming": False, "channel": None}
     # THE DATA API FIRST, WHEN THERE IS A KEY. From a datacenter address (GitHub's runners) YouTube
     # answers its own player endpoint and watch pages with a sign-in wall (LOGIN_REQUIRED /
     # 400 - seen 2026-09-07), so the official API is the one route to a stream's real start from
@@ -125,6 +133,7 @@ def watch_details(video_id: str) -> dict:
             if it:
                 lsd = it.get("liveStreamingDetails") or {}
                 d["title"] = (it.get("snippet") or {}).get("title")
+                d["channel"] = (it.get("snippet") or {}).get("channelId")
                 # actualStartTime is actual by definition; scheduledStartTime is the promise
                 d["started_at"] = lsd.get("actualStartTime"); d["ended_at"] = lsd.get("actualEndTime")
                 d["scheduled_at"] = lsd.get("scheduledStartTime")
@@ -162,6 +171,7 @@ def watch_details(video_id: str) -> dict:
             if not lb.get("startTimestamp"):
                 diag.append(f"{client['clientName']}:{st}/live={vd.get('isLiveContent')}/mf={'y' if mf else 'n'}")
             d["title"] = vd.get("title") or ((mf.get("title") or {}).get("simpleText"))
+            d["channel"] = d["channel"] or vd.get("channelId") or mf.get("externalChannelId")
             d["ended_at"] = lb.get("endTimestamp")
             # THE ONE LINE THIS FUNCTION IS ABOUT. startTimestamp is the schedule
             # until the stream is live or has ended; only then is it a real start.
@@ -197,6 +207,7 @@ def watch_details(video_id: str) -> dict:
                     pass
                 t = re.search(r'"title":"([^"]+)"', w)
                 d["title"] = t.group(1) if t else None
+                d["channel"] = d["channel"] or g("channelId")
         except Exception:
             pass
     _watch_cache[video_id] = (time.time(), d)
@@ -283,7 +294,8 @@ def find_on_channel(channel_id: str, home: str, away: str, tip: datetime) -> dic
         return None
     d = watch_details(best["video_id"])
     return {"video_id": best["video_id"], "url": f"https://www.youtube.com/watch?v={best['video_id']}", "title": best["title"],
-            "live": d["live"], "started_at": d["started_at"], "ended_at": d["ended_at"], "duration_s": d["duration_s"], "how": "channel"}
+            "live": d["live"], "started_at": d["started_at"], "ended_at": d["ended_at"], "duration_s": d["duration_s"], "how": "channel",
+            "channel": channel_id}
 
 
 # ------------------------------------------------------------------ the Data API, with a key
@@ -331,20 +343,18 @@ def _next_quota_reset() -> float:
 
 def find_with_api(key: str, home: str, away: str, tip: datetime, channel_id: str | None, words: str = "") -> dict | None:
     global _SEARCH_DEAD_UNTIL
-    if not key or not tip:
-        return None
+    if not key or not tip or not channel_id:
+        return None                                   # never all of YouTube: a registered channel, or no search
     if time.time() < _SEARCH_DEAD_UNTIL:
         return None
-    seen_key = ((home or "").lower(), (away or "").lower(), tip.date().isoformat())
+    seen_key = ((home or "").lower(), (away or "").lower(), tip.date().isoformat(), channel_id)
     hit = _SEARCH_SEEN.get(seen_key)
     if hit and time.time() - hit[0] < SEARCH_RETRY_S:
         return hit[1]
     after = (tip - timedelta(days=4)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     before = (tip + timedelta(days=3)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     params = {"part": "snippet", "type": "video", "maxResults": 25, "q": f"{home} {away} {words}".strip(), "order": "relevance",
-              "publishedAfter": after, "publishedBefore": before, "key": key}
-    if channel_id:
-        params["channelId"] = channel_id
+              "publishedAfter": after, "publishedBefore": before, "key": key, "channelId": channel_id}
     try:
         r = requests.get(f"{API}/search", params=params, timeout=30)
         if r.status_code == 403 and re.search(r"quota|dailyLimit|rateLimit", r.text or "", re.I):
@@ -376,22 +386,61 @@ def find_with_api(key: str, home: str, away: str, tip: datetime, channel_id: str
         if s > best_s:
             best_s, best = s, {"video_id": v["id"], "url": f"https://www.youtube.com/watch?v={v['id']}", "title": sn.get("title"),
                                "live": bool(lsd.get("actualStartTime")), "started_at": lsd.get("actualStartTime"),
-                               "ended_at": lsd.get("actualEndTime"), "duration_s": dur, "how": "api"}
+                               "ended_at": lsd.get("actualEndTime"), "duration_s": dur, "how": "api",
+                               "channel": sn.get("channelId") or channel_id}
     result = best if best_s >= 1.6 else None
     _SEARCH_SEEN[seen_key] = (time.time(), result)
     return result
 
 
 # ------------------------------------------------------------------ attach
-def find_broadcast(home: str, away: str, tipoff_iso: str, cfg: dict) -> dict | None:
+_UC = re.compile(r"UC[A-Za-z0-9_-]{22}")
+
+
+def registered(cfg: dict, channels=None) -> list:
+    """the channels a stream may come from: the ingest's own for the league first, then the ones the league
+    registered (its stream destinations, its YouTube sources), each once"""
+    out = []
+    for c in [(cfg or {}).get("youtube_channel")] + list(channels or []):
+        if isinstance(c, str) and _UC.fullmatch(c) and c not in out:
+            out.append(c)
+    return out
+
+
+def find_broadcast(home: str, away: str, tipoff_iso: str, cfg: dict, channels=None) -> dict | None:
+    """a fixture's broadcast, from the league's registered channels alone: each one's feed (free), then the search
+    on the first (the ingest's own when it has one). No registered channel, no search."""
     if not tipoff_iso:
         return None
     tip = datetime.fromisoformat(tipoff_iso.replace("Z", "+00:00"))
-    ch = (cfg or {}).get("youtube_channel")
-    found = find_on_channel(ch, home, away, tip) if ch else None
-    if not found and os.environ.get("YOUTUBE_API_KEY"):
-        found = find_with_api(os.environ["YOUTUBE_API_KEY"], home, away, tip, ch, (cfg or {}).get("youtube_words") or "")
-    return found
+    chans = registered(cfg, channels)
+    if not chans:
+        return None
+    for ch in chans[:4]:
+        found = find_on_channel(ch, home, away, tip)
+        if found:
+            return found
+    if os.environ.get("YOUTUBE_API_KEY"):
+        return find_with_api(os.environ["YOUTUBE_API_KEY"], home, away, tip, chans[0], (cfg or {}).get("youtube_words") or "")
+    return None
+
+
+# the registered channels of a game's league (0247), asked once in twenty minutes per game: the live lane calls attach()
+# on every poll of a game that has no video yet
+_VETTED: dict = {}
+
+
+def vetted_channels(sb, game_id: str) -> list:
+    hit = _VETTED.get(game_id)
+    if hit and time.time() - hit[0] < SEARCH_RETRY_S:
+        return hit[1]
+    try:
+        got = sb.rpc("vetted_channels_for_game", {"p_game": game_id})
+        out = [c for c in (got or []) if isinstance(c, str)]
+    except Exception:
+        out = []                                       # before 0247: the ingest's own channel alone
+    _VETTED[game_id] = (time.time(), out)
+    return out
 
 
 def log_is_timed(sb, game_id: str) -> bool:
@@ -432,14 +481,15 @@ def tip_instant(sb, game_id: str) -> tuple[str | None, int | None]:
 
 def attach(sb, game_id: str, home: str, away: str, tipoff_iso: str, cfg: dict, log=print) -> bool:
     """Attach the broadcast to a game that has none yet. Returns True when a row was written."""
-    if not (cfg or {}).get("youtube_channel") and not os.environ.get("YOUTUBE_API_KEY"):
-        return False
     try:
         if sb.select("game_videos", f"game_id=eq.{game_id}&select=id&limit=1"):
             return False                                              # somebody (or we) already did
     except Exception:
         return False
-    found = find_broadcast(home, away, tipoff_iso, cfg)
+    chans = registered(cfg, vetted_channels(sb, game_id))
+    if not chans:
+        return False                                                  # no registered channel: nothing is searched
+    found = find_broadcast(home, away, tipoff_iso, cfg, chans)
     if not found:
         return False
     tip_at, tip_wall = tip_instant(sb, game_id)
@@ -451,8 +501,16 @@ def attach(sb, game_id: str, home: str, away: str, tipoff_iso: str, cfg: dict, l
         row["tip_at"] = tip_at
         if tip_wall:
             row["tip_wall"] = tip_wall
+    if found.get("channel"):
+        row["channel_ref"] = found["channel"]
     try:
-        sb.insert("game_videos", row)
+        try:
+            sb.insert("game_videos", row)
+        except Exception as exc:
+            if "channel_ref" not in row or "channel_ref" not in str(exc):
+                raise
+            row.pop("channel_ref")                                    # before 0247
+            sb.insert("game_videos", row)
         state = ("anchored" if row.get("stream_started_at") and row.get("tip_at")
                  else "stream start known, tip pending" if row.get("stream_started_at")
                  else "scheduled for " + str(found.get("scheduled_at")) + ", real start pending"
@@ -473,15 +531,23 @@ def complete(sb, game_id: str, log=print) -> bool:
     the scheduled time, written from the player endpoint's startTimestamp by a worker that ran the
     day before. Six rows in production held one. Rows written from now on cannot, but the ones
     already there have to be repaired, and a stream that opens late is worth correcting anyway."""
+    q = f"game_id=eq.{game_id}&provider=eq.youtube&is_primary=eq.true&select=id,video_ref,stream_started_at,tip_at,tip_wall"
     try:
-        rows = sb.select("game_videos", f"game_id=eq.{game_id}&provider=eq.youtube&is_primary=eq.true&select=id,video_ref,stream_started_at,tip_at,tip_wall&limit=1")
+        rows = sb.select("game_videos", q + ",channel_ref&limit=1")
+        has_ch = True
     except Exception:
-        return False
+        try:
+            rows = sb.select("game_videos", q + "&limit=1")          # before 0247
+            has_ch = False
+        except Exception:
+            return False
     if not rows:
         return False
     v = rows[0]; patch = {}
     if v.get("video_ref"):
         d = watch_details(v["video_ref"])
+        if has_ch and not v.get("channel_ref") and d.get("channel"):
+            patch["channel_ref"] = d["channel"]                     # attached before 0247: its channel, so it can be vetted
         real = d.get("started_at")
         if real:
             have = _instant(v.get("stream_started_at"))

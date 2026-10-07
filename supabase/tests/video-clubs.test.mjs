@@ -152,8 +152,9 @@ if (!loaded || !loaded.db) {
     const L3 = await live(BRI, MAN, 'final', '2 hours');                   // over
     const L4 = await live(MAN, BRI, 'live', '20 minutes');                 // live, its feed stalled
     await q(`update public.games set stalled_since = now() where id = $1`, [L4]);
+    /* put on the games by the league's administrator: vetted (0247) */
     for (const g of [L1, L3, L4]) {
-      await q(`insert into public.game_videos (game_id, provider, url, video_ref, is_primary, is_live) values ($1, 'youtube', 'https://www.youtube.com/watch?v=cccccccccc1', 'cccccccccc1', true, true)`, [g]);
+      await q(`insert into public.game_videos (game_id, provider, url, video_ref, is_primary, is_live, created_by) values ($1, 'youtube', 'https://www.youtube.com/watch?v=cccccccccc1', 'cccccccccc1', true, true, $2)`, [g, LA]);
     }
     await q(`update public.leagues set public_live = true where id = $1`, [L]);
     /* a private league's live game with a stream, for the last check */
@@ -315,6 +316,46 @@ if (!loaded || !loaded.db) {
        && /twenty/.test((await tryAs(LA, `select public.set_news_source_filter($1, (select array_agg('word ' || g) from generate_series(1, 21) g), null)`, [SF])).error || ''));
     await as(LA, `select public.set_news_source_filter($1, null, null)`, [SF]);
     ok('...and emptied, every post again', (await one(`select cardinality(title_include) as n from public.news_sources where id = $1`, [SF])).n === 0);
+  }
+
+  console.log('\nonly vetted streams (0247)');
+  {
+    /* the league here has a registered stream destination, so its live games are listed with the league's own channel;
+       what vetting decides is whether the game's own video is carried: the video ids LIVE carries */
+    const lv = async () => ((await as(null, `select public.live_streams() as j`))[0].j || []).filter(x => x.video).map(x => x.id);
+    const game = async ago => (await one(`insert into public.games (competition_id, home_team_id, away_team_id, status, tipoff_at, home_score, away_score)
+        values ($1, $2, $3, 'live', now() - $4::interval, 10, 12) returning id`, [C, MAN, BRI, ago])).id;
+    const V1 = await game('15 minutes');
+    const gv = (await one(`insert into public.game_videos (game_id, provider, url, video_ref, is_primary, is_live)
+        values ($1, 'youtube', 'https://www.youtube.com/watch?v=rrrrrrrrrr1', 'rrrrrrrrrr1', true, true) returning id`, [V1])).id;
+    ok("a stream nobody vetted (the ingest found it on a stranger's channel): its video not on LIVE (the league's own channel is)",
+       !(await lv()).includes(V1) && ((await as(null, `select public.live_streams() as j`))[0].j || []).some(x => x.id === V1 && !x.video && x.channel));
+    await q(`update public.game_videos set channel_ref = 'UCzzzzzzzzzzzzzzzzzzzzzz' where id = $1`, [gv]);
+    ok("...on a channel the league has not registered: still not", !(await lv()).includes(V1));
+    await q(`update public.game_videos set channel_ref = 'UCaaaaaaaaaaaaaaaaaaaaaa' where id = $1`, [gv]);
+    ok("...on the league's stream destination's channel: on LIVE", (await lv()).includes(V1));
+    const chans = (await one(`select public.vetted_channels($1) as c`, [L])).c;
+    ok("the league's registered channels: its stream destinations and its YouTube sources (switched on)",
+       chans.includes('UCaaaaaaaaaaaaaaaaaaaaaa') && chans.includes('UCbbbbbbbbbbbbbbbbbbbbbb'), chans);
+    await q(`insert into public.schedule_sources (league_id, label, adapter, schedule_url, adapter_config) values ($1, 'feed', 'fiba_livestats', 'https://example.invalid/', '{"youtube_channel": "UCcccccccccccccccccccccc"}'::jsonb)`, [L])
+      .catch(e => console.log('  (schedule_sources: ' + e.message + ')'));
+    ok("...and the ingest's own channel for the league", (await one(`select public.vetted_channels($1) as c`, [L])).c.includes('UCcccccccccccccccccccccc'));
+    const V2 = await game('10 minutes');
+    await q(`insert into public.game_videos (game_id, provider, url, video_ref, is_primary, is_live) values ($1, 'youtube', 'https://www.youtube.com/watch?v=aaaaaaaaaa2', 'aaaaaaaaaa2', true, true)`, [V2]);
+    ok("a registered source's video the matcher put on the game: vetted", (await lv()).includes(V2));
+    const V3 = await game('5 minutes');
+    await q(`insert into public.game_videos (game_id, provider, url, video_ref, is_primary, is_live) values ($1, 'twitch', 'https://www.twitch.tv/x', 'x', true, true)`, [V3]);
+    ok("a stream with no channel and no person: not vetted", !(await lv()).includes(V3));
+    await q(`update public.game_videos set created_by = $2 where game_id = $1`, [V3, LA]);
+    ok("...put there by a person: vetted", (await lv()).includes(V3));
+    ok("the league's channel lists are the ingest's alone (no reader may list them)", (await tryAs(null, `select public.vetted_channels($1)`, [L])).error
+       && (await tryAs(FAN, `select public.vetted_channels_for_game($1)`, [V1])).error);
+    const lm = (await as(null, `select public.league_media($1) as j`, [L]))[0].j;
+    const lmV = g => (lm.live || []).find(x => x.id === g);
+    await q(`update public.game_videos set channel_ref = null where id = $1`, [gv]);
+    const lm2 = (await as(null, `select public.league_media($1) as j`, [L]))[0].j;
+    ok("the league's Live tab: a vetted stream carried, an unvetted one not (the game listed with no video)",
+       lmV(V1) && lmV(V1).video && (lm2.live || []).find(x => x.id === V1) && !(lm2.live || []).find(x => x.id === V1).video, { lm: lmV(V1) });
   }
 }
 
