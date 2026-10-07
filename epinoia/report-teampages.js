@@ -803,8 +803,9 @@ function modules(ctx) {
           const W = [['0–7 s', 0, 8], ['8–16 s', 8, 17], ['17–24 s', 17, 1e9]];
           const firsts = list => list.filter(r => !r.second && r.dur != null);
           const rowsOf = list => { const first = firsts(list); return W.map(([l, a, b]) => { const sub = first.filter(r => r.dur >= a && r.dur < b); return { label: l, n: sub.length, all: first.length, s: SCk.summary(sub), out: V.outcomesOf(sub) }; }); };
-          out.push(block(title('Shot clock', 'every first chance of the last ' + L.gs.length + ' games by how long it ran · each coloured against the club’s (or its opponents’) average') +
-            V.shotClock(rowsOf(own), rowsOf(opp), SCk.summary(firsts(own)), SCk.summary(firsts(opp))) +
+          /* THE CLUB'S OWN CHANCES ONLY (2026-10-06): the opponents' are the next page, Shot clock · defence */
+          out.push(block(title('Shot clock', 'every first chance of the last ' + L.gs.length + ' games by how long it ran · each coloured against the club’s average') +
+            V.shotClock(rowsOf(own), null, SCk.summary(firsts(own)), null) +
             '<p class="rp-note">Points a possession, and its share of the possessions as the bar; the chips are its shooting (eFG), turnovers (TO), offensive rebounds (OREB) and free-throw rate (FTr). Second chances after an offensive rebound are left out, so each is how the first look ended.</p>'));
           /* THE SAME FROM THE DEFENCE'S SIDE (2026-10-03), underneath: the opponents' first chances against the club */
           out.push(block(title('Shot clock · defence', 'the same first chances from the other end: what the opponents did against the club by how long their possession ran · each coloured against the club’s defence over every possession') +

@@ -207,6 +207,8 @@ function profile(player) {
 
   /* defence: every isolation, and every drive outside one */
   const iso = total(rows, 'defense', 'Isolation'), post = total(rows, 'defense', 'Post-Up');
+  /* SCREEN D (2026-10-06): what the ball handler shot coming off a screen against him - Synergy's defensive P&R Ball Handler */
+  const pnr = total(rows, 'defense', 'P&R Ball Handler') || total(rows, 'defense', 'Pick and Roll Ball Handler');
   const outside = DIRS.flatMap(dir => driveRows(rows, 'defense', dir).totals).filter(r => r.path[0] !== 'Isolation');
   const faceUp = sum((iso ? [iso] : []).concat(outside));
 
@@ -217,7 +219,8 @@ function profile(player) {
     defense: {
       poss: def.poss,
       faceUp: faceUp.fga > 0 ? efgOf(faceUp) : null,
-      post: post && post.fga > 0 ? efgOf(post) : null
+      post: post && post.fga > 0 ? efgOf(post) : null,
+      screen: pnr && pnr.fga > 0 ? efgOf(pnr) : null
     }
   };
 }

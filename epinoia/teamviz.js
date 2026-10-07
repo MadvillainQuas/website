@@ -158,8 +158,9 @@ function shotClock(own, opp, ownAll, oppAll) {
   };
   const NAME = [['Early', 'the first 7 seconds'], ['Middle', '8 to 16 seconds'], ['Late', '17 seconds and after']];
   return '<div class="tv tv-sc">' + (own || []).map((r, i) => '<div class="tv-sc-w"><div class="tv-sc-h"><b>' + NAME[i][0] + '</b><span>' + r.label + ' · ' + NAME[i][1] + '</span></div>' +
-    card(r, ownAll, false) + card((opp || [])[i] || { n: 0, all: 0, s: {} }, oppAll, true) + '</div>').join('') + '</div>' +
-    key('the club’s (or its opponents’) average over every possession', true);
+    /* opp null (the club report since 2026-10-06): the club's offence alone - its defence has a page of its own (shotClockDef) */
+    card(r, ownAll, false) + (opp ? card(opp[i] || { n: 0, all: 0, s: {} }, oppAll, true) : '') + '</div>').join('') + '</div>' +
+    key(opp ? 'the club’s (or its opponents’) average over every possession' : 'the club’s average over every possession', true);
 }
 
 /* ----------------------------------------------------------- the shot clock, the defence --- */

@@ -25,6 +25,8 @@
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
 const SVGNS = 'http://www.w3.org/2000/svg', XHTML = 'http://www.w3.org/1999/xhtml';
+/* the boxes whose height is their content's, never pinned in the copy (cloneStyled) */
+const GROW = '.rp-pgroups, .rp-pg2, .rp-cells, .rp-run, .rp-run-c, .rp-pcard';
 
 /* the properties worth carrying: layout, box, text and paint. Everything else is left to the defaults */
 const PROPS = ['display', 'position', 'top', 'right', 'bottom', 'left', 'float', 'clear', 'z-index', 'box-sizing',
@@ -129,7 +131,12 @@ function cloneStyled(src) {
     const ownText = !svg && tag !== 'img' && [...n.childNodes].some(x => x.nodeType === 3 && x.nodeValue.trim());
     /* the copy's root has no parent in the picture but the page's defaults; everything under it has its copied parent */
     const par = !top && n.parentElement ? root.getComputedStyle(n.parentElement) : null;
-    c.setAttribute('style', styleText(cs, defaultsOf(n), false, ownText && cs.position !== 'absolute', par));
+    let st = styleText(cs, defaultsOf(n), false, ownText && cs.position !== 'absolute', par);
+    /* BOXES THAT WRAP KEEP THEIR OWN HEIGHT (2026-10-06): a player card's groups and the cells in them are rows that wrap. Pinned
+       to the height the page measured, a row the copy wraps one cell earlier (its text a hair wider) ran under the next group:
+       the shot profile's THREE under DRIVES L/R. Left to grow, the copy is as tall as it needs to be. */
+    if (!svg && n.matches && n.matches(GROW)) st = st.replace(/(^|;)\s*height:[^;]*/g, '$1');
+    c.setAttribute('style', st);
     /* A <col span=n>: its computed width is the TOTAL of its n columns, and inlined it would be given to each of them - n times
        too wide, the table run off the page (the zone table, 2026-10-04). Each column gets its share. */
     if ((tag === 'col' || tag === 'colgroup') && n.span > 1 && parseFloat(cs.width) > 0) c.setAttribute('style', c.getAttribute('style') + ';width:' + (parseFloat(cs.width) / n.span).toFixed(2) + 'px');

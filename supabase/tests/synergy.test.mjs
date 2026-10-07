@@ -63,6 +63,7 @@ const ROWS = [
   R(O, ['P&R Roll Man', 'Pick and Pops', 'Drives Left', 'To Basket'], 2, 2, 1, 2, 0, 0, 0),
   R(D, ['Isolation'], 30, 27, 10, 25, 2, 6, 6.7),
   R(D, ['Post-Up'], 20, 22, 9, 16, 0, 0, 10.0),
+  R(D, ['P&R Ball Handler'], 30, 27, 11, 26, 4, 10, 12.0),
   R(D, ['Spot Up'], 40, 44, 16, 36, 10, 24, 5.0),
   R(D, ['Isolation', 'Isolation - Overall', 'Drives Left'], 6, 5, 2, 5, 0, 1, 0),
   R(D, ['Isolation', 'Top', 'Drives Left'], 6, 5, 2, 5, 0, 1, 0),
@@ -115,6 +116,8 @@ console.log('\ndefence');
      F.fgm === 16 && F.fga === 37 && F.fg3m === 3 && r1(F.efg) === 47.3 && F.poss === 45, F);
   ok('...an isolation\'s own drives are not counted twice, nor a post-up\'s face-up drive', F.poss === 30 + 10 + 3 + 2);
   ok('post-D: the post-ups, 9 of 16 - eFG% 56.3', Po.fgm === 9 && Po.fga === 16 && r1(Po.efg) === 56.3, Po);
+  const Sc = P.defense.screen;
+  ok('screen D: the defensive P&R ball-handler plays, 11 of 26 with 4 threes - eFG% 50.0', Sc && Sc.fgm === 11 && Sc.fga === 26 && r1(Sc.efg) === 50, Sc);
   const noDef = S.fromText(HEAD + '\n' + ROWS.filter(r => r.includes(',offense,')).join('\n'));
   ok('a file with no defence: no face-up, no post-D (null), and it says so', noDef.hasDefense === false && noDef.defense.faceUp === null && noDef.defense.post === null && noDef.hasOffense === true);
 }

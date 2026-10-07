@@ -84,6 +84,7 @@ const STATS = {
      eFG% instead; optional: a player with no file has no such row or cell at all */
   syn_fu_efg: { l: 'ATTACKED FACE-UP eFG%', dp: 1, low: true, rank: false, optional: true, ref: 52.5, refL: 'vs', sc: 5 },
   syn_post_efg: { l: 'POST-D eFG%', dp: 1, low: true, rank: false, optional: true, ref: 52.5, refL: 'vs', sc: 5 },
+  syn_screen_efg: { l: 'SCREEN D eFG%', dp: 1, low: true, rank: false, optional: true, ref: 52.5, refL: 'vs', sc: 5 },
   /* HIS SYNERGY DRIVES, a category of their own (DRIVES L/R): each kind's FG% going left and going right, each tinted against his
      drives in ALL directions (left, right and straight together: the same file, the same seasons - never this season's own RIM%,
      MID% or 3PT%, the Synergy file being several seasons; the kind's break-even only where he has no such shot at all) - and the
@@ -116,6 +117,7 @@ const DEFS = {
   drv_3_fg: ['Drive left / right, 3FG% (Synergy)', 'Their three-point percentage on pull-up threes going left, then right; each tinted against their pull-up three FG% on drives in all directions.'],
   drv_3_att: ['Drive left / right, three attempts % (Synergy)', 'Of their shots on drives going left, then right, the share that were pull-up threes.'],
   syn_post_efg: ['Post-D eFG% (Synergy)', 'What the player guarding them shot (effective field-goal %) posting them up: every defensive post-up in their Synergy file. Lower is better; drawn against the break-even 52.5%.'],
+  syn_screen_efg: ['Screen D eFG% (Synergy)', 'What the ball handler shot (effective field-goal %) coming off a screen against them: every defensive pick-and-roll ball-handler play in their Synergy file. Lower is better; drawn against a league-typical 52.5%.'],
   badpass_pg: ['Bad-pass turnovers a game', 'Turnovers the feed typed as a bad pass, per game; only leagues whose feed types its turnovers have them.'],
   handle_pg: ['Dribble turnovers a game', 'Turnovers the feed typed as a ball-handling error (travelling, a lost dribble, a carry), per game.'],
   ev_transition_pts_sh: ['Transition share of points', 'The share of their points scored in transition: within eight seconds of a defensive rebound or a steal, or tagged a fast break.'],
@@ -170,6 +172,7 @@ const WHY = {
   diff_vs_oreb: 'Do opponents win fewer of their misses with them on the floor?',
   syn_fu_efg: 'How well they defend when a player attacks them one-on-one.',
   syn_post_efg: 'How well they defend the post.',
+  syn_screen_efg: 'How well they guard the ball handler in the pick-and-roll.',
   drv_rim_fg: 'Tells you which hand they finish with, so you know which way to send them.',
   drv_rim_att: 'Shows which direction they prefer to drive.',
   drv_mid_fg: 'Shows which side their pull-up is better from.',
@@ -317,7 +320,7 @@ const TPL = {
             ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'mid_a100', 'mid_pct', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
             ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
             ['SITUATIONS', ['ev_transition_pts_sh', 'tr_ast_pct', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'ev_half_efg', 'ev_half_tov_pct']],
-            ['DEFENCE & GLASS', ['stl_pct', 'dreb_pct', 'syn_fu_efg', 'syn_post_efg']],
+            ['DEFENCE & GLASS', ['stl_pct', 'dreb_pct', 'syn_fu_efg', 'syn_post_efg', 'syn_screen_efg']],
             ['ON / OFF', ['diff_efg', 'diff_tov']]],
     wing: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
            ['SCORING', ['usg', 'ev_half_usg', 'ts', 'efg', 'ftr']],
@@ -325,7 +328,7 @@ const TPL = {
            ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'p3_a100', 'p3_pct']],
             ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
            ['SITUATIONS', ['ev_transition_pts_sh', 'tr_ast_pct', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'ev_half_efg']],
-           ['DEFENCE & GLASS', ['stl_pct', 'blk_pct', 'oreb_pct', 'dreb_pct', 'syn_fu_efg', 'syn_post_efg']],
+           ['DEFENCE & GLASS', ['stl_pct', 'blk_pct', 'oreb_pct', 'dreb_pct', 'syn_fu_efg', 'syn_post_efg', 'syn_screen_efg']],
            ['ON / OFF', ['diff_vs_efg']]],
     big: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
           ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ft_pct', 'ftr']],
@@ -333,7 +336,7 @@ const TPL = {
           ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'p3_a100', 'p3_pct']],
             ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
           ['SITUATIONS', ['ev_transition_rim_a100', 'ev_transition_rim_pct']],
-          ['RIM PROTECTION', ['def_rim_fg_pm', 'def_rim_vol_pm', 'syn_post_efg', 'syn_fu_efg']],
+          ['RIM PROTECTION', ['def_rim_fg_pm', 'def_rim_vol_pm', 'syn_post_efg', 'syn_fu_efg', 'syn_screen_efg']],
           ['GLASS & DEFENCE', ['oreb_pct', 'dreb_pct', 'blk_pct', 'pf_pg']],
           ['ON / OFF', ['diff_oreb', 'diff_vs_oreb']]]
   },
@@ -344,18 +347,18 @@ const TPL = {
             ['HALF COURT', ['ev_half_efg', 'hc_ast_pct', 'ev_half_tov_pct', 'badpass_pg', 'handle_pg', 'ev_transition_pts_sh']],
             ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'mid_pct', 'mid_a100', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
             ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
-            ['DEFENCE', ['stl_pct', 'dreb_pct', 'syn_fu_efg', 'syn_post_efg']]],
+            ['DEFENCE', ['stl_pct', 'dreb_pct', 'syn_fu_efg', 'syn_post_efg', 'syn_screen_efg']]],
     wing: [['IMPACT', ['orapm', 'drapm', 'bpm']],
            ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ftr', 'au', 'tov_pct']],
            ['HALF COURT', ['ev_half_efg', 'ev_transition_pts_sh']],
            ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'mid_pct', 'mid_a100', 'p3_a100', 'p3_pct', 'ev_p3_astp']],
             ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
-           ['DEFENCE & GLASS', ['stl_pct', 'blk_pct', 'dreb_pct', 'oreb_pct', 'diff_vs_efg', 'syn_fu_efg', 'syn_post_efg']]],
+           ['DEFENCE & GLASS', ['stl_pct', 'blk_pct', 'dreb_pct', 'oreb_pct', 'diff_vs_efg', 'syn_fu_efg', 'syn_post_efg', 'syn_screen_efg']]],
     big: [['IMPACT', ['vorp', 'obpm', 'orapm', 'drapm']],
           ['SCORING', ['usg', 'ev_half_usg', 'ts', 'ft_pct', 'ftr', 'au', 'tov_pct']],
           ['SHOT PROFILE', ['rim_a100', 'rim_pct', 'ev_rim_astp', 'rim_half_sh', 'ev_half_rim_pct', 'p3_a100', 'p3_pct']],
             ['DRIVES L/R · SYNERGY', ['drv_rim_fg', 'drv_rim_att', 'drv_mid_fg', 'drv_mid_att', 'drv_3_fg', 'drv_3_att']],
-          ['RIM PROTECTION', ['def_rim_fg_pm', 'def_rim_vol_pm', 'syn_post_efg', 'syn_fu_efg']],
+          ['RIM PROTECTION', ['def_rim_fg_pm', 'def_rim_vol_pm', 'syn_post_efg', 'syn_fu_efg', 'syn_screen_efg']],
           ['GLASS', ['oreb_pct', 'dreb_pct', 'blk_pct', 'pf_pg', 'diff_oreb', 'diff_vs_oreb']]]
   }
 };
@@ -1021,6 +1024,8 @@ function synergyOnRow(row, prof) {
   const d = prof.defense || {};
   if (d.faceUp && isNum(d.faceUp.efg)) row.syn_fu_efg = Math.round(10 * d.faceUp.efg) / 10;
   if (d.post && isNum(d.post.efg)) row.syn_post_efg = Math.round(10 * d.post.efg) / 10;
+  /* a profile saved before 2026-10-06 has no screen figure: the cell simply stays away until the file is uploaded again */
+  if (d.screen && isNum(d.screen.efg)) row.syn_screen_efg = Math.round(10 * d.screen.efg) / 10;
   const dv = prof.offense && prof.offense.drives, r1 = v => (isNum(v) ? Math.round(10 * v) / 10 : null);
   /* the baseline: his drives in all directions (a profile kept before it carried them: left, right and straight added up) */
   const all = dv && (dv.all || (() => {

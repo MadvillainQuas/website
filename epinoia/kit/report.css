@@ -739,7 +739,10 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 /* ---- A PLAYER'S CARD KEPT SHORT (2026-10-04): the small zone chart floats in the top-right corner of the stats and the groups
    flow round it and then across the card's whole width under it, rather than down a narrower column beside it ---- */
 .rp-pgroups{ display:block; line-height:1 }
-.rp-pgroups > .rp-pg2{ display:inline-flex; vertical-align:top; margin:0 8px 4px 0 }
+/* inline BLOCKS, not inline flex columns: a column flex box takes its height from its children laid out on one line, and a
+   group whose cells wrap (the shot profile's parts) then ran under the next one (2026-10-06) */
+.rp-pgroups > .rp-pg2{ display:inline-block; vertical-align:top; margin:0 8px 4px 0; max-width:100% }
+.rp-pgroups > .rp-pg2 > h5{ display:block; margin-bottom:2px }
 .rp-pside{ float:right; width:90px; margin:0 0 4px 8px }
 .rp-pgroups::after{ content:''; display:block; clear:both }
 /* in a card the chart is narrow: each measure's name over its row, the two tracks the whole width either side of the middle */
