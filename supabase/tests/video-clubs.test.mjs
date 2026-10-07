@@ -354,6 +354,20 @@ if (!loaded || !loaded.db) {
     const lmV = g => (lm.live || []).find(x => x.id === g);
     await q(`update public.game_videos set channel_ref = null where id = $1`, [gv]);
     const lm2 = (await as(null, `select public.league_media($1) as j`, [L]))[0].j;
+    /* A CLUB'S VIDEOS (0248 team_videos) */
+    const tv = async (team, k) => await as(null, `select * from public.team_videos($1, $2, null, 60)`, [team, k]);
+    /* an interview naming the club, on no game (the matcher found the club in its title) */
+    const NM = await item(S, 'nnnnnnnnnn1', 'Bristol Flyers: the coach on the season ahead', null, false, new Date().toISOString());
+    await q(`update public.news_items set match_clubs = array[$2]::uuid[], video_kind = 'video' where id = $1`, [NM, BRI]);
+    const bri = await tv(BRI, null);
+    ok("a club's videos: those on its games (any kind), and a video naming it on no game (match_clubs)",
+       bri.some(r => r.id === KV) && bri.some(r => r.video_kind === 'press') && bri.some(r => r.id === NM) && bri.every(r => r.video_id), bri.map(r => [r.video_id, r.video_kind]));
+    ok("...its finished games' vetted streams among its FULL GAMES, listed once", (await tv(BRI, 'full')).some(r => r.video_id === 'cccccccccc1')
+       && (await tv(BRI, 'full')).filter(r => r.video_id === 'aaaaaaaaaa9').length === 1 && (await tv(BRI, 'full')).every(r => r.video_kind === 'full'));
+    ok("...each button its own kind (PRESS CONFERENCES the press conferences)", (await tv(BRI, 'press')).every(r => r.video_kind === 'press') && (await tv(BRI, 'press')).length >= 1
+       && (await tv(BRI, 'highlights')).every(r => r.video_kind === 'highlights'));
+    ok("...another club's are not its own", !(await tv(OTH, null)).some(r => r.id === KV || r.id === NM));
+    ok("...newest first", bri.every((r, i) => i === 0 || new Date(bri[i - 1].published_at) >= new Date(r.published_at)));
     ok("the league's Live tab: a vetted stream carried, an unvetted one not (the game listed with no video)",
        lmV(V1) && lmV(V1).video && (lm2.live || []).find(x => x.id === V1) && !(lm2.live || []).find(x => x.id === V1).video, { lm: lmV(V1) });
   }

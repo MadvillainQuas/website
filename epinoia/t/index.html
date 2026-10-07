@@ -295,9 +295,12 @@
   /* the video tab: the profile steps aside */
   body.vtab #tbody{display:none}
   #videosec{padding:0 calc(var(--u)*3) calc(var(--u)*3)}
+  /* the club's videos: HOME's black VIDEO dashboard, a panel of its own at the top of the tab */
+  #clubvids{margin:calc(var(--u)*2) 0 calc(var(--u)*4);border:1px solid var(--rule-2)}
+  #clubvids[hidden]{display:none}
   /* the weekly report tab: the profile steps aside, as it does for video */
   body.rptab #tbody, body.rptab #videosec, body.rptab #fosec{display:none !important}
-  /* the Video tab only once the club has footage (team.js videoPanel sets data-video) */
+  /* the Video tab only once the club has videos or footage (team.js videoPanel sets data-video) */
   #ttabs:not([data-video]) [data-p="video"]{display:none}
   /* the front office tab: everything else steps aside, whichever tab was open before it */
   body.fotab #tbody, body.fotab #videosec, body.fotab #reportsec{display:none !important}
@@ -413,7 +416,9 @@
     <div id="foshare"></div>
   </div>
   <div id="videosec" style="display:none">
-    <div class="ep-hdr"><span class="idx">V</span><h2>On video</h2>
+    <!-- THE CLUB'S VIDEOS: HOME's VIDEO dashboard in the club's version (team.js openClubVideos, home/videohub.js) -->
+    <div class="vh vh-club" id="clubvids" role="region" aria-label="The club's videos" hidden></div>
+    <div class="ep-hdr" id="videoHdr"><span class="idx">V</span><h2>On video</h2>
       <span class="hnote" id="videoNote"></span></div>
     <div id="videopanel"></div>
   </div>

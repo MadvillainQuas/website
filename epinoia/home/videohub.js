@@ -16,6 +16,11 @@
 
    While a video or a stream plays, the page around it goes dark (media.js cinema). close() takes everything down: the
    players stop, the chat and the reads end.
+
+   A CLUB'S VERSION (opts.team = { id, slug, name }: the club page's Video tab, t/team.js): LIVE only while the club is
+   playing (and not there at all when it is not), and under it the club's own videos (0248 team_videos: its games'
+   highlights, full games and press conferences, the videos naming it), under the same five buttons, newest first;
+   no leagues' strip, no follows.
    ============================================================================ */
 (function () {
   const STEP = 10;                      // the newest large, then three rows of three
@@ -47,6 +52,8 @@
     M.css('kit/media.css');
     const el = M.el, tr = M.tr;
     const st = S = { host, M, timers: [], chat: null, boxer: null, sp: null, alive: true };
+    const team = opts && opts.team && opts.team.id ? opts.team : null;
+    const isTeam = g => !!team && [g.home, g.away].some(t => t && team.slug && t.slug === team.slug);
     host.textContent = '';
     const wrap = el('div', 'vh-wrap');
 
@@ -176,8 +183,10 @@
     async function readLive(first) {
       const list = await rpc('live_streams', {});
       if (!st.alive) return;
-      games = Array.isArray(list) ? list.filter(g => g && g.id && g.home && g.away) : [];
-      try { if (window.EpinoiaHomeModes && window.EpinoiaHomeModes.setLive) window.EpinoiaHomeModes.setLive(games.length); } catch (_) { /* the strip's own */ }
+      games = Array.isArray(list) ? list.filter(g => g && g.id && g.home && g.away && (!team || isTeam(g))) : [];
+      /* the club's version: LIVE is there only while the club is playing */
+      if (team) live.hidden = !games.length;
+      else try { if (window.EpinoiaHomeModes && window.EpinoiaHomeModes.setLive) window.EpinoiaHomeModes.setLive(games.length); } catch (_) { /* the strip's own */ }
       lsub.textContent = games.length ? (games.length === 1 ? tr('1 game streaming now') : games.length + ' ' + tr('games streaming now')) : tr('Every game streaming now');
       none.hidden = !!games.length;
       live.classList.toggle('is-on', !!games.length);
@@ -200,9 +209,10 @@
     const vids = el('section', 'vh-sec vh-vids');
     vids.setAttribute('aria-labelledby', 'vhVidsH');
     const vh = el('header', 'vh-h');
-    const vt = el('h2', 'vh-t', tr('Latest videos'));
+    const vt = el('h2', 'vh-t', tr(team ? 'Videos' : 'Latest videos'));
     vt.id = 'vhVidsH';
-    const vsub = el('span', 'vh-sub', tr('From what you follow first, then in your feed’s order'));
+    const vsub = el('span', 'vh-sub', team ? (team.name || '') + ' · ' + tr('highlights, full games, press conferences and more, newest first')
+      : tr('From what you follow first, then in your feed’s order'));
     const seg = el('div', 'md-seg');
     seg.setAttribute('role', 'group');
     vh.append(vt, vsub, seg);
@@ -227,6 +237,7 @@
     lgRow.setAttribute('aria-label', tr('Leagues with highlights'));
     lgs.append(lgPrev, lgRow, lgNext);
     vids.append(vh, lgs, stage, grid, more);
+    if (team) live.hidden = true;                // until the club is seen to be playing
     wrap.append(live, vids);
     host.appendChild(wrap);
 
@@ -258,7 +269,7 @@
         kind = k;
         league = null;
         seg.querySelectorAll('.md-chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-        if (!STRIP[kind]) lgs.hidden = true;
+        if (!STRIP[kind] || team) lgs.hidden = true;
         loadVideos().then(showLeagues);
       });
       seg.appendChild(b);
@@ -337,7 +348,7 @@
     const leaguesFor = async k => (leaguesBy[k] || (leaguesBy[k] = await readLeagues(k)));
     async function showLeagues() {
       const k = kind;
-      if (!STRIP[k]) { lgs.hidden = true; return; }
+      if (!STRIP[k] || team) { lgs.hidden = true; return; }
       const list = await leaguesFor(k);
       if (!st.alive || kind !== k) return;
       lgs.hidden = !list.length;
@@ -345,6 +356,7 @@
       drawLeagues();
     }
     function caption() {
+      if (team) return;
       vsub.textContent = league ? league.name + ' · ' + tr(kind === 'full' ? 'every full game, newest first in your order'
         : kind === 'press' ? 'every press conference, newest first in your order' : 'every highlight, newest first in your order')
         : tr('From what you follow first, then in your feed’s order');
@@ -365,6 +377,13 @@
        when a league is chosen on the strip */
     async function read() {
       caption();
+      /* THE CLUB'S OWN: its videos of the kind, newest first (a series still down to its newest episode) */
+      if (team) {
+        const got = await rpc('team_videos', { p_team: team.id, p_kind: kind, p_limit: 60 });
+        const pool = M.uniq(Array.isArray(got) ? got : []);
+        const FR = R();
+        return FR && typeof FR.latestEpisodes === 'function' ? FR.latestEpisodes(pool) : pool;
+      }
       if (league) {
         const got = league.id ? await fetchKind(kind, league)
           : ((await fetchKind(kind, null)) || []).filter(r => r.league_slug === league.slug);
@@ -423,7 +442,7 @@
     /* OPENED ON ONE GAME (?view=video&play=<game>: WATCH HERE in a fixture's where-to-watch card, watch.js): streaming
        now, it is LIVE's game; else its best video (its whole game, else its highlights: 0244 game_watch) plays on the
        stage, first in the list */
-    const want = new URLSearchParams(location.search).get('play');
+    const want = team ? null : new URLSearchParams(location.search).get('play');
     if (want && /^[0-9a-f-]{36}$/i.test(want) && st.alive) {
       const g = games.find(x => x.id === want);
       if (g) {

@@ -1108,18 +1108,84 @@ function winModel(host, team, M, o) {
                                    leagueSlug: ((team && team.leagues) || {}).slug });
 }
 
-/* ON VIDEO — every play the club made in every game that has footage the page can
-   seek, under a Video tab beside the profile. The same panel as a player's profile
-   (p/video.js) in team mode: the whole side of each game, each man named. */
+/* THE VIDEO TAB, beside the profile: on top THE CLUB'S VIDEOS - HOME's VIDEO dashboard in the club's version
+   (home/videohub.js, opts.team; 0248 team_videos): LIVE while the club plays, its highlights, full games, press
+   conferences and the videos about it under ALL / HIGHLIGHTS / FULL GAMES / PRESS CONFERENCES / VIDEOS, played in the
+   cinema player as one list - and under it ON VIDEO, every play the club made in its games with footage the page can
+   seek. The tab is offered when the club has either; the dashboard is read and drawn only when the tab is opened, and
+   taken down (its players stopped) when another tab is. */
 async function videoPanel(team) {
-  const D = window.EpinoiaData;
   if (ACCESS.paywall) return;          // video rows are behind the wall (§2)
-  if (!D || !window.EpinoiaPlayerVideo) return;
+  const [clips, footage] = await Promise.all([
+    api('rpc/team_videos?p_team=' + encodeURIComponent(team.id) + '&p_limit=1').then(r => Array.isArray(r) && r.length > 0).catch(() => false),
+    footagePanel(team).catch(() => false)]);
+  if (!clips && !footage) return;
+  const hdr = $('#videoHdr');
+  if (hdr) hdr.style.display = footage ? '' : 'none';
+  const tabs = $('#ttabs');
+  if (!tabs) return;
+  tabs.dataset.video = '1';                 // the Video tab is offered only now (index.html's rule hides it before)
+  tabs.style.display = '';
+  const showVideo = on => {
+    document.body.classList.toggle('vtab', on);
+    $('#videosec').style.display = on ? '' : 'none';
+    if (clips) { if (on) openClubVideos(team); else closeClubVideos(); }
+    tabs.querySelectorAll('.ep-tab').forEach(b => b.classList.toggle('on', (b.dataset.p === 'video') === on));
+    if (on) window.scrollTo({ top: tabs.getBoundingClientRect().top + window.scrollY - 12, behavior: 'smooth' });
+  };
+  tabs.querySelectorAll('.ep-tab').forEach(b => { if (b.dataset.p === 'profile' || b.dataset.p === 'video') b.onclick = () => showVideo(b.dataset.p === 'video'); });
+  if (new URLSearchParams(location.search).get('tab') === 'video') showVideo(true);
+}
+
+/* the dashboard's code and styles (home/videohub.js, kit/videohub.css) arrive the first time the tab opens */
+let clubOpen = false, hubP = null;
+function hubKit() {
+  if (window.EpinoiaVideoHub) return Promise.resolve(window.EpinoiaVideoHub);
+  if (hubP) return hubP;
+  const me = Array.from(document.scripts).find(x => /\/t\/team\.js(\?|$)/.test(x.src || ''));
+  const v = (/[?&]v=(\d+)/.exec((me && me.src) || '') || [])[1];
+  const q = v ? '?v=' + v : '';
+  if (!document.querySelector('link[data-vhub]')) {
+    const l = document.createElement('link');
+    l.rel = 'stylesheet'; l.href = '../kit/videohub.css' + q; l.dataset.vhub = '1';
+    document.head.appendChild(l);
+  }
+  hubP = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = '../home/videohub.js' + q;
+    sc.onload = () => (window.EpinoiaVideoHub ? res(window.EpinoiaVideoHub) : rej(new Error('no videohub.js')));
+    sc.onerror = () => { hubP = null; rej(new Error('could not load videohub.js')); };
+    document.head.appendChild(sc);
+  });
+  return hubP;
+}
+async function openClubVideos(team) {
+  const host = $('#clubvids');
+  if (!host || clubOpen) return;
+  clubOpen = true;
+  host.hidden = false;
+  try {
+    const H = await hubKit();
+    if (clubOpen) await H.open(host, { base: '../', team: { id: team.id, slug: team.slug, name: team.name } });
+  } catch (_) { host.hidden = true; clubOpen = false; }
+}
+function closeClubVideos() {
+  if (!clubOpen) return;
+  clubOpen = false;
+  try { if (window.EpinoiaVideoHub) window.EpinoiaVideoHub.close(); } catch (_) { /* nothing open */ }
+}
+
+/* ON VIDEO — every play the club made in every game that has footage the page can
+   seek. The same panel as a player's profile (p/video.js) in team mode: the whole side
+   of each game, each man named. True when it drew something. */
+async function footagePanel(team) {
+  const D = window.EpinoiaData;
+  if (!D || !window.EpinoiaPlayerVideo) return false;
   try {
     const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
       `&status=eq.final&select=id,home_team_id,away_team_id,tipoff_at,` + inSeason() +
       `home:home_team_id(short_name,name),away:away_team_id(short_name,name)&order=tipoff_at.desc&limit=40`);
-    if (!gs.length) return;
+    if (!gs.length) return false;
     const chunk = async (ids, build) => {
       const out = [];
       for (let i = 0; i < ids.length; i += 40) out.push(...await api(build(ids.slice(i, i + 40))));
@@ -1131,7 +1197,7 @@ async function videoPanel(team) {
     const byGameV = {};
     vids.forEach(v => { if (v.url) byGameV[v.game_id] = v; });
     const withV = gs.filter(g => byGameV[g.id]);
-    if (!withV.length) return;
+    if (!withV.length) return false;
     const evs = await D.events(withV.map(g => g.id));
     const names = {};
     try {
@@ -1149,21 +1215,10 @@ async function videoPanel(team) {
       };
     });
     const shown = window.EpinoiaPlayerVideo.render({ host: '#videopanel', games, teamId: team.id, names });
-    if (!shown) return;
+    if (!shown) return false;
     $('#videoNote').textContent = games.length + (games.length === 1 ? ' game with footage' : ' games with footage');
-    const tabs = $('#ttabs');
-    if (!tabs) return;
-    tabs.dataset.video = '1';                 // the Video tab is offered only now (index.html's rule hides it before)
-    tabs.style.display = '';
-    const showVideo = on => {
-      document.body.classList.toggle('vtab', on);
-      $('#videosec').style.display = on ? '' : 'none';
-      tabs.querySelectorAll('.ep-tab').forEach(b => b.classList.toggle('on', (b.dataset.p === 'video') === on));
-      if (on) window.scrollTo({ top: tabs.getBoundingClientRect().top + window.scrollY - 12, behavior: 'smooth' });
-    };
-    tabs.querySelectorAll('.ep-tab').forEach(b => { if (b.dataset.p === 'profile' || b.dataset.p === 'video') b.onclick = () => showVideo(b.dataset.p === 'video'); });
-    if (new URLSearchParams(location.search).get('tab') === 'video') showVideo(true);
-  } catch (e) { console.warn('[video]', e); }
+    return true;
+  } catch (e) { console.warn('[video]', e); return false; }
 }
 
 /* THE REPORT (report.js, report-teampages.js; 2026-10-02, in place of the weekly report): the club's analysis as A4 pages,
