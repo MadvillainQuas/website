@@ -167,6 +167,16 @@ const orb = C.clutchGame({ id: 'g6', starters: [H, A], period: 4, events: [
   ev(4, 100000, 0, 'p2_miss', { pid: 'a1' }), ev(4, 98000, 0, 'reb', { pid: 'a2', off: true }), ev(4, 96000, 0, 'p2_made', { pid: 'a2' })] }, 0);
 ok('an offensive rebound keeps the possession: two shots, one possession for each of the five', near(C.playerPoss(orb.players.a3), 1) && orb.players.a3.orOn === 1, orb.players.a3);
 
+console.log('\n7. the player page\'s clutch section');
+const PI = rd('epinoia', 'p', 'index.html'), PJ = rd('epinoia', 'p', 'player.js');
+ok('the player page has the section, hidden until it has something', /id="clutchsec" style="display:none"[\s\S]*<h2>Clutch time<\/h2>[\s\S]*id="pclutch"/.test(PI));
+ok('it loads clutch.js and the shared clutch styles (both pages)', /src="\.\.\/clutch\.js\?v=\d+"/.test(PI) && /kit\/clutch\.css\?v=\d+/.test(PI) && /kit\/clutch\.css\?v=\d+/.test(TI) &&
+   !/\.tclx\{/.test(rd('epinoia', 'kit', 'teampage.css')) && /\.tclx\{/.test(rd('epinoia', 'kit', 'clutch.css')));
+ok('shown only from five minutes of his clutch time, behind the splits lock', /const P_CLUTCH_MIN_SEC = 300;/.test(PJ) && /if \(!p \|\| !\(p\.sec >= P_CLUTCH_MIN_SEC\)\) \{ show\(false\); return; \}/.test(PJ) &&
+   /if \(pLocked\('splits'\)\) \{\s*host\.innerHTML = accessTeaser\(\{ compact: true, key: 'splits', title: 'Clutch time'/.test(PJ));
+ok('drawn again with the scope (season, competition)', /paintBars\(mine, field\);\s*paintClutch\(ids, pl\.id, team\)/.test(PJ));
+ok('the club with him on is every five he was in', /f\.ids\.indexOf\(pid\) < 0/.test(PJ));
+
 const M = rd('supabase', 'migrations', '0238_career_ft.sql');
 ok('0238: anyone can read a career FT%', /for select to anon, authenticated using \(true\)/.test(M));
 ok('0238: nobody writes the table directly', /revoke all on public\.player_career_ft from anon, authenticated/.test(M) && !/grant (insert|update|delete)/i.test(M));

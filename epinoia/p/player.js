@@ -639,6 +639,74 @@ async function vsCompute(ids, pid) {
   return { state: 'ready', lines: VU.lines(sp, SE), games: sp.games, capped: logs.capped,
            min: { all: sp.all.min, start: sp.start.min, bench: sp.bench.min }, N, byRegular };
 }
+/* ------------------------------------------------------------------ clutch time --- */
+/* HIS CLUTCH TIME (Louie, 2026-10-07; clutch.js, as the club page's 08 Clutch time reads it): his club's games in the scope
+   shown (the same logs "on the floor with" reads: the club's last forty), the last four minutes of the fourth quarter and
+   overtime while within five points. Shown only once he has five minutes of it: his usage, his true shooting against the
+   club's in clutch time, the club's net rating with him on the floor against the club's clutch net, his line, and the
+   possessions it rests on. Behind the splits lock, as the club page's is. */
+const P_CLUTCH_MIN_SEC = 300;
+let CLUTCH_RUN = 0;
+async function paintClutch(ids, pid, club) {
+  const sec = $('#clutchsec'), host = $('#pclutch'), CL = window.EpinoiaClutch, VU = window.EpinoiaVsUnits;
+  if (!sec || !host) return;
+  const run = ++CLUTCH_RUN;
+  const show = on => { if (run === CLUTCH_RUN) sec.style.display = on ? '' : 'none'; };
+  if (!CL || !VU || !club || !pid || !(ids || []).length) { show(false); return; }
+  try {
+    const [logs, E] = await Promise.all([CLUB_LOGS, VU.loadEngine()]);
+    if (run !== CLUTCH_RUN) return;
+    if (!logs || !E || !logs.games || !logs.games.length) { show(false); return; }
+    const scope = new Set(ids);
+    const games = logs.games.filter(g => scope.has(g.competition_id) && Array.isArray(g.starters));
+    const S = CL.season(games.map(g => ({ game: { id: g.id, starters: g.starters, period: g.period, events: logs.byGame.get(g.id) || [] },
+      side: g.home_team_id === club.id ? 0 : 1 })));
+    const p = S.players[pid];
+    if (!p || !(p.sec >= P_CLUTCH_MIN_SEC)) { show(false); return; }
+    show(true);
+    if (pLocked('splits')) {
+      host.innerHTML = accessTeaser({ compact: true, key: 'splits', title: 'Clutch time',
+        lines: ['His usage and shooting in the last four minutes of a close game, and how the club does with him on the floor.'] });
+      return;
+    }
+    const num = v => v != null && v !== '' && isFinite(+v);
+    const f1 = v => (num(v) ? (+v).toFixed(1) : '—'), sg = v => (num(v) ? (+v > 0 ? '+' : '') + (+v).toFixed(1) : '—');
+    const tone = (v, ref, low) => (!num(v) || !num(ref) ? '' : Math.abs(v - ref) < 1 ? 'lv' : ((v > ref) !== !!low ? 'up' : 'dn'));
+    /* the club with him on the floor: every five he was in */
+    const on = { own: {}, opp: {} };
+    CL.BOX.forEach(k => { on.own[k] = 0; on.opp[k] = 0; });
+    Object.values(S.fives).forEach(f => { if (f.ids.indexOf(pid) < 0) return; CL.BOX.forEach(k => { on.own[k] += f.own[k] || 0; on.opp[k] += f.opp[k] || 0; }); });
+    const Ron = CL.ratings(on.own, on.opp), Rall = CL.ratings(S.own, S.opp);
+    const sh = CL.shooting(p), clubTs = CL.shooting(S.own).ts, usg = CL.usage(p), poss = Math.round(CL.playerPoss(p));
+    host.innerHTML = '';
+    const wrap = el('div', 'tclx');
+    const tile = (val, lab, em, cls) => { const t = el('div', 'tclx-tile ' + (cls || '')); t.append(el('b', null, val), el('span', null, lab), el('em', null, em)); return t; };
+    const tiles = el('div', 'tclx-tiles');
+    tiles.append(
+      tile(f1(usg) + '%', 'CLUTCH USAGE', 'one in five is a fair share', 'st'),
+      tile(f1(sh.ts), 'CLUTCH TS%', 'club in clutch ' + f1(clubTs), tone(sh.ts, clubTs, false)),
+      tile(sg(Ron.net), 'NET WITH HIM ON', 'club in clutch ' + sg(Rall.net), tone(Ron.net, Rall.net, false)),
+      tile(String(p.pts), 'CLUTCH POINTS', (p.games || 0) + (p.games === 1 ? ' game' : ' games'), 'st'));
+    wrap.appendChild(tiles);
+    const secs = Math.round(p.sec), mm = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+    wrap.appendChild(el('p', 'tclx-sample', poss + ' clutch possessions on the floor over ' + mm + ' minutes in ' + (p.games || 0) + (p.games === 1 ? ' game' : ' games') +
+      (poss < 40 ? ' · a small sample: a basket or two moves these a long way' : '')));
+    const line = el('div', 'tclx-line');
+    [['MIN', mm], ['POSS', String(poss)], ['PTS', String(p.pts)], ['FG', p.fgm + '/' + p.fga], ['3P', p.p3m + '/' + p.p3a],
+     ['FT', p.ftm + '/' + p.fta], ['TOV', String(p.tov)], ['REB', String((p.or || 0) + (p.dr || 0))]].forEach(([l, v]) => {
+      const c = el('div'); c.append(el('b', null, v), el('span', null, l)); line.appendChild(c);
+    });
+    wrap.appendChild(line);
+    wrap.appendChild(el('p', 'tclx-note', 'Clutch time is the last four minutes of the fourth quarter (the second half, in halves) and all of overtime, while the score is within five points going into the play, worked out from the play-by-play of his club’s games in this scope' + (logs.capped ? ' (its last ' + logs.capped + ')' : '') + '. Usage is the share of the club’s plays he ended while on the floor in it; TS% is coloured against the club’s clutch TS%, and the net rating with him on against the club’s in all its clutch time. Possessions are the club’s while he was on the floor (estimated).'));
+    host.appendChild(wrap);
+    const note = $('#clutchNote');
+    if (note) note.textContent = (p.games || 0) + (p.games === 1 ? ' game' : ' games') + ' · ' + mm + ' minutes · ' + poss + ' possessions';
+  } catch (e) {
+    console.warn('[clutch]', e);
+    show(false);
+  }
+}
+
 /* this scope's split: { state: 'wait' } until it is worked out, and the bars are drawn again when it is */
 function vsLines(mine) {
   const ids = (SCOPE_IDS || []).slice().sort(), key = ids.join(',');
@@ -1629,6 +1697,7 @@ async function seasonLog(ids, sn) {
       } catch (e) { console.warn('[season]', e); }
       paintTiles(mine, field);
       paintBars(mine, field);
+      paintClutch(ids, pl.id, team).catch(() => {});
       if (window.EpinoiaSosChip) window.EpinoiaSosChip.paint(null, { games: sosGames, teamId: team && team.id });
       /* ---- events ----
          The season's situations (second chance, transition, off turnovers,

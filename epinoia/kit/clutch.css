@@ -1,0 +1,45 @@
+/* ============================================================================
+   CLUTCH TIME (clutch.js): the club page's section (t/team.js teamClutch) and the player page's (p/player.js paintClutch).
+   Moved out of teampage.css (2026-10-07) so both pages load the one file. The tiles, the sample line, the box line and
+   the list of who takes the plays.
+   ============================================================================ */
+.tclx{display:grid;gap:14px;padding:14px 12px}
+.tclx-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tclx-tile{display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 6px 10px;border:1px solid var(--rule);border-radius:10px;
+  background:var(--panel);box-shadow:inset 0 -3px 0 var(--rule-2)}
+.tclx-tile b{font-family:var(--f-score);font-weight:400;font-size:26px;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.tclx-tile span{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;color:var(--ink-3);text-align:center}
+.tclx-tile em{font-style:normal;font-family:var(--f-data);font-size:10px;color:var(--ink-3)}
+.tclx-tile.up{box-shadow:inset 0 -3px 0 var(--good);background:color-mix(in srgb,var(--good) 10%,var(--panel))}
+.tclx-tile.dn{box-shadow:inset 0 -3px 0 var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--panel))}
+.tclx-tile.st{box-shadow:inset 0 -3px 0 var(--lume)}
+.tclx-use h4{margin:0 0 6px;font-family:var(--f-micro);font-weight:400;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--lume)}
+.tclx-r{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,2fr) 48px 36px 44px 48px;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--rule)}
+.tclx-r > a{font-family:var(--f-ui);font-weight:700;font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tclx-h{border-top:0;padding-top:0}
+.tclx-h span{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;color:var(--ink-3)}
+.tclx-h span:nth-child(n+3){text-align:right}
+.tclx-bar{position:relative;display:flex;align-items:center;gap:8px;height:16px}
+.tclx-bar i{display:block;height:9px;border-radius:5px;background:var(--lume);min-width:3px}
+.tclx-bar b{font-family:var(--f-data);font-size:11.5px;font-weight:700;color:var(--ink);white-space:nowrap}
+.tclx-ts, .tclx-n{font-family:var(--f-data);font-size:12px;text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.tclx-ts.up{color:var(--good);font-weight:700} .tclx-ts.dn{color:var(--bad);font-weight:700}
+.tclx-sample{margin:-4px 0 0;font-family:var(--f-micro);font-size:9.5px;letter-spacing:.06em;color:var(--ink-3)}
+.tclx-n.tclx-p{color:var(--ink-3)}
+.tclx-note{margin:0;font-size:11px;line-height:1.5;color:var(--ink-3)}
+@media (max-width:640px){
+  .tclx-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tclx-r{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) 38px 26px 34px;gap:7px}
+  .tclx-r > :nth-child(6){display:none}
+}
+/* the player's own clutch line (p/player.js paintClutch): one cell a figure, four to a row on a phone */
+.tclx-line{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--panel)}
+.tclx-line > div{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-left:1px solid var(--rule)}
+.tclx-line > div:first-child{border-left:0}
+.tclx-line b{font-family:var(--f-data);font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+.tclx-line span{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;color:var(--ink-3)}
+@media (max-width:640px){
+  .tclx-line{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .tclx-line > div:nth-child(5){border-left:0}
+  .tclx-line > div:nth-child(n+5){border-top:1px solid var(--rule)}
+}
