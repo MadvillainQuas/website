@@ -157,8 +157,15 @@ ok('the page has the section, under the lineups, its header named so it can be h
 ok('it starts when it comes near, as the other heavy sections do', /whenNear\(\$\('#teamclutch'\), \(\) => \{ teamClutch\(team\)/.test(TJ));
 ok('with no clutch time, the section and its header are hidden', /if \(!S\.games \|\| !\(S\.dur > 0\)\) \{ hide\(\); return; \}/.test(TJ));
 ok('behind the splits lock, as starters and bench are', /sectionLocked\('splits'\)\) \{\s*host\.innerHTML = accessTeaser\(\{ compact: true, key: 'splits', title: 'Clutch time'/.test(TJ));
-ok('net, offence and defence against the season, and the top five by usage on a floor of time and plays', /tile\('CLUTCH NET'/.test(TJ) && /tile\('CLUTCH ORTG'/.test(TJ) && /tile\('CLUTCH DRTG'/.test(TJ) &&
-   /x\.p\.sec >= CLUTCH_MIN_SEC && num\(x\.usg\) && x\.p\.mine >= CLUTCH_MIN_PLAYS\)\.sort\(\(a, b\) => b\.usg - a\.usg\)\.slice\(0, 5\)/.test(TJ));
+ok('net, offence and defence against the season, and the top five by usage among players with five clutch minutes', /tile\('CLUTCH NET'/.test(TJ) && /tile\('CLUTCH ORTG'/.test(TJ) && /tile\('CLUTCH DRTG'/.test(TJ) &&
+   /const CLUTCH_MIN_SEC = 300;/.test(TJ) && /x\.p\.sec >= CLUTCH_MIN_SEC && num\(x\.usg\) && x\.p\.mine > 0\)\.sort\(\(a, b\) => b\.usg - a\.usg\)\.slice\(0, 5\)/.test(TJ));
+ok('the sample is shown: the club\'s clutch possessions, and each player\'s', /clutch possessions a side over/.test(TJ) && /'poss', 'min'\]/.test(TJ) && /CL\.playerPoss\(x\.p\)/.test(TJ) &&
+   /<th>poss<\/th>/.test(TP) && /CL\.playerPoss\(p\)/.test(TP));
+ok('a player\'s possessions: the plays while he was on, less the offensive rebounds', near(C.playerPoss(G.players.a1), 2.88) && C.playerPoss({ use: 5, orOn: 2 }) === 3 && C.playerPoss(null) === 0, C.playerPoss(G.players.a1));
+seq = 0;
+const orb = C.clutchGame({ id: 'g6', starters: [H, A], period: 4, events: [
+  ev(4, 100000, 0, 'p2_miss', { pid: 'a1' }), ev(4, 98000, 0, 'reb', { pid: 'a2', off: true }), ev(4, 96000, 0, 'p2_made', { pid: 'a2' })] }, 0);
+ok('an offensive rebound keeps the possession: two shots, one possession for each of the five', near(C.playerPoss(orb.players.a3), 1) && orb.players.a3.orOn === 1, orb.players.a3);
 
 const M = rd('supabase', 'migrations', '0238_career_ft.sql');
 ok('0238: anyone can read a career FT%', /for select to anon, authenticated using \(true\)/.test(M));

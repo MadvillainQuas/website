@@ -13,7 +13,8 @@
      dur                 seconds of clutch time
      own, opp            the box of each side: pts fga fgm p3a p3m fta ftm tov or dr
      players             { pid: the same box, plus sec (seconds on the floor), use (the team's plays while on: FGA +
-                          0.44 FTA + TOV) and mine (the ones the player ended): usage = mine / use }
+                          0.44 FTA + TOV), mine (the ones the player ended): usage = mine / use, and orOn (the team's
+                          offensive rebounds while on): playerPoss = use - orOn, the possessions he was on for }
      fives               { key: { ids, sec, own, opp } } - the side's five on the floor, and both sides' boxes while it was
      seqs                the ids (seq) of every play in clutch time, so other modules (the shot chart) can pick theirs out
      final               [the side's score, the other's] at the end of the log (who won)
@@ -82,7 +83,7 @@ function clutchGame(g, side, rule) {
   const score = [0, 0];
   let five = [st[0].slice().sort(), st[1].slice().sort()];
   let lastCum = 0;
-  const pl = pid => (out.players[pid] = out.players[pid] || Object.assign(box(), { sec: 0, use: 0, mine: 0 }));
+  const pl = pid => (out.players[pid] = out.players[pid] || Object.assign(box(), { sec: 0, use: 0, mine: 0, orOn: 0 }));
   const fiveOf = ids => { const k = ids.join(','); return out.fives[k] = out.fives[k] || { ids: ids.slice(), sec: 0, own: box(), opp: box() }; };
   /* the game's periods (engine.js formatOf: its own format, or halves read off the log), and the moment of the game clutch time
      can start: 4:00 left in the last regular period */
@@ -117,6 +118,8 @@ function clutchGame(g, side, rule) {
           five[s].forEach(pid => { pl(pid).use += USE[t]; });
           if (ev.pid) pl(ev.pid).mine += USE[t];
         }
+        /* the side's offensive rebounds while he was on: they keep a possession going, so his possessions are his plays less them */
+        if (t === 'reb' && ev.off) five[s].forEach(pid => { pl(pid).orOn++; });
       }
     }
     if (POINTS[t]) score[ev.team] += POINTS[t];
@@ -151,8 +154,8 @@ function season(list, rule) {
     S.dur += G.dur;
     addBox(S.own, G.own); addBox(S.opp, G.opp);
     Object.keys(G.players).forEach(pid => {
-      const p = G.players[pid], q = S.players[pid] = S.players[pid] || Object.assign(box(), { sec: 0, use: 0, mine: 0, games: 0 });
-      addBox(q, p); q.sec += p.sec; q.use += p.use; q.mine += p.mine || 0; if (p.sec > 0) q.games++;
+      const p = G.players[pid], q = S.players[pid] = S.players[pid] || Object.assign(box(), { sec: 0, use: 0, mine: 0, orOn: 0, games: 0 });
+      addBox(q, p); q.sec += p.sec; q.use += p.use; q.mine += p.mine || 0; q.orOn += p.orOn || 0; if (p.sec > 0) q.games++;
     });
     Object.keys(G.fives).forEach(k => {
       const f = G.fives[k], q = S.fives[k] = S.fives[k] || { ids: f.ids, sec: 0, own: box(), opp: box() };
@@ -182,6 +185,9 @@ function shooting(b) {
 }
 /* a player's usage in the clutch: the share of the team's plays while they were on the floor that they ended */
 const usage = p => (p && p.use > 0 ? 100 * num(p.mine) / p.use : null);
+/* the club's possessions while a player was on the floor in clutch time (estimated, as poss() is: its plays less its offensive
+   rebounds), the sample his usage and shooting rest on */
+const playerPoss = p => (p ? Math.max(0, num(p.use) - num(p.orOn)) : 0);
 
-return { RULE, isClutch, clutchGame, season, ratings, shooting, usage, poss, BOX };
+return { RULE, isClutch, clutchGame, season, ratings, shooting, usage, poss, playerPoss, BOX };
 }));

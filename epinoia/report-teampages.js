@@ -1160,13 +1160,13 @@ function modules(ctx) {
           svg += '</svg>';
           const trs = ps.map(x => {
             const p = x.p, bU = E.isNum(x.usg) ? (x.usg >= 25 ? 9 : 0) : 0;
-            return '<tr><td class="l">' + esc(short(x.k)) + '</td><td>' + mins(x.sec) + '</td><td>' + p.pts + '</td><td>' + p.fgm + '/' + p.fga + '</td><td>' + p.ftm + '/' + p.fta + '</td>' +
+            return '<tr><td class="l">' + esc(short(x.k)) + '</td><td>' + mins(x.sec) + '</td><td>' + Math.round(CL.playerPoss(p)) + '</td><td>' + p.pts + '</td><td>' + p.fgm + '/' + p.fga + '</td><td>' + p.ftm + '/' + p.fta + '</td>' +
               '<td data-b="' + bU + '">' + f1(x.usg) + '</td><td data-b="' + (E.isNum(x.ts) && x.tsa >= 2 && E.isNum(sh.ts) ? E.bandVs(x.ts, sh.ts, 8, false) : 0) + '">' + f1(x.ts) + '</td></tr>';
           }).join('');
           out.push(block(title('Clutch usage and true shooting', 'who takes the plays in clutch time, and how well they score them · the dot’s size is their clutch minutes') +
             '<div class="rp-cl-two"><div>' + (sc.length ? svg : '<div class="rp-empty">Too few clutch shots to chart.</div>') + '</div>' +
-            '<div><table class="rp-tbl rp-cl-pl"><thead><tr><th class="l">player</th><th>min</th><th>pts</th><th>FG</th><th>FT</th><th>USG%</th><th>TS%</th></tr></thead><tbody>' + trs + '</tbody></table></div></div>' +
-            '<p class="rp-note">Usage: the share of the club’s plays (a shot, 0.44 of a free throw, a turnover) a player ended while on the floor in clutch time; one in five is a fair share. True shooting: points against shots, free throws included. Green above the club’s clutch TS%, red below; blue for a usage of 25% or more. The chart leaves out a player with fewer than two shots.</p>'));
+            '<div><table class="rp-tbl rp-cl-pl"><thead><tr><th class="l">player</th><th>min</th><th>poss</th><th>pts</th><th>FG</th><th>FT</th><th>USG%</th><th>TS%</th></tr></thead><tbody>' + trs + '</tbody></table></div></div>' +
+            '<p class="rp-note">Usage: the share of the club’s plays (a shot, 0.44 of a free throw, a turnover) a player ended while on the floor in clutch time; one in five is a fair share. True shooting: points against shots, free throws included. Green above the club’s clutch TS%, red below; blue for a usage of 25% or more. Poss: the club’s possessions while the player was on the floor in clutch time (estimated), the sample behind their figures. The chart leaves out a player with fewer than two shots.</p>'));
           R.legendExtra.push(['CLUTCH TIME', 'The last four minutes of the fourth quarter (of the second half, in halves) and all of overtime, while the score is within five points going into the play: worked out from the play-by-play of every game.'],
             ['CLUTCH USG%', 'The share of the club’s plays a player ended (field goal attempts + 0.44 × free throw attempts + turnovers) while on the floor in clutch time.'],
             ['CLUTCH TS%', 'Points ÷ (2 × (field goal attempts + 0.44 × free throw attempts)) in clutch time.']);

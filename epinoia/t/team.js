@@ -1891,9 +1891,9 @@ async function lineupCards(team) {
    the season, and the five players who take the most of its plays then (usage) with how well they score them (TS%). The
    section is left out, header and all, until the club has had some clutch time. Behind the splits lock, as the starters
    and bench ratings are. */
-/* a player's usage is read once it rests on something: two minutes of clutch time and three plays of his own (a turnover in
-   five minutes is not a 35% usage worth leading the list with) */
-const CLUTCH_MIN_SEC = 120, CLUTCH_MIN_PLAYS = 3;
+/* a player's usage is read once it rests on something: five minutes of clutch time (Louie, 2026-10-07), and the possessions he
+   was on the floor for are printed beside it, so the sample is there to see */
+const CLUTCH_MIN_SEC = 300;
 async function teamClutch(team) {
   const host = $('#teamclutch'), hdr = $('#clutchHdr'), CL = window.EpinoiaClutch;
   if (!host || ACCESS.paywall) return;
@@ -1931,16 +1931,20 @@ async function teamClutch(team) {
     rec.append(el('b', null, S.wins + '–' + S.losses), el('span', null, 'CLUTCH RECORD'), el('em', null, (pm > 0 ? '+' : '') + pm + ' points in it'));
     tiles.appendChild(rec);
     wrap.appendChild(tiles);
+    /* THE SAMPLE (Louie, 2026-10-07): how many possessions the ratings above rest on */
+    const ps = Math.round(Rt.poss);
+    wrap.appendChild(el('p', 'tclx-sample', ps + ' clutch possessions a side over ' + Math.round(S.dur / 60) + ' minutes in ' + S.games + (S.games === 1 ? ' game' : ' games') +
+      (ps < 50 ? ' · a small sample: a few baskets move these ratings a long way' : '')));
     /* the five who end the most of the club's plays while on the floor in clutch time */
     const top = Object.keys(S.players).map(id => ({ id, p: S.players[id], usg: CL.usage(S.players[id]), ts: CL.shooting(S.players[id]).ts }))
-      .filter(x => x.p.sec >= CLUTCH_MIN_SEC && num(x.usg) && x.p.mine >= CLUTCH_MIN_PLAYS).sort((a, b) => b.usg - a.usg).slice(0, 5);
+      .filter(x => x.p.sec >= CLUTCH_MIN_SEC && num(x.usg) && x.p.mine > 0).sort((a, b) => b.usg - a.usg).slice(0, 5);
     if (top.length) {
       const meta = await window.EpinoiaData.playerMeta(top.map(x => x.id)).catch(() => ({}));
       const box = el('div', 'tclx-use');
       box.appendChild(el('h4', null, 'Who takes the plays'));
       const mx = Math.max(30, ...top.map(x => x.usg));
       const head = el('div', 'tclx-r tclx-h');
-      ['player', 'clutch usage', 'TS%', 'pts', 'min'].forEach(t => head.appendChild(el('span', null, t)));
+      ['player', 'clutch usage', 'TS%', 'pts', 'poss', 'min'].forEach(t => head.appendChild(el('span', null, t)));
       box.appendChild(head);
       top.forEach(x => {
         const r = el('div', 'tclx-r');
@@ -1951,15 +1955,15 @@ async function teamClutch(team) {
         bar.append(fill, el('b', null, f1(x.usg) + '%'));
         const ts = el('span', 'tclx-ts ' + tone(x.ts, clubTs, false), f1(x.ts));
         const secs = Math.round(x.p.sec);
-        r.append(a, bar, ts, el('span', 'tclx-n', String(x.p.pts)), el('span', 'tclx-n', Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0')));
+        r.append(a, bar, ts, el('span', 'tclx-n', String(x.p.pts)), el('span', 'tclx-n tclx-p', String(Math.round(CL.playerPoss(x.p)))), el('span', 'tclx-n', Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0')));
         box.appendChild(r);
       });
       wrap.appendChild(box);
     }
-    wrap.appendChild(el('p', 'tclx-note', 'Clutch time is the last four minutes of the fourth quarter (the second half, in halves) and all of overtime, while the score is within five points going into the play, worked out from the play-by-play. Ratings are per 100 possessions (estimated), each against the club’s own over the season. Usage is the share of the club’s plays a player ended while on the floor in it (one in five is a fair share); TS% is coloured against the club’s clutch TS% (' + f1(clubTs) + '). Players with two minutes or more of clutch time and three plays or more of their own.'));
+    wrap.appendChild(el('p', 'tclx-note', 'Clutch time is the last four minutes of the fourth quarter (the second half, in halves) and all of overtime, while the score is within five points going into the play, worked out from the play-by-play. Ratings are per 100 possessions (estimated), each against the club’s own over the season. Usage is the share of the club’s plays a player ended while on the floor in it (one in five is a fair share); TS% is coloured against the club’s clutch TS% (' + f1(clubTs) + '). Poss is the club’s possessions while the player was on the floor in clutch time (estimated), the sample their usage and TS% rest on. Players with five minutes or more of clutch time.'));
     host.appendChild(wrap);
     const note = $('#clutchNote');
-    if (note) note.textContent = S.games + ' of the last ' + S.of + ' games · ' + Math.round(S.dur / 60) + ' minutes';
+    if (note) note.textContent = S.games + ' of the last ' + S.of + ' games · ' + Math.round(S.dur / 60) + ' minutes · ' + ps + ' possessions';
   } catch (e) {
     console.warn('[clutch]', e);
     hide();
