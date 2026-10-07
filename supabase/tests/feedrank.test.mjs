@@ -621,5 +621,23 @@ console.log('\na series: its newest episode alone on a front page');
   ok('the unranked order too (tidy)', FR.tidy(rows, { store: { enabled: () => false } }).slice(-2).map(r => r.id).sort().join() === 's1,s2');
 }
 
+/* A VIDEO BY WHAT IT IS (2026-10-07): highlights a little up, the game's own a little more; a press conference and any
+   other video a touch lower; a whole game holds */
+{
+  console.log('\nhighlights a little up');
+  const now = Date.parse('2026-10-07T12:00:00Z');
+  const v = (id, kind, game) => ({ id, title: id, url: 'https://www.youtube.com/watch?v=' + id.padEnd(11, 'x'), published_at: '2026-10-07T10:00:00Z',
+    kind: 'channel', source_slug: 'x', video_kind: kind, game: game ? { id: 'g' } : null });
+  const P = { l: {}, p: {}, r: {}, i: {} };
+  const sc = it => FR.scoreOf(it, P, now).score;
+  const hlG = sc(v('a', 'highlights', true)), hl = sc(v('b', 'highlights')), fu = sc(v('c', 'full', true)), vi = sc(v('d', 'video')), pr = sc(v('e', 'press'));
+  ok("a game's highlights > highlights on no game > a whole game > a video = a press conference, each by a little",
+     hlG > hl && hl > fu && fu > vi && Math.abs(vi - pr) < 1e-9 && hlG / vi < 1.8, { hlG, hl, fu, vi, pr });
+  ok('...a story that is no video is untouched', Math.abs(sc({ id: 'n', title: 'n', published_at: '2026-10-07T10:00:00Z', kind: 'outlet', source_slug: 'x' })
+     - sc({ id: 'n2', title: 'n2', published_at: '2026-10-07T10:00:00Z', kind: 'outlet', source_slug: 'x', video_kind: null })) < 1e-9);
+  const order = FR.rank([v('d', 'video'), v('e', 'press'), v('b', 'highlights'), v('a', 'highlights', true)], P, now).map(r => r.id);
+  ok('...so, all else equal, the highlights lead the order', order.slice(0, 2).join() === 'a,b', order);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

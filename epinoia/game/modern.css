@@ -64,7 +64,10 @@
 .mv-note{ padding:8px 0 2px }
 
 /* the full line, beside the face on a desktop and as a sheet on a phone */
-.mv-pop{ position:fixed; z-index:60; width:340px; max-width:calc(100vw - 16px); background:var(--bg-elevated); color:var(--text-primary);
+/* SOLID, NOT SEE-THROUGH (2026-10-07): the dark theme's --bg-elevated is 85% opaque, and over the courts the card let the
+   faces and names behind it show through; the same colour is laid over the page's solid ground */
+.mv-pop{ position:fixed; z-index:60; width:340px; max-width:calc(100vw - 16px);
+  background:linear-gradient(var(--bg-elevated),var(--bg-elevated)),var(--bg-base,#060c09); color:var(--text-primary);
   border:1px solid var(--border-subtle); border-radius:14px; box-shadow:0 18px 50px rgba(0,0,0,.45); padding:12px 12px 10px; font-family:var(--f-head) }
 .mv-pop.sheet{ left:8px !important; right:8px; bottom:calc(8px + env(safe-area-inset-bottom)); top:auto !important; width:auto; max-height:70vh; overflow:auto;
   border-radius:16px; padding-bottom:calc(10px + var(--tabbar-h, 56px)) }

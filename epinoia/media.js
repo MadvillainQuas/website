@@ -242,15 +242,23 @@
   }
 
   /* HIGHLIGHTS FIRST, wherever a game's highlights and other videos are shown together (HOME's All, a league's All
-     videos). The rows keep the order they came in (the feed's ranking, or newest first), except that a game's
-     highlights from the last FRESH_DAYS lead, in that order, and an older one moves up LIFT places. */
-  const FRESH_DAYS = 7, LIFT = 8;
+     videos, a club's). The rows keep the order they came in (the feed's ranking, or newest first), except that:
+       * a game's highlights from the last FRESH_DAYS lead, in that order, and an older one moves up LIFT places;
+       * highlights on no game (a cup's, a player's, a week's best) from the last FRESH_DAYS move up HL_LIFT places, an
+         older one LIFT / 2 (2026-10-07: they had no lift at all);
+       * anything that looks like a YouTube Short (feedrank.js isShort) goes to the very end. */
+  const FRESH_DAYS = 7, LIFT = 8, HL_LIFT = 12;
   function prioritise(rows, now) {
     const t = now || Date.now();
+    const F = window.EpinoiaFeedRank;
     return (rows || []).map((r, i) => {
-      const hl = r && r.video_kind === 'highlights' && r.game;
+      const hl = !!r && r.video_kind === 'highlights';
       const fresh = hl && (t - new Date(r.published_at).getTime()) <= FRESH_DAYS * 86400000;
-      return { r, k: fresh ? i - 1e6 : hl ? i - LIFT - 0.5 : i };
+      const short = !!(F && typeof F.isShort === 'function' && F.isShort(r));
+      const k = short ? i + 1e6
+        : hl && r.game ? (fresh ? i - 1e6 : i - LIFT - 0.5)
+        : hl ? (fresh ? i - HL_LIFT - 0.5 : i - LIFT / 2 - 0.5) : i;
+      return { r, k };
     }).sort((a, b) => a.k - b.k).map(x => x.r);
   }
 

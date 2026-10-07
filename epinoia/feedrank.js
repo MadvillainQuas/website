@@ -161,6 +161,10 @@ const W = Object.freeze({
   KIND_PRIOR: 3,
   KIND_GAIN: 1.25,
   KIND_FLOOR: 0.6,                     // a group the reader never opens keeps 60% of its weight: it sinks, it does not go
+  /* A VIDEO BY WHAT IT IS (2026-10-07): a game's highlights climb a little - more when they are matched to the game -,
+     a whole game holds, a press conference and any other video sit a touch lower */
+  VIDEO_KIND: { highlights: 1.3, full: 1, press: 0.9, video: 0.9 },
+  VIDEO_GAME_HL: 1.15,
   KIND_MAX: 2,
   KIND_OPEN_PTS: 1,
   WHY_KIND_MIN: 0.25,                  // a group's multiplier this far above 1 is worth saying why
@@ -503,8 +507,11 @@ function scoreOf(it, profile, now, w) {
   const gw = P.groupW || groupWeights(P, now, c);
   const kindMul = gw[group] != null ? gw[group] : 1;
 
-  const score = base * kindMul * rec * personal * imp * langFactor * awayMul + follow + boost;
-  return { score, away, dropped, weakened, shown, group, kindMul, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
+  /* a video by what it is: highlights a little up, the game's own highlights a little more */
+  const vk = it && it.video_kind && c.VIDEO_KIND ? (c.VIDEO_KIND[it.video_kind] || 1)
+    * (it.video_kind === 'highlights' && it.game ? (c.VIDEO_GAME_HL || 1) : 1) : 1;
+  const score = base * kindMul * rec * personal * imp * langFactor * awayMul * vk + follow + boost;
+  return { score, vk, away, dropped, weakened, shown, group, kindMul, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
            sigPoints, sigReasons: tier === 'report' && sig && Array.isArray(sig.reasons) ? sig.reasons : [], imp,
            terms: { league: c.W_LEAGUE * L, country: c.W_COUNTRY * C, pub: c.W_PUB * Pp } };
 }
