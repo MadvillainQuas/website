@@ -249,6 +249,11 @@ jobs:
       - name: The match report must say true things
         run: node supabase/tests/report.test.mjs
 
+      - name: Club and player reports over linked competitions (SLB + EuroCup)
+        # the linked side's ids counted as the club's and the player's, summed before any rate; ranked against the
+        # league's own field all the same, and the cover says so; the RAPM never reads the linked games
+        run: node supabase/tests/report-scopes.test.mjs
+
       - name: A Synergy play-type file read right - drives left, right and straight, their shots, face-up and post-up defence
         # epinoia/synergy.js over a made-up player in the scraper's own columns (Side, Play Type, Sub 1..4, POSS, PTS, FG MADE ...):
         # an isolation's drives counted once (the Overall total, the split's shot types), a spot-up and a pick-and-pop's too;

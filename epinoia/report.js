@@ -1600,6 +1600,33 @@ function ui(state) {
     mods.appendChild(lab);
   });
   bar.appendChild(mods);
+  /* THE COMPETITIONS (Louie, 2026-10-07): a club or a player linked to the same squad in another competition of the season
+     (0178: London Lions in SLB and in the EuroCup) can have the report's own lines over all of them. The page offers the
+     choices (o.scopes: [{ k, label }], 'home' first) and is told the one chosen (o.setScope) before a build; shown only when
+     there is more than one. Kept with the other settings, and ?rpscope= in the address asks for one (the mailer). A build
+     waits for the choice to be known, so the first one is already the reader's. */
+  conf.scope = 'home';
+  state.scopeReady = null;
+  if (typeof o.scopes === 'function' && typeof o.setScope === 'function') {
+    const want = (() => { try { return new URLSearchParams(root.location.search).get('rpscope'); } catch (_) { return null; } })() || saved.scope || 'home';
+    const sc = el('label', 'rp-f rp-scope');
+    sc.hidden = true;
+    sc.append(el('span', null, 'competitions'));
+    const sel = el('select');
+    sc.appendChild(sel);
+    bar.insertBefore(sc, mods);
+    state.scopeReady = Promise.resolve().then(() => o.scopes()).catch(() => null).then(list => {
+      list = Array.isArray(list) ? list : [];
+      if (list.length > 1) {
+        list.forEach(s => { const op = el('option', null, s.label); op.value = s.k; sel.appendChild(op); });
+        conf.scope = list.some(s => s.k === want) ? want : 'home';
+        sel.value = conf.scope;
+        sc.hidden = false;
+      }
+      o.setScope(conf.scope);
+    });
+    sel.onchange = () => { conf.scope = sel.value; o.setScope(conf.scope); persist(); rebuild(); };
+  }
   /* the extras a module offers (the template pickers, RAPM) */
   const extras = el('div', 'rp-extras');
   bar.appendChild(extras);
@@ -1626,7 +1653,7 @@ function ui(state) {
   wrap.appendChild(pages);
   panel.appendChild(wrap);
   state.pages = pages;
-  const persist = () => store.set(key, { on: conf.on, title: conf.title, tpl: conf.tpl });
+  const persist = () => store.set(key, { on: conf.on, title: conf.title, tpl: conf.tpl, scope: conf.scope });
   let tm = null;
   tIn.oninput = () => { conf.title = tIn.value; persist(); clearTimeout(tm); tm = setTimeout(rebuild, 350); };
   sIn.oninput = () => { conf.subtitle = sIn.value; clearTimeout(tm); tm = setTimeout(rebuild, 350); };
@@ -1685,6 +1712,8 @@ function ui(state) {
     const run = ++state.running;
     say('building…');
     try {
+      if (state.scopeReady) await state.scopeReady;                // the competitions chosen, before anything is read
+      if (run !== state.running) return;
       const pagesNew = el('div', 'rp-stage');
       pages.textContent = '';
       pages.appendChild(pagesNew);

@@ -1187,14 +1187,23 @@ function reportTab(team) {
   const ctx = {
     /* the season line of the scope shown, with the league's other seasons to rank against (report.js loadPrior, read once a scope) */
     season: async () => {
-      const T = await rpGet('season');
-      if (!T || !T.S) return T;
-      if (!T.prior) T.prior = await E.loadPrior(api, team.league_id || (team.leagues && team.leagues.id), T.scopeComps, T.kind, 4).catch(() => []);
+      const T0 = await rpGet('season');
+      if (!T0 || !T0.S) return T0;
+      if (!T0.prior) T0.prior = await E.loadPrior(api, team.league_id || (team.leagues && team.leagues.id), T0.scopeComps, T0.kind, 4).catch(() => []);
+      /* over the linked sides too, when the report is asked for them (rpSeason): ranked against the league's field all the same */
+      const T = await rpSeason(team).catch(e => { console.warn('[report, linked sides]', e); return T0; });
+      if (T !== T0) T.prior = T0.prior;
       return T;
     },
-    logs: () => seasonLogs(team),
-    clubLogs: scoped => clubLogs(team, scoped),
-    starters: comps => scopeStarters(comps),
+    logs: () => rpLogs(team),
+    clubLogs: async scoped => clubLogs(team, scoped, await rpLogs(team)),
+    starters: async comps => {
+      const base = await scopeStarters(comps);
+      if (!RP_COMBINE) return base;
+      const L = await rpLogs(team);
+      return (base || []).concat(L.gs.filter(g => RP_LINKED_IDS.has(g.id)));
+    },
+    scopeKey: () => (RP_COMBINE ? 'all' : 'home'),
     depth: all => depthShares(team, 'season', !!all),
     /* the rebounds off each zone need the competition's shots read once (shotchart.js attachZoneStats), as the page's own
        shot zones card reads them when it is opened */
@@ -1224,8 +1233,15 @@ function reportTab(team) {
       RP_FIELD = { key, p };
       return p;
     },
-    stints: gs => { const by = {}; gs.forEach(g => { by[g.id] = g; }); return D.stints(gs.map(g => g.id), team.id, by); },
-    rapm: window.EpinoiaRAPM ? ((ids, fn) => window.EpinoiaRAPM.season(D, ids, fn).then(r => r.rapm)) : null,
+    stints: async gs => {
+      const by = {}; gs.forEach(g => { by[g.id] = g; });
+      const rows = await D.stints(gs.map(g => g.id), team.id, by);
+      if (!RP_COMBINE || !RP_ALIAS || !rows.some(r => RP_LINKED_IDS.has(r.game_id))) return rows;
+      const A = await RP_ALIAS;
+      return rows.map(r => (RP_LINKED_IDS.has(r.game_id) ? Object.assign({}, r, { player_ids: rpAliasDeep(r.player_ids || [], A.player) }) : r));
+    },
+    /* the league's regression: never the linked side's games */
+    rapm: window.EpinoiaRAPM ? ((ids, fn) => window.EpinoiaRAPM.season(D, (ids || []).filter(id => !RP_LINKED_IDS.has(id)), fn).then(r => r.rapm)) : null,
     bigGames: D.BIG_GAMES || 0,
     week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 }) : null
   };
@@ -1235,12 +1251,20 @@ function reportTab(team) {
     lock: { key: 'clubReport', what: 'The club report', league: lg.id || null, get leagueSlug() { return ACCESS.slug || lg.slug || ''; },
             lines: ['A printable A4 scouting report on any club: four factors, shot charts, the squad, lineups and the shot clock.'] },
     modules: RT.modules(ctx),
+    /* the competitions (report.js): the league alone, or with the linked sides (rpScopes) */
+    scopes: () => rpScopes(team),
+    setScope: k => { RP_COMBINE = k === 'all'; },
     context: () => ({
       kind: 'team', name: team.name, club: team.name, kicker: 'Club report',
       crest: window.epinoiaLogoUrl && team.logo_path ? window.epinoiaLogoUrl(team.logo_path, 512) : null,
       colour: team.colour || '#93f2bf', accent: E.inkOn ? E.inkOn(team.colour) : '#08603f',
       monogram: team.short_name && team.short_name.length <= 4 ? team.short_name : null,
-      line: [team.name, lg.name].filter(Boolean).join(' · '), scope: scopeText(), subtitle: scopeText()
+      line: [team.name, lg.name].filter(Boolean).join(' · '),
+      scope: RP_COMBINE && RP_SCOPE_LABEL ? RP_SCOPE_LABEL + (SEASON_NAME ? ' ' + seasonText(SEASON_NAME) : '') : scopeText(),
+      subtitle: RP_COMBINE && RP_SCOPE_LABEL
+        ? RP_SCOPE_LABEL + (SEASON_NAME ? ' ' + seasonText(SEASON_NAME) : '') + ' · ranked among ' + (lg.name || 'the league') + ' clubs' : scopeText(),
+      /* what it is ranked against, where that is not what it is over (the league's own, when the lines take in the linked sides) */
+      field: RP_COMBINE && RP_SCOPE_LABEL ? scopeText() : null
     })
   });
 }
@@ -1376,7 +1400,7 @@ async function record(team) {
     (b.games.length - a.games.length))[0];
   REC.at = best ? best.id : null;
   drawRec();
-  recLinked(team).catch(e => console.warn('[record linked]', e));
+  LINKED_READY = recLinked(team).catch(e => console.warn('[record linked]', e));
 }
 
 /* THE SAME SQUAD IN ANOTHER COMPETITION. A club's linked sides (0178) are its other entries anywhere -- London Lions'
@@ -1431,6 +1455,171 @@ async function recLinked(team) {
   if (!added) return;
   recLabel();
   drawRec();
+}
+
+/* ---------------------------------------------- the report over linked sides ---
+   THE CLUB REPORT OVER EVERY COMPETITION OF THE SEASON (Louie, 2026-10-07): London Lions' report can be its SLB line, or
+   its SLB and EuroCup lines as one. The EuroCup side is another club row with other player rows (0178 links them, the
+   record card's linked sides above), so its games are read with its ids put on this club's (RP_ALIAS: its club ->
+   this one, each linked player profile -> the one this club's league knows him by) and summed with the league's games
+   (data.js season, opts.alias), every rate worked out from the joint totals. What it is RANKED against stays the
+   league's clubs and players: a EuroCup side is not in the SLB field, and a field of two leagues would rank a club
+   against clubs it never plays. The report says so on its cover. The play-by-play sections (lineups, combinations,
+   the shot clock, clutch) read the linked side's games too, under the same ids; the RAPM, the depth chart and the
+   week's card stay the league's. */
+let LINKED_READY = Promise.resolve();
+let RP_COMBINE = false;
+let RP_ALIAS = null, RP_LINKED_G = null, RP_MERGED = null, RP_LOGS = null;
+const RP_LINKED_IDS = new Set();
+async function rpSides() {
+  await LINKED_READY.catch(() => null);
+  return REC.cards.filter(c => !c.own && c.teamId);
+}
+/* the linked sides' finished games of the season, with what the logs need */
+function rpLinkedGames(sides) {
+  if (RP_LINKED_G) return RP_LINKED_G;
+  const D = window.EpinoiaData;
+  RP_LINKED_G = (async () => {
+    const out = [];
+    for (const tid of [...new Set(sides.map(c => c.teamId))]) {
+      const comps = sides.filter(c => c.teamId === tid).map(c => c.id);
+      (await D.all(`games?or=(home_team_id.eq.${tid},away_team_id.eq.${tid})&competition_id=in.(${comps.join(',')})&status=eq.final` +
+        `&select=id,competition_id,home_team_id,away_team_id,home_score,away_score,tipoff_at,period,starters,roster_snapshot&order=tipoff_at.desc`))
+        .forEach(g => { g.__side = g.home_team_id === tid ? 0 : 1; out.push(g); });
+    }
+    out.forEach(g => RP_LINKED_IDS.add(g.id));
+    return out;
+  })();
+  RP_LINKED_G.catch(() => { RP_LINKED_G = null; });
+  return RP_LINKED_G;
+}
+/* whose ids count as whose: the linked side -> this club, and each of its players with a profile linked to one of this
+   club's season (player_group_members) -> that one; a player only on the linked side keeps his own */
+function rpAlias(team, sides) {
+  if (RP_ALIAS) return RP_ALIAS;
+  RP_ALIAS = (async () => {
+    const tA = new Map(sides.map(c => [c.teamId, team.id]));
+    const own = SEASON_COMPS && SEASON_COMPS.length
+      ? await api(`player_season_stats?team_id=eq.${team.id}&competition_id=in.(${SEASON_COMPS.join(',')})&select=player_id`) : [];
+    const theirs = [];
+    for (const c of sides) theirs.push(...await api(`player_season_stats?team_id=eq.${c.teamId}&competition_id=eq.${c.id}&select=player_id`));
+    const A = [...new Set(own.map(r => r.player_id).filter(Boolean))], B = [...new Set(theirs.map(r => r.player_id).filter(Boolean))];
+    const ids = A.concat(B), grp = new Map();
+    for (let i = 0; i < ids.length; i += 60) {
+      (await api(`player_group_members?player_id=in.(${ids.slice(i, i + 60).join(',')})&select=player_id,group_id`))
+        .forEach(r => grp.set(r.player_id, r.group_id));
+    }
+    const ownOf = new Map();
+    A.forEach(id => { const g = grp.get(id); if (g && !ownOf.has(g)) ownOf.set(g, id); });
+    const pA = new Map();
+    B.forEach(id => { const o = ownOf.get(grp.get(id)); if (o && o !== id) pA.set(id, o); });
+    /* A PROFILE NOBODY HAS LINKED YET (the EuroCup's "Mo Soluade", SLB's "Morayo Soluade"): one of the linked side's players
+       with no link is taken for one of this club's with no counterpart when the surname is the same and the first name
+       starts with the same letter - and only when exactly one of this club's fits, so two brothers stay two players */
+    const loose = B.filter(id => !pA.has(id) && !A.includes(id));
+    const free = A.filter(id => ![...pA.values()].includes(id));
+    if (loose.length && free.length && window.EpinoiaData && window.EpinoiaData.playerMeta) {
+      const M = await window.EpinoiaData.playerMeta(loose.concat(free)).catch(() => ({}));
+      const fold = s => String(s || '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z\s'-]/g, '').trim();
+      const sig = id => { const n = fold((M[id] || {}).name).split(/\s+/).filter(Boolean); return n.length > 1 ? n[0][0] + '|' + n.slice(1).join(' ') : null; };
+      const bySig = new Map();
+      free.forEach(id => { const k = sig(id); if (k) bySig.set(k, bySig.has(k) ? null : id); });
+      loose.forEach(id => { const k = sig(id), o = k && bySig.get(k); if (o) pA.set(id, o); });
+    }
+    return { team: tA, player: pA };
+  })();
+  RP_ALIAS.catch(() => { RP_ALIAS = null; });
+  return RP_ALIAS;
+}
+/* every id inside a value put through the player map (an event's pid and its payload, a game's starters, a stint's five):
+   a copy, so nothing the page itself keeps is changed */
+function rpAliasDeep(v, P) {
+  if (typeof v === 'string') return P.get(v) || v;
+  if (Array.isArray(v)) return v.map(x => rpAliasDeep(x, P));
+  if (v && typeof v === 'object') { const o = {}; Object.keys(v).forEach(k => { o[k] = rpAliasDeep(v[k], P); }); return o; }
+  return v;
+}
+/* the linked games as this club's: its side's id put on this club's, the starters and the roster under the same ids */
+function rpAsOurs(team, g, A) {
+  const c = rpAliasDeep(g, A.player);
+  if (g.__side === 0) c.home_team_id = team.id; else c.away_team_id = team.id;
+  return c;
+}
+/* THE SEASON, OVER THE LINKED SIDES: the league's field as it is, with this club's row and its players' rows the joint ones */
+async function rpSeason(team) {
+  const T = await rpGet('season');
+  if (!T || !T.S || !RP_COMBINE) return T;
+  const sides = await rpSides();
+  if (!sides.length) return T;
+  const key = (T.scopeComps || []).join(',') + '|' + sides.map(c => c.id).join(',');
+  if (RP_MERGED && RP_MERGED.key === key) return RP_MERGED.p;
+  const D = window.EpinoiaData;
+  const p = (async () => {
+    const [A, lg] = await Promise.all([rpAlias(team, sides), rpLinkedGames(sides)]);
+    const own = (T.S.games || []).filter(g => g.home_team_id === team.id || g.away_team_id === team.id).map(g => g.id);
+    const comps = [...new Set((T.scopeComps || []).concat(sides.map(c => c.id)))];
+    const Sub = await D.season(comps, { rows: false, trim: true, gameIds: own.concat(lg.map(g => g.id)), alias: A });
+    const mineJ = Sub.teams.find(r => r.id === team.id);
+    if (!mineJ) return T;
+    const home = new Map((T.S.players || []).map(r => [r.id, r]));
+    const ours = Sub.players.filter(r => (Sub.teamOfPlayer && Sub.teamOfPlayer.get(r.id)) === team.id || (home.get(r.id) || {}).teamId === team.id);
+    const need = ours.filter(r => !home.has(r.id)).map(r => r.id);
+    const meta = need.length ? await D.playerMeta(need).catch(() => ({})) : {};
+    ours.forEach(r => {
+      const h = home.get(r.id) || meta[r.id] || {};
+      Object.keys(h).forEach(k => { if (!(k in r)) r[k] = h[k]; });
+      r.teamId = team.id;
+    });
+    const oursIds = new Set(ours.map(r => r.id));
+    const linkedGames = Sub.games.filter(g => RP_LINKED_IDS.has(g.id));
+    const byId = Object.assign({}, T.S.byId || {});
+    linkedGames.forEach(g => { byId[g.id] = g; });
+    const S = Object.assign({}, T.S, {
+      teams: T.S.teams.map(r => (r.id === team.id ? mineJ : r)),
+      players: T.S.players.filter(r => !oursIds.has(r.id)).concat(ours),
+      games: (T.S.games || []).concat(linkedGames), byId,
+      teamOfPlayer: new Map([...(T.S.teamOfPlayer || new Map()), ...(Sub.teamOfPlayer || new Map())])
+    });
+    return Object.assign({}, T, { S, mine: mineJ, joint: { comps, sides } });
+  })();
+  RP_MERGED = { key, p };
+  p.catch(() => { RP_MERGED = null; });
+  return p;
+}
+/* THE LOGS, OVER THE LINKED SIDES: the club's own (seasonLogs) and the linked side's games, as this club's */
+async function rpLogs(team) {
+  const own = await seasonLogs(team);
+  if (!RP_COMBINE) return own;
+  const sides = await rpSides();
+  if (!sides.length) return own;
+  if (RP_LOGS) return RP_LOGS;
+  const D = window.EpinoiaData;
+  RP_LOGS = (async () => {
+    const [A, lg] = await Promise.all([rpAlias(team, sides), rpLinkedGames(sides)]);
+    const games = lg.slice(0, 40);
+    const evs = games.length ? await D.events(games.map(g => g.id)) : [];
+    const byG = Object.assign({}, own.byG), sideOf = Object.assign({}, own.sideOf);
+    evs.forEach(e => { const x = rpAliasDeep(e, A.player); (byG[x.gameId] = byG[x.gameId] || []).push(x); });
+    const gs = own.gs.concat(games.map(g => { sideOf[g.id] = g.__side; return rpAsOurs(team, g, A); }))
+      .sort((a, b) => String(b.tipoff_at || '').localeCompare(String(a.tipoff_at || '')));
+    return { gs, byG, sideOf };
+  })();
+  RP_LOGS.catch(() => { RP_LOGS = null; });
+  return RP_LOGS;
+}
+/* the choices the report offers: the league alone, or it with the linked sides (named by their leagues) */
+let RP_SCOPE_LABEL = '';
+async function rpScopes(team) {
+  const sides = await rpSides();
+  if (!sides.length) return [{ k: 'home', label: 'league only' }];
+  const lg = team.leagues || {};
+  /* a league as the season card and the player's chips name it (seasonbar.js leagueAbbr: SLB, EuroCup) */
+  const SB = window.EpinoiaSeasonBar;
+  const short = L => (L && ((SB && SB.leagueAbbr && SB.leagueAbbr(L)) || L.initials || L.name)) || '';
+  const ownName = short(lg) || lg.name || 'league';
+  const others = [...new Set(sides.map(c => short(c.league) || c.name))];
+  RP_SCOPE_LABEL = [ownName].concat(others).join(' + ');
+  return [{ k: 'home', label: ownName + ' only' }, { k: 'all', label: RP_SCOPE_LABEL }];
 }
 
 /* ------------------------------------------------------------ team stats --- */
@@ -1663,10 +1852,10 @@ async function teamStats(team, kind) {
    at a time, so the page stays responsive; each game's segments kept for the page's life, so a scope read again is
    only summed again. */
 const segCache = new Map();
-async function clubLogs(team, scoped) {
+async function clubLogs(team, scoped, logs) {
   const LE = window.EpinoiaLineupEvents;
   if (!LE) return { why: 'not available on this page' };
-  const { gs, byG, sideOf } = await seasonLogs(team);
+  const { gs, byG, sideOf } = logs || await seasonLogs(team);      // logs: the report's, over the linked sides (rpLogs)
   const games = gs.filter(g => scoped.has(g.id));
   if (!games.length) return { why: 'no game log in this scope yet' };
   const recs = [];

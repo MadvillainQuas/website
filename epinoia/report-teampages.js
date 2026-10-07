@@ -155,25 +155,28 @@ function modules(ctx) {
   const rk = (r, n) => (r ? E.ordinal(r.r) + ' of ' + r.n : '');
 
   /* the club's season once: the season object, its row, its scope's games and its lineups' records */
-  let seasonP = null;
-  const season = () => seasonP || (seasonP = Promise.resolve(ctx.season()).catch(e => { seasonP = null; throw e; }));
-  let stintP = null;
-  const stints = () => stintP || (stintP = (async () => {
+  /* each kept for the competitions the report is over (ctx.scopeKey: the club's league, or it and the linked side's): another
+     choice reads them again */
+  const scopeKey = () => (ctx.scopeKey ? ctx.scopeKey() : '');
+  let seasonP = null, seasonK = null;
+  const season = () => (seasonP && seasonK === scopeKey() ? seasonP : (seasonK = scopeKey(), seasonP = Promise.resolve(ctx.season()).catch(e => { seasonP = null; throw e; })));
+  let stintP = null, stintK = null;
+  const stints = () => (stintP && stintK === scopeKey() ? stintP : (stintK = scopeKey(), stintP = (async () => {
     const L = await ctx.logs();
     const st = await ctx.stints(L.gs);
     const ids = [...new Set(st.flatMap(s => s.player_ids || []))];
     const meta = ids.length ? await ctx.meta(ids).catch(() => ({})) : {};
     return { st, meta, L };
-  })().catch(e => { stintP = null; throw e; }));
+  })().catch(e => { stintP = null; throw e; })));
 
   /* every chance of the club's games timed once (shotclock.js): the club's own and its opponents' */
-  let clockP = null;
-  const clockChances = () => clockP || (clockP = (async () => {
+  let clockP = null, clockK = null;
+  const clockChances = () => (clockP && clockK === scopeKey() ? clockP : (clockK = scopeKey(), clockP = (async () => {
     const SCk = root.EpinoiaShotClock, L = await ctx.logs();
     const own = [], opp = [];
     if (SCk) L.gs.forEach(g => { const Rr = SCk.compute({ events: L.byG[g.id] || [] }); (Rr.chances || []).forEach(r => (r.team === L.sideOf[g.id] ? own : opp).push(r)); });
     return { L, own, opp, SCk };
-  })().catch(e => { clockP = null; throw e; }));
+  })().catch(e => { clockP = null; throw e; })));
 
   /* HOW POSITIONS ARE WORKED OUT (depth.js, bpm.js): said in the depth chart and the most-used five, which are built from it */
   const POS_KEY = [
@@ -656,7 +659,7 @@ function modules(ctx) {
       if (ctx.rapm) E.rapmControl(host, state, RAPM, {
         ids: async () => { const T = await season(); return T && T.S ? (T.S.games || []).map(g => g.id).filter(Boolean) : []; },
         run: (ids, fn) => ctx.rapm(ids, fn),
-        scope: () => (state.c && state.c.scope) || 'this league and season'
+        scope: () => (state.c && (state.c.field || state.c.scope)) || 'this league and season'
       });
     },
     async build(c, R) {
@@ -719,7 +722,7 @@ function modules(ctx) {
       R.legend.push(...[...allKeys].filter(k => !(E.STATS[k] && E.STATS[k].optional) || squad.some(r => (E.hasStat ? E.hasStat(k, r) : E.isNum(r[k])))));
       const SL = ['PG', 'SG', 'SF', 'PF', 'C'];
       const needR = !rapmOk && [...allKeys].some(k => E.STATS[k] && E.STATS[k].rapm);
-      const head = title('The squad', squad.length + ' players · most minutes first · each stat tinted by its percentile among the players of their own position in ' + (c.scope || 'the competition') + ' (guards, wings, bigs)') +
+      const head = title('The squad', squad.length + ' players · most minutes first · each stat tinted by its percentile among the players of their own position in ' + (c.field || c.scope || 'the competition') + ' (guards, wings, bigs)') +
         (needR ? '<p class="rp-flagnote">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : '');
       const out = [];
       squad.forEach((r, i) => {

@@ -70,7 +70,7 @@ function modules(ctx) {
       if (ctx.rapm) E.rapmControl(host, state, RAPM, {
         ids: async () => (ctx.gameIds ? await ctx.gameIds() : []),
         run: (ids, fn) => ctx.rapm(ids, fn),
-        scope: () => (state.c && state.c.scope) || 'this league and season'
+        scope: () => (state.c && (state.c.field || state.c.scope)) || 'this league and season'
       });
     },
     async build(c, R) {
@@ -126,7 +126,7 @@ function modules(ctx) {
         (needRapm ? '<p class="rp-flagnote" style="margin-top:8px">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : ''))];
       out.push(block(E.colsHTML(E.groupsOn ? E.groupsOn(groups, mine) : groups, ([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + E.groupRowsHTML(ks, mine, Rk) + '</div>',
         ([, ks]) => E.groupWeight(ks)) +
-        '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + (Rk.nNow || Rk.n) + ' ' + Rk.who + ' of ' + (c.scope || 'the competition') + (Rk.nNow && Rk.nNow < Rk.n ? ' (with earlier seasons’, ' + Rk.n + ' in all, deepening the field)' : '') +
+        '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + (Rk.nNow || Rk.n) + ' ' + Rk.who + ' of ' + (c.field || c.scope || 'the competition') + (Rk.nNow && Rk.nNow < Rk.n ? ' (with earlier seasons’, ' + Rk.n + ' in all, deepening the field)' : '') +
           ' (the bar), and their average' + (Rk.group ? ': every figure is adjusted for position, ranked against players of their own' : ': too few players of their position to rank that player among them alone, so against everybody') +
           '. Template: ' + templateName(R.state, group) + '.') + '</p>' + E.keyHTML('Reading the player’s numbers', [
           ['THE BAR · THE ORDINAL', 'Where they sit among players of their own position in the field named above: 80th means better than eight in ten of them. Green is the top quarter, red the bottom; blue-to-purple bars are styles, deeper = more of it.'],

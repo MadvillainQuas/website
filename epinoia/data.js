@@ -627,6 +627,11 @@ async function season(competitionId, opts) {
   /* opts.gameIds: only those games of the competitions (the game analysis: one game's line, game/analysis.js) -- never
      cached and never from a file, which hold the whole season */
   const only = opts && Array.isArray(opts.gameIds) && opts.gameIds.length ? opts.gameIds : null;
+  /* opts.alias: { team: Map, player: Map } (old id -> the id it counts as): the same club and the same people under another
+     competition's rows (0178 links, a club report over SLB + EuroCup, t/team.js) summed as one, every total added before a
+     rate is worked out. Never cached and never from a file: a file is the competition's own ids */
+  const alias = opts && opts.alias && (opts.alias.team || opts.alias.player) ? opts.alias : null;
+  const aT = id => (alias && alias.team && alias.team.get(id)) || id, aP = id => (alias && alias.player && alias.player.get(id)) || id;
   const scope = (list.length === 1
     ? `competition_id=eq.${list[0]}`
     : `competition_id=in.(${list.join(',')})`) + (only ? `&id=in.(${only.join(',')})` : '');
@@ -634,7 +639,7 @@ async function season(competitionId, opts) {
   /* THE SEASON A READER ALREADY HAS IS NOT WORTH SENDING AGAIN. Only for the callers that
      asked for the season line and not the rows (rows: false): the line is a few hundred
      small objects and keeps, the rows are megabytes and do not. See seasonToken(). */
-  const ckey = keepRows || only ? null : seasonCachePrefix() + list.slice().sort().join(',');
+  const ckey = keepRows || only || alias ? null : seasonCachePrefix() + list.slice().sort().join(',');
   let token = null;
   if (ckey) {
     token = await seasonToken(scope);
@@ -669,6 +674,7 @@ async function season(competitionId, opts) {
     return tooBig(list, opts, games.length);
   }
 
+  if (alias) games.forEach(g => { g.home_team_id = aT(g.home_team_id); g.away_team_id = aT(g.away_team_id); });
   const ids = games.map(g => g.id);
   /* chunked so the `in.()` filter cannot outgrow a URL on a long season */
   const chunks = [];
@@ -720,6 +726,7 @@ async function season(competitionId, opts) {
   while (pending.length) {
     const [pgs, tgs] = await pending.shift();
     launch();
+    if (alias) pgs.forEach(r => { if (r.player_uuid) r.player_uuid = aP(r.player_uuid); if (r.player_id) r.player_id = aP(r.player_id); });
     S.addPlayers(accP, pgs, tgs);
     S.addTeams(accT, tgs, byId);
     pgs.forEach(r => {

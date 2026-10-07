@@ -93,6 +93,36 @@ function reportTab(pl, name, team) {
     const comps = RP_SEASON ? RP_SEASON.comps.filter(c => !SCOPE_IDS || SCOPE_IDS.indexOf(c.id) >= 0) : [];
     return [comps.map(c => c.short || compName(c)).filter(Boolean).join(' + '), RP_SEASON && RP_SEASON.label].filter(Boolean).join(' ');
   };
+  /* THE REPORT OVER EVERY COMPETITION OF HIS SEASON (Louie, 2026-10-07): his SLB line and his EuroCup line as one, each
+     linked profile's rows (0178: playerScopes' pid of each competition) counted as his and summed before any rate is worked
+     out (data.js season, opts.alias). Ranked against the field of the competition shown on the page all the same: the
+     report says so. Offered when his season has more than one competition. */
+  let RP_COMBINE = false, RP_JOINT = null;
+  const jointComps = () => (RP_SEASON && RP_SEASON.comps && RP_SEASON.comps.length > 1 ? RP_SEASON.comps : null);
+  const jointLabel = () => { const cs = jointComps(); return cs ? cs.map(c => c.short || c.name).filter(Boolean).join(' + ') : ''; };
+  const jointLine = async () => {
+    const cs = jointComps(), D = window.EpinoiaData;
+    if (!cs || !D) return null;
+    const key = cs.map(c => c.id + ':' + c.pid).join(',');
+    if (RP_JOINT && RP_JOINT.key === key) return RP_JOINT.p;
+    const p = (async () => {
+      const alias = { player: new Map(cs.filter(c => c.pid && c.pid !== pl.id).map(c => [c.pid, pl.id])) };
+      /* only the games of his clubs in those competitions: his line is what is wanted, not the competitions' */
+      const gids = [];
+      for (const c of cs) {
+        const tids = (c.teams || []).filter(Boolean);
+        if (!tids.length) continue;
+        (await D.all(`games?competition_id=eq.${c.id}&status=eq.final&or=(home_team_id.in.(${tids.join(',')}),away_team_id.in.(${tids.join(',')}))&select=id`))
+          .forEach(g => gids.push(g.id));
+      }
+      if (!gids.length) return null;
+      const Sub = await D.season(cs.map(c => c.id), { rows: false, trim: true, gameIds: gids, alias });
+      return Sub.players.find(r => r.id === pl.id) || null;
+    })();
+    RP_JOINT = { key, p };
+    p.catch(() => { RP_JOINT = null; });
+    return p;
+  };
   const ctx = {
     /* his season's field, with the league's other seasons to rank against (report.js loadPrior, read once a scope) */
     bars: async () => {
@@ -100,8 +130,20 @@ function reportTab(pl, name, team) {
       if (!B || !B.mine) return B;
       const key = (SCOPE_IDS || []).join(',');
       if (!RP_PRIOR || RP_PRIOR.key !== key) RP_PRIOR = { key, p: E.loadPrior(api, team && (team.league_id || (team.leagues && team.leagues.id)), SCOPE_IDS || [], 'all', 4).catch(() => []) };
-      return Object.assign({}, B, { prior: await RP_PRIOR.p });
+      const out = Object.assign({}, B, { prior: await RP_PRIOR.p });
+      if (RP_COMBINE) {
+        const J = await jointLine().catch(e => { console.warn('[report, every competition]', e); return null; });
+        if (J) {
+          Object.keys(B.mine).forEach(k => { if (!(k in J)) J[k] = B.mine[k]; });      // his name, position and the rest
+          J.id = B.mine.id;                                                             // his place in the field is his row's
+          out.mine = J;
+          out.field = (B.field || []).map(r => (r === B.mine ? J : r));
+          if (out.field.indexOf(J) < 0) out.field = out.field.concat(J);
+        }
+      }
+      return out;
     },
+    scopeKey: () => (RP_COMBINE ? 'all' : 'home'),
     pos: () => rpGet('pos', 60000),
     shots: () => rpGet('shots'),
     floor: () => rpGet('floor'),
@@ -134,13 +176,23 @@ function reportTab(pl, name, team) {
     lock: { key: 'playerReport', what: 'The player report', get league() { return ACCESS_LEAGUE.id; }, get leagueSlug() { return ACCESS_LEAGUE.slug; },
             lines: ['A printable A4 scouting report on any player: main stats by position, his shot chart, on and off the floor.'] },
     modules: RPm.modules(ctx),
+    /* the competitions (report.js): the one shown on the page, or all of his season's (jointLine) */
+    scopes: async () => {
+      await rpGet('bars', 60000).catch(() => null);
+      const lab = jointLabel();
+      return lab ? [{ k: 'home', label: scopeText() || 'as on the page' }, { k: 'all', label: lab + ' (his whole season)' }] : [{ k: 'home', label: scopeText() }];
+    },
+    setScope: k => { RP_COMBINE = k === 'all' && !!jointComps(); },
     context: () => ({
       kind: 'player', name, club: team && team.name, listedPos: PL_LISTED,
       crest: logo(team && team.logo_path, 512), colour: (team && team.colour) || '#93f2bf',
       accent: E.inkOn ? E.inkOn(team && team.colour) : '#08603f',
       monogram: team && team.short_name && team.short_name.length <= 4 ? team.short_name : null,
       line: [team && team.name, lg.name].filter(Boolean).join(' · '),
-      scope: scopeText(), subtitle: scopeText()
+      scope: RP_COMBINE ? jointLabel() + (RP_SEASON && RP_SEASON.label ? ' ' + RP_SEASON.label : '') : scopeText(),
+      subtitle: RP_COMBINE ? jointLabel() + (RP_SEASON && RP_SEASON.label ? ' ' + RP_SEASON.label : '') + ' · ranked among the players of ' + scopeText() : scopeText(),
+      /* what he is ranked against, where that is not what his line is over */
+      field: RP_COMBINE ? scopeText() : null
     })
   });
 }
