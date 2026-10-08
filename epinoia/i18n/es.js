@@ -1818,6 +1818,23 @@
       'reading the season…': 'Cargando la temporada…',
       'Not enough games yet this season to compare them.': 'Aún no hay partidos suficientes esta temporada para compararlos.',
       'The season could not be read just now.': 'No se pudo cargar la temporada.',
+      /* why EPINOIΛ leans (winprob.js, the ⓘ) */
+      'why this pick': 'por qué este pronóstico',
+      'Why it is close': 'Por qué está igualado',
+      'Why it leans': 'Por qué se inclina por',
+      'Playing at home': 'Jugar en casa',
+      'Ball security': 'Cuidado del balón',
+      'Strength this season': 'Nivel esta temporada',
+      'Recent form': 'Forma reciente',
+      'Rest and travel': 'Descanso y viajes',
+      'Line-ups and positions': 'Quintetos y posiciones',
+      'Half court and transition': 'Estático y transición',
+      'a slight edge': 'una ligera ventaja',
+      'a clear edge': 'una ventaja clara',
+      'a strong edge': 'una gran ventaja',
+      'Close to a coin flip: the edges are small either way.': 'Casi a cara o cruz: las ventajas son pequeñas para los dos.',
+      'Early in the season: each club’s numbers are still held close to the league’s until more games are in.': 'Inicio de temporada: los números de cada equipo se mantienen cerca de los de la liga hasta que haya más partidos.',
+      'How it decides: each club’s season so far at both ends of the floor, its strength and form, rest and the home court, weighed by what has won games across every league.': 'Cómo decide: la temporada de cada equipo en ataque y en defensa, su nivel y su forma, el descanso y el factor cancha, ponderados por lo que ha ganado partidos en todas las ligas.',
       /* EPINOIΛ's win probability (winprob.js) and the model on the leaderboards (boards.js) */
       'win probability': 'probabilidad de victoria',
       'EPINOIΛ’s model: What wins, Elo, form and the home court': 'El modelo de EPINOIΛ: lo que gana, Elo, la forma y el factor cancha',
@@ -2818,6 +2835,8 @@
     patterns: [
       /* the shot chart's key and the zone table's (shotchart.js): a zone under the attempt floor */
       [/^fewer than (\d+) attempts$/, 'menos de $1 intentos'],
+      /* why EPINOIΛ leans (winprob.js, the ⓘ) */
+      [/^Games like this go the favourite’s way about (\d+) times in 10\.$/, 'Partidos así los gana el favorito unas $1 veces de cada 10.'],
       /* EPINOIΛ's win probability (winprob.js) and the model on the leaderboards (boards.js) */
       [/^(.+) by (\d+\.\d)$/, '$1 por $2'],
       [/^after (\d+) and (\d+) games$/, 'tras $1 y $2 partidos'],

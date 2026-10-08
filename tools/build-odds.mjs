@@ -146,8 +146,10 @@ export async function readFixtures(api, now, days) {
 /* the state as it is kept: packed, gzipped */
 export const packed = (S, now) => zlib.gzipSync(JSON.stringify(Odds.pack(S, { keepAfter: now - KEEP_MS })), { level: 9 });
 /* a pick as written (its side, `pick`, is the table's own, generated from p_home) */
+/* why: the pick's reasons (Odds' families, points of margin, home side +), the five largest, compact */
+const whyOf = pre => (pre.why || []).filter(r => Math.abs(r[1]) >= 0.1).slice(0, 5).map(([k, v]) => [k, Math.round(v * 10) / 10]);
 const pickRow = (g, pre, kind) => ({ game_id: g.id, league_id: g.lg, p_home: r4(pre.p), kind,
-  n_home: pre.n[0], n_away: pre.n[1], margin: Math.round(pre.margin * 10) / 10, sigma: Math.round(pre.sigma * 10) / 10, model: Odds.MODEL });
+  n_home: pre.n[0], n_away: pre.n[1], margin: Math.round(pre.margin * 10) / 10, sigma: Math.round(pre.sigma * 10) / 10, model: Odds.MODEL, why: whyOf(pre) });
 
 export async function run(api, o) {
   const now = o.now || Date.now(), log = o.log || console.log;
@@ -190,15 +192,24 @@ export async function run(api, o) {
   if (o.eval) out.eval = evaluate(recs);
   if (o.dryRun) { log('dry run: nothing written'); return out; }
   /* the picks: records only added (a pick made before the game is never replaced), fixtures rewritten until tip-off */
+  /* before migration 0254 there is no why column: the picks go without their reasons, and the run says so */
+  let withWhy = true;
+  const post = async (rows, prefer) => {
+    const body = withWhy ? rows : rows.map(r => { const x = Object.assign({}, r); delete x.why; return x; });
+    try {
+      await api.rest('model_picks?on_conflict=game_id', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: prefer + ',return=minimal' }, body: JSON.stringify(body) });
+    } catch (e) {
+      if (withWhy && (/PGRST204/.test(String(e.message)) || /'why'/.test(String(e.message)))) {
+        withWhy = false;
+        out.warnings.push('model_picks has no why column yet (apply migration 0254): picks written without their reasons');
+        return post(rows, prefer);
+      }
+      throw e;
+    }
+  };
   try {
-    for (const c of chunks(recordRows, 500)) {
-      await api.rest('model_picks?on_conflict=game_id', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(c) });
-      out.wrote.records += c.length;
-    }
-    for (const c of chunks(fixtureRows, 500)) {
-      await api.rest('model_picks?on_conflict=game_id', { method: 'POST', headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(c) });
-      out.wrote.fixtures += c.length;
-    }
+    for (const c of chunks(recordRows, 500)) { await post(c, 'resolution=ignore-duplicates'); out.wrote.records += c.length; }
+    for (const c of chunks(fixtureRows, 500)) { await post(c, 'resolution=merge-duplicates'); out.wrote.fixtures += c.length; }
   } catch (e) {
     /* before migration 0253 the table is not there: the model still learns and keeps its state */
     if (e.status === 404 || /PGRST205|model_picks/.test(String(e.message))) out.warnings.push('model_picks is not there yet (apply migration 0253): no picks written');

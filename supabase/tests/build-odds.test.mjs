@@ -52,6 +52,8 @@ async function fakeFetch(url, init) {
   if (p.startsWith('/rest/v1/games?status=eq.scheduled')) return res(200, fixtures);
   if (p.startsWith('/rest/v1/model_picks')) {
     if (db.picks404) return res(404, '{"code":"PGRST205","message":"Could not find the table public.model_picks"}');
+    /* before 0254: no why column */
+    if (db.noWhy && /"why"/.test(init.body)) return res(400, '{"code":"PGRST204","message":"Could not find the \'why\' column of \'model_picks\' in the schema cache"}');
     db.picks.push({ prefer: init.headers.Prefer, rows: JSON.parse(init.body) });
     return res(201, '');
   }
@@ -67,6 +69,8 @@ const recs = db.picks.filter(x => /ignore-duplicates/.test(x.prefer)).flatMap(x 
 ok('a record pick for each it could judge (both clubs three games in)', recs.length === r1.records && recs.length > 0 && recs.length < 20, [recs.length, r1.records]);
 ok('a fixture pick for each game to come', fx.length === 12 && fx.every(x => x.kind === 'fixture' && x.p_home > 0 && x.p_home < 1), fx.length);
 ok('the pick\'s side is never sent (the table generates it from p_home)', [...recs, ...fx].every(x => !('pick' in x)));
+const W = new Set(['home', 'shoot', 'ball', 'boards', 'line', 'rating', 'rest', 'squad', 'form', 'flow']);
+ok('each pick carries its reasons: at most five, a family and a margin each', fx.every(x => Array.isArray(x.why) && x.why.length <= 5 && x.why.every(r => W.has(r[0]) && Number.isFinite(r[1]))) && fx.some(x => x.why.length > 0), fx[0] && fx[0].why);
 ok('the strongest club at home to the weakest is favoured', (() => { const f = fixtures.find(g => g.home_team_id === 'h0' && g.away_team_id === 'h3'); const row = fx.find(x => x.game_id === f.id); return row && row.p_home > 0.6; })());
 ok('the state kept gzipped (1f 8b)', db.uploads === 1 && db.state[0] === 0x1f && db.state[1] === 0x8b);
 ok('...and packed: every id once', (() => { const j = JSON.parse(zlib.gunzipSync(db.state)); return j.v === 5 && Array.isArray(j.id) && new Set(j.id).size === j.id.length && j.wm && j.wm.id === 'g' + '019'.padStart(3, '0'); })());
@@ -93,6 +97,13 @@ console.log('\nbefore migration 0253');
 db.lines = lines.slice(0, 48); db.picks404 = true;
 const r4 = await B.run(api, { now: NOW, days: 30, log: quiet });
 ok('it says so, writes no picks, and still learns and keeps its state', r4.learned === 2 && r4.warnings.some(w => /0253/.test(w)) && db.uploads === 3, r4);
+
+console.log('\nbefore migration 0254');
+db.noWhy = true; db.picks404 = false; db.picks = [];
+const r45 = await B.run(api, { now: NOW, days: 30, log: quiet });
+const sent = db.picks.flatMap(x => x.rows);
+ok('no reasons column yet: the picks still go, without their reasons, and it says so', sent.length === 12 && sent.every(x => !('why' in x)) && r45.warnings.some(w => /0254/.test(w)), { n: sent.length, w: r45.warnings });
+db.noWhy = false;
 
 console.log('\na plain (not gzipped) state');
 db.state = Buffer.from(JSON.stringify({ v: 1, w: [] })); db.picks404 = false;

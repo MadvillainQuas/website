@@ -761,6 +761,11 @@ function render(ctx) {
     startersHTML(ctx) +
     injuriesHTML(ctx) +
 
+    /* EPINOIΛ'S WIN PROBABILITY under the injury report (winprob.js, filled by the page): hidden until it has something
+       to say */
+    '<section class="pv-sec pv-wp" hidden>' + head('Win probability', 'EPINOIΛ’s model: What wins, Elo, form and the home court') +
+      '<div class="pv-wp-slot"></div></section>' +
+
     (paras
       ? '<section class="pv-sec">' + head('The story so far') +
         '<div class="pv-prose" data-i18n-ctx="report">' + paras + '</div></section>'
@@ -805,10 +810,6 @@ function render(ctx) {
         '<a class="pv-more" href="../stats/' + scope + '">every player ↗</a>' +
         '</section>'
       : '') +
-
-    /* EPINOIΛ'S WIN PROBABILITY (winprob.js, filled by the page): hidden until it has something to say */
-    '<section class="pv-sec pv-wp" hidden>' + head('Win probability', 'EPINOIΛ’s model: What wins, Elo, form and the home court') +
-      '<div class="pv-wp-slot"></div></section>' +
 
     '<section class="pv-sec">' + head('How to get there') +
       '<div class="pv-tiles two">' +

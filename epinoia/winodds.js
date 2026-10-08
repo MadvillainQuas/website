@@ -436,13 +436,30 @@ function features(S, fx) {
   x.push(isNum(kh) && isNum(ka) ? (kh - ka) / 1000 : 0);
   return { x, n: [nh, na], home, pace: sp };
 }
+/* WHY IT LEANS (Louie, 2026-10-08): the margin taken apart into what a fan would call its reasons - each input's
+   part (its weight × its value, a league's own weights and home edge with their inputs), summed by family. The parts
+   add up to the margin exactly. Points of margin, home side +; what the page shows is the side and how strongly, never
+   the numbers or the weights. Worked out as the pick is made, with the weights of that moment */
+const WHY = { home: [0], shoot: [1, 9, 19], ball: [2, 10], boards: [3, 11, 18], line: [4, 12], rating: [5, 6],
+              rest: [7, 8, 20], squad: [13, 15], form: [14], flow: [16, 17] };
+const WHY_OF = (() => { const o = []; Object.keys(WHY).forEach(k => WHY[k].forEach(i => { o[i] = k; })); return o; })();
+function reasons(S, lg, x, home) {
+  const part = {};
+  const add = (i, v) => { const k = WHY_OF[i]; part[k] = (part[k] || 0) + v; };
+  for (let i = 0; i < P; i++) add(i, S.w[i] * x[i]);
+  add(0, home * (S.hca[lg] || 0));
+  const d = C.use.lgw && S.lw ? S.lw[lg] : null;
+  if (d) LGW.forEach((i, j) => add(i, d[j] * x[i]));
+  return Object.keys(part).map(k => [k, part[k]]).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+}
 function predict(S, fx) {
   const F = features(S, fx);
   let m = F.home * (S.hca[fx.lg] || 0) + leagueTerm(S, fx.lg, F.x);
   for (let i = 0; i < P; i++) m += S.w[i] * F.x[i];
   const sigma = Math.sqrt(S.sig2 * F.pace), z = m / sigma;
   const p = expit(S.cal[0] + S.cal[1] * 1.702 * z);
-  return { ok: F.n[0] >= MIN_GP && F.n[1] >= MIN_GP, p, margin: m, sigma, z, n: F.n, x: F.x, home: F.home, pace: F.pace };
+  return { ok: F.n[0] >= MIN_GP && F.n[1] >= MIN_GP, p, margin: m, sigma, z, n: F.n, x: F.x, home: F.home, pace: F.pace,
+           why: reasons(S, fx.lg, F.x, F.home) };
 }
 
 /* --------------------------------------------------------------- learning --- */
@@ -741,6 +758,6 @@ function summary(S) {
 }
 
 return { V, MODEL, MIN_GP, X_KEYS, COUNTS, LINE_KEYS, C, create, countsOf, countsOfRow, lineSelect, lineOf, gmsc, factors,
-         predict, learn, walk, ratings, pack, unpack, summary, apply, tune, judge, TUNE, DEFAULTS,
+         predict, learn, walk, ratings, pack, unpack, summary, apply, tune, judge, TUNE, DEFAULTS, WHY,
          shrinkOf: (S, lg, s) => { const L = S.lg[lg + '|' + s]; return L ? ebShrink(S, L, s) : null; } };
 }));

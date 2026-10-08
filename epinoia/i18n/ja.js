@@ -1816,6 +1816,23 @@
       'reading the season…': 'シーズンを読み込み中…',
       'Not enough games yet this season to compare them.': '今季はまだ比較できるほどの試合がありません。',
       'The season could not be read just now.': 'シーズンを読み込めませんでした。',
+      /* why EPINOIΛ leans (winprob.js, the ⓘ) */
+      'why this pick': 'この予想の理由',
+      'Why it is close': '接戦の理由',
+      'Why it leans': '優勢と見る理由',
+      'Playing at home': 'ホームでの試合',
+      'Ball security': 'ボールの安定',
+      'Strength this season': '今季の実力',
+      'Recent form': '最近の調子',
+      'Rest and travel': '休養と移動',
+      'Line-ups and positions': 'ラインアップとポジション',
+      'Half court and transition': 'ハーフコートとトランジション',
+      'a slight edge': 'わずかに有利',
+      'a clear edge': 'はっきり有利',
+      'a strong edge': '大きく有利',
+      'Close to a coin flip: the edges are small either way.': 'ほぼ五分五分：どちらの優位もわずかです。',
+      'Early in the season: each club’s numbers are still held close to the league’s until more games are in.': 'シーズン序盤：試合数が増えるまで、各チームの数字はリーグ平均に近く抑えています。',
+      'How it decides: each club’s season so far at both ends of the floor, its strength and form, rest and the home court, weighed by what has won games across every league.': '判断材料：各チームの今季の攻守、実力と調子、休養、ホームコートを、全リーグで勝敗を分けてきた要素で重み付けしています。',
       /* EPINOIΛ's win probability (winprob.js) and the model on the leaderboards (boards.js) */
       'win probability': '勝利確率',
       'EPINOIΛ’s model: What wins, Elo, form and the home court': 'EPINOIΛのモデル：勝因分析、Elo、調子、ホームコート',
@@ -2817,6 +2834,8 @@
     patterns: [
       /* the shot chart's key and the zone table's (shotchart.js): a zone under the attempt floor */
       [/^fewer than (\d+) attempts$/, '試投$1本未満'],
+      /* why EPINOIΛ leans (winprob.js, the ⓘ) */
+      [/^Games like this go the favourite’s way about (\d+) times in 10\.$/, 'このような試合は10回中およそ$1回、優勢な側が勝っています。'],
       /* EPINOIΛ's win probability (winprob.js) and the model on the leaderboards (boards.js) */
       [/^(.+) by (\d+\.\d)$/, '$1が$2点差で優勢'],
       [/^after (\d+) and (\d+) games$/, '$1試合と$2試合の結果から'],

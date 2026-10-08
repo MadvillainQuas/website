@@ -11,8 +11,9 @@
      { locked: 'signin' }     signed out: a line asking them to sign in
      { locked: 'members' }    memberships on and not a member: a line to join
      { none: true }           no pick: both clubs have not yet played three games this season
-     { p_home, pick, n, margin, model, record }   the bar in the two clubs' colours, the margin, the games behind it,
-                              its record in the league; on a finished game, whether its pick came off
+     { p_home, pick, n, margin, model, record, why }   the bar in the two clubs' colours, the margin, the games behind
+                              it, its record in the league; on a finished game, whether its pick came off; the ⓘ beside
+                              the margin opens why it leans (why, 0254)
    Before 0253 is applied (404), and for a league the reader cannot see (null), nothing shows.
    Every text goes in as text. One read a game a page, kept a minute.
    ============================================================================ */
@@ -68,6 +69,79 @@
   const mark = () => { const b = el('b', 'wp-mk epinoia-mark', 'EPINOIΛ'); b.setAttribute('translate', 'no'); return b; };
   const pc = p => Math.round(100 * p);
 
+  /* WHY IT LEANS (the ⓘ, Louie 2026-10-08): the pick's reasons (model_picks.why, 0254: winodds.js reasons()) as the side
+     each favours and how strongly - one, two or three pips - never the model's numbers or weights; what the probability
+     means; early in a season, that the numbers are still held close to the league's; and how it decides, in a line */
+  const LABEL = { home: 'Playing at home', shoot: 'Shooting', ball: 'Ball security', boards: 'Rebounding', line: 'Free throws',
+                  rating: 'Strength this season', form: 'Recent form', rest: 'Rest and travel', squad: 'Line-ups and positions',
+                  flow: 'Half court and transition' };
+  const LEVEL = ['a slight edge', 'a clear edge', 'a strong edge'];
+  let uid = 0;
+  function whyPanel(d, o, ph) {
+    const favH = ph >= 0.5, pf = Math.max(ph, 1 - ph);
+    const p = el('div', 'wp-why');
+    p.id = 'wp-why-' + (++uid);
+    p.hidden = true;
+    const hd = el('p', 'wp-why-h');
+    if (pf < 0.55) hd.textContent = 'Why it is close';
+    else { hd.appendChild(el('span', null, 'Why it leans')); const b = el('b', null, nm(favH ? o.home : o.away)); b.setAttribute('translate', 'no'); hd.append(' ', b); }
+    p.appendChild(hd);
+    const list = el('ul', 'wp-why-l');
+    (Array.isArray(d.why) ? d.why : []).forEach(r => {
+      const k = r && r[0], v = r ? +r[1] : NaN;
+      if (!LABEL[k] || !isFinite(v) || Math.abs(v) < 0.2 || list.childNodes.length >= 4) return;
+      const forH = v > 0, lvl = Math.abs(v) >= 3 ? 3 : Math.abs(v) >= 1 ? 2 : 1;
+      const li = el('li', forH ? 'h' : 'a');
+      li.appendChild(el('span', 'wp-why-k', LABEL[k]));
+      const who = el('span', 'wp-why-s', nm(forH ? o.home : o.away));
+      who.setAttribute('translate', 'no');
+      li.appendChild(who);
+      const pips = el('span', 'wp-pips');
+      pips.setAttribute('role', 'img');
+      pips.setAttribute('aria-label', LEVEL[lvl - 1]);
+      pips.title = LEVEL[lvl - 1];
+      for (let i = 0; i < 3; i++) pips.appendChild(el('i', i < lvl ? 'on' : null));
+      li.appendChild(pips);
+      list.appendChild(li);
+    });
+    if (list.childNodes.length) p.appendChild(list);
+    p.appendChild(el('p', 'wp-why-t', pf < 0.55 ? 'Close to a coin flip: the edges are small either way.'
+      : 'Games like this go the favourite’s way about ' + Math.round(10 * pf) + ' times in 10.'));
+    if (Array.isArray(d.n) && Math.min(+d.n[0], +d.n[1]) < 8) {
+      p.appendChild(el('p', 'wp-why-t', 'Early in the season: each club’s numbers are still held close to the league’s until more games are in.'));
+    }
+    p.appendChild(el('p', 'wp-why-f', 'How it decides: each club’s season so far at both ends of the floor, its strength and form, rest and the home court, weighed by what has won games across every league.'));
+    return p;
+  }
+  /* the ⓘ: hovered with a mouse it opens and closes with the pointer; tapped or clicked it stays until tapped again */
+  function whyButton(box, panel) {
+    const b = el('button', 'wp-i', 'i');
+    b.type = 'button';
+    b.setAttribute('aria-label', 'why this pick');
+    b.setAttribute('aria-expanded', 'false');
+    b.setAttribute('aria-controls', panel.id);
+    let pinned = false;
+    const set = (on, bring) => {
+      if (panel.hidden !== !on) {
+        panel.hidden = !on; b.setAttribute('aria-expanded', String(on)); box.classList.toggle('wp-open', on);
+        box.dispatchEvent(new CustomEvent('wp-size', { bubbles: true }));
+      }
+      /* opened by a tap or a click at the foot of a card that scrolls (the preview card on a short screen): brought into
+         view inside it - never on a hover, which would slide the ⓘ out from under the pointer */
+      const sc = on && bring && box.closest('.gk-in');
+      if (sc) requestAnimationFrame(() => {
+        const r = panel.getBoundingClientRect(), c = sc.getBoundingClientRect();
+        if (r.bottom > c.bottom) sc.scrollTop += Math.min(r.bottom - c.bottom + 8, r.top - c.top);
+      });
+    };
+    const fine = () => root.matchMedia && root.matchMedia('(hover:hover) and (pointer:fine)').matches;
+    b.addEventListener('mouseenter', () => { if (fine()) set(true); });
+    box.addEventListener('mouseleave', () => { if (!pinned) set(false); });
+    /* not stopped here: the preview card hears it and locks itself open (gamepeek.js) */
+    b.addEventListener('click', e => { e.preventDefault(); pinned = !pinned || panel.hidden; set(pinned, true); });
+    return b;
+  }
+
   function draw(d, o) {
     const box = el('div', 'wp');
     const head = el('div', 'wp-k');
@@ -97,7 +171,11 @@
     const favH = ph >= 0.5;
     nums.appendChild(side(o.home, h, 'h', favH));
     const by = Math.abs(+d.margin);
-    nums.appendChild(el('span', 'wp-by', isFinite(by) && by >= 0.5 ? nm(favH ? o.home : o.away) + ' by ' + by.toFixed(1) : 'a toss-up'));
+    const byEl = el('span', 'wp-by');
+    byEl.appendChild(el('span', null, isFinite(by) && by >= 0.5 ? nm(favH ? o.home : o.away) + ' by ' + by.toFixed(1) : 'a toss-up'));
+    const panel = whyPanel(d, o, ph);
+    byEl.appendChild(whyButton(box, panel));
+    nums.appendChild(byEl);
     nums.appendChild(side(o.away, a, 'a', !favH));
     box.appendChild(nums);
     const bar = el('div', 'wp-bar');
@@ -115,6 +193,7 @@
     const rec = d.record || {};
     if (+rec.decided > 0) cap.push(rec.right + ' of ' + rec.decided + ' right in this league');
     if (cap.length) box.appendChild(el('p', 'wp-cap' + (done ? (((+o.homeScore > +o.awayScore) === favH) ? ' hit' : ' miss') : ''), cap.join(' · ')));
+    box.appendChild(panel);
     return box;
   }
 

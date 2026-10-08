@@ -73,6 +73,9 @@ console.log('\nthe better club');
   ok('...by more than against the second best', top.p > near.p && near.p > 0.5, [top.p, near.p]);
   ok('...and the weakest at home to it: well under even', rev.p < 0.35, rev.p);
   ok('a margin and a spread for each', top.margin > 8 && top.sigma > 3, [top.margin, top.sigma]);
+  const sum = top.why.reduce((a, r) => a + r[1], 0);
+  ok('its reasons add up to its margin exactly, each one of the families the page names', Math.abs(sum - top.margin) < 1e-9 && top.why.every(r => r[0] in O.WHY), [sum, top.margin, top.why]);
+  ok('...largest first, and its largest on the favourite\'s side', top.why.every((r, i) => i === 0 || Math.abs(top.why[i - 1][1]) >= Math.abs(r[1])) && top.why[0][1] > 0, top.why);
 }
 
 console.log('\nthe home court');

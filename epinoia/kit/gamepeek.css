@@ -30,6 +30,14 @@
   border-radius:13px 13px 0 0;font-family:var(--f-micro);font-size:8px;letter-spacing:.16em;text-transform:uppercase}
 .gk-x{display:grid;place-items:center;width:22px;height:22px;border:0;border-radius:50%;background:rgba(0,0,0,.1);color:#0a0a0a;font-size:15px;line-height:1;cursor:pointer}
 .gk-x:hover{background:#0a0a0a;color:var(--gy)}
+/* the lock: open shackle while the card follows the pointer, shut (and dark) while it is locked open */
+.gk-acts{display:flex;align-items:center;gap:6px}
+.gk-lock{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.1);color:#0a0a0a;cursor:pointer}
+.gk-lock svg{width:12px;height:12px}
+.gk-lock .lk-on,.gk-pop.locked .gk-lock .lk-off{display:none}
+.gk-pop.locked .gk-lock .lk-on{display:block}
+.gk-pop.locked .gk-lock,.gk-lock:hover{background:#0a0a0a;color:var(--gy)}
+.gk-lock:focus-visible,.gk-x:focus-visible{outline:2px solid #0a0a0a;outline-offset:1px}
 .gk-wait,.gk-none{margin:0;padding:18px 14px 8px;text-align:center;font-size:12px;color:var(--gd)}
 
 /* the two clubs */

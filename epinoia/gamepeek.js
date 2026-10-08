@@ -80,6 +80,16 @@
       '<span class="gk-mid"><i>' + esc(label) + '</i><span class="gk-bar"><u style="width:' + share.toFixed(1) + '%"></u></span></span>' +
       '<b class="' + (better === 2 ? 'up' : '') + '">' + one(y) + '</b></div>';
   }
+  /* THE HEAD: what it is, the LOCK and the close (Louie, 2026-10-08). A card opened by hovering closes when the pointer
+     leaves; locked, it stays until it is unlocked or closed - so the win probability's ⓘ, or anything else in it, can
+     be read at leisure. A tap or click anywhere in the card locks it too; a tap on the strip opens it locked */
+  const LOCK = '<svg class="lk-off" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/>' +
+    '<path d="M5.2 7V5a2.8 2.8 0 0 1 5.4-1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>' +
+    '<svg class="lk-on" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" fill="currentColor"/>' +
+    '<path d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  const head = label => '<div class="gk-hd"><span>' + label + '</span><span class="gk-acts">' +
+    '<button type="button" class="gk-lock" aria-pressed="false" aria-label="keep it open" title="keep it open">' + LOCK + '</button>' +
+    '<button type="button" class="gk-x" aria-label="close">×</button></span></div>';
   function html(g, S, hm, aw, ln) {
     const side = (t, r, k) => '<div class="gk-side ' + k + '"><span class="gk-crest">' + crest(t) + '</span>' +
       '<span class="gk-nm">' + esc((t && (t.short_name || t.name)) || '') + '</span>' +
@@ -88,7 +98,7 @@
     const lead = (list, nm) => list.map((p, i) => '<div class="gk-pl"><b>' + esc(nm[i] || 'Player') + '</b><span>' +
       one(p.ppg) + ' pts · ' + one(p.rpg) + ' reb · ' + one(p.apg) + ' ast</span></div>').join('') || '<div class="gk-pl none">—</div>';
     const both = hm && aw && hm.gp && aw.gp;
-    return '<div class="gk-hd"><span>' + (g.status === 'final' ? 'the season so far' : 'preview') + '</span><button type="button" class="gk-x" aria-label="close">×</button></div>' +
+    return head(g.status === 'final' ? 'the season so far' : 'preview') +
       '<div class="gk-top">' + side(g.home, hm, 'h') + '<span class="gk-v">v</span>' + side(g.away, aw, 'a') + '</div>' +
       (both
         ? '<div class="gk-sec"><div class="gk-k">four factors · offence</div>' + FF.map(([l, k, lo]) => row(l, hm[k], aw[k], lo)).join('') + '</div>' +
@@ -109,15 +119,36 @@
     pop.setAttribute('role', 'dialog');
     pop.addEventListener('mouseenter', () => clearTimeout(shutT));
     pop.addEventListener('mouseleave', () => { if (!pinned) shutSoon(); });
-    pop.addEventListener('click', e => { e.stopPropagation(); if (e.target.closest('.gk-x')) close(); });
+    /* the win probability's reasons opening or closing (winprob.js): the card placed again, still on the screen */
+    pop.addEventListener('wp-size', () => place());
+    pop.addEventListener('click', e => {
+      e.stopPropagation();
+      if (e.target.closest('.gk-x')) { close(); return; }
+      if (e.target.closest('.gk-lock')) { pinned = !pinned; lockSync(); return; }
+      if (!pinned) { pinned = true; lockSync(); }            // a click anywhere in it: it is being read
+    });
     document.body.appendChild(pop);
     document.addEventListener('click', e => { if (pop.classList.contains('on') && !e.target.closest('.gk-pop') && !e.target.closest('.pr-mid')) close(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-    root.addEventListener('scroll', () => { if (pop.classList.contains('on')) { if (pinned) place(); else close(); } }, { passive: true, capture: true });
+    /* the page scrolling moves or shuts the card; the card's own content scrolling (a tall card, or the win probability's
+       reasons brought into view) is the card being read */
+    root.addEventListener('scroll', e => {
+      if (e.target && e.target.nodeType === 1 && e.target.closest('.gk-pop')) return;
+      if (pop.classList.contains('on')) { if (pinned) place(); else close(); }
+    }, { passive: true, capture: true });
     root.addEventListener('resize', () => { if (pop.classList.contains('on')) place(); });
     return pop;
   }
-  const fill = h => { pop.innerHTML = '<div class="gk-in">' + h + '</div>'; };
+  const fill = h => { pop.innerHTML = '<div class="gk-in">' + h + '</div>'; lockSync(); };
+  /* the lock as the card stands */
+  function lockSync() {
+    if (!pop) return;
+    pop.classList.toggle('locked', pinned);
+    const b = pop.querySelector('.gk-lock');
+    if (!b) return;
+    const t = pinned ? 'unlock: close when the pointer leaves' : 'keep it open';
+    b.setAttribute('aria-pressed', String(pinned)); b.setAttribute('aria-label', t); b.title = t;
+  }
   function place() {
     if (!pop || !owner || !owner.isConnected) return;
     const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
@@ -152,7 +183,7 @@
     owner = el; pinned = !!pin;
     el.classList.add('gk-on');
     const t = ++ticket;
-    fill('<div class="gk-hd"><span>preview</span><button type="button" class="gk-x" aria-label="close">×</button></div><div class="gk-wait">reading the season…</div>');
+    fill(head('preview') + '<div class="gk-wait">reading the season…</div>');
     pop.setAttribute('aria-label', 'preview: ' + ((g.home && g.home.name) || '') + ' v ' + ((g.away && g.away.name) || ''));
     /* the bars in the two clubs' colours, as the strip's */
     const hex = c => (/^#?[0-9a-f]{6}$/i.test(String(c || '')) ? (String(c)[0] === '#' ? c : '#' + c) : null);
@@ -176,7 +207,7 @@
       }
     } catch (_) {
       if (t !== ticket) return;
-      fill('<div class="gk-hd"><span>preview</span><button type="button" class="gk-x" aria-label="close">×</button></div><p class="gk-none">The season could not be read just now.</p>');
+      fill(head('preview') + '<p class="gk-none">The season could not be read just now.</p>');
     }
     place();
   }

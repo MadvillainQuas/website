@@ -21,11 +21,13 @@ process.on('uncaughtException', e => { console.log('  FAIL  stopped by an error:
 let pass = 0, fail = 0;
 const ok = (n, c, d) => { if (c) { pass++; console.log('  PASS  ' + n); } else { fail++; console.log('  FAIL  ' + n + (d != null ? '\n          ' + String(typeof d === 'string' ? d : JSON.stringify(d)).slice(0, 600) : '')); } };
 
-const mig = rd('supabase', 'migrations', '0253_model_picks.sql');
+const mig = rd('supabase', 'migrations', '0253_model_picks.sql'), mig54 = rd('supabase', 'migrations', '0254_model_pick_reasons.sql');
 console.log('the migration');
 ok('the table is closed to readers and open to the service role', /revoke all on public\.model_picks from public, anon, authenticated;/.test(mig) && /grant all on public\.model_picks to service_role;/.test(mig));
 ok('the two reads are granted to readers', /grant execute on function public\.game_forecast\(uuid\) to anon, authenticated;/.test(mig)
    && /grant execute on function public\.prediction_model\(uuid, timestamptz\) to anon, authenticated;/.test(mig));
+ok('0254 adds the reasons column and keeps game_forecast open to readers', /alter table public\.model_picks add column if not exists why jsonb;/.test(mig54)
+   && /grant execute on function public\.game_forecast\(uuid\) to anon, authenticated;/.test(mig54) && /'why', r\.why/.test(mig54));
 
 const loaded = await allMigrations({});
 if (!loaded || !loaded.db) {
@@ -93,6 +95,11 @@ if (!loaded || !loaded.db) {
   const f = (await as(U, `select public.game_forecast($1) as j`, [GT]))[0].j;
   ok('signed in: the probability, the pick, both clubs\' games, and the model\'s record in the league (4 of 5)',
      f && Math.abs(f.p_home - 0.38) < 0.001 && f.pick === 'away' && f.kind === 'fixture' && f.n[0] === 4 && f.record.right === 4 && f.record.decided === 5, f);
+  /* 0254: the pick's reasons, returned with it */
+  await q(`update public.model_picks set why = $2::jsonb where game_id = $1`, [GT, JSON.stringify([['shoot', -2.1], ['home', 1.4], ['form', -0.6]])]);
+  const fw = (await as(U, `select public.game_forecast($1) as j`, [GT]))[0].j;
+  ok('0254: the reasons come with the pick (the side and the size of each)', Array.isArray(fw.why) && fw.why[0][0] === 'shoot' && fw.why[0][1] === -2.1 && fw.why.length === 3, fw.why);
+  ok('...and never to a reader signed out', !('why' in (await as(null, `select public.game_forecast($1) as j`, [GT]))[0].j));
   const GN = await game(C, A, B, 'scheduled', '2 days', 0, 0);
   ok('a game it has no pick for: none', (await as(U, `select public.game_forecast($1) as j`, [GN]))[0].j.none === true);
   ok('a private league\'s game, to a reader who cannot see it: nothing', (await as(U, `select public.game_forecast($1) as j`, [GP]))[0].j === null);
