@@ -287,6 +287,60 @@ def classify(a: dict) -> Tuple[Optional[str], str, Optional[int], List[str], Opt
     return None, "", None, [], f"action:{t}|{p.get('type')}"
 
 
+def fill_period_starts(events: List[dict], people: Dict[str, Tuple[str, str, str]]) -> Tuple[List[dict], List[dict]]:
+    """A PERIOD THAT STARTS SHORT-HANDED, FILLED FROM WHO PLAYED IN IT. Segev's operators sometimes take a whole five off
+    at a period's start and put nobody on (a 2026-27 cup game: both fives off at the 10:00 of the third quarter, not
+    one change on) - read as written, the side plays the period with nobody on the floor until its next changes. A
+    side with fewer than five on after its period-start changes gets, at that start, the players who act for it in the
+    period before any change of their own brings them on: they were on the floor all along. Up to five, in the order
+    they appear; each such change is marked qualifier ["inferred"] and listed. Nothing else is touched."""
+    on: Dict[int, set] = {1: set(), 2: set()}
+    out: List[dict] = []
+    inferred: List[dict] = []
+    i, n = 0, len(events)
+    while i < n:
+        ev = events[i]
+        out.append(ev)
+        i += 1
+        if not (ev["actionType"] == "period" and ev["subType"] == "start"):
+            if ev["actionType"] == "substitution" and ev["tno"] in on:
+                (on[ev["tno"]].add if ev["subType"] == "in" else on[ev["tno"]].discard)(ev["pno"])
+            continue
+        start_clock, per, ptype = ev["gt"], ev["period"], ev["periodType"]
+        while i < n and events[i]["actionType"] == "substitution" and events[i]["gt"] == start_clock \
+                and events[i]["period"] == per and events[i]["periodType"] == ptype:
+            s = events[i]
+            if s["tno"] in on:
+                (on[s["tno"]].add if s["subType"] == "in" else on[s["tno"]].discard)(s["pno"])
+            out.append(s)
+            i += 1
+        for side in (1, 2):
+            if len(on[side]) >= 5:
+                continue
+            came_on, add = set(), []
+            for e in events[i:]:
+                if e["actionType"] == "period" and e["subType"] == "end":
+                    break
+                if e["tno"] != side or not e.get("pno"):
+                    continue
+                if e["actionType"] == "substitution":
+                    if e["subType"] == "in":
+                        came_on.add(e["pno"])
+                    continue
+                if e["pno"] not in on[side] and e["pno"] not in came_on and e["pno"] not in add:
+                    add.append(e["pno"])
+                if len(on[side]) + len(add) >= 5:
+                    break
+            for pid in add[:5 - len(on[side])]:
+                first, last, shirt = people.get(pid, ("", "", ""))
+                s = dict(ev, tno=side, pno=pid, actionType="substitution", subType="in", qualifier=["inferred"],
+                         shirtNumber=shirt, firstName=first, familyName=last, player=f"{first} {last}".strip())
+                out.append(s)
+                on[side].add(pid)
+                inferred.append({"period": per, "periodType": ptype, "side": side, "pno": pid})
+    return out, inferred
+
+
 def _stats(r: dict) -> dict:
     """One Segev box line (a player's, the team row or the totals) -> FIBA's stat names. Segev counts MISSES."""
     g = lambda k: _num(r.get(k))  # noqa: E731
@@ -343,10 +397,19 @@ def raw_from_game(row: dict, teams: Dict[str, dict], actions_reply: dict, box_re
     sub_clock: Dict[int, str] = {}
     run: List[int] = []
 
+    # ...AND A CHANGE WITH NOTHING AFTER IT BUT THE QUARTER'S END is a change made in the break, whatever the clock
+    # showed when it was typed (0:01 in a 2026-27 cup game): it goes to the next period with the 0:00 ones (below)
+    to_next: set = set()
+
     def close_run():
         if len(run) > 1:
             for k in run[1:]:
                 sub_clock[k] = acts[run[0]].get("quarterTime")
+        if run:
+            nxt = next((b for b in acts[run[-1] + 1:] if b.get("type") not in ("clock", "substitution")), None)
+            if nxt and nxt.get("type") == "quarter" and (nxt.get("parameters") or {}).get("type") == "end-of-quarter" \
+                    and _num(nxt.get("quarter")) == _num(acts[run[0]].get("quarter")):
+                to_next.update(run)
         run.clear()
 
     for i, a in enumerate(acts):
@@ -384,7 +447,7 @@ def raw_from_game(row: dict, teams: Dict[str, dict], actions_reply: dict, box_re
         # A CHANGE MADE IN A BREAK BELONGS TO THE NEXT PERIOD, as FIBA records it. Segev's operators sometimes take a
         # whole five off at the 0:00 of a period and put the next five on at the 10:00 of the next (a 2025-26
         # quarter-final, Jerusalem at half-time): read where they were written, the floor is empty between the two
-        if at == "substitution" and remain == 0 and q < max(_num(x.get("quarter")) for x in acts):
+        if at == "substitution" and (remain == 0 or i in to_next) and q < max(_num(x.get("quarter")) for x in acts):
             q, remain = q + 1, plen(q + 1)
         ev = {
             "actionNumber": 0,
@@ -450,6 +513,7 @@ def raw_from_game(row: dict, teams: Dict[str, dict], actions_reply: dict, box_re
             events.append(marker(q, "period", "end", "00:00"))
     if finished:
         events.append(marker(last_q, "game", "end", "00:00"))
+    events, inferred = fill_period_starts(events, people)
     for n, ev in enumerate(events, start=1):
         ev["actionNumber"] = n
 
@@ -564,7 +628,7 @@ def raw_from_game(row: dict, teams: Dict[str, dict], actions_reply: dict, box_re
     tip, _ = fixture_tip(row)
     raw["ibsl"] = {"gameId": str(row.get("game_id") or ""), "segevId": segev_id(row) or str(info.get("gameId") or ""),
                    "board": _txt(row.get("board_name_eng")), "round": str(row.get("gameNumber") or ""),
-                   "date": tip, "venue": _txt(row.get("PlaceOfGame")) or None, "finished": bool(finished),
+                   "date": tip, "venue": _txt(row.get("PlaceOfGame")) or None, "finished": bool(finished), "inferred": inferred,
                    "unknown": sorted(set(unknown))}
     return raw
 

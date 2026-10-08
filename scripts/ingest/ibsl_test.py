@@ -244,8 +244,11 @@ raw = I.raw_from_game(rows["26390"], teams_of[2026], mini([shot(1, "05:30", P(0)
                                                             {"quarter": 1, "type": "clock", "quarterTime": "05:18", "playerId": 0, "teamId": 0, "parameters": {}},
                                                             sub(1, "05:17", P(2), "in"), sub(1, "05:16", P(3), "in"), shot(1, "05:00", P(2))]),
                       SEGEV[("getBoxScore", "47")], finished=False)
-gts = [e["gt"] for e in raw["pbp"] if e["actionType"] == "substitution"]
+gts = [e["gt"] for e in raw["pbp"] if e["actionType"] == "substitution" and "inferred" not in e["qualifier"]]
 ok("a change typed across running seconds (5:20, 5:19, 5:17, 5:16) is one moment, at 5:20", gts == ["05:20"] * 4, gts)
+inf = [(e["gt"], e["pno"]) for e in raw["pbp"] if "inferred" in e["qualifier"]]
+ok("a side that starts a period with nobody recorded on: whoever acts for it before coming on starts it (inferred)",
+   inf == [("10:00", P(0))] and raw["ibsl"]["inferred"] == [{"period": 1, "periodType": "REGULAR", "side": 1, "pno": P(0)}], inf)
 raw = I.raw_from_game(rows["26390"], teams_of[2026], mini([shot(1, "05:30", P(0)), sub(1, "00:00", P(0), "out"),
                                                             {"quarter": 2, "type": "quarter", "parameters": {"type": "start-of-quarter", "quarter": 2}, "quarterTime": "10:00", "playerId": 0, "teamId": 0},
                                                             sub(2, "10:00", P(2), "in"), shot(2, "09:00", P(2))]),
@@ -254,6 +257,13 @@ seq = [(e["actionType"], e["subType"], e["period"]) for e in raw["pbp"]]
 ok("a change at a period's 0:00 belongs to the next period, after its start",
    seq.index(("period", "start", 2)) < seq.index(("substitution", "out", 2)) and ("substitution", "out", 1) not in seq, seq)
 ok("a game still on: no final whistle, the clock the box's", not any(e["actionType"] == "game" for e in raw["pbp"]))
+raw = I.raw_from_game(rows["26390"], teams_of[2026], mini([shot(1, "05:30", P(0)), sub(1, "00:01", P(0), "out"),
+                                                            {"quarter": 1, "type": "quarter", "parameters": {"type": "end-of-quarter", "quarter": 1}, "quarterTime": "00:00", "playerId": 0, "teamId": 0},
+                                                            {"quarter": 2, "type": "quarter", "parameters": {"type": "start-of-quarter", "quarter": 2}, "quarterTime": "10:00", "playerId": 0, "teamId": 0},
+                                                            sub(2, "10:00", P(2), "in"), shot(2, "09:00", P(2))]),
+                      SEGEV[("getBoxScore", "47")], finished=False)
+seq = [(e["actionType"], e["subType"], e["period"]) for e in raw["pbp"]]
+ok("...and one typed at 0:01 with nothing after it but the quarter's end too", ("substitution", "out", 2) in seq and ("substitution", "out", 1) not in seq, seq)
 
 # ---------------------------------------------------------------------------------------------------------- final or held
 print("\nfinal or held")

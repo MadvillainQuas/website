@@ -773,7 +773,13 @@ Not FIBA LiveStats: the league's stats are kept by **Segev Stats**, which basket
   goes to the next period; an and-one's drawn foul points at the foul, not the shot; lay-ups, dunks and alley-oops are
   drawn back to 1.2 m from the basket (operators tap them by area: only 14% within 1.22 m as tapped); `blocked` is a
   miss; a game Segev never flags as finished is final once basket.co.il posts the same score three hours on; a result
-  that differs from the feed's (a 2025-26 semi-final awarded 20-1, the feed three quarters to 77-67) is held.
+  that differs from the feed's (a 2025-26 semi-final awarded 20-1, the feed three quarters to 77-67) is held. A change
+  with nothing after it but the quarter's end (typed at 0:01) goes to the next period too; a side left with fewer than
+  five on after its period-start changes (both fives taken off, nobody put on) is given, at that start, whoever acts for
+  it in the period before coming on (qualifier `inferred`, listed in `raw.ibsl.inferred`).
+- **2026-27 operator errors seen, not fixable here:** players scoring while recorded off (one cup game), a second quarter
+  filed under the fourth (Segev's own box says Q2 0-0, Q4 45-43; the result and the box stand, that game's timeline does
+  not), a cup game held for a feed that stops at 66-87 of an 82-99 result.
 - **Not in the play-by-play:** second-chance and off-turnover flags (the stint buckets stay 0); the box carries Segev's
   own per-player fast-break and second-chance points and the club's published paint, off-turnover and bench points.
 - **Bio:** `bio_sources.ibsl`: the Winner League's clubs, then `ws.asmx/Players?team_uid=U&cYear=Y` per club (English
