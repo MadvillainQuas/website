@@ -336,6 +336,20 @@ editor edits it and marked `kept: <version>`, so it is not tried again; it never
 not write it. (The first voice build stamped such pieces `wv: 3`, so 18 week-previews from before the voice passed as
 the voice's and were never read again: `watch` went to 4 with `drop`, 2026-10-08.)
 
+**The weekly preview keeps its week** (Louie, 2026-10-08: "loosen the bar for weekly previews"). Early in a season most of
+a week's games have nothing to say beyond a favourite and a name, and the editor used to cut those games and then hold
+the whole preview (12 of 62 leagues had an article). Now:
+- a game with nothing more goes to a closing **Also this week** round-up, one line each, instead of being cut;
+- the opening paragraph counts for the top game it describes (its stakes were there, so its own section looked empty);
+- one game worth a word is enough (it was two), and the round-up never counts as a game or against the quality;
+- the preview posts at a bar of its own, `BAR.watch` 0.45 (every other format 0.6);
+- the slate prefers games there is something to say about (both clubs play it next, a lean, a player, a reason);
+- level-0 stakes lines say what an early season can: matching records ("Both come in at 2–1"), a side still winless,
+  how each came out of its last game (never the same result twice in a piece), each a record claim for the timing rule;
+- a table position is used only after three games each (before that the table is its default order).
+Replayed on every league's saved input: 52 of the 58 leagues with games that week post a preview; the rest have played
+no more than a game.
+
 **The editor reads again.** Every report carries the editor's version (`qa.ev`, scrutiny.js `VERSION`). A piece already
 out that the editor has not read since its last change is read again at the next build: kept as it now edits it (its
 earlier fixes kept in the report) or dropped. What the editor learns reaches what readers can already open.

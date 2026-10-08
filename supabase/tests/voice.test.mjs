@@ -121,5 +121,50 @@ console.log('\nthe editor');
   ok('model-speak: a sentence of it goes, a phrase of it is said as a writer would', !/numbers say|a chance/.test(JSON.stringify(ms.piece.body)) && ms.report.fixes.some(f => f.rule === 'model-speak'), ms.piece.body);
 }
 
+/* A WEEKLY PREVIEW KEEPS ITS WEEK (Louie, 2026-10-08: "loosen the bar for weekly previews") */
+console.log('\na weekly preview keeps its week');
+{
+  const A = { id: 'a', ent: 'club', name: 'Riverside', role: 'the hosts' }, B = { id: 'b', ent: 'club', name: 'Hilltop', role: 'the visitors' };
+  const log = [
+    { slot: 'watch.lede', text: 'Saturday is the one to circle: Riverside host Hilltop.', section: 0, ents: [A, B] },
+    { slot: 'game.stakes', text: 'Both still unbeaten. Only one of them will be by the final buzzer.', section: 0, ents: [A, B] },
+    { slot: 'game.player', text: 'Keep an eye on Ann Lee, averaging 17 a night so far.', section: 1, ents: [] },
+    { slot: 'reason.glass', text: 'Valencia crash the offensive glass, and Real struggle to finish possessions.', section: 2, ents: [] },
+    { slot: 'game.lean', text: 'Oaks are big favourites; Elms need something special.', section: 3, ents: [] },
+    { slot: 'game.player', text: 'Watch Bo Ray, averaging 14 a night so far.', section: 3, ents: [] }
+  ];
+  const piece = () => ({ kind: 'watch', head: 'x', dek: 'The three games worth your time this week.',
+    body: ['Saturday is the one to circle: Riverside host Hilltop. Both still unbeaten. Only one of them will be by the final buzzer.',
+      { h: 'Riverside v Hilltop · Saturday 10 October' }, 'Keep an eye on Ann Lee, averaging 17 a night so far.',
+      { h: 'Valencia v Real · Sunday 11 October' }, 'Valencia crash the offensive glass, and Real struggle to finish possessions.',
+      { h: 'Oaks v Elms · Saturday 10 October' }, 'Oaks are big favourites; Elms need something special. Watch Bo Ray, averaging 14 a night so far.'] });
+  const sg = { 0: 'g1', 1: 'g1', 2: 'g2', 3: 'g3' };
+  const q = E.scrutinise(piece(), { log, clubs: ['Riverside', 'Hilltop', 'Valencia', 'Real', 'Oaks', 'Elms'], schedule: {}, sectionGame: sg, roundup: true });
+  const body = q.piece.body, heads = body.filter(x => x && x.h).map(x => x.h);
+  ok('the opening paragraph counts for the top game it is about: its section stays', heads.includes('Riverside v Hilltop · Saturday 10 October'), heads);
+  ok('a game with nothing beyond a lean and a name is not cut: it goes to the round-up, its fixture first', heads[heads.length - 1] === E.ROUND_UP &&
+     /^Oaks v Elms, Saturday 10 October: Oaks are big favourites/.test(body[body.length - 1]), body);
+  ok('...and the piece is posted, the standfirst counting the games, not the round-up', q.report.ok && /^The two games/.test(q.piece.dek), [q.report.held, q.piece.dek]);
+  const other = E.scrutinise(Object.assign(piece(), { kind: 'slump' }), { log, clubs: [], schedule: {}, sectionGame: sg });
+  ok('any other piece cuts such a section as before (no round-up)', !other.piece.body.some(x => x && x.h === E.ROUND_UP), other.piece.body);
+  const none = E.scrutinise({ kind: 'watch', head: 'x', dek: 'y', body: ['A lede.', { h: 'Oaks v Elms · Sat' }, 'Oaks are big favourites; Elms need something special.', { h: 'C v D · Sun' }, 'Watch Bo Ray, averaging 14 a night so far.'] },
+    { log: [log[4], Object.assign({}, log[5], { section: 2 })], clubs: [], schedule: {}, sectionGame: { 1: 'x', 2: 'y' }, roundup: true });
+  ok('a preview with no game worth a word is still held back', !none.report.ok && none.report.held.some(h => h.rule === 'thin'), none.report.held);
+
+  /* the modest stakes: said only when nothing bigger fits, and each a record claim the editor's timing rule can check */
+  const say = (x, seed) => { const W = V.writer(seed || 'st'); const r = V.stakes(W, Object.assign({ A, B, n: 12 }, x)); return { t: r.lines.join(' '), log: W.log() }; };
+  const same = say({ recA: { w: 2, l: 1 }, recB: { w: 2, l: 1 } });
+  ok('matching records: "Both come in at 2–1" (or the level-at line)', /2–1/.test(same.t) && /Both come in|Level at/.test(same.t), same.t);
+  ok('...a record claim, for the timing rule', same.log.some(e => (e.claims || []).some(c => c.k === 'record')), same.log);
+  const wl = say({ recA: { w: 0, l: 3 }, recB: { w: 2, l: 1 } });
+  ok('a side still without a win', /Riverside|the hosts/.test(wl.t) && /first win|no win/.test(wl.t), wl.t);
+  const sp = say({ recA: { w: 1, l: 2 }, recB: { w: 2, l: 1 }, lastA: { won: false, opp: 'Elms', id: 'x1' }, lastB: { won: true, opp: 'Oaks', id: 'x2' } }, 'split');
+  ok('how each came out of its last game', /Oaks/.test(sp.t) && /Elms/.test(sp.t), sp.t);
+  const one = say({ lastA: { won: true, opp: 'Elms', id: 'x1' } }, 'one');
+  ok('...or one side\'s, when the other\'s has been told already', /Elms/.test(one.t) && /win|beat/.test(one.t), one.t);
+  const big = say({ rankA: 1, rankB: 2, recA: { w: 2, l: 1 }, recB: { w: 2, l: 1 } }, 'big');
+  ok('something bigger outranks them (first against second)', /top|First against second|Top of the table/i.test(big.t) && !/2–1/.test(big.t), big.t);
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

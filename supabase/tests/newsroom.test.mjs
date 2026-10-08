@@ -144,6 +144,8 @@ console.log('\nsalience, persistence and the headline test');
   const current = five && Object.assign({}, five, { dek: 'left as it is', qa: Object.assign({}, five.qa, { ev: S.VERSION }) });
   const notAgain = current && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [current] }).find(a => a.id === five.id);
   ok('...one it has read since is not', notAgain && notAgain.dek === 'left as it is');
+  /* the week's preview has a lower bar of its own (2026-10-08) */
+  ok('a weekly preview posts at a bar of its own, lower than every other format\'s', NR.BAR && NR.BAR.watch < NR.SALIENCE, NR.BAR);
   const gone = five && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [Object.assign({}, old, { id: 'five:gone:1' })] }).find(a => a.id === 'five:gone:1');
   ok('...and a piece whose older writer got a figure wrong is dropped when it cannot be written again', five && gone === undefined);
   const fake = { v: 1, base: 0.05, bias: Math.log(0.05 / 0.95), w: { 's:question': 1.5 } };

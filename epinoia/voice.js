@@ -183,6 +183,7 @@ function claimsOf(c) {
   if (c.bothHot) out.push({ k: 'run', ids: [id(c.A), id(c.B)].filter(Boolean) });
   if (c.hotCold) out.push({ k: 'run', ids: [id(c.Hot), id(c.Cold)].filter(Boolean) });
   if (c.top2 || c.top4 || c.topBottom) out.push({ k: 'table', ids: [id(c.A), id(c.B), id(c.Top), id(c.Bottom)].filter(Boolean) });
+  if (c.sameRec || c.winless || c.form) out.push({ k: 'record', ids: [id(c.A), id(c.B)].filter(Boolean) });
   return out;
 }
 /* one piece's writer: the seed decides, the discourse is remembered, every sentence is proofread */
@@ -384,7 +385,24 @@ const BANK = {
       'Both sides are in the top four, and both want to stay there.'] },
     { level: 1, when: c => c.topBottom, say: [
       (c, b) => b.join('contrast', b.cl(c.Top, 'sit', c.posTop), b.cl(c.Bottom, 'sit', c.posBottom)),
-      '{Top} are expected to win this one. {Bottom} have nothing to lose.'] }
+      '{Top} are expected to win this one. {Bottom} have nothing to lose.'] },
+    /* EARLY IN A SEASON, OR A GAME WITH NOTHING BIGGER ON IT (level 0: said only when nothing above fits, Louie 2026-10-08
+       "loosen the bar for weekly previews"): matching records, a side still without a win, how each came out of its last
+       game. Records only for a club whose next game this is (newsroom.js stakesOf), so nothing can change them first. */
+    { level: 0, when: c => c.sameRec, say: [
+      'Both come in at {rec}.',
+      'Level at {rec} so far, and one of them leaves with a defeat.'] },
+    { level: 0, when: c => c.winless, say: [
+      '{Winless} are still looking for a first win.',
+      'Still no win for {Winless}, and {Other} will not want to be the first side they beat.'] },
+    { level: 0, when: c => c.form === 'won', say: ['Both won last time out.', 'Both come in off a win.'] },
+    { level: 0, when: c => c.form === 'lost', say: ['Both lost last time out, so one of them gets back on track here.', 'Both are coming off a defeat.'] },
+    { level: 0, when: c => c.form === 'split', say: [
+      '{FW} come in off a win over {oppW}; {FL} lost to {oppL} last time out.',
+      '{FW} won last time out, against {oppW}. {FL} lost to {oppL}.'] },
+    /* one side's last result, when the other's has been told already in the piece */
+    { level: 0, when: c => c.form === 'one' && c.oneWon, say: ['{One} come in off a win over {oneOpp}.', '{One} beat {oneOpp} last time out.'] },
+    { level: 0, when: c => c.form === 'one' && !c.oneWon, say: ['{One} lost to {oneOpp} last time out, and will want a response.', '{One} come in off a defeat by {oneOpp}.'] }
   ],
   'game.meetings': [
     { level: 2, when: c => c.met === 1 && c.margin >= 15, say: [
@@ -754,6 +772,17 @@ function stakes(W, x) {
       const aTop = rA < rB;
       Object.assign(c, { topBottom: true, Top: aTop ? x.A : x.B, Bottom: aTop ? x.B : x.A, posTop: nth(Math.min(rA, rB)), posBottom: nth(Math.max(rA, rB)) });
     }
+  }
+  /* the modest facts (the level-0 lines): matching records after two games or more, a side still winless, the last result */
+  const recOf = r => (r && r.w + r.l >= 1 ? r.w + '–' + r.l : null);
+  if (recOf(x.recA) && recOf(x.recA) === recOf(x.recB) && x.recA.w + x.recA.l >= 2) Object.assign(c, { sameRec: true, rec: recOf(x.recA) });
+  const winless = r => !!(r && r.w === 0 && r.l >= 2);
+  if (x.recA && x.recB && winless(x.recA) !== winless(x.recB)) { const a0 = winless(x.recA); Object.assign(c, { winless: true, Winless: a0 ? x.A : x.B, Other: a0 ? x.B : x.A }); }
+  if (!!x.lastA !== !!x.lastB) { const r = x.lastA || x.lastB; Object.assign(c, { form: 'one', One: x.lastA ? x.A : x.B, oneWon: !!r.won, oneOpp: r.opp }); }
+  if (x.lastA && x.lastB) {
+    if (x.lastA.won && x.lastB.won) c.form = 'won';
+    else if (!x.lastA.won && !x.lastB.won) c.form = 'lost';
+    else { const aW = x.lastA.won; Object.assign(c, { form: 'split', FW: aW ? x.A : x.B, FL: aW ? x.B : x.A, oppW: (aW ? x.lastA : x.lastB).opp, oppL: (aW ? x.lastB : x.lastA).opp }); }
   }
   const sA = x.runA && x.runA.n >= 3 ? x.runA : null, sB = x.runB && x.runB.n >= 3 ? x.runB : null;
   if (sA && sB && sA.won && sB.won) Object.assign(c, { bothHot: !c.bothUnbeaten, nA: spell(sA.n), nB: spell(sB.n) });

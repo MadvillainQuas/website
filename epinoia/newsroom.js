@@ -39,6 +39,11 @@
 const NARR = () => root.EpinoiaNarrative || (typeof require === 'function' ? require('./narrative.js') : null);
 const CARD_BAR = 0.4;           // the game to watch: stakes x what its card can say x quality, at least
 const SALIENCE = 0.6, MAX_NEW = 2, MAX_WEEK = 8, KEEP_DAYS = 21, SUBJECT_DAYS = 14, MAX_KEEP = 16;
+/* A WEEK'S PREVIEW HAS A BAR OF ITS OWN (Louie, 2026-10-08: "loosen the bar for weekly previews"): a league's week is worth
+   its preview even early in a season, when less is at stake and fewer games have something to say (the editor sends
+   those to the preview's round-up). Every other format posts at SALIENCE. */
+const BAR = { watch: 0.45 };
+const barOf = kind => (BAR[kind] != null ? BAR[kind] : SALIENCE);
 const HOUR = 3600000, DAY = 86400000;
 
 /* ------------------------------------------------------------------ words --- */
@@ -305,10 +310,10 @@ function editorMeta(L, o) {
 /* a piece through the editor: { piece (fixed, its report as qa), ok } */
 function edit(a, meta, nowMs, game) {
   const E = EDITOR();
-  const log = a.__log || [], sections = a.__sections || null;
-  delete a.__log; delete a.__sections;
+  const log = a.__log || [], sections = a.__sections || null, roundup = !!a.__roundup;
+  delete a.__log; delete a.__sections; delete a.__roundup;
   if (!E) return { piece: a, ok: true };
-  const q = E.scrutinise(a, { log, schedule: meta.schedule, clubs: meta.clubs, sectionGame: sections, game: game || null, nowMs });
+  const q = E.scrutinise(a, { log, schedule: meta.schedule, clubs: meta.clubs, sectionGame: sections, game: game || null, nowMs, roundup });
   return { piece: Object.assign(q.piece, { qa: q.report }), ok: q.report.ok };
 }
 const eClub = (L, id, role) => VOICE().club(L.club(id), { id, role: role || null });
@@ -332,19 +337,46 @@ const leanText = (L, ex, W, eFav, eDog) => {
   const m = Math.abs(ex.margin), w = W || VOICE().writer('lean' + ex.favourite);
   return w.say('game.lean', { band: m < 2 ? 'tossup' : m < 4.5 ? 'slight' : m < 8 ? 'clear' : 'heavy', Fav: eFav || eClub(L, ex.favourite), Dog: eDog || null });
 };
-/* WHY A GAME MATTERS, said (voice.js stakes): both unbeaten, the top two, a streak against a slide, the rematch */
-function stakesOf(L, g, W, eA, eB) {
+/* WHY A GAME MATTERS, said (voice.js stakes): both unbeaten, the top two, a streak against a slide, the rematch; early on,
+   matching records and the last results. `said`: the results a piece has already told (a Set of game ids), never told twice */
+function stakesOf(L, g, W, eA, eB, said) {
   const A = g.home.id, B = g.away.id, fresh = id => { const f = L.nextOf(id); return !!f && f.id === g.game; };
   const cA = fresh(A) ? L.C.get(A) : null, cB = fresh(B) ? L.C.get(B) : null;
   const met = (L.games || []).filter(x => (x.home_team_id === A && x.away_team_id === B) || (x.home_team_id === B && x.away_team_id === A));
-  return VOICE().stakes(W, { A: eA, B: eB, rankA: num(g.home.rank), rankB: num(g.away.rank), n: ((L.pos(A) || L.pos(B)) || {}).n || 0,
+  /* each club's last result (only for a club whose next game this is: another game first would change it) */
+  const lastOf = id => {
+    const gs = (L.games || []).filter(x => (x.home_team_id === id || x.away_team_id === id) && num(x.home_score) != null && num(x.away_score) != null && +x.home_score !== +x.away_score);
+    const x = gs.sort((p, q) => time(q.tipoff_at) - time(p.tipoff_at))[0];
+    if (!x) return null;
+    const home = x.home_team_id === id;
+    return { won: home === (+x.home_score > +x.away_score), opp: L.club(home ? x.away_team_id : x.home_team_id), id: x.id };
+  };
+  const fresh0 = r => (r && said && said.has(r.id) ? null : r);
+  const la = cA ? fresh0(lastOf(A)) : null, lb = cB ? fresh0(lastOf(B)) : null;
+  /* THE TABLE ONCE IT MEANS SOMETHING: three games each, as the slate's own angle asks (narrative.js). Before that a
+     league's table is its default order, and "top of the table is up for grabs" would be said of two clubs yet to play */
+  const gpOf = id => { const c = L.C.get(id); return c ? (c.gp != null ? +c.gp : (+c.w || 0) + (+c.l || 0)) : 0; };
+  const enough = Math.min(gpOf(A), gpOf(B)) >= 3;
+  const out = VOICE().stakes(W, { A: eA, B: eB, rankA: enough ? num(g.home.rank) : null, rankB: enough ? num(g.away.rank) : null, n: ((L.pos(A) || L.pos(B)) || {}).n || 0,
     recA: cA ? { w: cA.w, l: cA.l } : null, recB: cB ? { w: cB.w, l: cB.l } : null,
+    lastA: la, lastB: lb,
     runA: cA && cA.streak ? { won: cA.streak.won, n: cA.streak.n } : null, runB: cB && cB.streak ? { won: cB.streak.won, n: cB.streak.n } : null,
     meetings: met.map(m => ({ aWon: (m.home_team_id === A) === (num(m.home_score) > num(m.away_score)), hi: Math.max(m.home_score, m.away_score), lo: Math.min(m.home_score, m.away_score) })) });
+  /* the last results it could have told are told (kept from a second telling even when another line was chosen) */
+  if (said && out.c && out.c.form) { if (la) said.add(la.id); if (lb) said.add(lb.id); }
+  return out;
 }
 function fWatch(L, say) {
-  const slate = ((L.b && L.b.coverage && L.b.coverage.slate) || []).filter(x => time(x.at) > L.nowMs && time(x.at) < L.nowMs + 7 * DAY && x.stakes >= 0.5)
-    .sort((a, c) => c.stakes - a.stakes).slice(0, 3);
+  const week = ((L.b && L.b.coverage && L.b.coverage.slate) || []).filter(x => time(x.at) > L.nowMs && time(x.at) < L.nowMs + 7 * DAY && x.stakes >= 0.5)
+    .sort((a, c) => c.stakes - a.stakes);
+  /* THE GAMES THERE IS SOMETHING TO SAY ABOUT, first (2026-10-08): a game both clubs play next (their records and last
+     results can be told: another game first would change them), one with a lean, a player to watch or a reason. A club
+     playing twice this week has nothing safe to say about its second game until it has played the first. */
+  const next = (id, x) => { const n = L.nextOf(id); return !!n && n.id === x.game; };
+  const sayable = x => (next(x.home.id, x) && next(x.away.id, x)) || !!x.expect || !!(x.home.watch || x.away.watch) ||
+    (() => { try { return reasons(L, x.home.id, x.away.id, 'probe' + x.game).length > 0; } catch (_) { return false; } })();
+  const pick = week.filter(sayable);
+  const slate = (pick.length >= 2 ? pick : week).slice(0, 3);
   if (slate.length < 2) return [];
   const first = new Date(Math.min(...slate.map(x => time(x.at))));
   const wk = first.getUTCFullYear() + '-' + Math.ceil(((first - Date.UTC(first.getUTCFullYear(), 0, 1)) / DAY + 1) / 7);
@@ -360,14 +392,17 @@ function fWatch(L, say) {
     const head = headsOf(seed + 'h', W.all('watch.head', c0));
     const dek = W.say('watch.dek', c0);
     const body = [];
-    const used = new Set(), named = new Set(), secGame = { 0: top.game };
+    const used = new Set(), named = new Set(), secGame = { 0: top.game }, said = new Set();
+    /* WHAT THE PREVIEW SAID OF EACH GAME, kept on the piece (2026-10-08): the match report reads it back after the game -
+       the favourite and by how much, the reason with its two figures, the player named - and says how it played out */
+    const games = [];
     slate.forEach((g, i) => {
       const h = g.home.id, a = g.away.id, [eH, eA] = i === 0 ? [tA, tB] : ent(g);
-      if (i === 0) body.push(ok([W.say('watch.lede', c0)].concat(stakesOf(L, g, W, eH, eA).lines).filter(Boolean).join(' ')));
+      if (i === 0) body.push(ok([W.say('watch.lede', c0)].concat(stakesOf(L, g, W, eH, eA, said).lines).filter(Boolean).join(' ')));
       body.push({ h: L.club(h) + ' v ' + L.club(a) + ' · ' + g.day });
       W.section(g.game);
       secGame[i + 1] = g.game;
-      if (i > 0) { const st = stakesOf(L, g, W, eH, eA).lines; if (st.length) body.push(st.join(' ')); }
+      if (i > 0) { const st = stakesOf(L, g, W, eH, eA, said).lines; if (st.length) body.push(st.join(' ')); }
       const e = reasons(L, h, a, seed + i, W, eH, eA).filter(x => !used.has(x.key))[0], ew = e ? e.write() : null;
       if (ew) { body.push(ew.text); used.add(e.key); }
       const onoff = [[h, eH], [a, eA]].map(([t, et]) => onOffLine(L, t, W, named, et)).filter(Boolean)[0];
@@ -377,10 +412,14 @@ function fWatch(L, say) {
       const fav = g.expect ? g.expect.favourite : null;
       const [eF, eD] = fav === h ? [eH, eA] : [eA, eH];
       body.push(ok([leanText(L, g.expect, W, eF, eD), w && w.pid ? W.say('game.player', { P: ePlayer(L, w.pid), line: w.line }) : null].filter(Boolean).join(' ')));
+      games.push({ game: g.game, at: g.at, home: h, away: a, top: i === 0,
+        lean: g.expect && isFinite(g.expect.margin) && g.expect.favourite ? { favourite: g.expect.favourite, margin: Math.round(Math.abs(g.expect.margin) * 10) / 10 } : null,
+        reason: ew && e ? { key: e.key, slot: e.slot, a: e.a || null, b: e.b || null } : null,
+        player: w && w.pid ? { pid: w.pid, name: w.name, team: w === g.home.watch ? h : a, line: w.line || null } : null });
     });
-    return { __log: W.log(), __sections: secGame, kicker: 'Games to watch', head, dek, body: body.filter(Boolean), teams: [top.home.id, top.away.id],
+    return { __log: W.log(), __sections: secGame, __roundup: true, kicker: 'Games to watch', head, dek, body: body.filter(Boolean), teams: [top.home.id, top.away.id],
       links: slate.map(g => ({ label: L.club(g.home.id) + ' v ' + L.club(g.away.id), href: 'game/?g=' + g.game })),
-      facts: slate.map(g => ({ label: g.day, value: L.club(g.home.id) + ' v ' + L.club(g.away.id) })) };
+      facts: slate.map(g => ({ label: g.day, value: L.club(g.home.id) + ' v ' + L.club(g.away.id) })), games };
   } }];
 }
 /* WHY A GAME WILL GO THE WAY IT GOES: the reasons a preview writer would give, from the season file. Not a figure set
@@ -401,7 +440,10 @@ function rankWord(R, hi, lo) {
   if (R.r > R.n - 5) return 'the ' + place(R.n - R.r + 1) + '-' + lo + ' in the league';
   return place(R.r) + ' in the league';
 }
-const top = R => R && R.r <= Math.max(3, Math.round(R.n / 5)), bottom = R => R && R.r > R.n - Math.max(3, Math.round(R.n / 5));
+/* the top and the bottom of a ranking: a fifth of the league, at least three places - two in a pool under ten (early in a
+   season six clubs may be ranked, and three of six is half the league, not "one of the easiest teams to run against") */
+const band = R => Math.max(R.n >= 10 ? 3 : 2, Math.round(R.n / 5));
+const top = R => R && R.r <= band(R), bottom = R => R && R.r > R.n - band(R);
 const fig = (team, label, value, R) => ({ team, label, value, rank: R.r, of: R.n });
 function reasons(L, A, B, seed, W0, eA0, eB0) {
   const ta = L.trow(A), tb = L.trow(B);
@@ -410,7 +452,7 @@ function reasons(L, A, B, seed, W0, eA0, eB0) {
   const eA = eA0 || eClub(L, A, 'the hosts'), eB = eB0 || eClub(L, B, 'the visitors'), E = id => (id === A ? eA : eB);
   const R = (k, id, d) => L.rank(L.T, k, id, d), out = [];
   /* a reason, chosen now and written when it is shown (write()): its title, then the clash said and what it means */
-  const add = (key, s, slot, c, a, b) => out.push({ key, s, a, b, write: () => {
+  const add = (key, s, slot, c, a, b) => out.push({ key, s, slot, a, b, write: () => {
     const title = W.say(slot + '.title', c), text = W.say(slot, c), coda = text ? W.say(slot + '.coda', c) : null;
     return title && ok(text) ? { title, text: [text, coda].filter(Boolean).join(' ') } : null;
   } });
@@ -1021,9 +1063,11 @@ function orderHeads(heads, model, league) {
      watch 4 (2026-10-08, drop): a week's games to watch from before the voice, its week gone, had been kept as written AND
        stamped as the voice's, so it was never read again ("where the numbers say each will be decided", "one of the easiest
        sides to run on ... the fourth-best in the league"): written again while its week is on, dropped after. A piece kept
-       as written is now marked kept, never given a writer's version it was not written by. */
+       as written is now marked kept, never given a writer's version it was not written by.
+     watch 5 (2026-10-08, drop): the week's games to watch keep what they said of each game (games: the lean, the reason,
+       the player) for the match report to read back; and the preview keeps its week (round-up, its own bar) */
 const VOICED = { v: 3, heads: true };
-const WRITER = { five: { v: 3, drop: true, heads: true }, watch: { v: 4, drop: true, heads: true }, slump: VOICED, mvp: VOICED, prospect: VOICED, identity: VOICED, run: VOICED, skid: VOICED, clock: VOICED, absence: VOICED };
+const WRITER = { five: { v: 3, drop: true, heads: true }, watch: { v: 5, drop: true, heads: true }, slump: VOICED, mvp: VOICED, prospect: VOICED, identity: VOICED, run: VOICED, skid: VOICED, clock: VOICED, absence: VOICED };
 const writerOf = kind => (WRITER[kind] && WRITER[kind].v) || 1;
 /* the writer a piece was last answered for: written by it (wv), or kept as it was when it could not be written again (kept) */
 const answered = a => Math.max(a.wv || 1, a.kept || 0);
@@ -1078,7 +1122,7 @@ function publish(o, b, opts) {
     if (!room) break;
     /* what readers open: a format whose pieces they open more than the newsroom's average is a little more salient */
     const kw = op.kindW && op.kindW[c.kind] ? op.kindW[c.kind] : 1;
-    if ((c.salience * kw < SALIENCE && !op.all) || have.has(c.id)) continue;
+    if ((c.salience * kw < barOf(c.kind) && !op.all) || have.has(c.id)) continue;
     const at = lately.get(c.kind + '|' + c.subject);
     if (at != null && nowMs - at < SUBJECT_DAYS * DAY && !op.all) continue;
     let a = null;
@@ -1093,9 +1137,9 @@ function publish(o, b, opts) {
        that matters but came out thin waits, and the next most salient one gets its place */
     const quality = a.qa && a.qa.quality != null ? a.qa.quality : 1, score = Math.round(c.salience * kw * quality * 1000) / 1000;
     if (a.qa) a.qa.score = score;
-    if (!op.all && score < SALIENCE) {
+    if (!op.all && score < barOf(c.kind)) {
       held.push({ id: c.id, kind: c.kind, head: a.head, report: Object.assign({}, a.qa, { held: [{ at: 'piece', kind: 'unwieldy', rule: 'salience',
-        note: 'salience ' + c.salience + (kw !== 1 ? ' x format ' + kw : '') + ' x quality ' + quality + ' = ' + score + ', under the bar (' + SALIENCE + ')' }] }) });
+        note: 'salience ' + c.salience + (kw !== 1 ? ' x format ' + kw : '') + ' x quality ' + quality + ' = ' + score + ', under the bar (' + barOf(c.kind) + ')' }] }) });
       continue;
     }
     fresh.push(Object.assign({ id: c.id, kind: c.kind, subject: c.subject, salience: c.salience, written: new Date(nowMs).toISOString(), wv: writerOf(c.kind) }, a));
@@ -1105,5 +1149,5 @@ function publish(o, b, opts) {
   return fresh.concat(prev).sort((a, c) => time(c.written) - time(a.written)).slice(0, MAX_KEEP);
 }
 
-return { publish, candidates, digest, learn, gameCard, SALIENCE, BOOK, __x: { rankText, rankWord, reasons, onOffLine, sayer, league, leanText, stakesOf } };
+return { publish, candidates, digest, learn, gameCard, SALIENCE, BAR, BOOK, __x: { rankText, rankWord, reasons, onOffLine, sayer, league, leanText, stakesOf } };
 }));

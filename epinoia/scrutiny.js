@@ -18,7 +18,9 @@
      near-copy    two sentences that say the same thing in nearly the same words
      unwieldy     a sentence past forty words (split at its seam), a paragraph past 110 (split at a sentence)
      thin         a section with nothing to say (a lean and a name, no reason, stake or player who swings it) goes;
-                  a piece left with fewer than two sections, or three paragraphs, is held back
+                  a piece left with fewer than two sections, or three paragraphs, is held back. A WEEKLY PREVIEW
+                  (op.roundup) keeps its week: such a game goes to a closing round-up instead, the opening paragraph
+                  counts for the top game it is about, and one game worth a word is enough
      count        a number in the standfirst that the piece does not bear out ("the three games", two sections)
      headline     a full stop, a doubled word, a headline past 100 characters
 
@@ -65,8 +67,13 @@ const jac = (a, b) => { const A = new Set(a), B = new Set(b); if (!A.size || !B.
    learnt something since it last read it (newsroom.js publish): what it now knows to fix reaches what readers can open.
      1  2026-10-08  the first editor
      2  2026-10-08  model-speak in a standfirst ("where the numbers say each will be decided"), and every piece already
-                    out read again: a piece kept from before the voice had never been read */
-const VERSION = 2;
+                    out read again: a piece kept from before the voice had never been read
+     3  2026-10-08  a weekly preview keeps its week: a thin game to the round-up, the opening paragraph counts for the top
+                    game, one game worth a word is enough */
+const VERSION = 3;
+
+/* the subhead of a weekly preview's round-up (the games with nothing to say beyond a lean and a name) */
+const ROUND_UP = 'Also this week';
 
 /* the model's words, and what a writer says instead (null: the sentence goes) */
 const MODEL = [
@@ -235,14 +242,28 @@ function scrutinise(piece0, o) {
   }));
 
   /* -------- thin: a section with nothing to say -------- */
+  const round = [];                                // a weekly preview's round-up: one line a game
   if (!isCard && LOG.length) {
     const SUB = /^(reason\.|game\.stakes|game\.meetings|game\.onoff)/;
+    const sg = op.sectionGame || {};
+    const says = sec => P.filter(u => u.section === sec).some(u => u.sents.some(x => x.lg && SUB.test(x.lg.slot || '')));
     const secs = [...new Set(P.filter(u => u.section > 0).map(u => u.section))];
-    const thin = secs.filter(sec => !P.filter(u => u.section === sec).some(u => u.sents.some(x => x.lg && SUB.test(x.lg.slot || ''))));
-    thin.forEach(sec => P.filter(u => u.section === sec).forEach(u => {
-      note(u.where + (u.label ? ' (' + u.label + ')' : ''), 'unwieldy', 'thin', 'a section with nothing to say beyond a lean and a name: it goes', u.sents.map(x => x.t).join(' '), null);
-      u.sents = []; u.dropHead = true;
-    }));
+    /* the opening paragraph is about the top game (section 0 and its own section name the same game): what it says of that
+       game counts for that game's section, which otherwise held only the name to watch and was cut as thin */
+    const thin = secs.filter(sec => !says(sec) && !(sg[0] && sg[sec] === sg[0] && says(0)));
+    thin.forEach(sec => {
+      const us = P.filter(u => u.section === sec);
+      const text = us.map(u => u.sents.map(x => x.t).join(' ')).join(' ').trim();
+      const label = (us[0] && us[0].label) || '';
+      if (op.roundup && text && label) {
+        /* A WEEKLY PREVIEW KEEPS ITS WEEK (Louie, 2026-10-08: "loosen the bar for weekly previews"): the game is not cut but
+           said in a line of the closing round-up, its fixture first ("A v B, Saturday 10 October: ...") */
+        const line = label.replace(/ · /, ', ') + ': ' + text.replace(/^([A-Z])/, m => m);
+        note(us[0].where + ' (' + label + ')', 'unwieldy', 'thin', 'a game with nothing to say beyond a lean and a name: to the round-up', text, line);
+        round.push(line);
+      } else note((us[0] ? us[0].where : 'p?') + (label ? ' (' + label + ')' : ''), 'unwieldy', 'thin', 'a section with nothing to say beyond a lean and a name: it goes', text, null);
+      us.forEach(u => { u.sents = []; u.dropHead = true; });
+    });
   }
 
   /* -------- write back, and a paragraph too long split at a sentence -------- */
@@ -264,7 +285,11 @@ function scrutinise(piece0, o) {
     /* two subheads in a row: a section left with nothing to say goes */
     piece.body = piece.body.filter((x, i, a) => !(x && x.h && (i === a.length - 1 || (a[i + 1] && a[i + 1].h))));
     const left = piece.body.filter(x => x && x.h).length;
-    if (P.some(u => u.dropHead) && left < 2) hold('body', 'illogical', 'thin', 'a piece about the week\'s games with fewer than two games left worth a word', '');
+    /* the round-up closes the piece, under its own subhead (ROUND_UP: not a game, and never counted as one) */
+    if (round.length) piece.body.push({ h: ROUND_UP }, round.join(' '));
+    /* a weekly preview needs one game worth a word (the rest are its round-up); any other piece of games, two */
+    const need = op.roundup ? 1 : 2;
+    if (P.some(u => u.dropHead) && left < need) hold('body', 'illogical', 'thin', op.roundup ? 'a preview of the week with no game worth a word' : 'a piece about the week\'s games with fewer than two games left worth a word', '');
   }
 
   /* -------- the standfirst's count against the piece (and its words) -------- */
@@ -278,7 +303,14 @@ function scrutinise(piece0, o) {
       piece.dek = d;
     }
     const m = /\b([Tt]he) (two|three|four|five) (games|pieces)\b/.exec(piece.dek), N = { two: 2, three: 3, four: 4, five: 5 }, W2 = ['', 'one', 'two', 'three', 'four', 'five'];
-    const sections = (piece.body || []).filter(x => x && x.h).length;
+    /* the games the piece is about: its sections, and the top game when the opening paragraph says all there is of it
+       (its own section, empty, has gone) - never the round-up */
+    const heads = (piece.body || []).filter(x => x && x.h && x.h !== ROUND_UP).map(x => x.h);
+    const sg0 = op.sectionGame || {}, labelGame = {};
+    P.forEach(u => { if (u.label && sg0[u.section]) labelGame[u.label] = sg0[u.section]; });
+    const leadGone = !!(sg0[0] && P.some(u => u.section === 0 && u.sents.length) && !heads.some(h => (labelGame[h] || null) === sg0[0])
+      && Object.keys(sg0).some(k => +k > 0 && sg0[k] === sg0[0]));
+    const sections = heads.length + (leadGone ? 1 : 0);
     /* two or more left (with fewer, the piece is held back) */
     if (m && sections >= 2 && N[m[2]] !== sections && W2[sections]) { const d = piece.dek.replace(m[0], m[1] + ' ' + W2[sections] + ' ' + m[3]); note('dek', 'incorrect', 'count', 'the standfirst counted ' + m[2] + '; the piece has ' + sections, piece.dek, d); piece.dek = d; }
     const pr = V ? V.proof(piece.dek, { clubs }) : { text: piece.dek };
@@ -316,12 +348,12 @@ function scrutinise(piece0, o) {
     : (piece.body || []).filter(x => typeof x === 'string').join(' ');
   const substance = LOG.filter(x => x.section >= 0 && !BOIL.test(x.slot || '') && finalText.indexOf(x.text.replace(/[.!?]$/, '')) >= 0).length
     + (LOG.length ? 0 : sentences(finalText).length);
-  const sectionsLeft = isCard ? 0 : (piece.body || []).filter(x => x && x.h).length;
+  const sectionsLeft = isCard ? 0 : (piece.body || []).filter(x => x && x.h && x.h !== ROUND_UP).length;
   const expected = isCard ? 3 : sectionsLeft ? 2 * sectionsLeft : 4;
   const quality = Math.max(0.4, Math.min(1, Math.round((1 - pen) * Math.min(1, 0.5 + 0.5 * substance / expected) * 100) / 100));
   const report = { ev: VERSION, checked: new Date(op.nowMs || Date.now()).toISOString(), fixes: fixes.slice(0, 24), held, ok: !held.length, quality, substance };
   return { piece, report };
 }
 
-return { scrutinise, sentences, VERSION };
+return { scrutinise, sentences, VERSION, ROUND_UP };
 }));
