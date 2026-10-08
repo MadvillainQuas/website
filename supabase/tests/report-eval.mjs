@@ -250,6 +250,9 @@ if (!games.length) { console.log('no finished games to evaluate'); process.exit(
    the fans' picks, the records board, and the What Wins weights from the CDN. One read of each per season, cached;
    player rows by named keys, never the stats blob. */
 const CTX = process.argv.includes('--ctx');
+/* --dump <file>: the reports' text as JSON, for supabase/tests/report-i18n-gaps.mjs */
+const DUMP = (() => { const i = process.argv.indexOf('--dump'); return i > 0 ? String(process.argv[i + 1] || '') : ''; })();
+const DUMPED = [];
 const Context = require(path.join(G, 'context.js'));
 const TablePos = require(path.join(ROOT, 'epinoia', 'tablepos.js'));
 const Records = (() => { try { globalThis.window = globalThis; return require(path.join(ROOT, 'epinoia', 'records.js')); } catch (_) { return null; } })();
@@ -346,6 +349,12 @@ for (const g of games) {
     } catch (e) { console.warn('ctx', g.id.slice(0, 8), e.message); }
   }
   const rep = Report.report(b);
+  /* --dump <file>: every report's text, with the names in it, for the translation gap finder (report-i18n-gaps.mjs) */
+  if (DUMP) {
+    const strip = s => String(s || '').replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    DUMPED.push({ game: g.id, league: S.leagueSlug || null, names: (b.names || []).slice(), players: (b.players || []).map(p => p && p.name).filter(Boolean),
+      headline: strip(rep.headline), standfirst: strip(rep.standfirst), paras: rep.sections.flatMap(x => x.paras.map(strip)) });
+  }
   const m = measure(rep, b);
   rows.push({ id: g.id.slice(0, 8), score: b.score.join('-'), ...m, model: !!b.model, ctx: !!b.ctx });
   /* the phrases this report shares with the others: five-word runs with the names and figures taken out */
@@ -423,3 +432,5 @@ console.log('  sometimes missed: ' + (sometimes.join(', ') || '(none)'));
 console.log('\n  worst repeated sentence opener seen: ' +
   rows.map(r => r.worstOpen).sort((a, b) =>
     parseInt(b.split('x')[1]) - parseInt(a.split('x')[1]))[0]);
+/* --dump: the reports' text, for the translation gap finder */
+if (DUMP) { (await import('node:fs')).writeFileSync(DUMP, JSON.stringify(DUMPED)); console.log('  dumped ' + DUMPED.length + ' reports to ' + DUMP); }

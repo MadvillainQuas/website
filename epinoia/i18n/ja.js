@@ -1901,7 +1901,8 @@
       'The award races': '個人賞争い',
       'The season’s awards as they stand, by the site’s own measures': '現時点のシーズン個人賞（当サイト独自の基準）',
       'Best defender': '最優秀守備選手',
-      'chosen by the league': 'リーグ選出'
+      'chosen by the league': 'リーグ選出',
+      'Storylines': 'ストーリーライン'
     },
 
     ctx: {

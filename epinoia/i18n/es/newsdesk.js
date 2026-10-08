@@ -104,13 +104,13 @@
   /* {X} a club or a player, {P} a possessive ("Ash City’s", "Sendai 89ers’"), {W} a count in words or digits, {D} digits,
      {F} a figure (signed with + or −, decimals), {S} a score or a record, {K} a place (third, 11th, 3rd), {G} games behind,
      {L} a facet of the newsdesk, {R} a facet of the match report, {Y} a date, {Z} a day and month, {V} a weekday, {H} a
-     group ("in Group A") */
+     group ("in Group A"), {E} a leg of a tie ("second leg", "11th leg") */
   const TOK = {
     X: '([^,;:—]+?)', P: '([^,;:—]+?)’s?', W: '(' + WORDS + ')', D: '(\\d+)', F: '([+−-]?\\d+(?:\\.\\d+)?)',
     S: '(\\d+)[–-](\\d+)', K: '(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\\d+(?:st|nd|rd|th))',
     G: GAMES, L: '(' + alt(FAC) + ')', R: '(' + alt(RFAC) + ')',
     Y: '((?:' + DAYRX + '),? \\d{1,2} (?:' + MONRX + '))', Z: '(\\d{1,2} (?:' + MONRX + '))', V: '(' + DAYRX + ')',
-    H: '(?: in (.+?))?'
+    H: '(?: in (.+?))?', E: '((?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\\d+th) leg)'
   };
   const rx = (src, end) => new RegExp('^(?:' + src.replace(/\{([A-Z])\}/g, (m, k) => TOK[k]) + ')' + (end || '') + '$', 'i');
   const first = (rules, s) => { for (const [re, fn] of rules) { const m = re.exec(s); if (m) { const o = fn(...m.slice(1)); if (o != null) return o; } } return null; };
@@ -140,12 +140,18 @@
   ];
   const status = s => first(STATUS, s);
 
-  /* a leg of a tie: "first leg" → la ida, "second leg" → la vuelta, "leg 3" → el partido 3 */
-  const legEs = (l, art) => { const t = String(l).toLowerCase(); const m = /^leg (\d+)$/.exec(t);
-    return m ? (art ? 'el partido ' : 'partido ') + m[1] : (art ? 'la ' : '') + (t === 'first leg' ? 'ida' : 'vuelta'); };
-  const LEG = rx('(first leg|second leg|leg \\d+): {X} {S} {X}');
-  const legs = s => { const out = s.split('; ').map(p => { const m = LEG.exec(p); return m ? legEs(m[1]) + ': ' + m[2] + ' ' + sc(m[3], m[4]) + ' ' + m[5] : null; });
-    return out.indexOf(null) >= 0 ? null : out.join('; '); };
+  /* a leg of a tie: the first is la ida and the second la vuelta (a tie over two legs); from the third on, "el tercer
+     partido", and a list of legs that has a third says every one as a partido ("primer partido: …; segundo partido: …") */
+  const legN = l => ordv(String(l).toLowerCase().replace(/ leg$/, ''));
+  const legEs = (l, art, partidos) => { const i = legN(l);
+    return i <= 2 && !partidos ? (art ? 'la ' : '') + (i === 1 ? 'ida' : 'vuelta') : (art ? 'el ' : '') + gameOrd(i, false); };
+  const LEG = rx('{E}: {X} {S} {X}');
+  const legs = s => {
+    const ms = s.split('; ').map(p => LEG.exec(p));
+    if (ms.indexOf(null) >= 0) return null;
+    const partidos = ms.some(m => legN(m[1]) > 2);
+    return ms.map(m => legEs(m[1], false, partidos) + ': ' + m[2] + ' ' + sc(m[3], m[4]) + ' ' + m[5]).join('; ');
+  };
 
   /* the slate's angle for a game, its bits joined with "; " (the series first, then the places, the facet, the meetings) */
   const BIT = [
@@ -312,6 +318,7 @@
     ['one standard step better than the average club at {L} is worth about {F} points a game here; at {L}, {F}',
       (l, a, l2, b) => 'estar una desviación típica por encima del equipo medio en ' + fac(l) + ' vale unos ' + a + ' puntos por partido aquí; en ' + fac(l2) + ', ' + b],
     ['it is the lens to read every result and every preview through', () => 'es la lente con la que leer cada resultado y cada previa'],
+    ['game by game, it has been the facet that decided {D}% of the results here', d => 'partido a partido, ha sido la faceta que ha decidido el ' + d + '% de los resultados aquí'],
     ['an explainer for new readers', () => 'un artículo explicativo para nuevos lectores'],
     ['a recurring "the number that matters" box', () => 'un recuadro fijo de «la cifra que importa»'],
 
@@ -347,8 +354,12 @@
     ['{X} leads the league in box plus-minus', p => p + ' lidera la liga en box plus-minus'],
     ['{F} BPM on {F} points, {F} rebounds and {F} assists (?:in {F} minutes )?a game(?: for {X})?',
       (f, a, b, c, m, x) => f + ' de BPM con ' + a + ' puntos, ' + b + ' rebotes y ' + c + ' asistencias' + (m ? ' en ' + m + ' minutos' : '') + ' por partido' + (x ? ' en ' + x : '')],
-    ['box plus-minus counts everything in the box score against what a player’s minutes are worth; it is the closest thing the box has to a player’s value',
-      () => 'el box plus-minus mide todo lo que recoge la estadística frente a lo que valen los minutos de un jugador; es lo más parecido que tiene la estadística al valor de un jugador'],
+    ['{F} clear of {X}, the next best', (f, p) => f + ' por encima de ' + p + ', el siguiente'],
+    ['box plus-minus counts everything in the box score against what a player’s minutes are worth(; it is the closest thing the box has to a player’s value)?',
+      t => 'el box plus-minus mide todo lo que recoge la estadística frente a lo que valen los minutos de un jugador' +
+        (t ? '; es lo más parecido que tiene la estadística al valor de un jugador' : '')],
+    ['only {W} players? in the league (?:has|have) a better box plus-minus; {W} score more',
+      (n, k) => 'solo ' + cnt(n, 'jugador', 'jugadores') + ' de la liga ' + (val(n) === 1 ? 'tiene' : 'tienen') + ' mejor box plus-minus; ' + nw(k) + ' anotan más puntos'],
     ['a player profile built on the whole line, not the points', () => 'un perfil del jugador construido con toda su línea estadística, no solo con los puntos'],
     ['a "most valuable so far" ranking', () => 'una clasificación de «los más valiosos hasta ahora»'],
     ['{X} is one of the league’s best players on {F} points a game', (p, f) => p + ' está entre lo mejor de la liga con solo ' + f + ' puntos por partido'],
@@ -374,6 +385,9 @@
     }],
     ['for {X}, {Y}', (x, d) => 'con ' + x + ', ' + el(d)],
     ['every other night this season is measured against (these|it) now', k => 'desde ahora, cualquier otra noche de la temporada se mide con ' + (/these/i.test(k) ? 'estas marcas' : 'esta')],
+    /* the runner-up: a player's ("41, by Pat Archer") and a team's ("40, Birch City against Fir City") */
+    ['the next best is {D}, by {X}', (d, p) => 'la siguiente mejor marca es ' + d + ', de ' + p],
+    ['the next best this season is {D}, {X} against {X}', (d, x, y) => 'la siguiente mejor marca de la temporada es ' + d + ', de ' + x + ' ante ' + y],
     ['the night, in the play-by-play', () => 'la noche, jugada a jugada'],
     ['a graphic of each line', () => 'un gráfico de cada línea estadística'],
     ['the night, in the numbers', () => 'la noche, en números'],
@@ -422,20 +436,20 @@
     ['{R} (?:was|were) worth about {D} points? to them', (l, d) => { const f = rfac(l); return f && f + ' le ' + vb(f, 'valió', 'valieron') + ' ' + abt(d); }],
     ['what the winners did that nobody expected', () => 'lo que hizo el vencedor y nadie esperaba'],
 
-    /* ---- the play-offs: a tie over two legs ---- */
-    ['((?:first leg|leg 1): .+)', s => legs(s)],
+    /* ---- the play-offs: a tie over legs ---- */
+    ['(first leg: .+)', s => legs(s)],
     ['{X} go through on aggregate, {S}', (x, a, b) => x + ' pasa la eliminatoria con un global de ' + sc(a, b)],
     ['decided by {W} points? over {W} legs',
       (d, n) => (val(d) === 0 ? 'decidida sin diferencia en el global' : 'decidida por ' + cnt(d, 'punto', 'puntos')) + (val(n) === 2 ? ' entre la ida y la vuelta' : ' en ' + nw(n) + ' partidos')],
-    ['{X} won the (first leg|second leg|leg \\d+) by {W} and still went out', (x, l, w) => x + ' ganó ' + legEs(l, true) + ' por ' + cnt(w, 'punto', 'puntos') + ' y aun así quedó eliminado'],
+    ['{X} won the {E} by {W} and still went out', (x, l, w) => x + ' ganó ' + legEs(l, true) + ' por ' + cnt(w, 'punto', 'puntos') + ' y aun así quedó eliminado'],
     ['{X} won (both legs|every leg)', (x, k) => x + (/both/i.test(k) ? ' ganó la ida y la vuelta' : ' ganó todos los partidos')],
-    ['{X} take a {W}-point lead into the (second leg|leg \\d+) against {X}', (x, w, l, y) => x + ' afronta ' + legEs(l, true) + ' ante ' + y + ' con ' + cnt(w, 'punto', 'puntos') + ' de ventaja'],
-    ['{X} and {X} are level after the (first leg|leg \\d+)', (x, y, l) => x + yy(y) + y + ' llegan igualados tras ' + legEs(l, true)],
+    ['{X} take a {W}-point lead into the {E} against {X}', (x, w, l, y) => x + ' afronta ' + legEs(l, true) + ' ante ' + y + ' con ' + cnt(w, 'punto', 'puntos') + ' de ventaja'],
+    ['{X} and {X} are level after the {E}', (x, y, l) => x + yy(y) + y + ' llegan igualados tras ' + legEs(l, true)],
     ['decided on aggregate: a lead of {W} points? is (close to decisive|a cushion, not a certainty|next to nothing) with a leg to play',
       (w, k) => 'se decide en el global: ' + (val(w) === 0 ? 'nadie tiene ventaja y queda un partido por jugar'
         : 'con un partido por jugar, una ventaja de ' + cnt(w, 'punto', 'puntos') + ' es ' + { 'close to decisive': 'casi decisiva', 'a cushion, not a certainty': 'un colchón, no una garantía', 'next to nothing': 'casi nada' }[k.toLowerCase()])],
-    ['(second leg|leg \\d+): {Y}, with {X} at home', (l, d, x) => legEs(l) + ': ' + fecha(d) + ', en la pista de ' + x],
-    ['{X} v {X}: the (first leg|leg 1) is on (?:{Y}|(its way))', (x, y, l, d, way) => x + ' vs ' + y + ': ' + legEs(l, true) + (way ? ' está al caer' : ' se juega ' + el(d))],
+    ['{E}: {Y}, with {X} at home', (l, d, x) => legEs(l) + ': ' + fecha(d) + ', en la pista de ' + x],
+    ['{X} v {X}: the {E} is on (?:{Y}|(its way))', (x, y, l, d, way) => x + ' vs ' + y + ': ' + legEs(l, true) + (way ? ' está al caer' : ' se juega ' + el(d))],
     ['two legs, decided on aggregate', () => 'ida y vuelta, con el global como juez'],
     ['how the tie was won, leg by leg', () => 'cómo se ganó la eliminatoria, partido a partido'],
     ['a preview of the next leg: what the side behind has to change', () => 'una previa del siguiente partido: qué tiene que cambiar el que va por detrás'],
@@ -492,7 +506,7 @@
     ['the gap (at the top|at the line) is now {G}', (k, w) => (/top/i.test(k) ? 'la diferencia en cabeza' : 'la diferencia en la línea de corte') +
       (gw(w) === 'ningún partido' ? ' ha desaparecido' : ' es ahora de ' + gw(w))],
     ['now {S}', (a, b) => 'ahora, ' + sc(a, b)],
-    ['now {W} points away', w => 'ahora ' + (val(w) === 1 ? 'le falta un punto' : 'le faltan ' + nw(w) + ' puntos')],
+    ['now {W} points? away', w => 'ahora ' + (val(w) === 1 ? 'le falta un punto' : 'le faltan ' + nw(w) + ' puntos')],
     ['the series is now {S}', (a, b) => 'la serie va ahora ' + sc(a, b)],
     ['on aggregate, now {S}', (a, b) => 'en el global, ahora ' + sc(a, b)],
     ['updated with the latest games', () => 'actualizada con los últimos partidos'],
@@ -524,11 +538,15 @@
 
     /* ---- the closer: the week's points in clutch time ---- */
     ['{X} scored {D} points in clutch time this week', (p, d) => p + ' suma ' + d + ' puntos en los minutos decisivos esta semana'],
-    ['that is {D} of {P} {D} points in the closing minutes of (?:a close game they (won|lost)|{W} close games; they won (both|all {W}|{W}))',
-      (a, x, b, r, n, k, all, w) => 'son ' + a + ' de los ' + b + ' puntos de ' + x + ' en los minutos finales de ' +
-        (r ? 'un partido igualado que ' + (/won/i.test(r) ? 'ganó' : 'perdió')
-          : cnt(n, 'partido igualado', 'partidos igualados') + '; ' + (/^both$/i.test(k) ? 'ganó los dos' : all ? 'ganó los ' + nw(all)
-            : val(w) === 0 ? 'no ganó ninguno' : val(w) === 1 ? 'ganó uno' : 'ganó ' + nw(w)))],
+    /* "they won both", "they lost all three", "they won two" */
+    ['that is {D} of {P} {D} points in the closing minutes of (?:a close game they (won|lost)|{W} close games; they (won|lost) (both|all {W}|{W}))',
+      (a, x, b, r, n, wl, k, all, w) => {
+        const v = /lost/i.test(wl || '') ? 'perdió' : 'ganó';
+        return 'son ' + a + ' de los ' + b + ' puntos de ' + x + ' en los minutos finales de ' +
+          (r ? 'un partido igualado que ' + (/won/i.test(r) ? 'ganó' : 'perdió')
+            : cnt(n, 'partido igualado', 'partidos igualados') + '; ' + (/^both$/i.test(k) ? v + ' los dos' : all ? v + ' los ' + nw(all)
+              : val(w) === 0 ? 'no ganó ninguno' : val(w) === 1 ? 'ganó uno' : 'ganó ' + nw(w)));
+      }],
     ['when the game is on the line, the ball goes to {X}', p => 'cuando el partido está en juego, el balón va para ' + p],
     ['points at the end of close games are the ones a season turns on', () => 'los puntos al final de los partidos igualados son los que deciden una temporada'],
     ['points in clutch time', () => 'puntos en los minutos decisivos'],
@@ -544,13 +562,13 @@
     ['with {W} games? left, is first place yours to lose', w => 'a falta de ' + cnt(w, 'partido', 'partidos') + ', ¿el primer puesto ya solo depende de ustedes'],
     ['you are sure of a top-{W} finish: what are you playing for now', n => 'tienen asegurado acabar entre los ' + nw(n) + ' primeros: ¿qué se juegan ahora'],
     ['with the top {W} out of reach, what is the rest of the season for', n => 'con los ' + nw(n) + ' primeros puestos ya fuera de su alcance, ¿para qué sirve el resto de la temporada'],
-    ['your {L} has been worth {F} points a game in the run, against {F} before it: what changed',
-      (l, a, b) => fac(l) + ' les ' + vb(fac(l), 'ha', 'han') + ' valido ' + a + ' puntos por partido durante la racha, frente a ' + b + ' antes: ¿qué ha cambiado'],
+    /* a run and a slide: "what changed?" / "is that the first thing to fix?" */
+    ['in the run, {L} has been worth {F} points a game to you, against {F} before it: (what changed|is that the first thing to fix)',
+      (l, a, b, q) => 'durante la racha, ' + fac(l) + ' les ' + vb(fac(l), 'ha', 'han') + ' valido ' + a + ' puntos por partido, frente a ' + b + ' antes: ' +
+        (/changed/i.test(q) ? '¿qué ha cambiado' : '¿es lo primero que hay que corregir')],
     ['what has changed in the last {W} games', w => '¿qué ha cambiado en los ' + nw(w) + ' últimos partidos'],
     ['none of the {W} wins came against a side above you in the table: what will the run tell you about this team',
       w => 'ninguna de las ' + nw(w, true) + ' victorias ha llegado ante un rival por encima en la clasificación: ¿qué les dirá la racha sobre este equipo'],
-    ['your {L} has gone from {F} points a game to {F} in the run: is that the first thing to fix',
-      (l, a, b) => fac(l) + ' ' + vb(fac(l), 'ha', 'han') + ' pasado de ' + a + ' puntos por partido a ' + b + ' durante la racha: ¿es lo primero que hay que corregir'],
     ['what has to change to end the run', () => '¿qué tiene que cambiar para cortar la racha'],
     ['nobody has got closer than {W} points: what has made you so hard to beat', w => 'nadie se ha quedado a menos de ' + cnt(w, 'punto', 'puntos') + ': ¿qué les hace tan difíciles de batir'],
     ['your closest win was by {W}: which game nearly got away', w => 'su victoria más ajustada fue por ' + cnt(w, 'punto', 'puntos') + ': ¿qué partido estuvo a punto de escapárseles'],
@@ -592,6 +610,20 @@
     ['by the margins, adjusted for whom you have played, you are the best side in the league: do you believe it',
       () => 'por diferencia de puntos, ajustada a los rivales que han tenido, son el mejor equipo de la liga: ¿se lo creen'],
     ['{X} is {D} and already among your best: how big will the role get', (p, d) => p + ' tiene ' + d + ' años y ya está entre sus mejores jugadores: ¿hasta dónde crecerá su papel'],
+
+    /* ---- the figures' values (a storyline's numbers): only the ones with words; names and figures need none ---- */
+    /* form, as the table prints it: V (victoria) and D (derrota) */
+    ['([WL](?: [WL]){0,9})', s => s.split(' ').map(WL).join(' ')],
+    ['{F} in the run, {F} before', (a, b) => a + ' en la racha, ' + b + ' antes'],
+    ['{F} ppg', f => f + ' Pts/P'],
+    ['{F} \\(was {F}\\)', (a, b) => a + ' (antes ' + b + ')'],
+    ['{F} \\({K}\\)', (f, k) => f + ' (' + pos(k) + ')'],
+    ['{K} v {K}', (a, b) => pos(a) + ' contra ' + pos(b)],
+    ['{R}, about {D} points?', (l, d) => { const f = rfac(l); return f && f + ', ' + abt(d); }],
+    ['{L} \\({X}, about {F} points?\\)', (l, x, f) => fac(l) + ' (' + x + ', ' + abt(f) + ')'],
+    ['{D} — (.+?) \\(shared\\)', (d, p) => d + ' — ' + p + ' (compartida)'],
+    ['{P} {D}-point win over {X}', (x, d, y) => 'la victoria de ' + x + ' por ' + d + ' puntos ante ' + y],
+    ['{P} {D} (points|threes) against {X}', (x, d, k, y) => 'los ' + d + ' ' + (/^points$/i.test(k) ? 'puntos' : 'triples') + ' de ' + x + ' ante ' + y],
 
     /* ---- the award races: the value and its measure ---- */
     ['{F}((?: · [^·]+)+)', (f, rest) => { const it = rest.split(' · ').slice(1).map(detail); return it.indexOf(null) >= 0 ? null : f + ' · ' + it.join(' · '); }],
@@ -680,6 +712,12 @@
       if (it.indexOf(null) >= 0) return null;
       const t = /^the play-offs$/i.test(lab) ? 'playoff' : (engine(lab) || lab);
       return t + ': ' + it.join('; ');
+    }],
+    /* the site's reasons a game stood out, joined with "; " ("Overtime; Decided by 2 points; 36-point game: Pat Archer"):
+       each one whole, or none */
+    ['([^;]+(?:; [^;]+)+)', s => {
+      const it = s.split('; ').map(p => { const t = inner(p) || engine(p); return t == null ? null : /^[^A-Za-z0-9]*[A-Z0-9]/.test(p) ? cap(t) : t; });
+      return it.indexOf(null) >= 0 ? null : it.join('; ');
     }]
   ];
 

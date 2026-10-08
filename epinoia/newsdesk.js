@@ -96,7 +96,7 @@ function storyHTML(s, o) {
   const opts = o || {};
   const b = badgeOf(s, (opts.seen || {})[s.id]);
   const nums = (s.numbers || []).slice(0, opts.full ? 8 : 4).map(n =>
-    '<div><dt>' + esc(n.label) + '</dt><dd translate="no">' + esc(n.value) + '</dd></div>').join('');
+    '<div><dt>' + esc(n.label) + '</dt><dd>' + esc(n.value) + '</dd></div>').join('');
   /* a link is a name (a club, a player: never translated) or one of the newsdesk's own words (translated) */
   const links = (s.links || []).map(l => { const h = safeHref(opts.base, l.href); return h ? '<a href="' + esc(h) + '"' + (OWN_LINK.has(l.label) ? '' : ' translate="no"') + '>' + esc(l.label) + '</a>' : ''; }).filter(Boolean).join('');
   const line = (cls, label, text) => (text ? '<p class="' + cls + '"><b>' + label + '</b> <span>' + nb(esc(text)) + '</span></p>' : '');
