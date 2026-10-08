@@ -203,12 +203,20 @@
     const parts = core.split(SENTENCE_BREAK);
     if (parts.length < 2) return null;
     let any = false;
-    const outs = parts.map(p => {
+    const outs = [];
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i];
       const t = tr(D, p, ctxs, 0);
-      if (t != null) { any = true; return { t, ok: true }; }
+      if (t != null) { any = true; outs.push({ t, ok: true }); continue; }
+      /* a break inside a name ("Free throws for C.B." | "Al-Qazeres were the difference."): the piece that would not
+         translate, tried again with the next one, as the one sentence it was */
+      if (i + 1 < parts.length) {
+        const tj = tr(D, p + ' ' + parts[i + 1], ctxs, 0);
+        if (tj != null) { any = true; outs.push({ t: tj, ok: true }); i++; continue; }
+      }
       if (onMiss) onMiss(p);
-      return { t: p, ok: false };
-    });
+      outs.push({ t: p, ok: false });
+    }
     if (!any) return null;
     return outs.reduce((s, o, i) => i === 0 ? o.t
       : s + (o.ok && outs[i - 1].ok ? D.sentenceJoin : ' ') + o.t, '');
@@ -251,7 +259,7 @@
     return l == null || /^en(-|$)/i.test(String(l)) ? target : loc;
   };
 
-  const core = { LANGS, norm, fold, caseOf, applyCase, merge, compile, translateText, pick, swapLocale };
+  const core = { LANGS, norm, fold, caseOf, applyCase, merge, compile, translateText, pick, swapLocale, SENTENCE_BREAK };
 
   if (typeof module !== 'undefined' && module.exports) { module.exports = core; return; }
   if (G.EpinoiaI18n) return;

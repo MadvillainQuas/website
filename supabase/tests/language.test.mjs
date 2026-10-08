@@ -75,6 +75,10 @@ eq('a written name keeps its small words', L.titleCase('Dorados de Chihuahua'), 
 eq('initials keep their capitals ("VALENCIA B.C.")', L.titleCase('VALENCIA B.C.'), 'Valencia B.C.');
 eq('...and the word after them is not a new sentence', L.polish('Free throws were where Valencia B.C. won it.'), 'Free throws were where Valencia B.C. won it.');
 eq('...all of them', L.titleCase('Diablos Rojos del Mexico'), 'Diablos Rojos del Mexico');
+eq('a club whose name ends in a number keeps its possessive ("Nanterre 92s" was written)', L.polish('Nanterre 92’s 15 points came early. BC Batumi 2010’s defence held.'), 'Nanterre 92’s 15 points came early. BC Batumi 2010’s defence held.');
+eq('...while a decade still loses its apostrophe, at a sentence’s start too', L.polish('The 1990’s were long ago, and they lived in the 80’s.'), 'The 1990s were long ago, and they lived in the 80s.');
+eq('a club after a preposition is not the subject ("game for Elfic were the best" was written)', L.polish('Ada Shaw’s game for Neon City was the best on the floor.', { names: ['Neon City'] }), 'Ada Shaw’s game for Neon City was the best on the floor.');
+eq('...but a club that is the subject is still plural', L.polish('Neon City was better, and Neon City has the record.', { names: ['Neon City'] }), 'Neon City were better, and Neon City have the record.');
 eq('...and a lower-case first word is still raised', L.titleCase('de la Cruz Ada'), 'De la Cruz Ada');
 
 console.log('-- polish repairs what a paragraph got wrong');
@@ -83,6 +87,7 @@ eq('a doubled word', L.polish('They won the the game.'), 'They won the game.'); 
 eq('the winners’s -> the winners’', L.polish('in the winners’s favour'), 'in the winners’ favour'); eq('Flyers’s -> Flyers’', L.polish('Bristol Flyers’s bench'), 'Bristol Flyers’ bench');
 eq('a 8-0 run -> an 8-0 run', L.polish('It was a 8–0 run.'), 'It was an 8–0 run.'); eq('an 7-0 run -> a 7-0 run', L.polish('It was an 7–0 run.'), 'It was a 7–0 run.'); eq('An at the start keeps its capital', L.polish('An 7–0 run'), 'A 7–0 run');
 eq('1 points -> 1 point', L.polish('He had 1 points.'), 'He had 1 point.'); eq('2 point -> 2 points', L.polish('He had 2 point.'), 'He had 2 points.');
+eq('a decimal is plural, 1.00 too ("1.00 point a chance" was written)', L.polish('They scored 1.00 point a chance.'), 'They scored 1.00 points a chance.');
 eq('a compound is not a plural (15 second-chance points)', L.polish('They found 15 second-chance points.'), 'They found 15 second-chance points.');
 eq('a straight apostrophe is curled', L.polish("They didn't quit."), 'They didn’t quit.'); eq('a sentence starts with a capital', L.polish('They won. it was close.'), 'They won. It was close.');
 eq('an abbreviation does not start a sentence', L.polish('Joseph Thomasson Jr. scored 20.'), 'Joseph Thomasson Jr. scored 20.');
@@ -91,6 +96,7 @@ eq('a comma gets its space', L.polish('It was 5,and 6.'), 'It was 5, and 6.');
 
 console.log('-- lint reports what is wrong');
 const kinds = t => L.lint(t).map(i => i.rule);
+ok('a decimal passes the number-agreement check ("1.00 points")', !kinds('They scored 1.00 points a chance.').includes('number-agreement'));
 ok('a clean sentence has no findings', kinds('Newcastle Eagles won 94–68 on Friday.').length === 0, kinds('Newcastle Eagles won 94–68 on Friday.'));
 ok('a double space', kinds('It was  close.').includes('double-space')); ok('a wrong article', kinds('It was a 8–0 run.').includes('article'));
 ok('a wrong possessive', kinds('the winners’s favour').includes('possessive')); ok('number agreement', kinds('He had 1 points.').includes('number-agreement'));

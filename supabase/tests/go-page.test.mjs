@@ -553,7 +553,7 @@ ok('...the arena is the game\'s own, else its home club\'s usual one (EPINOIA GO
    /venueId: g\.venue_id \|\| \(g\.home && g\.home\.home_venue_id\) \|\| null,/.test(gameJs) && /venue_address,venue_id,/.test(gameJs) && /logo_path,home_venue_id\),/.test(gameJs));
 ok('...the game page loads the card, its styles and the go words',
    /<script src="\.\.\/go\/logo\.js\?v=\d+" defer><\/script>\s*<script src="\.\.\/go\/venuestamp\.js\?v=\d+" defer><\/script>\s*<script src="preview\.js\?v=\d+" defer>/.test(gameHtml)
-   && /href="\.\.\/go\/venuestamp\.css\?v=\d+"/.test(gameHtml) && /data-i18n-packs="game report go"/.test(gameHtml));
+   && /href="\.\.\/go\/venuestamp\.css\?v=\d+"/.test(gameHtml) && /data-i18n-packs="game report go(?: [a-z]+)*"/.test(gameHtml));
 ok('...the card stamps THAT game (by its id in go_games_now), says when it opens from the tip-off when the list does not have it yet, and says so when the window has closed',
    /const mine = \(list\.data \|\| \[\]\)\.find\(x => x && x\.game_id === o\.gameId\);/.test(gvJs) && /Date\.parse\(o\.tipoff\) - 2 \* 3600000/.test(gvJs)
    && /return show\(WHY\.too_late, 'warn'\);/.test(gvJs) && /here\.open = \[\{ g: mine \}\];/.test(gvJs) && /o\.label \|\| 'stamp this venue'/.test(gvJs));

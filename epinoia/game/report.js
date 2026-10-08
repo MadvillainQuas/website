@@ -280,6 +280,19 @@ function dateline(g, fs) {
    a DIFFERENT kind leads the standfirst, and neither is said again where the body would have repeated it (SPENT). */
 let HEAD_ANGLE = null;
 const sumOf = (g, t, k) => (g.players || []).filter(p => p.team === t).reduce((n, p) => n + (p[k] || 0), 0);
+/* THE GAME'S RUN OR STRETCH, FOR THE LEDE: the winners' "settled it", the losers' "was not enough". The run is the
+   longest of the game, whoever made it, and a 12–0 run by the side that lost settled nothing (the standfirst of a
+   Benfica win said it did, 2026-10-08). The stretch's side is the one it gained for. */
+function stretchLine(g, st, w) {
+  const isRun = st.kind === 'run', gainer = isRun ? st.data.team : st.side;
+  const losers = gainer != null && w != null && gainer !== w;
+  if (isRun) {
+    return losers ? nmPoss(g, gainer) + ' ' + st.data.n + '–0 run in the ' + ordinal(st.data.period) + ' was not enough'
+      : anFor(st.data.n).charAt(0).toUpperCase() + anFor(st.data.n).slice(1) + ' ' + st.data.n + '–0 run in the ' + ordinal(st.data.period) + ' settled it';
+  }
+  return losers ? 'A ' + mins(st.data.dur) + ' stretch worth ' + st.data.swing + ' to ' + nm(g, gainer) + ' was not enough'
+    : 'A ' + mins(st.data.dur) + ' stretch swung it by ' + st.data.swing;
+}
 function ledeAngles(g, fs) {
   const r = fs.find(f => f.kind === 'result');
   if (!r) return [];
@@ -292,11 +305,11 @@ function ledeAngles(g, fs) {
   const st = fs.find(f => f.kind === 'stretch' || f.kind === 'run');
   if (st) {
     const isRun = st.kind === 'run';
-    const strength = isRun ? 60 + Math.min(30, st.data.n * 2.5) : 62 + Math.min(28, st.data.swing * 2);
-    const text = isRun
-      ? anFor(st.data.n).charAt(0).toUpperCase() + anFor(st.data.n).slice(1) + ' ' + st.data.n + '\u20130 run in the ' + ordinal(st.data.period) + ' settled it'
-      : 'A ' + mins(st.data.dur) + ' stretch swung it by ' + st.data.swing;
     const by = isRun ? st.data.team : st.data.owner;
+    /* the losers' run or stretch is told, but well down the order: it is not why the game went the way it did */
+    const theirs = (isRun ? st.data.team : st.side) !== w;
+    const strength = (isRun ? 60 + Math.min(30, st.data.n * 2.5) : 62 + Math.min(28, st.data.swing * 2)) - (theirs ? 25 : 0);
+    const text = stretchLine(g, st, w);
     out.push({ cat: 'stretch', key: st.kind, strength, text, spend: [st.kind],
       head: (isRun && by === w) ? () => pick('hrun' + st.data.n + w, [
         W + ' blow it open with ' + anFor(st.data.n) + ' ' + st.data.n + '\u20130 run to beat ' + Lo,
@@ -503,9 +516,8 @@ function standfirst(g, fs) {
   const decisive = fs.find(f => f.kind === 'stretch' || f.kind === 'run');
   if (decisive) SPENT.add(decisive.kind);
   if (decisive) {
-    bits.push(decisive.kind === 'run'
-      ? anFor(decisive.data.n).toUpperCase().slice(0,1) + anFor(decisive.data.n).slice(1) + ' ' + decisive.data.n + '–0 run in the ' + ordinal(decisive.data.period) + ' settled it'
-      : 'A ' + mins(decisive.data.dur) + ' stretch swung it by ' + decisive.data.swing);
+    const res = fs.find(f => f.kind === 'result');
+    bits.push(stretchLine(g, decisive, res ? res.data.winner : null));
   }
   const factor = fs.find(f => f.kind === 'factor');
   if (factor) {
@@ -1107,25 +1119,28 @@ function sectionNumbers(g, fs, R) {
   if (floor && Math.abs(floor.data.a - floor.data.b) >= 5) {
     const hiP = Math.max(floor.data.a, floor.data.b), loP = Math.min(floor.data.a, floor.data.b);
     const who = R.subj(floor.side, { allowRole: true, noPronoun: true });   // resolved once, before the options
-    box.push(pick('floor' + Math.round(hiP), [
+    box.push({ side: floor.side, good: true, text: pick('floor' + Math.round(hiP), [
       'From the floor it was ' + Math.round(hiP) + '% to ' + Math.round(loP) + '% in ' + possOf(midCase(who)) + ' favour',
       who + ' shot ' + Math.round(hiP) + '% from the field to ' + Math.round(loP) + '%'
-    ]));
+    ]) });
   }
-  if (hot) box.push(R.subj(hot.side, { allowRole: true }) + ' made ' + hot.data.m + ' of ' + hot.data.a + ' from three');
-  if (cold) box.push(R.subj(cold.side, { allowRole: true }) + ' went ' + cold.data.m + ' of ' + cold.data.a + ' from three');
-  if (poorL) box.push(R.subj(poorL.side) + ' made only ' + poorL.data.m + ' of ' + poorL.data.a + ' free throws');
-  if (boards && !SPENT.has('stat:boards')) box.push(R.subj(boards.side, { allowRole: true }) + ' won the boards ' + boards.data.mine + '\u2013' + boards.data.theirs);
-  if (fb) box.push(R.subj(fb.side, { allowRole: true }) + ' scored ' + fb.data.mine + ' on the break to ' + fb.data.theirs);
+  if (hot) box.push({ side: hot.side, good: true, text: R.subj(hot.side, { allowRole: true }) + ' made ' + hot.data.m + ' of ' + hot.data.a + ' from three' });
+  if (cold) box.push({ side: cold.side, good: false, text: R.subj(cold.side, { allowRole: true }) + ' went ' + cold.data.m + ' of ' + cold.data.a + ' from three' });
+  if (poorL) box.push({ side: poorL.side, good: false, text: R.subj(poorL.side) + ' made only ' + poorL.data.m + ' of ' + poorL.data.a + ' free throws' });
+  if (boards && !SPENT.has('stat:boards')) box.push({ side: boards.side, good: true, text: R.subj(boards.side, { allowRole: true }) + ' won the boards ' + boards.data.mine + '\u2013' + boards.data.theirs });
+  if (fb) box.push({ side: fb.side, good: true, text: R.subj(fb.side, { allowRole: true }) + ' scored ' + fb.data.mine + ' on the break to ' + fb.data.theirs });
   if (careless) {
     /* three ways to say it (2026-10-08: "gave the ball away 18 times" in 11 of 16 reports); the referrer first */
     const who = R.subj(careless.side), n = careless.data.tov;
-    box.push(pickSeeded('careless' + careless.side + gameSeed(g), [who + ' gave the ball away ' + n + ' times', who + ' turned it over ' + n + ' times',
-      who + ' coughed it up ' + n + ' times']));
+    box.push({ side: careless.side, good: false, text: pickSeeded('careless' + careless.side + gameSeed(g), [who + ' gave the ball away ' + n + ' times',
+      who + ' turned it over ' + n + ' times', who + ' coughed it up ' + n + ' times']) });
   }
-  /* two figure pairs to a sentence at most; the rest start a new one */
+  /* two figure pairs to a sentence at most; the rest start a new one. One club doing one thing well and one badly is a
+     "but": "53% to 42% in their favour, and they made only 12 of 20 free throws" read as more of the same (2026-10-08) */
   for (let i = 0; i < box.length; i += 2) {
-    out.push(joinSentences(box.slice(i, i + 2), 'plain') + '.');
+    const pair = box.slice(i, i + 2);
+    const turn = pair.length === 2 && pair[0].side === pair[1].side && pair[0].good !== pair[1].good;
+    out.push(joinSentences(pair.map(b => b.text), turn ? 'contrast' : 'plain') + '.');
   }
   if (drought) {
     R.neutral();
@@ -1777,9 +1792,12 @@ function sectionLineups(g, fs, R) {
        twice and tells them nothing new. What the standfirst had no room for is
        WHO was on the floor, which is the only reason this section exists. */
     if (SPENT.has('stretch')) {
+      /* named, not "It": by this section the reader is several paragraphs past the standfirst that told it, and "It came
+         with…" followed a paragraph about mid-range misses (2026-10-08) */
+      const that = 'The stretch that swung it';      // no figure: the standfirst has just given the 6:31
       out.push(gained
-        ? 'It came with ' + five(g, stretch.data.ids) + ' on the floor for ' + R.obj(owner) + ', together for the whole of it.'
-        : 'It was ' + nmPoss(g, owner) + ' worst stretch: ' + five(g, stretch.data.ids) + ' were on the floor, and the other side outscored them by ' +
+        ? that + ' came with ' + five(g, stretch.data.ids) + ' on the floor for ' + R.obj(owner) + ', together for the whole of it.'
+        : that + ' was ' + nmPoss(g, owner) + ' worst: ' + five(g, stretch.data.ids) + ' were on the floor, and the other side outscored them by ' +
           stretch.data.swing + ' in that time.');
     } else {
       out.push('The game turned inside a single ' + mins(stretch.data.dur) +
@@ -2204,7 +2222,11 @@ function fmtMinShort(ms) { return Math.round((ms || 0) / 60000) + ' minutes'; }
 function capitalise(text) {
   return String(text || '').replace(
     /(^|[.!?]\s+)([a-z])/g,
-    function (_, lead, ch) { return lead + ch.toUpperCase(); });
+    function (m, lead, ch, off, all) {
+      /* not after a name's initials or abbreviation: "Valencia B.C. beat", "St. Léonard" (it wrote "B.C. Beat") */
+      if (lead && /(?:^|[\s(])(?:[A-Z]\.)+$|\b(?:St|Jr|Sr|Mr|Mrs|Ms|Dr|vs|Pol)\.$/.test(all.slice(Math.max(0, off - 12), off + 1))) return m;
+      return lead + ch.toUpperCase();
+    });
 }
 
 /* ------------------------------------------------------- the scout's note ---
@@ -2297,12 +2319,24 @@ function sectionScout(g, fs, R, opts) {
      losing side's worst measure is left to the closing line, which is about exactly that: it
      used to be named, graded, and then named and graded again one sentence later. */
   const were = half ? 'have been ' : 'were ';
+  /* NOT THE SAME THING TWICE (2026-10-08). The facet the opening line said a side won it on is not that side's best
+     suit again two paragraphs later ("Protecting the rim was where SL Benfica won it" and then "Nothing went better
+     for SL Benfica than protecting the rim"); and the second club's frame is never the first's ("Forcing turnovers was
+     X's strongest suit" for both clubs, one after the other). */
+  const opened = sc.decided.length && sc.graded ? { side: sc.decided[0].winner, key: sc.decided[0].key } : null;
+  const usedFrame = { good: null, bad: null };
+  const frame = (kind, seed, list) => {
+    const idx = pickSeeded(seed, list.map((x, i) => i).filter(i => i !== usedFrame[kind]));
+    usedFrame[kind] = idx;
+    return list[idx];
+  };
   [W, L].forEach(t => {
     const side = sc.sides[t];
     if (!side || !side.graded) return;
     const bits = [];
-    if (side.good.length) {
-      const g0 = side.good[0], rest = side.good.slice(1).map(r => r.label);
+    const goods = side.good.filter(x => !(opened && opened.side === t && x.key === opened.key));
+    if (goods.length) {
+      const g0 = goods[0], rest = goods.slice(1).map(r => r.label);
       const ph = pctPhrase(g0.pct, g.names[t] + g0.key + 'good' + gameSeed(g));
       const behind = rest.length ? ', with ' + listOf(rest) + ' not far behind' : '';
       bits.push(half ? nm(t) + ' are doing their best work on ' + g0.label + ', where they ' + were + ph + behind + '.'
@@ -2310,7 +2344,7 @@ function sectionScout(g, fs, R, opts) {
           /* the same shape and length each, so the critic finds them equal and the game picks (language.js choose) */
           const G0 = g0.label.charAt(0).toUpperCase() + g0.label.slice(1);
           const close = rest.length ? ', with ' + listOf(rest) + ' close behind' : '';
-          return pickSeeded('scoutgood' + g.names[t] + g0.key + gameSeed(g), [
+          return frame('good', 'scoutgood' + g.names[t] + g0.key + gameSeed(g), [
             G0 + (PLURAL_LABEL.test(g0.label) ? ' were ' : ' was ') + possOf(nm(t)) + ' strongest suit: they were ' + ph + ' there' + behind + '.',
             nm(t) + ' were at their best on ' + g0.label + ': they were ' + ph + ' there' + close + '.',
             'Nothing went better for ' + nm(t) + ' than ' + g0.label + ': they were ' + ph + ' there' + behind + '.',
@@ -2330,7 +2364,7 @@ function sectionScout(g, fs, R, opts) {
         const lag = rest.length ? '; ' + listOf(rest) + (half ? ' are lagging too' : ' lagged too') : '';
         const B0 = b0.label.charAt(0).toUpperCase() + b0.label.slice(1);
         bits.push(half ? 'What they will want to tighten starts with ' + b0.label + ', where they ' + were + phb + lag + '.'
-          : pickSeeded('scoutbad' + g.names[t] + b0.key + gameSeed(g), [
+          : frame('bad', 'scoutbad' + g.names[t] + b0.key + gameSeed(g), [
             'The weak spot was ' + b0.label + ', where they were ' + phb + lag + '.',
             B0 + ' let them down: they were ' + phb + ' there' + lag + '.',
             'Where they came up short was ' + b0.label + ': they were ' + phb + ' there' + lag + '.',

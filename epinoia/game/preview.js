@@ -233,6 +233,9 @@ function teamShape(t) {
   };
 }
 
+/* a club's possessive: "Saga Ballooners’", "Alvark Tokyo’s" */
+const poss = n => n + (/s$/i.test(String(n).replace(/<[^>]*>/g, '')) ? '’' : '’s');
+
 function observations(A, B, nameA, nameB) {
   const out = [];
   const push = (strength, text) => out.push({ strength, text });
@@ -280,8 +283,8 @@ function observations(A, B, nameA, nameB) {
   if (best && best.v >= 2) {
     /* Both numbers, so the claim is checkable against the cards below it
        rather than being a gap the reader has to take on trust. */
-    push(9, 'The matchup to watch is ' + esc(best.att) + '’s ' + best.f.label +
-      ' against ' + esc(best.def) + '’s: on ' + best.f.full + ' ' +
+    push(9, 'The matchup to watch is ' + poss(esc(best.att)) + ' ' + best.f.label +
+      ' against ' + poss(esc(best.def)) + ': on ' + best.f.full + ' ' +
       esc(best.att) + ' post ' + pct1(best.off) + ' where ' + esc(best.def) +
       ' concede ' + pct1(best.def_) + '.');
   }
@@ -291,8 +294,8 @@ function observations(A, B, nameA, nameB) {
     const fast = A.pace > B.pace ? nameA : nameB;
     const slow = A.pace > B.pace ? nameB : nameA;
     push(7, 'They want different games: ' + esc(fast) + ' have played at ' +
-      one(Math.max(A.pace, B.pace)) + ' possessions per 40 to ' + esc(slow) +
-      '’s ' + one(Math.min(A.pace, B.pace)) + ', so whoever sets the ' +
+      one(Math.max(A.pace, B.pace)) + ' possessions per 40 to ' + poss(esc(slow)) +
+      ' ' + one(Math.min(A.pace, B.pace)) + ', so whoever sets the ' +
       'tempo has already won something.');
   }
 
@@ -378,22 +381,92 @@ function valuedParas(ctx) {
     if (whole(t)) return s.won ? N[t] + ' are unbeaten in ' + pspell(s.n) : N[t] + ' are still without a win in ' + pspell(s.n);
     return s.won ? N[t] + ' have won ' + pspell(s.n) + ' straight' : N[t] + ' have lost their last ' + pspell(s.n);
   };
-  const runs = [run(0), run(1)].filter(Boolean);
-  if (runs.length === 2 && whole(0) && whole(1) && S[0].streak.won && S[1].streak.won) st.push('Neither has lost yet.');
-  else if (runs.length === 2) st.push(runs.join('; ') + '.');
-  else if (runs.length === 1) st.push(runs[0] + '.');
+  /* HOW EACH COMES IN (the wire services' opening line): its last game, if it was in the last fortnight, the score the
+     winner's first, where, against whom, and whoever carried it - "with 31 from X" in a win, "despite 31 from X" in a
+     defeat. Inside a run it is the run's latest; otherwise a sentence of its own. */
+  const names = ctx.names || {};
+  const scoreOf = g => Math.max(g.for, g.against) + '–' + Math.min(g.for, g.against);
+  const aScore = s => (/^(8\d|11|18)–/.test(s) ? 'an ' : 'a ') + s;
+  /* a defeat names its best line only when it stood out (20 points, or a double-double): "despite 17" in a 25-point
+     beating is no comfort worth printing */
+  const carried = (top, won) => {
+    if (!top || !names[top.id]) return '';
+    const more = top.reb >= 10 ? ' points and ' + top.reb + ' rebounds' : top.ast >= 10 ? ' points and ' + top.ast + ' assists' : '';
+    if (!(top.pts >= (won ? 15 : more ? 15 : 20))) return '';
+    return (won ? ' with ' : ' despite ') + top.pts + more + ' from ' + esc(names[top.id]);
+  };
+  const lastG = t => { const g = S[t].last; return g && !g.tied && S[t].rest != null && S[t].rest <= 14 ? g : null; };
+  const latest = t => {
+    const g = lastG(t);
+    if (!g) return '';
+    const opp = g.oppName ? esc(g.oppName) : null;
+    return ', the latest ' + scoreOf(g) + (g.home ? (opp ? ' at home to ' + opp : ' at home') : (opp ? ' at ' + opp : ' away')) + carried(g.top, g.won);
+  };
+  /* the second of two is said the other way round, so two sentences in a row do not open alike */
+  const cameIn = (t, second) => {
+    const g = lastG(t);
+    if (!g) return null;
+    const opp = g.oppName ? esc(g.oppName) : null;
+    const c = carried(g.top, g.won);
+    if (second) {
+      const verb = g.won ? (opp && g.home ? 'beat ' + opp + ' ' : 'won ') : 'lost ';
+      const where = g.home ? (opp && !g.won ? ' at home to ' + opp : ' at home') : (opp ? ' at ' + opp : ' away');
+      return N[t] + ' ' + verb + scoreOf(g) + where + ' last time out' + (c ? ',' + c : '') + '.';
+    }
+    const what = g.won ? (g.home ? 'home win' : 'win') : (g.home ? 'home defeat' : 'defeat');
+    const vs = opp ? (g.won ? (g.home ? ' over ' : ' at ') : (g.home ? ' to ' : ' at ')) + opp : (g.home ? '' : ' away from home');
+    return N[t] + ' come in off ' + aScore(scoreOf(g)) + ' ' + what + vs + (c ? ',' + c : '') + '.';
+  };
+  /* the two met last time out (a series, a pair of fixtures back to back): that game once, from the winner's end */
+  const g0 = lastG(0), g1 = lastG(1);
+  const same = !!(g0 && g1 && g0.id === g1.id);
+  const runs = [run(0), run(1)];
+  if (runs[0] && runs[1] && whole(0) && whole(1) && S[0].streak.won && S[1].streak.won) st.push('Neither has lost yet.');
   else {
-    const f = t => (S[t].last5 || '').length === 5 ? (S[t].last5.match(/W/g) || []).length : null;
-    const fa = f(0), fb = f(1);
-    if (fa != null && fb != null && Math.abs(fa - fb) >= 3) {
-      const hi = fa > fb ? 0 : 1;
-      st.push(N[hi] + ' have won ' + pspell(Math.max(fa, fb)) + ' of their last five; ' + N[1 - hi] + ' ' + pspell(Math.min(fa, fb)) + '.');
+    /* the home side first, then the visitors: a run with its latest game, else how it comes in */
+    const came = [null, null];
+    [0, 1].forEach(t => {
+      if (runs[t]) { st.push(runs[t] + (same ? '' : latest(t)) + '.'); return; }
+      if (same) return;
+      came[t] = cameIn(t, t === 1 && !!came[0]);
+      if (came[t]) st.push(came[t]);
+    });
+    if (same) {
+      const w = g0.won ? 0 : 1, gw = w === 0 ? g0 : g1;
+      st.push('They met last time out, ' + N[w] + ' winning ' + scoreOf(gw) + (gw.home ? ' at home' : ' away') + carried(gw.top, true) + '.');
+    }
+    if (!runs[0] && !runs[1] && !came[0] && !came[1]) {
+      const f = t => (S[t].last5 || '').length === 5 ? (S[t].last5.match(/W/g) || []).length : null;
+      const fa = f(0), fb = f(1);
+      if (fa != null && fb != null && Math.abs(fa - fb) >= 3) {
+        const hi = fa > fb ? 0 : 1;
+        st.push(N[hi] + ' have won ' + pspell(Math.max(fa, fb)) + ' of their last five; ' + N[1 - hi] + ' ' + pspell(Math.min(fa, fb)) + '.');
+      }
     }
   }
+  if (st.length) out.push(st.join(' '));
+  st.length = 0;
+
+  /* HOME AND AWAY: the home side at home and the visitors on the road, said only when it is all one way (three games
+     or more) or the two halves of a season are far apart (four of each, half the games apart). A club whose whole
+     season is one run has said it already. */
+  const hr = (t, here, there, hereW, thereW) => {
+    const n = here.w + here.l, m = there ? there.w + there.l : 0;
+    if (whole(t)) return null;
+    if (n >= 3 && here.l === 0) return N[t] + ' have won all ' + pspell(n) + ' ' + hereW + '.';
+    if (n >= 3 && here.w === 0) return N[t] + ' have lost all ' + pspell(n) + ' ' + hereW + '.';
+    if (n >= 4 && m >= 4 && Math.abs(here.w / n - there.w / m) >= 0.5) return N[t] + ' are ' + recW(here) + ' ' + hereW + ' and ' + recW(there) + ' ' + thereW + '.';
+    return null;
+  };
+  const roadOf = t => S[t].road || null, homeOf = t => S[t].home || null;
+  if (homeOf(0)) { const s = hr(0, homeOf(0), roadOf(0), 'at home', 'away'); if (s) st.push(s); }
+  if (roadOf(1)) { const s = hr(1, roadOf(1), homeOf(1), 'on the road', 'at home'); if (s) st.push(s); }
   const M = pre.meetings || [];
   if (M.length === 1) {
     const m = M[0], w = m.won, sc = [Math.max(m.score[0], m.score[1]), Math.min(m.score[0], m.score[1])];
-    if (w != null) st.push(N[w] + ' won the only meeting so far, ' + sc[0] + '–' + sc[1] + '.');
+    const top = w != null && m.tops ? m.tops[w] : null;
+    const by = top && names[top.id] && top.pts >= 18 ? ', with ' + top.pts + ' from ' + esc(names[top.id]) : '';
+    if (w != null && !(same && g0.id === m.id)) st.push(N[w] + ' won the only meeting so far, ' + sc[0] + '–' + sc[1] + by + '.');
   } else if (M.length > 1) {
     const wA = M.filter(m => m.won === 0).length, wB = M.filter(m => m.won === 1).length;
     st.push(wA === wB ? 'The season series is level at ' + wA + '–' + wB + '.' : 'The season series is ' + Math.max(wA, wB) + '–' + Math.min(wA, wB) + ' to ' + N[wA > wB ? 0 : 1] + '.');
@@ -422,8 +495,10 @@ function valuedParas(ctx) {
         : p.k === 'tovp' ? N[fav] + ' should turn it over on about ' + Math.round(mine) + '% of possessions to ' + Math.round(theirs) + '%'
         : p.k === 'orebp' ? N[fav] + ' should get about ' + Math.round(mine) + '% of their misses back to ' + Math.round(theirs) + '%'
         : N[fav] + ' should get to the line more, about ' + Math.round(mine) + ' free throws per hundred shots to ' + Math.round(theirs);
-      const share = Math.abs(p.pts) / m;
-      const opener = share > 1.15 ? cap(FACET_W[p.k]) + ' alone is worth more than that' : share >= 0.5 ? 'Most of that is ' + FACET_W[p.k] : 'The biggest part is ' + FACET_W[p.k];
+      /* judged on the figures the reader sees (each said to the half point): "six" and "seven" is more than that */
+      const half = v => Math.max(1, Math.round(Math.abs(v) * 2) / 2);
+      const share = half(p.pts) / half(m);
+      const opener = share > 1 ? cap(FACET_W[p.k]) + ' alone is worth more than that' : share >= 0.5 ? 'Most of that is ' + FACET_W[p.k] : 'The biggest part is ' + FACET_W[p.k];
       bits.push(opener + ': ' + what + ', worth about ' + ptsW(Math.abs(p.pts)) + '.');
     }
     const possN = n => n + (/s$/i.test(String(n).replace(/<[^>]*>/g, '')) ? '’' : '’s');
@@ -435,6 +510,17 @@ function valuedParas(ctx) {
       : m < 9 ? 'The numbers make ' + N[fav] + ' clear favourites.'
       : 'On these numbers ' + N[fav] + ' should win comfortably.';
     bits.push(lean);
+    /* if it is close: how each has done in games decided by five points or fewer (three of them or more), when one has
+       won or lost them all, or the two are half their games apart */
+    if (m < 5) {
+      const cl = t => S[t].close || { w: 0, l: 0 }, cn = t => cl(t).w + cl(t).l;
+      if (cn(0) >= 3 && cn(1) >= 3 && Math.abs(cl(0).w / cn(0) - cl(1).w / cn(1)) >= 0.5) {
+        bits.push('In games decided by five points or fewer, ' + N[0] + ' are ' + recW(cl(0)) + ' and ' + N[1] + ' ' + recW(cl(1)) + '.');
+      } else {
+        const t = [0, 1].find(t => cn(t) >= 3 && (cl(t).w === cn(t) || cl(t).l === cn(t)));
+        if (t != null) bits.push(N[t] + ' are ' + recW(cl(t)) + ' in games decided by five points or fewer.');
+      }
+    }
     const dog = 1 - fav, ds = S[dog].streak;
     if (m >= 2 && ds && ds.won && ds.n >= 3) bits.push('Yes, but ' + N[dog] + ' come in on ' + pspell(ds.n) + ' straight wins.');
     else if (m >= 2 && T[dog] && T[fav] && T[dog].rank < T[fav].rank && T[dog].gp >= 3) bits.push('Yes, but the table has ' + N[dog] + ' above them.');
@@ -442,7 +528,6 @@ function valuedParas(ctx) {
   }
 
   /* 3. WHO CARRIES THE FORM */
-  const names = ctx.names || {};
   const who = (t) => {
     const list = (pre.players && pre.players[t]) || [];
     for (const p of list.slice(0, 6)) {

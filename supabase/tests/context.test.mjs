@@ -194,6 +194,43 @@ console.log('\nbefore a game: the preview’s season (context.js preview, previe
   const t2 = Preview.__test.valuedParas(big).join(' ');
   ok('a facet bigger than the whole edge is said as one', /the shooting alone is worth more than that|The shooting alone is worth more than that/.test(t2) && !/Most of that/.test(t2), t2);
   ok('...and the possessive of a name in s', /Visitors’ edge is the turnover battle/.test(t2), t2);
+
+  /* HOW EACH COMES IN, HOME AND AWAY, CLOSE GAMES (2026-10-08) */
+  ok('each side’s last game, its opponent named from the table, and whoever carried it',
+     pv.sides[1].last && pv.sides[1].last.id === 'me' && pv.sides[1].last.won && pv.sides[1].last.oppName === 'Bees' && pv.sides[1].last.top && pv.sides[1].last.top.id === 'p1' && pv.sides[1].last.top.pts === 24, pv.sides[1].last);
+  ok('...the records at home, on the road and in games decided by five or fewer',
+     pv.sides[0].home.w === 3 && pv.sides[0].road.w === 1 && pv.sides[0].road.l === 1 && pv.sides[1].road.l === 2 && pv.sides[0].close.w === 1 && pv.sides[0].close.l === 1, pv.sides.map(s => [s.home, s.road, s.close]));
+  ok('...and each meeting carries both sides’ best lines', pv.meetings[0].tops && pv.meetings[0].tops[0].id === 'p3' && pv.meetings[0].tops[1].id === 'p1', pv.meetings);
+  ok('two who met last time out: that game once, from the winner’s end', /They met last time out, Aces winning 84–79 at home with 24 from Ada Aces\./.test(txt) && !/come in off/.test(txt), txt);
+  ok('a home side that has won every game at home says so', /Bees have won all three at home\./.test(txt), txt);
+  /* two more games for Bees, against C: a different last game for each side, said two ways */
+  const more = all.concat([game(12, C, B, 70, 95), game(12.5, B, C, 88, 86)]);
+  const g9 = more[more.length - 2].id, g10 = more[more.length - 1].id;
+  const pg2 = pgs.concat([{ game_id: g9, team_idx: 1, player_uuid: 'p3', stats: { pts: 31, or: 3, dr: 9, min: 1800000 } },
+                          { game_id: g10, team_idx: 0, player_uuid: 'p3', stats: { pts: 26, ast: 11, min: 1800000 } }]);
+  const pv2 = Context.preview({ home: B, away: A, tipoff: day(16), games: more, pgs: pg2, tgs: tg, table, model: null });
+  const t3 = Preview.__test.valuedParas(Object.assign({}, ctxP, { pre: pv2 })).join(' ');
+  ok('a recent last game: "come in off", the carrier with a double-double', /Bees come in off an 88–86 home win over Cees, with 26 points and 11 assists from Di Bees\./.test(t3), t3);
+  ok('...and the second side the other way round', /Aces beat Bees 84–79 at home last time out, with 24 from Ada Aces\./.test(t3), t3);
+  /* a third straight win: the run says its latest */
+  const more3 = more.concat([game(14, C, B, 60, 90)]);
+  const pv3 = Context.preview({ home: B, away: A, tipoff: day(17), games: more3, pgs: pg2, tgs: tg, table, model: null });
+  const t4 = Preview.__test.valuedParas(Object.assign({}, ctxP, { pre: pv3 })).join(' ');
+  ok('a run says its latest game', /Bees have won three straight, the latest 90–60 at Cees\./.test(t4), t4);
+  /* a fortnight on, nobody "comes in off" anything */
+  const pv4 = Context.preview({ home: B, away: A, tipoff: day(40), games: more3, pgs: pg2, tgs: tg, table, model: null });
+  const t5 = Preview.__test.valuedParas(Object.assign({}, ctxP, { pre: pv4 })).join(' ');
+  ok('...and nothing older than a fortnight', !/come in off|last time out|the latest/.test(t5), t5);
+  /* close games, when the numbers expect a close one */
+  const close = { nameA: 'Hosts', nameB: 'Visitors', names: {}, pre: { sides: [
+      { gp: 8, w: 6, l: 2, streak: null, last5: 'WLWWL', close: { w: 4, l: 0 } }, { gp: 8, w: 4, l: 4, streak: null, last5: 'LWLWL', close: { w: 1, l: 3 } }],
+    meetings: [], table: [null, null], players: [[], []],
+    expect: { margin: 2.5, alpha: null, model: false, parts: { efg: { home: 52, away: 50, pts: 2.5 }, tovp: { home: 14, away: 14, pts: 0 }, orebp: { home: 28, away: 28, pts: 0 }, ftr: { home: 25, away: 25, pts: 0 } } } } };
+  const t6 = Preview.__test.valuedParas(close).join(' ');
+  ok('a close game expected: both sides’ records in games decided by five or fewer', /In games decided by five points or fewer, Hosts are 4–0 and Visitors 1–3\./.test(t6), t6);
+  close.pre.expect.margin = 9;
+  ok('...not when one side should win comfortably', !/decided by five/.test(Preview.__test.valuedParas(close).join(' ')));
+  ok('...and no empty slot anywhere', ![txt, t3, t4, t5, t6].some(s => /\b(undefined|NaN|null|Infinity)\b|\[object/.test(s)), [t3, t4, t5, t6]);
 }
 
 console.log('\nthe league make rates');

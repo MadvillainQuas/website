@@ -372,8 +372,9 @@ function ratesFromTeams(teams) {
 
 /* ============================================================================
    BEFORE A GAME: the same season, read for a fixture (game/preview.js). Each club's record, form and run, the days of
-   rest, the meetings so far, where both stand, what the season's four factors expect (the league's model weighing them),
-   and each player's season and last five, with a milestone in reach.
+   rest, how it comes in (its last game and whoever carried it), its record at home, on the road and in games decided by
+   five or fewer, the meetings so far (with each side's best line), where both stand, what the season's four factors
+   expect (the league's model weighing them), and each player's season and last five, with a milestone in reach.
 
      EpinoiaContext.preview({ home, away, tipoff, games, pgs, tgs, table, model, competitionId, neutral })
    ============================================================================ */
@@ -384,15 +385,46 @@ function preview(o) {
   const at = time(x.tipoff) || Date.now();
   const games = (Array.isArray(x.games) ? x.games : []).filter(g => g && g.home_score != null && g.away_score != null && time(g.tipoff_at) != null && time(g.tipoff_at) < at);
   /* a club's season so far, with a dummy "this game" that clubLine never counts */
+  /* a game's best line on one side (the most points; rebounds and assists ride along): who carried it */
+  const topOf = (gameId, side) => {
+    let best = null;
+    (Array.isArray(x.pgs) ? x.pgs : []).forEach(r => {
+      if (!r || r.game_id !== gameId || r.team_idx !== side || !r.stats || !(num(r.stats.min) > 0)) return;
+      const s = r.stats, pts = num(s.pts) || 0;
+      if (!best || pts > best.pts) best = { id: pidOf(r), pts, reb: (num(s.or) || 0) + (num(s.dr) || 0), ast: num(s.ast) || 0 };
+    });
+    return best && best.id ? best : null;
+  };
+  /* a club's name, for the opponents of the last games: the caller's names, else the table's rows (tablepos.js reads
+     each row's club with it); a club in neither (a cup opponent) is not named */
+  const clubName = id => {
+    const N = x.teamNames, v = N && id ? (N instanceof Map ? N.get(id) : N[id]) : null;
+    if (v) return String(v.name || v);
+    const r = x.table && Array.isArray(x.table.rows) ? x.table.rows.find(y => y && y.team_id === id) : null;
+    return r && r.teams && r.teams.name ? String(r.teams.name) : null;
+  };
+  /* a club's season so far, with a dummy "this game" that clubLine never counts; how it comes in (its last game and
+     who carried it), its record away from home and in games decided by five or fewer */
   const sides = ids.map(id => {
     const L = clubLine(games, id, { id: '__next', at, home: id === ids[0], for: 0, against: 0, won: false, tied: true }, at);
+    const prev = L.results.length ? L.results[L.results.length - 1] : null;
+    const close = L.results.filter(r => !r.tied && Math.abs(r.for - r.against) <= 5);
     return { id, gp: L.before.gp, w: L.before.w, l: L.before.l, streak: L.before.streak, last5: L.before.last5,
-             ppg: L.before.ppg, papg: L.before.papg, home: { w: L.before.homeW, l: L.before.homeL }, rest: L.rest,
-             lastAt: L.results.length ? L.results[L.results.length - 1].at : null };
+             ppg: L.before.ppg, papg: L.before.papg, home: { w: L.before.homeW, l: L.before.homeL },
+             road: { w: L.before.w - L.before.homeW, l: L.before.l - L.before.homeL },
+             close: { w: close.filter(r => r.won).length, l: close.filter(r => !r.won).length }, rest: L.rest,
+             lastAt: prev ? prev.at : null,
+             last: prev ? { id: prev.id, at: prev.at, home: prev.home, for: prev.for, against: prev.against, won: prev.won, tied: prev.tied, opp: prev.opp,
+                            oppName: clubName(prev.opp), top: topOf(prev.id, prev.home ? 0 : 1) } : null };
   });
+  /* the meetings so far, from the home side's end, each with both sides' best lines (tops[0] the home side's here) */
   const meetings = games.filter(g => (g.home_team_id === ids[0] && g.away_team_id === ids[1]) || (g.home_team_id === ids[1] && g.away_team_id === ids[0]))
     .sort((a, b) => time(a.tipoff_at) - time(b.tipoff_at))
-    .map(g => { const s = sideOf(g, ids[0]); return { id: g.id, at: s.at, score: [s.for, s.against], won: s.won ? 0 : s.tied ? null : 1 }; });
+    .map(g => {
+      const s = sideOf(g, ids[0]);
+      return { id: g.id, at: s.at, home: s.home, score: [s.for, s.against], won: s.won ? 0 : s.tied ? null : 1,
+               tops: [topOf(g.id, s.home ? 0 : 1), topOf(g.id, s.home ? 1 : 0)] };
+    });
   const table = standing(x.table, ids, null, false);
   const P = profiles(x.tgs, games, '__next', at + 1);
   const expect = expectation(P, ids, x.model || null, x.neutral ? false : true);

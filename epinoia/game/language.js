@@ -479,7 +479,9 @@ const GRAMMAR = [
   { id: 'straight-quotes', level: 'style', msg: 'straight quotation marks: use curly ones', find: /"([^"<>\n]{1,80})"/g, fix: (m, t) => '\u201c' + t + '\u201d', bad: 'They "collapsed".', good: 'They \u201ccollapsed\u201d.' },
   { id: 'ellipsis', level: 'style', msg: 'three full stops are an ellipsis', find: /\.\.\./g, fix: () => '\u2026', bad: 'And then...', good: 'And then\u2026' },
   { id: 'percent-space', level: 'style', msg: 'no space before a percent sign', find: /(\d) %/g, fix: (m, d) => d + '%', bad: 'They shot 55.7 %.', good: 'They shot 55.7%.' },
-  { id: 'decade-apostrophe', level: 'error', msg: 'no apostrophe in a decade or a plural numeral', find: /\b(\d{2,4})[\u2019']s\b/g, fix: (m, d) => d + 's', bad: 'The 1990\u2019s.', good: 'The 1990s.' },
+  /* not the possessive of a name that ends in a number, "Nanterre 92\u2019s 15 points" (it was "Nanterre 92s"): a numeral
+     straight after a capitalised word other than a sentence's opening one is a name's */
+  { id: 'decade-apostrophe', level: 'error', msg: 'no apostrophe in a decade or a plural numeral', find: /(?<!\b(?!(?:The|In|Into|By|Since|Of|From|Through|Until|Before|After|Like)\b)[A-Z][\w.&-]*\s)\b(\d{2,4})[\u2019']s\b/g, fix: (m, d) => d + 's', bad: 'The 1990\u2019s.', good: 'The 1990s.' },
   { id: 'day-capital', level: 'error', msg: 'days and months take capitals', find: new RegExp('\\b(' + DAYS + '|' + MONTHS + ')\\b', 'g'), fix: m => m.charAt(0).toUpperCase() + m.slice(1), bad: 'On saturday night.', good: 'On Saturday night.' },
   { id: 'space-before-semicolon', level: 'style', msg: 'no space before a semicolon or colon', find: /(\w) ([;:])(?=\s)/g, fix: (m, w, p) => w + p, bad: 'They won ; easily.', good: 'They won; easily.' },
   /* ---------------------------------------------------------------- style */
@@ -564,11 +566,14 @@ function grammar(html, opts) {
   (o.names || []).forEach(n => {
     const plain = String(n).replace(/<[^>]*>/g, '');
     if (!plain) return;
-    const re = new RegExp('\\b' + plain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' (was|is|has)\\b', 'g');
+    const re = new RegExp(NOT_OBJECT + '\\b' + plain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' (was|is|has)\\b', 'g');
     let m; while ((m = re.exec(text))) out.push({ id: 'team-agreement', level: 'error', msg: 'a club is plural in this report', sample: m[0] });
   });
   return out;
 }
+/* ...but only where the club is what the verb is about: after a preposition it is not ("Martinez’s game for Elfic
+   was the best on the floor" became "for Elfic were") */
+const NOT_OBJECT = '(?<!\\b(?:for|of|against|to|by|from|over|at|with|without|in|on|than|behind|past|beat|beating|like)\\s)';
 
 /* REPAIR the certain ones, in a piece of text with no tags in it */
 function fixGrammar(seg, opts) {
@@ -589,7 +594,7 @@ function fixGrammar(seg, opts) {
   (o.names || []).forEach(n => {
     const plain = String(n).replace(/<[^>]*>/g, '');
     if (!plain) return;
-    s = s.replace(new RegExp('\\b(' + plain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ') (was|is|has)\\b', 'g'), (m, name, v) => name + ' ' + ({ was: 'were', is: 'are', has: 'have' })[v]);
+    s = s.replace(new RegExp(NOT_OBJECT + '\\b(' + plain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ') (was|is|has)\\b', 'g'), (m, name, v) => name + ' ' + ({ was: 'were', is: 'are', has: 'have' })[v]);
   });
   return s.replace(/\s{2,}/g, ' ').replace(/\s+([,.;:!?])/g, '$1');
 }
@@ -619,8 +624,10 @@ function polish(html, opts) {
     /* one point, two points: a counted noun agrees with its digit */
     s = s.replace(new RegExp('\\b(\\d+(?:\\.\\d+)?)\\s+(' + COUNTED + ')\\b(?![-\\w])', 'gi'), (m, n, noun) => {
       const v = Number(n), lower = noun.toLowerCase();
-      if (v === 1 && SINGLE[lower]) return n + ' ' + SINGLE[lower];
-      if (v !== 1 && MULTI[lower]) return n + ' ' + MULTI[lower];
+      /* only a bare 1 is singular: "1.00 points a chance", as a decimal always is (it wrote "1.00 point") */
+      const single = v === 1 && !/\./.test(n);
+      if (single && SINGLE[lower]) return n + ' ' + SINGLE[lower];
+      if (!single && MULTI[lower]) return n + ' ' + MULTI[lower];
       return m;
     });
     return s;
@@ -654,8 +661,8 @@ function lint(html, opts) {
   }
   const cnt = new RegExp('\\b(\\d+(?:\\.\\d+)?)\\s+(' + COUNTED + ')\\b(?![-\\w])', 'gi');
   while ((m = cnt.exec(plain))) {
-    const v = Number(m[1]), noun = m[2].toLowerCase();
-    if ((v === 1 && SINGLE[noun]) || (v !== 1 && MULTI[noun])) { add('number-agreement', m[0]); break; }
+    const v = Number(m[1]), noun = m[2].toLowerCase(), single = v === 1 && !/\./.test(m[1]);
+    if ((single && SINGLE[noun]) || (!single && MULTI[noun])) { add('number-agreement', m[0]); break; }
   }
   const sent = /([.!?])(\s+)([a-zà-ÿ])/g;
   while ((m = sent.exec(plain))) {

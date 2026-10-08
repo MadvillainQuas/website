@@ -18,6 +18,8 @@
     'better than nine weeks in ten': '10週中9週を上回る水準',
     'among the best in the league': 'リーグ屈指の水準',
     'at the very top of the league': 'リーグトップクラス',
+    /* the writer's reviser drops "very" as a filler */
+    'at the top of the league': 'リーグトップクラス',
     'better than three games in four': '4試合中3試合を上回る水準',
     'better than three weeks in four': '4週中3週を上回る水準',
     'comfortably above the league': 'リーグ平均を大きく上回る水準',
@@ -73,16 +75,21 @@
   };
   const alt = o => Object.keys(o).sort((a, b) => b.length - a.length)
     .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  /* A POSSESSIVE AS THE WRITER LEAVES IT: its reviser takes the apostrophe off a name that ends in a number, as if it were
+     a decade ("Nanterre 92s 15 points"), so every "’s?" in a template also takes that */
+  const POSS = '(?:’s?|(?<=\\d)s)';
   const TOK = {
-    X: '([^,;:—]+?)', L: '(.+?)', N: '((?!and )(?:(?! and | for | of )[^,;:—()])+?)', D: '(\\d+)', F: '(-?\\d+(?:\\.\\d+)?)', W: '(' + WORDS + ')',
+    /* a name may carry a colon with no space after it ("Igokea M:tel"); a colon and a space ends it */
+    X: '((?:[^,;:—]|:(?!\\s))+?)', L: '(.+?)', N: '((?!and )(?:(?! and | for | of )[^,;:—()])+?)', D: '(\\d+)', F: '(-?\\d+(?:\\.\\d+)?)', W: '(' + WORDS + ')',
     S: '(\\d+)[–-](\\d+)', O: '(first|second|third|fourth|\\d+th)', M: '(\\d+:\\d{2})',
     T: '((?:(?:,| and) (?:' + WORDS + ') (?:rebounds|assists|steals|blocks))*)',
-    P: '(their|[^,;:—]+?’s?)', Q: '(' + alt(PCT) + ')', R: '(' + alt(FREQ) + ')',
+    P: '(their|[^,;:—]+?' + POSS + ')', Q: '(' + alt(PCT) + ')', R: '(' + alt(FREQ) + ')',
     V: '(in transition|on second chances|off turnovers)',
     K: '(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\\d+(?:st|nd|rd|th))', H: '(\\d+\\.\\d+|' + WORDS + ')',
-    Y: '((?:sunday|monday|tuesday|wednesday|thursday|friday|saturday),? \\d{1,2} (?:january|february|march|april|may|june|july|august|september|october|november|december))'
+    Y: '((?:sunday|monday|tuesday|wednesday|thursday|friday|saturday),? \\d{1,2} (?:january|february|march|april|may|june|july|august|september|october|november|december))',
+    A: '(all but (?:\\d+ seconds?|(?:' + WORDS + ') minutes?))'
   };
-  const rx = (src, end) => new RegExp('^(?:' + src.replace(/\{([A-Z])\}/g, (m, k) => TOK[k]) + ')' + (end || '') + '$', 'i');
+  const rx = (src, end) => new RegExp('^(?:' + src.replace(/’s\?/g, POSS).replace(/\{([A-Z])\}/g, (m, k) => TOK[k]) + ')' + (end || '') + '$', 'i');
 
   const sc = (a, b) => a + '－' + b;
   const ORD = { first: '第1クォーター', second: '第2クォーター', third: '第3クォーター', fourth: '第4クォーター' };
@@ -92,7 +99,9 @@
   /* a subject: they is dropped, a role becomes words, a club is itself */
   const who = x => { const k = String(x).toLowerCase(); return k === 'they' ? '' : (ROLE[k] || String(x)); };
   const S = (x, p) => { const w = who(x); return w ? w + (p == null ? 'は' : p) : ''; };
-  const own = x => { if (/^their$/i.test(x)) return ''; const w = String(x).replace(/’s?$/, ''); return who(w) + 'の'; };
+  const own = x => { if (/^their$/i.test(x)) return ''; const w = String(x).replace(/’s?$|(?<=\d)s$/, ''); return who(w) + 'の'; };
+  /* "all but 20 seconds", "all but three minutes" of a game: 20秒を除く */
+  const allBut = a => { const m = /^all but (\S+) (second|minute)s?$/i.exec(String(a)); return m ? n(m[1]) + (/^second/i.test(m[2]) ? '秒' : '分') + 'を除く' : ''; };
   const names = x => String(x).split(/, | and /).join('、');
   const STAT = { points: '得点', rebounds: 'リバウンド', assists: 'アシスト', steals: 'スティール', blocks: 'ブロック' };
   const tail = t => { let o = ''; String(t || '').replace(/(\w+) (rebounds|assists|steals|blocks)/gi, (m, w, k) => { o += n(w) + STAT[k.toLowerCase()]; return m; }); return o; };
@@ -103,6 +112,8 @@
   const PART = { morning: '午前', afternoon: '午後', evening: '夜' };
   const WHERE = { 'in transition': 'ファストブレイク', 'on second chances': 'セカンドチャンス', 'off turnovers': '相手のターンオーバーからの攻撃' };
   const ZONE_JA = { 'at the rim': 'ゴール下', 'from mid-range': 'ミドルレンジ', 'from three': '3P' };
+  /* a player's share of the points a situation brought: ファストブレイクからのチーム19得点 */
+  const SITPTS = { 'in transition': 'ファストブレイクからの', 'on second chances': 'セカンドチャンスからの', 'off turnovers': '相手のターンオーバーからの' };
 
   /* the measures the scout's note and the weekly report name */
   const LAB = {
@@ -154,6 +165,8 @@
      more than the whole margin", "about four points" */
   const WORTH = [
     [rx('about {W} of the {W} points between them'), (a, b) => '両チームの' + n(b) + '点差のうち約' + n(a) + '点分に相当した'],
+    /* "six of the six" as the reviser writes it */
+    [rx('about all {W} points between them'), a => '両チームの' + n(a) + '点差のほぼすべてに相当した'],
     [rx('about {W} points?, more than the whole margin'), a => '約' + n(a) + '点分に相当し、最終的な点差をも上回った'],
     [rx('about {W} points?'), a => '約' + n(a) + '点分に相当した']
   ];
@@ -165,6 +178,8 @@
     'facet by facet': '要素別に見ると',
     'weighing each facet at its usual value': '各要素を標準的な重みで換算すると'
   };
+  /* "four points on shooting, two on turnovers and one on free throws" -> シュートで4点、ターンオーバーで2点、フリースローで1点 */
+  const factorPts = s => items(s, t => { const m = rx('{W}(?: points?)? on (.+?)').exec(t); return m && lab(m[2]) ? lab(m[2]) + 'で' + n(m[1]) + '点' : null; });
   const RATES = '(in this league|at this game’s make rates)';
   const rates = r => (/league/i.test(r) ? 'このリーグの成功率で換算すると' : 'この試合の成功率で換算すると');
   /* the facet that decided it, after the ledger's "By this league's own model of what wins, " */
@@ -202,11 +217,33 @@
   /* the scout's closing line, three ways round the same judgement */
   const BEHIND = '(?:, further behind the league than anything else in their game|, the furthest from the league anything in their game was|, and nothing else in their game sat further behind the league)';
 
+  /* HOW EACH SIDE COMES IN (preview.js valuedParas, 2026-10-08): its last game, said from its own end - a win 92－70, a
+     defeat the side's score first (72－83で敗れた) - home or away, against whom, and whoever carried it ("with 31 from X",
+     "despite 25 from X", "30 points and 11 rebounds from X") */
+  const CARRIED = '(?:,? (with|despite) {D}(?: points and {D} (rebounds|assists))? from {X})?';
+  const vsJa = (home, opp) => (home ? 'ホーム' : 'アウェー') + (opp ? 'の' + opp + '戦' : 'ゲーム') + 'に';
+  const scoreJa = (won, a, b) => (won ? sc(a, b) : sc(b, a));
+  const carriedJa = (k, pts, more, stat, p) => (k ? '。その試合では' + p + 'が' + pts + '得点' + (more ? more + STAT[stat.toLowerCase()] : '') +
+    'を挙げ' + (/^with$/i.test(k) ? 'た' : 'たが、及ばなかった') : '');
+  /* a run's latest game: ", the latest 90–60 at Bristol Flyers with 31 from X" */
+  const LATEST = rx('{S}( at home to {X}| at home| at {X}| away)' + CARRIED);
+  const latestJa = (won, s) => {
+    if (!s) return '';
+    const m = LATEST.exec(s);
+    if (!m) return null;
+    const [, a, b, where, toOpp, atOpp, k, pts, more, stat, p] = m;
+    return '。直近の試合は' + vsJa(/^ at home/i.test(where), toOpp || atOpp) + scoreJa(won, a, b) + 'で' + (won ? '勝利した' : '敗れた') + carriedJa(k, pts, more, stat, p);
+  };
+  const HOMEAWAY = { 'at home': 'ホーム', 'away': 'アウェー', 'on the road': 'アウェー' };
+
   /* "On Saturday evening at The Arena, in front of 312 in Division One", in any of its parts */
-  const DL = /^(?:on (sunday|monday|tuesday|wednesday|thursday|friday|saturday)(?: (morning|afternoon|evening))?)?(?:(?:^| )at ([^,]+?))?(?:(?:^|,? )in front of (\d+))?(?: in ([^,]+?))?$/i;
+  /* a venue may carry its town after a comma ("Rocher, Nyon"), but never "in front of" */
+  const DL = /^(?:on (sunday|monday|tuesday|wednesday|thursday|friday|saturday)(?: (morning|afternoon|evening))?)?(?:(?:^| )at ([^,]+?(?:, (?!in front of )[^,]+?)?))?(?:(?:^|,? )in front of (\d+))?(?: in ([^,]+?))?$/i;
   const dl = s => {
     const m = DL.exec(String(s).trim());
     if (!m || !(m[1] || m[3] || m[4] || m[5])) return null;
+    /* the town after a venue's comma has a capital: ", and they led by 15" is the next clause, not a place */
+    if (m[3] && /, [a-z]/.test(m[3])) return null;
     return { day: m[1], part: m[2], venue: m[3], crowd: m[4], comp: m[5] && m[5].replace(/^the /i, '') };
   };
   const where = d => {
@@ -289,7 +326,7 @@
       : (k = new RegExp('^(' + WORDS + ') turnovers$', 'i').exec(m[2])) ? n(k[1]) + 'ターンオーバー' : null;
     return note == null ? null : m[1] + '（' + note + '）';
   };
-  const roughClub = c => { const m = /^(.+?)’s? (.+)$/.exec(c); if (!m) return null; const it = items(m[2], ROUGH); return it ? m[1] + 'の' + it.join('、') : null; };
+  const roughClub = c => { const m = /^(.+?)(?:’s?|(?<=\d)s) (.+)$/.exec(c); if (!m) return null; const it = items(m[2], ROUGH); return it ? m[1] + 'の' + it.join('、') : null; };
 
   /* ------------------------------------------------------------- templates --- */
   /* [source, (...captures) => Japanese | null]; {X} a name or a subject, {D} a count, {F} a
@@ -304,7 +341,8 @@
       while ((m = re.exec(s))) {
         const d = dl(s.slice(0, m.index));
         const t = /^(.+?) beat (.+?) (\d+)[–-](\d+)(?: in ([^,]+))?$/i.exec(s.slice(m.index + 2));
-        if (d && t && !/^in front of /i.test(t[1])) {
+        /* the winners' name has no comma in it: a comma before it belongs to the venue ("at Site Sportif, Fribourg, ...") */
+        if (d && t && !/^in front of /i.test(t[1]) && t[1].indexOf(',') < 0) {
           if (t[5]) d.comp = t[5].replace(/^the /i, '');
           return where(d) + t[1] + 'が' + t[2] + 'を' + sc(t[3], t[4]) + 'で下した';
         }
@@ -341,10 +379,12 @@
     /* ---- the run, the quarter, the lead ---- */
     ['the decisive spell was an? {D}–0 run in the {O}, long enough to turn a close game into a lead that held',
       (d, o) => '勝負を分けたのは' + ord(o) + 'の' + sc(d, 0) + 'のランで、接戦を最後まで守り切るリードに変えた'],
-    ['it turned on an? {D}–0 burst in the {O}, and the game did not come back',
-      (d, o) => ord(o) + 'の' + sc(d, 0) + 'のランで流れが変わり、その後試合が振り出しに戻ることはなかった'],
-    ['an? {D}–0 run in the {O} did the damage, and the game never really came back',
-      (d, o) => ord(o) + 'の' + sc(d, 0) + 'のランが決定打となり、その後試合がもつれることはなかった'],
+    ['it turned on an? {D}–0 burst in the {O}, and (?:the game did not come back|the other side never got back into it)',
+      (d, o) => ord(o) + 'の' + sc(d, 0) + 'のランで流れが変わり、その後相手が追いつくことはなかった'],
+    ['an? {D}–0 run in the {O} did the damage(, and the game never (?:really )?came back)?',
+      (d, o, t) => ord(o) + 'の' + sc(d, 0) + 'のランが決定打となった' + (t ? '。その後、試合がもつれることはなかった' : '')],
+    /* the reviser drops "really" as a filler */
+    ['the game never (?:really )?came back', () => 'その後、試合がもつれることはなかった'],
     ['the gap opened during an? {D}–0 run in the {O}', (d, o) => ord(o) + 'の' + sc(d, 0) + 'のランで点差が開いた'],
     ['the biggest swing was an? {D}–0 run in the {O} from {X}', (d, o, x) => '最大のランは' + ord(o) + 'に' + x + 'が記録した' + sc(d, 0) + 'だった'],
     ['the longest run of the game was {X}’s? {D}–0 in the {O}', (x, d, o) => 'この試合最長のランは' + ord(o) + 'の' + x + 'による' + sc(d, 0) + 'だった'],
@@ -357,6 +397,24 @@
     ['there were {D} lead changes?(?: and the scores were level {W} times)?, so neither side ever properly settled',
       (d, w) => 'リードチェンジは' + d + '回' + (w ? '、同点は' + n(w) + '回' : '') + 'を数え、どちらも主導権を握りきれなかった'],
     ['the scores were level {W} times', w => '同点は' + n(w) + '回を数えた'],
+
+    /* ---- who was in front, and for how long (story.js factTimeLed) ---- */
+    ['{X} led from the first basket to the last', x => S(x) + '先制点から試合終了まで一度もリードを譲らなかった'],
+    ['it was wire to wire for {X}: never behind, and never level after the first basket',
+      x => x + 'が最初から最後までリードを守った。一度もリードを許さず、先制点の後は同点にもされなかった'],
+    ['{X} never gave up the lead after the first basket', x => S(x) + '先制点の後は一度もリードを譲らなかった'],
+    ['{X} never trailed', x => S(x) + '一度もリードを許さなかった'],
+    ['at no point was {X} behind', x => x + 'は一度もリードを許さなかった'],
+    ['{X} led for {A} of it and still lost', (x, a) => S(x) + allBut(a) + 'すべての時間でリードしながら敗れた'],
+    ['for {A} of the game it was {X}’s?, and they lost it anyway', (a, x) => allBut(a) + 'すべての時間で' + x + 'がリードしていたが、それでも敗れた'],
+    ['{X} were in front for {W} of the {W} minutes( and still lost)?',
+      (x, a, b, lost) => S(x) + n(b) + '分のうち' + n(a) + '分間' + (lost ? 'リードしながら敗れた' : 'リードしていた')],
+    ['for {W} of the {W} minutes it was {X}’s? game, and they lost it anyway', (a, b, x) => n(b) + '分のうち' + n(a) + '分間は' + x + 'のペースだったが、それでも敗れた'],
+    ['{X} led for most of it, {W} of the {W} minutes(, and it was not enough)?',
+      (x, a, b, t) => S(x) + n(b) + '分のうち' + n(a) + '分間とほとんどの時間でリードした' + (t ? 'が、勝利には届かなかった' : '')],
+    ['{X} were in front for {A} of the game', (x, a) => S(x) + allBut(a) + 'すべての時間でリードしていた'],
+    ['it was {X}’s? game from the start, in front for (?:{A} of it|{W} of the {W} minutes)',
+      (x, a, m, t) => '序盤から' + x + 'のペースで、' + (a ? allBut(a) + 'すべての時間で' : n(t) + '分のうち' + n(m) + '分間') + 'リードしていた'],
 
     /* ---- the finish ---- */
     ['{X} were {W} down with five minutes left and outscored {X} {S} from there',
@@ -387,10 +445,10 @@
     ['{X} were held to {D}, well short of the {F} they usually manage', (x, d, f) => S(x) + d + '得点に抑えられ、平均の' + f + '得点を大きく下回った'],
 
     /* ---- where the points came from ---- */
-    ['{X} (had|have) the edge {V}: {D} points? from {D} chances?(?:,(?: at)? {F} (?:a time|points a chance|points each))?, against {X}’s? {D}',
+    ['{X} (had|have) the edge {V}: {D} points? from {D} chances?(?:,(?: at)? {F} (?:a time|points? a chance|points? each))?, against {X}’s? {D}',
       (x, t, v, p, c, r, y, o) => S(x) + WHERE[v.toLowerCase()] + 'で優位に' + (/^had$/i.test(t) ? '立った' : '立っている') + '。' +
         c + '回のチャンスで' + p + '得点' + (r ? '（1回あたり' + r + '点）' : '') + '、' + y + 'は' + o + '得点'],
-    ['{V} it (?:was|is) {S} to {X}( so far)?, from {D} chances?(?:,(?: at)? {F} (?:a time|points a chance|points each))?',
+    ['{V} it (?:was|is) {S} to {X}( so far)?, from {D} chances?(?:,(?: at)? {F} (?:a time|points? a chance|points? each))?',
       (v, a, b, x, far, c, r) => WHERE[v.toLowerCase()] + 'では' + (far ? 'ここまで' : '') + x + 'が' + sc(a, b) + 'と上回り、' +
         c + '回のチャンス' + (r ? 'で1回あたり' + r + '点' : 'から得点') ],
     ['they (got|are getting) {D}% of their chances that way, {R}', (t, d, r) => 'チャンス全体の' + d + '%がこの形で、' + freq(r)],
@@ -457,6 +515,13 @@
       (x, a, b, c) => S(x) + 'インサイドを攻め、試投の' + a + '%がゴール下（相手は' + b + '%）' + (c ? '、成功率は' + c + '%' : '')],
     ['{X} moved it well, assisting on {F}% of their field goals', (x, a) => S(x) + 'ボールがよく回り、FG成功の' + a + '%がアシストによるものだった'],
     ['{X} defended better, giving up {F} points per 100 possessions to {F}', (x, a, b) => S(x) + '守備で上回り、100ポゼッションあたりの失点は' + a + '（相手は' + b + '）'],
+    /* the same, and the passing, as the writer words them now */
+    ['{X} defended better, allowing {F} points per 100 possessions where the other side allowed {F}',
+      (x, a, b) => S(x) + '守備で上回り、100ポゼッションあたりの失点は' + a + '（相手は' + b + '）だった'],
+    ['{X} moved it well: {W} of their {W} baskets came off a pass, against {W} of {W} for {X}',
+      (x, a, b, c, d, y) => S(x) + 'ボールがよく回り、' + n(b) + '本のフィールドゴールのうち' + n(a) + '本がアシストから生まれた（' + (who(y) || y) + 'は' + n(d) + '本中' + n(c) + '本）'],
+    ['{X} had to make more of their own shots, with {D} of their points from baskets nobody set up',
+      (x, d) => S(x) + '個人で打開する場面が多く、' + d + '得点がアシストのないフィールドゴールによるものだった'],
     ['{X} forced the ball loose all night — their opponents coughed it up on {F}% of possessions', (x, a) => S(x) + '試合を通じてボールを奪い続け、相手のターンオーバー率は' + a + '%に達した'],
     ['{X} had their hands on the ball all night — their opponents turned it over on {F}% of possessions', (x, a) => S(x) + '試合を通じて相手のボールに手を伸ばし続け、相手のターンオーバー率は' + a + '%に達した'],
     ['{X} kept taking it away — their opponents gave it up on {F}% of possessions', (x, a) => S(x) + 'ボールを奪い続け、相手は' + a + '%のポゼッションでボールを失った'],
@@ -479,6 +544,51 @@
     ['{P} strongest group — {L} — was ([+-]?\\d+) across {M}', (p, f, pm, m) => own(p) + '最も機能したユニット（' + names(f) + '）は' + dur(m) + 'で' + pm],
     ['(at the other end of it, |at the other end, |the reverse was true at the other end: ){X} lost {D} points in {M} with {L} out there — the combination that cost them most',
       (pre, x, d, m, f) => (/reverse/i.test(pre) ? '反対に、' : '一方で、') + S(x) + names(f) + 'がコートにいた' + dur(m) + 'で' + d + '点を失った。最も痛手となった組み合わせだ'],
+    /* the stretch the standfirst has already timed, the five that played it, and each side's best and worst group, as
+       the writer words them now */
+    ['it came with {L} on the floor for {X}, together for the whole of it',
+      (f, x) => 'その間コートにいたのは' + x + 'の' + names(f) + 'で、最初から最後まで同じ5人だった'],
+    ['it was {X}’s? worst stretch: {L} were on the floor(?:, and the other side outscored them by {D} in that time)?',
+      (x, f, d) => x + 'にとって最も苦しい時間帯だった。コートにいたのは' + names(f) + (d ? 'で、その間に相手に' + d + '点上回られた' : 'だった')],
+    /* ...and with the stretch named again (2026-10-08), its length left to the standfirst that gave it */
+    ['the (?:{M} )?stretch that swung it came with {L} on the floor for {X}, together for the whole of it',
+      (m, f, x) => '勝負を分けた' + (m ? dur(m) + 'の' : '') + '時間帯にコートにいたのは' + x + 'の' + names(f) + 'で、最初から最後まで同じ5人だった'],
+    ['the (?:{M} )?stretch that swung it was {X}’s? worst: {L} were on the floor(?:, and the other side outscored them by {D} in that time)?',
+      (m, x, f, d) => '勝負を分けた' + (m ? dur(m) + 'の' : '') + '時間帯は' + x + 'にとって最も苦しい時間だった。コートにいたのは' + names(f) + (d ? 'で、その間に相手に' + d + '点上回られた' : 'だった')],
+    /* the second half of either, when the reviser has cut it at ", and" */
+    ['the other side outscored them by {D} in that time', d => 'その間に相手に' + d + '点上回られた'],
+    ['over every minute those five shared, {X} (outscored the opposition|were outscored) by {D} in {M}',
+      (x, k, d, m) => 'この5人が共にコートに立った' + dur(m) + 'で、' + S(x) + d + (/^outscored/i.test(k) ? '点上回った' : '点下回った')],
+    ['{P} strongest group, {L}, (outscored the other side|was outscored) by {D} in {M}',
+      (p, f, k, d, m) => own(p) + '最も機能したユニット（' + names(f) + '）は' + dur(m) + 'で' + d + (/^outscored/i.test(k) ? '点上回った' : '点下回った')],
+    ['(the other end of it was ugly for|it went the other way for|the worst of it fell on) {X}, who were outscored by {D} in {M} with {L} out there',
+      (pre, x, d, m, f) => (/ugly/i.test(pre) ? '一方、' + x + 'は苦しい時間帯もあり、' : /other way/i.test(pre) ? '反対に、' + x + 'は' : '最も痛手を負ったのは' + x + 'で、') +
+        names(f) + 'がコートにいた' + dur(m) + 'で' + d + '点下回った'],
+
+    /* ---- how the ball moved, the play types and the rebounds, the shot clock: the tabs, said ---- */
+    ['the most productive pairing was {X} to {X} for {X}: {W} baskets worth {W} points(, every one of them a three)?',
+      (a, b, x, c, p, all3) => x + 'で最も得点を生んだのは' + a + 'から' + b + 'へのパスで、' + n(c) + '本のバスケットで' + n(p) + '得点' + (all3 ? '、すべて3Pシュートだった' : 'を挙げた')],
+    ['{X} found {X} {W} times for {X}, {W} points in all( and all of them threes)?',
+      (a, b, c, x, p, all3) => x + 'の' + a + 'が' + b + 'へのアシストを' + n(c) + '本通し、合計' + n(p) + '得点' + (all3 ? '（すべて3P）' : '') + 'を生んだ'],
+    ['for {X}, {X} and {X} connected {W} times, worth {W} points', (x, a, b, c, p) => x + 'では' + a + 'と' + b + 'のコンビが' + n(c) + '回つながり、' + n(p) + '得点を生んだ'],
+    ['{X} set up {W} of {X}’s? {W} assisted baskets, finding {W} different scorers',
+      (p, a, x, b, c) => x + 'の' + p + 'がアシストによるチームのバスケット' + n(b) + '本のうち' + n(a) + '本を演出し、' + n(c) + '人に得点させた'],
+    ['{X} scored {D} points off assists for {X}', (p, d, x) => x + 'の' + p + 'はアシストから' + d + '得点を挙げた'],
+    ['{X} scored {W} of {X}’s? {W} points {V}', (p, a, x, b, v) => x + 'の' + p + 'は' + SITPTS[v.toLowerCase()] + 'チーム' + n(b) + '得点のうち' + n(a) + '得点を挙げた'],
+    ['neither side found the mid-range: {X} made {W} of {W} from there, {X} {W} of {W}',
+      (x, a, b, y, c, d) => '両チームともミドルレンジが決まらず、' + x + 'は' + n(b) + '本中' + n(a) + '本、' + y + 'は' + n(d) + '本中' + n(c) + '本にとどまった'],
+    ['{X} could not buy a mid-range basket, {W} of {W} from there', (x, a, b) => S(x) + 'ミドルレンジがまったく決まらず、' + n(b) + '本中' + n(a) + '本にとどまった'],
+    ['{X} were the more patient side, taking {F} seconds a possession to {F} for {X}',
+      (x, a, b, y) => S(x) + 'よりじっくりと攻め、1ポゼッションあたり' + a + '秒をかけた（' + (who(y) || y) + 'は' + b + '秒）'],
+    ['{X} used the clock: {F} seconds a possession, against {F} for {X}',
+      (x, a, b, y) => S(x) + '時間をかけて攻め、1ポゼッションあたり' + a + '秒を使った（' + (who(y) || y) + 'は' + b + '秒）'],
+    ['{X} were sharper early in the clock: in the first eight seconds they scored {F} points? a chance, {X} {F}',
+      (x, a, y, b) => S(x) + 'ショットクロック序盤の攻撃で上回り、最初の8秒間の1チャンスあたりの得点は' + a + '点（' + (who(y) || y) + 'は' + b + '点）だった'],
+    ['{X} ran the clock down and paid for it: {W} of their {W} chances went past {D} seconds(?:, and they scored {F} a time there against {F} overall)?',
+      (x, a, b, s, e, f) => S(x) + 'ショットクロックを使い切る攻撃が裏目に出た。' + n(b) + '回のチャンスのうち' + n(a) + '回が' + s + '秒を過ぎ' +
+        (e ? '、その場面の1回あたりの得点は' + e + '点（全体では' + f + '点）だった' : 'た')],
+    /* ...and its second half, when the reviser has cut it at ", and" */
+    ['they scored {F} a time there against {F} overall', (a, b) => 'その場面の1回あたりの得点は' + a + '点（全体では' + b + '点）だった'],
 
     /* ---- the performances ---- */
     ['{X} led {X} with (a season-high )?{D} points{T}(, a season high)?(, well clear of their usual)?(, a triple-double)?',
@@ -527,7 +637,10 @@
     ['it ended a run of {W} straight defeats for {X}', (w, x) => 'これで' + x + 'は連敗を' + n(w) + 'で止めた'],
     ['{X} had lost {W} in a row before this', (x, w) => S(x) + 'この試合まで' + n(w) + '連敗中だった'],
     ['it is {W} wins in a row for {X}', (w, x) => x + 'はこれで' + n(w) + '連勝となった'],
-    ['{X} have (now )?won {W} straight', (x, now, w) => S(x) + (now ? 'これで' + n(w) + '連勝となった' : n(w) + '連勝中')],
+    ['{X} have (now )?won {W} straight(?:, the latest (.+))?', (x, now, w, l) => {
+      const t = latestJa(true, l);
+      return t == null ? null : S(x) + (now ? 'これで' + n(w) + '連勝となった' : n(w) + '連勝中') + t;
+    }],
     ['{X} have now lost {W} straight', (x, w) => S(x) + 'これで' + n(w) + '連敗となった'],
     ['that is {W} defeats in a row for {X}', (w, x) => x + 'はこれで' + n(w) + '連敗となった'],
     ['it was {X}’s? first win of the season, at the {K} attempt', (x, k) => x + 'にとっては' + rank(k) + '試合目での今季初勝利となった'],
@@ -564,13 +677,15 @@
     ['(in the league, )?{X} are {K}(?: in {X})? at {S}, {X} {K}(?: in {X})? at {S}',
       (lg, x, k, g, a, b, y, k2, g2, c, d) => (lg ? 'リーグ全体では、' : '') + S(x) + (g ? grp(g) + 'で' : '') + rec(a, b) + 'の' + top(k) + '、' +
         y + 'は' + (g2 ? grp(g2) + 'で' : '') + rec(c, d) + 'の' + top(k2)],
-    ['the two meet again on {Y}, at {X}’s? place', (dy, x) => '両チームは' + date(dy) + 'に' + x + 'のホームで再び対戦する'],
+    /* the day or the place can be cut off by the reviser when the sentence before said it ("Hapoel Midtown Jerusalem are
+       next for Recoletas Salud San Pablo Burgos.") */
+    ['the two meet again on {Y}(?:, at {X}’s? place)?', (dy, x) => '両チームは' + date(dy) + 'に' + (x ? x + 'のホームで' : '') + '再び対戦する'],
     ['next for {X}: {X} at home on {Y}', (x, o, dy) => x + 'の次戦は' + date(dy) + '、ホームでの' + o + '戦'],
-    ['{X} host {X} next, on {Y}', (x, o, dy) => S(x) + '次戦、' + date(dy) + 'にホームで' + o + 'と対戦する'],
-    ['{X} are next for {X}, at home on {Y}', (o, x, dy) => x + 'の次の相手は' + o + 'で、' + date(dy) + 'にホームで対戦する'],
+    ['{X} host {X} next(?:, on {Y})?', (x, o, dy) => S(x) + '次戦、' + (dy ? date(dy) + 'に' : '') + 'ホームで' + o + 'と対戦する'],
+    ['{X} are next for {X}(?:, at home on {Y})?', (o, x, dy) => x + 'の次の相手は' + o + (dy ? 'で、' + date(dy) + 'にホームで対戦する' : '')],
     ['next for {X}: away at {X} on {Y}', (x, o, dy) => x + 'の次戦は' + date(dy) + '、アウェーでの' + o + '戦'],
-    ['{X} go to {X} next, on {Y}', (x, o, dy) => S(x) + '次戦、' + date(dy) + 'にアウェーで' + o + 'と対戦する'],
-    ['a trip to {X} is next for {X}, on {Y}', (o, x, dy) => x + 'の次戦は' + date(dy) + '、' + o + 'とのアウェーゲーム'],
+    ['{X} go to {X} next(?:, on {Y})?', (x, o, dy) => S(x) + '次戦、' + (dy ? date(dy) + 'に' : '') + 'アウェーで' + o + 'と対戦する'],
+    ['a trip to {X} is next for {X}(?:, on {Y})?', (o, x, dy) => x + 'の次戦は' + (dy ? date(dy) + '、' : '') + o + 'とのアウェーゲーム'],
 
     /* the moment, and the shape of the scoring */
     ['{X}’s? (three|free throw|basket) with {W} seconds? left( in overtime)? won it for {X}',
@@ -611,6 +726,32 @@
     ['on these facets alone {X} would have won by more(?:; {W} points? went back to {X} in what no factor measures)?',
       (x, w, y) => 'これらの要素だけなら' + x + 'はもっと大差で勝っていた' + (w ? '。数字では測れない部分で' + n(w) + '点が' + y + 'に戻った' : '')],
     ['{W} points? went back to {X} in what no factor measures', (w, y) => '数字では測れない部分で' + n(w) + '点が' + y + 'に戻った'],
+    /* a game the ledger cannot weigh (report.js sectionFactors): the four factors in points, both sides */
+    ['weighed by what wins in this league(?: \\(built on {D} of its games\\))?, the four factors were worth about {W} points? to {X}',
+      (g, w, x) => 'このリーグの勝敗を決める要素で重み付けすると' + (g ? '（' + g + '試合のデータに基づく）' : '') + '、4ファクターは' + x + 'にとって約' + n(w) + '点分の価値があった'],
+    ['by this league’s own win model(?: \\(built on {D} of its games\\))?, {X} came out roughly {W} points? ahead on the four factors',
+      (g, x, w) => 'このリーグ独自の勝敗モデルでは' + (g ? '（' + g + '試合のデータに基づく）' : '') + '、' + S(x) + '4ファクターで約' + n(w) + '点上回った'],
+    ['put through what decides games in this league(?: \\(built on {D} of its games\\))?, the four factors make it about {W} points? to {X}',
+      (g, w, x) => 'このリーグで勝敗を左右する要素に当てはめると' + (g ? '（' + g + '試合のデータに基づく）' : '') + '、4ファクターでは' + x + 'が約' + n(w) + '点上回る計算だ'],
+    ['add up the four factors and the game was worth about {W} points? to {X}', (w, x) => '4ファクターを合計すると、' + x + 'が約' + n(w) + '点上回る計算になる'],
+    ['weighed factor by factor, {X} came out roughly {W} points? ahead', (x, w) => '要素ごとに見ると、' + S(x) + '約' + n(w) + '点上回った'],
+    ['the four factors alone make it about {W} points? to {X}', (w, x) => '4ファクターだけで見ると、' + x + 'が約' + n(w) + '点上回る'],
+    ['the biggest gain came from (.+?), worth {W} points?(?:, then (.+?) at {W})?(?:; {X} won {W} back on (.+?))?', (a, w, b, w2, y, w3, c) =>
+      lab(a) && (!b || lab(b)) && (!c || lab(c)) ? '最も大きかったのは' + lab(a) + 'で' + n(w) + '点分' + (b ? '、次いで' + lab(b) + 'の' + n(w2) + '点分' : '') +
+        (y ? '。' + S(y) + lab(c) + 'で' + n(w3) + '点を取り返した' : '') : null],
+    ['{X} won {W} back on (.+?)', (x, w, l) => lab(l) && S(x) + lab(l) + 'で' + n(w) + '点を取り返した'],
+    ['the four factors cancelled out: neither side came out more than {W} points? ahead on them', w => '4ファクターは相殺し合い、どちらも' + n(w) + '点を超えて上回ることはなかった'],
+    ['{X} gained (.+?)(?:, and gave back (.+?)| and gave nothing back)', (x, g, l) => {
+      const gs = factorPts(g), ls = l ? factorPts(l) : [];
+      return gs && ls ? S(x) + gs.join('、') + 'を稼ぎ、' + (l ? ls.join('、') + 'を失った' : '失った要素はなかった') : null;
+    }],
+    ['{X} gained nothing on any factor and gave up (.+?)', (x, l) => { const ls = factorPts(l); return ls && S(x) + 'どの要素でも上回れず、' + ls.join('、') + 'を失った'; }],
+    ['gave back (.+?)', l => { const ls = factorPts(l); return ls && ls.join('、') + 'を失った'; }],
+    ['the scoreboard margin was {W} points?', w => '実際の点差は' + n(w) + '点だった'],
+    ['the final margin was {W} points?, close to what the factors say', w => '最終点差は' + n(w) + '点で、4ファクターの示す数字に近かった'],
+    ['the final margin was {W} points?, (more|less) than the factors alone account for',
+      (w, k) => '最終点差は' + n(w) + '点で、4ファクターだけで説明できる差より' + (/^more$/i.test(k) ? '大きかった' : '小さかった')],
+    ['the scoreboard told a different story: {X} won by {W} points?', (x, w) => '実際のスコアは違った。' + x + 'が' + n(w) + '点差で勝利した'],
 
     /* the night against the season: season highs, records, runs, returns, milestones, BPM */
     ['{X}’s? {D} (points|rebounds|assists|steals|blocks|threes)(?: for {X})? (were|equalled) the most by anyone in a game in this league this season',
@@ -635,6 +776,10 @@
       (x, l, q, y, r) => lab(l) && x + 'が最も上回っているのは' + lab(l) + '。' + pct(q) + 'で、' + y + 'は' + pct(r) + 'だ'],
     ['the widest gap between them was (.+?), and it went {X}’s? way — they were {Q} there, {X} {Q} — but it was not enough',
       (l, x, q, y, r) => lab(l) && '両チームの差が最も大きかったのは' + lab(l) + 'で、' + x + 'が上回った。' + pct(q) + 'で、' + y + 'は' + pct(r) + 'だったが、勝利には届かなかった'],
+    /* ...and its two halves, when the reviser has cut it at ", and" */
+    ['the widest gap between them was (.+?)', l => lab(l) && '両チームの差が最も大きかったのは' + lab(l) + 'だった'],
+    ['it went {X}’s? way — they were {Q} there, {X} {Q} — but it was not enough',
+      (x, q, y, r) => x + 'が上回った。' + pct(q) + 'で、' + y + 'は' + pct(r) + 'だったが、勝利には届かなかった'],
     ['the widest gap so far is (.+?), and it favours {X}(, who trail)?: they have been {Q} there, {X} {Q}',
       (l, x, tr, q, y, r) => lab(l) && 'ここまで最も差が大きいのは' + lab(l) + 'で、' + (tr ? 'リードを許している' : '') + x + 'が上回っている。' + pct(q) + 'で、' + y + 'は' + pct(r) + 'だ'],
     ['(the other gaps worth the film room|two more for the film room|further down the list|the other gaps to watch after the break): (.+)', (w, list) => {
@@ -789,7 +934,10 @@
     }],
     ['{X} beat {X} {S}', (x, y, a, b) => (/^(on|at|in front of) /i.test(x) ? null : x + 'が' + y + 'に' + sc(a, b) + 'で勝利')],
     ['an? {D}–0 run in the {O} settled it', (d, o) => ord(o) + 'の' + sc(d, 0) + 'のランが勝負を決めた'],
-    ['a {M} stretch swung it by {D}', (m, d) => dur(m) + 'の時間帯で点差が' + d + '点動き、勝負が決まった'],
+    ['an? {M} stretch swung it by {D}', (m, d) => dur(m) + 'の時間帯で点差が' + d + '点動き、勝負が決まった'],
+    /* the losers' run or stretch (2026-10-08): told, but it settled nothing */
+    ['{X}’s? {D}–0 run in the {O} was not enough', (x, d, o) => x + 'の' + ord(o) + 'の' + sc(d, 0) + 'のランも実らなかった'],
+    ['an? {M} stretch worth {D} to {X} was not enough', (m, d, x) => dur(m) + 'の時間帯で' + x + 'が' + d + '点を稼いだが、及ばなかった'],
     ['the shooting went {X}’s? way, {F}% eFG to {F}%', (x, a, b) => 'シュートは' + x + 'が上回り、EFG%は' + a + '%対' + b + '%'],
     ['possessions decided it: {F}% turnover rate for {X}, {F}% against', (a, x, b) => 'ポゼッションが勝負を分けた。' + x + 'のターンオーバー率は' + a + '%、相手は' + b + '%'],
     ['the offensive glass belonged to {X}, {F}% to {F}%', (x, a, b) => 'オフェンスリバウンドは' + x + 'が支配し、' + a + '%対' + b + '%'],
@@ -835,12 +983,32 @@
        numbers expect, the lean and what argues against it, who carries the form */
     ['{K} against {K}: {X} \\({S}\\) host {X} \\({S}\\)', (k, k2, x, a, b, y, c, d) =>
       (rank(k) === rank(k2) ? top(k) + '同士' : top(k) + 'と' + top(k2)) + 'の対決。' + x + '（' + rec(a, b) + '）がホームに' + y + '（' + rec(c, d) + '）を迎える'],
-    ['{X} have lost their last {W}', (x, w) => S(x) + n(w) + '連敗中'],
-    ['{X} are unbeaten in {W}', (x, w) => S(x) + '開幕から無敗の' + n(w) + '連勝中'],
-    ['{X} are still without a win in {W}', (x, w) => S(x) + '開幕から' + n(w) + '連敗で、まだ勝利がない'],
+    /* a run, with its latest game when it was recent ("..., the latest 96–71 at home to X despite 25 from Y") */
+    ['{X} have lost their last {W}(?:, the latest (.+))?', (x, w, l) => { const t = latestJa(false, l); return t == null ? null : S(x) + n(w) + '連敗中' + t; }],
+    ['{X} are unbeaten in {W}(?:, the latest (.+))?', (x, w, l) => { const t = latestJa(true, l); return t == null ? null : S(x) + '開幕から無敗の' + n(w) + '連勝中' + t; }],
+    ['{X} are still without a win in {W}(?:, the latest (.+))?',
+      (x, w, l) => { const t = latestJa(false, l); return t == null ? null : S(x) + '開幕から' + n(w) + '連敗で、まだ勝利がない' + t; }],
     ['neither has lost yet', () => '両チームともまだ負けがない'],
     ['{X} have won {W} of their last five; {X} {W}', (x, a, y, b) => S(x) + '直近5試合で' + n(a) + '勝、' + y + 'は' + n(b) + '勝'],
-    ['{X} won the only meeting so far, {S}', (x, a, b) => '今季唯一の対戦では' + x + 'が' + sc(a, b) + 'で勝利している'],
+    /* how each comes in, outside a run: the home side's sentence, then the visitors' said the other way round */
+    ['{X} come in off an? {S} (home win|home defeat|win|defeat)(?: (?:over|to|at) {X}| away from home)?' + CARRIED,
+      (x, a, b, what, opp, k, pts, more, stat, p) => {
+        const won = /win$/i.test(what);
+        return S(x) + '前の試合で' + vsJa(/^home/i.test(what), opp) + scoreJa(won, a, b) + 'で' + (won ? '勝利して' : '敗れて') + 'この一戦を迎える' + carriedJa(k, pts, more, stat, p);
+      }],
+    ['{X} (?:beat {X}|(won|lost)) {S}( at home to {X}| at home| at {X}| away) last time out' + CARRIED,
+      (x, beat, wl, a, b, where, to, at, k, pts, more, stat, p) => {
+        const won = !(wl && /^lost$/i.test(wl));
+        return S(x) + '前回の試合で' + vsJa(/^ at home/i.test(where), beat || to || at) + scoreJa(won, a, b) + 'で' + (won ? '勝利した' : '敗れた') + carriedJa(k, pts, more, stat, p);
+      }],
+    ['they met last time out, {X} winning {S} (at home|away)' + CARRIED,
+      (x, a, b, h, k, pts, more, stat, p) => '両チームは前回も対戦しており、' + x + 'が' + HOMEAWAY[h.toLowerCase()] + 'で' + sc(a, b) + 'の勝利を収めた' + carriedJa(k, pts, more, stat, p)],
+    /* home and away: all one way, or the two halves far apart */
+    ['{X} have (won|lost) all {W} (at home|on the road|away)', (x, wl, w, h) => S(x) + HOMEAWAY[h.toLowerCase()] + 'で' + n(w) + '戦全' + (/^won$/i.test(wl) ? '勝' : '敗') + 'だ'],
+    ['{X} are {S} (at home|on the road|away) and {S} (at home|on the road|away)',
+      (x, a, b, h, c, d, h2) => S(x) + HOMEAWAY[h.toLowerCase()] + 'で' + rec(a, b) + '、' + HOMEAWAY[h2.toLowerCase()] + 'で' + rec(c, d)],
+    ['{X} won the only meeting so far, {S}(?:, with {D} from {X})?',
+      (x, a, b, d, p) => '今季唯一の対戦では' + x + 'が' + sc(a, b) + 'で勝利している' + (p ? '。その試合では' + p + 'が' + d + '得点を挙げた' : '')],
     ['{X} play for the second time in two days', x => S(x) + '2日連続の試合となる'],
     ['{X} have had {W} days off', (x, w) => S(x) + n(w) + '日間の休養を経て臨む'],
     ['weighed by what wins in this league, the season’s numbers make {X} about {H} points? better here',
@@ -853,6 +1021,10 @@
       x => '数字の上ではわずかに' + x + 'が有利だが、その差は大きくない。これより僅差の試合は一度のランで決まる'],
     ['the numbers make {X} clear favourites', x => '数字の上では' + x + 'がはっきりと優位だ'],
     ['on these numbers {X} should win comfortably', x => 'この数字なら、' + x + 'が余裕を持って勝つはずだ'],
+    /* if it is close: the games decided by five points or fewer */
+    ['in games decided by five points or fewer, {X} are {S} and {X} {S}',
+      (x, a, b, y, c, d) => '5点差以内の接戦では、' + x + 'が' + rec(a, b) + '、' + y + 'が' + rec(c, d) + 'だ'],
+    ['{X} are {S} in games decided by five points or fewer', (x, a, b) => S(x) + '5点差以内の接戦で' + rec(a, b) + 'だ'],
     ['yes, but {X} come in on {W} straight wins', (x, w) => 'ただし、' + x + 'は' + n(w) + '連勝中でこの試合を迎える'],
     ['yes, but the table has {X} above them', x => 'ただし、順位表では' + x + 'のほうが上だ'],
     ['{X} (?:has|have) scored 20 or more in (?:(every game this season)|each of the last {W}) for {X}',
@@ -969,13 +1141,32 @@
     return out;
   }
   const finish = (out, whole) => (out == null ? null : out + (/\.$/.test(whole) ? '。' : ''));
+  /* the sentence without its full stop, unless the stop is the last of a name's initials ("... to Valencia B.C."): that
+     one stays on the name */
+  const body = s => (/(?:^|[\s(])(?:[A-Z]\.){2,}$/.test(s) ? s : s.replace(/\.$/, ''));
   /* one sentence at a time: a paragraph is left for the engine to split, so a name at the end
-     of a template can never swallow the sentence after it */
-  const BREAK = /(?<=[.!?])\s+(?=[A-Z0-9“"‘'(])/;
-  const sentence = s => (BREAK.test(s) ? null : finish(clause(s.replace(/\.$/, ''), new Map()), s));
+     of a template can never swallow the sentence after it. The break is the engine's own: an
+     initial or a title ("J. Anderson", "St. Léonard") does not end a sentence */
+  const BREAK = /(?<!(?:^|[\s(])(?:[A-Z]|Mr|Mrs|Ms|Dr|St|Jr|Sr|vs)\.)(?<=[.!?])\s+(?=[A-Z0-9“"‘'(])/;
+  /* A BREAK INSIDE A NAME ("Next for Valencia Basket: C.B. Al-Qazeres Extremadura at home ...", "at Pol. Maloste, ..."):
+     the engine splits there and, when the piece before will not translate on its own, tries it joined with the next.
+     A text with a break in it is one sentence only when every piece before a break ends on initials or a short
+     abbreviation (C.B., Pol.) and is no sentence of its own: after a real full stop ("... is 2–1 to Valencia B.C. Neon
+     City host ...") the piece before translates, and the text is left for the engine to split */
+  const ABBR = /(?:^|[\s(])(?:(?:[A-Z]\.){2,}|[A-Z][A-Za-z]{0,3}\.)$/;
+  let lastText = null, lastOne = true;
+  const oneSentence = s => {
+    if (!BREAK.test(s)) return true;
+    if (s !== lastText) {
+      lastText = s;
+      lastOne = s.split(BREAK).slice(0, -1).every(p => ABBR.test(p) && clause(body(p), new Map()) == null);
+    }
+    return lastOne;
+  };
+  const sentence = s => (oneSentence(s) ? finish(clause(body(s), new Map()), s) : null);
   const one = (re, fn) => m => {
-    if (BREAK.test(m[0])) return null;
-    const k = re.exec(m[0].replace(/\.$/, ''));
+    if (!oneSentence(m[0])) return null;
+    const k = re.exec(body(m[0]));
     return k ? finish(fn(...k.slice(1)), m[0]) : null;
   };
 
@@ -989,7 +1180,8 @@
     /this was their first defeat$/, /^the win takes/, /started the night/, /^it ended \{X\}/, /^it ended a run of/, /first win of the season, at the/,
     /^it is \{W\} wins in a row/, /are still unbeaten/, /should have been/, /by anyone in a game/, /seconds\? left\( in overtime\)\? won it for/, /alone \(\?:was\|were\) worth/,
     /won the boards \{S\}$/, /in the paint$/, /bench outscored theirs/, /scored \{D\} on the break/, /points off turnovers to \{D\}$/, /took the second chances/,
-    /made \{D\} threes to/, /\(steals\|assists\) to \{D\}$/, /shot \{F\}% eFG to/, /had a triple-double for \{X\}$/, /\( in defeat\)\? for/]
+    /made \{D\} threes to/, /\(steals\|assists\) to \{D\}$/, /shot \{F\}% eFG to/, /had a triple-double for \{X\}$/, /\( in defeat\)\? for/,
+    /run in the \{O\} was not enough$/, /stretch worth \{D\}/]
     .map(k => RULES.find(r => k.test(r[0]))).filter(Boolean).map(([src, fn]) => [rx(src), fn]);
 
   I.register('ja', {
@@ -1069,9 +1261,19 @@
        the injury page's counts */
     patterns: HEADLINE.concat([
       [/^[A-Z][^]*\.$/, m => {
-        const parts = m[0].split(/(?<=[.!?])\s+(?=[A-Z0-9])/);
-        const out = parts.map(p => finish(first(STANDFIRST, p.replace(/\.$/, '')), p));
-        return out.indexOf(null) >= 0 ? null : out.join('');
+        const parts = m[0].split(BREAK), out = [];
+        for (let i = 0; i < parts.length; i++) {
+          let t = finish(first(STANDFIRST, body(parts[i])), parts[i]);
+          /* a break inside a name, as the engine treats it: the piece with the next */
+          if (t == null && i + 1 < parts.length && ABBR.test(parts[i])) {
+            const j = parts[i] + ' ' + parts[i + 1];
+            t = finish(first(STANDFIRST, body(j)), j);
+            if (t != null) i++;
+          }
+          if (t == null) return null;
+          out.push(t);
+        }
+        return out.join('');
       }],
       [/^(\d+) players? out( so far)?$/i, m => m[1] + '人が欠場' + (m[2] ? '（集計中）' : '')],
       [/^(\d+) out$/i, m => m[1] + '人欠場'],

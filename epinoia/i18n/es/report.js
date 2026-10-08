@@ -20,6 +20,8 @@
     'better than nine weeks in ten': 'por encima de nueve de cada diez semanas',
     'among the best in the league': 'entre lo mejor de la liga',
     'at the very top of the league': 'en lo más alto de la liga',
+    /* as the page prints it: the writer's reviser cuts "very" as a filler */
+    'at the top of the league': 'en lo más alto de la liga',
     'better than three games in four': 'por encima de tres de cada cuatro partidos',
     'better than three weeks in four': 'por encima de tres de cada cuatro semanas',
     'comfortably above the league': 'claramente por encima de la liga',
@@ -75,11 +77,13 @@
   };
   const alt = o => Object.keys(o).sort((a, b) => b.length - a.length)
     .map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  /* {X} may hold a colon that is not a clause's ("Igokea M:tel"); {Z} is a club's possessive, which the writer's polish
+     makes "Nanterre 92s" after a numeral (its decade rule), as well as "Neon City’s" and "Bakken Bears’" */
   const TOK = {
-    X: '([^,;:—]+?)', L: '(.+?)', N: '((?!and )(?:(?! and | for | of )[^,;:—()])+?)', D: '(\\d+)', F: '(-?\\d+(?:\\.\\d+)?)', W: '(' + WORDS + ')',
+    X: '((?:[^,;:—]|:(?! ))+?)', L: '(.+?)', Z: '(?:’s?|(?<=\\d)s)', N: '((?!and )(?:(?! and | for | of )[^,;:—()])+?)', D: '(\\d+)', F: '(-?\\d+(?:\\.\\d+)?)', W: '(' + WORDS + ')',
     S: '(\\d+)[–-](\\d+)', O: '(first|second|third|fourth|\\d+th)', M: '(\\d+:\\d{2})',
     T: '((?:(?:,| and) (?:' + WORDS + ') (?:rebounds|assists|steals|blocks))*)',
-    P: '(their|[^,;:—]+?’s?)', Q: '(' + alt(PCT) + ')', R: '(' + alt(FREQ) + ')',
+    P: '(their|[^,;:—]+?(?:’s?|(?<=\\d)s))', Q: '(' + alt(PCT) + ')', R: '(' + alt(FREQ) + ')',
     V: '(in transition|on second chances|off turnovers)',
     K: '(first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\\d+(?:st|nd|rd|th))', G: '(?: in (.+?))?',
     A: '(\\d+\\.\\d+|' + WORDS + ')',
@@ -108,7 +112,7 @@
   const los = k => (/^(assists|steals)$/i.test(k) ? 'las' : 'los');
   /* a stat line; "a season-high 27" is the points with its note: "27 puntos (su máxima anotación de la temporada)" */
   const line = (pts, t, hi) => { const parts = [stat('points', pts) + (hi ? ' (su máxima anotación de la temporada)' : '')]; String(t || '').replace(/(\w+) (rebounds|assists|steals|blocks)/gi, (m, w, k) => { parts.push(stat(k.toLowerCase(), n(w))); return m; }); return list(parts); };
-  const own = (p, mine, noun) => (/^their$/i.test(p) ? mine : noun + ' de ' + who(String(p).replace(/’s?$/, '')));
+  const own = (p, mine, noun) => (/^their$/i.test(p) ? mine : noun + ' de ' + who(String(p).replace(/(?:’s?|(?<=\d)s)$/, '')));
   const DAY = { sunday: 'el domingo', monday: 'el lunes', tuesday: 'el martes', wednesday: 'el miércoles', thursday: 'el jueves', friday: 'el viernes', saturday: 'el sábado' };
   const PART = { morning: 'por la mañana', afternoon: 'por la tarde', evening: 'por la noche' };
   const WHERE = { 'in transition': 'al contraataque', 'on second chances': 'en segundas oportunidades', 'off turnovers': 'tras pérdida' };
@@ -140,6 +144,9 @@
   const freq = q => FREQ[String(q).toLowerCase()];
   /* "lagged too": "el rebote defensivo también se quedó atrás", plural for a plural label */
   const lagged = t => t + ' también ' + (many(t) ? 'se quedaron' : 'se quedó') + ' atrás';
+  /* "all but 20 seconds", "all but two minutes" of a game: "salvo 20 segundos", "salvo 2 minutos" */
+  const ALLBUT = '(?:all but (\\d+) seconds|all but (' + WORDS + ') minutes?)';
+  const allBut = (s, m) => 'salvo ' + (s ? s + ' segundos' : cnt(m, 'minuto', 'minutos'));
   /* the scout's closing line, its three endings */
   const TAKE = {
     'further behind the league than anything else in their game': 'más por detrás de la liga que en cualquier otro aspecto de su juego',
@@ -190,13 +197,19 @@
     'weighing each facet at its usual value': 'dando a cada faceta su valor habitual'
   };
 
-  /* "On Saturday evening at The Arena, in front of 312 in Division One", in any of its parts */
-  const DL = /^(?:on (sunday|monday|tuesday|wednesday|thursday|friday|saturday)(?: (morning|afternoon|evening))?)?(?:(?:^| )at ([^,]+?))?(?:(?:^|,? )in front of (\d+))?(?: in ([^,]+?))?$/i;
+  /* "On Saturday evening at The Arena, in front of 312 in Division One", in any of its parts (a venue may carry its town
+     after a comma: "at Rocher, Nyon") */
+  const DL = /^(?:on (sunday|monday|tuesday|wednesday|thursday|friday|saturday)(?: (morning|afternoon|evening))?)?(?:(?:^| )at (.+?))?(?:(?:^|,? )in front of (\d+))?(?: in ([^,]+?))?$/i;
   const dl = s => {
     const m = DL.exec(String(s).trim());
     if (!m || !(m[1] || m[3] || m[4] || m[5])) return null;
+    /* a comma in a venue is its town's ("Rocher, Nyon"), never a clause the venue swallowed (", and they led by…") */
+    if (m[3] && /,(?! \p{Lu})/u.test(m[3])) return null;
     return { day: m[1], part: m[2], venue: m[3], crowd: m[4], comp: m[5] && m[5].replace(/^the /i, '') };
   };
+  /* "en partido de la Liga Femenina Endesa": a league or a cup takes its article, as the press writes it; any other name
+     is left bare */
+  const ofComp = c => 'en partido de ' + (/league|liga|liiga|lega|ligue|cup|copa|coupe|champions/i.test(c) ? 'la ' : '') + c;
   /* "el sábado por la noche en The Arena, ante 312 espectadores" (+ "en partido de X") */
   const where = (d, comp) => {
     if (!d) return '';
@@ -205,7 +218,7 @@
     if (when) parts.push(when + (d.venue ? ' en ' + d.venue : ''));
     else if (d.venue) parts.push('en ' + d.venue);
     if (d.crowd) parts.push('ante ' + d.crowd + ' espectadores');
-    if (comp !== false && d.comp) parts.push('en partido de ' + d.comp);
+    if (comp !== false && d.comp) parts.push(ofComp(d.comp));
     return parts.join(', ');
   };
   const nameWhere = s => {
@@ -277,18 +290,20 @@
     return note == null ? null : m[1] + ' (' + note + ')';
   };
   /* "Derby Trailblazers’ A (…) and B (…)" -> { text: "A (…) y B (…) en Derby Trailblazers", many } */
-  const roughClub = c => { const m = /^(.+?)’s? (.+)$/.exec(c); if (!m) return null; const it = items(m[2], ROUGH); return it ? { t: list(it) + ' en ' + m[1], many: it.length > 1 } : null; };
+  const roughClub = c => { const m = /^(.+?)(?:’s?|(?<=\d)s) (.+)$/.exec(c); if (!m) return null; const it = items(m[2], ROUGH); return it ? { t: list(it) + ' en ' + m[1], many: it.length > 1 } : null; };
 
   /* what a facet was worth: "about seven of the twelve points between them", "about six points, more than the whole
      margin", "about four points to Neon City" */
   const WORTH = [
     [rx('about {W} of the {W} points between them'), (a, b) => 'unos ' + n(a) + ' de los ' + n(b) + ' puntos de diferencia'],
+    /* the writer's grammar makes "six of the six" "all six" */
+    [rx('about all {W} points between them'), a => 'prácticamente los ' + n(a) + ' puntos de diferencia'],
     [rx('about {A} points?, more than the whole margin'), a => abt(a) + ', más que toda la diferencia final'],
     [rx('about {A} points?(?: to {X})?'), (a, x) => abt(a) + (x ? ' a favor de ' + x : '')]
   ];
   /* the ledger's first sentence, after its opening (BY) */
   const LEAD = [
-    [rx('the shots {X} got decided it: (in this league|at this game’s make rates) their attempts were worth {D}% eFG and {X}’s? {D}%, (.+)'),
+    [rx('the shots {X} got decided it: (in this league|at this game’s make rates) their attempts were worth {D}% eFG and {X}{Z} {D}%, (.+)'),
       (x, r, a, y, b, v) => { const w = first(WORTH, v); return w && 'la calidad de los tiros de ' + x + ' decidió el partido: ' + (/league/i.test(r) ? 'con los porcentajes de esta liga' : 'con los porcentajes de este partido') +
         ', sus intentos valían un ' + a + '% de eFG% y los de ' + y + ', un ' + b + '%, lo que supuso ' + w; }],
     [rx('it came down to making shots: {X} hit {D}% eFG on shots that usually go at {D}% (in this league|at this game’s make rates), worth (.+)'),
@@ -298,6 +313,13 @@
       (x, a, b, v) => { const w = first(WORTH, v); return w && 'los tiros libres decidieron el partido: ' + x + ' anotó ' + n(a) + ' de ' + n(b) + ', lo que, frente al porcentaje habitual, valió ' + w; }],
     [rx('(.+?) decided it, worth (.+)'), (l, v) => { const f = fac(l), w = first(WORTH, v); return f && w && f + (many(f) ? ' decidieron' : ' decidió') + ' el partido: ' + (many(f) ? 'valieron ' : 'valió ') + w; }]
   ];
+  /* the preview: who carried a side's last game, "with 31 from X" in a win, "despite 20 from X" in a defeat (",
+     with …" after a sentence, " with …" inside a run's latest game): ", con 31 puntos de X", ", pese a los 20 puntos de X" */
+  const CARRY = c => '(?:' + c + ' (with|despite) {D}(?: points and {D} (rebounds|assists))? from {X})?';
+  const carry = (k, d, e, s, p) => (!k ? '' : (/^with$/i.test(k) ? ', con ' : ', pese a los ') + stat('points', d) + (e ? ' y ' + stat(s.toLowerCase(), e) : '') + ' de ' + p);
+  /* where it was: "at home", "at home to X", "at X", "away" */
+  const ubi = w => { let m; return /^at home$/i.test(w) ? ' en casa' : /^away$/i.test(w) ? ' a domicilio' : (m = /^at home to (.+)$/i.exec(w)) ? ' en casa ante ' + m[1] : (m = /^at (.+)$/i.exec(w)) ? ' en la pista de ' + m[1] : null; };
+  const HA = { 'at home': 'en casa', 'on the road': 'a domicilio', away: 'a domicilio' };
   /* the preview: what the season's numbers expect of the facet the game turns on */
   const EXPECT = [
     [rx('expect {X} to shoot about {D}% eFG to {D}%'), (x, a, b) => 'se espera que ' + x + ' tire con un ' + a + '% de eFG%, frente a un ' + b + '%'],
@@ -320,7 +342,7 @@
         const d = dl(s.slice(0, m.index));
         const t = /^(.+?) beat (.+?) (\d+)[–-](\d+)(?: in ([^,]+))?$/i.exec(s.slice(m.index + 2));
         if (d && t && !/^in front of /i.test(t[1])) {
-          return where(d, false) + ', ' + t[1] + ' ganó a ' + t[2] + ' por ' + sc(t[3], t[4]) + (t[5] ? ' en partido de ' + t[5].replace(/^the /i, '') : '');
+          return where(d, false) + ', ' + t[1] + ' ganó a ' + t[2] + ' por ' + sc(t[3], t[4]) + (t[5] ? ' ' + ofComp(t[5].replace(/^the /i, '')) : '');
         }
       }
       return null;
@@ -356,13 +378,17 @@
     /* ---- the run, the quarter, the lead ---- */
     ['the decisive spell was an? {D}–0 run in the {O}, long enough to turn a close game into a lead that held',
       (d, o) => 'el tramo decisivo fue un parcial de ' + sc(d, 0) + ' en ' + ord(o) + ', suficiente para convertir un partido igualado en una ventaja que ya no se perdió'],
-    ['it turned on an? {D}–0 burst in the {O}, and the game did not come back',
-      (d, o) => 'todo cambió con un parcial de ' + sc(d, 0) + ' en ' + ord(o) + ', y el partido ya no volvió'],
-    ['an? {D}–0 run in the {O} did the damage, and the game never really came back',
-      (d, o) => 'un parcial de ' + sc(d, 0) + ' en ' + ord(o) + ' hizo el daño, y el partido ya nunca volvió a igualarse'],
+    ['it turned on an? {D}–0 burst in the {O}, and (the game did not come back|the other side never got back into it)',
+      (d, o, k) => 'todo cambió con un parcial de ' + sc(d, 0) + ' en ' + ord(o) + (/other side/i.test(k) ? ', y el rival ya no volvió a meterse en el partido' : ', y el partido ya no volvió')],
+    /* one sentence or two ("… did the damage. The game never really came back."), and "really" cut as a filler */
+    ['an? {D}–0 run in the {O} did the damage(, and the game never (?:really )?came back)?',
+      (d, o, k) => 'un parcial de ' + sc(d, 0) + ' en ' + ord(o) + ' hizo el daño' + (k ? ', y el partido ya nunca volvió a igualarse' : '')],
+    ['the game never (?:really )?came back', () => 'el partido ya nunca volvió a igualarse'],
+    /* after a run by the side that lost: "It was not enough, and the losers won the fourth 26–16." */
+    ['it was not enough', () => 'no le bastó'],
     ['the gap opened during an? {D}–0 run in the {O}', (d, o) => 'la brecha se abrió con un parcial de ' + sc(d, 0) + ' en ' + ord(o)],
     ['the biggest swing was an? {D}–0 run in the {O} from {X}', (d, o, x) => 'el mayor parcial fue un ' + sc(d, 0) + ' de ' + x + ' en ' + ord(o)],
-    ['the longest run of the game was {X}’s? {D}–0 in the {O}', (x, d, o) => 'la mayor racha del partido fue el ' + sc(d, 0) + ' de ' + x + ' en ' + ord(o)],
+    ['the longest run of the game was {X}{Z} {D}–0 in the {O}', (x, d, o) => 'la mayor racha del partido fue el ' + sc(d, 0) + ' de ' + x + ' en ' + ord(o)],
     ['{X} took the period {S}', (x, a, b) => sv(x, 'se llevó ese cuarto por ' + sc(a, b))],
     ['{X} had already taken the {O} {S}', (x, o, a, b) => sv(x, 'ya se había llevado ' + ord(o) + ' por ' + sc(a, b))],
     ['{X} won the {O} {S}', (x, o, a, b) => sv(x, 'ganó ' + ord(o) + ' por ' + sc(a, b))],
@@ -372,6 +398,22 @@
     ['there were {D} lead changes?(?: and the scores were level {W} times)?, so neither side ever properly settled',
       (d, w) => 'hubo ' + d + ' ' + pl(d, 'cambio', 'cambios') + ' de líder' + (w ? ' y el marcador estuvo igualado ' + n(w) + ' veces' : '') + ', así que ninguno de los dos llegó a asentarse'],
     ['the scores were level {W} times', w => 'el marcador estuvo igualado ' + n(w) + ' veces'],
+    /* who was in front, and for how long: "all but 20 seconds" is "salvo 20 segundos" */
+    ['{X} led from the first basket to the last', x => sv(x, 'mandó en el marcador de la primera canasta a la última')],
+    ['it was wire to wire for {X}: never behind, and never level after the first basket',
+      x => x + ' lideró de principio a fin: nunca fue por detrás, y tras la primera canasta no volvió a haber empate'],
+    ['{X} never gave up the lead after the first basket', x => sv(x, 'no soltó el liderato desde la primera canasta')],
+    ['{X} never trailed', x => sv(x, 'nunca fue por detrás en el marcador')],
+    ['at no point was {X} behind', x => x + ' no fue por detrás en ningún momento'],
+    ['{X} led for ' + ALLBUT + ' of it and still lost', (x, s, m) => sv(x, 'mandó en el marcador todo el partido ' + allBut(s, m) + ', y aun así perdió')],
+    ['for ' + ALLBUT + ' of the game it was {X}{Z}, and they lost it anyway', (s, m, x) => sv(x, 'mandó en el marcador todo el partido ' + allBut(s, m) + ', y aun así lo perdió')],
+    ['{X} were in front for {W} of the {W} minutes and still lost', (x, a, b) => sv(x, 'fue por delante ' + n(a) + ' de los ' + n(b) + ' minutos, y aun así perdió')],
+    ['for {W} of the {W} minutes it was {X}{Z} game, and they lost it anyway', (a, b, x) => 'durante ' + n(a) + ' de los ' + n(b) + ' minutos el partido fue de ' + x + ', y aun así lo perdió'],
+    ['{X} led for most of it, {W} of the {W} minutes, and it was not enough', (x, a, b) => sv(x, 'mandó casi todo el partido, ' + n(a) + ' de los ' + n(b) + ' minutos, y no le bastó')],
+    ['{X} were in front for ' + ALLBUT + ' of the game', (x, s, m) => sv(x, 'fue por delante todo el partido ' + allBut(s, m))],
+    ['it was {X}{Z} game from the start, in front for ' + ALLBUT + ' of it', (x, s, m) => 'el partido fue de ' + x + ' desde el principio: por delante todo el encuentro ' + allBut(s, m)],
+    ['{X} were in front for {W} of the {W} minutes', (x, a, b) => sv(x, 'fue por delante ' + n(a) + ' de los ' + n(b) + ' minutos')],
+    ['it was {X}{Z} game from the start, in front for {W} of the {W} minutes', (x, a, b) => 'el partido fue de ' + x + ' desde el principio: por delante ' + n(a) + ' de los ' + n(b) + ' minutos'],
 
     /* ---- the finish ---- */
     ['{X} were {W} down with five minutes left and outscored {X} {S} from there',
@@ -394,8 +436,10 @@
       (x, a, b, d) => sv(x, 'falló ' + n(a) + ' de ' + n(b) + ' tiros libres en los dos últimos minutos, en un partido que perdió por ' + d)],
 
     /* ---- tempo and the season ---- */
-    ['it was played at speed — {F} possessions per 40', f => 'se jugó a mucho ritmo: ' + f + ' posesiones por cada 40 minutos'],
-    ['it was a slow, half-court game at {F} possessions per 40', f => 'fue un partido lento, de ataque posicional, con ' + f + ' posesiones por cada 40 minutos'],
+    ['it was played at speed(?: —|,) {F} possessions per 40(?:, quicker than this league’s usual {D})?',
+      (f, d) => 'se jugó a mucho ritmo: ' + f + ' posesiones por cada 40 minutos' + (d ? ', por encima de las ' + d + ' habituales en esta liga' : '')],
+    ['it was a slow, half-court game at {F} possessions per 40(?:, slower than this league’s usual {D})?',
+      (f, d) => 'fue un partido lento, de ataque posicional, con ' + f + ' posesiones por cada 40 minutos' + (d ? ', por debajo de las ' + d + ' habituales en esta liga' : '')],
     ['{X} finished on {D} against a season average of {F}', (x, d, f) => sv(x, 'terminó con ' + d + ' puntos, cuando su media de la temporada es de ' + f)],
     ['{X} were held to {D}, well short of the {F} they usually manage', (x, d, f) => sv(x, 'se quedó en ' + d + ' puntos, muy lejos de los ' + f + ' que suele anotar')],
 
@@ -415,57 +459,58 @@
     ['{X} started the night {K} in the table and beat the side in {K}',
       (x, a, b) => sv(x, 'llegaba en el ' + ordes(a, true) + ' puesto de la clasificación y ganó al ' + (place(b) === 'líder' ? 'líder' : ordes(b, true) + ' clasificado'))],
     ['on the table this was an upset: {X} were {K}, {X} {K}', (x, a, y, b) => 'según la clasificación, fue una sorpresa: ' + x + ' era ' + place(a) + yy(y) + y + ', ' + place(b)],
-    ['on the season’s numbers this should have been {X}’s? game by about {A} points?', (x, a) => 'por los números de la temporada, este partido debía haber sido para ' + x + ' por ' + abt(a)],
+    ['on the season’s numbers this should have been {X}{Z} game by about {A} points?', (x, a) => 'por los números de la temporada, este partido debía haber sido para ' + x + ' por ' + abt(a)],
     ['the season’s four factors had {X} about {A} points? better going in', (x, a) => 'los cuatro factores de la temporada daban a ' + x + ' ' + abt(a) + ' de ventaja antes del partido'],
     ['it ended a run of {W} straight defeats for {X}', (w, x) => sv(x, 'rompió así una racha de ' + n(w) + ' derrotas seguidas')],
-    ['it ended {X}’s? run of {W} straight wins', (x, w) => 'así se cortó la racha de ' + n(w) + ' victorias seguidas de ' + x],
+    ['it ended {X}{Z} run of {W} straight wins', (x, w) => 'así se cortó la racha de ' + n(w) + ' victorias seguidas de ' + x],
     ['{X} had won {W} in a row coming in', (x, w) => sv(x, 'llegaba con ' + n(w) + ' victorias seguidas')],
     ['{X} had lost {W} in a row before this', (x, w) => sv(x, 'venía de perder ' + n(w) + ' partidos seguidos')],
     ['it is {W} wins in a row for {X}', (w, x) => 'son ya ' + n(w) + ' victorias seguidas para ' + x],
     ['that is {W} defeats in a row for {X}', (w, x) => 'son ya ' + n(w) + ' derrotas seguidas para ' + x],
     /* "have now won five straight" in the report; "have won four straight" in the preview */
     ['{X} have (now )?(won|lost) {W} straight', (x, now, k, w) => sv(x, (now ? 'suma ya ' : 'encadena ') + n(w) + (/won/i.test(k) ? ' victorias' : ' derrotas') + (now ? ' consecutivas' : ' seguidas'))],
-    ['it was {X}’s? first win of the season, at the {K} attempt', (x, k) => 'fue la primera victoria de la temporada para ' + x + ', al ' + ordes(k, true) + ' intento'],
+    ['it was {X}{Z} first win of the season, at the {K} attempt', (x, k) => 'fue la primera victoria de la temporada para ' + x + ', al ' + ordes(k, true) + ' intento'],
     ['{X} are off the mark at last, at the {K} attempt', (x, k) => sv(x, 'estrena por fin su casillero de victorias, al ' + ordes(k, true) + ' intento')],
     ['{X} are still unbeaten, {S}', (x, a, b) => sv(x, 'sigue invicto') + ' (' + sc(a, b) + ')'],
     ['nobody has beaten {X} yet: {D} games, {D} wins', (x, a, b) => 'nadie ha ganado todavía a ' + x + ': ' + cnt(a, 'partido', 'partidos') + ', ' + cnt(b, 'victoria', 'victorias')],
     ['{X} are still looking for a first win, {W} games in', (x, w) => sv(x, 'sigue buscando su primera victoria tras ' + cnt(w, 'partido', 'partidos'))],
     ['it is {W} games and no wins for {X}', (w, x) => sv(x, 'suma ' + cnt(w, 'partido', 'partidos') + ' sin conocer la victoria')],
-    ['{X}’s? {D} points (are|equal) the most any side has scored in this league this season',
+    ['{X}{Z} {D} points (are|equal) the most any side has scored in this league this season',
       (x, d, e) => 'los ' + d + ' puntos de ' + x + (/^equal$/i.test(e) ? ' igualan' : ' son') + ' la mayor anotación de un equipo en esta liga esta temporada'],
-    ['{X}’s? {D}-point win (is|equals) the widest in this league this season',
+    ['{X}{Z} {D}-point win (is|equals) the widest in this league this season',
       (x, d, e) => 'la victoria de ' + x + ' por ' + d + ' puntos ' + (/^equals$/i.test(e) ? 'iguala' : 'es') + ' la más amplia de esta liga esta temporada'],
-    ['{X}’s? {D} (threes|assists) (are|equal) the most by any side in a game this season',
+    ['{X}{Z} {D} (threes|assists) (are|equal) the most by any side in a game this season',
       (x, d, k, e) => los(k) + ' ' + stat(k.toLowerCase(), d) + ' de ' + x + (/^equal$/i.test(e) ? ' igualan' : ' son') + ' la mejor marca de un equipo en un partido esta temporada'],
-    ['{X}’s? {D}-rebound edge (is|equals) the widest in this league this season',
+    ['{X}{Z} {D}-rebound edge (is|equals) the widest in this league this season',
       (x, d, e) => 'la diferencia de ' + d + ' rebotes a favor de ' + x + ' ' + (/^equals$/i.test(e) ? 'iguala' : 'es') + ' la mayor de esta liga esta temporada'],
-    ['{X}’s? {D} points were their most of the season', (x, d) => 'los ' + d + ' puntos de ' + x + ' fueron su mejor anotación de la temporada'],
+    ['{X}{Z} {D} points were their most of the season', (x, d) => 'los ' + d + ' puntos de ' + x + ' fueron su mejor anotación de la temporada'],
     ['{X} had not scored {D} all season', (x, d) => sv(x, 'no había anotado ' + d + ' puntos en toda la temporada')],
     ['{X} have not allowed fewer all season than the {D} they gave up here', (x, d) => sv(x, 'no había encajado tan pocos puntos en toda la temporada como los ' + d + ' de este partido')],
-    ['{X}’s? {D} is the fewest {X} have allowed this season', (y, d, x) => 'los ' + d + ' puntos de ' + y + ' son lo mínimo que ha encajado ' + x + ' esta temporada'],
+    ['{X}{Z} {D} is the fewest {X} have allowed this season', (y, d, x) => 'los ' + d + ' puntos de ' + y + ' son lo mínimo que ha encajado ' + x + ' esta temporada'],
     ['{X} have won all {W} meetings this season', (x, w) => sv(x, 'ha ganado los ' + n(w) + ' enfrentamientos de esta temporada')],
-    ['{X} had won the last meeting {S}; this was {X}’s? reply', (y, a, b, x) => sv(y, 'había ganado el último enfrentamiento') + ' (' + sc(a, b) + '); esta fue la respuesta de ' + x],
+    ['{X} had won the last meeting {S}; this was {X}{Z} reply', (y, a, b, x) => sv(y, 'había ganado el último enfrentamiento') + ' (' + sc(a, b) + '); esta fue la respuesta de ' + x],
     ['the season series (between them )?is level at {S}', (bt, a, b) => 'los enfrentamientos de esta temporada' + (bt ? ' entre ambos' : '') + ' están igualados (' + sc(a, b) + ')'],
     ['the season series is {S} to {X}', (a, b, x) => 'los enfrentamientos de esta temporada van ' + sc(a, b) + ' para ' + x],
-    ['the crowd of {D} was {X}’s? biggest of the season', (d, x) => 'los ' + d + ' espectadores fueron la mejor entrada de la temporada en casa de ' + x],
+    ['the crowd of {D} was {X}{Z} biggest of the season', (d, x) => 'los ' + d + ' espectadores fueron la mejor entrada de la temporada en casa de ' + x],
     ['only {D}% of the {D} fans who picked a winner had gone with {X}', (p, d, x) => 'solo el ' + p + '% de los ' + d + ' aficionados que hicieron su pronóstico se había decantado por ' + x],
     ['{X} were playing for the second time in two days', x => sv(x, 'jugaba por segunda vez en dos días')],
     ['(in the league, )?{X} are {K}{G} at {S}, {X} {K}{G} at {S}', (lg, x, a, g, s1, s2, y, b, h, s3, s4) =>
       (lg ? 'en la liga, ' : '') + x + ' es ' + place(a) + ofGrp(g) + ' con ' + sc(s1, s2) + ',' + yy(y) + y + ', ' + place(b) + ofGrp(h) + ' con ' + sc(s3, s4)],
-    ['the two meet again on {Y}, at {X}’s? place', (d, x) => fecha(d) && 'los dos equipos se volverán a ver las caras ' + fecha(d) + ', en casa de ' + x],
+    ['the two meet again on {Y}, at {X}{Z} place', (d, x) => fecha(d) && 'los dos equipos se volverán a ver las caras ' + fecha(d) + ', en casa de ' + x],
     ['next for {X}: {X} at home on {Y}', (x, y, d) => fecha(d) && 'próximo partido de ' + x + ': recibe a ' + y + ' ' + fecha(d)],
     ['next for {X}: away at {X} on {Y}', (x, y, d) => fecha(d) && 'próximo partido de ' + x + ': visita a ' + y + ' ' + fecha(d)],
-    ['{X} host {X} next, on {Y}', (x, y, d) => fecha(d) && sv(x, 'recibe a ' + y + ' en su próximo partido, ' + fecha(d))],
-    ['{X} are next for {X}, at home on {Y}', (y, x, d) => fecha(d) && 'el próximo rival de ' + x + ' es ' + y + ', que visitará su pista ' + fecha(d)],
-    ['{X} go to {X} next, on {Y}', (x, y, d) => fecha(d) && sv(x, 'visita a ' + y + ' en su próximo partido, ' + fecha(d))],
-    ['a trip to {X} is next for {X}, on {Y}', (y, x, d) => fecha(d) && 'lo próximo para ' + x + ' es la visita a ' + y + ', ' + fecha(d)],
+    /* the date can be cut by the writer's reviser when the sentence before ended on the same one ("…are next for X.") */
+    ['{X} host {X} next(?:, on {Y})?', (x, y, d) => (d && !fecha(d) ? null : sv(x, 'recibe a ' + y + ' en su próximo partido' + (d ? ', ' + fecha(d) : '')))],
+    ['{X} are next for {X}(?:, at home on {Y})?', (y, x, d) => (d && !fecha(d) ? null : 'el próximo rival de ' + x + ' es ' + y + (d ? ', que visitará su pista ' + fecha(d) : ''))],
+    ['{X} go to {X} next(?:, on {Y})?', (x, y, d) => (d && !fecha(d) ? null : sv(x, 'visita a ' + y + ' en su próximo partido' + (d ? ', ' + fecha(d) : '')))],
+    ['a trip to {X} is next for {X}(?:, on {Y})?', (y, x, d) => (d && !fecha(d) ? null : 'lo próximo para ' + x + ' es la visita a ' + y + (d ? ', ' + fecha(d) : ''))],
     /* the moments: the basket that won it, the one that put them ahead for good, the closer, a three at the buzzer
        ("sobre la bocina") */
     ['{X}’s? (three|free throw|basket) with {W} seconds? left( in overtime)? won it for {X}',
       (p, k, w, ot, x) => SHOT[k.toLowerCase()] + ' de ' + p + ' a falta de ' + cnt(w, 'segundo', 'segundos') + (ot ? ' para el final de la prórroga' : '') + ' dio la victoria a ' + x],
     ['{X}’s? (three|free throw|basket) with (?:{W} seconds?|{M}) left( in overtime)? put {X} ahead for good',
       (p, k, w, m, ot, x) => SHOT[k.toLowerCase()] + ' de ' + p + ' a falta de ' + (m || cnt(w, 'segundo', 'segundos')) + (ot ? ' para el final de la prórroga' : '') + ' puso a ' + x + ' por delante de forma definitiva'],
-    ['{X} scored {W} of {X}’s? {W} points in the last five minutes', (p, a, x, b) => p + ' anotó ' + n(a) + ' de los ' + n(b) + ' puntos de ' + x + ' en los últimos cinco minutos'],
+    ['{X} scored {W} of {X}{Z} {W} points in the last five minutes', (p, a, x, b) => p + ' anotó ' + n(a) + ' de los ' + n(b) + ' puntos de ' + x + ' en los últimos cinco minutos'],
     ['{X} hit a three at the (?:(half-time)|{O}-quarter) buzzer for {X}', (p, h, o, x) => p + ' anotó un triple sobre la bocina ' + (h ? 'del descanso' : de(ord(o))) + ' para ' + x],
     /* the shape of it */
     ['it was a low-scoring grind, {D} points between the two sides', d => 'fue un partido trabado y de poca anotación: ' + d + ' puntos entre los dos equipos'],
@@ -489,17 +534,49 @@
     ['{X} beat that by {A} points?', (x, a) => sv(x, 'superó esa previsión en ' + cnt(a, 'punto', 'puntos'))],
     ['{X} won by less than that', x => sv(x, 'ganó por menos de lo previsto')],
     ['that is roughly how it went', () => 'y así fue, más o menos'],
-    ['home court is worth about {F}(?: points?)? in this league(?:, and it was {X}’s?)?', (f, x) => 'el factor cancha vale ' + abt(f) + ' en esta liga' + (x ? ', y estaba del lado de ' + x : '')],
+    ['home court is worth about {F}(?: points?)? in this league(?:, and it was {X}{Z})?', (f, x) => 'el factor cancha vale ' + abt(f) + ' en esta liga' + (x ? ', y estaba del lado de ' + x : '')],
     ['the last {W} points of the margin are in no facet at all: the part of a game no factor measures',
       w => 'los últimos ' + n(w) + ' puntos de la diferencia no están en ninguna faceta: son la parte del juego que ningún factor mide'],
     ['on these facets alone {X} would have won by more; {W} points went back to {X} in what no factor measures',
       (x, w, y) => 'solo por estas facetas, ' + sv(x, 'habría ganado por más') + '; ' + n(w) + ' puntos fueron a parar a ' + y + ' en lo que ningún factor mide'],
+    /* the four factors in points, when no ledger can be built (no possessions, or a tie): the total, where it came from,
+       each side's gains and losses, and the scoreboard against it */
+    ['(weighed by what wins in this league|by this league’s own win model|put through what decides games in this league)(?: \\(built on {D} of its games\\))?, (.+)', (o, k, s) => {
+      const open = { 'weighed by what wins in this league': 'según lo que gana partidos en esta liga', 'by this league’s own win model': 'según el modelo de victoria de esta liga',
+        'put through what decides games in this league': 'pasados por lo que decide los partidos en esta liga' }[o.toLowerCase()] + (k ? ' (con ' + k + ' de sus partidos como base)' : '');
+      let m;
+      if ((m = rx('the four factors were worth about {A} points? to {X}').exec(s))) return open + ', los cuatro factores valieron ' + abt(m[1]) + ' a ' + (who(m[2]) || m[2]);
+      if ((m = rx('{X} came out roughly {A} points? ahead on the four factors').exec(s))) return open + ', ' + sv(m[1], 'salió con ' + abt(m[2]) + ' de ventaja en los cuatro factores');
+      if ((m = rx('the four factors make it about {A} points? to {X}').exec(s))) return open + ', los cuatro factores dan ' + abt(m[1]) + ' a ' + (who(m[2]) || m[2]);
+      return null;
+    }],
+    ['add up the four factors and the game was worth about {A} points? to {X}', (a, x) => 'sumando los cuatro factores, el partido valió ' + abt(a) + ' a ' + (who(x) || x)],
+    ['weighed factor by factor, {X} came out roughly {A} points? ahead', (x, a) => 'factor a factor, ' + sv(x, 'salió con ' + abt(a) + ' de ventaja')],
+    ['the four factors alone make it about {A} points? to {X}', (a, x) => 'solo los cuatro factores ya dan ' + abt(a) + ' a ' + (who(x) || x)],
+    ['the biggest gain came from (.+?), worth {W} points?(?:, then (.+?) at {W})?', (l, w, l2, w2) => {
+      const f = fac(l), f2 = l2 ? fac(l2) : null;
+      return f && (!l2 || f2) && 'la mayor ganancia llegó en ' + f + ', con ' + cnt(w, 'punto', 'puntos') + (l2 ? ', y después en ' + f2 + ', con ' + n(w2) : '');
+    }],
+    ['{X} won {W} back on (.+?)', (x, w, l) => { const f = fac(l); return f && sv(x, 'recuperó ' + n(w) + ' en ' + f); }],
+    ['{X} gained (nothing on any factor and gave up (.+)|(.+?)(?:, and gave back (.+)| and gave nothing back))', (x, all, up, gains, back) => {
+      const facts = s => { const it = String(s).split(/, | and /).map(t => { const m = new RegExp('^(' + WORDS + ')(?: points?)? on (.+)$', 'i').exec(t); return m && fac(m[2]) ? n(m[1]) + (/ points?/i.test(t) ? ' ' + pl(n(m[1]), 'punto', 'puntos') : '') + ' en ' + fac(m[2]) : null; }); return it.indexOf(null) >= 0 ? null : list(it); };
+      if (up) { const u = facts(up); return u && sv(x, 'no ganó nada en ningún factor y cedió ' + u); }
+      const g = facts(gains), b = back ? facts(back) : '';
+      return g && b != null && sv(x, 'ganó ' + g + (back ? ', y cedió ' + b : ' y no cedió nada'));
+    }],
+    ['the scoreboard margin was {W} points?', w => 'la diferencia en el marcador fue de ' + cnt(w, 'punto', 'puntos')],
+    ['the final margin was {W} points?(, close to what the factors say|, (more|less) than the factors alone account for)?',
+      (w, t, k) => 'la diferencia final fue de ' + cnt(w, 'punto', 'puntos') + (!t ? '' : k ? ', ' + (/more/i.test(k) ? 'más' : 'menos') + ' de lo que explican los factores por sí solos' : ', cerca de lo que dicen los factores')],
+    ['the scoreboard told a different story: {X} won by {W} points?', (x, w) => 'el marcador contó otra historia: ' + sv(x, 'ganó por ' + cnt(w, 'punto', 'puntos'))],
+    ['the four factors cancelled out: neither side came out more than {W} points? ahead on them',
+      w => 'los cuatro factores se anularon: ninguno de los dos sacó más de ' + cnt(w, 'punto', 'puntos') + ' de ventaja en ellos'],
 
     /* ---- where the points came from ---- */
-    ['{X} (had|have) the edge {V}: {D} points? from {D} chances?(?:,(?: at)? {F} (?:a time|points a chance|points each))?, against {X}’s? {D}',
+    /* (the writer's polish makes "1.00 points" singular: "1.00 point a chance") */
+    ['{X} (had|have) the edge {V}: {D} points? from {D} chances?(?:,(?: at)? {F} (?:a time|points? a chance|points? each))?, against {X}{Z} {D}',
       (x, t, v, p, c, r, y, o) => sv(x, (/^had$/i.test(t) ? 'dominó ' : 'domina ') + WHERE[v.toLowerCase()]) + ': ' + stat('points', p) + ' en ' + c + ' ' +
         pl(c, 'oportunidad', 'oportunidades') + (r ? ', ' + r + ' por acción' : '') + ', frente a los ' + o + ' de ' + y],
-    ['{V} it (?:was|is) {S} to {X}( so far)?, from {D} chances?(?:,(?: at)? {F} (?:a time|points a chance|points each))?',
+    ['{V} it (?:was|is) {S} to {X}( so far)?, from {D} chances?(?:,(?: at)? {F} (?:a time|points? a chance|points? each))?',
       (v, a, b, x, far, c, r) => WHERE[v.toLowerCase()] + ', ' + sc(a, b) + ' para ' + x + (far ? ' hasta ahora' : '') + ', en ' + c + ' ' +
         pl(c, 'oportunidad', 'oportunidades') + (r ? ', ' + r + ' por acción' : '')],
     ['they (got|are getting) {D}% of their chances that way, {R}', (t, d, r) => 'el ' + d + '% de sus oportunidades ' + (/^got$/i.test(t) ? 'llegaron' : 'están llegando') + ' así, ' + freq(r)],
@@ -534,7 +611,7 @@
       (x, t, p, c) => sv(x, (/^got$/i.test(t) ? 'no sacó' : 'no está sacando') + ' nada de sus tiempos muertos') + ': ' + stat('points', n(p)) + ' en ' + n(c) + ' ' + pl(n(c), 'posesión', 'posesiones')],
 
     /* ---- the box score, said ---- */
-    ['from the floor it was {D}% to {D}% in {X}’s? favour', (a, b, x) => 'en tiros de campo, ' + a + '% contra ' + b + '% a favor de ' + who(x)],
+    ['from the floor it was {D}% to {D}% in {X}{Z} favour', (a, b, x) => 'en tiros de campo, ' + a + '% contra ' + b + '% a favor de ' + who(x)],
     ['{X} shot {D}% from the field to {D}%', (x, a, b) => sv(x, 'tiró con un ' + a + '% en tiros de campo') + ', por el ' + b + '% del rival'],
     ['{X} made {D} of {D} from three', (x, a, b) => sv(x, 'anotó ' + a + ' de ' + b + ' triples')],
     ['{X} went {D} of {D} from three', (x, a, b) => sv(x, 'se quedó en ' + a + ' de ' + b + ' en triples')],
@@ -566,6 +643,13 @@
       (x, a, b, c) => sv(x, 'atacó por dentro') + ': el ' + a + '% de sus intentos fueron cerca del aro, frente al ' + b + '%' + (c ? ', y anotó el ' + c + '%' : '')],
     ['{X} moved it well, assisting on {F}% of their field goals', (x, a) => sv(x, 'movió bien el balón') + ': el ' + a + '% de sus canastas fueron asistidas'],
     ['{X} defended better, giving up {F} points per 100 possessions to {F}', (x, a, b) => sv(x, 'defendió mejor') + ': encajó ' + a + ' puntos por cada 100 posesiones, frente a ' + b],
+    ['{X} defended better, allowing {F} points per 100 possessions where the other side allowed {F}',
+      (x, a, b) => sv(x, 'defendió mejor') + ': encajó ' + a + ' puntos por cada 100 posesiones, por ' + b + ' del rival'],
+    /* how the baskets came: off a pass, or made alone */
+    ['{X} moved it well: {W} of their {W} baskets came off a pass, against {W} of {W} for {X}',
+      (x, a, b, c, d, y) => sv(x, 'movió bien el balón') + ': ' + n(a) + ' de sus ' + n(b) + ' canastas fueron asistidas, por ' + n(c) + ' de ' + n(d) + ' de ' + (who(y) || y)],
+    ['{X} had to make more of their own shots, with {D} of their points from baskets nobody set up',
+      (x, d) => sv(x, 'tuvo que generarse más sus propios tiros') + ': ' + d + ' de sus puntos llegaron en canastas sin asistencia'],
     ['{X} forced the ball loose all night — their opponents coughed it up on {F}% of possessions', (x, a) => sv(x, 'forzó pérdidas toda la noche') + ': el rival perdió el balón en el ' + a + '% de sus posesiones'],
     ['{X} had their hands on the ball all night — their opponents turned it over on {F}% of possessions', (x, a) => sv(x, 'metió la mano toda la noche') + ': el rival perdió el balón en el ' + a + '% de sus posesiones'],
     ['{X} kept taking it away — their opponents gave it up on {F}% of possessions', (x, a) => sv(x, 'no dejó de robar') + ': el rival perdió el balón en el ' + a + '% de sus posesiones'],
@@ -584,10 +668,57 @@
     ['the game turned inside a single {M} spell with {L} on the floor for {X}: they (gained|were outscored by) {D} points in that stretch alone',
       (m, f, x, g, d) => 'el partido cambió en un solo tramo de ' + m + ' con ' + names(f) + ' en pista por parte de ' + x + ': ' + (/^gained$/i.test(g) ? 'ganó' : 'perdió') + ' ese tramo por ' + stat('points', d)],
     ['nothing else in the game moved the scoreboard as far in as little time', () => 'ningún otro momento del partido movió tanto el marcador en tan poco tiempo'],
-    ['across every minute they shared, {X}’s? five from that swing were ([+-]?\\d+) in {M}', (x, pm, m) => 'en todos los minutos que compartieron, el quinteto de ' + x + ' de ese tramo fue ' + pm + ' en ' + m],
+    ['across every minute they shared, {X}{Z} five from that swing were ([+-]?\\d+) in {M}', (x, pm, m) => 'en todos los minutos que compartieron, el quinteto de ' + x + ' de ese tramo fue ' + pm + ' en ' + m],
     ['{P} strongest group — {L} — was ([+-]?\\d+) across {M}', (p, f, pm, m) => own(p, 'su mejor quinteto', 'el mejor quinteto') + ' (' + names(f) + ') fue ' + pm + ' en ' + m],
     ['(at the other end of it, |at the other end, |the reverse was true at the other end: ){X} lost {D} points in {M} with {L} out there — the combination that cost them most',
       (pre, x, d, m, f) => (/reverse/i.test(pre) ? 'al contrario, ' : 'en el otro lado, ') + sv(x, 'perdió ' + stat('points', d) + ' en ' + m + ' con ' + names(f) + ' en pista') + ': la combinación que más le costó'],
+    /* the deciding stretch once the standfirst has given its size, each side's best group and the other's worst
+       (2026-10-08: none of these was translated); a five is a list of surnames, the Spanish list joins them */
+    ['it came with {L} on the floor for {X}, together for the whole of it', (f, x) => 'llegó con ' + names(f) + ' en pista por parte de ' + x + ', juntos durante todo el tramo'],
+    ['it was {X}{Z} worst stretch: {L} were on the floor(, and the other side outscored them by {D} in that time)?',
+      (x, f, k, d) => 'fue el peor tramo de ' + x + ': ' + names(f) + ' estaban en pista' + (k ? ', y el rival los superó por ' + stat('points', d) + ' en ese tiempo' : '')],
+    /* the same two with the stretch named, not "It" (2026-10-08) */
+    ['the stretch that swung it came with {L} on the floor for {X}, together for the whole of it',
+      (f, x) => 'el tramo que decidió el partido llegó con ' + names(f) + ' en pista por parte de ' + x + ', juntos de principio a fin'],
+    ['the stretch that swung it was {X}{Z} worst: {L} were on the floor(, and the other side outscored them by {D} in that time)?',
+      (x, f, k, d) => 'el tramo que decidió el partido fue el peor de ' + x + ': ' + names(f) + ' estaban en pista' + (k ? ', y el rival los superó por ' + stat('points', d) + ' en ese tiempo' : '')],
+    ['the other side outscored them by {D} in that time', d => 'el rival los superó por ' + stat('points', d) + ' en ese tiempo'],
+    ['over every minute those five shared, {X} (outscored the opposition|were outscored) by {D} in {M}',
+      (x, k, d, m) => 'en todos los minutos que compartieron esos cinco, ' + sv(x, (/^outscored/i.test(k) ? 'superó al rival por ' : 'perdió por ') + stat('points', d) + ' en ' + m)],
+    ['(?:(their)|{X}{Z}) strongest group, {L}, (outscored the other side|was outscored) by {D} in {M}',
+      (t, x, f, k, d, m) => (t ? 'su mejor quinteto' : 'el mejor quinteto de ' + x) + ' (' + names(f) + ') ' + (/^outscored/i.test(k) ? 'superó al rival por ' : 'perdió por ') + stat('points', d) + ' en ' + m],
+    ['(the other end of it was ugly for|it went the other way for|the worst of it fell on) {X}, who were outscored by {D} in {M} with {L} out there',
+      (o, x, d, m, f) => ({ 'the other end of it was ugly for': 'en el otro lado, lo pasó mal ' + x, 'it went the other way for': 'al revés le fue a ' + x,
+        'the worst of it fell on': 'lo peor se lo llevó ' + x })[o.toLowerCase()] + ', que perdió por ' + stat('points', d) + ' en ' + m + ' con ' + names(f) + ' en pista'],
+
+    /* ---- how the ball moved, the play types, the shot clock (2026-10-08) ---- */
+    /* the passer and the scorer: "la conexión", "asistió 3 veces a" */
+    ['the most productive pairing was {X} to {X} for {X}: {W} baskets worth {W} points(, every one of them a three)?',
+      (a, b, x, c, p, t3) => 'la conexión más productiva fue la de ' + a + ' con ' + b + ' en ' + x + ': ' + cnt(c, 'canasta', 'canastas') + ' por valor de ' + cnt(p, 'punto', 'puntos') + (t3 ? ', todas de tres' : '')],
+    ['{X} found {X} {W} times for {X}, {W} points in all( and all of them threes)?',
+      (a, b, c, x, p, t3) => a + ' asistió ' + cnt(c, 'vez', 'veces') + ' a ' + b + ' en ' + x + ', ' + cnt(p, 'punto', 'puntos') + ' en total' + (t3 ? ', todos de triple' : '')],
+    ['for {X}, {X} and {X} connected {W} times, worth {W} points',
+      (x, a, b, c, p) => 'en ' + x + ', ' + a + yy(b) + b + ' conectaron ' + cnt(c, 'vez', 'veces') + ', por valor de ' + cnt(p, 'punto', 'puntos')],
+    ['{X} set up {W} of {X}{Z} {W} assisted baskets, finding {W} different scorers',
+      (p, a, x, b, c) => p + ' repartió ' + n(a) + ' de las ' + n(b) + ' asistencias de ' + x + ', a ' + n(c) + ' anotadores distintos'],
+    ['{X} scored {D} points off assists for {X}', (p, d, x) => p + ' anotó ' + stat('points', d) + ' tras asistencia con ' + x],
+    /* who scored a side's points in transition, on second chances, off turnovers; the mid-range */
+    ['{X} scored {W} of {X}{Z} {W} points {V}', (p, a, x, b, v) => p + ' anotó ' + n(a) + ' de los ' + n(b) + ' puntos de ' + x + ' ' + WHERE[v.toLowerCase()]],
+    ['neither side found the mid-range: {X} made {W} of {W} from there, {X} {W} of {W}',
+      (x, a, b, y, c, d) => 'ninguno de los dos encontró la media distancia: ' + x + ' anotó ' + n(a) + ' de ' + n(b) + ' desde ahí,' + yy(y) + y + ', ' + n(c) + ' de ' + n(d)],
+    ['{X} could not buy a mid-range basket, {W} of {W} from there', (x, a, b) => sv(x, 'estuvo negado en la media distancia') + ': ' + n(a) + ' de ' + n(b) + ' desde ahí'],
+    /* how long each side kept the ball, and what the early and the late shots were worth; the late one is often two
+       sentences once the writer's reviser has split it ("…went past 17 seconds. They scored 0.43 a time there…") */
+    ['{X} were the more patient side, taking {F} seconds a possession to {F} for {X}',
+      (x, a, b, y) => sv(x, 'fue el equipo más paciente') + ': ' + a + ' segundos por posesión, por ' + b + ' de ' + (who(y) || y)],
+    ['{X} used the clock: {F} seconds a possession, against {F} for {X}',
+      (x, a, b, y) => sv(x, 'agotó más el reloj') + ': ' + a + ' segundos por posesión, frente a ' + b + ' de ' + (who(y) || y)],
+    ['{X} were sharper early in the clock: in the first eight seconds they scored {F} points? a chance, {X} {F}',
+      (x, a, y, b) => sv(x, 'estuvo más acertado al principio de la posesión') + ': en los primeros ocho segundos anotó ' + a + ' puntos por oportunidad, y ' + (who(y) || y) + ', ' + b],
+    ['{X} ran the clock down and paid for it: {W} of their {W} chances went past {D} seconds(?:, and they scored {F} a time there against {F} overall)?',
+      (x, a, b, s, c, e) => sv(x, 'apuró las posesiones y lo pagó') + ': ' + n(a) + ' de sus ' + n(b) + ' posesiones pasaron de los ' + s + ' segundos' +
+        (c ? ', y en ellas anotó ' + c + ' puntos por posesión, frente a ' + e + ' en el global del partido' : '')],
+    ['{X} scored {F} a time there against {F} overall', (x, a, b) => sv(x, 'en ellas anotó ' + a + ' puntos por posesión, frente a ' + b + ' en el global del partido')],
 
     /* ---- the performances ---- */
     ['{X} led {X} with (a season-high )?{D} points{T}(, a season high)?(, well clear of their usual)?(, a triple-double)?',
@@ -629,7 +760,7 @@
       (p, x, a, b) => p + ' reapareció con ' + x + ' tras perderse ' + cnt(a, 'partido', 'partidos') + ' y jugó ' + cnt(b, 'minuto', 'minutos')],
     ['{X}’s? points took their season total past {D} for {X}', (p, d, x) => p + ' ya suma más de ' + d + ' puntos esta temporada con ' + x],
     ['by box plus-minus the best game on the floor was {X}’s? for {X}, ([+-]?\\d+(?:\\.\\d+)?)', (p, x, v) => 'según el box plus-minus, el mejor partido en pista fue el de ' + p + ', de ' + x + ', con un ' + v],
-    ['{X}’s? game for {X} was the best on the floor by box plus-minus, ([+-]?\\d+(?:\\.\\d+)?)', (p, x, v) => 'el partido de ' + p + ' con ' + x + ' fue el mejor en pista según el box plus-minus: ' + v],
+    ['{X}’s? game for {X} (?:was|were) the best on the floor by box plus-minus, ([+-]?\\d+(?:\\.\\d+)?)', (p, x, v) => 'el partido de ' + p + ' con ' + x + ' fue el mejor en pista según el box plus-minus: ' + v],
     ['box plus-minus rates {X} of {X} as the best player on the floor, at ([+-]?\\d+(?:\\.\\d+)?)', (p, x, v) => 'según el box plus-minus, ' + p + ', de ' + x + ', fue quien mejor jugó sobre la pista, con un ' + v],
 
     /* ---- the scout's note ---- */
@@ -639,10 +770,16 @@
       (l, x, q, y, r) => lab(l) && 'fue en ' + lab(l) + ' donde ' + x + ' ganó el partido: estuvo ' + pct(q) + ', mientras que ' + y + ' estuvo ' + pct(r)],
     ['{X} have had the better of (.+?) more than anything: they have been {Q} there, {X} {Q}',
       (x, l, q, y, r) => lab(l) && x + ' domina sobre todo en ' + lab(l) + ': está ' + pct(q) + ', mientras que ' + y + ' está ' + pct(r)],
-    ['the widest gap between them was (.+?), and it went {X}’s? way — they were {Q} there, {X} {Q} — but it was not enough',
+    ['the widest gap between them was (.+?), and it went {X}{Z} way — they were {Q} there, {X} {Q} — but it was not enough',
       (l, x, q, y, r) => lab(l) && 'la mayor diferencia entre ambos estuvo en ' + lab(l) + ', y fue para ' + x + ': estuvo ' + pct(q) + ', mientras que ' + y + ' estuvo ' + pct(r) + ', pero no le bastó'],
     ['the widest gap so far is (.+?), and it favours {X}(, who trail)?: they have been {Q} there, {X} {Q}',
       (l, x, tr, q, y, r) => lab(l) && 'la mayor diferencia hasta ahora está en ' + lab(l) + ', y favorece a ' + x + (tr ? ', que va por detrás' : '') + ': está ' + pct(q) + ', mientras que ' + y + ' está ' + pct(r)],
+    /* the same two, split in two by the writer's reviser at their ", and" */
+    ['the widest gap (between them was|so far is) (.+?)', (t, l) => lab(l) && 'la mayor diferencia ' + (/so far/i.test(t) ? 'hasta ahora está en ' : 'entre ambos estuvo en ') + lab(l)],
+    ['it went {X}{Z} way — they were {Q} there, {X} {Q} — but it was not enough',
+      (x, q, y, r) => 'cayó del lado de ' + x + ': estuvo ' + pct(q) + ', mientras que ' + y + ' estuvo ' + pct(r) + ', pero no le bastó'],
+    ['it favours {X}(, who trail)?: they have been {Q} there, {X} {Q}',
+      (x, tr, q, y, r) => 'favorece a ' + x + (tr ? ', que va por detrás' : '') + ': está ' + pct(q) + ', mientras que ' + y + ' está ' + pct(r)],
     ['(the other gaps worth the film room|the other gaps to watch after the break|two more for the film room|further down the list): (.+)', (w, l) => {
       const it = l.split(/\) and /).map((s, i, a) => (i < a.length - 1 ? s + ')' : s)).map(s => {
         const m = /^(.+?) \((.*?), (\d+) percentile points (?:clear|ahead)\)$/.exec(s);
@@ -656,13 +793,19 @@
       (x, t, l) => labs(l) && x + (/came/i.test(t) ? ' salió por delante en ' : ' va por delante en ') + labs(l) + '; como aún no hay escalas de liga para esta competición, es una comparación entre los dos equipos y no con el resto'],
     ['{X} (had|have had) the better of (.+?) — (?:the part of their game that did not cost them|something to build on after the break)',
       (x, t, l) => labs(l) && x + (/^had$/i.test(t) ? ' fue mejor en ' + labs(l) + ': la parte de su juego que no le costó el partido' : ' está siendo mejor en ' + labs(l) + ': algo sobre lo que construir tras el descanso')],
+    /* the same comparison as the writer now puts it, the caveat a sentence of its own */
+    ['{X} (came out ahead|are ahead) on (.+?)', (x, t, l) => labs(l) && sv(x, (/came/i.test(t) ? 'salió por delante en ' : 'va por delante en ') + labs(l))],
+    ['there is no league scale for this competition yet, so that is a comparison of the two sides with each other',
+      () => 'aún no hay escala de liga para esta competición, así que es una comparación entre los dos equipos'],
+    ['{X} (had|have had) the better of (.+?), (?:which is where they can take some credit|something to build on after the break)',
+      (x, t, l) => labs(l) && sv(x, /^had$/i.test(t) ? 'fue mejor en ' + labs(l) + ', y ahí puede sacar algo positivo' : 'está siendo mejor en ' + labs(l) + ', algo sobre lo que construir tras el descanso')],
     ['{X} (?:did their best work|are doing their best work) on (.+?), where they (were|have been) {Q}(?:, with (.+?) not far behind)?',
       (x, l, t, q, r) => lab(l) && (!r || labs(r)) && 'lo mejor de ' + x + (/^were$/i.test(t) ? ' estuvo en ' : ' está en ') + lab(l) + ', donde ' + (/^were$/i.test(t) ? 'estuvo ' : 'está ') + pct(q) + (r ? ', con ' + labs(r) + ' no muy lejos' : '')],
     ['what they will (?:still want back|want to tighten) starts with (.+?), where they (were|have been) {Q}(?:; (.+?) (?:lagged too|are lagging too))?',
       (l, t, q, r) => lab(l) && (!r || labs(r)) && 'lo que ' + (/^were$/i.test(t) ? 'querrá recuperar' : 'querrá ajustar') + ' empieza por ' + lab(l) + ', donde ' + (/^were$/i.test(t) ? 'estuvo ' : 'está ') + pct(q) +
         (r ? '; ' + labs(r) + ' también ' + (/^were$/i.test(t) ? (many(labs(r)) ? 'se quedaron' : 'se quedó') : (many(labs(r)) ? 'se están' : 'se está') + ' quedando') + ' atrás' : '')],
     /* each side's best and worst, three ways into each (2026-10-07) */
-    ['(.+?) (?:was|were) {X}’s? strongest suit: they were {Q} there(?:, with (.+?) not far behind)?',
+    ['(.+?) (?:was|were) {X}{Z} strongest suit: they were {Q} there(?:, with (.+?) not far behind)?',
       (l, x, q, r) => lab(l) && (!r || labs(r)) && lab(l) + (many(lab(l)) ? ' fueron' : ' fue') + ' el punto fuerte de ' + x + ': ahí estuvo ' + pct(q) + (r ? ', con ' + labs(r) + ' no muy lejos' : '')],
     /* two more ways into each side's best and worst (2026-10-08): five a side, picked by the game */
     ['for {X}, the high point was (.+?): they were {Q} there(?:, with (.+?) not far behind)?',
@@ -686,14 +829,20 @@
     ['{X} (also struggled|are also struggling) with (.+?)', (x, t, l) => labs(l) && sv(x, (/struggled/i.test(t) ? 'también sufrió en ' : 'también está sufriendo en ') + labs(l))],
     ['{X} had trouble with (.+?) too', (x, l) => labs(l) && sv(x, 'también tuvo problemas con ' + labs(l))],
     ['{X} fell short on (.+?) as well', (x, l) => labs(l) && sv(x, 'también flojeó en ' + labs(l))],
-    ['if there is one thing to take into the week, it is (.+?): {X} were {Q} there, (' + alt(TAKE) + ')',
-      (l, y, q, k) => lab(l) && 'si hay algo que llevarse a la semana de trabajo, ' + (many(lab(l)) ? 'son ' : 'es ') + lab(l) + ': ' + y + ' estuvo ' + pct(q) + ', ' + TAKE[k.toLowerCase()]],
-    ['the one thing for {X} to take into the week is (.+?): they were {Q} there, (' + alt(TAKE) + ')',
-      (y, l, q, k) => lab(l) && 'lo que ' + y + ' debe llevarse a la semana de trabajo ' + (many(lab(l)) ? 'son ' : 'es ') + lab(l) + ': estuvo ' + pct(q) + ', ' + TAKE[k.toLowerCase()]],
-    ['the monday work for {X} starts with (.+?): they were {Q} there, (' + alt(TAKE) + ')',
-      (y, l, q, k) => lab(l) && 'el trabajo del lunes para ' + y + ' empieza por ' + lab(l) + ': estuvo ' + pct(q) + ', ' + TAKE[k.toLowerCase()]],
-    ['the one thing to fix at the break is (.+?): {X} have been {Q} there, further behind the league than anything else in their game',
-      (l, y, q) => lab(l) && 'lo que hay que corregir en el descanso ' + (many(lab(l)) ? 'son ' : 'es ') + lab(l) + ': ' + y + ' está ' + pct(q) + ', más por detrás de la liga que en cualquier otro aspecto de su juego'],
+    /* the closing line's ending is cut by the writer's reviser when an earlier sentence said the same, and its third
+       ending can be split off as a sentence of its own ("Nothing else in their game sat further behind the league.") */
+    ['if there is one thing to take into the week, it is (.+?): {X} were {Q} there(?:, (' + alt(TAKE) + '))?',
+      (l, y, q, k) => lab(l) && 'si hay algo que llevarse a la semana de trabajo, ' + (many(lab(l)) ? 'son ' : 'es ') + lab(l) + ': ' + y + ' estuvo ' + pct(q) + (k ? ', ' + TAKE[k.toLowerCase()] : '')],
+    ['the one thing for {X} to take into the week is (.+?): they were {Q} there(?:, (' + alt(TAKE) + '))?',
+      (y, l, q, k) => lab(l) && 'lo que ' + y + ' debe llevarse a la semana de trabajo ' + (many(lab(l)) ? 'son ' : 'es ') + lab(l) + ': estuvo ' + pct(q) + (k ? ', ' + TAKE[k.toLowerCase()] : '')],
+    ['the monday work for {X} starts with (.+?): they were {Q} there(?:, (' + alt(TAKE) + '))?',
+      (y, l, q, k) => lab(l) && 'el trabajo del lunes para ' + y + ' empieza por ' + lab(l) + ': estuvo ' + pct(q) + (k ? ', ' + TAKE[k.toLowerCase()] : '')],
+    ['nothing else in their game sat further behind the league', () => 'nada en su juego quedó más por detrás de la liga'],
+    ['the one thing to fix at the break is (.+?): {X} have been {Q} there(, further behind the league than anything else in their game)?',
+      (l, y, q, k) => lab(l) && 'lo que hay que corregir en el descanso ' + (many(lab(l)) ? 'son ' : 'es ') + lab(l) + ': ' + y + ' está ' + pct(q) + (k ? ', más por detrás de la liga que en cualquier otro aspecto de su juego' : '')],
+    /* "…; the defensive glass and free throws lagged too", split off at its semicolon */
+    ['(.+?) lagged too', l => labs(l) && lagged(labs(l))],
+    ['(.+?) are lagging too', l => labs(l) && labs(l) + ' también se ' + (many(labs(l)) ? 'están' : 'está') + ' quedando atrás'],
 
     /* ---- the half-time report ---- */
     ['{X} had the best spell of the half, an? {D}–0 run in the {O}', (x, d, o) => sv(x, 'firmó el mejor tramo de la primera parte') + ', un parcial de ' + sc(d, 0) + ' en ' + ord(o)],
@@ -735,7 +884,7 @@
     ['{X} hand {X} their first defeat of the season', (x, y) => x + ' le endosa a ' + y + ' su primera derrota de la temporada'],
     ['{X} go top with {S} win over {X}', (x, a, b, y) => x + ' gana a ' + y + ' (' + sc(a, b) + ') y se pone líder'],
     ['{X} stun {X} {S}', (x, y, a, b) => x + ' da la sorpresa ante ' + y + ' (' + sc(a, b) + ')'],
-    ['{X} end {X}’s? {D}-game winning run', (x, y, d) => x + ' corta la racha de ' + d + ' victorias de ' + y],
+    ['{X} end {X}{Z} {D}-game winning run', (x, y, d) => x + ' corta la racha de ' + d + ' victorias de ' + y],
     ['{X} end {D}-game losing run against {X}', (x, d, y) => x + ' rompe su racha de ' + d + ' derrotas ante ' + y],
     ['{X} off the mark at last against {X}', (x, y) => x + ' estrena por fin su casillero de victorias ante ' + y],
     ['{X} make it {D} straight with {S} win over {X}', (x, d, a, b, y) => x + ' suma ' + d + ' victorias seguidas tras ganar a ' + y + ' (' + sc(a, b) + ')'],
@@ -745,6 +894,36 @@
     ['{X}’s? league season-best {D} is not enough for {X}', (p, d, x) => 'los ' + d + ' puntos de ' + p + ', máxima anotación de la liga esta temporada, no le bastan a ' + x],
     ['{X} wins it for {X} at the death against {X}', (p, x, y) => p + ' da la victoria a ' + x + ' en el último suspiro ante ' + y],
     ['(.+?) alone (was|were) worth {D} points? to {X}', (l, v, d, x) => { const f = fac(l); return f && 'solo ' + f + ' ya le ' + (many(f) ? 'valieron ' : 'valió ') + stat('points', d) + ' a ' + x; }],
+    /* a run, a stat or a night, when it is the sharpest thing the game did (the lede's angles): headline, then standfirst */
+    ['{X} blow it open with an? {D}–0 run to beat {X}', (x, d, y) => x + ' rompe el partido con un parcial de ' + sc(d, 0) + ' y gana a ' + y],
+    ['{X} beat {X} {S} after an? {D}–0 run in the {O}', (x, y, a, b, d, o) => x + ' gana a ' + y + ' (' + sc(a, b) + ') tras un parcial de ' + sc(d, 0) + ' en ' + ord(o)],
+    ['{X} win the boards {S} to beat {X}', (x, a, b, y) => x + ' gana la batalla del rebote (' + sc(a, b) + ') y se impone a ' + y],
+    ['{X} own the paint, {S}, to beat {X}', (x, a, b, y) => x + ' domina la zona (' + sc(a, b) + ') y gana a ' + y],
+    ['{X} run {X} ragged, {D} fast-break points to {D}', (x, y, a, b) => x + ' pasa por encima de ' + y + ' al contraataque (' + a + ' puntos por ' + b + ')'],
+    ['{X} lean on an? {S} bench edge to beat {X}', (x, a, b, y) => x + ' se apoya en su banquillo (' + sc(a, b) + ') para ganar a ' + y],
+    ['{X} score {D} points off turnovers to beat {X}', (x, d, y) => x + ' castiga las pérdidas con ' + d + ' puntos y gana a ' + y],
+    ['{X} live off second chances, {S}, to beat {X}', (x, a, b, y) => x + ' vive de las segundas oportunidades (' + sc(a, b) + ') y gana a ' + y],
+    ['{X} hit {D} threes to beat {X}', (x, d, y) => x + ' gana a ' + y + ' con ' + d + ' triples'],
+    ['{X} pick {X} clean, {D} steals to {D}', (x, y, a, b) => x + ' le roba la cartera a ' + y + ': ' + a + ' recuperaciones por ' + b],
+    ['{X} share it, {D} assists to {D}, to beat {X}', (x, a, b, y) => x + ' reparte el juego (' + a + ' asistencias por ' + b + ') y gana a ' + y],
+    ['{X} out-shoot {X} {D}% to {D}% eFG', (x, y, a, b) => x + ' supera en el tiro a ' + y + ' (' + a + '% a ' + b + '% de eFG%)'],
+    ['{X} posts a triple-double in defeat for {X}', (p, x) => 'el triple-doble de ' + p + ' no evita la derrota de ' + x],
+    ['{X} scores {D} as {X} beat {X}', (p, d, x, y) => p + ' anota ' + d + ' puntos y ' + x + ' gana a ' + y],
+    ['{X} hits {D} to lift {X} past {X}', (p, d, x, y) => p + ' anota ' + d + ' puntos y da a ' + x + ' la victoria ante ' + y],
+    ['{X}{Z} {D} is not enough for {X}', (p, d, x) => 'los ' + d + ' puntos de ' + p + ' no le bastan a ' + x],
+    ['{X} outscored them {S} in the paint', (x, a, b) => sv(x, 'se impuso en la zona por ' + sc(a, b))],
+    ['{X}{Z} bench outscored theirs {S}', (x, a, b) => 'el banquillo de ' + x + ' superó al banquillo rival por ' + sc(a, b)],
+    ['{X} scored {D} points off turnovers to {D}', (x, a, b) => sv(x, 'anotó ' + stat('points', a) + ' tras pérdida, por ' + b + ' del rival')],
+    ['{X} took the second chances {S}', (x, a, b) => sv(x, 'ganó la batalla de las segundas oportunidades por ' + sc(a, b))],
+    ['{X} made {D} threes to {D}', (x, a, b) => sv(x, 'anotó ' + stat('threes', a) + ', por ' + b + ' del rival')],
+    ['{X} had {D} (steals|assists) to {D}', (x, a, k, b) => sv(x, (/^steals$/i.test(k) ? 'firmó ' : 'repartió ') + stat(k.toLowerCase(), a) + ', por ' + b + ' del rival')],
+    ['{X} shot {D}% eFG to {D}%', (x, a, b) => sv(x, 'tiró con un ' + a + '% de eFG%, por el ' + b + '% del rival')],
+    ['{X} had a triple-double for {X}', (p, x) => p + ' firmó un triple-doble con ' + x],
+    ['{X} scored {D} (for|in defeat for) {X}(?: on {W} of {W} shooting)?(?:, adding (.+))?', (p, d, k, x, a, b, l) => {
+      const add = l ? l.split(/, and |, | and /).map(s => { const m = new RegExp('^(' + WORDS + ') (rebounds|assists|steals|blocks)$', 'i').exec(s); return m ? stat(m[2].toLowerCase(), n(m[1])) : null; }) : [];
+      if (add.indexOf(null) >= 0) return null;
+      return p + ' anotó ' + stat('points', d) + (/defeat/i.test(k) ? ' en la derrota de ' : ' con ') + x + (a ? ', con ' + n(a) + ' de ' + n(b) + ' en tiros de campo' : '') + (add.length ? ', y sumó ' + list(add) : '');
+    }],
     ['{X} and {X} level at {S} at the half', (x, y, a, b) => x + yy(y) + y + ' llegan igualados al descanso (' + sc(a, b) + ')'],
     ['{X} edge {X} {S} at the break', (x, y, a, b) => x + ' manda por la mínima ante ' + y + ' al descanso (' + sc(a, b) + ')'],
     ['{X} lead {X} by {D} at the half', (x, y, d) => x + ' aventaja en ' + d + ' puntos a ' + y + ' al descanso'],
@@ -761,8 +940,11 @@
     ['{X}’s? {D} sees off {X}', (p, d, y) => 'los ' + d + ' puntos de ' + p + ' tumban a ' + y],
     ['{X} beat {X} {S}', (x, y, a, b) => (/^(on|at|in front of) /i.test(x) ? null : x + ' gana a ' + y + ' (' + sc(a, b) + ')')],
     ['an? {D}–0 run in the {O} settled it', (d, o) => 'un parcial de ' + sc(d, 0) + ' en ' + ord(o) + ' decidió el partido'],
-    ['a {M} stretch swung it by {D}', (m, d) => 'un tramo de ' + m + ' inclinó el partido por ' + stat('points', d)],
-    ['the shooting went {X}’s? way, {F}% eFG to {F}%', (x, a, b) => 'el tiro fue para ' + x + ': ' + a + '% de eFG% frente a ' + b + '%'],
+    ['an? {M} stretch swung it by {D}', (m, d) => 'un tramo de ' + m + ' inclinó el partido por ' + stat('points', d)],
+    /* the run or the stretch of the side that lost (2026-10-08): it settled nothing */
+    ['{X}{Z} {D}–0 run in the {O} was not enough', (x, d, o) => 'a ' + x + ' no le bastó su parcial de ' + sc(d, 0) + ' en ' + ord(o)],
+    ['an? {M} stretch worth {D} to {X} was not enough', (m, d, x) => 'a ' + x + ' no le bastó un tramo de ' + m + ' en el que sacó ' + stat('points', d) + ' de ventaja'],
+    ['the shooting went {X}{Z} way, {F}% eFG to {F}%', (x, a, b) => 'el tiro fue para ' + x + ': ' + a + '% de eFG% frente a ' + b + '%'],
     ['possessions decided it: {F}% turnover rate for {X}, {F}% against', (a, x, b) => 'las posesiones decidieron: ' + a + '% de pérdidas para ' + x + ', ' + b + '% para su rival'],
     ['the offensive glass belonged to {X}, {F}% to {F}%', (x, a, b) => 'el rebote ofensivo fue de ' + x + ': ' + a + '% frente a ' + b + '%'],
     ['the whistle sent {X} to the line far more often', x => x + ' fue mucho más a menudo a la línea de tiros libres'],
@@ -784,7 +966,32 @@
     ['{X} have lost their last {W}', (x, w) => sv(x, Number(n(w)) === 1 ? 'perdió su último partido' : 'ha perdido sus ' + n(w) + ' últimos partidos')],
     ['neither has lost yet', () => 'ninguno de los dos ha perdido todavía'],
     ['{X} have won {W} of their last five; {X} {W}', (x, a, y, b) => sv(x, 'ha ganado ' + n(a) + ' de sus últimos cinco partidos') + '; ' + y + ', ' + (Number(n(b)) === 0 ? 'ninguno' : n(b))],
-    ['{X} won the only meeting so far, {S}', (x, a, b) => sv(x, 'ganó el único precedente de la temporada') + ' (' + sc(a, b) + ')'],
+    ['{X} won the only meeting so far, {S}(?:, with {D} from {X})?', (x, a, b, d, p) => sv(x, 'ganó el único precedente de la temporada') + ' (' + sc(a, b) + ')' + (d ? ', con ' + stat('points', d) + ' de ' + p : '')],
+    /* how each comes in (2026-10-08): its last game, said "llega tras ganar…" or, for the second of two, "en su último
+       partido, … ganó…"; a run's latest game; the two meeting last time out; home and away; close games */
+    ['{X} come in off an? {S} (home win|win|home defeat|defeat)(?: (?:over|at|to) {X}| away from home)?' + CARRY(','),
+      (x, a, b, what, y, k, d, e, s, p) => {
+        const won = /win/i.test(what), home = /home/i.test(what);
+        const where = home ? (y ? (won ? ' en casa a ' : ' en casa ante ') + y : ' en casa') : (y ? ' en la pista de ' + y : ' a domicilio');
+        return sv(x, 'llega tras ' + (won ? 'ganar' : 'perder') + where + ' por ' + sc(a, b)) + carry(k, d, e, s, p);
+      }],
+    ['{X} (beat {X}|won|lost) {S} (at home to .+?|at home|at .+?|away) last time out' + CARRY(','), (x, v, y, a, b, w, k, d, e, s, p) => {
+      const u = ubi(w);
+      return u && 'en su último partido, ' + sv(x, (/^lost$/i.test(v) ? 'perdió' : 'ganó') + (y ? ' en casa a ' + y : u) + ' por ' + sc(a, b)) + carry(k, d, e, s, p);
+    }],
+    /* a run and its latest game: "…, la última por 90-60 en la pista de X" (a run of wins), "el último" (of games) */
+    ['(.+?), the latest {S} (at home to .+?|at home|at .+?|away)' + CARRY(''), (r, a, b, w, k, d, e, s, p) => {
+      const t = first(COMPILED, r), u = ubi(w);
+      return t && u && t + ', ' + (/ won .+ straight$/i.test(r) ? 'la última' : 'el último') + ' por ' + sc(a, b) + u + carry(k, d, e, s, p);
+    }],
+    ['they met last time out, {X} winning {S} (at home|away)' + CARRY(''),
+      (x, a, b, w, k, d, e, s, p) => 'los dos se enfrentaron en su último partido: ' + sv(x, 'ganó por ' + sc(a, b) + ' ' + HA[w.toLowerCase()]) + carry(k, d, e, s, p)],
+    ['{X} have (won|lost) all {W} (at home|on the road)', (x, k, w, h) => sv(x, 'ha ' + (/won/i.test(k) ? 'ganado' : 'perdido') + ' sus ' + n(w) + ' partidos ' + HA[h.toLowerCase()])],
+    ['{X} are {S} (at home|on the road|away) and {S} (at home|on the road|away)',
+      (x, a, b, h, c, d, h2) => sv(x, 'tiene un balance de ' + sc(a, b) + ' ' + HA[h.toLowerCase()] + ' y de ' + sc(c, d) + ' ' + HA[h2.toLowerCase()])],
+    ['in games decided by five points or fewer, {X} are {S} and {X} {S}',
+      (x, a, b, y, c, d) => 'en los partidos decididos por cinco puntos o menos, ' + x + ' tiene un balance de ' + sc(a, b) + yy(y) + y + ', de ' + sc(c, d)],
+    ['{X} are {S} in games decided by five points or fewer', (x, a, b) => sv(x, 'tiene un balance de ' + sc(a, b) + ' en los partidos decididos por cinco puntos o menos')],
     ['{X} play for the second time in two days; {X} have had {W} days off', (x, y, w) => sv(x, 'juega por segunda vez en dos días') + '; ' + y + ' ha tenido ' + cnt(w, 'día', 'días') + ' de descanso'],
     ['weighed by what wins in this league, the season’s numbers make {X} about {A} points? better here',
       (x, a) => 'según lo que gana partidos en esta liga, los números de la temporada dan a ' + x + ' ' + abt(a) + ' de ventaja en este partido'],
@@ -794,7 +1001,7 @@
       if (!f || !t) return null;
       return (!o ? 'solo ' + f + ' ya vale más que eso' : /most/i.test(o) ? 'la mayor parte de esa ventaja está en ' + f : 'lo que más pesa es ' + f) + ': ' + t + ', lo que vale ' + abt(a);
     }],
-    ['{X}’s? edge is (.+?), about {A} points? back', (x, l, a) => { const f = fac(l); return f && 'la ventaja de ' + x + ' está en ' + f + ', que le devuelve ' + abt(a); }],
+    ['{X}{Z} edge is (.+?), about {A} points? back', (x, l, a) => { const f = fac(l); return f && 'la ventaja de ' + x + ' está en ' + f + ', que le devuelve ' + abt(a); }],
     ['on these numbers it is close to a toss-up', () => 'con estos números, es casi un cara o cruz'],
     ['the numbers lean {X}, but not by much: a single run settles games closer than that', x => 'los números se inclinan por ' + x + ', pero no por mucho: un solo parcial decide partidos más igualados que este'],
     ['the numbers make {X} clear favourites', x => 'para los números, ' + x + ' es claro favorito'],
@@ -811,11 +1018,11 @@
       (x, a, y, b) => 'en lo que va de temporada apenas hay diferencia entre ambos: ' + x + ', con un net rating de ' + a + ' por cada 100 posesiones' + yy(y) + y + ', con ' + b],
     ['{X} have been the better team (by a distance|clearly|narrowly) — {F} net points per 100 against {F} for {X}',
       (x, h, a, b, y) => x + ' ha sido ' + ({ 'by a distance': 'con diferencia', clearly: 'claramente', narrowly: 'por poco' })[h.toLowerCase()] + ' el mejor equipo: net rating de ' + a + ' frente a ' + b + ' de ' + y],
-    ['the matchup to watch is {X}’s? (shooting|turnovers|offensive glass|free throws) against {X}’s?: on (effective field goal %|turnover rate|offensive rebound %|free throw rate) {X} post {F}% where {X} concede {F}%',
+    ['the matchup to watch is {X}{Z} (shooting|turnovers|offensive glass|free throws) against {X}{Z}: on (effective field goal %|turnover rate|offensive rebound %|free throw rate) {X} post {F}% where {X} concede {F}%',
       (x, l, y, f, x2, a, y2, b) => 'el duelo a vigilar: ' + lab(l) + ' de ' + x + ' frente a la defensa de ' + y + '. En ' +
         ({ 'effective field goal %': 'eFG%', 'turnover rate': 'porcentaje de pérdidas', 'offensive rebound %': 'porcentaje de rebote ofensivo', 'free throw rate': 'ratio de tiros libres' })[f.toLowerCase()] +
         ', ' + x + ' firma un ' + a + '% y ' + y + ' concede un ' + b + '%'],
-    ['they want different games: {X} have played at {F} possessions per 40 to {X}’s? {F}, so whoever sets the tempo has already won something',
+    ['they want different games: {X} have played at {F} possessions per 40 to {X}{Z} {F}, so whoever sets the tempo has already won something',
       (x, a, y, b) => 'quieren partidos distintos: ' + x + ' juega a ' + a + ' posesiones por cada 40 minutos' + yy(y) + y + ' a ' + b + ', así que quien imponga el ritmo tendrá mucho ganado'],
     ['{X} live behind the arc — {F}% of their shots are threes(?:, at {F}%)? — which makes this a game that can swing quickly either way',
       (x, s, a) => x + ' vive del triple: el ' + s + '% de sus tiros son triples' + (a ? ', con un ' + a + '% de acierto' : '') + ', así que este partido puede girar rápido hacia cualquier lado'],
@@ -950,8 +1157,26 @@
   const finish = (out, whole) => (out == null ? null : tidy(out, whole) + (/\.$/.test(whole) ? '.' : ''));
   /* one sentence at a time: a paragraph is left for the engine to split, so a name at the end
      of a template can never swallow the sentence after it */
-  const BREAK = /(?<=[.!?])\s+(?=[A-Z0-9“"‘'(])/;
+  /* the engine's own sentence break: an initial or a title is not the end of a sentence ("P. Reynal Pons", "Site Sportif
+     St. Léonard"), so a sentence with one in it is still one sentence here */
+  const BREAK = /(?<!(?:^|[\s(])(?:[A-Z]|Mr|Mrs|Ms|Dr|St|Jr|Sr|vs)\.)(?<=[.!?])\s+(?=[A-Z0-9“"‘'(])/;
   const sentence = s => (BREAK.test(s) ? null : finish(clause(s.replace(/\.$/, ''), new Map()), s));
+  /* A NAME WITH FULL STOPS IN IT IS NOT TWO SENTENCES: "Valencia B.C.", "C.B. Al-Qazeres", "Pol. Maloste" end a sentence
+     to the splitter. Each piece of a paragraph is tried on its own, and a piece that will not translate is tried again
+     with the next one or two joined on; the paragraph comes back whole or not at all (the engine then goes sentence by
+     sentence). `tr` translates one sentence, or null. */
+  const pieces = (parts, tr) => {
+    const out = [];
+    for (let i = 0; i < parts.length; i++) {
+      let t = null, j = i;
+      for (; j < parts.length && j < i + 3 && t == null; j++) t = tr(parts.slice(i, j + 1).join(' '));
+      if (t == null) return null;
+      out.push(t);
+      i = j - 1;
+    }
+    return out.join(' ');
+  };
+  const paragraph = s => { const parts = s.split(BREAK); return parts.length < 2 ? null : pieces(parts, p => finish(clause(p.replace(/\.$/, ''), new Map()), p)); };
   const one = (re, fn) => m => {
     if (BREAK.test(m[0])) return null;
     const k = re.exec(m[0].replace(/\.$/, ''));
@@ -959,14 +1184,18 @@
   };
 
   /* the headlines and standfirsts also travel on news cards outside any report container */
-  const HEADLINE = RULES.filter(r => /overwhelm|outlast|steal it late|overturn|come from behind|pull away|triple-double carries|sees off| edge | tie | beat |level at|lead |\{X\} (?:hand|stun|end) |go top with|off the mark at last against|straight with|stay perfect|season-best|at the death/.test(r[0]))
+  const HEADLINE = RULES.filter(r => /overwhelm|outlast|steal it late|overturn|come from behind|pull away|triple-double carries|sees off| edge | tie | beat |level at|lead |\{X\} (?:hand|stun|end) |go top with|off the mark at last against|straight with|stay perfect|season-best|at the death|ragged|clean, \{D\} steals|out-shoot|triple-double in defeat|to lift|\{Z\} \{D\} is not enough/.test(r[0]))
     .map(([src, fn]) => [rx(src, '\\.?'), one(rx(src), fn)]);
   /* (the season around it, the moment and a facet's worth lead standfirsts too, 2026-10-07) */
   const STANDFIRST = [/settled it/, /stretch swung/, /shooting went/, /possessions decided/, /offensive glass belonged/, /whistle sent/,
     /down with five minutes left$/, /nearly went/, /then it was not/, /with five to play$/, /trailed by \{D\} at the break/, /tight throughout/,
     /point margin/, /^full time$/, /twenty minutes/, /won both quarters/, /took over in the second/, /built the lead/, /lead by \{D\}$/,
     /had won their first/, /^the win takes/, /started the night/, /^it ended \{X\}/, /^it ended a run of/, /first win of the season, at the/,
-    /^it is \{W\} wins in a row/, /are still unbeaten/, /should have been/, /alone \(was\|were\) worth/, /won it for \{X\}$/, /by anyone in a game/]
+    /^it is \{W\} wins in a row/, /are still unbeaten/, /should have been/, /alone \(was\|were\) worth/, /won it for \{X\}$/, /by anyone in a game/,
+    /* the lede's stat and player lines (2026-10-08) */
+    /won the boards \{S\}$/, /on the break to \{D\}$/, /outscored them \{S\} in the paint/, /bench outscored theirs/, /points off turnovers to \{D\}$/,
+    /took the second chances/, /made \{D\} threes to/, /had \{D\} \(steals\|assists\) to/, /shot \{D\}% eFG to/, /had a triple-double for \{X\}$/, /\(for\|in defeat for\)/,
+    /run in the \{O\} was not enough/, /stretch worth \{D\} to \{X\} was not enough/]
     .map(k => RULES.find(r => k.test(r[0]))).filter(Boolean).map(([src, fn]) => [rx(src), fn]);
 
   I.register('es', {
@@ -1038,7 +1267,7 @@
       /* one per template (the full stop is read off, then the template is matched without it),
          and last the composite: a sentence the writer joined from several templates */
       report: COMPILED.map(([re, fn], i) => [rx(RULES[i][0], '\\.?'), one(re, fn)])
-        .concat([[/^[\s\S]*[A-Za-z][\s\S]*$/, m => sentence(m[0])]])
+        .concat([[/^[\s\S]*[A-Za-z][\s\S]*$/, m => sentence(m[0]) || paragraph(m[0])]])
     },
     sentences: ['report'],
 
@@ -1046,9 +1275,7 @@
        the injury page's counts */
     patterns: HEADLINE.concat([
       [/^[A-Z][^]*\.$/, m => {
-        const parts = m[0].split(/(?<=[.!?])\s+(?=[A-Z0-9])/);
-        const out = parts.map(p => finish(first(STANDFIRST, p.replace(/\.$/, '')), p));
-        return out.indexOf(null) >= 0 ? null : out.join(' ');
+        return pieces(m[0].split(BREAK), p => finish(first(STANDFIRST, p.replace(/\.$/, '')), p));
       }],
       [/^(\d+) players? out( so far)?$/i, m => m[1] + ' ' + pl(m[1], 'jugador', 'jugadores') + ' de baja' + (m[2] ? ' (por ahora)' : '')],
       [/^(\d+) out$/i, m => m[1] + ' ' + pl(m[1], 'baja', 'bajas')],

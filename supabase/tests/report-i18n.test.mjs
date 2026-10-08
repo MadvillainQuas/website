@@ -244,6 +244,59 @@ const S = {
     'Ada Shaw has scored 20 or more in every game this season for Neon City.',
     'Ada Shaw is averaging 21.3 over the last three for Neon City, up from 14.0 for the season.',
     'Ada Shaw of Neon City needs eight for 300 points this season.'
+  ],
+  /* the preview's wire-service lines (2026-10-08): how each side comes in, a run's latest game, home and away, close
+     games, the meeting with whoever carried it, and the season's lean said against the rounded figures */
+  comesIn: [
+    'Neon City come in off a 92–70 home win over Harbour Bay, with 31 from Ada Shaw.',
+    'Neon City come in off an 88–86 win at Bristol Flyers, with 26 points and 11 assists from Ada Shaw.',
+    'Neon City come in off an 83–72 defeat at Bristol Flyers, despite 20 from Ada Shaw.',
+    'Neon City come in off a 77–75 home defeat to Cheshire Phoenix.',
+    'Neon City come in off a 90–60 home win.',
+    'Neon City come in off a 90–60 win away from home, with 24 points and 12 rebounds from Ada Shaw.',
+    'Neon City come in off a 90–60 home defeat.',
+    'Neon City come in off a 90–60 defeat away from home.',
+    'Harbour Bay beat Cheshire Phoenix 84–79 at home last time out, with 24 from Bo Lind.',
+    'Harbour Bay won 84–79 at Cheshire Phoenix last time out.',
+    'Harbour Bay lost 84–79 at home to Cheshire Phoenix last time out, despite 27 from Bo Lind.',
+    'Harbour Bay lost 84–79 at Cheshire Phoenix last time out.',
+    'Harbour Bay won 84–79 at home last time out.',
+    'Harbour Bay lost 84–79 away last time out, despite 22 points and 10 rebounds from Bo Lind.',
+    'Neon City have won four straight, the latest 90–60 at Bristol Flyers.',
+    'Neon City have won four straight, the latest 92–70 at home to Harbour Bay with 31 from Ada Shaw.',
+    'Harbour Bay have lost their last three, the latest 96–71 at home to Cheshire Phoenix despite 25 from Bo Lind.',
+    'Harbour Bay are still without a win in four, the latest 93–89 at Bristol Flyers despite 30 points and 11 rebounds from Bo Lind.',
+    'Neon City are unbeaten in five, the latest 81–79 away.',
+    'Neon City are unbeaten in five, the latest 81–79 at home with 22 points and 10 assists from Ada Shaw.',
+    'They met last time out, Harbour Bay winning 98–76 away.',
+    'They met last time out, Neon City winning 84–79 at home with 24 from Ada Shaw.',
+    'Neon City have won all four at home.',
+    'Neon City have lost all three at home.',
+    'Harbour Bay have won all three on the road.',
+    'Harbour Bay have lost all five on the road.',
+    'Neon City are 6–1 at home and 1–5 away.',
+    'Harbour Bay are 1–5 on the road and 6–1 at home.',
+    'Harbour Bay won the only meeting so far, 80–70, with 24 from Bo Lind.',
+    'In games decided by five points or fewer, Neon City are 4–0 and Harbour Bay 1–3.',
+    'Neon City are 4–0 in games decided by five points or fewer.',
+    'The shooting alone is worth more than that: expect Neon City to shoot about 59% eFG to 52%, worth about seven points.',
+    'They want different games: Neon City have played at 75.2 possessions per 40 to Bristol Flyers’ 70.5, so whoever sets the tempo has already won something.'
+  ],
+  /* the report's own slips, mended (2026-10-08): the losers' run in the standfirst, the stretch named instead of "It",
+     and one club's good and bad numbers joined with "but" */
+  mended: [
+    'Harbour Bay’s 12–0 run in the third was not enough.',
+    'A 4:11 stretch worth 11 to Harbour Bay was not enough.',
+    'The stretch that swung it came with Shaw, Lind, Moss, Park and Cole on the floor for Neon City, together for the whole of it.',
+    'The stretch that swung it was Neon City’s worst: Shaw, Lind, Moss, Park and Cole were on the floor, and the other side outscored them by 11 in that time.',
+    'From the floor it was 53% to 42% in Neon City’s favour, but they made only 12 of 20 free throws.',
+    'Neon City shot 49% from the field to 42%, but they made only 15 of 28 free throws.',
+    'Neon City made 16 of 33 from three, but they made only 15 of 25 free throws.',
+    'Neon City won the boards 49–30, but they coughed it up 19 times.',
+    'Neon City scored 33 on the break to 11, but they turned it over 19 times.',
+    'Neon City went 6 of 32 from three, but they won the boards 49–30.',
+    'Neon City were sharper early in the clock: in the first eight seconds they scored 1.00 points a chance, Harbour Bay 0.58.',
+    'Valencia B.C. beat Neon City 80–70.'
   ]
 };
 
