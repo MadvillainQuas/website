@@ -1037,6 +1037,11 @@ jobs:
         # "English"); each side of a hosted fixture read inside its own div (FRB prints the home code bare)
         run: python scripts/ingest/romania_test.py
 
+      - name: Macedonian Super League (North Macedonia) on FIBA LiveStats
+        # the Genius-hosted page of the season's competition on tenant MSL, pinned (the picker names it "English");
+        # no club codes on that page, so sync_clubs takes each club's code and crest off a LiveStats preview page
+        run: python scripts/ingest/macedonia_test.py
+
       - name: CEBL (Canada) on FIBA LiveStats via the league's own API
         # fiba_site_schedule site "cebl": api.data.cebl.ca's season (the calendar year) names every game's
         # LiveStats match; the regular season and the finals apart, cancelled if-necessary games left out,

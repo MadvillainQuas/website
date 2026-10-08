@@ -1323,6 +1323,13 @@ NO_BIO = {
     "cebl": "the league's own API (api.data.cebl.ca, where its schedule comes from) answers the players list with one empty "
             "record for every season asked (2024 to 2026, tried 30 Sep 2026), its team rows carry no roster, and the "
             "LiveStats data carries no bio",
+    "lnbm": "Genius tenant FRB lists only 2016's competition (11929), so genius() finds no season to read, and the season's "
+            "hosted pages (competition 50100) link no clubs to walk to a roster; frbaschet.ro's BasketHotel widgets name no "
+            "LiveStats person; the LiveStats data carries no bio (checked 8 Oct 2026)",
+    "lnbf": "as lnbm (the same tenant, competition 50109)",
+    "macedonian-super-league": "Genius tenant MSL lists only 2015-16's competitions (4454, 8032), so genius() finds no season to "
+                               "read, and the season's hosted rosters (competition 50171) carry shirt, name and position only - "
+                               "no date of birth, height or weight; the LiveStats data carries no bio (checked 8 Oct 2026)",
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).

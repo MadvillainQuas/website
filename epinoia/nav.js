@@ -2013,7 +2013,7 @@
      bigger one than this.
 
      Returns a NODE, because one of the two answers is an <img>. */
-  const HAVE_FLAG = ['AL', 'AU', 'AZ', 'BE', 'BG', 'BR', 'CA', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'EU', 'FI', 'FR', 'GB', 'GR', 'IT', 'JP', 'KR', 'LT', 'LV', 'MX', 'NL', 'PL', 'RO', 'SE', 'SK', 'XB', 'XK'];
+  const HAVE_FLAG = ['AL', 'AU', 'AZ', 'BE', 'BG', 'BR', 'CA', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'EU', 'FI', 'FR', 'GB', 'GR', 'IT', 'JP', 'KR', 'LT', 'LV', 'MK', 'MX', 'NL', 'PL', 'RO', 'SE', 'SK', 'XB', 'XK'];
   /* A region filed under a user-assigned code (country.js says why); its
      "flag" is an outline of the area, and its name is ours, not Intl's. */
   const REGIONS = { XB: { name: 'Balkans', glyph: '\u{1F5FA}\uFE0F' } };

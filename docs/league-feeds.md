@@ -725,6 +725,30 @@ games are Genius competition **50109** ("LNBF BT" on each game's LiveStats page,
 reconcile (box = stints = the schedule's score, 200 minutes a side). 127-13 (Targoviste v Politehnica Timisoara,
 3 Oct) is the feed's real result, on the hosted schedule as well.
 
+## North Macedonia: Macedonian Super League (MSL, "МТЕЛ Супер Лига")
+
+Added 2026-10-08. Test `scripts/ingest/macedonia_test.py` (in guard). Source `MSL`, adapter `fiba_livestats`,
+`client_code MSL`, `timezone Europe/Skopje`; league slug `macedonian-super-league`, country MK
+(`brand/flags/mk.svg`). The games are the ordinary data.json path (box, play-by-play, shots, stints).
+
+- **The federation's site** (man.mkd.basketball, "Резултати и Табела") lists the season in pages of 45 and links
+  every game to its LiveStats webcast (`fibalivestats.dcd.shared.geniussports.com/webcast/MSL/<id>/`). Its pages need
+  no walking: **Genius's hosted page of the season's competition** lists all 90 games of 2026-27 (10 clubs, double
+  round robin, 2 Oct 2026 - 6 Mar 2027, LiveStats ids 2923476-2923646) on one page:
+  `https://hosted.wh.geniussports.com/MSL/en/competition/50171/schedule?roundNumber=-1&`. Every id on the site's
+  first page is on it.
+- **Pinned, and changed each season**, as Romania's: the client's picker calls this season's competition "English"
+  (beside the old "Prva Liga Mazi" 4454 and "Kup na Makedonija" 8032). **For 2027-28:** open any game's LiveStats
+  page (`/u/MSL/<gameId>/`) and read `page_comp_id_<N>` off its `<body>` class.
+- **No club codes on the hosted page** (as SLB's). `sync_clubs` is on: it reads one LiveStats preview page per club
+  and makes each club under the code the game feed uses (STP, KOZ, MKK, MZT, PEL, RAB, SKP, STR, TFT, TIK) with its
+  crest, so a fixture and its box score land on the same club. Dry run: 10 clubs, 10 with a feed code.
+- Checked: the 3 finished games of round 1 (MZT 85-77 Kumanovo, Stip 65-93 Tikves, Strumica 85-92 Rabotnicki)
+  reconcile - box points = the feed's team points = the schedule's score, 200 minutes and 5 starters a side,
+  stints covering 40 minutes.
+- Play-offs: not yet seen. Check the hosted page near the end of the regular season (March) and add a play-off row
+  if they are a separate competition. The cup ("Kup na Makedonija") is not added.
+
 ## Czech Republic: ŽBL and 1. liga mužů (FIBA LiveStats via the federation's system)
 
 ### host

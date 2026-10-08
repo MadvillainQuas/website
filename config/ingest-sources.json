@@ -3195,6 +3195,35 @@
       ]
     },
     {
+      "code": "MSL",
+      "label": "Macedonian Super League",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        12,
+        23
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "macedonian-super-league",
+      "league_name": "Macedonian Super League",
+      "league_country": "MK",
+      "adapter_config": {
+        "code": "MSL",
+        "client_code": "MSL",
+        "timezone": "Europe/Skopje",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true,
+        "sync_clubs": true
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/MSL/en/competition/50171/schedule?roundNumber=-1&"
+      ]
+    },
+    {
       "code": "NBB",
       "label": "NBB",
       "adapter": "lnbbr",
