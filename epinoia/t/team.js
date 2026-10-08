@@ -1022,7 +1022,12 @@ async function frontOffice(team) {
       }
     }
     mine.forEach(p => { if (p.name && !names.has(p.id)) names.set(p.id, p.name); });
-    winModel(hostM, team, M, { names, link });
+    /* THE SQUAD MODEL'S INPUTS (squad.js, 2026-10-08): every club's season line, the club's own minutes at each
+       position (its lineups, else the model's file), a game's length, and the other clubs' names when the roster
+       what-if asks for them; the pooled model's record and club names where the league has no file of its own */
+    const extra = M && M.pooled ? await pooledExtras(team, S).catch(() => ({})) : {};
+    const lookupNames = ids => (D.playerMeta ? D.playerMeta(ids).then(m => new Map(Object.keys(m || {}).map(k => [k, (m[k] && m[k].name) || '']))) : Promise.resolve(new Map()));
+    winModel(hostM, team, M, Object.assign({ names, link, season: S, clubPos: foPos, gameMin, lookupNames }, extra));
     if (!hostG) return;
     const ages = window.EpinoiaAges ? await window.EpinoiaAges.load(CFG, mine.map(p => p.id)).catch(() => ({})) : {};
     const FM = window.EpinoiaFoModel;
@@ -1076,7 +1081,8 @@ function loadWinModel() {
   });
   winModelLoad = (async () => {
     for (const [src, has] of [['../winstats.js', () => !!window.EpinoiaWinStats], ['../winsim.js', () => !!window.EpinoiaWinSim],
-      ['../winfile.js', () => !!window.EpinoiaWinFile], ['../vizkit.js', () => !!window.EpinoiaVizKit], ['fomodel.js', () => !!window.EpinoiaFoModel]]) await one(src, has);
+      ['../winfile.js', () => !!window.EpinoiaWinFile], ['../vizkit.js', () => !!window.EpinoiaVizKit], ['squad.js', () => !!window.EpinoiaSquad],
+      ['fomodel.js', () => !!window.EpinoiaFoModel]]) await one(src, has);
     return !!(window.EpinoiaWinFile && window.EpinoiaFoModel);
   })();
   return winModelLoad;
@@ -1098,7 +1104,34 @@ async function winModelFiles(team) {
     const t = await WF.get({ scope: 'teaser' });
     if (!t.ok && t.reason === 'none') fo = { ok: false, reason: 'unbuilt' };
   }
-  return { fo, club: fo.ok ? club : null, fixtures: await fixturesP };
+  /* THE POOLED MODEL (Louie, 2026-10-08: "If there's not enough league data it can pool in league agnostic global data
+     from what wins"): no file for this league yet (short of 20 games, or never built) - the What wins model of every
+     league's games values the four factors in its place (fomodel.js pooledFo); asked for only then, and refused as the
+     league's own would be */
+  let pooled = null;
+  const FMx = window.EpinoiaFoModel;
+  if (!fo.ok && FMx.POOL_REASONS && FMx.POOL_REASONS.indexOf(fo.reason) >= 0) {
+    const w = await WF.get({ scope: 'wins' }).catch(() => null);
+    if (w && w.ok) pooled = w.data;
+  }
+  return { fo, club: fo.ok ? club : null, fixtures: await fixturesP, pooled };
+}
+/* what the pooled model needs that the league's file would carry: the club's record in league games (finals against
+   the season line's clubs) and the clubs' names */
+async function pooledExtras(team, S) {
+  const D = window.EpinoiaData, ids = new Set((S.teams || []).map(t => String(t.id)));
+  const [fin, meta] = await Promise.all([
+    api(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})&status=eq.final&select=home_team_id,away_team_id,home_score,away_score` + inSeason()).catch(() => []),
+    D.teamMeta && team.leagues && team.leagues.id ? D.teamMeta(team.leagues.id).catch(() => ({})) : {}]);
+  let w = 0, l = 0;
+  (fin || []).forEach(g => {
+    const home = String(g.home_team_id) === String(team.id), opp = String(home ? g.away_team_id : g.home_team_id);
+    if (!ids.has(opp) || g.home_score == null || g.away_score == null) return;
+    const us = +(home ? g.home_score : g.away_score), them = +(home ? g.away_score : g.home_score);
+    if (us > them) w++; else if (them > us) l++;
+  });
+  const clubNames = new Map(Object.entries(meta || {}).map(([id, m]) => [id, { name: (m && m.name) || '', short: (m && (m.teamShort || m.name)) || '' }]));
+  return { record: w + l ? { w, l } : null, clubNames };
 }
 function modelLocked(host, team) {
   if (!host) return;
@@ -1114,7 +1147,8 @@ function winModel(host, team, M, o) {
   const unit = modelUnit(team), A = window.EpinoiaAccess;
   const fo = M.fo || { ok: false, reason: 'network' };
   const input = { fo: fo.ok ? fo.data : null, club: M.club && M.club.ok ? M.club.data : null, team: { id: team.id, name: team.name },
-                  fixtures: M.fixtures || [], names: o.names, reason: fo.ok ? null : fo.reason, retryAfter: fo.retryAfter };
+                  fixtures: M.fixtures || [], names: o.names, reason: fo.ok ? null : fo.reason, retryAfter: fo.retryAfter,
+                  season: o.season || null, clubPos: o.clubPos || null, gameMin: o.gameMin, pooled: M.pooled || null, record: o.record || null, clubNames: o.clubNames || null };
   let signin = '../signin/';
   try { if (A && A.signinHref) signin = A.signinHref(location.pathname + location.search); } catch (_) { /* the plain link */ }
   const refresh = async ({ signal, onProgress }) => {
@@ -1125,7 +1159,7 @@ function winModel(host, team, M, o) {
     return Object.assign({}, a, { ans: a, fo: a.data, club: c.ok ? c.data : input.club });
   };
   FM.mount(host, FM.view(input), { input, worker: FM.makeWorker(), link: o.link, ans: fo.ok ? fo : null, refresh, signin,
-                                   leagueSlug: ((team && team.leagues) || {}).slug });
+                                   leagueSlug: ((team && team.leagues) || {}).slug, lookupNames: o.lookupNames });
 }
 
 /* THE VIDEO TAB, beside the profile: on top THE CLUB'S VIDEOS - HOME's VIDEO dashboard in the club's version

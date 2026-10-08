@@ -9,21 +9,38 @@
    arrive through EpinoiaWinFile; this script reads nothing else but what team.js hands it (the fixtures to come,
    the season rows and the names on the roster). No game's events, box scores or feature lines.
 
-   THE BLOCKS (collapsible, each with its summary line first)
-     verdict    the record, Pythagorean and factor-expected wins, luck, the projected wins (p10-p50-p90) and one
-                sentence: the biggest cost in wins per 30 games
-     where      the four factors at both ends, the contributions summing to the factor-expected margin (the check
-                printed), then the levers with their median, winners' P75, contribution and wins per 30
+   THE BLOCKS (collapsible, each with its summary line first; 2026-10-08, Louie: "a lot more visual and simple to
+   understand ... everything needs to be tangible" - every gap in points of margin a game and wins, every statistic a
+   gauge against the league's spread)
+     verdict    the record and the wins it earned on one strip (factor-expected, Pythagorean), luck, the projected wins
+                (p10-p50-p90), the biggest cost and the biggest strength in wins per 30 games
+     ledger     a card per factor, both ends, each a gauge (the club, the league's middle half and average, the top
+                quarter) and what it is worth; the table and the check behind "Show the numbers"; the levers folded
      needs      the moves to the league's P75 ranked by wins over the remaining fixtures (§7.5, or the simulator's
-                counterfactual when it is calibrated), with the depth chart's NEED sentence
-     slots      guards, wings and bigs against what winners get (P2) valued by P1, the two largest gaps, P2f, and a
-                button per position that opens the league view (team.js wires the depth chart's handler here too)
-     squad      the squad's shape against winners' bands (evidence-graded), the lineup grid and the club's fives
-     losses     the last ten defeats as waterfalls (exact parts), the mean over every loss, a simulator check per loss
+                counterfactual when it is calibrated), each a headline in general terms ("Run more in transition") with
+                the club, the league and the top quarter and the player who would bring it; then the most glaring need
+                on the floor, position by position
+     slots      BY POSITION (the squad model, t/squad.js): a card per position PG to C - what it is worth, its glaring
+                needs (never VORP, BPM or a style rate), who plays there, its key numbers against the league's same
+                position, its scoring, its production per 40 and each player against the league at his spots - then
+                VORP by position and player by player; a button per position opens the league view (team.js). Without
+                the season's lines: the builder's G / F / C lines and slot targets
+     fit        THE SQUAD AS A WHOLE: the groups (ball handlers, wings, bigs), what the five add up to and who supplies
+                each shared statistic, who covers for whom, who uses the plays and how well, the half court's top users
+                (usage, share, TS%, TOV% and points a play against the league's half court), the ball moving
+     squad      the shape against the league's clubs and its better half (the squad model's own measures), the builder's
+                role counts against winners' bands, what each goes with in wins where the evidence is there; the roles,
+                the lineup grids and the club's fives
+     losses     the last ten defeats as a heat strip part by part, the average defeat, each defeat's waterfall folded
      next       what it takes to beat an opponent (the next fixture first): P(win) ± error, the margins, and the
                 values needed on six rates for 50% and 60%
-     whatIf     six dials on one end -> Δ win% (next and an average opponent) and Δ projected wins, 250 ms debounce,
-                common random numbers, the state in ?wi=; a roster what-if where the slot forecast exists
+     whatIf     the roster what-if on the squad model first (add anyone in the league, take a player out, set minutes:
+                the minutes at each position, the plays shared out again, priced), then six dials on one end -> Δ win%
+                and Δ projected wins (250 ms debounce, common random numbers, the state in ?wi=)
+
+   THE POOLED MODEL (Louie, 2026-10-08): a league with no file of its own yet (none / unbuilt) is valued by the model of
+   every league's games (the What wins file with no league, pooledFo), its clubs' factors from the season line; the
+   defeats and the simulator wait for the league's own model, and the status line says so.
 
    LENSES: the ledger EXPLAINS; projections FORECAST (Elo expectations unless the Forecast model is live); the
    simulator is a MODEL, "experimental" unless the builder calibrated it, in which case only its differences are used
@@ -126,8 +143,9 @@ const SIM_GROUP = { shooting: 'shooting', mix: 'shot mix', turnovers: 'turnovers
 const LENS = { explain: 'Explains', forecast: 'Forecasts', model: 'Model', elo: 'Elo' };
 const STAGES = ['check', 'update', 'download', 'sim', 'draw'];
 const STAGE_LABEL = { check: 'checking', update: 'updating', download: 'downloading', sim: 're-simulating', draw: 'drawing' };
-const BLOCKS = ['verdict', 'ledger', 'needs', 'slots', 'squad', 'losses', 'next', 'whatIf'];
-const BLOCK_TITLE = { verdict: 'The verdict', ledger: 'Where the wins are', needs: 'What the club needs', slots: 'By position',
+/* 2026-10-08: "The squad as a whole" (fit) after By position - the squad model's groups, sums, cover, usage, half court */
+const BLOCKS = ['verdict', 'ledger', 'needs', 'slots', 'fit', 'squad', 'losses', 'next', 'whatIf'];
+const BLOCK_TITLE = { verdict: 'The verdict', ledger: 'Where the wins are', needs: 'What the club needs', slots: 'By position', fit: 'The squad as a whole',
   squad: 'Squad shape', losses: 'Why we lose', next: 'What it takes to win', whatIf: 'What if' };
 const MSG = {
   none: 'The model needs 20 finished games in this league', layout: 'The model is being rebuilt; back within the hour',
@@ -135,11 +153,15 @@ const MSG = {
   league: 'This league’s analysis is not open to you', signin: 'Members’ analysis. Sign in to see it.',
   unbuilt: 'The full model switches on once it has been built'
 };
+/* the answers for which the pooled model stands in: no file for this league yet (short of 20 games, or never built) */
+const POOL_REASONS = ['none', 'unbuilt'];
 const rateMsg = s => 'Too many requests: try again in ' + Math.max(1, Math.ceil((s || 60) / 60)) + ' minutes';
 
 /* ------------------------------------------------------------------ helpers --- */
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const isNum = v => typeof v === 'number' && isFinite(v);
+/* a Map, or an object of keys, as a Map (one made in another realm - a test's - is a Map too) */
+const asMap = x => (x && typeof x.get === 'function' && typeof x.forEach === 'function' ? x : new Map(Object.entries(x || {})));
 const MINUS = s => s.replace(/^-/, '−');
 const f1 = v => (isNum(v) ? MINUS((Math.round(v * 10) / 10).toFixed(1)).replace(/^−0\.0$/, '0.0') : '–');
 const f2 = v => (isNum(v) ? MINUS(v.toFixed(2)).replace(/^−0\.00$/, '0.00') : '–');
@@ -206,6 +228,7 @@ function ledger(fo, teamId) {
     if (!v || !c) return null;
     const tg = targetOf(v, end), w = wins30(c.pts, sigma);
     return { k, end, label: LABEL[k] || k, unit: v.unit, model: v.model, dir: v.dir, x: c.x, lg: v.lg, p50: v.p50 ? v.p50[end] : null,
+             p25: v.p25 ? v.p25[end] : null, p75: v.p75 ? v.p75[end] : null,
              target: tg ? tg.v : null, up: tg ? tg.up : null, pts: c.pts, lo: c.lo, hi: c.hi, wins30: w, wlo: wins30(c.lo, sigma), whi: wins30(c.hi, sigma),
              sure: c.lo > 0 || c.hi < 0 };
   };
@@ -233,9 +256,61 @@ function fixtureMus(fo, teamId, fixtures) {
     const home = String(fx.home_team_id) === String(teamId), opp = home ? fx.away_team_id : fx.home_team_id;
     const o = teamOf(fo, opp), h = home ? 1 : -1;
     const pElo = t && o && isNum(t.elo) && isNum(o.elo) ? 1 / (1 + Math.pow(10, -(t.elo - o.elo) / 400)) : 0.5;
-    const mu = sigma * PhiInv(pElo) + h * edge;
+    const mu = (t && o && !isNum(t.elo) && isNum(t.net) && isNum(o.net) ? netMu(fo, t, o) : sigma * PhiInv(pElo)) + h * edge;
     return { id: fx.id, opp: opp ? String(opp) : '', oppName: o ? (o.short || o.name) : '', known: !!o, h, at: fx.tipoff_at || '', mu, p: Phi(mu / sigma) };
   }).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+}
+/* THE POOLED MODEL'S EXPECTATION (no Elo in it): the two net ratings, each shrunk toward the league's by its games
+   (g / (g + 10): a club four games in is not yet what its net rating says), over the league's possessions a game */
+function netMu(fo, t, o) {
+  const sh = x => (isNum(x.gp) && x.gp > 0 ? x.gp / (x.gp + 10) : 0), pace = fo && fo.lg && isNum(fo.lg.pace) ? fo.lg.pace : 70;
+  return (sh(t) * t.net - sh(o) * o.net) * pace / 100;
+}
+
+/* ------------------------------------------------------------------ the pooled model --- */
+/* NOT ENOUGH OF THE LEAGUE'S OWN GAMES (Louie, 2026-10-08: "If there's not enough league data it can pool in league
+   agnostic global data from what wins"): the What wins model of every league's games (its file with no league) values
+   the four factors, gives σ, the games in a season and the home edge; the league's own clubs' factors come from the
+   season line (season.js ff_ / dff_). A stand-in fo file is made of the two, so the ledger, the needs and the squad
+   model read it as they read the league's own; what needs the builder's per-game files (the losses, the simulator)
+   waits for the league's own model. */
+const SEASON_F = { c_efg: ['ff_efg', 'dff_efg'], c_tovp: ['ff_tov', 'dff_tov'], c_orebp: ['ff_oreb', 'dff_oreb'], c_ftr: ['ff_ftr', 'dff_ftr'] };
+const numv = v => (v == null || v === '' ? null : (isFinite(+v) ? +v : null));
+const meanOf = a => { const x = a.filter(isNum); return x.length ? x.reduce((s, v) => s + v, 0) / x.length : null; };
+function quantOf(a, q) { const x = a.filter(isNum).sort((p, r) => p - r); if (!x.length) return null; const i = (x.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return x[lo] + (x[hi] - x[lo]) * (i - lo); }
+function pooledValues(W) {
+  const coef = W && W.models && W.models.core4c && Array.isArray(W.models.core4c.coef) ? W.models.core4c.coef : [];
+  const v = {};
+  coef.forEach(c => { if (c && c.k && isNum(c.b)) v[c.k] = { b: c.b, lo: isNum(c.lo) ? c.lo : c.b, hi: isNum(c.hi) ? c.hi : c.b, model: 'core4c', unit: '%', dir: 1 }; });
+  return Object.keys(SEASON_F).every(k => v[k]) ? v : null;
+}
+const homeEdgeOf = W => { const h = W && W.homeMargin; return isNum(h) ? h : h && isNum(h.v) ? h.v : 0; };
+function pooledFo(W, season, o) {
+  o = o || {};
+  const values = pooledValues(W);
+  const teams = (season && Array.isArray(season.teams) ? season.teams : []).filter(t => t && t.id != null && numv(t.gp) > 0);
+  if (!values || teams.length < 4) return null;
+  const value = {};
+  Object.keys(values).forEach(k => {
+    const [fo, fd] = SEASON_F[k], offs = teams.map(t => numv(t[fo])).filter(isNum), defs = teams.map(t => numv(t[fd])).filter(isNum);
+    value[k] = Object.assign({}, values[k], { lg: meanOf(offs), p25: { off: quantOf(offs, 0.25), def: quantOf(defs, 0.25) }, p50: { off: quantOf(offs, 0.5), def: quantOf(defs, 0.5) },
+      p75: { off: quantOf(offs, 0.75), def: quantOf(defs, 0.75) } });
+  });
+  const names = asMap(o.clubNames);
+  const nm = id => names.get(String(id)) || {};
+  const PY = 14;          // the Pythagorean exponent for basketball
+  return {
+    pooled: true, value, sigmaPred: W.sigma && isNum(W.sigma.pred) && W.sigma.pred > 0 ? W.sigma.pred : 12,
+    lg: { G: isNum(W.G) ? W.G : 30, homeEdge: homeEdgeOf(W), pace: meanOf(teams.map(t => numv(t.pace))) || 70 },
+    n: { games: Math.round(teams.reduce((a, t) => a + numv(t.gp), 0) / 2), pooled: W.n && isNum(W.n.games) ? W.n.games : null },
+    teams: teams.map(t => {
+      const pf = numv(t.pts_for), pa = numv(t.pts_against), gp = numv(t.gp), f = {};
+      Object.keys(SEASON_F).forEach(k => { f[k] = { off: numv(t[SEASON_F[k][0]]), def: numv(t[SEASON_F[k][1]]) }; });
+      return { id: String(t.id), name: nm(t.id).name || '', short: nm(t.id).short || nm(t.id).name || '', gp, net: numv(t.net),
+        pythW: pf > 0 && pa > 0 ? gp * Math.pow(pf, PY) / (Math.pow(pf, PY) + Math.pow(pa, PY)) : null, f };
+    }),
+    squad: W.squad && Array.isArray(W.squad.coef) ? { coef: W.squad.coef, n: W.squad.n, power: W.squad.power } : null
+  };
 }
 /* the number of wins a margin shift δ adds over the fixtures, or over a season of G against an average side */
 function winsFrom(delta, mus, sigma, G) {
@@ -380,13 +455,23 @@ function projection(done, mus) {
    -> {ok, reason, message, verdict, ledger, needs, slots, squad, losses, next, whatIf, charts} */
 function view(o) {
   o = o || {};
-  const fo = o.fo || null, club = o.club || null, team = o.team || {}, id = String(team.id || (club && club.team && club.team.id) || '');
-  if (!fo || o.reason) {
+  let fo = o.fo || null, club = o.club || null;
+  const team = o.team || {}, id = String(team.id || (club && club.team && club.team.id) || '');
+  /* the league's own model, else the pooled one where the league has no file of its own yet */
+  let pooled = false;
+  if ((!fo || o.reason) && o.pooled && (!o.reason || POOL_REASONS.indexOf(o.reason) >= 0)) {
+    const pf = pooledFo(o.pooled, o.season, o);
+    if (pf && teamOf(pf, id)) { fo = pf; club = null; pooled = true; }
+  }
+  if (!fo || (o.reason && !pooled)) {
     const reason = o.reason || 'none';
     return { ok: false, reason, message: reason === 'rate' ? rateMsg(o.retryAfter) : MSG[reason] || MSG.network, charts: {} };
   }
-  const names = o.names instanceof Map ? o.names : new Map(Object.entries(o.names || {}));
+  const names = asMap(o.names);
   const nameOf = pid => names.get(String(pid)) || '';
+  const clubNames = asMap(o.clubNames);
+  /* a club's short name, or its full one (the roster what-if's picker) */
+  const clubName = (tid, full) => { const x = teamOf(fo, tid), c = clubNames.get(String(tid)); return (x && (full ? x.name || x.short : x.short || x.name)) || (c && (full ? c.name || c.short : c.short || c.name)) || ''; };
   const t = teamOf(fo, id), sigma = sigmaOf(fo);
   const mus = fixtureMus(fo, id, o.fixtures);
   const charts = {};
@@ -395,37 +480,33 @@ function view(o) {
   if (L) L.actual = actualMargin(club);
 
   /* (1) the verdict */
-  const rec = (club && club.record) || (t ? { w: t.w, l: t.l } : null);
+  const rec = (club && club.record) || (pooled ? (o.record && isNum(o.record.w) ? Object.assign({ pythW: t.pythW }, o.record) : null) : (t ? { w: t.w, l: t.l } : null));
   const proj = rec && isNum(rec.w) ? projection(rec.w, mus) : null;
   const all = L ? L.core.concat(L.levers) : [];
   const worst = all.filter(r => r.sure && r.pts < 0).sort((a, b) => a.wins30 - b.wins30)[0] || null;
+  const best = all.filter(r => r.sure && r.pts > 0).sort((a, b) => b.wins30 - a.wins30)[0] || null;
   const verdict = rec ? {
     w: rec.w, l: rec.l, pythW: rec.pythW, factorW: rec.factorW, luck: isNum(rec.factorW) ? rec.w - rec.factorW : null,
     proj, cost: worst ? { k: worst.k, end: worst.end, label: worst.label, wins: worst.wins30, lo: Math.min(worst.wlo, worst.whi), hi: Math.max(worst.wlo, worst.whi) } : null,
-    forecast: !!fo.predLive
+    best: best ? { k: best.k, end: best.end, label: best.label, wins: best.wins30, lo: Math.min(best.wlo, best.whi), hi: Math.max(best.wlo, best.whi) } : null,
+    forecast: !!fo.predLive, pooled
   } : null;
   if (proj && proj.left) {
     charts.proj = { kind: 'histogram', data: proj.dist.map((p, k) => [proj.done + k, Math.round(1000 * p) / 10]).filter(x => x[1] > 0), o: { x: { label: 'wins at the end of the season' }, y: { label: 'chance (%)' } },
       label: 'Projected wins at the end of the season' };
   }
 
-  /* (2) the ledger */
-  if (L && L.core.length) {
-    charts.core = { kind: 'bars', data: L.core.map(r => ({ id: r.key || (r.k + ':' + r.end), label: r.label + ' · ' + END[r.end], v: r.pts, lo: r.lo, hi: r.hi, dir: 1 })),
-      o: { x: { label: 'points of margin a game' } }, label: 'The four factors at both ends, in points of margin a game' };
-  }
+  /* (2) the ledger, (3) the needs: cards drawn in the panel itself (2026-10-08), each with its club-league gauge */
 
-  /* (3) needs */
-  if (N.length) charts.needs = { kind: 'bars', data: N.map(n => ({ id: n.key, label: n.label + ' · ' + END[n.end], v: n.wins, lo: n.lo, hi: n.hi, dir: 1 })),
-    o: { x: { label: 'wins' } }, label: 'Wins from reaching the league’s P75' };
-
-  /* (4) slots, and every position against the league (posGaps) */
+  /* (4) THE SQUAD MODEL (squad.js): every position and player against the league's, the squad's sums, its usage and
+     half court, the roster what-if - built here from the season's lines, the minutes at each position and the
+     four factors' values (the league's, or the pool's) */
+  const sq = squadModel(o, fo, id, names, mus);
+  /* the builder's lines at G / F / C and its slot targets, where the squad model cannot be built */
   const posG = posGaps(fo, club);
-  if (posG && (posG.weak.length || posG.strong.length)) charts.posGaps = { kind: 'bars', data: posG.weak.concat(posG.strong).sort((a, b) => a.wins - b.wins).map(r => ({ id: 'pos:' + r.g + ':' + r.k,
+  if (!sq && posG && (posG.weak.length || posG.strong.length)) charts.posGaps = { kind: 'bars', data: posG.weak.concat(posG.strong).sort((a, b) => a.wins - b.wins).map(r => ({ id: 'pos:' + r.g + ':' + r.k,
     label: GROUP[r.g] + ' · ' + r.label, v: r.wins, dir: 1 })), o: { x: { label: 'wins per 30 games against the league average' } }, label: 'Each position against the league, in wins' };
   const slots = slotsView(fo, club);
-  if (slots && slots.rows.length) charts.slots = { kind: 'bars', data: slots.rows.filter(r => isNum(r.pts)).map(r => ({ id: r.g + ':' + r.stat, label: GROUP[r.g] + ' · ' + (P1_LABEL[r.stat] || r.stat), v: r.pts, dir: 1 })),
-    o: { x: { label: 'points of margin a game' } }, label: 'Each group against what winners get, in points' };
 
   /* (5) squad */
   const squad = squadView(fo, club, nameOf);
@@ -441,10 +522,11 @@ function view(o) {
       o: { y: { label: 'points' } }, label: 'A loss, part by part' };
   });
 
-  /* (7) next, (8) what if: the controls; the numbers come from the Worker in mount() */
+  /* (7) next, (8) what if: the controls; the numbers come from the Worker in mount(). The pooled model has no
+     simulator profiles: no next opponent and no dials, the roster what-if on the squad model alone */
   const opps = (fo.teams || []).filter(x => String(x.id) !== id).map(x => ({ id: String(x.id), name: x.short || x.name }));
   const nextFx = mus.find(f => f.known) || null;
-  const next = t ? { opps, opp: (o.pick && o.pick.opp) || (nextFx ? nextFx.opp : (opps[0] && opps[0].id) || ''), home: o.pick && o.pick.home != null ? o.pick.home : (nextFx ? nextFx.h : 1),
+  const next = t && !pooled ? { opps, opp: (o.pick && o.pick.opp) || (nextFx ? nextFx.opp : (opps[0] && opps[0].id) || ''), home: o.pick && o.pick.home != null ? o.pick.home : (nextFx ? nextFx.h : 1),
     fixture: nextFx, calibrated: !!(fo.sim && fo.sim.calibrated) } : null;
   if (next) {
     const fx = mus.find(f => f.opp === next.opp);
@@ -453,11 +535,26 @@ function view(o) {
     next.mu = fx && fx.h === next.home ? fx.mu : sigma * PhiInv(pElo) + next.home * edge;
     next.p = Phi(next.mu / sigma);
   }
-  const whatIf = t ? { dials: DIALS, end: (o.wi && o.wi.end) || 'off', vals: (o.wi && o.wi.vals) || {}, roster: rosterOptions(fo, club, nameOf) } : null;
+  const whatIf = t ? { dials: pooled ? [] : DIALS, end: (o.wi && o.wi.end) || 'off', vals: (o.wi && o.wi.vals) || {}, roster: sq ? null : rosterOptions(fo, club, nameOf), squad: !!sq } : null;
+  /* the blocks the pooled model cannot fill: drawn as a line saying so, never as an empty frame */
+  const hide = pooled ? ['losses', 'next'] : [];
 
   return { ok: true, fo, club, team: { id, name: team.name || (club && club.team && club.team.name) || (t && t.name) || '' }, t, sigma, mus,
-    verdict, ledger: L, needs: N, slots, posGaps: posG, squad, losses, next, whatIf, charts, names, nameOf,
+    verdict, ledger: L, needs: N, slots, posGaps: posG, squad, losses, next, whatIf, charts, names, nameOf, clubName, sq, pooled, hide,
     lens: { forecast: !!fo.predLive, calibrated: !!(fo.sim && fo.sim.calibrated) }, n: fo.n || null };
+}
+/* the squad model for the club, from the season's lines (o.season: {players, teamOf | teamOfPlayer, teams}), every club's
+   minutes at each position (the fo file's pos, else their box-score positions), the club's own from its lineups
+   (o.clubPos), the four factors' values and σ; null without squad.js or the season */
+function squadModel(o, fo, id, names, mus) {
+  const Q = root.EpinoiaSquad, s = o.season;
+  if (!Q || !Q.build || !s || !Array.isArray(s.players) || !fo || !fo.value) return null;
+  const values = {};
+  Object.keys(fo.value).forEach(k => { if (fo.value[k] && fo.value[k].model === 'core4c') values[k] = fo.value[k]; });
+  try {
+    return Q.build({ players: s.players, teamOf: s.teamOf || s.teamOfPlayer, teams: s.teams, pos: fo.pos || null, club: id, clubPos: o.clubPos || null, values,
+      sigma: sigmaOf(fo), G: fo.lg && isNum(fo.lg.G) ? fo.lg.G : 30, mus: mus && mus.length ? mus : null, gameMin: o.gameMin, names });
+  } catch (_) { return null; }
 }
 
 /* (4) THE SLOTS: the club's group lines against the winners' targets (P2), each gap valued by P1 (points per +1 team-SD).
@@ -579,42 +676,165 @@ const sec = (b, sum, body, open) => '<details class="fm-b" data-b="' + b + '"' +
   (sum ? '<span class="fm-bs">' + sum + '</span>' : '') + '</summary><div class="fm-bb">' + body + '</div></details>';
 const winsTxt = (w) => (isNum(w) ? (Math.abs(w) < 0.05 ? '0.0' : sg(w, 1)) : '–');
 
+/* ---- THE PIECES THE BLOCKS ARE DRAWN WITH (Louie, 2026-10-08: "a lot more visual and simple to understand ...
+   everything needs to be tangible"). Every figure and name sits in its own translate="no" element and every word
+   around it is a fixed phrase, so the page's languages translate the phrases and leave the figures as written; the
+   small visuals are aria-hidden, their figures printed beside them. ---- */
+const nb = s => '<b translate="no">' + esc(s) + '</b>';
+const ph = s => '<span>' + esc(s) + '</span>';
+const nm = s => '<span class="fm-nm" translate="no">' + esc(s || '–') + '</span>';
+const dot = '<i class="fm-dot" aria-hidden="true">·</i>';
+const clamp01 = x => Math.max(0, Math.min(1, x));
+/* A GAUGE: the league's range (its lowest club to its highest, a little either side), its middle half shaded (P25-P75),
+   its average a line, a tick at the top quarter (or the better half) where there is one, the winners' band outlined,
+   and the club's dot - green on the better side of the average, red on the worse (lower is better for a turnover rate),
+   grey where neither side is better */
+function gauge(g) {
+  if (!g || !isNum(g.v)) return '';
+  const vals = [g.v, g.avg, g.p25, g.p75, g.lo, g.hi, g.top].concat(g.band || []).filter(isNum);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const pad = (hi - lo) * 0.08 || Math.max(Math.abs(g.v) * 0.05, 0.5);
+  lo -= pad; hi += pad;
+  const x = v => 100 * clamp01((v - lo) / (hi - lo));
+  const span = (a, b, cls) => '<i class="' + cls + '" style="left:' + x(Math.min(a, b)).toFixed(1) + '%;width:' + (x(Math.max(a, b)) - x(Math.min(a, b))).toFixed(1) + '%"></i>';
+  const better = g.neutral || !isNum(g.avg) ? null : g.lower ? g.v <= g.avg : g.v >= g.avg;
+  return '<span class="fm-g" aria-hidden="true">' + (isNum(g.p25) && isNum(g.p75) ? span(g.p25, g.p75, 'fm-gb') : '') +
+    (g.band && isNum(g.band[0]) && isNum(g.band[1]) ? span(g.band[0], g.band[1], 'fm-gw') : '') +
+    (isNum(g.avg) ? '<i class="fm-ga" style="left:' + x(g.avg).toFixed(1) + '%"></i>' : '') + (isNum(g.top) ? '<i class="fm-gt" style="left:' + x(g.top).toFixed(1) + '%"></i>' : '') +
+    '<i class="fm-gd' + (better == null ? '' : better ? ' up' : ' dn') + '" style="left:' + x(g.v).toFixed(1) + '%"></i></span>';
+}
+/* a value bar from nought (the middle), its length against the largest in its list */
+function dbar(v, max) {
+  const on = isNum(v) && Math.abs(v) > 1e-9 && max > 0;
+  return '<span class="fm-db" aria-hidden="true">' + (on ? '<i class="' + (v >= 0 ? 'up' : 'dn') + '" style="' + (v >= 0 ? 'left' : 'right') + ':50%;width:' +
+    (50 * Math.min(1, Math.abs(v) / max)).toFixed(1) + '%"></i>' : '') + '</span>';
+}
+/* what a gap is worth, the two tangible units: points of margin a game, and wins over 30 games */
+function worth(pts, w) {
+  if (!isNum(pts)) return '';
+  const cls = Math.abs(pts) < 0.05 ? '' : pts > 0 ? ' up' : ' dn';
+  return '<span class="fm-worth' + cls + '">' + nb(sg(pts, 1)) + ' ' + ph('points a game') + (isNum(w) ? ' ' + dot + ' ' + nb(winsTxt(w)) + ' ' + ph('wins per 30 games') : '') + '</span>';
+}
+const rankTxt = (r, of) => (isNum(r) && isNum(of) ? '<span class="fm-rk">' + ph('rank') + ' ' + nb(r + '/' + of) + '</span>' : '');
+const lgTxt = s => '<span class="fm-lgv">' + ph('league') + ' ' + nb(s) + '</span>';
+/* how far from the league, in words (z in the better direction: a turnover rate's turned round) */
+const LEVEL = z => (!isNum(z) ? '' : z >= 1 ? 'far better than the league' : z >= 0.35 ? 'better than the league' : z > -0.35 ? 'level with the league' : z > -1 ? 'worse than the league' : 'far worse than the league');
+const levelTag = z => (isNum(z) ? '<span class="fm-lv' + (z >= 0.35 ? ' up' : z <= -0.35 ? ' dn' : '') + '">' + esc(LEVEL(z)) + '</span>' : '');
+/* a style, neither better nor worse (usage, the three and rim rates): more or less than the league, in grey */
+const NEUTRAL = { usg: 1, p3_rate: 1, rim_rate: 1 };
+const LEVEL_N = z => (!isNum(z) ? '' : z >= 1 ? 'far more than the league' : z >= 0.35 ? 'more than the league' : z > -0.35 ? 'level with the league' : z > -1 ? 'less than the league' : 'far less than the league');
+const levelTagN = z => (isNum(z) ? '<span class="fm-lv">' + esc(LEVEL_N(z)) + '</span>' : '');
+/* what the marks on a gauge are */
+const gaugeKey = (top, more) => '<p class="fm-key"><i class="fm-kd" aria-hidden="true"></i>' + ph('the club') + ' <i class="fm-kb" aria-hidden="true"></i>' + ph('the league’s middle half') +
+  ' <i class="fm-ka" aria-hidden="true"></i>' + ph('the league average') + (top ? ' <i class="fm-kt" aria-hidden="true"></i>' + ph(top) : '') +
+  (more ? ' <i class="fm-kw" aria-hidden="true"></i>' + ph(more) : '') + ' ' + dot + ' ' + ph('green helps you win, red costs you') + '</p>';
+
+/* ---- (1) THE VERDICT: the record and the wins it earned on one line, the projection, the biggest cost and strength ---- */
+function recordHTML(V) {
+  const gp = (+V.w || 0) + (+V.l || 0);
+  if (!(gp > 0)) return '';
+  const x = v => (100 * clamp01(v / gp)).toFixed(1) + '%';
+  const marks = [['f', V.factorW, 'earned by its four factors'], ['p', V.pythW, 'earned by its points for and against']].filter(m => isNum(m[1]));
+  return '<div class="fm-vd"><div class="fm-rec">' + nb(V.w + '-' + V.l) + ph('record') + '</div><div class="fm-ws"><div class="fm-wst" aria-hidden="true"><i class="fm-wsw" style="width:' + x(V.w) + '"></i>' +
+    marks.map(m => '<i class="fm-wsm" data-m="' + m[0] + '" style="left:' + x(m[1]) + '"></i>').join('') + '</div><ul class="fm-wsl"><li data-m="w">' + nb(V.w) + ' ' + ph('wins') + '</li>' +
+    marks.map(m => '<li data-m="' + m[0] + '">' + nb(f1(m[1])) + ' ' + ph(m[2]) + '</li>').join('') + '</ul></div></div>';
+}
 H.verdict = vm => {
   const V = vm.verdict;
-  if (!V) return empty('The club has no finished games in the model yet.');
+  if (!V) return empty(vm.pooled ? 'The club’s record could not be read just now' : 'The club has no finished games in the model yet.');
   const P = V.proj;
-  const line = 'Record ' + V.w + '-' + V.l + ' · Pythagorean ' + f1(V.pythW) + ' · from its factors ' + f1(V.factorW) + ' wins';
-  let html = '<p class="fm-big">' + esc(line) + '</p>';
-  html += '<p class="fm-p">' + esc(isNum(V.luck) ? 'Luck: ' + sg(V.luck, 1) + ' wins against what its factors earned' : 'Luck: not measured') + '</p>';
+  let html = recordHTML(V);
+  if (V.pooled) html += '<p class="fm-big">' + esc('Record ' + V.w + '-' + V.l + (isNum(V.pythW) ? ' · Pythagorean ' + f1(V.pythW) + ' wins' : '')) + '</p>';
+  else {
+    html += '<p class="fm-big">' + esc('Record ' + V.w + '-' + V.l + ' · Pythagorean ' + f1(V.pythW) + ' · from its factors ' + f1(V.factorW) + ' wins') + '</p>';
+    html += '<p class="fm-p">' + esc(isNum(V.luck) ? 'Luck: ' + sg(V.luck, 1) + ' wins against what its factors earned' : 'Luck: not measured') + '</p>';
+  }
   if (P && P.left) {
     html += '<p class="fm-p">' + esc('Projected wins ' + P.p10 + ' – ' + P.p50 + ' – ' + P.p90 + ' (p10 – p50 – p90) with ' + P.left + (P.left === 1 ? ' game to play' : ' games to play')) +
-      ' ' + chip(V.forecast ? 'forecast' : 'elo') + '</p>' + slot('proj');
+      ' ' + (V.pooled ? chip('model', 'from the net ratings') : chip(V.forecast ? 'forecast' : 'elo')) + '</p>' + slot('proj');
   } else if (P) html += '<p class="fm-p">' + esc('No fixtures left to play this season') + '</p>';
   html += '<p class="fm-say">' + esc(V.cost ? 'Your biggest cost is ' + low(V.cost.label) + ' on ' + END[V.cost.end] + ': about ' + f1(-V.cost.wins) +
     ' wins (' + f1(-V.cost.hi) + '–' + f1(-V.cost.lo) + ') over 30 games' : 'No single factor costs this club wins beyond the noise') + '</p>';
-  html += '<p class="fm-lens">' + chip('explain') + ' ' + chip(V.forecast ? 'forecast' : 'elo', V.forecast ? '' : 'season numbers do not forecast better than Elo here') + '</p>';
+  if (V.best) html += '<p class="fm-say fm-plus">' + esc('Your biggest strength is ' + low(V.best.label) + ' on ' + END[V.best.end] + ': about ' + f1(V.best.wins) +
+    ' wins (' + f1(V.best.lo) + '–' + f1(V.best.hi) + ') over 30 games') + '</p>';
+  html += '<p class="fm-lens">' + chip('explain') + ' ' + (V.pooled ? chip('model', 'valued on every league’s games') : chip(V.forecast ? 'forecast' : 'elo', V.forecast ? '' : 'season numbers do not forecast better than Elo here')) + '</p>';
   return html;
 };
+
+/* ---- (2) WHERE THE WINS ARE: a card per factor, both ends, each a gauge and what it is worth; the table behind a
+   toggle; the levers folded under it ---- */
 const ledgerRow = r => '<tr><th scope="row">' + esc(r.label) + '</th><td>' + esc(END[r.end]) + '</td><td translate="no">' + esc(unitFmt(r.unit, r.x)) + '</td><td translate="no">' +
   esc(unitFmt(r.unit, r.p50)) + '</td><td translate="no">' + esc(unitFmt(r.unit, r.target)) + '</td><td translate="no" class="' + (r.pts >= 0 ? 'fm-good' : 'fm-bad') + '">' +
   (r.pts >= 0 ? '▲ ' : '▼ ') + esc(sg(r.pts, 2)) + '</td><td translate="no">' + esc(winsTxt(r.wins30)) + '</td><td translate="no">' + esc(sg(r.wlo, 1) + ' to ' + sg(r.whi, 1)) + '</td></tr>';
 const LEDGER_HEAD = '<thead><tr><th scope="col">factor</th><th scope="col">end</th><th scope="col">club</th><th scope="col">median</th><th scope="col">winners’ P75</th>' +
   '<th scope="col">points a game</th><th scope="col">wins per 30</th><th scope="col">95% range</th></tr></thead>';
+const FACTOR_PLAIN = { c_efg: ['Shooting', 'eFG%'], c_tovp: ['Ball security', 'TOV%'], c_orebp: ['Offensive rebounding', 'OREB%'], c_ftr: ['Getting to the line', 'FTA/FGA'],
+  c_ftmr: ['Free throws', 'FTM/FGA'] };
+const LEVER_PLAIN = { rimr: ['Shots at the rim', 'share of shots at the rim'], p3r: ['Three-point volume', 'share of shots from three'], rimp: ['Finishing at the rim', 'FG% at the rim'],
+  p3p: ['Three-point shooting', '3P%'], tr_freq: ['Transition', 'possessions in transition'], top_avg: ['Pace', 'seconds a possession'],
+  live_share: ['Live-ball turnovers', 'turnovers that are steals'], ftp: ['Free-throw shooting', 'FT%'] };
+const END_PLAIN = { off: 'our offence', def: 'our defence' };
+const factorRow = r => '<div class="fm-fr"><span class="fm-end">' + esc(END_PLAIN[r.end]) + '</span><span class="fm-fv">' + nb(unitFmt(r.unit, r.x)) + ' ' + lgTxt(unitFmt(r.unit, r.lg)) + '</span>' +
+  gauge({ v: r.x, avg: r.lg, p25: r.p25, p75: r.p75, top: r.target, lower: r.up === false }) + worth(r.pts, r.wins30) + '</div>';
+function factorCards(rows, plain) {
+  const by = [];
+  rows.forEach(r => { let g = by.find(x => x.k === r.k); if (!g) by.push(g = { k: r.k, rows: [] }); g.rows.push(r); });
+  return '<div class="fm-cards">' + by.map(g => {
+    const P = plain[g.k] || [LABEL[g.k] || g.k, ''], rows = g.rows.slice().sort((a, b) => (a.end === 'off' ? 0 : 1) - (b.end === 'off' ? 0 : 1));
+    return '<section class="fm-card"><header class="fm-ch"><b>' + esc(P[0]) + '</b>' + (P[1] ? ' <span class="fm-mute">' + esc(P[1]) + '</span>' : '') + '</header>' + rows.map(factorRow).join('') + '</section>';
+  }).join('') + '</div>';
+}
 H.ledger = vm => {
   const L = vm.ledger;
   if (!L || !L.core.length) return empty('The club’s factors are not in this file yet.');
-  let html = slot('core');
-  html += tw('<table class="fm-t">' + LEDGER_HEAD + '<tbody>' + L.core.map(ledgerRow).join('') + '</tbody></table>');
-  html += '<p class="fm-check">' + esc('The contributions add up to ' + sg(L.sum, 2) + ' points a game, the factor-expected margin (check: ' + sg(L.expected, 2) + ')') +
-    ' ' + chip('explain') + '</p>';
-  if (L.actual) html += '<p class="fm-p">' + esc('Its actual competitive margin: ' + sg(L.actual.v, 2) + ' points a game') + nTag(L.actual.n) + '</p>';
+  let html = '<p class="fm-lead">' + ph('The four factors at both ends add up to') + ' ' + worth(L.sum, L.wins30) + '</p>' + gaugeKey('the top quarter') + factorCards(L.core, FACTOR_PLAIN);
+  html += '<details class="fm-sub"><summary>' + esc('Show the numbers') + '</summary>' + tw('<table class="fm-t">' + LEDGER_HEAD + '<tbody>' + L.core.map(ledgerRow).join('') + '</tbody></table>') +
+    '<p class="fm-check">' + esc('The contributions add up to ' + sg(L.sum, 2) + ' points a game, the factor-expected margin (check: ' + sg(L.expected, 2) + ')') + ' ' + chip('explain') + '</p>' +
+    (L.actual ? '<p class="fm-p">' + esc('Its actual competitive margin: ' + sg(L.actual.v, 2) + ' points a game') + nTag(L.actual.n) + '</p>' : '') + '</details>';
   if (L.levers.length) {
-    html += '<h4 class="fm-h4">' + esc('The levers') + '</h4><p class="fm-p fm-mute">' + esc('Valued one at a time; they work through the four factors, so they are not added to them') + '</p>';
-    html += tw('<table class="fm-t">' + LEDGER_HEAD + '<tbody>' + L.levers.map(ledgerRow).join('') + '</tbody></table>');
+    const lev = L.levers.slice().sort((a, b) => Math.abs(b.wins30 || 0) - Math.abs(a.wins30 || 0));
+    html += '<details class="fm-sub fm-levers"><summary>' + esc('The levers') + ' <span class="fm-mute">' + esc('what moves the four factors') + '</span></summary>' +
+      '<p class="fm-p fm-mute">' + esc('Valued one at a time; they work through the four factors, so they are not added to them') + '</p>' + factorCards(lev, LEVER_PLAIN) +
+      '<details class="fm-sub"><summary>' + esc('Show the numbers') + '</summary>' + tw('<table class="fm-t">' + LEDGER_HEAD + '<tbody>' + L.levers.map(ledgerRow).join('') + '</tbody></table>') + '</details></details>';
   }
   return html;
 };
-/* the positions' needs under the factors' (2026-10-07): creation first where the guards are short of it */
+
+/* ---- (3) WHAT THE CLUB NEEDS, in general terms (Louie: "more transition etc."): each need a headline, the club against
+   the league's average and its top quarter, and the wins at stake; then the most glaring needs on the floor ---- */
+const NEED_HEAD = {
+  'c_efg:off': 'Make more of your shots', 'c_efg:def': 'Contest more shots', 'c_tovp:off': 'Look after the ball', 'c_tovp:def': 'Force more turnovers',
+  'c_orebp:off': 'Crash the offensive glass', 'c_orebp:def': 'Finish defence with the rebound', 'c_ftr:off': 'Get to the free-throw line more', 'c_ftr:def': 'Foul less',
+  'c_ftmr:off': 'Get to the line and make them', 'rimp:off': 'Finish better at the rim', 'rimp:def': 'Protect the rim', 'p3p:off': 'Shoot the three better', 'p3p:def': 'Contest the three',
+  'ftp:off': 'Make your free throws',
+  /* a lever's head depends on which way the league's model says is better: [more is better, less is better] */
+  'rimr:off': ['Get to the rim more', 'Take fewer shots at the rim'], 'rimr:def': ['Let opponents take more at the rim', 'Keep opponents away from the rim'],
+  'p3r:off': ['Take more threes', 'Take fewer threes'], 'p3r:def': ['Let opponents shoot more threes', 'Run shooters off the three-point line'],
+  'tr_freq:off': ['Run more in transition', 'Run less in transition'], 'tr_freq:def': ['Let opponents run more', 'Get back in transition'],
+  'top_avg:off': ['Be more patient in the half court', 'Play faster'], 'top_avg:def': ['Make opponents use the whole clock', 'Speed opponents up'],
+  'live_share:off': ['Make more of your turnovers dead-ball ones', 'Cut out live-ball turnovers'], 'live_share:def': ['Jump the passing lanes', 'Force more dead-ball turnovers']
+};
+const needHead = n => { const h = NEED_HEAD[n.key]; return (Array.isArray(h) ? h[n.up ? 0 : 1] : h) || cap(n.label); };
+function needCard(n, i, vm) {
+  const v = vm.fo.value && vm.fo.value[n.k], se = isNum(n.se) ? (n.se < 0.1 ? f2(n.se) : f1(n.se)) : null;
+  return '<li class="fm-nc"><span class="fm-ni" translate="no">' + (i + 1) + '</span><div class="fm-nb"><b class="fm-nh">' + esc(needHead(n)) + '</b>' +
+    '<span class="fm-nrow">' + ph('club') + ' ' + nb(unitFmt(n.unit, n.x)) + ' ' + dot + ' ' + ph('league') + ' ' + nb(unitFmt(n.unit, v && v.lg)) + ' ' + dot + ' ' + ph('top quarter') + ' ' +
+    nb(unitFmt(n.unit, n.target)) + '</span>' + gauge({ v: n.x, avg: v && v.lg, p25: v && v.p25 ? v.p25[n.end] : null, p75: v && v.p75 ? v.p75[n.end] : null, top: n.target, lower: !n.up }) +
+    (n.need ? '<span class="fm-need">' + esc(cap(n.need)) + '</span>' : '') + '<span class="fm-nf">' + esc(n.label + ' on ' + END[n.end]) + '</span></div>' +
+    '<span class="fm-nw">' + nb(winsTxt(n.wins)) + ph('wins') + (se ? '<small translate="no">± ' + esc(se) + '</small>' : '') + '</span></li>';
+}
+H.needs = vm => {
+  const N = vm.needs;
+  let html = '';
+  if (N && N.length) {
+    const per = N[0].perSeason ? 'over a season of ' + N[0].G + ' games against an average side' : 'over the ' + N[0].games + (N[0].games === 1 ? ' game to play' : ' games to play');
+    html += '<p class="fm-p">' + esc('Ranked by the wins each adds ' + per + ', reaching the league’s P75 alone') + ' ' +
+      chip(N.some(n => n.src === 'sim') ? 'model' : vm.pooled ? 'model' : (vm.lens.forecast ? 'forecast' : 'elo')) + '</p><ol class="fm-nl">' + N.map((n, i) => needCard(n, i, vm)).join('') + '</ol>';
+  } else html += empty('Every factor the model can value is at the league’s P75 or better, or too uncertain to rank');
+  return html + floorNeeds(vm) + (vm.sq ? '' : posNeedsHTML(vm));
+};
+/* the positions' needs under the factors' (2026-10-07, the builder's G / F / C lines): creation first where the guards
+   are short of it - drawn where the squad model cannot be */
 const posNeedsHTML = vm => {
   const G = vm.posGaps;
   if (!G) return '';
@@ -629,68 +849,321 @@ const posNeedsHTML = vm => {
     esc('costs about ' + winsTxt(-r.wins).replace(/^\+/, '') + ' wins per 30 games') + '</span>' + (r.need ? '<span class="fm-need">' + esc(cap(r.need)) + '</span>' : '') + '</li>').join('') + '</ol>';
   return html;
 };
-H.needs = vm => {
-  const N = vm.needs;
-  if (!N || !N.length) return (posNeedsHTML(vm) || empty('Every factor the model can value is at the league’s P75 or better, or too uncertain to rank'));
-  const per = N[0].perSeason ? 'over a season of ' + N[0].G + ' games against an average side' : 'over the ' + N[0].games + (N[0].games === 1 ? ' game to play' : ' games to play');
-  let html = '<p class="fm-p">' + esc('Ranked by the wins each adds ' + per + ', reaching the league’s P75 alone') + ' ' +
-    chip(N.some(n => n.src === 'sim') ? 'model' : (vm.lens.forecast ? 'forecast' : 'elo')) + '</p>' + slot('needs');
-  html += '<ol class="fm-needs">' + N.map(n => '<li><b>' + esc(n.label + ' on ' + END[n.end]) + '</b> <span class="fm-p">' +
-    esc('from ' + unitFmt(n.unit, n.x) + ' to ' + unitFmt(n.unit, n.target)) + '</span> <span class="fm-w">' +
-    esc('worth ' + winsTxt(n.wins) + ' wins (± ' + (isNum(n.se) && n.se < 0.1 ? f2(n.se) : f1(n.se)) + ')') + '</span>' + (n.need ? '<span class="fm-need">' + esc(cap(n.need)) + '</span>' : '') + '</li>').join('') + '</ol>';
-  return html + posNeedsHTML(vm);
+
+/* ---- (4) BY POSITION (Louie: "a position per position breakdown ... minutes spread ... actual production, efficiency,
+   is a player providing plus value at his spot vs. the league"): a card per position, PG to C, then VORP ---- */
+const SQ_LABEL = { ast_pct: 'AST%', tov_pct: 'TOV%', ppp: 'points a play', usg: 'usage', p3_pct: '3P%', p3_rate: '3PA rate', stl_pct: 'STL%', ts: 'TS%', efg: 'eFG%',
+  dreb_pct: 'DRB%', oreb_pct: 'ORB%', blk_pct: 'BLK%', rim_rate: 'rim rate', rim_pct: 'rim FG%', ftr: 'FT attempt rate', ft_pct: 'FT%', un40: 'self-created points per 40', vorp: 'VORP' };
+/* what each statistic is, in a coach's words: the need's headline */
+const SQ_PLAIN = { ast_pct: 'creating for others', tov_pct: 'ball security', ppp: 'scoring efficiency', p3_pct: 'three-point shooting', p3_rate: 'three-point volume',
+  stl_pct: 'ball pressure', ts: 'scoring efficiency', efg: 'shooting', dreb_pct: 'defensive rebounding', oreb_pct: 'offensive rebounding', blk_pct: 'rim protection', rim_rate: 'rim pressure',
+  rim_pct: 'finishing at the rim', ftr: 'getting to the line', ft_pct: 'free-throw shooting', un40: 'creating his own shot', usg: 'share of the plays' };
+/* the squad model's priced part for a statistic (a position's slice of the team's factor); points a play is the scoring value */
+const STAT_PART = { efg: 'shoot', tov_pct: 'tov', ftr: 'ftr', oreb_pct: 'oreb', dreb_pct: 'dreb', stl_pct: 'stl', blk_pct: 'blk' };
+const fmtStat = (st, v) => (!isNum(v) ? '–' : st === 'ppp' ? f2(v) : f1(v));
+/* never a need: the value stats (Louie: "excluding vague value stats i.e. VORP/BPM"), and the style rates (usage, three
+   and rim rates: a choice, not a shortfall) */
+const NOT_NEED = { vorp: 1, bpm: 1, usg: 1, p3_rate: 1, rim_rate: 1 };
+const EFF = ['ts', 'ppp', 'efg'];
+/* the player who would close a gap at a position */
+const POS5_NEED = {
+  PG: { ast_pct: 'a point guard who creates for others', un40: 'a point guard who creates his own shot', tov_pct: 'a point guard who protects the ball', ppp: 'a more efficient point guard',
+        ts: 'a more efficient point guard', efg: 'a more efficient point guard', p3_pct: 'a point guard who makes his threes', stl_pct: 'a point guard who pressures the ball',
+        dreb_pct: 'a guard who helps on the glass', ft_pct: 'a guard who makes his free throws', ftr: 'a guard who draws fouls' },
+  SG: { ts: 'an efficient scoring guard', ppp: 'an efficient scoring guard', efg: 'an efficient scoring guard', un40: 'a guard who creates his own shot', p3_pct: 'a shooting guard who makes his threes',
+        ast_pct: 'a guard who makes plays for others', stl_pct: 'a guard who pressures the ball', tov_pct: 'a guard who protects the ball', dreb_pct: 'a guard who helps on the glass',
+        ft_pct: 'a guard who makes his free throws', ftr: 'a guard who draws fouls' },
+  SF: { ts: 'an efficient scoring wing', ppp: 'an efficient scoring wing', efg: 'an efficient scoring wing', p3_pct: 'a wing who shoots it', dreb_pct: 'a wing who rebounds',
+        stl_pct: 'a disruptive wing defender', ast_pct: 'a wing who makes plays', tov_pct: 'a wing with safe hands', un40: 'a wing who creates his own shot', oreb_pct: 'a wing who crashes the glass',
+        ftr: 'a wing who draws fouls', rim_pct: 'a wing who finishes at the rim' },
+  PF: { dreb_pct: 'a four who owns the defensive glass', oreb_pct: 'a four who crashes the offensive glass', ts: 'a four who finishes', ppp: 'a four who finishes', efg: 'a four who finishes',
+        blk_pct: 'a four who protects the rim', p3_pct: 'a stretch four who makes his threes', rim_pct: 'a four who finishes at the rim', tov_pct: 'a four with safe hands' },
+  C: { dreb_pct: 'a centre who owns the defensive glass', oreb_pct: 'a centre who crashes the offensive glass', blk_pct: 'a rim protector', ts: 'a centre who finishes', ppp: 'a centre who finishes',
+       efg: 'a centre who finishes', rim_pct: 'a centre who finishes at the rim', tov_pct: 'a centre with safe hands', ft_pct: 'a centre who makes his free throws', ast_pct: 'a centre who passes out of the post' }
 };
-H.slots = vm => {
-  const S = vm.slots;
-  const btns = '<div class="fm-slotb">' + SLOT_KEYS.map(k => '<button type="button" class="ep-btn mini" data-slot="' + k + '">' + k + '</button>').join('') +
-    '<span class="fm-p fm-mute">' + esc('press a position for its league view') + '</span></div>';
-  /* every position against the league's average, in wins (posGaps): the club's strongest and weakest lines */
-  const G = vm.posGaps;
+const posNeedOf = (pos, st) => (POS5_NEED[pos] && POS5_NEED[pos][st]) || '';
+/* THE GLARING NEEDS AT A POSITION: its statistics half an SD or more under the league's same position (the SD is that
+   position's own spread, so a small gap where the league is tight counts - Louie: "more sensitive to acute, smaller
+   changes ... adjust for things like range size"), the priced ones by the points they cost, the rest by how far under
+   (a key statistic of the position counting double); one line for efficiency, the worst of TS%, points a play, eFG% */
+const sev = n => (isNum(n.pts) ? n.pts : 0) + 0.3 * n.z * (n.key ? 1 : 0.5);
+function glaring(s) {
+  const Q = root.EpinoiaSquad, keyed = (Q && Q.KEY && Q.KEY[s.key]) || [];
+  const out = [], seen = {};
+  keyed.concat(Object.keys(s.stats)).forEach(st => {
+    if (seen[st] || NOT_NEED[st]) return;
+    seen[st] = 1;
+    const x = s.stats[st];
+    if (!x || !isNum(x.z) || x.z > -0.5) return;
+    const pts = STAT_PART[st] ? s.parts[STAT_PART[st]] : st === 'ppp' ? s.scoring : null;
+    out.push({ st, z: x.z, v: x.v, avg: x.avg, rank: x.rank, of: x.of, pts: isNum(pts) && pts < 0 ? pts : null, key: keyed.indexOf(st) >= 0 });
+  });
+  out.sort((a, b) => sev(a) - sev(b));
+  let eff = false;
+  return out.filter(n => { if (EFF.indexOf(n.st) < 0) return true; if (eff) return false; eff = true; return true; });
+}
+const needLine = (pos, n) => '<span class="fm-tag dn">' + esc('needs') + '</span> <b>' + esc(cap(SQ_PLAIN[n.st] || n.st)) + '</b> <span class="fm-pnv"><span>' + esc(SQ_LABEL[n.st] || n.st) +
+  '</span> ' + nb(fmtStat(n.st, n.v)) + ' ' + lgTxt(fmtStat(n.st, n.avg)) + ' ' + rankTxt(n.rank, n.of) + '</span>' + (isNum(n.pts) ? ' ' + worth(n.pts) : '') +
+  (posNeedOf(pos, n.st) ? '<span class="fm-need">' + esc(cap(posNeedOf(pos, n.st))) + '</span>' : '');
+/* the needs block's last word: the most glaring need on the floor, a position at a time, the three worst */
+function floorNeeds(vm) {
+  const S = vm.sq;
+  if (!S) return '';
+  const all = [];
+  S.slots.forEach(s => { const g = glaring(s)[0]; if (g) all.push(Object.assign({ pos: s.key }, g)); });
+  all.sort((a, b) => sev(a) - sev(b));
+  if (!all.length) return '';
+  return '<h4 class="fm-h4">' + esc('On the floor') + '</h4><ul class="fm-fl">' + all.slice(0, 3).map(n => '<li><b class="fm-pk" translate="no">' + n.pos + '</b> ' + needLine(n.pos, n) + '</li>').join('') + '</ul>' +
+    '<p class="fm-p fm-mute">' + esc('Each position against the same position at every club in the league: By position has the rest') + '</p>';
+}
+const PROD = [['pts', 'points'], ['reb', 'rebounds'], ['ast', 'assists'], ['stl', 'steals'], ['blk', 'blocks']];
+function statRow(st, x, s) {
+  if (!x) return '';
+  const pts = STAT_PART[st] ? s.parts[STAT_PART[st]] : st === 'ppp' ? s.scoring : null;
+  return '<li class="fm-st"><span class="fm-sl">' + esc(SQ_LABEL[st] || st) + '</span><span class="fm-sv">' + nb(fmtStat(st, x.v)) + '</span>' +
+    gauge({ v: x.v, avg: x.avg, p25: x.p25, p75: x.p75, lo: x.lo, hi: x.hi, lower: x.lower,
+      neutral: !!NEUTRAL[st] || (isNum(x.z) && Math.abs(x.z) < 0.35 && !(isNum(pts) && Math.abs(pts) >= 0.05)) }) + '<span class="fm-sx">' + lgTxt(fmtStat(st, x.avg)) +
+    (NEUTRAL[st] ? '' : ' ' + rankTxt(x.rank, x.of)) + '</span>' + (isNum(pts) && Math.abs(pts) >= 0.05 ? worth(pts) : NEUTRAL[st] ? levelTagN(x.z) : levelTag(x.z)) + '</li>';
+}
+function posCard(s, S, vm) {
+  const at = s.players.filter(p => p.min >= 0.5), tot = at.reduce((a, p) => a + p.min, 0) || 1;
+  const pv = new Map(S.players.map(p => [p.id, p]));
+  const who = '<div class="fm-mb" aria-hidden="true">' + at.slice(0, 6).map((p, i) => '<i data-i="' + Math.min(i, 3) + '" style="width:' + (100 * p.min / tot).toFixed(1) + '%"></i>').join('') + '</div>' +
+    '<ul class="fm-ml">' + at.slice(0, 4).map((p, i) => '<li data-i="' + Math.min(i, 3) + '">' + nm(vm.nameOf(p.id) || p.name) + ' ' + nb(f1(p.min)) + '</li>').join('') +
+    (at.length > 4 ? '<li>' + nb('+' + (at.length - 4)) + ' ' + ph('more') + '</li>' : '') + '</ul>';
+  const G = glaring(s).slice(0, 2);
+  const needs = '<div class="fm-pn">' + (G.length ? G.map(n => '<p>' + needLine(s.key, n) + '</p>').join('') : '<p><span class="fm-tag up">' + esc('no glaring need') + '</span></p>') + '</div>';
+  const P = s.p40, L = s.lgP40;
+  const prod = P ? '<dl class="fm-prod">' + PROD.map(([k, lab]) => {
+    const v = P[k], a = L && L[k];
+    return '<div class="' + (isNum(v) && isNum(a) ? (v >= a ? 'up' : 'dn') : '') + '"><dt>' + esc(lab) + '</dt><dd>' + nb(f1(v)) + ' <span class="fm-mute" translate="no">' + esc(f1(a)) + '</span></dd></div>';
+  }).join('') + '</dl>' : '';
+  const pl = at.slice(0, 5).map(p => pv.get(p.id)).filter(Boolean), mx = Math.max(1, ...pl.map(p => Math.abs(p.pts || 0)));
+  return '<article class="fm-pc"><header class="fm-pch"><span class="fm-pk" translate="no">' + s.key + '</span><span class="fm-pnm">' + esc(s.name) + '</span>' + worth(s.pts, s.wins30) + '</header>' + needs +
+    '<h5>' + esc('Who plays there') + ' <span class="fm-mute">' + esc('minutes a game') + '</span></h5>' + who +
+    '<h5>' + esc('Its key numbers against the league at the position') + '</h5><ul class="fm-sr">' + s.key5.map(st => statRow(st, s.stats[st], s)).join('') + '</ul>' +
+    (isNum(s.scoring) ? '<p class="fm-p fm-sc">' + ph('Its scoring on the plays it uses, against the league’s at the position:') + ' ' + worth(s.scoring) + '</p>' : '') +
+    (prod ? '<h5>' + esc('Per 40 minutes there') + ' <span class="fm-mute">' + esc('league in grey') + '</span></h5>' + prod : '') +
+    (pl.length ? '<h5>' + esc('Each player against the league’s at his positions') + '</h5><ul class="fm-pv">' + pl.map(p => '<li>' + nm(vm.nameOf(p.id) || p.name) + dbar(p.pts, mx) + worth(p.pts) + '</li>').join('') + '</ul>' : '') +
+    '</article>';
+}
+/* VALUE OVER REPLACEMENT, apart from the needs (Louie: "position by position and player by player VORP ... in the same
+   section also and presented well") */
+function vorpHTML(S, vm) {
+  const rows = S.slots.filter(s => s.vorp && isNum(s.vorp.v));
+  const pl = S.players.filter(p => isNum(p.vorp) && p.mpg >= 3).sort((a, b) => b.vorp - a.vorp);
+  if (!rows.length && !pl.length) return '';
+  const mx = Math.max(0.5, ...rows.map(s => Math.abs(s.vorp.v)), ...rows.map(s => Math.abs(s.vorp.avg || 0)), ...pl.map(p => Math.abs(p.vorp)));
+  return '<section class="fm-vorp"><h4 class="fm-h4">' + esc('Value over replacement (VORP)') + '</h4><p class="fm-p fm-mute">' +
+    esc('A season total, so it grows with the minutes: what each position and each player has added over a replacement-level player') + '</p>' +
+    (rows.length ? '<h5>' + esc('By position') + '</h5><ul class="fm-vl">' + rows.map(s => '<li><b class="fm-pk" translate="no">' + s.key + '</b>' + dbar(s.vorp.v, mx) + nb(f1(s.vorp.v)) + ' ' +
+      lgTxt(f1(s.vorp.avg)) + ' ' + rankTxt(s.vorp.rank, s.vorp.of) + '</li>').join('') + '</ul>' : '') +
+    (pl.length ? '<h5>' + esc('Player by player') + '</h5><ul class="fm-vl">' + pl.map(p => '<li>' + nm(vm.nameOf(p.id) || p.name) + ' <span class="fm-mute" translate="no">' + p.main + '</span>' +
+      dbar(p.vorp, mx) + nb(f1(p.vorp)) + '</li>').join('') + '</ul>' : '') + '</section>';
+}
+/* the builder's G / F / C view, where the squad model cannot be built (no season line on the page) */
+function oldSlots(vm) {
+  const S = vm.slots, G = vm.posGaps;
   const posHTML = G && (G.weak.length || G.strong.length) ? '<h4 class="fm-h4">' + esc('Each position against the league') + '</h4>' + slot('posGaps') +
     tw('<table class="fm-t"><thead><tr><th scope="col">group</th><th scope="col">statistic</th><th scope="col">club</th><th scope="col">league</th><th scope="col">winners</th><th scope="col">SD</th>' +
       '<th scope="col">wins per 30</th></tr></thead><tbody>' + G.strong.concat(G.weak).map(r => '<tr><th scope="row">' + esc(GROUP[r.g]) + '</th><td>' + esc(r.label) + (r.star ? ' ★' : '') +
       '</td><td translate="no">' + esc(f2(r.v)) + '</td><td translate="no">' + esc(f2(r.avg)) + '</td><td translate="no">' + esc(f2(r.top)) + '</td><td translate="no" class="' + (r.wins >= 0 ? 'fm-good' : 'fm-bad') + '">' +
       esc(sg(r.z, 1)) + '</td><td translate="no" class="' + (r.wins >= 0 ? 'fm-good' : 'fm-bad') + '">' + esc(winsTxt(r.wins)) + '</td></tr>').join('') + '</tbody></table>') +
     '<p class="fm-p fm-mute">' + esc('Each line is the position’s own (its players’ season rates weighted by their minutes there) against the league’s clubs at that position; wins per 30 is what the gap goes with there. Only gaps worth a fifth of a win or more, on statistics that count at that position') + '</p>' : '';
-  if (!S || !S.rows.length) return (posHTML || empty('The slot targets need the positions model: not built for this league yet')) + btns;
-  let html = posHTML;
-  if (S.gaps.length) html += '<p class="fm-say">' + esc('The two largest gaps: ' + S.gaps.map(r => GROUP[r.g].toLowerCase() + ' ' + low(P1_LABEL[r.stat] || r.stat) + ' (' + sg(r.pts, 1) + ' points)').join(' and ')) + '</p>';
-  html += slot('slots');
-  html += tw('<table class="fm-t"><thead><tr><th scope="col">group</th><th scope="col">statistic</th><th scope="col">club</th><th scope="col">winners</th><th scope="col">league</th>' +
+  if (!S || !S.rows.length) return posHTML || empty('The slot targets need the positions model: not built for this league yet');
+  let html = posHTML + tw('<table class="fm-t"><thead><tr><th scope="col">group</th><th scope="col">statistic</th><th scope="col">club</th><th scope="col">winners</th><th scope="col">league</th>' +
     '<th scope="col">points from reaching winners</th></tr></thead><tbody>' + S.rows.map(r => '<tr><th scope="row">' + esc(GROUP[r.g]) + '</th><td>' + esc(P1_LABEL[r.stat] || r.stat) +
       (r.star ? ' ★' : '') + '</td><td translate="no">' + esc(f2(r.v)) + '</td><td translate="no">' + esc(f2(r.top)) + '</td><td translate="no">' + esc(f2(r.mid)) +
       '</td><td translate="no">' + esc(isNum(r.pts) ? sg(r.pts, 2) : '–') + '</td></tr>').join('') + '</tbody></table>');
   if (S.forecast) html += '<p class="fm-p">' + esc('One point of BPM is worth, in points of margin: ' + S.forecast.map(r => GROUP[r.g].toLowerCase() + ' ' + f2(r.b) + ' (' + f2(r.lo) + '–' + f2(r.hi) + ')').join(', ')) +
     ' ' + chip('forecast') + '</p>';
-  return html + btns;
+  return html;
+}
+H.slots = vm => {
+  const btns = '<div class="fm-slotb">' + SLOT_KEYS.map(k => '<button type="button" class="ep-btn mini" data-slot="' + k + '">' + k + '</button>').join('') +
+    '<span class="fm-p fm-mute">' + esc('press a position for its league view') + '</span></div>';
+  const S = vm.sq;
+  if (!S) return oldSlots(vm) + btns;
+  return '<p class="fm-p">' + esc(S.source === 'lineups' ? 'Each position against the same position at every club in the league, from the minutes each player has played there'
+    : 'Each position against the same position at every club in the league, each player placed by his box-score position') + '</p>' + gaugeKey() +
+    '<div class="fm-pcs">' + S.slots.map(s => posCard(s, S, vm)).join('') + '</div>' + vorpHTML(S, vm) + btns;
 };
+
+/* ---- (5) THE SQUAD AS A WHOLE (Louie: "simulate with the squad as a whole ... whether there's enough accumulated ball
+   handling/rebounding, if the higher usage players are efficient enough on a PPP basis and if they're moving the ball
+   enough"): the groups, the five positions added up (and who supplies each sum), who covers for whom, who uses the
+   plays and how well, the half court, the ball moving ---- */
+const PART_PLAIN = { shoot: 'shooting', tov: 'ball security', oreb: 'offensive glass', ftr: 'free throws', dreb: 'defensive glass', stl: 'ball pressure', blk: 'rim protection' };
+const WHOLE_STAT = { shoot: 'eFG%', tov: 'TOV%', ftr: 'FTA/FGA', oreb: 'ORB%', dreb: 'DRB%', stl: 'STL%', blk: 'BLK%', ast: 'AST%', un: 'points a game', spacing: '3PA rate', p3: '3P%' };
+function groupsHTML(S) {
+  return '<h4 class="fm-h4">' + esc('The groups') + '</h4><div class="fm-grp">' + S.groups.map(g => {
+    const parts = Object.keys(PART_PLAIN).map(k => ({ k, v: g.parts[k] })).filter(x => isNum(x.v) && Math.abs(x.v) >= 0.05).sort((a, b) => a.v - b.v);
+    const worst = parts[0] && parts[0].v < 0 ? parts[0] : null, best = parts.length && parts[parts.length - 1].v > 0 ? parts[parts.length - 1] : null;
+    const cls = g.pts >= 0.5 ? 'up' : g.pts <= -0.5 ? 'dn' : '';
+    return '<section class="fm-gtile ' + cls + '"><header><b>' + esc(g.label) + '</b> <span class="fm-mute" translate="no">' + esc(g.slots.join(' · ')) + '</span></header>' +
+      '<p class="fm-gv">' + nb(sg(g.pts, 1)) + ' ' + ph('points a game') + '</p><p class="fm-gword">' + esc(g.pts >= 0.5 ? 'helping you win' : g.pts <= -0.5 ? 'costing you' : 'level with the league') + '</p>' +
+      (best ? '<p class="fm-gp up">' + ph(PART_PLAIN[best.k]) + ' ' + nb(sg(best.v, 1)) + '</p>' : '') + (worst ? '<p class="fm-gp dn">' + ph(PART_PLAIN[worst.k]) + ' ' + nb(sg(worst.v, 1)) + '</p>' : '') +
+      (isNum(g.scoring) ? '<p class="fm-gp">' + ph('scoring on its plays') + ' ' + nb(sg(g.scoring, 1)) + '</p>' : '') + '</section>';
+  }).join('') + '</div><p class="fm-p fm-mute">' + esc('Each group’s positions against the same positions at every club, in points of margin a game') + '</p>';
+}
+/* who supplies a summed statistic: each position's part, the club's against the league's average club's */
+function stackHTML(by) {
+  const sum = f => by.reduce((a, b) => a + (isNum(b[f]) && b[f] > 0 ? b[f] : 0), 0), mx = Math.max(sum('v'), sum('avg')) || 1;
+  const seg = f => by.map((b, i) => (isNum(b[f]) && b[f] > 0 ? '<i data-k="' + i + '" style="width:' + (100 * b[f] / mx).toFixed(1) + '%"></i>' : '')).join('');
+  return '<div class="fm-stk"><div class="fm-stkr"><span class="fm-stkl">' + esc('club') + '</span><span class="fm-stkb" aria-hidden="true">' + seg('v') + '</span></div>' +
+    '<div class="fm-stkr lg"><span class="fm-stkl">' + esc('league') + '</span><span class="fm-stkb" aria-hidden="true">' + seg('avg') + '</span></div>' +
+    '<p class="fm-stkk">' + by.map((b, i) => '<span data-k="' + i + '"><b translate="no">' + b.key + '</b> ' + nb(f1(b.v)) + ' <span class="fm-mute" translate="no">' + esc(f1(b.avg)) + '</span></span>').join('') + '</p></div>';
+}
+function wholeHTML(S) {
+  if (!S.whole.length) return '';
+  return '<h4 class="fm-h4">' + esc('What the five add up to') + '</h4><p class="fm-p fm-mute">' + esc('A shared statistic is the five positions’ own rates added up: the team’s. The bars show who supplies it, position by position, against the league’s average club') + '</p>' +
+    '<ul class="fm-wh">' + S.whole.map(r => {
+      const z = isNum(r.sd) && r.sd > 0 ? (r.lower ? -1 : 1) * (r.v - r.avg) / r.sd : null;
+      const nt = r.k === 'spacing';
+      return '<li class="fm-whr"><div class="fm-whh"><b>' + esc(r.label) + '</b> <span class="fm-mute">' + esc(WHOLE_STAT[r.k] || '') + '</span>' +
+        (r.est ? ' <span class="fm-tag">' + esc('estimate') + '</span>' : '') + '</div><div class="fm-whv">' + nb(f1(r.v)) +
+        gauge({ v: r.v, avg: r.avg, p25: r.p25, p75: r.p75, lo: r.lo, hi: r.hi, lower: r.lower, neutral: nt }) + lgTxt(f1(r.avg)) + (nt ? '' : ' ' + rankTxt(r.rank, r.of)) +
+        (isNum(r.pts) ? worth(r.pts, r.wins30) : nt ? levelTagN(z) : levelTag(z)) + '</div>' + (r.by ? stackHTML(r.by) : '') + '</li>';
+    }).join('') + '</ul>';
+}
+function coverHTML(S) {
+  if (!S.cover.length) return '';
+  return '<h4 class="fm-h4">' + esc('Who covers for whom') + '</h4><ul class="fm-cov">' + S.cover.map(c => '<li class="' + (c.covered ? 'up' : 'dn') + '"><span class="fm-tag ' + (c.covered ? 'up' : 'dn') + '">' +
+    esc(c.covered ? 'covered' : 'not covered') + '</span> <b>' + esc(cap(c.label)) + '</b> <span>' + esc('short at') + '</span> ' + c.short.map(x => '<b class="fm-pk" translate="no">' + x.key + '</b>').join(' ') +
+    (c.help.length ? ' <span>' + esc('made up by') + '</span> ' + c.help.map(x => '<b class="fm-pk" translate="no">' + x.key + '</b>').join(' ') : '') +
+    ' <span class="fm-cvx"><span>' + esc('the squad') + '</span> ' + nb(f1(c.team.v)) + ' ' + lgTxt(f1(c.team.avg)) + '</span>' + (!c.covered && isNum(c.pts) ? ' ' + worth(c.pts) : '') + '</li>').join('') + '</ul>' +
+    '<p class="fm-p fm-mute">' + esc('A position half an SD or more under the league’s same position is covered when the squad’s total still stands at the league’s') + '</p>';
+}
+/* what his load and his efficiency say together: a big share of the plays at the league's points a play or better, or
+   not; a small share used well (2 hundredths of a point a play either way is level) */
+const usageTag = (u, d) => (!isNum(d) ? null : u.usg >= 22 ? (d >= 0.02 ? ['carries the offence efficiently', 'up'] : d <= -0.03 ? ['carries more than his efficiency earns', 'dn']
+  : ['carries the offence at the league’s rate', '']) : u.usg < 17 && d >= 0.05 ? ['efficient: could take on more', 'up'] : null);
+function usageHTML(S, vm) {
+  const U = S.usage.slice(0, 9);
+  if (!U.length) return '';
+  const mx = Math.max(32, ...U.map(u => u.usg));
+  return '<h4 class="fm-h4">' + esc('Who uses the plays, and how well') + '</h4><p class="fm-p fm-mute">' +
+    esc('Usage: the share of the team’s plays a player ends while he is on the floor (20% is an even share). Points a play against the league’s at his positions') + '</p><ul class="fm-us">' +
+    U.map(u => {
+      const d = isNum(u.ppp) && isNum(u.lgPpp) ? u.ppp - u.lgPpp : null, tag = usageTag(u, d);
+      return '<li><span class="fm-un">' + nm(vm.nameOf(u.id) || u.name) + ' <span class="fm-mute" translate="no">' + u.main + '</span></span><span class="fm-ub" aria-hidden="true"><i style="width:' +
+        (100 * u.usg / mx).toFixed(1) + '%"></i><i class="fm-u20" style="left:' + (100 * 20 / mx).toFixed(1) + '%"></i></span><span class="fm-uv">' + nb(f1(u.usg) + '%') + ' ' + ph('usage') + '</span>' +
+        '<span class="fm-ux' + (!isNum(d) || Math.abs(d) < 0.02 ? '' : d > 0 ? ' up' : ' dn') + '">' + nb(f2(u.ppp)) + ' ' + ph('points a play') + ' ' + nb(sg(d, 2)) +
+        (isNum(u.scoring) ? ' ' + dot + ' ' + worth(u.scoring) : '') + '</span>' + (tag ? '<span class="fm-tag' + (tag[1] ? ' ' + tag[1] : '') + '">' + esc(tag[0]) + '</span>' : '') + '</li>';
+    }).join('') + '</ul>';
+}
+/* THE HALF COURT (Louie, 2026-10-08: "a half court usg% breakdown of the top usg% players and their relative TS%, TO% and
+   PPP"): each of the top players' half-court usage and share of the half-court plays, his TS%, TOV% and points a play
+   there, each against the league's half court */
+function halfCourtHTML(S, vm) {
+  const C = S.halfCourt;
+  if (!C) return '<h4 class="fm-h4">' + esc('The half court') + '</h4><p class="fm-p fm-mute">' + esc('Needs the play-by-play for most of the season’s games: not there for this league yet') + '</p>';
+  const mx = Math.max(32, ...C.players.map(p => p.usg));
+  const rel = (v, d, good) => (isNum(v) ? ' <span class="fm-rel ' + (good ? 'up' : 'dn') + '">' + nb(sg(v, d)) + '</span>' : '');
+  return '<h4 class="fm-h4">' + esc('The half court: who carries it') + '</h4><p class="fm-p">' + ph('In the half court the team makes') + ' ' + nb(f2(C.team.ppp)) + ' ' + ph('points a play') + ' ' +
+    lgTxt(f2(C.lg.ppp)) + ' ' + dot + ' ' + ph('TS%') + ' ' + nb(f1(C.team.ts)) + ' ' + lgTxt(f1(C.lg.ts)) + ' ' + dot + ' ' + ph('TOV%') + ' ' + nb(f1(C.team.tov)) + ' ' + lgTxt(f1(C.lg.tov)) + '</p>' +
+    '<div class="fm-hc">' + C.players.map(p => '<section class="fm-hcp"><header>' + nm(vm.nameOf(p.id) || p.name) + '</header><div class="fm-hcu"><span class="fm-ub" aria-hidden="true"><i style="width:' +
+      (100 * p.usg / mx).toFixed(1) + '%"></i><i class="fm-u20" style="left:' + (100 * 20 / mx).toFixed(1) + '%"></i></span>' + nb(f1(p.usg) + '%') + ' ' + ph('half-court usage') + '</div>' +
+      '<p class="fm-hcsh">' + nb(f1(p.share) + '%') + ' ' + ph('of the team’s half-court plays') + '</p><dl class="fm-hcs"><div><dt>' + esc('TS%') + '</dt><dd>' + nb(f1(p.ts)) + rel(p.rts, 1, p.rts >= 0) +
+      '</dd></div><div><dt>' + esc('TOV%') + '</dt><dd>' + nb(f1(p.tov)) + rel(p.rtov, 1, p.rtov <= 0) + '</dd></div><div><dt>' + esc('points a play') + '</dt><dd>' + nb(f2(p.ppp)) + rel(p.rppp, 2, p.rppp >= 0) +
+      '</dd></div></dl>' + worth(p.value) + '</section>').join('') + '</div>' +
+    '<p class="fm-p fm-mute">' + esc('Half-court plays as the play-by-play marks them: shots, trips to the line and turnovers. The figure beside each rate is against the league’s half court; the points a game are his half-court plays against the league’s points a play') + '</p>';
+}
+/* THE BALL MOVING: the share of the baskets off a pass, of the makes at the rim, and of the points created alone, with
+   what they say together, and the players who lean on the pass without finishing */
+function movesHTML(S, vm) {
+  const M = S.moves;
+  if (!M) return '';
+  const g = k => M.find(m => m.k === k) || null, ast = g('ast'), rim = g('rim'), self = g('self');
+  const shoot = S.whole.find(w => w.k === 'shoot'), sz = shoot && isNum(shoot.sd) && shoot.sd > 0 ? (shoot.v - shoot.avg) / shoot.sd : null;
+  const reads = [];
+  if (ast && isNum(ast.z) && ast.z >= 0.5) reads.push(isNum(sz) && sz <= -0.5 ? ['The ball moves, but the shots it finds do not go in', 'dn'] : ['The ball moves', 'up']);
+  if (rim && isNum(rim.z) && rim.z <= -0.5) reads.push(['Few makes at the rim come off a pass: the rim is reached one-on-one, not by cutting and finding', 'dn']);
+  if (self && isNum(self.z) && self.z <= -0.5 && ast && isNum(ast.z) && ast.z <= 0) reads.push(['Neither passing nor creating alone: short of ball handling', 'dn']);
+  if (self && isNum(self.z) && self.z >= 0.5) reads.push(['Players who make their own shot', 'up']);
+  const lean = S.players.filter(p => isNum(p.astSh) && p.astSh >= 70 && isNum(p.ts) && isNum(p.lgTs) && p.ts < p.lgTs - 2 && p.mpg >= 10);
+  return '<h4 class="fm-h4">' + esc('The ball moving') + '</h4><ul class="fm-wh">' + M.map(m => '<li class="fm-whr"><div class="fm-whh"><b>' + esc(m.label) + '</b></div><div class="fm-whv">' +
+      nb(f1(m.v) + '%') + gauge({ v: m.v, avg: m.avg, p25: m.p25, p75: m.p75, lo: m.lo, hi: m.hi, neutral: true }) + lgTxt(f1(m.avg) + '%') + ' ' + rankTxt(m.rank, m.of) + '</div></li>').join('') + '</ul>' +
+    (reads.length ? '<ul class="fm-reads">' + reads.map(r => '<li><span class="fm-tag ' + r[1] + '">' + esc(r[1] === 'up' ? 'strength' : 'concern') + '</span> ' + esc(r[0]) + '</li>').join('') + '</ul>' : '') +
+    (lean.length ? '<p class="fm-p">' + ph('Lean on the pass without finishing (most baskets assisted, TS% under the league’s at their positions):') + ' ' +
+      lean.map(p => '<span class="fm-lean">' + nm(vm.nameOf(p.id) || p.name) + ' ' + nb(f1(p.astSh) + '%') + ' ' + ph('assisted') + ' ' + dot + ' ' + ph('TS%') + ' ' + nb(f1(p.ts)) + '</span>').join(' ') + '</p>' : '');
+}
+H.fit = vm => {
+  const S = vm.sq;
+  if (!S) return posNeedsHTML(vm) || empty('The squad model needs the season’s lines of at least four clubs');
+  const G = vm.posGaps, cl = G && G.creation ? creationLine(G.creation) : '';
+  return '<p class="fm-p">' + esc('Five players share the floor, so the rebounds, the plays and the stops are shared out between them: the squad is judged as a whole, each position adding its part.') + '</p>' +
+    gaugeKey() + groupsHTML(S) + wholeHTML(S) + coverHTML(S) + usageHTML(S, vm) + (cl ? '<p class="fm-p">' + esc(cl + '.') + '</p>' : '') + halfCourtHTML(S, vm) + movesHTML(S, vm);
+};
+
+/* ---- (6) SQUAD SHAPE, visual (Louie: "the team's average vs. league avg plus what it means in terms of winning"): the
+   squad model's measures for every club (the league's average, its middle half, its better half by net rating), the
+   builder's role counts against the winners' band, each with what it goes with in wins where the evidence is there ---- */
+const SHAPE_FMT = { top5_share: 'pct', star_pts_share: 'pct', bench_share: 'pct', starter_stability: 'pct', availability: 'pct', height_w: 2, pos_entropy: 2 };
+const shapeFmt = (k, v) => (!isNum(v) ? '–' : SHAPE_FMT[k] === 'pct' ? f1(100 * v) + '%' : SHAPE_FMT[k] === 2 ? f2(v) : f1(v));
+const SHAPE_HOW = { rot_n: 'players at 10 minutes a game or more', top5_share: 'the five most used players’ share of the minutes', star_pts_share: 'the leading scorer’s share of the points',
+  usg_hhi: 'how concentrated the plays are: higher, in fewer hands', height_w: 'its height by minutes, against the league’s, in SDs', age_w: 'its age by minutes',
+  bench_share: 'the minutes played off the bench', depth_bpm: 'the BPM of its players six to nine by minutes', talent: 'its BPM by minutes', starter_stability: 'the games its most used starting five started',
+  availability: 'the games its top eight played', pos_entropy: 'how evenly its minutes spread over guards, wings and bigs' };
+function shapeRows(vm) {
+  const S = vm.sq, Q = vm.squad, src = vm.fo && vm.fo.squad;
+  const coef = new Map(((src && src.coef) || []).map(c => [c.k, c]));
+  /* the squad model's measures are its own, every club the same way: against the league and its better half, never
+     against the builder's band (the builder counts a club's own games, a player's at that club alone) */
+  const out = ((S && S.shape) || []).map(x => ({ k: x.k, v: x.v, avg: x.avg, p25: x.p25, p75: x.p75, lo: x.lo, hi: x.hi, top: x.top, z: x.z, band: null, c: coef.get(x.k) || null, lg: true }));
+  if (Q) Q.rows.forEach(r => { if (!out.some(x => x.k === r.k)) out.push({ k: r.k, v: r.v, band: [r.p25, r.p75], c: coef.get(r.k) || null, lg: false, evidence: r.evidence }); });
+  return out;
+}
+function shapeMeaning(r) {
+  const c = r.c;
+  if (!c || !isNum(c.wins30)) return '';
+  if (c.evidence !== 'strong' && c.evidence !== 'some') return '<span class="fm-lv">' + esc('no clear link with winning here') + '</span>';
+  const w = isNum(r.z) ? c.wins30 * r.z : null;
+  return (isNum(w) ? '<span class="fm-worth' + (w >= 0.05 ? ' up' : w <= -0.05 ? ' dn' : '') + '">' + nb(winsTxt(w)) + ' ' + ph('wins per 30 games against the league’s average squad') + '</span>'
+    : '<span class="fm-lv">' + esc(c.wins30 > 0 ? 'more of it goes with winning here' : 'less of it goes with winning here') + '</span>') + ' <span class="fm-ev" data-ev="' + esc(c.evidence) + '">' + esc(c.evidence) + '</span>';
+}
+const shapeRowHTML = r => '<li class="fm-whr"><div class="fm-whh"><b>' + esc(SQUAD_LABEL[r.k] || r.k) + '</b>' + (SHAPE_HOW[r.k] ? ' <span class="fm-mute">' + esc(SHAPE_HOW[r.k]) + '</span>' : '') + '</div>' +
+  '<div class="fm-whv">' + nb(shapeFmt(r.k, r.v)) + gauge({ v: r.v, avg: r.avg, p25: r.p25, p75: r.p75, lo: r.lo, hi: r.hi, band: r.band, top: r.top,
+    neutral: !r.c || (r.c.evidence !== 'strong' && r.c.evidence !== 'some'), lower: !!(r.c && r.c.b < 0) }) +
+  (r.lg ? lgTxt(shapeFmt(r.k, r.avg)) + (isNum(r.top) ? ' <span class="fm-lgv">' + ph('better half') + ' ' + nb(shapeFmt(r.k, r.top)) + '</span>' : '') : '') +
+  (r.band && isNum(r.band[0]) ? ' <span class="fm-lgv">' + ph('winners') + ' ' + nb(shapeFmt(r.k, r.band[0]) + '–' + shapeFmt(r.k, r.band[1])) + '</span>' : '') + shapeMeaning(r) + '</div></li>';
 H.squad = vm => {
-  const Q = vm.squad;
-  if (!Q) return empty('The squad model needs more team-seasons in this league');
+  const Q = vm.squad, rows = shapeRows(vm), src = vm.fo && vm.fo.squad;
+  if (!Q && !rows.length) return empty('The squad model needs more team-seasons in this league');
   let html = '';
-  if (Q.rows.length) {
-    html += '<p class="fm-p">' + esc(Q.power === 'low' ? 'Few team-seasons: the evidence is weak, and said so' : 'Against the band of the league’s top-quarter clubs (P25-P75)') + nTag(Q.n) + '</p>';
-    html += tw('<table class="fm-t"><thead><tr><th scope="col">measure</th><th scope="col">club</th><th scope="col">winners’ band</th><th scope="col">where</th><th scope="col">evidence</th></tr></thead><tbody>' +
-      Q.rows.map(r => '<tr><th scope="row">' + esc(r.label) + '</th><td translate="no">' + esc(f2(r.v)) + '</td><td translate="no">' + esc(f2(r.p25) + '–' + f2(r.p75)) + '</td><td>' +
-        esc(r.where) + '</td><td><span class="fm-ev" data-ev="' + esc(r.evidence) + '">' + esc(r.evidence) + '</span></td></tr>').join('') + '</tbody></table>');
-  }
-  if (Q.roles && Q.roles.length) html += '<h4 class="fm-h4">' + esc('Roles in the squad') + '</h4>' + tw('<table class="fm-t"><thead><tr><th scope="col">role</th><th scope="col">players</th><th scope="col">how it is earned</th></tr></thead><tbody>' +
+  if (rows.length) html += '<p class="fm-p">' + esc(vm.pooled ? 'Against the league’s clubs; what goes with winning, from every league’s team-seasons'
+      : src && src.power === 'low' ? 'Few team-seasons: the evidence is weak, and said so' : 'Against the league’s clubs, its better half by net rating and the band of its top-quarter clubs') + (src ? nTag(src.n) : '') + '</p>' +
+    gaugeKey('the better half', Q ? 'the winners’ band' : '') + '<ul class="fm-wh">' + rows.map(shapeRowHTML).join('') + '</ul>';
+  if (Q && Q.roles && Q.roles.length) html += '<h4 class="fm-h4">' + esc('Roles in the squad') + '</h4>' + tw('<table class="fm-t"><thead><tr><th scope="col">role</th><th scope="col">players</th><th scope="col">how it is earned</th></tr></thead><tbody>' +
     Q.roles.map(r => '<tr><th scope="row">' + esc(r.label) + '</th><td translate="no" class="fm-five">' + esc(r.names.join(', ') || '–') + '</td><td>' + esc(r.how) + '</td></tr>').join('') + '</tbody></table>') +
     '<p class="fm-p fm-mute">' + esc('Each cut is a percentile within this league-season; What wins shows the values and how each role goes with winning') + '</p>';
-  if (Q.grid) html += '<h4 class="fm-h4">' + esc('Shooters and bigs on the floor') + '</h4>' + slot('grid');
-  if (Q.gridH) html += '<h4 class="fm-h4">' + esc('Shooters and ball handlers on the floor') + '</h4>' + slot('gridH');
-  if (Q.fives.length) html += '<h4 class="fm-h4">' + esc('The club’s most used fives') + '</h4>' + tw('<table class="fm-t"><thead><tr><th scope="col">five</th><th scope="col">shooters</th><th scope="col">bigs</th>' +
+  if (Q && Q.grid) html += '<h4 class="fm-h4">' + esc('Shooters and bigs on the floor') + '</h4>' + slot('grid');
+  if (Q && Q.gridH) html += '<h4 class="fm-h4">' + esc('Shooters and ball handlers on the floor') + '</h4>' + slot('gridH');
+  if (Q && Q.fives.length) html += '<h4 class="fm-h4">' + esc('The club’s most used fives') + '</h4>' + tw('<table class="fm-t"><thead><tr><th scope="col">five</th><th scope="col">shooters</th><th scope="col">bigs</th>' +
     '<th scope="col">possessions</th><th scope="col">net per 100</th><th scope="col">model</th></tr></thead><tbody>' + Q.fives.map(f => '<tr><td translate="no" class="fm-five">' + esc(f.names.join(', ') || '–') +
       '</td><td translate="no">' + esc(f.s) + '</td><td translate="no">' + esc(f.b) + '</td><td translate="no">' + esc(Math.round(f.poss)) + '</td><td translate="no">' + esc(sg(f.net, 1)) +
       '</td><td translate="no">' + esc(sg(f.pred, 1)) + '</td></tr>').join('') + '</tbody></table>');
-  return html + '<p class="fm-p fm-mute">' + esc('The opposing five is not controlled') + '</p>';
+  return html + (Q && (Q.grid || Q.fives.length) ? '<p class="fm-p fm-mute">' + esc('The opposing five is not controlled') + '</p>' : '');
 };
+
+/* ---- (7) WHY WE LOSE: a heat strip of the last defeats part by part (Louie: "Why we lose is good but again needs more
+   visuals"), the average defeat, and each defeat's waterfall folded ---- */
+function lossStrip(X) {
+  const parts = PARTS.filter(k => k !== 'garbage' && X.list.some(g => isNum(partOf(g.parts, k))));
+  const mx = Math.max(1, ...X.list.map(g => Math.max(...parts.map(k => Math.abs(partOf(g.parts, k) || 0)))));
+  const cell = v => (!isNum(v) ? '<td></td>' : '<td class="' + (v < 0 ? 'dn' : 'up') + '" style="--a:' + Math.min(1, Math.abs(v) / mx).toFixed(2) + '" translate="no">' + esc(sg(v, 0)) + '</td>');
+  return tw('<table class="fm-heat"><thead><tr><th scope="col">' + esc('part') + '</th>' + X.list.map(g => '<th scope="col" translate="no">' + esc(g.oppName || '–') + '<small>' + esc(g.d) + '</small></th>').join('') +
+    '<th scope="col">' + esc('against you') + '</th></tr></thead><tbody>' + parts.map(k => '<tr><th scope="row">' + esc(PART_LABEL[k] || k) + '</th>' + X.list.map(g => cell(partOf(g.parts, k))).join('') +
+    '<td class="fm-hn" translate="no">' + X.list.filter(g => (partOf(g.parts, k) || 0) <= -1).length + '/' + X.list.length + '</td></tr>').join('') + '</tbody></table>');
+}
 H.losses = vm => {
   const X = vm.losses;
   if (!X || !X.list.length) return empty('No defeats to read yet');
   let html = '<p class="fm-say">' + esc(X.lose.length ? 'You lose when ' + X.lose.join(' and ') + ' go against you' : 'No part of the losses stands out beyond the noise') + nTag(X.n) + '</p>';
-  if (X.mean.length) html += slot('lossMean');
-  html += '<div class="fm-losses">' + X.list.map((g, i) => '<details class="fm-loss" data-i="' + i + '"><summary><span translate="no">' + esc(g.d) + '</span> ' +
+  html += '<h4 class="fm-h4">' + esc('The last defeats, part by part') + '</h4>' + lossStrip(X) +
+    '<p class="fm-p fm-mute">' + esc('Points each part cost (red) or gave (green) against what was expected; the last column counts the defeats in which it cost a point or more') + '</p>';
+  if (X.mean.length) html += '<h4 class="fm-h4">' + esc('The average defeat') + '</h4>' + slot('lossMean');
+  html += '<h4 class="fm-h4">' + esc('Each defeat') + '</h4><div class="fm-losses">' + X.list.map((g, i) => '<details class="fm-loss" data-i="' + i + '"><summary><span translate="no">' + esc(g.d) + '</span> ' +
     '<span translate="no">' + esc(g.oppName) + '</span> <span>' + esc(g.h === 1 ? 'home' : g.h === -1 ? 'away' : 'neutral') + '</span> <b translate="no">' + esc(sg(g.m, 0)) + '</b></summary>' +
     slot('loss' + i) + (g.sim ? '<p><button type="button" class="ep-btn mini" data-act="shapley" data-i="' + i + '">' + esc('simulator check') + '</button></p><div class="fm-shap" data-shap="' + i + '"></div>' : '') +
     '</details>').join('') + '</div>';
@@ -710,24 +1183,73 @@ H.next = vm => {
     '<button type="button" data-act="nend" data-v="def" aria-pressed="false">' + esc('their offence') + '</button></div>' +
     '<button type="button" class="ep-btn" data-act="needed">' + esc('work out what it takes') + '</button></div><div class="fm-needed" data-out="needed" aria-live="polite"></div>';
 };
+
+/* ---- (8) WHAT IF: the roster what-if on the squad model first (Louie: "inserting a player and their accumulated stats
+   into the team ... like a full comp sim squad model including impact on positional mins"; "a usage% sim"), then the
+   simulator's dials ---- */
+function squadSimUI(vm) {
+  const S = vm.sq, own = S.players.slice().sort((a, b) => b.mpg - a.mpg);
+  const clubs = [...S._all.keys()].filter(t => t !== S.club).map(t => ({ id: t, name: vm.clubName(t, true) || '–' })).sort((a, b) => a.name.localeCompare(b.name));
+  const L = S.gameMin;
+  return '<h4 class="fm-h4">' + esc('A roster what-if') + '</h4><p class="fm-p fm-mute">' +
+    esc('Add any player in the league, take one out or change his minutes: the squad is played again position by position, its plays shared out again (they still add up to 100%), and the difference priced') + '</p>' +
+    '<div class="fm-ctl fm-sqadd"><label class="fm-lab">' + esc('club') + ' <select class="ep-input" data-act="sqclub"><option value="">' + esc('choose a club') + '</option>' +
+    clubs.map(c => '<option value="' + esc(c.id) + '" translate="no">' + esc(c.name) + '</option>').join('') + '</select></label>' +
+    '<label class="fm-lab">' + esc('player') + ' <select class="ep-input" data-act="sqpick" disabled><option value="">' + esc('choose a player') + '</option></select></label>' +
+    '<label class="fm-lab">' + esc('minutes a game') + ' <input class="ep-input fm-num" type="number" inputmode="decimal" min="1" max="' + L + '" step="1" data-act="sqmpg"></label>' +
+    '<button type="button" class="ep-btn" data-act="sqadd" disabled>' + esc('add him') + '</button></div>' +
+    '<div class="fm-ctl"><label class="fm-lab">' + esc('take out') + ' <select class="ep-input" data-act="sqout"><option value="">' + esc('choose a player') + '</option>' +
+    own.map(p => '<option value="' + esc(p.id) + '" translate="no">' + esc(vm.nameOf(p.id) || p.name || p.id.slice(0, 6)) + '</option>').join('') + '</select></label></div>' +
+    '<details class="fm-sub"><summary>' + esc('Change minutes') + '</summary><ul class="fm-mins">' + own.filter(p => p.mpg >= 1).map(p => '<li><label>' + nm(vm.nameOf(p.id) || p.name) +
+      ' <input class="ep-input fm-num" type="number" inputmode="decimal" min="0" max="' + L + '" step="1" value="' + Math.round(p.mpg) + '" data-sqmpg="' + esc(p.id) + '" aria-label="' + esc('minutes a game') + '"></label></li>').join('') +
+    '</ul></details><ul class="fm-moves" data-out="sqmoves"></ul><div class="fm-wi" data-out="squadsim" aria-live="polite"><p class="fm-p fm-mute">' + esc('Make a move to see what it changes') + '</p></div>' +
+    '<p><button type="button" class="ep-btn mini" data-act="sqreset">' + esc('reset') + '</button></p>';
+}
+const SIM_PARTS = [['offence', 'Offence: who uses the plays, and how well'], ['oreb', 'Offensive glass'], ['dreb', 'Defensive glass'], ['stl', 'Ball pressure'], ['blk', 'Rim protection']];
+function squadSimHTML(vm, r) {
+  if (!r) return '<p class="fm-p">' + esc('Not enough to work it out') + '</p>';
+  const name = id => vm.nameOf(id) || '–', added = new Set((r.added || []).map(a => a.id)), L = vm.sq.gameMin;
+  const mx = Math.max(0.5, ...SIM_PARTS.map(([k]) => Math.abs(r.parts[k] || 0)));
+  let html = '<p class="fm-simt' + (r.pts >= 0.05 ? ' up' : r.pts <= -0.05 ? ' dn' : '') + '">' + nb(sg(r.pts, 1)) + ' ' + ph('points a game') + ' ' + dot + ' ' + nb(winsTxt(r.wins30)) + ' ' + ph('wins per 30 games') +
+    (isNum(r.winsLeft) ? ' ' + dot + ' ' + nb(winsTxt(r.winsLeft)) + ' ' + ph('wins over the games to play') : '') + '</p>';
+  html += '<ul class="fm-simp">' + SIM_PARTS.map(([k, lab]) => '<li><span class="fm-spl">' + esc(lab) + '</span>' + dbar(r.parts[k], mx) + nb(sg(r.parts[k], 2)) + '</li>').join('') + '</ul>';
+  if (isNum(r.ppp.before) && isNum(r.ppp.after)) html += '<p class="fm-p">' + ph('Points a play') + ' ' + nb(f2(r.ppp.before) + ' → ' + f2(r.ppp.after)) + ' ' + dot + ' ' +
+    ph(r.squeeze > 0.02 ? 'more natural usage than plays: the creators squeeze each other' : r.squeeze < -0.02 ? 'fewer creators: the others take on more' : 'the plays fit') + '</p>';
+  const U = r.usage.filter(u => u.f >= 0.05);
+  html += '<h5>' + esc('The plays, shared out again') + '</h5>' + tw('<table class="fm-t fm-tn"><thead><tr><th scope="col">' + esc('player') + '</th><th scope="col">' + esc('usage') + '</th><th scope="col">' +
+    esc('points a play') + '</th><th scope="col">' + esc('minutes a game') + '</th></tr></thead><tbody>' + U.map(u => '<tr' + (added.has(u.id) ? ' class="fm-new"' : '') + '><th scope="row" translate="no">' + esc(name(u.id)) +
+      '</th><td translate="no">' + esc((u.before ? f1(u.before.u) + ' → ' : '') + f1(u.u2)) + '</td><td translate="no">' + esc((u.before ? f2(u.before.ppp) + ' → ' : '') + f2(u.ppp2)) +
+      '</td><td translate="no">' + esc((u.before ? f1(u.before.f * L) + ' → ' : '') + f1(u.f * L)) + '</td></tr>').join('') + '</tbody></table>');
+  if (r.removed.length) html += '<p class="fm-p">' + ph('Out:') + ' ' + r.removed.map(id => nm(name(id))).join(', ') + '</p>';
+  html += '<h5>' + esc('Minutes at each position') + ' <span class="fm-mute">' + esc('before, in brackets') + '</span></h5><div class="fm-dep">' + r.depth.map(d => '<div class="fm-depc"><b class="fm-pk" translate="no">' + d.key + '</b><ul>' +
+    d.players.filter(p => p.min >= 0.5).slice(0, 6).map(p => '<li' + (added.has(p.id) ? ' class="fm-new"' : '') + '>' + nm(name(p.id)) + ' ' + nb(f1(p.min)) +
+      (Math.abs(p.min - p.was) >= 0.5 ? ' <span class="fm-mute" translate="no">' + esc('(' + f1(p.was) + ')') + '</span>' : '') + '</li>').join('') + '</ul></div>').join('') + '</div>';
+  return html + '<p class="fm-p fm-mute">' + esc('Glass, steals and blocks are shared out by the floor; the offence by the plays: a scorer added to a side of ball handlers takes plays from them, and each is a little more efficient on the plays he keeps') + '</p>';
+}
 H.whatIf = vm => {
   const X = vm.whatIf;
   if (!X) return empty('The club is not in this file');
-  const ends = [['off', 'our offence'], ['def', 'our defence']].map(([v, t]) => '<button type="button" data-act="wend" data-v="' + v + '" aria-pressed="' + (v === X.end) + '">' + esc(t) + '</button>').join('');
-  let html = '<div class="fm-ctl"><div class="pg-seg fm-seg" role="group" aria-label="' + esc('end') + '">' + ends + '</div>' +
-    '<button type="button" class="ep-btn mini" data-act="wreset">' + esc('reset') + '</button></div><div class="fm-dials">' + X.dials.map(d => {
-    const v = isNum(X.vals[d.key]) ? X.vals[d.key] : 0;
-    return '<label class="fm-dial"><span class="fm-dl">' + esc(d.label) + '</span><input type="range" data-dial="' + d.key + '" min="' + d.min + '" max="' + d.max + '" step="' + d.step + '" value="' + v +
-      '" aria-label="' + esc(d.label) + '"><output translate="no" data-dv="' + d.key + '">' + esc(sg(v, 1) + ' ' + d.unit) + '</output></label>';
-  }).join('') + '</div><div class="fm-wi" data-out="whatif" aria-live="polite"><p class="fm-p fm-mute">' + esc('Move a dial to see the change') + '</p></div>';
+  let html = X.squad && vm.sq ? squadSimUI(vm) : '';
+  if (X.dials.length) {
+    const ends = [['off', 'our offence'], ['def', 'our defence']].map(([v, t]) => '<button type="button" data-act="wend" data-v="' + v + '" aria-pressed="' + (v === X.end) + '">' + esc(t) + '</button>').join('');
+    html += (html ? '<h4 class="fm-h4">' + esc('Move the team’s rates') + '</h4>' : '') + '<div class="fm-ctl"><div class="pg-seg fm-seg" role="group" aria-label="' + esc('end') + '">' + ends + '</div>' +
+      '<button type="button" class="ep-btn mini" data-act="wreset">' + esc('reset') + '</button></div><div class="fm-dials">' + X.dials.map(d => {
+        const v = isNum(X.vals[d.key]) ? X.vals[d.key] : 0;
+        return '<label class="fm-dial"><span class="fm-dl">' + esc(d.label) + '</span><input type="range" data-dial="' + d.key + '" min="' + d.min + '" max="' + d.max + '" step="' + d.step + '" value="' + v +
+          '" aria-label="' + esc(d.label) + '"><output translate="no" data-dv="' + d.key + '">' + esc(sg(v, 1) + ' ' + d.unit) + '</output></label>';
+      }).join('') + '</div><div class="fm-wi" data-out="whatif" aria-live="polite"><p class="fm-p fm-mute">' + esc('Move a dial to see the change') + '</p></div>';
+  }
   if (X.roster && X.roster.players.length) {
     html += '<h4 class="fm-h4">' + esc('A roster what-if') + '</h4><div class="fm-ctl"><label class="fm-lab">' + esc('remove') + ' <select class="ep-input" data-act="rremove"><option value="">' +
       esc('nobody') + '</option>' + X.roster.players.map(p => '<option value="' + esc(p.id) + '" translate="no">' + esc(p.name || p.g + ' ' + p.id.slice(0, 4)) + '</option>').join('') + '</select></label>' +
       '<label class="fm-lab">' + esc('add a median shooter at') + ' <select class="ep-input" data-act="radd"><option value="">' + esc('nowhere') + '</option>' +
       X.roster.groups.map(g => '<option value="' + g + '">' + esc(GROUP[g].toLowerCase()) + '</option>').join('') + '</select></label></div><div class="fm-wi" data-out="roster" aria-live="polite"></div>';
   }
-  return html + '<p class="fm-p fm-mute">' + esc('The simulator moves one rate with the others fixed') + ' ' + chip('model', vm.lens.calibrated ? '' : 'experimental: relative differences only') + '</p>';
+  if (X.dials.length) html += '<p class="fm-p fm-mute">' + esc('The simulator moves one rate with the others fixed') + ' ' + chip('model', vm.lens.calibrated ? '' : 'experimental: relative differences only') + '</p>';
+  return html || empty('The club is not in this file');
 };
+/* what a block the pooled model cannot fill says in its place */
+const HIDDEN = { losses: 'Each defeat is read part by part once this league has its own model', next: 'The game simulator switches on once this league has its own model' };
 /* the whole panel: the status line and its bar, then the blocks */
 function panel(vm, o) {
   o = o || {};
@@ -736,17 +1258,29 @@ function panel(vm, o) {
     if (vm && (vm.reason === 'signin' || vm.reason === 'jwt')) return '<div class="fm" data-fm><div class="fm-empty"><p>' + esc('Members’ analysis.') + ' <a href="' + esc(o.signin || '../signin/') + '">' + esc('Sign in') + '</a> ' + esc('to see it.') + '</p></div></div>';
     return '<div class="fm" data-fm>' + empty(vm ? vm.message : MSG.network) + '</div>';
   }
-  const V = vm.verdict, N = vm.needs, X = vm.losses;
+  const V = vm.verdict, N = vm.needs, X = vm.losses, S = vm.sq;
+  /* each block's line under its title: the weakest position, the groups, the first need in words */
+  const weakest = S ? S.slots.slice().sort((a, b) => (a.pts || 0) - (b.pts || 0))[0] : null;
   const sums = {
     verdict: V ? esc(V.w + '-' + V.l + (V.proj && V.proj.left ? ' · projected ' + V.proj.p50 + ' wins' : '')) : '',
     ledger: vm.ledger ? esc('factor-expected margin ' + sg(vm.ledger.sum, 1) + ' a game') : '',
-    needs: N && N.length ? esc(N[0].label + ' on ' + END[N[0].end] + ': ' + winsTxt(N[0].wins) + ' wins') : '',
-    slots: vm.slots && vm.slots.gaps.length ? esc(GROUP[vm.slots.gaps[0].g] + ': ' + low(P1_LABEL[vm.slots.gaps[0].stat] || vm.slots.gaps[0].stat)) : '',
+    needs: N && N.length ? ph(needHead(N[0])) + ' ' + nb(winsTxt(N[0].wins)) + ' ' + ph('wins') : '',
+    slots: weakest && isNum(weakest.pts) ? ph('weakest') + ' ' + nb(weakest.key) + ' ' + nb(sg(weakest.pts, 1)) + ' ' + ph('points a game')
+      : vm.slots && vm.slots.gaps.length ? esc(GROUP[vm.slots.gaps[0].g] + ': ' + low(P1_LABEL[vm.slots.gaps[0].stat] || vm.slots.gaps[0].stat)) : '',
+    fit: S ? S.groups.map(g => ph(g.label) + ' ' + nb(sg(g.pts, 1))).join(' ' + dot + ' ') : '',
     squad: vm.squad && vm.squad.fives.length ? esc(vm.squad.fives.length + ' fives') : '',
     losses: X ? esc(X.n + (X.n === 1 ? ' loss' : ' losses')) : '',
     next: vm.next && vm.next.fixture ? esc('next: ' + vm.next.fixture.oppName) : '',
     whatIf: ''
   };
+  /* THE POOLED MODEL says so where the status line stands, and has nothing to recalculate */
+  if (vm.pooled) {
+    const own = vm.fo.n && isNum(vm.fo.n.games) ? vm.fo.n.games : null;
+    const pst = '<div class="fm-status"><p class="fm-line fm-pooled">' + ph(own != null && own >= 20 ? 'Valued on every league’s games until this league’s own model is built'
+      : 'Valued on every league’s games until this league has 20 finished games of its own') + (own != null ? ' ' + dot + ' ' + nb(own) + ' ' + ph('finished games so far') : '') + '</p></div>';
+    return '<div class="fm" data-fm>' + pst + BLOCKS.map(b => (vm.hide.indexOf(b) >= 0 ? sec(b, '', empty(HIDDEN[b] || '')) : sec(b, sums[b], H[b](vm), { verdict: 1, ledger: 1, needs: 1 }[b]))).join('') +
+      '<p class="fm-foot">' + esc('Accounting is identity, not levers; the squad model is a model’s answer, never proof of cause') + '</p></div>';
+  }
   const status = '<div class="fm-status"><p class="fm-line" data-fm-line aria-live="polite"></p><div class="fm-acts">' +
     '<button type="button" class="ep-btn fm-recalc" data-act="recalc" disabled>' + esc('Recalculate') + '</button>' +
     '<button type="button" class="ep-btn fm-cancel hide" data-act="cancel">' + esc('Cancel') + '</button></div>' +
@@ -857,6 +1391,8 @@ function mount(host, vm, opts) {
   let holdUntil = 0, holdT = 0;
   const hold = sec => { holdUntil = Math.max(holdUntil, Date.now() + 1000 * Math.max(1, sec || 0)); };
   const state = { nend: 'off' };
+  /* the roster what-if's moves (squad.js simulate): kept across a redraw, the panel's controls redrawn empty */
+  const sqMoves = { add: [], remove: [], mpg: {} };
 
   function bindCharts() {
     binds.forEach(b => b.destroy()); binds = [];
@@ -881,6 +1417,7 @@ function mount(host, vm, opts) {
     if (!vm.ok) return;
     bindCharts();
     status();
+    sqMoves.add = []; sqMoves.remove = []; sqMoves.mpg = {};
     const nx = host.querySelector('details[data-b="next"]');
     if (nx && nx.open) simulateNext();
   }
@@ -1075,6 +1612,67 @@ function mount(host, vm, opts) {
     } catch (_) { out.textContent = 'The simulator could not run just now'; }
   }
 
+  /* ---- the roster what-if on the squad model (squad.js simulate): anyone in the league added, a player taken out,
+     minutes set; the squad played again and priced (no Worker: it is a sum over a few dozen lines) ---- */
+  const sqName = id => vm.nameOf(id) || '';
+  async function sqClub(tid) {
+    const pick = $('[data-act="sqpick"]'), add = $('[data-act="sqadd"]');
+    if (!pick) return;
+    const blank = '<option value="">' + esc('choose a player') + '</option>';
+    pick.innerHTML = blank; pick.disabled = true;
+    if (add) add.disabled = true;
+    const S = vm.sq && vm.sq._all.get(String(tid));
+    if (!S) return;
+    /* the other club's names, asked for once (the season file usually carries them) */
+    const need = S.who.map(w => w.line.id).filter(id => !sqName(id));
+    if (need.length && opts.lookupNames) {
+      try {
+        const got = await opts.lookupNames(need);
+        asMap(got).forEach((v, k) => { if (v) vm.names.set(String(k), String(v)); });
+      } catch (_) { /* unnamed: the id stands in */ }
+    }
+    if (destroyed) return;
+    const rows = S.who.map(w => { const sh = w.share || [], i = sh.length ? sh.indexOf(Math.max(...sh)) : -1; return { id: w.line.id, mpg: w.line.min / Math.max(1, w.line.gp), pos: SLOT_KEYS[i] || '' }; })
+      .filter(p => !sqMoves.add.some(a => a.id === p.id)).sort((a, b) => b.mpg - a.mpg);
+    pick.innerHTML = blank + rows.map(p => '<option value="' + esc(p.id) + '" data-mpg="' + esc(f1(p.mpg)) + '" translate="no">' + esc((sqName(p.id) || p.id.slice(0, 6)) + ' · ' + p.pos + ' · ' + f1(p.mpg)) + '</option>').join('');
+    pick.disabled = false;
+  }
+  function sqChips() {
+    const ul = $('[data-out="sqmoves"]');
+    if (!ul) return;
+    const chips = sqMoves.add.map(a => ['add', a.id, 'added', a.mpg]).concat(sqMoves.remove.map(id => ['remove', id, 'taken out', null]))
+      .concat(Object.keys(sqMoves.mpg).map(id => ['mpg', id, 'minutes', sqMoves.mpg[id]]));
+    ul.innerHTML = chips.map(c => '<li><span class="fm-tag ' + (c[0] === 'remove' ? 'dn' : 'up') + '">' + esc(c[2]) + '</span> ' + '<span class="fm-nm" translate="no">' + esc(sqName(c[1]) || c[1].slice(0, 6)) + '</span>' +
+      (isNum(c[3]) ? ' <b translate="no">' + esc(f1(c[3])) + '</b>' : '') + ' <button type="button" class="fm-x" data-act="squndo" data-k="' + c[0] + '" data-id="' + esc(c[1]) + '" aria-label="' + esc('undo') + '">×</button></li>').join('');
+  }
+  function sqRun() {
+    const out = $('[data-out="squadsim"]'), Q = root.EpinoiaSquad;
+    if (!out || !Q || !vm.sq) return;
+    sqChips();
+    if (!sqMoves.add.length && !sqMoves.remove.length && !Object.keys(sqMoves.mpg).length) { out.innerHTML = '<p class="fm-p fm-mute">' + esc('Make a move to see what it changes') + '</p>'; return; }
+    let r = null;
+    try { r = Q.simulate(vm.sq, sqMoves); } catch (_) { r = null; }
+    out.innerHTML = squadSimHTML(vm, r);
+  }
+  const numIn = v => { const x = +String(v == null ? '' : v).replace(',', '.'); return isNum(x) ? x : null; };
+
+  /* the club's players with no name on the page (let go, or only in the minutes' file): asked for once, the panel drawn
+     again with the blocks open as they were */
+  async function fillNames() {
+    if (!opts.lookupNames || !vm.ok || !vm.sq) return;
+    const ids = [...new Set(vm.sq.players.map(p => p.id).concat(...vm.sq.slots.map(s => s.players.map(p => p.id))))].filter(id => !vm.nameOf(id));
+    if (!ids.length) return;
+    let got = null;
+    try { got = asMap(await opts.lookupNames(ids)); } catch (_) { return; }
+    let n = 0;
+    got.forEach((v, k) => { if (v && !vm.nameOf(k)) { vm.names.set(String(k), String(v)); n++; } });
+    if (!n || destroyed) return;
+    const open = [...host.querySelectorAll('details[data-b]')].filter(d => d.open).map(d => d.getAttribute('data-b'));
+    draw();
+    host.querySelectorAll('details[data-b]').forEach(d => { d.open = open.indexOf(d.getAttribute('data-b')) >= 0; });
+    bindCharts();
+  }
+
   /* ---- one handler for every control ---- */
   const onClick = e => {
     const b = e.target.closest && e.target.closest('[data-act],[data-slot]');
@@ -1090,6 +1688,28 @@ function mount(host, vm, opts) {
     else if (act === 'wend') { vm.whatIf.end = v; b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); queueWhatIf(); }
     else if (act === 'wreset') { host.querySelectorAll('[data-dial]').forEach(i => { i.value = 0; setDv(i); }); queueWhatIf(); }
     else if (act === 'shapley') lossShapley(+b.getAttribute('data-i'));
+    else if (act === 'sqadd') {
+      const pick = $('[data-act="sqpick"]'), mp = $('[data-act="sqmpg"]'), id = pick && pick.value;
+      if (!id || !vm.sq) return;
+      const line = vm.sq._lines.get(id), m = numIn(mp && mp.value);
+      sqMoves.add.push({ id, mpg: m > 0 ? Math.min(vm.sq.gameMin, m) : line ? line.min / Math.max(1, line.gp) : null });
+      if (pick) { const o = pick.querySelector('option[value="' + id + '"]'); if (o) o.remove(); pick.value = ''; }
+      b.disabled = true;
+      sqRun();
+    }
+    else if (act === 'squndo') {
+      const k = b.getAttribute('data-k'), id = b.getAttribute('data-id');
+      if (k === 'add') sqMoves.add = sqMoves.add.filter(a => a.id !== id);
+      else if (k === 'remove') sqMoves.remove = sqMoves.remove.filter(x => x !== id);
+      else { delete sqMoves.mpg[id]; const i = host.querySelector('[data-sqmpg="' + id + '"]'); if (i) i.value = i.defaultValue; }
+      sqRun();
+    }
+    else if (act === 'sqreset') {
+      sqMoves.add = []; sqMoves.remove = []; sqMoves.mpg = {};
+      host.querySelectorAll('[data-sqmpg]').forEach(i => { i.value = i.defaultValue; });
+      const c = $('[data-act="sqclub"]'); if (c && c.value) sqClub(c.value);
+      sqRun();
+    }
   };
   function refreshNextP() {
     const X = vm.next, fo = vm.fo, o2 = teamOf(fo, X.opp), edge = fo.lg && isNum(fo.lg.homeEdge) ? fo.lg.homeEdge : 0;
@@ -1106,6 +1726,22 @@ function mount(host, vm, opts) {
   const onChange = e => {
     const t = e.target, act = t.getAttribute && t.getAttribute('data-act');
     if (act === 'opp') { vm.next.opp = t.value; refreshNextP(); simulateNext(); }
+    else if (act === 'sqclub') sqClub(t.value);
+    else if (act === 'sqpick') {
+      const add = $('[data-act="sqadd"]'), mp = $('[data-act="sqmpg"]'), opt = t.selectedOptions && t.selectedOptions[0];
+      if (add) add.disabled = !t.value;
+      if (mp && opt && opt.getAttribute('data-mpg')) mp.value = String(Math.round(numIn(opt.getAttribute('data-mpg')) || 0));
+    }
+    else if (act === 'sqout') {
+      if (t.value && sqMoves.remove.indexOf(t.value) < 0) { sqMoves.remove.push(t.value); delete sqMoves.mpg[t.value]; }
+      t.value = '';
+      sqRun();
+    }
+    else if (t.hasAttribute && t.hasAttribute('data-sqmpg')) {
+      const id = t.getAttribute('data-sqmpg'), v = numIn(t.value);
+      if (isNum(v) && v >= 0 && Math.abs(v - (numIn(t.defaultValue) || 0)) >= 0.5) sqMoves.mpg[id] = Math.min(vm.sq ? vm.sq.gameMin : 48, v); else delete sqMoves.mpg[id];
+      sqRun();
+    }
     else if (act === 'rremove' || act === 'radd') {
       if (act === 'rremove' && t.value) { const o = host.querySelector('[data-act="radd"]'); if (o) o.value = ''; }
       if (act === 'radd' && t.value) { const o = host.querySelector('[data-act="rremove"]'); if (o) o.value = ''; }
@@ -1134,6 +1770,7 @@ function mount(host, vm, opts) {
   host.addEventListener('toggle', onToggle, true);
   if (input.wi) { vm.whatIf && Object.assign(vm.whatIf, { end: input.wi.end, vals: input.wi.vals }); }
   draw();
+  fillNames();
   if (input.wi && vm.ok) { const d = host.querySelector('details[data-b="whatIf"]'); if (d) d.open = true; }
   return {
     redraw: draw,
@@ -1180,6 +1817,6 @@ function whatIfHTML(vm, rn, ra) {
 }
 
 return { KEYMAP, CORE, LEVERS, DIALS, BLOCKS, STAGES, LABEL, MSG, view, ledger, needs, gmModel, posGaps, creationLine, POS_NEED, mount, statusLine, makeWorker, encodeWi, decodeWi,
-  fixtureMus, projection, rosterWhatIf, neededByMargin, contribution, targetOf, panel, neededText, whatIfHTML,
-  html: { verdict: H.verdict, ledger: H.ledger, needs: H.needs, slots: H.slots, squad: H.squad, losses: H.losses, next: H.next, whatIf: H.whatIf } };
+  fixtureMus, projection, rosterWhatIf, neededByMargin, contribution, targetOf, panel, neededText, whatIfHTML, pooledFo, pooledValues, glaring, squadSimHTML, gauge, NEED_HEAD, needHead,
+  POOL_REASONS, html: { verdict: H.verdict, ledger: H.ledger, needs: H.needs, slots: H.slots, fit: H.fit, squad: H.squad, losses: H.losses, next: H.next, whatIf: H.whatIf } };
 }));

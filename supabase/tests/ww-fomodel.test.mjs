@@ -24,7 +24,12 @@
        desc; the Worker's ops run with the arguments mount() sends;
      * the words: es and ja frontoffice packs with the same keys and patterns, no core phrase repeated, and every
        line the panel, the depth chart and the GM's view write translates (with the chart kit's own words);
-     * ?wi= round trips; the status line and RECALCULATE as on What wins.
+     * ?wi= round trips; the status line and RECALCULATE as on What wins;
+     * the squad model on the panel (t/squad.js, 2026-10-08): the verdict's strip and strength, a card per factor with
+       the table behind a toggle and the levers folded, the needs in general terms, five position cards PG to C (never
+       a need on VORP, BPM or a style rate), VORP apart, the squad as a whole (groups, sums and who supplies them, the
+       half court), the shape, the defeats' heat strip, the roster what-if first; the pooled model where the league
+       has no file (the pooled b on the season's clubs, its own status line, refusals never pooled).
    ============================================================================ */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -44,8 +49,8 @@ const near = (a, b, t) => Math.abs(a - b) <= (t == null ? 1e-6 : t);
 const sandbox = { console, module: undefined, Math, Date, JSON, URLSearchParams, btoa, atob };
 sandbox.self = sandbox; sandbox.globalThis = sandbox; sandbox.window = sandbox;
 const cx = vm.createContext(sandbox);
-for (const f of ['season.js', 'winstats.js', 'winsim.js', 'vizkit.js', 't/depth.js', 't/fomodel.js']) vm.runInContext(read(EP, f), cx, { filename: f });
-const F = sandbox.EpinoiaFoModel, X = sandbox.EpinoiaDepth, Sim = sandbox.EpinoiaWinSim, VK = sandbox.EpinoiaVizKit, WS = sandbox.EpinoiaWinStats;
+for (const f of ['season.js', 'winstats.js', 'winsim.js', 'vizkit.js', 't/depth.js', 't/squad.js', 't/fomodel.js']) vm.runInContext(read(EP, f), cx, { filename: f });
+const F = sandbox.EpinoiaFoModel, X = sandbox.EpinoiaDepth, Sim = sandbox.EpinoiaWinSim, VK = sandbox.EpinoiaVizKit, WS = sandbox.EpinoiaWinStats, SQ = sandbox.EpinoiaSquad;
 const WM = fs.existsSync(path.join(EP, 'winmodel.js')) ? require(path.join(EP, 'winmodel.js')) : null;
 
 const load = (dir, f) => { const p = path.join(dir, f); return fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : null; };
@@ -53,6 +58,40 @@ const fo = load(FIX, 'fo.json'), club = load(FIX, 'club.json'), refusal = load(F
 const TID = club.team.id;
 const others = fo.teams.filter(t => t.id !== TID);
 const FIXTURES = others.slice(0, 5).map((o, i) => ({ id: 'fx' + i, home_team_id: i % 2 ? o.id : TID, away_team_id: i % 2 ? TID : o.id, tipoff_at: '2026-10-1' + i + 'T18:00:00Z' }));
+/* THE SEASON'S LINES the squad model reads (2026-10-08), made up for every player of the fo file's pos, his rates from a
+   seeded generator by where he plays, each club's factors the fo file's own; ev: the play-by-play's splits too */
+function synthSeason(foF, ev) {
+  const rng = seed => { let x = 0; for (const c of String(seed)) x = (x * 31 + c.charCodeAt(0)) >>> 0; return () => { x = (x * 1664525 + 1013904223) >>> 0; return x / 4294967296; }; };
+  const players = [], teamOfPlayer = new Map(), teams = [];
+  Object.entries(foF.pos).forEach(([tid, P]) => {
+    const tf = { pts: 0, hp: 0, hf: 0, ht: 0, hv: 0 };
+    P.players.forEach(p => {
+      const r = rng(p.id), min = p.min.reduce((a, v) => a + v, 0);
+      if (!(min > 0)) return;
+      const pos = p.min.reduce((a, v, k) => a + (k + 1) * v, 0) / min, big = (pos - 1) / 4, gp = Math.max(1, Math.round(P.games * Math.min(1, min / 900)));
+      const usg = 14 + 12 * r() * (1.2 - big * 0.5), fga = min * usg / 100 * 0.62, fta = fga * (0.2 + 0.2 * r()), tov = min * usg / 100 * 0.09;
+      const ts = 50 + 10 * r(), pts = ts / 100 * 2 * (fga + 0.44 * fta), p3a = fga * (0.5 - 0.35 * big) * (0.6 + 0.6 * r());
+      const row = { id: p.id, min, gp, fga, fta, tov, pts, p3a, p3m: p3a * (0.3 + 0.1 * r()), fgm: fga * 0.45, ftm: fta * 0.72, reb: min * (0.12 + 0.2 * big), ast: min * (0.12 - 0.08 * big),
+        stl: min * 0.03, blk: min * 0.01 * (1 + 3 * big), rimA: fga * (0.2 + 0.4 * big), oreb_pct: 2 + 9 * big * (0.7 + 0.6 * r()), dreb_pct: 9 + 16 * big * (0.7 + 0.6 * r()),
+        stl_pct: 1 + 1.5 * r(), blk_pct: 0.3 + 5 * big * r(), ast_pct: 6 + 26 * (1 - big) * (0.5 + r()), usg, tov_pct: 100 * tov / (fga + 0.44 * fta + tov), ts,
+        efg: ts - 4, p3_pct: 100 * (0.3 + 0.1 * r()), p3_rate: 100 * p3a / fga, rim_rate: 30 + 30 * big, rim_pct: 55 + 10 * r(), ftr: 100 * fta / fga, ft_pct: 70 + 15 * r(),
+        ppp: pts / (fga + 0.44 * fta + tov), vorp: -0.5 + 2 * r() * min / 1000, bpm: -4 + 8 * r(), bpm_pos: pos };
+      if (ev) Object.assign(row, { ev_gp: gp, ev_unast_pts: pts * (0.5 - 0.3 * big) * (0.6 + 0.8 * r()), ev_unast_pts_sh: 100 * (0.5 - 0.3 * big), ev_ast_sh: 100 * (0.4 + 0.4 * big),
+        ev_rim_astp: 40 + 20 * r(), ev_ast_fgm: row.fgm * 0.5, ev_unast_fgm: row.fgm * 0.5, ev_ast_rimM: 10, ev_unast_rimM: 10,
+        ev_half_pts: pts * 0.8, ev_half_fga: fga * 0.8, ev_half_fta: fta * 0.8, ev_half_tov: tov * 0.8 });
+      players.push(row); teamOfPlayer.set(p.id, tid);
+      tf.pts += pts; tf.hp += pts * 0.8; tf.hf += fga * 0.8; tf.ht += fta * 0.8; tf.hv += tov * 0.8;
+    });
+    const t = foF.teams.find(x => x.id === tid) || {}, f = t.f || {}, o = k => f[k] && f[k].off, d = k => f[k] && f[k].def;
+    teams.push({ id: tid, gp: P.games, pts_for: tf.pts, pts_against: tf.pts - (t.net || 0) * P.games * 0.7, net: t.net, pace: 72,
+      ff_efg: o('c_efg'), dff_efg: d('c_efg'), ff_tov: o('c_tovp'), dff_tov: d('c_tovp'), ff_oreb: o('c_orebp'), dff_oreb: d('c_orebp'), ff_ftr: o('c_ftr'), dff_ftr: d('c_ftr'),
+      ev_gp: ev ? P.games : 0, ev_half_pts: tf.hp, ev_half_fga: tf.hf, ev_half_fta: tf.ht, ev_half_tov: tf.hv,
+      ev_ast_sh: 50 + (tid.charCodeAt(0) % 9), ev_rim_astp: 40 + (tid.charCodeAt(1) % 11), ev_unast_pts_sh: 35 + (tid.charCodeAt(2) % 7) });
+  });
+  return { players, teamOfPlayer, teams };
+}
+const SEASON = synthSeason(fo, true), SEASON0 = synthSeason(fo, false);
+const WINS = load(path.join(ROOT, 'supabase/tests/fixtures/ww'), 'wins-all.sample.json');
 
 /* ------------------------------------------------------------------ the files --- */
 console.log('\nthe files and KEYMAP');
@@ -255,6 +294,10 @@ const TEAMJS = read(EP, 't/team.js'), HTML = read(EP, 't/index.html');
   ok('...team.js loadWinModel: winstats, winsim, winfile, vizkit, fomodel, in order, at its own ?v=, the sheets before legibility.css, and winModelFiles waits for it',
     ord.every((x, i, a) => x > 0 && (!i || a[i - 1] < x)) && /TEAM_V/.test(lw) && /s\.async = false/.test(lw) && /insertBefore\(l, last\)/.test(lw) && /kit\/legibility\.css/.test(lw) &&
     /async function winModelFiles\(team\) \{\n\s+await loadWinModel\(\);/.test(TEAMJS));
+  ok('the squad model: loadWinModel loads squad.js before fomodel.js; frontOffice hands it the season, the club\'s lineups and a game\'s length',
+    lw.indexOf("'squad.js'") > 0 && lw.indexOf("'squad.js'") < lw.indexOf("'fomodel.js'") && /season: S, clubPos: foPos, gameMin, lookupNames/.test(TEAMJS));
+  ok('...winModelFiles asks for the pooled file only where the league has none of its own (POOL_REASONS)', /FMx\.POOL_REASONS\.indexOf\(fo\.reason\) >= 0/.test(TEAMJS) &&
+    /WF\.get\(\{ scope: 'wins' \}\)/.test(TEAMJS) && (TEAMJS.match(/scope: 'wins'/g) || []).length === 1);
   ok('...the fo and club files are asked for at once (Promise.all), the club\'s answer dropped when fo is refused', /Promise\.all\(\[WF\.get\(Object\.assign\(\{ scope: 'fo' \}, unit\)\), WF\.get\(Object\.assign\(\{ scope: 'club', team: team\.id \}, unit\)\)\]\)/.test(TEAMJS) &&
     /club: fo\.ok \? club : null/.test(TEAMJS));
   ok('...the packs "report go frontoffice"', /<script src="\.\.\/i18n\.js\?v=\d+" data-i18n-packs="report go frontoffice"><\/script>/.test(HTML));
@@ -285,15 +328,15 @@ function wellFormed(xml) {
 }
 const names = new Map((club.players || []).map((p, i) => [p.id, 'Player ' + String.fromCharCode(65 + i)]));
 const chartWords = new Set();
-function drawAll(tag, foF, clubF, fixtures) {
+function drawAll(tag, foF, clubF, fixtures, more) {
   const tid = clubF.team.id;
-  const v = F.view({ fo: foF, club: clubF, team: { id: tid, name: clubF.team.name }, fixtures, names });
+  const v = F.view(Object.assign({ fo: foF, club: clubF, team: { id: tid, name: clubF.team.name }, fixtures, names }, more || {}));
   ok(tag + ': the view is whole', v.ok && v.verdict && v.ledger && v.next && v.whatIf);
   const html = F.panel(v);
   const wf = wellFormed(html);
   ok(tag + ': the panel is well-formed HTML with no script or handler', !wf && !/<script|\son[a-z]+=/i.test(html), wf);
   ok(tag + ': no NaN, undefined or [object Object] in it', !/NaN|undefined|\[object Object\]/.test(html), (/.{0,40}(NaN|undefined|\[object Object\]).{0,40}/.exec(html) || [''])[0]);
-  ok(tag + ': eight blocks, each a <details> with its summary first', (html.match(/<details class="fm-b"/g) || []).length === 8 && F.BLOCKS.every(b => new RegExp('<details class="fm-b" data-b="' + b + '"[^>]*><summary>').test(html)));
+  ok(tag + ': ' + F.BLOCKS.length + ' blocks, each a <details> with its summary first', (html.match(/<details class="fm-b"/g) || []).length === F.BLOCKS.length && F.BLOCKS.every(b => new RegExp('<details class="fm-b" data-b="' + b + '"[^>]*><summary>').test(html)));
   const slots = [...html.matchAll(/data-chart="([^"]+)"/g)].map(m => m[1]);
   ok(tag + ': every chart slot has its spec', slots.length > 5 && slots.every(s => v.charts[s]));
   const problems = [];
@@ -318,8 +361,9 @@ function drawAll(tag, foF, clubF, fixtures) {
   ok(tag + ': every chart builds through the chart kit at 760 and 360 px', !problems.length, problems.slice(0, 4).join(' | '));
   return { v, html };
 }
-const main = drawAll('ORLEN fixture', fo, club, FIXTURES);
+const main = drawAll('ORLEN fixture', fo, club, FIXTURES, { season: SEASON, clubPos: club.pos, gameMin: 40 });
 const noFx = drawAll('ORLEN, no fixtures left', fo, club, []);
+const noEv = drawAll('ORLEN, no play-by-play splits', fo, club, FIXTURES, { season: SEASON0, gameMin: 40 });
 if (process.env.WW_FO_FILES) {
   const d = process.env.WW_FO_FILES, f2 = load(d, 'fo.json'), c2 = load(d, 'club.json');
   if (f2 && c2) drawAll(path.basename(d), f2, c2, f2.teams.filter(t => t.id !== c2.team.id).slice(0, 3).map((o, i) => ({ id: 'x' + i, home_team_id: c2.team.id, away_team_id: o.id, tipoff_at: '2026-11-0' + (i + 1) })));
@@ -359,6 +403,59 @@ if (process.env.WW_FO_FILES) {
   ok('?wi= round trips (base64url, ranges clamped)', /^[A-Za-z0-9_-]+$/.test(enc) && JSON.stringify(dec) === JSON.stringify(wi) && F.decodeWi(F.encodeWi({ end: 'off', vals: { efg: 99 } })).vals.efg === 5 && F.decodeWi('%%%') === null);
   const rm = F.rosterWhatIf(fo, club, { remove: club.players[0].id });
   ok('the roster what-if: removing the best guard costs margin through θ_G', rm && rm.g === club.players[0].g && rm.dBpm < 0 && rm.dMargin < 0 && rm.lo <= rm.dMargin && rm.dMargin <= rm.hi);
+}
+
+/* ------------------------------------------------------------------ the squad model on the panel --- */
+console.log('\nthe squad model on the panel (2026-10-08), and the pooled model');
+const WHATIF_HTML = [];
+const escH = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const SQV = main.v.sq;
+{
+  const H = main.html;
+  ok('the squad model is built from the season lines, the club\'s lineups and the league\'s values', !!SQV && SQV.source === 'lineups' && SQV.slots.length === 5 &&
+    near(SQV.values.c_efg.b, fo.value.c_efg.b, 1e-12));
+  ok('the verdict: the record and its wins on one strip, the biggest strength beside the biggest cost', /class="fm-wst"/.test(H) && /Your biggest strength is .+ on (offence|defence): about [\d.]+ wins/.test(H));
+  ok('where the wins are: a card per factor, both ends a gauge and what it is worth; the table behind "Show the numbers"; the levers folded',
+    (H.match(/<section class="fm-card">/g) || []).length >= 8 && /<details class="fm-sub"><summary>Show the numbers<\/summary>/.test(H) && /<details class="fm-sub fm-levers">/.test(H) &&
+    /the factor-expected margin \(check: /.test(H));
+  ok('what the club needs: each need a headline in general terms, with the club, the league and the top quarter', main.v.needs.length > 0 && main.v.needs.every(n => H.includes(escH(F.needHead(n)))) &&
+    main.v.needs.every(n => F.needHead(n) !== n.label) && /top quarter/.test(H));
+  ok('by position: five cards PG to C, each with its worth, who plays there, its key numbers and its players', (H.match(/<article class="fm-pc">/g) || []).length === 5 &&
+    ['PG', 'SG', 'SF', 'PF', 'C'].every(k => H.includes('<span class="fm-pk" translate="no">' + k + '</span>')) && /Who plays there/.test(H) && /Each player against the league’s at his positions/.test(H));
+  ok('...a need is never VORP, BPM or a style rate (usage, three and rim rates)', SQV.slots.every(s => F.glaring(s).every(n => ['vorp', 'bpm', 'usg', 'p3_rate', 'rim_rate'].indexOf(n.st) < 0)));
+  ok('...VORP by position and player by player, apart from the needs', /Value over replacement \(VORP\)/.test(H) && /Player by player/.test(H));
+  ok('the squad as a whole: the three groups, the five added up with who supplies each shared statistic, who covers for whom, the half court',
+    (H.match(/class="fm-gtile/g) || []).length === 3 && /class="fm-stk"/.test(H) && /The half court: who carries it/.test(H) && /Who uses the plays, and how well/.test(H));
+  ok('...without the play-by-play splits the half court says why, and the rest still draws', /Needs the play-by-play for most of the season’s games/.test(noEv.html) && !!noEv.v.sq && !noEv.v.sq.halfCourt);
+  ok('squad shape: the squad model\'s measures against the league, with the fo file\'s winners\' band', /Rotation size/.test(H) && /the winners’ band/.test(H));
+  ok('why we lose: the heat strip of the last defeats, part by part, and how often each went against', /<table class="fm-heat">/.test(H) && /against you/.test(H));
+  ok('what if: the roster what-if on the squad model (any club\'s players) first, the dials after', /data-act="sqclub"/.test(H) && /data-dial="efg"/.test(H) && H.indexOf('data-act="sqclub"') < H.indexOf('data-dial="efg"'));
+  const other = [...SQV._all.keys()].find(t => t !== TID), star = SQV._all.get(other).who.slice().sort((a, b) => b.line.rate.usg - a.line.rate.usg)[0];
+  const r = SQ.simulate(SQV, { add: [{ id: star.line.id, mpg: 30 }], remove: [], mpg: {} });
+  const sh = F.squadSimHTML(main.v, r);
+  ok('...a player added: points a game and wins, the parts, the plays shared out again, the minutes at each position', !!r && /fm-simt/.test(sh) && /The plays, shared out again/.test(sh) &&
+    /Minutes at each position/.test(sh) && !/NaN|undefined/.test(sh) && !wellFormed(sh));
+  WHATIF_HTML.push(sh, F.squadSimHTML(main.v, SQ.simulate(SQV, { remove: [SQV.players[0].id] })), F.squadSimHTML(main.v, SQ.simulate(SQV, { mpg: { [SQV.players[1].id]: 5 } })),
+    F.squadSimHTML(main.v, null));
+}
+/* THE POOLED MODEL: a league without a file of its own reads the four factors' values from every league's games */
+const pooledV = F.view({ reason: 'none', pooled: WINS, season: SEASON, team: { id: TID, name: 'Zastal' }, fixtures: FIXTURES, names, record: { w: 12, l: 9 }, gameMin: 40 });
+const pooledH = F.panel(pooledV);
+const pooledFew = F.panel(F.view({ reason: 'unbuilt', pooled: WINS, season: { players: SEASON.players, teamOfPlayer: SEASON.teamOfPlayer, teams: SEASON.teams.map(t => Object.assign({}, t, { gp: 2 })) },
+  team: { id: TID }, fixtures: [], names, record: { w: 1, l: 1 }, gameMin: 40 }));
+{
+  const coef = new Map(WINS.models.core4c.coef.map(c => [c.k, c.b]));
+  ok('pooled: none / unbuilt with the pooled file draws the panel on the season\'s own clubs', pooledV.ok && pooledV.pooled && !!pooledV.sq && pooledV.fo.teams.length === SEASON.teams.length);
+  ok('...the four factors valued by the pooled model, the league\'s average from the season line', ['c_efg', 'c_tovp', 'c_orebp', 'c_ftr'].every(k => pooledV.fo.value[k].b === coef.get(k)) &&
+    near(pooledV.fo.value.c_efg.lg, SEASON.teams.reduce((a, t) => a + t.ff_efg, 0) / SEASON.teams.length, 1e-9));
+  ok('...its ledger adds up to Σ b (x_off − x_def) with the pooled b', near(pooledV.ledger.sum, pooledV.ledger.expected, 1e-6));
+  ok('...the fixtures from the net ratings (no Elo in the season line), the projection from them', pooledV.mus.length === FIXTURES.length && pooledV.mus.every(m => Number.isFinite(m.mu)) && !!pooledV.verdict.proj);
+  ok('...it says so where the status line stands, with nothing to recalculate', /Valued on every league’s games until this league’s own model is built/.test(pooledH) && !/data-act="recalc"/.test(pooledH) &&
+    /Valued on every league’s games until this league has 20 finished games of its own/.test(pooledFew));
+  ok('...the defeats and the simulator wait for the league\'s own model, and so do the dials', /Each defeat is read part by part once this league has its own model/.test(pooledH) &&
+    /The game simulator switches on once this league has its own model/.test(pooledH) && !/data-dial=/.test(pooledH) && /data-act="sqclub"/.test(pooledH));
+  ok('...well-formed, no NaN', !wellFormed(pooledH) && !/NaN|undefined|\[object Object\]/.test(pooledH) && !wellFormed(pooledFew));
+  ok('...a refusal is never pooled (members, sign-in, league, rate)', ['members', 'signin', 'league', 'rate'].every(x => !F.view({ reason: x, pooled: WINS, season: SEASON, team: { id: TID } }).ok));
 }
 
 /* ------------------------------------------------------------------ the Worker's ops --- */
@@ -429,7 +526,7 @@ function textsOf(html) {
 }
 /* every line the panel writes, in every state, and the lines mount() writes */
 const lines = new Set();
-[main.html, noFx.html].forEach(h => textsOf(h).forEach(s => lines.add(s)));
+[main.html, noFx.html, noEv.html, pooledH, pooledFew].concat(WHATIF_HTML).forEach(h => textsOf(h).forEach(s => lines.add(s)));
 ['members', 'signin', 'none', 'layout', 'network', 'league', 'scope'].forEach(r => textsOf(F.panel(F.view({ reason: r }))).forEach(s => lines.add(s)));
 textsOf(F.panel(F.view({ reason: 'rate', retryAfter: 600 }))).forEach(s => lines.add(s));
 const vmn = main.v;
@@ -450,7 +547,9 @@ textsOf(F.whatIfHTML(noFx.v, null, { dWin: 0.07, dMargin: -2.3, seMargin: 0.04 }
  'Guards: −0.93 BPM, about −0.30 points a game (−0.53 to −0.11), 0.0 projected wins (approximate)', 'Bigs: +0.12 BPM, about +0.05 points a game (+0.01 to +0.09), +0.1 projected wins (approximate)',
  'filled from the minutes each player has played at each position', 'Members’ analysis.', 'The model could not be reached just now',
  'chance of winning', 'Chance of winning', 'Simulated final margins', 'final margin (simulated)', 'games', 'Simulator check of a loss', 'points of margin',
- 'Points of margin. Arrow keys move between marks; Enter shows the table.', 'show table', 'hide table'].forEach(s => lines.add(s));
+ 'Points of margin. Arrow keys move between marks; Enter shows the table.', 'show table', 'hide table',
+ /* the roster what-if's own words (mount: the picker, the moves) */
+ 'choose a player', 'added', 'taken out', 'minutes', 'undo', 'Make a move to see what it changes'].forEach(s => lines.add(s));
 /* the depth chart by the floor and the GM's view with the model */
 {
   const pos = club.pos;

@@ -770,6 +770,13 @@ jobs:
         # GM's strengths / weaknesses by league quarter, three needs, styles as identity, the roster's shape and on/off
         run: node supabase/tests/depth.test.mjs
 
+      - name: The front office's squad model - positions, players and the squad priced, the usage sim, the half court
+        # epinoia/t/squad.js: the team's glass, steals, blocks and usage as the five positions' rates summed, a small gap inside a
+        # position priced in full at the league's b, each position and player against the league's same position, the roster
+        # what-if (minutes by position, the plays shared out again and still 100%, the skill curve), the play-by-play's
+        # self-creation, half-court usage and ball movement where it covers the games, who covers for whom, the groups, the shape
+        run: node supabase/tests/squad.test.mjs
+
       - name: One position against the league - the radar, the field, the men and the verdict
         # epinoia/t/position.js: a group's own sums (true shooting from its shots together), every club through the same
         # chart, ranks and percentiles (turnovers the other way, players never against themselves), the words, the SVG

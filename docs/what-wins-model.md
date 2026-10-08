@@ -943,6 +943,48 @@ or style.
 - Light read: new `seasonGames(team)` → `{gs, sideOf}` with seasonLogs' games query (reusing `logsP` when loaded);
   `frontOffice()` calls it instead of `seasonLogs()`, which is untouched. Opening the tab no longer downloads ~7 MB of logs.
 
+### 12.1 The squad model and the visual panel (2026-10-08)
+Louie: "a lot more visual and simple to understand ... everything needs to be tangible", positions "per position" with
+"plus value at his spot", a squad simulated "as a whole", a roster what-if "like a full comp sim", "a usage% sim", "ball
+handling is also captured by unassisted points", "a half court usg% breakdown of the top usg% players", and "if there's
+not enough league data it can pool ... from what wins".
+- **`t/squad.js` (EpinoiaSquad, pure, UMD; loaded by `loadWinModel` before fomodel.js).** `build({players, teamOf, teams,
+  pos, club, clubPos, values, sigma, G, mus, gameMin, names})` from the season line (`D.season`, every club), each club's
+  minutes at each position (the fo file's `pos`, the club's own lineups from `floorMinutes`, else box-score positions,
+  a position nobody plays covered by its neighbour's players) and the four factors' b. Player rates are against their
+  floor share, so summed over the five positions ORB%, DRB%, STL%, BLK%, AST%, USG% and self-created points per 40 are
+  the team's; a gap is priced in points of margin a game: eFG b_efg, TOV% b_tovp, OREB%/DREB% b_orebp, FT rate b_ftr,
+  STL% −b_tovp, BLK% 0.27 b_efg (an estimate, labelled). Each position against the league's same position (z on that
+  position's own spread: a 20 against 23 DRB% where the league is tight counts), each player against the league's
+  average player at his positions, the scoring value (plays × points-a-play gap). Also: `groups` (ball handlers PG+SG,
+  wings SF, bigs PF+C), `whole` (the team sums against the league's, with each position's part), `cover` (a position
+  ≥ 0.5 SD under its league position is covered when the squad's sum is within 0.25 SD of the league's), `usage`,
+  `halfCourt`, `moves`, `shape` (rot_n, top5_share, star_pts_share, usg_hhi: every club the same way, its own scale -
+  never against the builder's bands).
+- **Play-by-play splits** (`ev_*`) are read only where they cover half a player's games and five of them (team: the same
+  on `S.teams`); a league covered for a game or two has no half court, no ball moving, no self-creation, and says so.
+  Half court: a player's half-court plays (FGA + 0.44 FTA + TOV) per covered minute against the team's per minute of the
+  game is his half-court usage; his share of the team's half-court plays; TS%, TOV%, points a play against the league's
+  half court pooled; top six by usage with ≥ 150 covered minutes and ≥ 4% of the plays.
+- **The usage sim (`simulate`).** Moves (add anyone with his minutes at his own positions, remove, set minutes) are
+  played on the minutes at each position (each stays one game long). Offence: the floor's usage must still add up -
+  the discretionary usage above a 12% role floor gives, weighted to creators (unassisted share of points, else usage),
+  then the skill curve (0.008 points a play per point of usage); offence = Δ points a play × the team's plays. Glass,
+  steals and blocks by the sums. Δ points → wins over 30 (σ_pred) and over the fixtures left.
+- **The panel** (`fomodel.js`, nine blocks: `fit` added after `slots`): verdict strip and the biggest strength; factor
+  cards with gauges (the table and check behind "Show the numbers", the levers folded); needs as general headlines
+  (`NEED_HEAD`) with club / league / top quarter; five position cards with VORP apart; the squad as a whole; shape
+  against the league and its better half (coefficient × z as wins where the evidence is some or strong); the defeats'
+  heat strip; the roster what-if before the dials. Every figure and name in a `translate="no"` element, every word a
+  fixed phrase of the frontoffice pack.
+- **The pooled model** (`pooledFo`): fo refused with `none` / `unbuilt` → `WF.get({scope: 'wins'})`; its
+  `models.core4c.coef` values the four factors on the season line's own clubs (lg and quartiles from `S.teams`), σ_pred,
+  G and the home margin from the pool, fixtures by net rating shrunk g / (g + 10); the record from the club's finals
+  against league clubs; the defeats, the simulator and the dials wait for the league's own model. Refusals (members,
+  sign-in, league, rate) are never pooled.
+- Tests: `supabase/tests/squad.test.mjs` (guard.yml, its own step) and `ww-fomodel.test.mjs` (a synthetic season over
+  the fixture's pos file, the pooled sample, every new line in es and ja).
+
 ## 13. Chart kit (epinoia/vizkit.js, epinoia/kit/vizkit.css)
 UMD, pure SVG-string builders plus one DOM binder; no library. Builders `(data, o) → {svg, table: {head, rows}, hits:
 [{id, x, y, label, value}]}`, `o = {W = 760, H, x: {lo, hi, label, fmt}, y, theme}`: forest (hollow, ghost, muted, badge),
