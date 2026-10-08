@@ -1750,7 +1750,8 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 15;     // 15: the weekly preview keeps its week: a round-up, a bar of its own, early-season lines, no table before three games
+const VERSION = 16;     // 16: every league built again, so this week's previews carry what they said of each game (watch 6)
+                        // 15: the weekly preview keeps its week: a round-up, a bar of its own, early-season lines, no table before three games
                         // 14: a series' edge said of the side; the editor reads again what it has not read since it last changed
                         // 13: the editor reads every piece already out; a game to watch only with something to say
                         // 12: the house voice (voice.js): the slate's angle, the storylines in words; no "what wins" storyline
