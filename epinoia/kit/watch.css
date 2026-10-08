@@ -18,6 +18,8 @@
   transition:background-color .16s ease,color .16s ease,transform .16s ease,box-shadow .16s ease}
 .ep-watch.k-paid{--wd:#ffb020}
 .ep-watch.k-info{--wd:#5ee7ff}
+/* the site has the game's video (watch.js site, 0255): its own pill, or a league's pill marked - the dot in WATCH HERE's yellow */
+.ep-watch.k-here,.ep-watch.ew-has{--wd:#ffe14d}
 .ep-watch::after{content:"";position:absolute;inset:-10px -7px}
 .ep-watch svg{width:11px;height:11px;flex:none;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round}
 .ep-watch svg .f{fill:currentColor;stroke:none}

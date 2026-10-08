@@ -41,6 +41,21 @@
   const inkOf = (s, i) => { const k = s && s.teams && s.teams[i] && s.teams[i].ink; return k && HEX.test(k) ? k : (i ? '#8ff5ff' : '#93f2bf'); };
   const shortOf = (s, i) => (s && s.teams && s.teams[i] && (s.teams[i].short || s.teams[i].name)) || (i ? 'Away' : 'Home');
   let seq = 0;
+  /* EVERY PLAYER NAMED IN A STORYLINE IS A LINK TO HIS PROFILE (2026-10-08) - the leaders, the BPM, a run's scorers, a
+     streak - in a new tab, since the drawer sits over a video that should keep playing. The profile is found from this
+     file's own address (epinoia/storyline.js -> epinoia/p/); opts.playerHref(p) says otherwise. A player the site has no
+     profile for (no id from the box score) stays plain text. */
+  const SRC = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : '';
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  function profileOf(p) {
+    if (!p || !UUID.test(String(p.id || ''))) return null;
+    const rel = 'p/?p=' + encodeURIComponent(p.id);
+    try { return SRC ? new URL(rel, SRC).href : '../' + rel; } catch (_) { return '../' + rel; }
+  }
+  function hrefOf(opts) {
+    if (!opts || typeof opts.playerHref !== 'function') return profileOf;
+    return p => { try { return opts.playerHref(p) || null; } catch (_) { return null; } };
+  }
 
   function readOff() {
     try { const v = JSON.parse(localStorage.getItem(OFF_KEY) || '[]'); return new Set(Array.isArray(v) ? v : []); } catch (_) { return new Set(); }
@@ -48,11 +63,17 @@
   function saveOff(set) { try { localStorage.setItem(OFF_KEY, JSON.stringify([...set])); } catch (_) { /* private mode */ } }
 
   /* ---- THE CARDS, drawn the same in the drawer and on the board ---- */
-  function kit(tr, id) {
+  function kit(tr, id, href) {
+    href = typeof href === 'function' ? href : profileOf;
     const side2 = (s, i, inner) => '<div class="sl-col" style="--ink:' + inkOf(s, i) + '"><b class="sl-tm" translate="no">' + esc(shortOf(s, i)) + '</b>' + inner + '</div>';
+    /* a player's name: his profile, or plain text */
+    const who = p => {
+      const u = href(p);
+      return u ? '<a class="sl-pl" href="' + esc(u) + '" target="_blank" rel="noopener" title="' + esc(p.name || p.short) + '">' + esc(p.short) + '</a>' : esc(p.short);
+    };
     function leaders(s) {
       const col = i => ((s.leaders || [])[i] || []).map(p =>
-        '<div class="sl-ld"><span class="sl-nm" translate="no">' + esc(p.short) + '</span><b class="sl-big">' + p.pts + '</b>' +
+        '<div class="sl-ld"><span class="sl-nm" translate="no">' + who(p) + '</span><b class="sl-big">' + p.pts + '</b>' +
         '<small>' + p.fgm + '/' + p.fga + ' ' + esc(tr('FG')) + ' · ' + p.p3m + ' 3P · ' + p.reb + ' ' + esc(tr('R')) + ' · ' + p.ast + ' ' + esc(tr('A')) + '</small></div>').join('') ||
         '<div class="sl-none">' + esc(tr('No points yet')) + '</div>';
       return '<h4>' + esc(tr('Leading scorers')) + '</h4><div class="sl-two">' + side2(s, 0, col(0)) + side2(s, 1, col(1)) + '</div>';
@@ -62,7 +83,7 @@
       if (!rows.length) return '<h4>' + esc(tr('Leading BPM')) + '</h4><div class="sl-none">' + esc(tr('From five minutes played')) + '</div>';
       const top = Math.max(8, ...rows.map(r => Math.abs(r.bpm)));
       return '<h4>' + esc(tr('Leading BPM')) + '</h4>' + rows.map(r =>
-        '<div class="sl-bp" style="--ink:' + inkOf(s, r.side) + '"><i class="sl-dot"></i><span class="sl-nm" translate="no">' + esc(r.short) + '</span>' +
+        '<div class="sl-bp" style="--ink:' + inkOf(s, r.side) + '"><i class="sl-dot"></i><span class="sl-nm" translate="no">' + who(r) + '</span>' +
         '<span class="sl-div"><i class="' + (r.bpm < 0 ? 'neg' : '') + '" style="--v:' + Math.min(1, Math.abs(r.bpm) / top).toFixed(3) + '"></i></span>' +
         '<b>' + (r.bpm > 0 ? '+' : '') + r.bpm.toFixed(1) + '</b></div>').join('') +
         '<p class="sl-note">' + esc(tr('Game BPM from the box score')) + '</p>';
@@ -105,13 +126,13 @@
       if (s.live && s.run) {
         big = '<div class="sl-run" style="--ink:' + inkOf(s, s.run.side) + '"><b>' + s.run.n + '–0</b><span translate="no">' + esc(shortOf(s, s.run.side)) + ' ' + esc(tr('run')) + '</span>' +
           '<small>' + esc(tr('since')) + ' ' + esc(s.run.since) + '</small>' +
-          '<small class="sl-run-by" translate="no">' + (s.run.scorers || []).slice(0, 3).map(p => esc(p.short) + ' ' + p.pts).join(' · ') + '</small></div>';
+          '<small class="sl-run-by" translate="no">' + (s.run.scorers || []).slice(0, 3).map(p => who(p) + ' ' + p.pts).join(' · ') + '</small></div>';
       } else if (s.bestRun) {
         big = '<div class="sl-run past" style="--ink:' + inkOf(s, s.bestRun.side) + '"><b>' + s.bestRun.n + '–0</b><span translate="no">' + esc(shortOf(s, s.bestRun.side)) + '</span>' +
           '<small>' + esc(tr('biggest run')) + ' · ' + esc(s.bestRun.since) + '</small></div>';
       }
       const st = s.live && s.streak ? s.streak : s.bestStreak;
-      const streak = st ? '<div class="sl-streak" style="--ink:' + inkOf(s, st.side) + '"><b>' + st.n + '</b><span translate="no">' + esc(st.short) + '</span><small>' +
+      const streak = st ? '<div class="sl-streak" style="--ink:' + inkOf(s, st.side) + '"><b>' + st.n + '</b><span translate="no">' + who(st) + '</span><small>' +
         esc(s.live && s.streak ? tr('straight points for their side, and counting') : tr('straight points for their side')) + '</small></div>' : '';
       return big || streak ? '<div class="sl-runs">' + big + streak + '</div>' : '';
     }
@@ -167,7 +188,7 @@
     opts = opts || {};
     const tr = typeof opts.tr === 'function' ? opts.tr : (s => s);
     const id = 'sl' + (++seq);
-    const CARD = kit(tr, id);
+    const CARD = kit(tr, id, hrefOf(opts));
     const root = document.createElement('div');
     root.className = 'sl';
     root.dataset.open = '0';
@@ -279,7 +300,7 @@
   function board(host, opts) {
     opts = opts || {};
     const tr = typeof opts.tr === 'function' ? opts.tr : (s => s);
-    const CARD = kit(tr, 'slb' + (++seq));
+    const CARD = kit(tr, 'slb' + (++seq), hrefOf(opts));
     const root = document.createElement('div');
     root.className = 'slb';
     host.appendChild(root);
@@ -299,5 +320,7 @@
     };
   }
 
-  window.EpinoiaStoryline = { mount, board };
+  /* cards(tr, href): the cards' HTML alone, as the drawer draws them (node tests: supabase/tests/storyline.test.mjs) */
+  const cards = (tr, href) => kit(typeof tr === 'function' ? tr : (s => s), 'slt' + (++seq), hrefOf({ playerHref: href }));
+  window.EpinoiaStoryline = { mount, board, cards };
 })();

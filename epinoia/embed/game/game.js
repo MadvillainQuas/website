@@ -261,7 +261,8 @@
       if (df > lead[0]) lead[0] = df;
       if (-df > lead[1]) lead[1] = -df;
     });
-    const scorers = r => Object.keys(r.by).filter(id => who[id]).map(id => ({ short: who[id].short, pts: r.by[id] })).sort((a, b) => b.pts - a.pts);
+    /* every player named carries his id and full name: the drawer links each to his profile (storyline.js) */
+    const scorers = r => Object.keys(r.by).filter(id => who[id]).map(id => ({ id, name: who[id].name, short: who[id].short, pts: r.by[id] })).sort((a, b) => b.pts - a.pts);
     const regMs = Array.from({ length: (F && F.periods) || 4 }, (_, i) => E.PLEN(i + 1, F)).reduce((a, b) => a + b, 0);
     const nowAt = Math.round(E.cumEl(S.period || 1, S.clockMs || 0, F) / 1000);
     const live = game.status === 'live' || game.status === 'finalising';
@@ -274,8 +275,10 @@
       leaders, bpm, ff, shoot,
       run: run && run.n >= 6 ? { side: run.side, n: run.n, since: run.since, from: run.from, scorers: scorers(run) } : null,
       bestRun: best && best.n >= 6 ? best : null,
-      streak: streak && streak.pid && who[streak.pid] && streak.n >= 6 ? { short: who[streak.pid].short, side: streak.side, n: streak.n, since: streak.since } : null,
-      bestStreak: bestStreak && who[bestStreak.pid] && bestStreak.n >= 7 ? { short: who[bestStreak.pid].short, side: bestStreak.side, n: bestStreak.n } : null,
+      streak: streak && streak.pid && who[streak.pid] && streak.n >= 6
+        ? { id: streak.pid, name: who[streak.pid].name, short: who[streak.pid].short, side: streak.side, n: streak.n, since: streak.since } : null,
+      bestStreak: bestStreak && who[bestStreak.pid] && bestStreak.n >= 7
+        ? { id: bestStreak.pid, name: who[bestStreak.pid].name, short: who[bestStreak.pid].short, side: bestStreak.side, n: bestStreak.n } : null,
       flow: { pts, len: Math.max(Math.round(regMs / 1000), nowAt, pts.length ? pts[pts.length - 1][0] : 0), now: live ? nowAt : null, lead, changes }
     };
   }

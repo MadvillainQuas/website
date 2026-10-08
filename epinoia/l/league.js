@@ -745,6 +745,8 @@ async function renderFixtures() {
     const wslug = (league && league.slug) || window.__CS_LEAGUE_SLUG;
     const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug, { game: g.id }) : null;
     if (wp) { wp.classList.add('fx-watch'); mid.appendChild(wp); }
+    /* a finished game the site has a video for (watch.js site, 0255): a pill into its own player, in any league */
+    if (final && window.EpinoiaWatch && window.EpinoiaWatch.siteInto) window.EpinoiaWatch.siteInto(mid, g.id, { cls: 'fx-watch' });
     row.append(side(home, 'h'), mid, side(away, 'a'));
     /* WHO WINS? along the foot of the row (predict.js; its middle opens the game at a glance, gamepeek.js) */
     if (window.EpinoiaPredict && g.status !== 'void') {

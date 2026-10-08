@@ -9,6 +9,8 @@
      EpinoiaWatch.of(slug)          -> the league's entry, or null
      EpinoiaWatch.pill(slug, opts)  -> <button class="ep-watch"> (null for a league with no entry)
                                        opts.big: the game page's larger pill
+     EpinoiaWatch.site(id, cb)      -> cb(kind) when the site itself has a video for the game (0255, one read a page)
+     EpinoiaWatch.sitePill(id, k)   -> the pill for that video, in any league: a press into the site's own player
 
    THE PILL SITS INSIDE A CARD THAT IS ITSELF A LINK, so a tap on it must never reach the card: its click is
    stopped, and the card it opens lives on <body>, outside every card. With a mouse the card opens on hover
@@ -232,6 +234,8 @@
       const b = e.target.closest && e.target.closest('.ep-watch');
       if (b) {
         e.preventDefault(); e.stopPropagation();
+        /* a pill for the site's own video (site, below): straight into the player, no card */
+        if (b.classList.contains('ew-site')) { close(); airGo(b.getAttribute('data-game')); return; }
         if (owner === b && pinned) close(); else open(b, true);
         return;
       }
@@ -337,5 +341,79 @@
     return a;
   }
 
-  root.EpinoiaWatch = { of, pill, close, sync: () => { if (pop && pop.classList.contains('on')) place(); }, DATA, KIND, onAir, livePill, airFeed, airFresh };
+  /* ------------------------------------------------------------ ON THE SITE --- */
+  /* A GAME THE SITE HAS A VIDEO FOR - its highlights, its whole game, its kept stream (games_watchable, 0255) - gets a
+     WATCH pill even in a league with no entry above, the FIBA Europe Cup's say (2026-10-08); in a league with one, its
+     pill is marked (ew-has) and its card leads with WATCH HERE as before.
+       site(id, cb)        cb(kind) once the game is known to have a video (live | full | highlights); never for one
+                           without. ONE READ FOR THE PAGE: the games asked about within a moment go in one call (at most
+                           200), and the answers are kept for the page, so a card redrawn by the live updates asks nothing
+                           and gets its pill at once.
+       sitePill(id, kind)  that pill: its press opens HOME's VIDEO view on the game (?view=video&play=<game>).
+     Before 0255 the read fails, and the cards keep the pills they had. */
+  const SITE = new Map();                 // id -> kind | null, answered; undefined while asked
+  const siteWait = new Map();             // id -> [cb]
+  let siteT = 0, siteOff = false;
+  function siteFlush() {
+    siteT = 0;
+    const C = root.EPINOIA_CONFIG;
+    const ids = [...siteWait.keys()].filter(id => !SITE.has(id)).slice(0, 200);
+    if (!ids.length || siteOff || !C || !C.supabaseUrl || typeof fetch !== 'function') return;
+    ids.forEach(id => SITE.set(id, undefined));
+    fetch(C.supabaseUrl + '/rest/v1/rpc/games_watchable', { method: 'POST',
+      headers: { apikey: C.supabaseAnonKey, Authorization: 'Bearer ' + C.supabaseAnonKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_games: ids }) })
+      .then(r => { if (r.status === 404) siteOff = true; return r.ok ? r.json() : null; })
+      .catch(() => null)
+      .then(rows => {
+        const got = new Map((Array.isArray(rows) ? rows : []).map(x => [String(x.game), x.kind]));
+        ids.forEach(id => {
+          const k = got.get(id) || null, cbs = siteWait.get(id) || [];
+          siteWait.delete(id);
+          if (Array.isArray(rows)) SITE.set(id, k); else SITE.delete(id);   // a failed read is asked again on the next draw
+          if (k) cbs.forEach(cb => { try { cb(k); } catch (_) { /* one card's trouble is its own */ } });
+        });
+        if (siteWait.size && !siteT) siteT = setTimeout(siteFlush, 0);    // more than one read's worth, or asked meanwhile
+      });
+  }
+  function site(id, cb) {
+    id = String(id || '');
+    if (!UUID.test(id) || typeof cb !== 'function' || siteOff) return;
+    if (SITE.get(id) !== undefined) { const k = SITE.get(id); if (k) cb(k); return; }
+    if (!siteWait.has(id)) siteWait.set(id, []);
+    siteWait.get(id).push(cb);
+    if (!siteT) siteT = setTimeout(siteFlush, 30);
+  }
+  const SITE_SAYS = { live: 'watch the game live on EPINOIΛ', full: 'watch the whole game on EPINOIΛ', highlights: 'watch the highlights on EPINOIΛ' };
+  function sitePill(id, kind) {
+    if (!UUID.test(String(id || '')) || typeof document === 'undefined') return null;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ep-watch k-here ew-site';
+    b.setAttribute('data-game', String(id));
+    b.setAttribute('data-kind', SITE_SAYS[kind] ? kind : 'full');
+    b.setAttribute('aria-label', SITE_SAYS[kind] || SITE_SAYS.full);
+    b.title = SITE_SAYS[kind] || SITE_SAYS.full;
+    b.innerHTML = TV + '<span>watch</span><i class="ew-dot" aria-hidden="true"></i>';
+    wire();
+    return b;
+  }
+
+  /* the cards' one call: in `slot` (where the card keeps its pill), mark the league's pill if it has one, else put the
+     site's own in; opts.cls goes on a new pill, opts.added(pill) runs once it is in */
+  function siteInto(slot, id, opts) {
+    if (!slot) return;
+    const o = opts || {};
+    site(id, kind => {
+      const have = slot.querySelector('.ep-watch');
+      if (have) { have.classList.add('ew-has'); return; }
+      const sp = sitePill(id, kind);
+      if (!sp) return;
+      if (o.cls) sp.classList.add(o.cls);
+      slot.appendChild(sp);
+      if (typeof o.added === 'function') o.added(sp);
+    });
+  }
+
+  root.EpinoiaWatch = { of, pill, close, sync: () => { if (pop && pop.classList.contains('on')) place(); }, DATA, KIND, onAir, livePill, airFeed, airFresh, site, sitePill, siteInto };
 })(typeof window !== 'undefined' ? window : globalThis);

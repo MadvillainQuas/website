@@ -9,7 +9,8 @@
      * the clubs a name can be given to: the channel's leagues', or any club by two letters of its name;
      * a change sends the channel's unmatched videos back to the matcher; rematch sends back the matched ones too,
        never one linked by hand;
-     * a video's game carries each club's second colour.
+     * a video's game carries each club's second colour;
+     * games_watchable (0255): which of a page of games have a video to play here - game_watch's, a yes per game.
 
      node supabase/tests/video-clubs.test.mjs        (the database half is skipped where PGlite is not installed)
    ============================================================================ */
@@ -245,6 +246,18 @@ if (!loaded || !loaded.db) {
     const w5 = (await as(null, `select public.game_watch($1) as j`, [none]))[0].j;
     ok('...a game with nothing to watch: no video, not live', w5 && w5.video === null && w5.live === false, w5);
     ok("...and a private league's game is nobody else's to ask about", (await as(null, `select public.game_watch($1) as j`, [QG]))[0].j === null);
+
+    /* THE FIXTURE CARDS' ONE READ (games_watchable, 0255): the same videos as game_watch, a yes per game */
+    const gw = await as(null, `select * from public.games_watchable($1::uuid[])`, [[G, L3, L1, wh, none, QG]]);
+    const kindOf = Object.fromEntries(gw.map(r => [r.game, r.kind]));
+    ok('the cards\' one read: a whole game, a kept stream, a stream now and highlights each a yes, with the best kind',
+       kindOf[G] === 'full' && kindOf[L3] === 'full' && kindOf[L1] === 'live' && kindOf[wh] === 'highlights', kindOf);
+    ok('...a game with nothing and a private league\'s game are not in it, and each game is there once',
+       !(none in kindOf) && !(QG in kindOf) && gw.length === new Set(gw.map(r => r.game)).size, gw);
+    ok('...every kind agrees with WATCH HERE', [[G, w1], [L3, w3], [wh, w4]].every(([g, w]) => kindOf[g] === w.video.kind) && kindOf[L1] === wl.video.kind);
+    ok('...no games (or none given), no rows',
+       (await as(null, `select * from public.games_watchable('{}'::uuid[])`)).length === 0
+       && (await as(null, `select * from public.games_watchable(null)`)).length === 0);
   }
 
   console.log('\na league\'s own channel, its videos on its games (0245)');

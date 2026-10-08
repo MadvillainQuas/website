@@ -861,6 +861,12 @@ function card(g, opts) {
     wp.classList.add('fxc-watch');
     body.appendChild(wp);
   }
+  /* A FINISHED GAME THE SITE HAS A VIDEO FOR (watch.js site, 0255: highlights, the whole game, its kept stream): a pill
+     into the site's own player even in a league with no entry; a league's pill is marked instead. One read for the
+     page, kept, so a redrawn card has it at once. */
+  if (isFinal && root.EpinoiaWatch && root.EpinoiaWatch.siteInto) {
+    root.EpinoiaWatch.siteInto(body, g.id, { cls: 'fxc-watch', added: () => { body.className += ' has-watch'; } });
+  }
   a.appendChild(body);
 
   /* WHEN IT IS, under the two clubs and in full: the day the top line abbreviates and the

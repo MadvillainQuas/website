@@ -351,6 +351,8 @@ function fixtureRow(g, stats, names) {
   const wslug = (LEAGUE && LEAGUE.slug) || window.__CS_LEAGUE_SLUG;
   const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug, { game: g.id }) : null;
   if (wp) { wp.classList.add('fx-watch'); sb.appendChild(wp); }
+  /* a finished game the site has a video for (watch.js site, 0255): a pill into its own player, in any league */
+  if (final && window.EpinoiaWatch && window.EpinoiaWatch.siteInto) window.EpinoiaWatch.siteInto(sb, g.id, { cls: 'fx-watch' });
   top.append(hs, sb, as);
   row.appendChild(top);
   /* the bell: follow this one game -- its reminder and its score in your bell */

@@ -423,6 +423,8 @@ async function games() {
     const wslug = (LEAGUE && LEAGUE.slug) || window.__CS_LEAGUE_SLUG;
     const wp = window.EpinoiaWatch && wslug ? window.EpinoiaWatch.pill(wslug, { game: g.id }) : null;
     if (wp) { wp.classList.add('fx-watch'); mid.appendChild(wp); }
+    /* a finished game the site has a video for (watch.js site, 0255): a pill into its own player, in any league */
+    if (final && window.EpinoiaWatch && window.EpinoiaWatch.siteInto) window.EpinoiaWatch.siteInto(mid, g.id, { cls: 'fx-watch' });
     /* STREAMING NOW ON THE SITE'S OWN PLAYER (watch.js onAir): the row lit, WATCH LIVE above its state */
     if (live && window.EpinoiaWatch && window.EpinoiaWatch.onAir) window.EpinoiaWatch.onAir(row, g.id, { slot: mid });
 
