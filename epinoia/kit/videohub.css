@@ -246,17 +246,13 @@ html.vh-land-on,html.vh-land-on body{overflow:hidden}
   .vh-theatre:not(.vh-land):not(.land-box):has(.vh-ttop.chat-min) .vh-chat{grid-area:auto;grid-column:2;grid-row:1 / span 2}
 }
 
-/* ---- nothing live: a test card ---- */
-.vh-none{position:relative;display:grid;place-items:center;aspect-ratio:16/6;min-height:200px;overflow:hidden;border:1px solid var(--rule)}
-.vh-none[hidden]{display:none}
-.vh-bars{position:absolute;inset:0;opacity:.32;filter:saturate(.85);
-  background:linear-gradient(90deg,#c0c0c0 0 14.28%,#c0c000 0 28.57%,#00c0c0 0 42.85%,#00c000 0 57.14%,#c000c0 0 71.42%,#c00000 0 85.71%,#0000c0 0)}
-.vh-bars::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(0,0,0,.35) 0 1px,transparent 1px 3px),
-  radial-gradient(70% 90% at 50% 50%,transparent 30%,rgba(0,0,0,.85) 100%)}
-.vh-none-t{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 26px;background:rgba(0,0,0,.82);
-  border:1px solid rgba(255,255,255,.18);text-align:center}
-.vh-none-t b{font-family:var(--f-score);font-weight:400;font-size:clamp(22px,2.6vw,32px);letter-spacing:.06em;text-transform:uppercase;color:#fff}
-.vh-none-t span{font-family:var(--f-ui);font-weight:600;font-size:12px;color:var(--ink-3)}
+/* ---- nothing live: the section folds to one line (videohub.js is-off), the title smaller and the words beside it;
+   no WIDE or FULL SCREEN with no stream to widen ---- */
+.vh-live.is-off .vh-h{margin:0;padding:12px 16px;border:1px dashed rgba(255,255,255,.16);background:rgba(255,255,255,.02)}
+.vh-live.is-off .vh-t{font-size:clamp(20px,2vw,26px)}
+.vh-live.is-off .vh-dot{width:10px;height:10px}
+.vh-live.is-off .vh-sub{text-transform:none;letter-spacing:.02em;font-size:12px;font-weight:600}
+.vh-live.is-off .md-widebtn,.vh-live.is-off .vh-full{display:none}
 
 /* ---- the videos: the playlist's stage and the tiles, dark ---- */
 .vh .md-stage{background:#000;border-color:rgba(255,255,255,.14)}

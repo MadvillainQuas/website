@@ -138,12 +138,10 @@
     landFloat.append(landShow, landX2);
     [tabChat, tabBox, landHide, landX, landShow, landX2].forEach(b => { b.type = 'button'; });
     theatre.append(landTabs, landFloat);
-    const none = el('div', 'vh-none');
-    none.hidden = true;
-    none.innerHTML = '<div class="vh-bars" aria-hidden="true"></div><div class="vh-none-t"><b></b><span></span></div>';
-    none.querySelector('b').textContent = tr('Nothing live right now');
-    none.querySelector('span').textContent = tr('Games appear here the moment their stream goes live.');
-    live.append(lh, gamesRow, theatre, none);
+    /* NOTHING LIVE: the section folds to its title line (is-off), saying so beside the title - it used to hold a test card a
+       third of the screen tall over nothing (2026-10-08). It opens again the moment a stream starts (read every minute). */
+    live.classList.add('is-off');
+    live.append(lh, gamesRow, theatre);
 
     let games = [], chosen = null;
     const abbr = t => M.abbr(t);
@@ -268,9 +266,10 @@
       /* the club's version: LIVE is there only while the club is playing */
       if (team) live.hidden = !games.length;
       else try { if (window.EpinoiaHomeModes && window.EpinoiaHomeModes.setLive) window.EpinoiaHomeModes.setLive(games.length); } catch (_) { /* the strip's own */ }
-      lsub.textContent = games.length ? (games.length === 1 ? tr('1 game streaming now') : games.length + ' ' + tr('games streaming now')) : tr('Every game streaming now');
-      none.hidden = !!games.length;
+      lsub.textContent = games.length ? (games.length === 1 ? tr('1 game streaming now') : games.length + ' ' + tr('games streaming now'))
+        : tr('Nothing live right now · games appear here the moment their stream starts');
       live.classList.toggle('is-on', !!games.length);
+      live.classList.toggle('is-off', !games.length);
       if (!games.length) { gamesRow.textContent = ''; return; }
       const keep = chosen && games.find(g => g.id === chosen.id);
       if (keep) { chosen = keep; drawGames(); drawBug(keep); }
