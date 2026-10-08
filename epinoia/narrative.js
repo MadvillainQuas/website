@@ -456,9 +456,14 @@ function build(input) {
   const playerLink = pid => (/^[0-9a-f-]{36}$/i.test(String(pid)) ? { label: pname(pid) || 'the player', href: 'p/?p=' + pid } : null);
 
   const out = [];
+  /* QUESTIONS TO ASK (the press-conference prep a desk writes): addressed to a club's coach or to a player by name, and
+     grounded in the storyline's own numbers; never about anything the numbers do not show */
+  const Q = (to, q) => (to && q ? { to, q } : null);
+  const coachOf = id => possOf(name(id)) + ' coach';
   /* a storyline: everything a reader or a creator needs, and what the ranking reads */
   const story = s => {
-    const st = Object.assign({ teams: [], players: [], games: [], numbers: [], angles: [], links: [], body: [] }, s);
+    const st = Object.assign({ teams: [], players: [], games: [], numbers: [], angles: [], links: [], body: [], questions: [] }, s);
+    st.questions = (st.questions || []).filter(x => x && x.to && x.q && clean(x.q) && clean(x.to));
     ['head', 'dek', 'why', 'counter', 'next'].forEach(k => { if (st[k] != null) st[k] = clean(st[k]); });
     if (st.head) st.head = cap(st.head);
     /* a counterpoint is kept without its "Yes, but": the page and the copy say that */
@@ -527,6 +532,8 @@ function build(input) {
         : nextText(lead.team_id) ? 'Next for ' + name(lead.team_id) + ': ' + nextText(lead.team_id) + '.' : null,
       teams: bunch.map(r => r.team_id).slice(0, 4), games: meet.map(f => f.id).slice(0, 3),
       tracks: { metric: 'gap', value: gap },
+      questions: [early ? Q(coachOf(lead.team_id), 'Does the table mean anything yet, ' + plural(maxGp, 'game') + ' in?')
+        : runIn && chasers && chasers.length ? Q(coachOf(lead.team_id), 'With ' + plural(shape.left, 'game') + ' left, is first place yours to lose?') : null],
       importance: (unformed ? 3 : clinched ? 9.5 : 9) * (early && !unformed ? 0.65 : 1), magnitude: unformed ? 0.2 : Math.min(1, bunch.length / 5 + (gap >= 3 ? 0.4 : 0) + (runIn ? 0.3 : 0)), stakes: unformed ? 0.4 : 1,
       lastAt: lc ? lc.lastAt : null, angles: ['the race, in a table and a paragraph', 'a preview of the next meeting between the contenders', runIn ? 'the run-in: every contender’s remaining games, side by side' : 'a weekly "state of the race" column'],
       links: [teamLink(lead.team_id), teamLink(second.team_id)].filter(Boolean)
@@ -573,12 +580,14 @@ function build(input) {
         head: name(r.team_id) + ' are sure of a top-' + spell(lineN) + ' finish' + where,
         dek: rec(r.w, r.l) + ', ' + ordShort(r.pos) + ', with ' + plural(remOf(r.team_id), 'game') + ' left.',
         why: rule + (qualifiers ? '.' : '; whatever this season’s format, nobody can push them out of the top ' + spell(lineN) + ' now.'),
+        questions: [Q(coachOf(r.team_id), 'You are sure of a top-' + spell(lineN) + ' finish: what are you playing for now?')],
         teams: [r.team_id], tracks: { metric: 'through', value: r.team_id }, importance: 6, magnitude: 0.6, stakes: 0.8, lastAt: c ? c.lastAt : null,
         angles: ['what they are playing for now: the seeding'], links: [teamLink(r.team_id)].filter(Boolean) });
       else if (i >= lineN && above >= lineN) story({ id: 'out:' + r.team_id, kind: 'out', kicker: 'Out of it',
         head: name(r.team_id) + ' can no longer finish in the top ' + spell(lineN) + where,
         dek: rec(r.w, r.l) + ', ' + ordShort(r.pos) + (remOf(r.team_id) ? '; even ' + plural(remOf(r.team_id), 'more win') + ' would leave them short.' : '; their regular season is over.'),
-        why: rule + '.', teams: [r.team_id], tracks: { metric: 'out', value: r.team_id }, importance: 4, magnitude: 0.4, stakes: 0.4, lastAt: c ? c.lastAt : null,
+        why: rule + '.', questions: [Q(coachOf(r.team_id), 'With the top ' + spell(lineN) + ' out of reach, what is the rest of the season for?')],
+        teams: [r.team_id], tracks: { metric: 'out', value: r.team_id }, importance: 4, magnitude: 0.4, stakes: 0.4, lastAt: c ? c.lastAt : null,
         angles: ['what the rest of the season is for: the young players, next season'], links: [teamLink(r.team_id)].filter(Boolean) });
     });
   });
@@ -628,6 +637,9 @@ function build(input) {
           shift ? { label: FACET[shift.k] + ', a game', value: signed(shift.run) + ' in the run, ' + signed(shift.before) + ' before' } : null],
         counter: above === 0 && s.n >= 3 && pos ? 'Yes, but none of the ' + spell(s.n) + ' came against a side above them in the table.' : easyCounter(id),
         next: whenNext(id) ? 'It goes on the line ' + whenNext(id) + '.' : null,
+        questions: [shift ? Q(coachOf(id), 'Your ' + FACET[shift.k] + ' has been worth ' + signed(shift.run) + ' points a game in the run, against ' + signed(shift.before) + ' before it: what changed?')
+            : Q(coachOf(id), 'What has changed in the last ' + spell(s.n) + ' games?'),
+          above === 0 && pos ? Q(coachOf(id), 'None of the ' + spell(s.n) + ' wins came against a side above you in the table: what will the run tell you about this team?') : null],
         body: [record ? 'It is already their longest run of the season.' : null,
           shift ? 'What changed: ' + FACET[shift.k] + ', worth ' + signed(shift.run) + ' points a game to them in the run against ' + signed(shift.before) + ' before it.' : null],
         teams: [id], games: s.games, tracks: { metric: 'run', value: s.n }, importance: 6 + Math.min(3, s.n / 2), magnitude: Math.min(1, s.n / 8),
@@ -650,6 +662,8 @@ function build(input) {
         counter: c.close.l >= 2 && s.n >= 4 ? 'Yes, but ' + spell(c.close.l) + ' of their defeats this season were by five or fewer: the margins are small.' : null,
         next: nextText(id) ? 'The next chance: ' + nextText(id) + '.' : null,
         body: [shift ? 'What changed: ' + FACET[shift.k] + ', worth ' + signed(shift.run) + ' points a game to them in the run against ' + signed(shift.before) + ' before it.' : null],
+        questions: [shift ? Q(coachOf(id), 'Your ' + FACET[shift.k] + ' has gone from ' + signed(shift.before) + ' points a game to ' + signed(shift.run) + ' in the run: is that the first thing to fix?')
+          : Q(coachOf(id), 'What has to change to end the run?')],
         teams: [id], games: s.games, tracks: { metric: 'skid', value: s.n }, importance: 5 + Math.min(2, s.n / 3), magnitude: Math.min(1, s.n / 8), stakes: 0.5, lastAt: c.lastAt,
         angles: [shift ? 'what has gone wrong: ' + FACET[shift.k] + ', in the numbers' : 'what has gone wrong, in the numbers', 'the one fixture that could end it'], links: [teamLink(id)].filter(Boolean)
       });
@@ -667,10 +681,14 @@ function build(input) {
       why: (unbeaten.length === 1 ? 'The last unbeaten side in the league' : 'One of ' + spell(unbeaten.length) + ' sides still unbeaten') +
         (closest != null ? (closest >= 8 ? ', and nobody has got closer than ' + spell(closest) + ' points.' : '; their closest win was by ' + spell(closest) + '.') : '.'),
       teams: [id], games: c.games.slice(-3).map(x => x.id), counter: easyCounter(id),
+      questions: [closest != null ? (closest >= 8 ? Q(coachOf(id), 'Nobody has got closer than ' + spell(closest) + ' points: what has made you so hard to beat?')
+          : Q(coachOf(id), 'Your closest win was by ' + spell(closest) + ': which game nearly got away?')) : null,
+        easyCounter(id) ? Q(coachOf(id), 'Your opponents so far have been among the weakest in the league: how much does ' + rec(c.w, 0) + ' prove?') : null],
       next: nextToTry(id) ? 'Next to try: ' + nextToTry(id) + '.' : null, tracks: { metric: 'w', value: c.w }, importance: 8, magnitude: Math.min(1, c.w / 10), stakes: 1, lastAt: c.lastAt,
       angles: ['what makes them so hard to beat', 'the fixture most likely to end it'], links: [teamLink(id)].filter(Boolean) });
     if (c.gp >= 4 && c.w === 0) story({ id: 'winless:' + id, kind: 'winless', kicker: 'Still waiting', head: name(id) + ' are still looking for a first win, ' + rec(0, c.l),
       dek: 'Their closest defeat was by ' + spell(Math.min(...c.games.map(x => x.against - x.for))) + '.', teams: [id], games: c.games.slice(-3).map(x => x.id),
+      questions: [Q(coachOf(id), 'Your closest defeat was by ' + spell(Math.min(...c.games.map(x => x.against - x.for))) + ': what has been missing at the end of games?')],
       next: nextText(id) ? 'The next chance: ' + nextText(id) + '.' : null, tracks: { metric: 'l', value: c.l }, importance: 4.5, magnitude: Math.min(1, c.l / 10), stakes: 0.4, lastAt: c.lastAt,
       angles: ['where the first win could come from'], links: [teamLink(id)].filter(Boolean) });
   });
@@ -697,6 +715,8 @@ function build(input) {
         { label: 'in games decided by five or fewer', value: rec(c.close.w, c.close.l) }],
       counter: lucky ? 'Yes, but closing out tight games is a skill too: they are ' + rec(c.close.w, c.close.l) + ' in them.'
         : c.diff <= 0 ? 'Yes, but they have still been outscored over the season: better than the record is not the same as good.' : null,
+      questions: [lucky ? Q(coachOf(id), 'You are ' + rec(c.close.w, c.close.l) + ' in games decided by five or fewer: how much of that is skill, and how much will last?')
+        : Q(coachOf(id), 'Your points for and against say about ' + spell(Math.round(exp)) + ' wins, not ' + spell(c.w) + ': where have the close games gone?')],
       next: nextText(id) ? 'Next: ' + nextText(id) + '.' : null, teams: [id], tracks: { metric: 'luck', value: Math.round(luck * 2) / 2 },
       importance: 5.5, magnitude: Math.min(1, Math.abs(luck) / 4), stakes: 0.6, lastAt: c.lastAt, under: true,
       angles: ['a data piece: the record against the points', 'what the close games have in common'], links: [teamLink(id)].filter(Boolean)
@@ -728,6 +748,8 @@ function build(input) {
       why: same ? 'Every club here rises and falls with ' + FACET[top.k] + '; for ' + name(id) + ' the swing between wins and defeats is ' + one(top.gap) + ' points a game, against ' + one(usual[top.k]) + ' for a typical club.'
         : 'Most clubs here rise and fall with ' + FACET[usualTop] + '; ' + possOf(name(id)) + ' results turn on ' + FACET[top.k] + ', a swing of ' + one(top.gap) + ' points a game between their wins and their defeats, against ' + one(usual[top.k]) + ' for a typical club.',
       numbers: x.all.map(f => ({ label: FACET[f.k], value: signed(f.win) + ' / ' + signed(f.loss), note: 'in wins / in defeats' })),
+      questions: [same ? Q(coachOf(id), 'Your results swing with ' + FACET[top.k] + ' more than almost anyone else’s here: is that a plan or a problem?')
+        : Q(coachOf(id), 'Your results turn on ' + FACET[top.k] + ' more than on anything else: is that by design?')],
       next: whenNext(id) ? 'Watch it next ' + whenNext(id) + '.' : null, teams: [id], tracks: { metric: 'facet', value: top.k },
       importance: same ? 4.5 : 5.5, magnitude: Math.min(1, top.excess / 8), stakes: 0.5, lastAt: c.lastAt, evergreen: true,
       angles: ['a data piece: the one number to watch in their games', 'a coach’s-eye preview built on it'], links: [teamLink(id)].filter(Boolean)
@@ -763,6 +785,8 @@ function build(input) {
         why,
         numbers: [{ label: 'run', value: String(p.run20) }, all ? null : { label: 'in the run', value: one(runAvg) + ' ppg' }, { label: 'season', value: one(p.ppg) + ' ppg' },
           { label: 'season high', value: String(p.high.pts.pts) }, share != null ? { label: 'share of the club’s points in the run', value: Math.round(100 * share) + '%' } : null],
+        questions: [Q(nm, all ? 'You have scored 20 or more in every game this season: what is working?' : 'You have scored 20 or more in ' + spell(p.run20) + ' straight games: what has changed?'),
+          share != null && share >= 0.28 && p.team ? Q(coachOf(p.team), nm + ' has scored ' + Math.round(100 * share) + '% of your points over the run: what happens when teams take that away?') : null],
         next: p.team && whenNext(p.team) ? 'The run goes on the line ' + whenNext(p.team) + '.' : null,
         teams: p.team ? [p.team] : [], players: [pid], games: run.map(x => x.game), tracks: { metric: 'run20', value: p.run20 },
         importance: 6 + Math.min(2, p.run20 / 3), magnitude: Math.min(1, p.run20 / 8), stakes: 0.6, lastAt: p.lastAt,
@@ -776,6 +800,8 @@ function build(input) {
         why: m5 - m0 >= 4 ? 'The minutes explain most of it: up from ' + one(m0) + ' to ' + one(m5) + ' a game.'
           : 'Much the same minutes (' + one(m5) + ' a game against ' + one(m0) + '), many more points: the shots are falling, or the role has changed.',
         numbers: [{ label: 'last five', value: one(p.last5ppg) + ' ppg' }, { label: 'before', value: one(p.prev5ppg) + ' ppg' }, { label: 'minutes', value: one(m5) + ' (was ' + one(m0) + ')' }],
+        questions: [m5 - m0 >= 4 && p.team ? Q(coachOf(p.team), possOf(nm) + ' minutes have gone from ' + one(m0) + ' to ' + one(m5) + ' a game: what has earned them?')
+          : Q(nm, 'Much the same minutes and many more points: what is different?')],
         teams: p.team ? [p.team] : [], players: [pid], games: p.games.slice(-5).map(x => x.game), tracks: { metric: 'last5', value: Math.round(p.last5ppg) },
         importance: 5, magnitude: Math.min(1, (p.last5ppg - p.prev5ppg) / 12), stakes: 0.5, lastAt: p.lastAt, under: true,
         angles: [m5 - m0 >= 4 ? 'what changed: the minutes, and why the coach is giving them' : 'what changed: the role and the shots'], links: [playerLink(pid)].filter(Boolean) });
@@ -821,6 +847,7 @@ function build(input) {
       numbers: [{ label: 'games missed', value: String(after.length) }, { label: 'minutes before', value: one(p.mpg) }, { label: 'points before', value: one(p.ppg) },
         { label: 'record without', value: rec(w, res.length - w) }],
       counter: null, next: nextText(p.team) ? 'Next: ' + nextText(p.team) + '.' : null,
+      questions: [Q(coachOf(p.team), ban ? 'How do you cover ' + possOf(nm) + ' ' + one(p.mpg) + ' minutes while the suspension runs?' : 'How has the rotation changed without ' + nm + '?')],
       teams: [p.team], players: [pid], games: after.map(x => x.id), tracks: { metric: 'missed', value: after.length },
       importance: 4.5 + Math.min(1.5, p.mpg / 20), magnitude: Math.min(1, after.length / 4), stakes: 0.5, lastAt: c.lastAt,
       angles: ['how the rotation has changed without them'], links: [playerLink(pid), teamLink(p.team)].filter(Boolean) });
@@ -837,6 +864,7 @@ function build(input) {
       why: 'Box plus-minus counts everything in the box score against what a player’s minutes are worth; it is the closest thing the box has to a player’s value.',
       numbers: [{ label: 'BPM', value: signed(top.bpm) }, { label: 'points', value: one(top.ppg) }, { label: 'minutes', value: one(top.mpg) },
         byBpm[1] ? { label: 'next best', value: pname(byBpm[1].id) + ' ' + signed(byBpm[1].bpm) } : null],
+      questions: [Q(pname(top.id), 'You lead the league in box plus-minus on ' + one(top.ppg) + ' points a game: what part of your game do people miss?')],
       teams: club ? [club] : [], players: [top.id], tracks: { metric: 'bpm', value: top.id }, importance: 5, magnitude: Math.min(1, top.bpm / 12), stakes: 0.5,
       lastAt: PL.get(top.id) ? PL.get(top.id).lastAt : nowMs - DAY, evergreen: true,
       angles: ['a player profile built on the whole line, not the points', 'a "most valuable so far" ranking'], links: [playerLink(top.id)].filter(Boolean) });
@@ -848,6 +876,7 @@ function build(input) {
         dek: signed(quiet.bpm) + ' BPM, ' + ordShort(byBpm.indexOf(quiet) + 1) + ' in the league, ' + ordShort(byPts.indexOf(quiet) + 1) + ' in scoring' + (qc ? ', for ' + name(qc) : '') + '.',
         why: 'Points get noticed; the rest of a good night rarely does.',
         numbers: [{ label: 'BPM', value: signed(quiet.bpm) }, { label: 'points', value: one(quiet.ppg) }, { label: 'rebounds', value: one(quiet.rpg) }, { label: 'assists', value: one(quiet.apg) }],
+        questions: [qc ? Q(coachOf(qc), pname(quiet.id) + ' ranks ' + ordShort(byBpm.indexOf(quiet) + 1) + ' in the league by box plus-minus on ' + one(quiet.ppg) + ' points a game: what does the box score miss?') : null],
         teams: qc ? [qc] : [], players: [quiet.id], tracks: { metric: 'quiet', value: quiet.id }, importance: 4.5, magnitude: 0.6, stakes: 0.4,
         lastAt: PL.get(quiet.id) ? PL.get(quiet.id).lastAt : nowMs - DAY, evergreen: true, under: true,
         angles: ['a feature: what they do that the scoring column misses'], links: [playerLink(quiet.id)].filter(Boolean) });
@@ -934,6 +963,7 @@ function build(input) {
             (top.won === n ? (n === 2 ? 'both' : 'all ' + spell(n)) : spell(top.won)) + '.',
         why: share != null && share >= 0.5 ? 'When the game is on the line, the ball goes to ' + nm + '.' : 'Points at the end of close games are the ones a season turns on.',
         numbers: [{ label: 'points in clutch time', value: String(top.pts) }, { label: 'close finishes', value: String(n) }, share != null ? { label: 'share of the club’s', value: Math.round(100 * share) + '%' } : null],
+        questions: [Q(coachOf(top.team), nm + ' scored ' + top.pts + ' of your ' + top.teamPts + ' points in the closing minutes: does the ball always go to ' + nm + ' at the end?')],
         teams: [top.team], players: [top.pid], games: top.games, tracks: { metric: 'closer', value: top.pts },
         importance: 5, magnitude: Math.min(1, top.pts / 15), stakes: 0.5, lastAt: top.lastAt,
         angles: ['the closer: a feature built on the last four minutes', 'a clip of every basket in clutch time'], links: [playerLink(top.pid), teamLink(top.team)].filter(Boolean) });
@@ -979,6 +1009,7 @@ function build(input) {
           : 'Two games against the same side in a few days test the adjustments, and only one side made them.',
         numbers: [{ label: 'the two games', value: scoreOf(g1) + ', ' + scoreOf(g2) }].concat(r2 && r2.decisive ? [{ label: 'what decided the second', value: r2.decisive.label + ', about ' + Math.round(r2.decisive.pts) + ' points' }] : []),
         next: nextText(l) ? 'Next for ' + name(l) + ': ' + nextText(l) + '.' : null,
+        questions: [Q(coachOf(l), 'Two defeats to the same side in a few days: what did they do that you could not answer?')],
         teams: [w, l], games: [g1.id, g2.id], tracks: { metric: 'pair', value: g2.id }, importance: 5 + Math.min(2, below / 3), magnitude: Math.min(1, 0.4 + below / 10), stakes: 0.6,
         lastAt: time(g2.tipoff_at), angles: ['the two games as one story: what the losers changed, and why it did not work'], links: [gameLink(g1.id), gameLink(g2.id)] });
     } else {
@@ -1019,6 +1050,8 @@ function build(input) {
         (byNumbers ? ' The season’s numbers had ' + name(l) + ' by about ' + spell(Math.round(-exW)) + ' before the tip.' : '') +
         (r && r.decisive ? ' ' + cap(r.decisive.label) + ' ' + wasWere(r.decisive.label) + ' worth about ' + Math.round(r.decisive.pts) + ' points to them.' : ''),
       why, teams: [w, l], games: [g.id], tracks: { metric: 'game', value: g.id },
+      questions: [byNumbers ? Q(coachOf(w), 'The season’s numbers had ' + name(l) + ' by about ' + spell(Math.round(-exW)) + ': what did you do that they did not expect?')
+        : Q(coachOf(w), 'What did you see in ' + name(l) + ' that the table did not?')],
       importance: 6 + Math.min(2, byNumbers ? -exW / 5 : gap / 4), magnitude: Math.min(1, byNumbers ? -exW / 10 : gap / 8), stakes: 0.7, lastAt: time(g.tipoff_at),
       angles: ['the recap', 'what the winners did that nobody expected'], links: [gameLink(g.id)] });
   });
@@ -1076,7 +1109,9 @@ function build(input) {
         why = 'Two legs, decided on aggregate.';
         s.status = name(a) + ' v ' + name(b) + ' to start';
       }
+      const behindTie = !winner && n ? (agg[a] < agg[b] ? a : agg[b] < agg[a] ? b : null) : null;
       story({ id: 'series:' + s.key, kind: 'series', kicker: label || 'The knockout', head, dek: n ? legLine + '.' : null, why, next,
+        questions: [behindTie ? Q(coachOf(behindTie), 'You are ' + plural(Math.abs(agg[a] - agg[b]), 'point') + ' down going into the second leg: how do you approach it?') : null],
         numbers: n ? [(() => { const x = s.through || (agg[b] > agg[a] ? b : a), y = x === a ? b : a; return { label: 'aggregate', value: name(x) + ' ' + agg[x] + '–' + agg[y] + ' ' + name(y) }; })()] : [],
         teams: [a, b], games: s.games.map(g => g.id).concat(s.next ? [s.next.id] : []), tracks: { metric: 'tie', value: agg[a] + '-' + agg[b] },
         importance: winner ? 6 : 8.5, magnitude: Math.min(1, 0.5 + 0.15 * n), stakes: 1, lastAt: last ? time(last.tipoff_at) : nowMs - 12 * HOUR,
@@ -1137,6 +1172,10 @@ function build(input) {
           met.length ? { label: 'regular season', value: name(hi) + ' ' + metHi + '–' + (met.length - metHi) } : null,
           turn ? { label: 'the numbers say it turns on', value: FACET[turn.k] + ' (' + name(turn.side) + ', about ' + one(turn.pts) + ' points)' } : null],
         next: s.next && !through ? 'Game ' + (n + 1) + ' is on ' + dayWords(s.next.tipoff_at, tz) + ', with ' + name(s.next.home_team_id) + ' at home.' : null,
+        questions: [through ? null : lowLeads ? Q(coachOf(hi), 'You finished ' + spell(pl0.pos - ph.pos) + ' places above them and lost Game ' + n + ': what changes for the next one?')
+          : lastM != null && lastM <= 3 && trail ? Q(coachOf(trail), 'Game ' + n + ' came down to ' + plural(lastM, 'point') + ': what decides the next one?')
+          : lastM != null && lastM >= 12 && trail && wl !== trail ? Q(coachOf(trail), 'You lost Game ' + n + ' by ' + spell(lastM) + ': what has to change?')
+          : n && trail ? Q(coachOf(trail), 'What did Game ' + n + ' teach you about this matchup?') : null],
         teams: [hi, lo], games: s.games.map(g => g.id).concat(s.next ? [s.next.id] : []), tracks: { metric: 'series', value: wins[hi] + '-' + wins[lo] },
         importance: through ? 7 : 9 + (lowLeads ? 1 : 0), magnitude: Math.min(1, 0.45 + 0.12 * n + (lowLeads ? 0.2 : 0)), stakes: 1,
         lastAt: last ? time(last.tipoff_at) : nowMs - 12 * HOUR,
@@ -1155,6 +1194,7 @@ function build(input) {
       why: adjRank <= 3 ? 'Against the schedule they have played, their margins rank ' + place(adjRank) + ' in the league: the record undersells them.'
         : 'A record against the league’s best is worth more than the same record against its worst.',
       numbers: [{ label: 'record', value: rec(hc.w, hc.l) }, { label: 'opponents, adjusted net', value: signed(h.sosNet) }, { label: 'their adjusted net', value: signed(h.adjNet) + ' (' + ordShort(adjRank) + ')' }],
+      questions: [Q(coachOf(h.id), 'You have played the hardest schedule in the league: how much better is this team than ' + rec(hc.w, hc.l) + '?')],
       next: nextText(h.id) ? 'Next: ' + nextText(h.id) + '.' : null, teams: [h.id], tracks: { metric: 'schedule', value: h.id },
       importance: 4.5, magnitude: 0.5, stakes: 0.5, lastAt: hc.lastAt, evergreen: true, under: true,
       angles: ['a data piece: the records that the schedule explains', 'the run of fixtures ahead, by strength'], links: [teamLink(h.id)].filter(Boolean) });
@@ -1166,6 +1206,7 @@ function build(input) {
       why: 'The table counts wins; adjusted margins count how well a side has played against whom, and they are the better guide to what comes next.',
       numbers: [{ label: 'adjusted net', value: signed(top.adjNet) }, { label: 'place', value: ordShort(tpos.pos) }, { label: 'leaders, adjusted net', value: name(tl.team_id) + ' ' + signed((SOSIN[tl.team_id] || {}).adjNet || 0) }],
       counter: 'Yes, but the table is what decides the season, and ' + name(tl.team_id) + ' are top of it.',
+      questions: [Q(coachOf(top.id), 'By the margins, adjusted for whom you have played, you are the best side in the league: do you believe it?')],
       next: nextText(top.id) ? 'Next: ' + nextText(top.id) + '.' : null, teams: [top.id, tl.team_id], tracks: { metric: 'adjusted', value: top.id },
       importance: 5.5, magnitude: Math.min(1, 0.4 + (top.adjNet - (SOSIN[tl.team_id] || {}).adjNet || 0) / 10), stakes: 0.6, lastAt: top.c.lastAt, evergreen: true, under: true,
       angles: ['a power ranking built on adjusted margins, beside the table'], links: [teamLink(top.id)].filter(Boolean) });
@@ -1208,6 +1249,7 @@ function build(input) {
         dek: signed(y.bpm) + ' BPM on ' + one(y.ppg) + ' points, ' + one(y.rpg) + ' rebounds and ' + one(y.apg) + ' assists in ' + one(y.mpg) + ' minutes a game' + (yc ? ' for ' + name(yc) : '') + '.',
         why: young.length > 1 ? 'Nobody else aged 21 or under with a real role comes close: ' + pname(young[1].id) + ' is next, at ' + signed(young[1].bpm) + '.' : 'Nobody else aged 21 or under has a role like it.',
         numbers: [{ label: 'age', value: String(ageOf(y.id)) }, { label: 'BPM', value: signed(y.bpm) }, { label: 'minutes', value: one(y.mpg) }],
+        questions: [yc ? Q(coachOf(yc), pname(y.id) + ' is ' + ageOf(y.id) + ' and already among your best: how big will the role get?') : null],
         teams: yc ? [yc] : [], players: [y.id], tracks: { metric: 'youth', value: y.id }, importance: 4, magnitude: 0.5, stakes: 0.3,
         lastAt: PL.get(y.id) ? PL.get(y.id).lastAt : nowMs - DAY, evergreen: true, under: true,
         angles: ['a feature on the player and the minutes the club is giving them'], links: [playerLink(y.id)].filter(Boolean) });
@@ -1350,7 +1392,8 @@ function build(input) {
   /* the copy a creator takes away: the headline, the line under it, the why, the numbers, the counterpoint and what's next */
   stories.forEach(s => {
     s.copy = [s.head, s.dek, s.why ? 'Why it matters: ' + s.why : null, s.numbers.length ? 'By the numbers: ' + s.numbers.map(n => n.label + ' ' + n.value).join('; ') : null,
-      s.counter ? 'Yes, but: ' + s.counter : null, s.next ? 'What’s next: ' + s.next : null].filter(Boolean).join('\n');
+      s.counter ? 'Yes, but: ' + s.counter : null, s.next ? 'What’s next: ' + s.next : null]
+      .concat((s.questions || []).map(x => 'To ' + x.to + ': ' + x.q)).filter(Boolean).join('\n');
   });
 
   const ctxObj = { nowMs, tz, C, S, posOf, name, short, fixtures, games, regular, recaps, tallies, P, model: o.model, LENS, PL, pname, ID, DISTINCT, F, maxGp, qualifiers, nextText,
@@ -1667,6 +1710,6 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 6;
+const VERSION = 7;
 return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));

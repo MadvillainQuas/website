@@ -94,3 +94,6 @@
 }
 /* a score or a record kept on one line (newsdesk.js nb) */
 .nd-nb{white-space:nowrap}
+/* questions to ask: who each is for, above it */
+.nd-qs li{margin-bottom:4px}
+.nd-qto{display:block;font:700 8px/1.5 var(--f-micro);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}

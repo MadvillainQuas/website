@@ -106,6 +106,9 @@ function storyHTML(s, o) {
     line('nd-but', 'Yes, but', s.counter) +
     line('nd-next', 'What’s next', s.next) +
     (opts.full && (s.angles || []).length ? '<div class="nd-angles"><b>Ways to cover it</b><ul>' + s.angles.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul></div>' : '') +
+    /* the questions a desk would take to the press conference, each to a club's coach or a player */
+    (opts.full && (s.questions || []).length ? '<div class="nd-angles nd-qs"><b>Questions to ask</b><ul>' + s.questions.map(x =>
+      '<li><span class="nd-qto">' + esc(x.to) + '</span> <span>' + nb(esc(x.q)) + '</span></li>').join('') + '</ul></div>' : '') +
     /* what the site has already published about it: a creator's piece, the news, the match report */
     (opts.full && (s.pieces || []).length ? '<div class="nd-angles nd-pieces"><b>Already written</b><ul>' + s.pieces.map(x => {
       const h = safeHref(opts.base, x.href);

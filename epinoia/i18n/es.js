@@ -1897,7 +1897,8 @@
       'One for the future': 'Una promesa',
       'The fans’ vote': 'La votación de la afición',
       'The closer': 'Decisivo al final',
-      'Serving a suspension': 'Sancionado'
+      'Serving a suspension': 'Sancionado',
+      'Questions to ask': 'Preguntas que hacer'
     },
 
     ctx: {
