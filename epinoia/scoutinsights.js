@@ -482,11 +482,27 @@ function html(r, o) {
   const li = xs => xs.map(x => '<li>' + esc(typeof x === 'string' ? x : x.text) + (x && x.why ? ' <span class="rp-ins-why">' + esc(x.why) + '</span>' : '') + '</li>').join('');
   const col = (h, xs, cls) => (xs && xs.length ? '<div class="rp-ins-col ' + cls + '"><h4>' + esc(h) + '</h4><ul>' + li(xs) + '</ul></div>' : '');
   const him = r.kind === 'player';
-  /* IT FOLDS, AND OPENS CLOSED (Louie, 2026-10-08): the heading is the fold's own button (a <details>, so the keyboard and
-     a screen reader know it as one), the read under it */
-  let s = '<summary class="rp-ins-hd"><h3>Insights</h3><span>' + esc('The scout’s read on ' + r.name) +
-    (op.scope ? ' · ' + esc(op.scope) : '') + ' · written from this report’s numbers, ranked among ' + esc(him ? 'the league’s ' + (r.who || 'players') : 'the league’s ' + r.n + ' clubs') + '</span>' +
-    '<i class="rp-ins-tog" aria-hidden="true"></i></summary><div class="rp-ins-bd">';
+  /* IT FOLDS, AND OPENS CLOSED (Louie, 2026-10-08): the row is the fold's own button (a <details>, so the keyboard and a
+     screen reader know it as one), the read under it. AND THE ROW SELLS WHAT IS INSIDE (Louie, 2026-10-08: "a more visible
+     dropdown row"): the read's first line as a teaser, what the fold holds counted, and a button saying what a press does.
+     A summary holds phrasing content only, so every line of it is a span */
+  const many = (k, one, more) => k + ' ' + (k === 1 ? one : more);
+  const has = xs => Array.isArray(xs) && xs.length;
+  const chips = [];
+  if (has(r.strengths)) chips.push(many(r.strengths.length, 'strength', 'strengths'));
+  if (has(r.weaknesses)) chips.push(many(r.weaknesses.length, 'weakness', 'weaknesses'));
+  if (has(r.plan)) chips.push(him ? many(r.plan.length, 'way to guard him', 'ways to guard him') : r.plan.length + '-point game plan');
+  if (!him && has(r.personnel)) chips.push(many(r.personnel.length, 'player scouted', 'players scouted'));
+  const tease = has(r.read) ? r.read[0] : '';
+  let s = '<summary class="rp-ins-hd">' +
+    '<span class="rp-ins-kick">The scout’s read' + (op.scope ? ' · ' + esc(op.scope) : '') + '</span>' +
+    '<h3>Insights <span class="rp-ins-on">on <span translate="no">' + esc(r.name) + '</span></span></h3>' +
+    /* the teaser repeats the read's first line, which a screen reader reaches in the fold itself */
+    (tease ? '<span class="rp-ins-tease" aria-hidden="true">' + esc(tease) + '</span>' : '') +
+    (chips.length ? '<span class="rp-ins-chips">' + chips.map(c => '<span>' + esc(c) + '</span>').join('') + '</span>' : '') +
+    '<span class="ep-btn pri rp-ins-act"><span class="rp-ins-act-o">Read the insights</span><span class="rp-ins-act-c">Hide</span>' +
+    '<i class="rp-ins-tog" aria-hidden="true"></i></span></summary><div class="rp-ins-bd">' +
+    '<p class="rp-ins-src">Written from this report’s numbers, ranked among ' + esc(him ? 'the league’s ' + (r.who || 'players') : 'the league’s ' + r.n + ' clubs') + '.</p>';
   if (r.read && r.read.length) s += '<div class="rp-ins-read">' + r.read.map(p => '<p>' + esc(p) + '</p>').join('') + '</div>';
   const cols = col('Strengths', r.strengths, 'good') + col('Weaknesses', r.weaknesses, 'bad');
   if (cols) s += '<div class="rp-ins-cols">' + cols + '</div>';

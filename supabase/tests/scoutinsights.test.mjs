@@ -109,11 +109,34 @@ console.log('\nthe markup and the wiring');
   ok('one section: the read, strengths and weaknesses side by side, the plan with its measures, the personnel', /class="rp-ins"/.test(h) && /<h4>Strengths<\/h4>/.test(h) && /<h4>Weaknesses<\/h4>/.test(h) && /How to prepare/.test(h) && /rp-ins-why/.test(h) && /Personnel/.test(h));
   ok('...names are never translated', /translate="no"/.test(h));
   ok('nothing to draw, nothing drawn', SI.html(null) === '');
+  /* THE ROW SELLS WHAT IS INSIDE (Louie, 2026-10-08: "a more visible dropdown row") */
+  const sum = h.slice(h.indexOf('<summary'), h.indexOf('</summary>'));
+  const esc1 = t => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  ok('the folded row: a kicker, "Insights on" the club (its name untranslated), the read\'s first line as a teaser',
+     /<span class="rp-ins-kick">The scout’s read · NBL<\/span>/.test(sum) && /<h3>Insights <span class="rp-ins-on">on <span translate="no">Alpha City<\/span><\/span><\/h3>/.test(sum) &&
+     sum.includes('<span class="rp-ins-tease" aria-hidden="true">' + esc1(r.read[0]) + '</span>'), sum.slice(0, 500));
+  ok('...what the fold holds, counted as it is', sum.includes('<span>' + r.strengths.length + ' strength' + (r.strengths.length === 1 ? '' : 's') + '</span>') &&
+     sum.includes('<span>' + r.weaknesses.length + (r.weaknesses.length === 1 ? ' weakness' : ' weaknesses') + '</span>') &&
+     sum.includes('<span>' + r.plan.length + '-point game plan</span>') && sum.includes('<span>' + r.personnel.length + ' players scouted</span>'), sum);
+  ok('...and a button in the kit\'s primary saying what a press does, "Read the insights" closed and "Hide" open',
+     /<span class="ep-btn pri rp-ins-act"><span class="rp-ins-act-o">Read the insights<\/span><span class="rp-ins-act-c">Hide<\/span>/.test(sum) &&
+     /\.rp-ins\[open\] \.rp-ins-act-o\{ display:none \}/.test(rd('epinoia', 'kit', 'report.css')) && /\.rp-ins\[open\] \.rp-ins-act-c\{ display:inline \}/.test(rd('epinoia', 'kit', 'report.css')));
+  ok('...a summary holds phrasing content only: no <p> or <div> inside the row', !/<(p|div)[\s>]/.test(sum), sum);
+  ok('...open, the teaser and the counts give way to what they stood for', /\.rp-ins\[open\] \.rp-ins-tease, \.rp-ins\[open\] \.rp-ins-chips\{ display:none \}/.test(rd('epinoia', 'kit', 'report.css')));
+  const pr = SI.player({ mine: players.find(p => p.id === 'G12'), field: players }, { name: 'G Player 12' });
+  const ps = SI.html(pr, { scope: 'NBL' });
+  ok('a player\'s row counts the ways to guard him, and no personnel', pr && /<span>\d+ ways? to guard him<\/span>/.test(ps) && !/players scouted/.test(ps), ps.slice(0, 600));
   const rj = rd('epinoia', 'report.js');
-  ok('the tab draws it between the controls and the pages, never in them (only the pages are printed and drawn into the PDF)',
-     /const ins = el\('div', 'rp-ins-slot'\);\s*ins\.hidden = true;\s*wrap\.appendChild\(ins\);\s*const pages = el\('div', 'rp-pages'\);/.test(rj) &&
+  ok('the tab draws it FIRST, above the controls (Louie: "promoted"), and never in the pages (only they are printed and drawn into the PDF)',
+     /const ins = el\('div', 'rp-ins-slot'\);/.test(rj) && rj.indexOf('wrap.appendChild(ins);') > 0 &&
+     rj.indexOf('wrap.appendChild(ins);') < rj.indexOf('wrap.appendChild(bar);') && rj.indexOf('wrap.appendChild(bar);') < rj.indexOf('wrap.appendChild(pages);') &&
      /if \(typeof o\.insights === 'function'\)/.test(rj));
+  ok('...holding its place with a "reading" row until the first build has it, so the controls do not jump down when it lands',
+     /ins\.innerHTML = '<div class="rp-ins rp-ins-wait" aria-busy="true">/.test(rj) && /Reading this report’s numbers…/.test(rj));
+  ok('...and a build that fails leaves no "reading" row behind', /if \(run === state\.running && state\.ins\.querySelector\('\.rp-ins-wait'\)\) state\.ins\.hidden = true;/.test(rj));
   ok('the print stylesheet leaves it out', /@media print\{ \.rp-ins-slot\{ display:none !important \} \}/.test(rd('epinoia', 'kit', 'report.css')));
+  ok('the competitions picker stays hidden for a club in one competition ([hidden] holds against .rp-f\'s display:flex)',
+     /\.rp-f\[hidden\]\{ display:none \}/.test(rd('epinoia', 'kit', 'report.css')) && /sc\.hidden = true;/.test(rj));
   ok('the club page hands it its season, the player page his line and field',
      /SI\.html\(SI\.team\(T, \{ name: team\.name \}\)/.test(rd('epinoia', 't', 'team.js')) && /SI\.html\(SI\.player\(\{ mine: B\.mine, field: B\.field \}, \{ name \}\)/.test(rd('epinoia', 'p', 'player.js')));
   for (const pg of [['t', 'index.html'], ['p', 'index.html']]) {

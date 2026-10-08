@@ -182,9 +182,17 @@ every report stored for sending with when (`✓ stored Sun 4 Oct 08:14`).
 
 Louie asked for a written section on the scouting report of a club and of a player, "how to prepare, strengths,
 weaknesses, using basketball language and technical terms", from the report's own numbers and not on the PDFs.
-`epinoia/scoutinsights.js` writes it; `report.js` mount draws it (`o.insights`) between the controls and the pages, as a
-fold that opens closed (it keeps the reader's choice when the report is built again). It is never in the pages, so it
-is not printed, not in the PDF or the images, and not in the Sunday emails.
+`epinoia/scoutinsights.js` writes it; `report.js` mount draws it (`o.insights`) FIRST on the tab, above the controls
+(Louie, the same day: "promoted more on the screen"; under a controls panel 650-860px tall it had been off the first
+screen), as a fold that opens closed (it keeps the reader's choice when the report is built again). It is never in the
+pages, so it is not printed, not in the PDF or the images, and not in the Sunday emails.
+
+The folded row sells what is inside: a kicker ("The scout's read" and the scope), "Insights on" the club or player, the
+read's first line as a two-line teaser, chips counting what the fold holds (strengths, weaknesses, the game plan's points
+and the players scouted; for a player the ways to guard him), and a button in the kit's primary (`ep-btn pri`, as
+Download PDF) reading "Read the insights", "Hide" once open. Open, the teaser and the chips give way to the read itself.
+Until the first build has the insights, a quiet copy of the row ("Reading this report's numbers…") holds its place at the
+same height, so the controls do not jump down when it lands; a build that fails takes it away.
 
 - **Club** (`t/team.js`, from `ctx.season()` and its shot zones): the read (the ratings and their places, the identity at
   each end), strengths and weaknesses (the top and bottom quarters among the season's clubs, the most salient first: the

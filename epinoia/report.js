@@ -1580,6 +1580,23 @@ function ui(state) {
   };
   panel.innerHTML = '';
   const wrap = el('div', 'rp');
+  /* THE INSIGHTS (scoutinsights.js, Louie 2026-10-08): the scout's written read - how to prepare, the strengths, the
+     weaknesses, the personnel - from this report's own numbers, FIRST on the tab, above the controls (Louie, 2026-10-08:
+     "promoted more on the screen"; under a controls panel 650-860px tall it was off the first screen). Never in the pages:
+     it is not printed, nor drawn into the PDF or the images (only the pages are). o.insights(c) -> its markup, or '' for
+     none. Until the first build has it, a row saying it is being read holds its place, so the controls do not jump down
+     when it lands */
+  const ins = el('div', 'rp-ins-slot');
+  ins.hidden = true;
+  if (typeof o.insights === 'function') {
+    /* the row's own shape (kicker, heading, two lines, the counts, the button), so the one that replaces it is its height */
+    ins.innerHTML = '<div class="rp-ins rp-ins-wait" aria-busy="true"><div class="rp-ins-hd"><span class="rp-ins-kick">The scout’s read</span>' +
+      '<h3>Insights</h3><span class="rp-ins-tease">Reading this report’s numbers…</span>' +
+      '<span class="rp-ins-chips"><span>strengths</span><span>weaknesses</span><span>the plan</span></span>' +
+      '<span class="ep-btn pri rp-ins-act" aria-hidden="true">Read the insights</span></div></div>';
+    ins.hidden = false;
+  }
+  wrap.appendChild(ins);
   const bar = el('div', 'rp-bar');
   wrap.appendChild(bar);
   /* the title and subtitle */
@@ -1649,12 +1666,6 @@ function ui(state) {
   primedBox.hidden = true;
   primedBox.setAttribute('role', 'status');
   bar.appendChild(primedBox);
-  /* THE INSIGHTS (scoutinsights.js, Louie 2026-10-08): the scout's written read - how to prepare, the strengths, the
-     weaknesses, the personnel - from this report's own numbers, on the tab above the pages and never in them: it is not
-     printed, nor drawn into the PDF or the images (only the pages are). o.insights(c) -> its markup, or '' for none */
-  const ins = el('div', 'rp-ins-slot');
-  ins.hidden = true;
-  wrap.appendChild(ins);
   const pages = el('div', 'rp-pages');
   wrap.appendChild(pages);
   panel.appendChild(wrap);
@@ -1825,6 +1836,8 @@ function ui(state) {
     } catch (e) {
       warn(e);
       say('the report could not be built: ' + (e.message || e));
+      /* a build that failed before its insights were asked for leaves no "reading" row behind */
+      if (run === state.running && state.ins.querySelector('.rp-ins-wait')) state.ins.hidden = true;
     }
   }
   state.rebuild = rebuild;

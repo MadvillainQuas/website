@@ -17,6 +17,9 @@
   background:var(--panel) }
 .rp-fields{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px }
 .rp-f{ display:flex; flex-direction:column; gap:4px; min-width:0 }
+/* the competitions picker is hidden until there is more than one to pick from: display:flex above outranked [hidden], so a
+   club in one competition showed an empty dropdown */
+.rp-f[hidden]{ display:none }
 .rp-f span, .rp-k{ font-family:var(--f-micro); font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3) }
 .rp-f input, .rp-ed input, .rp-tpl select, .rp-ed select{ min-width:0; padding:8px 10px; border:1px solid var(--rule-2); border-radius:8px;
   background:var(--ground); color:var(--ink); font-family:var(--f-ui); font-size:13px }
@@ -29,29 +32,53 @@
 .rp-mod:has(input:checked){ border-color:var(--lume); background:color-mix(in srgb,var(--lume) 14%,transparent) }
 .rp-status{ font-family:var(--f-ui); font-size:12px; color:var(--ink-3) }
 
-/* ---- THE INSIGHTS (scoutinsights.js, 2026-10-08): the scout's written read on the tab, between the controls and the pages,
-   on the profile's own colours (it is the screen's, never the paper's: not printed, not in the PDF). The read as prose; the
-   strengths and weaknesses side by side; how to prepare as a numbered plan with the measure each line rests on; the
-   personnel a card a player ---- */
+/* ---- THE INSIGHTS (scoutinsights.js, 2026-10-08): the scout's written read, FIRST on the tab, above the controls (Louie,
+   2026-10-08: "promoted more on the screen"), on the profile's own colours (it is the screen's, never the paper's: not
+   printed, not in the PDF). Folded, the row sells what is inside: the read's first line, what it holds counted, a button in
+   the kit's primary (as Download PDF). Open: the read as prose; the strengths and weaknesses side by side; how to prepare as
+   a numbered plan with the measure each line rests on; the personnel a card a player ---- */
 .rp-ins-slot[hidden]{ display:none }
-.rp-ins{ margin:0 0 16px; padding:16px 18px 14px; border:1px solid var(--rule-2); border-radius:14px; background:var(--panel);
-  border-left:5px solid var(--lume) }
-/* the fold: the heading is its button, a chevron at its end turning as it opens; closed, the panel is the heading alone */
-.rp-ins-hd{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin:0; padding-right:34px; position:relative;
-  cursor:pointer; list-style:none; -webkit-tap-highlight-color:transparent }
+.rp-ins{ margin:0 0 16px; padding:0; border:1px solid color-mix(in srgb,var(--lume) 45%,var(--rule-2)); border-left:6px solid var(--lume);
+  border-radius:14px; background:var(--panel); overflow:hidden;
+  box-shadow:0 10px 28px -18px color-mix(in srgb,var(--lume) 70%,transparent) }
+/* the row is the fold's button: a wash of the club's colour behind the heading, the button at its end (under it on a phone) */
+.rp-ins-hd{ display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"kick act" "head act" "tease act" "chips act";
+  align-items:center; gap:4px 28px; margin:0; padding:16px 22px 17px 18px; cursor:pointer; list-style:none;
+  -webkit-tap-highlight-color:transparent;
+  background:linear-gradient(100deg, color-mix(in srgb,var(--lume) 15%,var(--panel)), color-mix(in srgb,var(--lume) 4%,var(--panel)) 60%, var(--panel)) }
 .rp-ins-hd::-webkit-details-marker{ display:none }
-.rp-ins-hd:focus-visible{ outline:2px solid var(--lume); outline-offset:4px; border-radius:6px }
-.rp-ins-tog{ position:absolute; right:4px; top:50%; width:22px; height:22px; margin-top:-11px; border-radius:50%;
-  border:1px solid var(--rule-2); display:grid; place-items:center; transition:transform .18s ease, background-color .14s ease }
-.rp-ins-tog::before{ content:""; width:7px; height:7px; border-right:2px solid var(--ink-2); border-bottom:2px solid var(--ink-2);
-  transform:translateY(-2px) rotate(45deg) }
-.rp-ins[open] .rp-ins-tog{ transform:rotate(180deg) }
-@media (hover:hover){ .rp-ins-hd:hover .rp-ins-tog{ background:color-mix(in srgb,var(--lume) 16%,transparent) } }
-.rp-ins[open] > .rp-ins-hd{ margin:0 0 10px }
-.rp-ins:not([open]){ padding-bottom:16px }
-@media (prefers-reduced-motion:reduce){ .rp-ins-tog{ transition:none } }
-.rp-ins-hd h3{ margin:0; font-family:var(--f-ui); font-weight:900; font-size:18px; letter-spacing:.02em; text-transform:uppercase; color:var(--ink) }
-.rp-ins-hd span{ font-family:var(--f-ui); font-size:12px; color:var(--ink-3) }
+.rp-ins-hd::marker{ content:'' }
+.rp-ins-hd:focus-visible{ outline:2px solid var(--lume); outline-offset:-5px; border-radius:12px }
+.rp-ins-kick{ grid-area:kick; font-family:var(--f-micro); font-size:10px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--lume) }
+.rp-ins-hd h3{ grid-area:head; margin:0; font-family:var(--f-ui); font-weight:900; font-size:22px; line-height:1.15; letter-spacing:.02em;
+  text-transform:uppercase; color:var(--ink) }
+.rp-ins-on{ color:var(--ink-2) }
+.rp-ins-tease{ grid-area:tease; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden;
+  max-width:96ch; margin-top:2px; font-family:var(--f-ui); font-size:14.5px; line-height:1.45; color:var(--ink-2) }
+.rp-ins-chips{ grid-area:chips; display:flex; flex-wrap:wrap; gap:6px; margin-top:6px }
+.rp-ins-chips > span{ padding:3px 10px; border-radius:999px; border:1px solid color-mix(in srgb,var(--lume) 35%,var(--rule-2));
+  background:var(--panel); font-family:var(--f-ui); font-size:12px; font-weight:700; color:var(--ink) }
+.rp-ins-act{ grid-area:act; display:inline-flex; align-items:center; justify-content:center; gap:10px; white-space:nowrap }
+.rp-ins-act-c{ display:none }
+.rp-ins[open] .rp-ins-act-o{ display:none }
+.rp-ins[open] .rp-ins-act-c{ display:inline }
+.rp-ins-tog{ display:inline-block; width:7px; height:7px; border-right:2px solid currentColor; border-bottom:2px solid currentColor;
+  transform:translateY(-2px) rotate(45deg); transition:transform .18s ease }
+.rp-ins[open] .rp-ins-tog{ transform:translateY(2px) rotate(225deg) }
+@media (hover:hover){ .rp-ins-hd:hover .rp-ins-act{ filter:brightness(1.12) } }
+/* open: the row is the heading and its button; the teaser and the counts are what follows, said in full */
+.rp-ins[open] .rp-ins-tease, .rp-ins[open] .rp-ins-chips{ display:none }
+.rp-ins[open] > .rp-ins-hd{ border-bottom:1px solid var(--rule) }
+.rp-ins-bd{ padding:14px 22px 16px 18px }
+.rp-ins-src{ margin:0 0 10px; font-family:var(--f-ui); font-size:12px; color:var(--ink-3) }
+/* while the first build reads its numbers: the row's place held at the row's height (two lines kept for the teaser), the
+   counts and the button there but quiet */
+.rp-ins-wait .rp-ins-hd{ cursor:default }
+.rp-ins-wait .rp-ins-tease{ min-height:2.9em; animation:rp-ins-pulse 1.4s ease-in-out infinite }
+.rp-ins-wait .rp-ins-chips > span{ border-style:dashed; color:var(--ink-3); font-weight:500 }
+.rp-ins-wait .rp-ins-act{ opacity:.4; filter:saturate(.4); cursor:default; pointer-events:none }
+@keyframes rp-ins-pulse{ 50%{ opacity:.45 } }
+@media (prefers-reduced-motion:reduce){ .rp-ins-tog{ transition:none } .rp-ins-wait .rp-ins-tease{ animation:none } }
 .rp-ins-read p{ margin:0 0 8px; font-family:var(--f-ui); font-size:15px; line-height:1.55; color:var(--ink); max-width:78ch }
 .rp-ins h4{ margin:0 0 6px; font-family:var(--f-ui); font-weight:800; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-2) }
 .rp-ins ul, .rp-ins ol{ margin:0; padding-left:20px; font-family:var(--f-ui); font-size:14px; line-height:1.5; color:var(--ink) }
@@ -71,7 +98,13 @@
 .rp-ins-roles{ margin:4px 0 0 }
 .rp-ins-g{ margin:4px 0 0; font-family:var(--f-ui); font-size:14px; line-height:1.45; color:var(--ink-2) }
 .rp-ins-g b{ font-weight:800; color:var(--ink) }
-@media (max-width:720px){ .rp-ins-cols{ grid-template-columns:1fr } .rp-ins{ padding:14px 14px 12px } }
+@media (max-width:720px){
+  .rp-ins-cols{ grid-template-columns:1fr }
+  .rp-ins-hd{ grid-template-columns:minmax(0,1fr); grid-template-areas:"kick" "head" "tease" "chips" "act"; gap:4px; padding:14px 14px 14px 12px }
+  .rp-ins-hd h3{ font-size:19px }
+  .rp-ins-act{ margin-top:10px }
+  .rp-ins-bd{ padding:12px 14px 14px 12px }
+}
 @media print{ .rp-ins-slot{ display:none !important } }
 .rp-rapm{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; font-family:var(--f-ui); font-size:12px; color:var(--ink-2) }
 .rp-ed{ display:grid; gap:8px; padding:10px; border:1px dashed var(--rule-2); border-radius:10px }
