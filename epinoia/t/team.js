@@ -1306,6 +1306,16 @@ function reportTab(team) {
     lock: { key: 'clubReport', what: 'The club report', league: lg.id || null, get leagueSlug() { return ACCESS.slug || lg.slug || ''; },
             lines: ['A printable A4 scouting report on any club: four factors, shot charts, the squad, lineups and the shot clock.'] },
     modules: RT.modules(ctx),
+    /* THE INSIGHTS (scoutinsights.js): the scout's read of the club from the season the pages draw - its shot zones read
+       first, as the main page's shot distribution reads them */
+    insights: async () => {
+      const SI = window.EpinoiaScoutInsights;
+      if (!SI) return '';
+      const T = await ctx.season();
+      if (!T || !T.S || !T.mine) return '';
+      try { await ctx.zones(T.S); } catch (_) { /* the read without the zones */ }
+      return SI.html(SI.team(T, { name: team.name }), { scope: scopeText() });
+    },
     /* the competitions (report.js): the league alone, or with the linked sides (rpScopes) */
     scopes: () => rpScopes(team),
     setScope: k => { RP_COMBINE = k === 'all'; },

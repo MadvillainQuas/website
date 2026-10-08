@@ -69,7 +69,7 @@ const jac = (a, b) => { const A = new Set(a), B = new Set(b); if (!A.size || !B.
      2  2026-10-08  model-speak in a standfirst ("where the numbers say each will be decided"), and every piece already
                     out read again: a piece kept from before the voice had never been read
      3  2026-10-08  a weekly preview keeps its week: a thin game to the round-up, the opening paragraph counts for the top
-                    game, one game worth a word is enough */
+                    game, one game worth a word is enough; a scout's register (scoutinsights.js) */
 const VERSION = 3;
 
 /* the subhead of a weekly preview's round-up (the games with nothing to say beyond a lean and a name) */
@@ -123,10 +123,13 @@ function scrutinise(piece0, o) {
   const at = (u, k) => u.where + '.s' + (k + 1) + (u.label ? ' (' + u.label + ')' : '');
 
   /* -------- grammar and model-speak, sentence by sentence -------- */
+  /* A SCOUT'S REGISTER (op.register 'scout', scoutinsights.js): a coach reads "PPP", "eFG%" and "the four factors" as his
+     own words, so the fan's model-speak rules are off; the grammar, the near-copies and the length are read as ever */
+  const scout = op.register === 'scout';
   P.forEach(u => {
     u.sents = u.sents.map((x, k) => {
       let t = x.t;
-      for (const [re, to] of MODEL) {
+      for (const [re, to] of (scout ? [] : MODEL)) {
         if (!re.test(t)) { re.lastIndex = 0; continue; }
         re.lastIndex = 0;
         if (to === null) { note(at(u, k), 'style', 'model-speak', 'the words of a model, not a writer: the sentence goes', t, null); return null; }
@@ -334,8 +337,8 @@ function scrutinise(piece0, o) {
     } else piece.head = headFix(piece.head, 'head');
   }
 
-  /* -------- the gate -------- */
-  if (!isCard) {
+  /* -------- the gate (the newsroom's: a scout's notes are not a piece to post) -------- */
+  if (!isCard && !scout) {
     const paras = (piece.body || []).filter(x => typeof x === 'string');
     if (paras.length < 3) hold('body', 'incorrect', 'thin', 'fewer than three paragraphs left after the edit', paras.join(' '));
     if (!piece.dek) hold('dek', 'incorrect', 'thin', 'no standfirst', '');

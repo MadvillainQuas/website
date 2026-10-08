@@ -176,6 +176,14 @@ function reportTab(pl, name, team) {
     lock: { key: 'playerReport', what: 'The player report', get league() { return ACCESS_LEAGUE.id; }, get leagueSlug() { return ACCESS_LEAGUE.slug; },
             lines: ['A printable A4 scouting report on any player: main stats by position, his shot chart, on and off the floor.'] },
     modules: RPm.modules(ctx),
+    /* THE INSIGHTS (scoutinsights.js): the scout's read of him from the line and the field the pages draw */
+    insights: async () => {
+      const SI = window.EpinoiaScoutInsights;
+      if (!SI) return '';
+      const B = await ctx.bars();
+      if (!B || !B.mine || !Array.isArray(B.field)) return '';
+      return SI.html(SI.player({ mine: B.mine, field: B.field }, { name }), { scope: scopeText() });
+    },
     /* the competitions (report.js): the one shown on the page, or all of his season's (jointLine) */
     scopes: async () => {
       await rpGet('bars', 60000).catch(() => null);

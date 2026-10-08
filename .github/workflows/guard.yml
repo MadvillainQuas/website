@@ -1846,6 +1846,9 @@ jobs:
           node supabase/tests/voice.test.mjs
           node supabase/tests/newsroom.test.mjs
           node supabase/tests/narrative.test.mjs
+          # the scout's insights on the scouting report (scoutinsights.js): what stands out, each claim with its number,
+          # the scout's words only with their evidence, the editor in a scout's register, a fold on the tab, never the PDF
+          node supabase/tests/scoutinsights.test.mjs
 
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the

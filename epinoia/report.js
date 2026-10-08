@@ -1649,10 +1649,17 @@ function ui(state) {
   primedBox.hidden = true;
   primedBox.setAttribute('role', 'status');
   bar.appendChild(primedBox);
+  /* THE INSIGHTS (scoutinsights.js, Louie 2026-10-08): the scout's written read - how to prepare, the strengths, the
+     weaknesses, the personnel - from this report's own numbers, on the tab above the pages and never in them: it is not
+     printed, nor drawn into the PDF or the images (only the pages are). o.insights(c) -> its markup, or '' for none */
+  const ins = el('div', 'rp-ins-slot');
+  ins.hidden = true;
+  wrap.appendChild(ins);
   const pages = el('div', 'rp-pages');
   wrap.appendChild(pages);
   panel.appendChild(wrap);
   state.pages = pages;
+  state.ins = ins;
   const persist = () => store.set(key, { on: conf.on, title: conf.title, tpl: conf.tpl, scope: conf.scope });
   let tm = null;
   tIn.oninput = () => { conf.title = tIn.value; persist(); clearTimeout(tm); tm = setTimeout(rebuild, 350); };
@@ -1724,6 +1731,19 @@ function ui(state) {
       c.subtitle = conf.subtitle != null && conf.subtitle !== '' ? conf.subtitle : (c.subtitle || '');
       if (!sIn.value && !sIn.placeholder.startsWith(c.subtitle)) sIn.placeholder = c.subtitle || sIn.placeholder;
       c.docTitle = c.title + ' — ' + c.name;
+      /* the insights, alongside the pages and never waiting for them: the newest build's only */
+      if (typeof o.insights === 'function') {
+        Promise.resolve().then(() => o.insights(c)).then(h => {
+          if (run !== state.running) return;
+          /* closed when the tab first draws it; as the reader left it when it is drawn again */
+          const was = state.ins.querySelector('details.rp-ins');
+          const open = !!(was && was.open);
+          state.ins.innerHTML = h || '';
+          const now = state.ins.querySelector('details.rp-ins');
+          if (now && open) now.open = true;
+          state.ins.hidden = !h;
+        }).catch(e => { warn(e); if (run === state.running) state.ins.hidden = true; });
+      }
       c.file = 'epinoia-report-' + String(c.name || 'report').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
       state.c = c;
       for (const m of o.modules) {

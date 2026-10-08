@@ -177,3 +177,29 @@ What PRIME did is said under its buttons, read back where it is kept: green "Pri
 (RAPM kept for the league and season, Synergy kept for n of the players, the pages built, the file stored for sending), amber with
 what is not (for instance a sign-in that is not a platform administrator's: the file is not stored). The reports manager marks
 every report stored for sending with when (`✓ stored Sun 4 Oct 08:14`).
+
+## Insights: the scout's read, on the tab (2026-10-08)
+
+Louie asked for a written section on the scouting report of a club and of a player, "how to prepare, strengths,
+weaknesses, using basketball language and technical terms", from the report's own numbers and not on the PDFs.
+`epinoia/scoutinsights.js` writes it; `report.js` mount draws it (`o.insights`) between the controls and the pages, as a
+fold that opens closed (it keeps the reader's choice when the report is built again). It is never in the pages, so it
+is not printed, not in the PDF or the images, and not in the Sunday emails.
+
+- **Club** (`t/team.js`, from `ctx.season()` and its shot zones): the read (the ratings and their places, the identity at
+  each end), strengths and weaknesses (the top and bottom quarters among the season's clubs, the most salient first: the
+  four factors and the ratings weigh most, a style only as identity), how to prepare (their strengths taken away, their
+  weaknesses attacked, each line with the measure it rests on), and the personnel (the rotation's main players, a role and
+  how to guard him each).
+- **Player** (`p/player.js`, from `ctx.bars()`): his line, his role, strengths and weaknesses among his position's players
+  (guards, wings, bigs: season.js positionGroups), how to guard him, and how to attack him on defence.
+- **The scout's words with their evidence** (the basketball-scouting-language skill's lexicon): "plays downhill" only
+  with rim volume and free-throw rate, a big's rim volume as interior finishing, "rim deterrence" from opponents' rim
+  volume, "connective passer" only with a high assist rate at low usage; a coverage the event data cannot see is never
+  asserted (a mid-range-heavy defence "fits" a drop scheme). When the box score and the on/off disagree they are said
+  together; the on/off only on 300 possessions or more. No plan line another measure contradicts.
+- **The editor** (`scrutiny.js`, `register: 'scout'`): the fan's model-speak rules off (PPP, eFG% and the four factors are a
+  scout's words), the near-copy and grammar rules on; the read and the lists are edited as two pieces, each line marked
+  with its slot so a dropped line never shifts the rest.
+- Tests: `supabase/tests/scoutinsights.test.mjs` (in CI).
+

@@ -28,6 +28,51 @@
 .rp-mod input{ accent-color:var(--lume); margin:0 }
 .rp-mod:has(input:checked){ border-color:var(--lume); background:color-mix(in srgb,var(--lume) 14%,transparent) }
 .rp-status{ font-family:var(--f-ui); font-size:12px; color:var(--ink-3) }
+
+/* ---- THE INSIGHTS (scoutinsights.js, 2026-10-08): the scout's written read on the tab, between the controls and the pages,
+   on the profile's own colours (it is the screen's, never the paper's: not printed, not in the PDF). The read as prose; the
+   strengths and weaknesses side by side; how to prepare as a numbered plan with the measure each line rests on; the
+   personnel a card a player ---- */
+.rp-ins-slot[hidden]{ display:none }
+.rp-ins{ margin:0 0 16px; padding:16px 18px 14px; border:1px solid var(--rule-2); border-radius:14px; background:var(--panel);
+  border-left:5px solid var(--lume) }
+/* the fold: the heading is its button, a chevron at its end turning as it opens; closed, the panel is the heading alone */
+.rp-ins-hd{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin:0; padding-right:34px; position:relative;
+  cursor:pointer; list-style:none; -webkit-tap-highlight-color:transparent }
+.rp-ins-hd::-webkit-details-marker{ display:none }
+.rp-ins-hd:focus-visible{ outline:2px solid var(--lume); outline-offset:4px; border-radius:6px }
+.rp-ins-tog{ position:absolute; right:4px; top:50%; width:22px; height:22px; margin-top:-11px; border-radius:50%;
+  border:1px solid var(--rule-2); display:grid; place-items:center; transition:transform .18s ease, background-color .14s ease }
+.rp-ins-tog::before{ content:""; width:7px; height:7px; border-right:2px solid var(--ink-2); border-bottom:2px solid var(--ink-2);
+  transform:translateY(-2px) rotate(45deg) }
+.rp-ins[open] .rp-ins-tog{ transform:rotate(180deg) }
+@media (hover:hover){ .rp-ins-hd:hover .rp-ins-tog{ background:color-mix(in srgb,var(--lume) 16%,transparent) } }
+.rp-ins[open] > .rp-ins-hd{ margin:0 0 10px }
+.rp-ins:not([open]){ padding-bottom:16px }
+@media (prefers-reduced-motion:reduce){ .rp-ins-tog{ transition:none } }
+.rp-ins-hd h3{ margin:0; font-family:var(--f-ui); font-weight:900; font-size:18px; letter-spacing:.02em; text-transform:uppercase; color:var(--ink) }
+.rp-ins-hd span{ font-family:var(--f-ui); font-size:12px; color:var(--ink-3) }
+.rp-ins-read p{ margin:0 0 8px; font-family:var(--f-ui); font-size:15px; line-height:1.55; color:var(--ink); max-width:78ch }
+.rp-ins h4{ margin:0 0 6px; font-family:var(--f-ui); font-weight:800; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-2) }
+.rp-ins ul, .rp-ins ol{ margin:0; padding-left:20px; font-family:var(--f-ui); font-size:14px; line-height:1.5; color:var(--ink) }
+.rp-ins li{ margin:0 0 5px }
+.rp-ins-cols{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 18px; margin:12px 0 }
+.rp-ins-col{ padding:10px 12px; border-radius:10px; border:1px solid var(--rule) }
+.rp-ins-col.good{ border-top:3px solid var(--good,#63ffa0) }
+.rp-ins-col.bad{ border-top:3px solid var(--bad,#ff5f6b) }
+.rp-ins-plan{ margin:12px 0 }
+.rp-ins-why{ display:inline-block; margin-left:4px; padding:1px 7px; border-radius:999px; font-size:11.5px; color:var(--ink-3);
+  background:color-mix(in srgb,var(--ink) 7%,transparent) }
+.rp-ins-pers{ margin:12px 0 2px }
+.rp-ins-p{ padding:9px 0 8px; border-top:1px solid var(--rule) }
+.rp-ins-pn{ display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; font-family:var(--f-ui); font-weight:800; font-size:15px; color:var(--ink) }
+.rp-ins-pn small{ font-weight:500; font-size:12px; color:var(--ink-3) }
+.rp-ins-j{ font-family:var(--f-score); font-weight:400; font-size:18px; color:var(--lume) }
+.rp-ins-roles{ margin:4px 0 0 }
+.rp-ins-g{ margin:4px 0 0; font-family:var(--f-ui); font-size:14px; line-height:1.45; color:var(--ink-2) }
+.rp-ins-g b{ font-weight:800; color:var(--ink) }
+@media (max-width:720px){ .rp-ins-cols{ grid-template-columns:1fr } .rp-ins{ padding:14px 14px 12px } }
+@media print{ .rp-ins-slot{ display:none !important } }
 .rp-rapm{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; font-family:var(--f-ui); font-size:12px; color:var(--ink-2) }
 .rp-ed{ display:grid; gap:8px; padding:10px; border:1px dashed var(--rule-2); border-radius:10px }
 .rp-ed-g{ display:grid; grid-template-columns:150px minmax(0,1fr) 170px auto; gap:8px; align-items:start;
