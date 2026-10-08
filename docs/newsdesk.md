@@ -331,6 +331,15 @@ A correction that may change the headlines (`WRITER[kind].heads`) rewrites publi
 to version 3 with the voice. Japanese and Spanish patterns for the new wording are still to come (a sentence without
 one is shown whole in English).
 
+**Kept, not re-labelled.** A piece that cannot be written again (its candidate gone) and is not dropped is kept as the
+editor edits it and marked `kept: <version>`, so it is not tried again; it never takes the `wv` of a writer that did
+not write it. (The first voice build stamped such pieces `wv: 3`, so 18 week-previews from before the voice passed as
+the voice's and were never read again: `watch` went to 4 with `drop`, 2026-10-08.)
+
+**The editor reads again.** Every report carries the editor's version (`qa.ev`, scrutiny.js `VERSION`). A piece already
+out that the editor has not read since its last change is read again at the next build: kept as it now edits it (its
+earlier fixes kept in the report) or dropped. What the editor learns reaches what readers can already open.
+
 ## 12. Tests
 
 | file | what |

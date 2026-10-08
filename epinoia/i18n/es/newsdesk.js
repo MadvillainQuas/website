@@ -586,6 +586,10 @@
     ['{X} beat {X} {S}', (x, y, a, b) => x + ' ganó a ' + y + ' por ' + sc(a, b), 'dot'],
     ['the season’s numbers had {X} by about {W} before the tip', (x, w) => 'antes del salto inicial, los números de la temporada daban ganador a ' + x + ' por unos ' + nw(w) + ' puntos'],
     ['{R} (?:was|were) worth about {D} points? to them', (l, d) => { const f = rfac(l); return f && f + ' le ' + vb(f, 'valió', 'valieron') + ' ' + abt(d); }],
+    /* a series' edge, said of the side (narrative.js EDGE) */
+    ['{X} (shoot better|look after the ball better|own the offensive glass|get to the line more), worth about {W} points? a game', (x, k, w) =>
+      x + ' ' + ({ 'shoot better': 'tira mejor', 'look after the ball better': 'cuida mejor el balón', 'own the offensive glass': 'domina el rebote ofensivo', 'get to the line more': 'llega más a la línea de tiros libres' })[k] +
+      ', y eso vale ' + (nw(w) === ES[1] ? 'cerca de un punto' : 'unos ' + nw(w) + ' puntos') + ' por partido'],
     ['what the winners did that nobody expected', () => 'lo que hizo el vencedor y nadie esperaba'],
 
     /* ---- the play-offs: a tie over legs ---- */
@@ -1428,7 +1432,7 @@
         'getting to the line': 'la llegada a la línea de tiros libres',
         'the game': 'el partido',
         'the highlights': 'el resumen',
-        'the numbers say it turns on': 'según los números, se decide en',
+        'the edge': 'la ventaja',
         'the two games': 'los dos partidos',
         'their adjusted net': 'su neto ajustado',
         'what decided it': 'lo que lo decidió',

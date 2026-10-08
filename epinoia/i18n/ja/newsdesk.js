@@ -916,6 +916,9 @@
     ['{X}(?:, {O},)? beat {X}(?:, {O},)? {S}', (x, a, y, b, c, d) => x + (a ? '（' + a + '位）' : '') + 'が' + y + (b ? '（' + b + '位）' : '') + 'に' + sc(c, d) + 'で勝利'],
     ['the season’s numbers had {X} by about {W} before the tip', (x, w) => '試合前、今季の数字では' + x + 'が約' + n(w) + '点差で有利とされていた'],
     ['{B} (?:was|were) worth about {D} points to them', (l, d) => facet(l) + 'で約' + d + '点分の差をつけた'],
+    /* a series' edge, said of the side (narrative.js EDGE) */
+    ['{X} (shoot better|look after the ball better|own the offensive glass|get to the line more), worth about {W} points? a game', (x, k, w) =>
+      x + 'は' + ({ 'shoot better': 'シュートで上回り', 'look after the ball better': 'ターンオーバーが少なく', 'own the offensive glass': 'オフェンスリバウンドで優位に立ち', 'get to the line more': 'フリースローを多く獲得し' })[k] + '、1試合あたり約' + n(w) + '点分の差'],
 
     /* ---- the play-offs: a two-legged tie ---- */
     ['{X} go through on aggregate, {S}', (x, a, b) => x + 'が合計' + sc(a, b) + 'で勝ち抜け'],
@@ -1267,7 +1270,7 @@
         'getting to the line': 'フリースローの獲得',
         'the game': '試合',
         'the highlights': 'ハイライト',
-        'the numbers say it turns on': '数字が示す勝負所',
+        'the edge': '優位',
         'the two games': '2試合のスコア',
         'their adjusted net': '自クラブの調整NETRTG',
         'what decided it': '勝負を分けた要素',

@@ -170,6 +170,8 @@ const gb = (a, b) => ((a.w - b.w) + (b.l - a.l)) / 2;
    point per 100 possessions. A club's identity is what separates its wins from its losses. */
 const FIX = { efg: 2.0, tovp: -1.4, orebp: 0.7, ftr: 0.4 };
 const FACET = { efg: 'shooting', tovp: 'the turnover battle', orebp: 'the offensive glass', ftr: 'getting to the line' };
+/* a side's edge in a facet, said of the side ("Valencia shoot better"): a series' numbers, never "the numbers say it turns on" */
+const EDGE = { efg: 'shoot better', tovp: 'look after the ball better', orebp: 'own the offensive glass', ftr: 'get to the line more' };
 function facets(teamLines, games, model) {
   const pair = new Map();
   (teamLines || []).forEach(r => { if (!r || !r.adv) return; if (!pair.has(r.game_id)) pair.set(r.game_id, {}); pair.get(r.game_id)[r.team_idx] = r.adv; });
@@ -1176,7 +1178,7 @@ function build(input) {
         numbers: [n ? { label: 'series', value: name(hi) + ' ' + wins[hi] + '–' + wins[lo] + ' ' + name(lo) } : null,
           ph && pl0 ? { label: 'seeds', value: ordShort(ph.pos) + ' v ' + ordShort(pl0.pos) } : null,
           met.length ? { label: 'regular season', value: name(hi) + ' ' + metHi + '–' + (met.length - metHi) } : null,
-          turn ? { label: 'the numbers say it turns on', value: FACET[turn.k] + ' (' + name(turn.side) + ', about ' + one(turn.pts) + ' points)' } : null],
+          turn ? { label: 'the edge', value: name(turn.side) + ' ' + EDGE[turn.k] + ', worth about ' + plural(Math.max(1, Math.round(turn.pts)), 'point') + ' a game' } : null],
         next: s.next && !through ? 'Game ' + (n + 1) + ' is on ' + dayWords(s.next.tipoff_at, tz) + ', with ' + name(s.next.home_team_id) + ' at home.' : null,
         questions: [through ? null : lowLeads ? Q(coachOf(hi), 'You finished ' + spell(pl0.pos - ph.pos) + ' places above them and lost Game ' + n + ': what changes for the next one?')
           : lastM != null && lastM <= 3 && trail ? Q(coachOf(trail), 'Game ' + n + ' came down to ' + plural(lastM, 'point') + ': what decides the next one?')
@@ -1748,7 +1750,8 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 13;     // 13: the editor reads every piece already out; a game to watch only with something to say
+const VERSION = 14;     // 14: a series' edge said of the side; the editor reads again what it has not read since it last changed
+                        // 13: the editor reads every piece already out; a game to watch only with something to say
                         // 12: the house voice (voice.js): the slate's angle, the storylines in words; no "what wins" storyline
 return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));

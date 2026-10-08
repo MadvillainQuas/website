@@ -1017,10 +1017,16 @@ function orderHeads(heads, model, league) {
      five 2 (2026-10-08, drop): the club's rate per 40 and the five's share of its minutes had been divided by five twice
      watch 2 (2026-10-08): "outscored opponents by −0.8" of a side outscored with the player on; "give up N% of theirs"
      every format 3 (2026-10-08, heads): the house voice (voice.js) and the editor (scrutiny.js) - written again, the
-       headlines too (heads: no headline test had counts yet, the click-through tables not being live) */
+       headlines too (heads: no headline test had counts yet, the click-through tables not being live)
+     watch 4 (2026-10-08, drop): a week's games to watch from before the voice, its week gone, had been kept as written AND
+       stamped as the voice's, so it was never read again ("where the numbers say each will be decided", "one of the easiest
+       sides to run on ... the fourth-best in the league"): written again while its week is on, dropped after. A piece kept
+       as written is now marked kept, never given a writer's version it was not written by. */
 const VOICED = { v: 3, heads: true };
-const WRITER = { five: { v: 3, drop: true, heads: true }, watch: VOICED, slump: VOICED, mvp: VOICED, prospect: VOICED, identity: VOICED, run: VOICED, skid: VOICED, clock: VOICED, absence: VOICED };
+const WRITER = { five: { v: 3, drop: true, heads: true }, watch: { v: 4, drop: true, heads: true }, slump: VOICED, mvp: VOICED, prospect: VOICED, identity: VOICED, run: VOICED, skid: VOICED, clock: VOICED, absence: VOICED };
 const writerOf = kind => (WRITER[kind] && WRITER[kind].v) || 1;
+/* the writer a piece was last answered for: written by it (wv), or kept as it was when it could not be written again (kept) */
+const answered = a => Math.max(a.wv || 1, a.kept || 0);
 function publish(o, b, opts) {
   const op = opts || {};
   const nowMs = op.nowMs || (o && o.now instanceof Date ? o.now.getTime() : Date.now());
@@ -1031,7 +1037,17 @@ function publish(o, b, opts) {
   /* the pieces already out: kept as written (or written again, above), a headline test decided once it has run long enough */
   const prev = (op.previous || []).filter(a => a && a.id && time(a.written) != null && nowMs - time(a.written) < KEEP_DAYS * DAY)
     .map(a => {
-      if ((a.wv || 1) >= writerOf(a.kind)) return a;
+      if (answered(a) >= writerOf(a.kind)) {
+        /* THE EDITOR READS IT AGAIN whenever it has learnt something since it last did (scrutiny.js VERSION): kept as it
+           edits it - what it fixed before kept in the report - or it goes */
+        const E = EDITOR();
+        if (!E || !E.VERSION || (a.qa && a.qa.ev >= E.VERSION)) return a;
+        const was = a.qa && Array.isArray(a.qa.fixes) ? a.qa.fixes : [];
+        const re = edit(Object.assign({}, a), meta, nowMs);
+        if (!re.ok) return null;
+        re.piece.qa.fixes = was.concat(re.piece.qa.fixes).slice(-24);
+        return re.piece;
+      }
       const c = cands.find(x => x.id === a.id);
       let w = null;
       try { w = c ? c.write() : null; } catch (_) { w = null; }
@@ -1048,7 +1064,7 @@ function publish(o, b, opts) {
       /* nothing to write it again from, or the new one held back: the editor reads the piece as it is - kept as it edits it,
          or it goes (everything on the site has passed the editor) */
       const old = edit(Object.assign({}, a), meta, nowMs);
-      return old.ok ? Object.assign(old.piece, { wv: writerOf(a.kind) }) : null;
+      return old.ok ? Object.assign(old.piece, { kept: writerOf(a.kind) }) : null;
     }).filter(Boolean)
     .map(a => decide(a, op.ctr ? op.ctr[a.id] : null));
   const have = new Set(prev.map(a => a.id));

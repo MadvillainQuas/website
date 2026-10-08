@@ -122,7 +122,28 @@ console.log('\nsalience, persistence and the headline test');
   ok('...a week\'s games to watch by the older writer is written again, under its id and date', rew && rew.corrected && rew.body[0] !== 'old' && rew.written === watch.written, rew && rew.body);
   const gone0 = Object.assign({}, oldW, { id: 'watch:1999-1', head: 'A week long past', heads: undefined });
   const moved = watch && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [gone0] }).find(a => a.id === gone0.id);
-  ok('...one that cannot be written again (its week gone) is kept as the editor edits it, marked so it is not tried again', moved && !moved.corrected && /^Old\.$/.test(moved.body[0]) && moved.qa && moved.wv >= 2, moved);
+  /* watch 4 (drop): a week's games to watch from before the voice had been kept as written and stamped as the voice's */
+  ok('...a week\'s games to watch by an older writer, its week gone, is dropped (watch 4)', watch && moved === undefined, moved);
+  /* a format that keeps: what cannot be written again is kept as the editor edits it, marked KEPT - never given the
+     version of a writer that did not write it, which is how pre-voice pieces passed as the voice's for a build */
+  const keeper = NR.publish(fullIn, fullB, { nowMs: NOW, all: true }).find(a => !['five', 'watch'].includes(a.kind));
+  const oldK = keeper && Object.assign({}, keeper, { id: keeper.kind + ':gone:1', body: ['old', 'body', 'here'], qa: undefined });
+  if (oldK) delete oldK.wv;
+  const keptK = oldK && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [oldK] }).find(a => a.id === oldK.id);
+  ok('...one that cannot be written again, of a format that keeps, is kept as the editor edits it, marked kept, not as the writer\'s',
+     keeper && keptK && !keptK.corrected && /^Old\.$/.test(keptK.body[0]) && keptK.qa && keptK.kept >= 3 && !(keptK.wv >= 3), keptK && [keeper.kind, keptK.kept, keptK.wv]);
+  const again = keptK && NR.publish(fullIn, fullB, { nowMs: NOW + 7200000, previous: [keptK] }).find(a => a.id === oldK.id);
+  ok('...and is not tried again next time', again && again.body[0] === keptK.body[0] && again.kept === keptK.kept);
+  /* THE EDITOR READS AGAIN what it has not read since it last changed (scrutiny.js VERSION, qa.ev) */
+  const S = require(path.join(ROOT, 'epinoia', 'scrutiny.js'));
+  const stale = five && Object.assign({}, five, { dek: 'The three games worth your time this week, and where the numbers say each will be decided.', qa: { checked: 'x', fixes: [{ rule: 'thin' }] } });
+  const reread = stale && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [stale] }).find(a => a.id === five.id);
+  ok('a piece the editor has not read since it changed is read again: its model-speak fixed, the version stamped, its earlier fixes kept',
+     reread && !/the numbers say/.test(reread.dek) && reread.qa.ev === S.VERSION && reread.qa.fixes.some(f => f.rule === 'thin') && reread.qa.fixes.some(f => f.rule === 'model-speak'),
+     reread && [reread.dek, reread.qa && reread.qa.ev]);
+  const current = five && Object.assign({}, five, { dek: 'left as it is', qa: Object.assign({}, five.qa, { ev: S.VERSION }) });
+  const notAgain = current && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [current] }).find(a => a.id === five.id);
+  ok('...one it has read since is not', notAgain && notAgain.dek === 'left as it is');
   const gone = five && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [Object.assign({}, old, { id: 'five:gone:1' })] }).find(a => a.id === 'five:gone:1');
   ok('...and a piece whose older writer got a figure wrong is dropped when it cannot be written again', five && gone === undefined);
   const fake = { v: 1, base: 0.05, bias: Math.log(0.05 / 0.95), w: { 's:question': 1.5 } };

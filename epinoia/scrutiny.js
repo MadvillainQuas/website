@@ -61,6 +61,13 @@ const words = s => String(s).toLowerCase().replace(/[^a-z’' ]/g, ' ').split(/\
 const STOP = new Set('the and for with that this they their them have has had are was were but yet from into over than then when while who which what one two its his her she him not been will would could can just also more most very only about after before again'.split(' '));
 const jac = (a, b) => { const A = new Set(a), B = new Set(b); if (!A.size || !B.size) return 0; let n = 0; A.forEach(x => { if (B.has(x)) n++; }); return n / (A.size + B.size - n); };
 
+/* THE EDITOR'S VERSION, on every report it writes (qa.ev). A piece already out is read again whenever the editor has
+   learnt something since it last read it (newsroom.js publish): what it now knows to fix reaches what readers can open.
+     1  2026-10-08  the first editor
+     2  2026-10-08  model-speak in a standfirst ("where the numbers say each will be decided"), and every piece already
+                    out read again: a piece kept from before the voice had never been read */
+const VERSION = 2;
+
 /* the model's words, and what a writer says instead (null: the sentence goes) */
 const MODEL = [
   [/\bwhere the numbers say each will be decided\b/gi, 'what will decide each one'],
@@ -312,9 +319,9 @@ function scrutinise(piece0, o) {
   const sectionsLeft = isCard ? 0 : (piece.body || []).filter(x => x && x.h).length;
   const expected = isCard ? 3 : sectionsLeft ? 2 * sectionsLeft : 4;
   const quality = Math.max(0.4, Math.min(1, Math.round((1 - pen) * Math.min(1, 0.5 + 0.5 * substance / expected) * 100) / 100));
-  const report = { checked: new Date(op.nowMs || Date.now()).toISOString(), fixes: fixes.slice(0, 24), held, ok: !held.length, quality, substance };
+  const report = { ev: VERSION, checked: new Date(op.nowMs || Date.now()).toISOString(), fixes: fixes.slice(0, 24), held, ok: !held.length, quality, substance };
   return { piece, report };
 }
 
-return { scrutinise, sentences };
+return { scrutinise, sentences, VERSION };
 }));
