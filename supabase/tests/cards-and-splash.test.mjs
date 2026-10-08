@@ -159,40 +159,46 @@ console.log('\n4. a new version for phones to take');
 }
 
 /* ------------------------------------------------------ 5. the strip card --- */
-console.log('\n5. the strip card, cleaned up on the daily card\'s model');
+/* THE STRIP'S CARDS ARE HOME'S (Louie, 2026-10-08: "these style score cards inside instead, except
+   without the who wins protrusion ... the strip adjusting vertically to fit ... all use of silkscreen
+   on the embed replaced"). It had a card of its own, cleaned up on the daily card's model; now it
+   draws the daily card itself, so the two cannot drift apart. */
+console.log('\n5. the strip draws HOME\'s fixture card');
 {
   const css = rd('epinoia', 'kit', 'embed.css');
-  const card = css.slice(css.indexOf('.ep-card{'), css.indexOf('.cse[data-theme="light"]'));
-  /* EACH THEME ITS OWN PANEL. White in both made the dark bar a row of bright tiles with
-     bright edges, and on a dark record the outline that separates a card is DARKER than it. */
-  ok('the dark theme is a dark panel with a dark edge',
-     /background:linear-gradient\(180deg, #0e2318, #0a1a12\);/.test(css) &&
-     /border:1px solid rgba\(2,10,6,\.85\); border-radius:4px;/.test(css));
-  ok('...with a hair of light inside it, so it does not dissolve into the record',
-     /inset 0 0 0 1px rgba\(147,242,191,\.10\)/.test(css));
-  ok('the light theme is the white panel, with a white edge',
-     /\.cse\[data-theme="light"\] \.ep-card\{\s*background:#ffffff; color:#0d1f17;\s*border-color:#ffffff;/.test(css));
-  ok('...and its washes are lighter, because they sit on white rather than on a panel',
-     /\.cse\[data-theme="light"\] \.ep-card \.half\.h\{[\s\S]{0,180}18%, transparent\)/.test(css));
-  ok('THE CRESTS CLEAR THE COLOUR LINE rather than touching it',
-     /\.ep-card \.row\{[^}]*padding-top:7px/.test(css));
-  ok('the diagonal is gone: each club washes its own half',
-     /\.ep-card \.half\{[^}]*width:50%/.test(css) && !/clip-path:polygon\(0 0, 58% 0/.test(css));
-  ok('...under a solid edge of its own colour, as the daily card carries them',
-     /\.ep-card \.half\.h\{\s*\n?\s*left:0; border-top:3px solid var\(--h/.test(css));
-  ok('the wash starts below the competition line, so the card is not split before it speaks',
-     /\.ep-card \.half\{ position:absolute; top:22px/.test(css));
-  ok('the halftone is gone', !/radial-gradient\(circle, color-mix\(in oklch, var\(--h/.test(css));
-  ok('the seam and the scrim are drawn no more, though strip.js still builds them',
-     /\.ep-card \.seam, \.ep-card \.scrim\{ display:none \}/.test(css) &&
-     /el\('div', 'seam'\), el\('div', 'scrim'\)/.test(rd('epinoia', 'embed', 'strip', 'strip.js')));
-  ok('no text shadow is left on the card', !/\.ep-card[^{]*\{[^}]*text-shadow/.test(card));
-  ok('the card carries its own ink, and says so where an <a> cannot outrank it',
-     /\.cse a\.ep-card\{ color:var\(--ep-ink\) \}/.test(css) &&
-     /\.cse\[data-theme="light"\] a\.ep-card\{ color:#0d1f17 \}/.test(css));
-  ok('what a card says is unchanged: the state rule, the live dot, the competition, the time',
-     /\.ep-card::before\{/.test(css) && /\.ep-card \.meta \.st \.dot\{/.test(css) &&
-     /\.ep-card \.meta \.comp\{/.test(css) && /\.ep-card \.when\{/.test(css));
+  const sj = rd('epinoia', 'embed', 'strip', 'strip.js');
+  const html = rd('epinoia', 'embed', 'strip', 'index.html');
+  const gg = rd('epinoia', 'globalgames.js');
+  ok('every card is EpinoiaGlobalGames.card(), with the strip\'s own WATCH and no fans\' pick or WATCH LIVE',
+     /window\.EpinoiaGlobalGames\.card\(Object\.assign\(\{\}, g, \{ status: phase \}\), \{\s*base: SITE, watch: watchPill, air: false, pick: false,/.test(sj));
+  ok('...which the card builder honours: a page\'s own pill, and the pick and WATCH LIVE left out when asked',
+     /o\.watch === false \? null : typeof o\.watch === 'function' \? o\.watch\(g, lgw && lgw\.slug\)/.test(gg) &&
+     /if \(o\.pick !== false && root\.EpinoiaPredict/.test(gg) && /if \(isLive && o\.air !== false && root\.EpinoiaWatch/.test(gg));
+  ok('the page loads the card\'s sheets before embed.css, and the builder before strip.js, and never predict.js',
+     html.indexOf('kit/fxc.css') > 0 && html.indexOf('kit/fxc.css') < html.indexOf('kit/embed.css') &&
+     html.indexOf('kit/watch.css') < html.indexOf('kit/embed.css') &&
+     html.indexOf('globalgames.js') > 0 && html.indexOf('globalgames.js') < html.indexOf('src="strip.js') && !/predict\.(js|css)/.test(html));
+  ok('nothing of the fans\' pick is left in the strip', !/prediction_tally|predict_game|EpinoiaPredict|'pick'/.test(sj));
+  ok('the kit\'s tokens are given to the frame, dark and light, the accent as the card\'s ink',
+     /\.cse\{[\s\S]*?--panel:#0a1a13;[\s\S]*?--lume:var\(--ep-accent-ink, #93f2bf\);[\s\S]*?--f-micro:'Archivo'/.test(css) &&
+     /\.cse\[data-theme="light"\]\{[\s\S]*?--panel:#ffffff;[\s\S]*?--lume:var\(--ep-accent-ink, #08603f\);/.test(css));
+  ok('a card is HOME\'s narrowest, 240px', /\.ep-rail \.fxc\{ flex:0 0 240px; width:240px;/.test(css));
+  ok('THE BAR IS AS TALL AS ITS CARDS: they stretch to the tallest, no height is fixed, and the page is told',
+     /\.ep-rail\{[^}]*align-items:stretch;/.test(css) && !/\.ep-rail\{[^}]*[^-]height:/.test(css) &&
+     /new ResizeObserver\(\(\) => postHeight\(\)\)\.observe\(document\.querySelector\('\.ep-strip'\)\)/.test(sj));
+  ok('...and every page that frames it starts at that height and takes the one it posts',
+     /\.stripframe\{display:block;width:100%;height:227px;/.test(rd('epinoia', 'index.html')) &&
+     /\.team-strip \.stripframe\{display:block;width:100%;height:229px;/.test(rd('epinoia', 't', 'index.html')) &&
+     /if \(!teamStrip\.heard\)/.test(rd('epinoia', 't', 'team.js')) &&
+     /kind === 'strip' \? '227px'/.test(rd('epinoia', 'embed.js')));
+  ok('the lineups badge, in the lume, on HOME\'s card', /\.fxc\.is-primed::before\{ background:var\(--lume\) \}/.test(css) && /\.fxc\.is-primed \.fxc-st \.dot\{ background:var\(--lume\) \}/.test(css));
+  ok('WATCH opens its panel over its own card, never outside the frame', /\.fxc \.ec-pop\{ position:absolute; inset:0;/.test(css) && /cardEl\.appendChild\(pop\)/.test(sj));
+  ok('the old scoreboard card is gone from the sheet', !/\.ep-card/.test(css));
+  /* NO PIXEL FACE ON AN EMBED: the labels are Archivo, as on the site's pages (kit/labeltype.css) */
+  const embeds = ['strip/index.html', 'strip/strip.js', 'table/index.html', 'table/table.js', 'merch/index.html', 'merch/merch.js'];
+  const pixel = embeds.filter(f => /Silkscreen/.test(rd('epinoia', 'embed', ...f.split('/'))));
+  ok('no Silkscreen on the strip, the tables or the shop, or in the sheet they share',
+     !/Silkscreen/.test(css) && pixel.length === 0, pixel.join(', '));
 }
 
 /* ------------------------------------------------ 6. what the page spelt --- */

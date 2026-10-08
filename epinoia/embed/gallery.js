@@ -65,7 +65,7 @@ function snippet(kind, extra) {
 
 function paint() {
   $('#f-strip').src = frameUrl('embed/strip/', { l: league(), n: 20 });
-  $('#f-strip').style.height = '129px';
+  $('#f-strip').style.height = '227px';
   $('#s-strip').textContent = snippet('strip');
 
   if (gameId) {

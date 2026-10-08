@@ -178,7 +178,7 @@
   frame.style.cssText = [
     'display:block', 'width:100%', 'border:0',
     'height:' + (kind === 'game' ? '210px'
-               : kind === 'strip' ? '120px' : '320px'),
+               : kind === 'strip' ? '227px' : '320px'),
     'background:' + (first.theme === 'light' ? '#ffffff' : '#04100b'),
     'color-scheme:' + (first.theme === 'light' ? 'light' : 'dark'),
     'border-radius:' + (me.dataset.radius || '4px'),

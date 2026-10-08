@@ -750,7 +750,10 @@ function badge(league, opts) {
   return '<span class="lgb"><span class="lgb-name">' + esc((league && league.name) || 'League') + '</span></span>';
 }
 
-/* card(g, { base, now, state, badge:false }) -> <a class="fxc"> */
+/* card(g, { base, now, state, badge:false, watch, air:false, pick:false }) -> <a class="fxc">
+   watch: false for no pill, or a function (g, leagueSlug) -> the page's own pill (the embedded strip's, whose panel opens
+   over its card: a pop-up outside a frame on another site is cut off); air:false leaves out WATCH LIVE (its press moves
+   the page it is on, which in a frame is the frame); pick:false leaves out who wins? */
 function card(g, opts) {
   const o = opts || {};
   const base = o.base == null ? '../' : o.base;
@@ -793,7 +796,7 @@ function card(g, opts) {
   a.appendChild(top);
   /* STREAMING NOW ON THE SITE'S OWN PLAYER (watch.js onAir): the card lit, and WATCH LIVE beside its state - a press into
      HOME's VIDEO view on this game, never the card's own link */
-  if (isLive && root.EpinoiaWatch && root.EpinoiaWatch.onAir) root.EpinoiaWatch.onAir(a, g.id, { slot: top });
+  if (isLive && o.air !== false && root.EpinoiaWatch && root.EpinoiaWatch.onAir) root.EpinoiaWatch.onAir(a, g.id, { slot: top });
 
   /* THE TWO CLUBS SIDE BY SIDE, as the scoreboard card does it (kit/embed.css .ep-card):
      crest over name, a "v" or the score between them. Stacked one above the other, a
@@ -851,7 +854,8 @@ function card(g, opts) {
   /* WHERE TO WATCH, a pill under the "v" or the score (watch.js, on the pages that load it): its press opens its own card
      and never the game */
   const lgw = leagueOf(g);
-  const wp = root.EpinoiaWatch && lgw && lgw.slug ? root.EpinoiaWatch.pill(lgw.slug, { game: g.id }) : null;
+  const wp = o.watch === false ? null : typeof o.watch === 'function' ? o.watch(g, lgw && lgw.slug)
+    : root.EpinoiaWatch && lgw && lgw.slug ? root.EpinoiaWatch.pill(lgw.slug, { game: g.id }) : null;
   if (wp) {
     body.className += ' has-watch';
     wp.classList.add('fxc-watch');
@@ -876,7 +880,7 @@ function card(g, opts) {
   a.appendChild(foot);
 
   /* WHO WINS? A strip hanging under the card (predict.js, on the pages that load it): the fans' split, and a pick */
-  if (root.EpinoiaPredict && g.status !== 'void') {
+  if (o.pick !== false && root.EpinoiaPredict && g.status !== 'void') {
     const I = root.EpinoiaInitials;
     const code = (team, name) => ({ text: (I && team && I.code(team)) || shortName(team, name), team: I && team && team.id ? team.id : null });
     const ps = root.EpinoiaPredict.strip(g, { codes: [code(g.home, home), code(g.away, away)] });

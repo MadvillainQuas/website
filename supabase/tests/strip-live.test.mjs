@@ -236,7 +236,7 @@ const state = (o) => Object.assign({
      /connect-src[^"]*wss:\/\/\*\.supabase\.co/.test(readFileSync(
        path.join(ROOT, 'epinoia', 'embed', 'strip', 'index.html'), 'utf8')));
   ok('the clock is tabular, so a ticking card does not jiggle',
-     /\.vn\.clock\{[\s\S]{0,200}tabular-nums/.test(readFileSync(
+     /\.cse \.fxc-clk\{[^}]*tabular-nums/.test(readFileSync(
        path.join(ROOT, 'epinoia', 'kit', 'embed.css'), 'utf8')));
 }
 
@@ -328,27 +328,60 @@ console.log('\nthe lineups are the team news');
      L.lineupsIn({ id: 'g', status: 'finalising', starters: five }) === false);
   ok('nothing at all is safe', L.lineupsIn(null) === false && L.lineupsIn(undefined) === false);
 
-  /* A card built once and a card repainted in place must agree — they are two
-     code paths for the same three pieces of state, and the strip repaints
-     rather than rebuilds precisely so a scroll is not interrupted. */
-  ok('card() and paint() read the one test, not two copies of it',
+  /* A card built once and a card repainted must agree. Since the strip took HOME's card
+     (2026-10-08) the lineups are part of what a card IS (sigOf): the card is drawn again where
+     it stands when they land, both copies, rather than its badge being swapped in place. */
+  ok('card() and sigOf() read the one test, not two copies of it',
      (SRC.match(/lineupsIn\(g\)/g) || []).length >= 2);
-  ok('...and share one spelling of the badge',
+  ok('...and the badge has one spelling',
      /const PRIMED_BADGE = 'LINEUPS IN';/.test(SRC) &&
-     (SRC.match(/PRIMED_BADGE/g) || []).length >= 3);
+     /document\.createTextNode\(PRIMED_BADGE\)/.test(SRC));
+  ok('paint() draws a card again when what it is has changed, its lineups among it',
+     /if \(node\._sig !== sigOf\(g\)\) \{/.test(SRC) && /node\.replaceWith\(fresh\)/.test(SRC) && /a\._sig = sigOf\(g\);/.test(SRC));
   /* compared with the English last written (_said), not the text on screen, which i18n.js may
-     have translated: comparing with that rewrote the badge and restarted its dot every tick */
-  ok('paint() can put the badge up on a card already on screen',
-     /if \(!label\.querySelector\('\.dot'\) \|\| label\._said !== PRIMED_BADGE\)/.test(SRC));
-  ok('...and take it down again, dot and all',
-     /if \(label\.querySelector\('\.dot'\) \|\| label\._said !== want\)/.test(SRC));
+     have translated: comparing with that rewrote a translated card every tick */
   ok('a translated card is not rewritten on every tick',
-     !/\.textContent !== (want|PRIMED_BADGE)/.test(SRC) && /vn\._said !== want/.test(SRC) && /go\._said !== want/.test(SRC));
-  ok('...and rewrite what the card invites you to press',
-     /const go = node\.querySelector\('\.go'\);/.test(SRC) &&
-     /primed \? ' \u00b7 lineups \u2197' : ' \u00b7 preview \u2197'/.test(SRC));
+     /function say\(n, want\) \{\s*if \(n && n\._said !== want\)/.test(SRC) && /lab\._said !== want/.test(SRC) &&
+     !/\.textContent !== (want|PRIMED_BADGE)/.test(SRC));
+  ok('...and a primed card offers the lineups',
+     /if \(go\) go\.textContent = 'lineups \u2192';/.test(SRC));
   ok('the primed class is added beside is-upcoming, not instead of it',
-     (SRC.match(/'is-upcoming is-primed'/g) || []).length >= 2);
+     /a\.classList\.add\('is-primed'\)/.test(SRC) && !/classList\.remove\('is-upcoming'\)/.test(SRC));
+
+  /* WHAT A CARD IS, run: the strip draws a card again for these and writes everything else onto it */
+  {
+    const S = lift(['DONE', 'statusOf', 'lineupsIn', 'noteState', 'clockNow', 'scoreOf', 'sigOf']);
+    const g = { id: 'q', status: 'scheduled', starters: [[], []], home_score: null, away_score: null };
+    S.ROWS.set('q', g);
+    const a = S.sigOf(g);
+    g.starters = [['a','b','c','d','e'], ['f','g','h','i','j']];
+    const b = S.sigOf(g);
+    ok('the lineups landing make it another card', a !== b, a + ' / ' + b);
+    S.noteState('q', state({ clock_ms: null }), 'live');
+    const c = S.sigOf(g);
+    ok('...so does the game going live', c !== b && /^live/.test(c), c);
+    S.noteState('q', state({ clock_ms: 300000, last_seq: 11 }));
+    const d = S.sigOf(g);
+    ok('...and its clock arriving (a live card without one has no line for it)', d !== c, c + ' / ' + d);
+    S.noteState('q', state({ clock_ms: 280000, score_home: 70, last_seq: 12 }));
+    ok('a basket is NOT another card: the score is written onto the one there', S.sigOf(g) === d, S.sigOf(g));
+    const f = { id: 'r', status: 'final', home_score: 80, away_score: 78 };
+    const e = S.sigOf(f);
+    f.home_score = 81;
+    ok('a result corrected after the whistle is', S.sigOf(f) !== e);
+  }
+  {
+    const C = lift(['clockNow', 'fmtClock', 'periodLabel', 'leagueOf', 'nPeriods', 'clockLine']);
+    const halves = { competitions: { seasons: { leagues: { periods: 2 } } } };
+    ok('a league that plays halves reads H1, H2 and then overtime',
+       C.periodLabel(1, 2) === 'H1' && C.periodLabel(2, 2) === 'H2' && C.periodLabel(3, 2) === 'OT' && C.periodLabel(4, 2) === 'OT2');
+    ok('...from the league\'s own rules', C.nPeriods(halves) === 2 && C.nPeriods({}) === 4);
+    const s0 = { clock_ms: 0, running: false, period: 3, at: Date.now(), elapsedBase: 0 };
+    ok('a period run out says so, as HOME\'s cards do',
+       C.clockLine({}, s0) === 'End Q3' && C.clockLine(halves, Object.assign({}, s0, { period: 1 })) === 'End H1', C.clockLine({}, s0));
+    ok('...and a clock under a minute reads as the scoreboard does',
+       C.clockLine({}, { clock_ms: 52300, running: false, period: 3, at: Date.now() }) === '52.3');
+  }
 
   /* EVERY query returns the same shape, or the next reader of this file gets
      caught by a row missing a column depending on how it arrived. There are

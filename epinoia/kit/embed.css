@@ -7,7 +7,13 @@
    thing an embed must never do is look broken on someone else's page.
 
    Sized for a strip: the fixture bar is modelled on the LiveStats widget —
-   a row of cards, each showing competition, status, both teams and when.
+   a row of cards, each showing competition, status, both teams and when. The
+   cards are HOME's own (kit/fxc.css, below).
+
+   THE LABELS ARE ARCHIVO (2026-10-08), as they are on the site's pages
+   (kit/labeltype.css): no pixel face on an embed. A size written for the pixel
+   face reads small in a sans, so each label is a step or two larger than it
+   was, and semibold where the face's shapes carried the weight.
    ============================================================================ */
 
 /* ---------------------------------------------------------------------------
@@ -48,6 +54,20 @@
   --ep-accent-2:#8ff5ff;
   --ep-ground:#04100b;
   --ep-ink:#e6fff1;
+
+  /* THE KIT'S TOKENS, for HOME's fixture cards (kit/fxc.css), which the strip draws: an embed loads no kit, so the
+     dark theme's are here and the light theme's under .cse[data-theme="light"]. The kit's values, with one change:
+     --lume, the card's ink for a winning score, a hover edge and "preview →", is the embedder's accent made readable
+     (theme.js --ep-accent-ink), so a club's or a league's colours reach the cards as they reach the rest of the bar. */
+  --panel:#0a1a13; --panel-2:#102419;
+  --ink:#e6fff1; --ink-2:rgba(230,255,241,.94); --ink-3:rgba(230,255,241,.84);
+  --rule:rgba(147,242,191,.20); --rule-2:rgba(147,242,191,.44);
+  --lume:var(--ep-accent-ink, #93f2bf); --aqua:#8ff5ff; --flare:#ff5f6b;
+  --ca-x:1.4px; --ca-r:color-mix(in srgb,#ff5f6b 62%,transparent); --ca-b:color-mix(in srgb,#8ff5ff 62%,transparent);
+  --f-score:'Jersey25',ui-monospace,monospace;
+  --f-micro:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-ui:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --u:8px;
 
   margin:0; padding:0; background:var(--ep-ground); color:var(--ep-ink);
   font-family:'Archivo',system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -117,11 +137,15 @@
 
 .ep-rail{
   flex:1; min-width:0; z-index:1;
-  display:flex; gap:9px; align-items:center;
+  display:flex; gap:12px; align-items:stretch;
   /* Generous vertical padding on purpose: it is the band the reader grabs to
      throw the bar. With the cards filling the height there was nowhere to take
-     hold of that was not a fixture, so every drag started on a card. */
-  padding:19px 9px;
+     hold of that was not a fixture, so every drag started on a card. The band
+     underneath is the deeper one: the league's name and the light/dark switch
+     sit in it, under the cards rather than over them.
+     THE BAR IS AS TALL AS ITS CARDS (2026-10-08): no height is set anywhere; the
+     cards stretch to the tallest one and the frame is told the result. */
+  padding:14px 10px 32px;
   overflow-x:auto; overflow-y:hidden;
   scrollbar-width:none;
   touch-action:pan-y;          /* dragged horizontally, so the browser must not */
@@ -130,174 +154,45 @@
 .ep-rail.dragging{ cursor:grabbing }
 .ep-rail::-webkit-scrollbar{ display:none }
 
-/* A CARD IS A SCOREBOARD, NOT A LIST. The LiveStats card stacks two team rows
-   with the score down the right; this lays a fixture out the way a scoreboard
-   does — home left, away right, score between — with the state as a rule along
-   the top edge rather than a word in a header bar. */
-/* CLEANED UP ON THE DAILY CARD'S MODEL (kit/fxc.css), 2026-09-18. It was a print: the two
-   clubs' colours cut on a diagonal with a halftone bitten into them, a seam of light along the
-   cut, and a scrim of the ground laid over the middle so type could survive on top of it —
-   handsome, and four layers of noise behind six words. The daily fixture card says the same
-   things on a quiet panel, and reads at a glance because of it.
+/* ---------------------------------------------------------------------------
+   THE CARDS ARE HOME'S (Louie, 2026-10-08). strip.js draws each with
+   EpinoiaGlobalGames.card(), the daily fixture card, and kit/fxc.css styles
+   it on the kit's tokens (given above): the league's badge and the state on
+   top, the two clubs side by side under an edge of their own colours, the
+   score or a "v" between them with WATCH under it, when, and where. It
+   replaces the strip's own scoreboard card, which said the same things in
+   6.5px of the pixel face. Without the fans' pick that hangs under HOME's.
 
-   WHAT STAYS: the state as a rule along the top edge, the live dot, the competition line, the
-   two crests either side of the score, and the club colours — as a soft wash down each side
-   under a solid edge of the colour, which is how the daily card carries them.
+   The width is HOME's card at its narrowest (240px): each club's letters
+   under its crest, as on HOME, and the venue in the foot.
+   --------------------------------------------------------------------------- */
+.ep-rail .fxc{ flex:0 0 240px; width:240px; cursor:pointer }
+/* an <a>, and .cse a{color:inherit} outranks .fxc: the card says its own ink where it can win */
+.cse a.fxc{ color:var(--ink) }
+/* the grab cursor belongs to the bar, not to a fixture you are about to open; while dragging, nothing lifts or
+   animates under the cursor */
+.ep-rail.dragging .fxc, .ep-rail.dragging .fxc:hover{
+  cursor:grabbing; transition:none; transform:none; box-shadow:none;
+}
+/* the labels: Archivo at the site's weights (kit/labeltype.css), a step larger than fxc.css's pixel-face sizes,
+   because nothing zooms a frame on a club's page the way the kit zooms its own */
+.cse .fxc-st, .cse .fxc-when, .cse .fxc-foot, .cse .lgb-name{ font-size:9.5px; font-weight:600; letter-spacing:.06em }
+.cse .fxc.is-live .fxc-st{ font-weight:800 }
+/* a venue is a line of information, in the case it was written in (kit/legibility.css) */
+.cse .fxc-vn{ font-size:10.5px; font-weight:500; letter-spacing:.01em; text-transform:none }
+.cse .ep-watch{ font-size:8.5px; font-weight:700; letter-spacing:.1em }
 
-   WHAT GOES: the diagonal, the halftone, the seam, the scrim, and every text shadow. A shadow
-   on every word is what you need over a print; over a panel it is just soot.
+/* THE LINEUPS ARE IN: a fixture minutes from tip-off with both starting fives named. The lume rather than the live
+   red — this is "about to", not "now" — on the card's top rule, its state and the state's pulsing dot. */
+.fxc.is-primed::before{ background:var(--lume) }
+.fxc.is-primed .fxc-st{ color:var(--lume) }
+.fxc.is-primed .fxc-st .dot{ background:var(--lume) }
 
-   EACH THEME GETS ITS OWN PANEL. The first pass made the card white in both, which on the dark
-   record was a row of white tiles with white edges — bright enough to be the thing you looked
-   at instead of the thing you read. The dark theme takes a panel lifted a little off the
-   ground, dark ink's opposite, and a DARK edge: on a dark bar the outline that separates a
-   card is darker than the card, not lighter. The light theme keeps the white one. */
-.ep-card{
-  flex:0 0 auto; width:178px;
-  display:flex; flex-direction:column; position:relative;
-  background:linear-gradient(180deg, #0e2318, #0a1a12);
-  color:var(--ep-ink);
-  border:1px solid rgba(2,10,6,.85); border-radius:4px;
-  /* the dark edge reads as an edge; a hair of light inside it keeps the card from
-     dissolving into the record when the two are close in value */
-  box-shadow:0 2px 10px rgba(0,0,0,.5), inset 0 0 0 1px rgba(147,242,191,.10);
-  padding:7px 9px 6px; overflow:hidden;
-  transition:border-color .14s, transform .14s, box-shadow .14s;
-}
-/* an <a>, and .cse a{color:inherit} is more specific than .ep-card: the card brings its own
-   ink as well as its own ground, so it says so where it can win */
-.cse a.ep-card{ color:var(--ep-ink) }
-.ep-card{ cursor:pointer }
-.ep-card:hover{
-  border-color:var(--ep-accent); transform:translateY(-2px);
-  box-shadow:0 8px 22px rgba(0,0,0,.45);
-}
-/* the grab cursor belongs to the bar, not to a fixture you are about to open */
-.ep-rail.dragging .ep-card{ cursor:grabbing }
-/* while dragging, nothing should lift or animate under the cursor */
-.ep-rail.dragging .ep-card, .ep-rail.dragging .ep-card:hover{
-  transition:none; transform:none; box-shadow:none;
-}
-
-.ep-card::before{
-  content:''; position:absolute; left:0; right:0; top:0; height:2px; z-index:2;
-  background:color-mix(in oklch, var(--ep-accent-2) 70%, transparent);
-}
-
-/* THE CARD IS STILL THE TWO CLUBS, and each still wears its own colour — as a wash down its
-   own half under a solid edge of it, the way the daily fixture card carries them, rather than
-   as a flood cut on a diagonal. strip.js sets --h and --a (and --h2/--a2, the second colours,
-   which pick out a hair of the club at the foot of its side). Mixed into transparency, so a
-   red-v-red fixture is still a white card with a scoreboard on it and the type never has to
-   fight the colour behind it. */
-/* THE WASH BEGINS BELOW THE COMPETITION LINE, not at the top edge: run to the top it put the
-   home club's colour behind half of "BCB Trophy" and the away club's behind the other half, and
-   the card read as though it were split in two before it had said anything. 22px is the meta
-   row and its margin — the same arrangement as the daily card, where the state rule is the
-   card's own and each club's edge sits on the block that is actually the club's. */
-.ep-card .half{ position:absolute; top:22px; bottom:0; width:50%; z-index:0; pointer-events:none }
-.ep-card .half.h{
-  left:0; border-top:3px solid var(--h, var(--ep-accent));
-  background:linear-gradient(180deg, color-mix(in oklch, var(--h, var(--ep-accent)) 30%, transparent), transparent 78%);
-}
-.ep-card .half.a{
-  right:0; border-top:3px solid var(--a, var(--ep-accent-2));
-  background:linear-gradient(180deg, color-mix(in oklch, var(--a, var(--ep-accent-2)) 30%, transparent), transparent 78%);
-}
-/* a hair of each club's second colour at the foot of its own side */
-.ep-card .half.h::after, .ep-card .half.a::after{
-  content:''; position:absolute; bottom:0; height:2px; width:36%; opacity:.7;
-}
-.ep-card .half.h::after{ left:0; background:var(--h2, var(--h, var(--ep-accent))) }
-.ep-card .half.a::after{ right:0; background:var(--a2, var(--a, var(--ep-accent-2))) }
-/* THE SEAM AND THE SCRIM ARE GONE. The seam was the diagonal's own edge and there is no
-   diagonal; the scrim existed to let type survive over a print, and the panel is the ground
-   now. strip.js still builds both elements — it is the same file every league's site loads,
-   and a card drawn by a cached copy must not come out with a black pane over it. */
-.ep-card .seam, .ep-card .scrim{ display:none }
-/* DARK INK ON A WHITE PANEL, and no shadow on anything: a shadow under every word is what a
-   print needs and a panel does not. One set of colours for both themes, because the card brings
-   its own ground with it — each is set where that part is defined below, not twice here. */
-.ep-card .meta, .ep-card .row, .ep-card .when{ position:relative; z-index:1 }
-.ep-card.is-live::before{ background:#ff5f6b }
-.ep-card.is-upcoming::before{ background:var(--ep-accent-2) }
-/* THE LINEUPS ARE IN: a fixture minutes from tip-off, with both starting fives
-   named. The lume rather than the live red — this is "about to", not "now" —
-   and it overrides the upcoming accent it sits beside. */
-.ep-card.is-primed::before{ background:#93f2bf }
-
-.ep-card .meta{
-  display:flex; align-items:baseline; justify-content:space-between; gap:6px;
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
-  letter-spacing:0.07em; text-transform:uppercase; color:rgba(230,255,241,.6);
-  margin-bottom:7px;
-}
-.ep-card .meta .st{ flex:none; color:rgba(230,255,241,.78) }
-.ep-card.is-live .meta .st{ color:#ff7d8b }
-.ep-card.is-primed .meta .st{ color:#93f2bf }
-.ep-card.is-primed .meta .st .dot{ background:#93f2bf }
-.ep-card .meta .comp{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-.ep-card .meta .st .dot{
-  display:inline-block; width:4px; height:4px; border-radius:50%;
-  background:#ff7d8b; margin-right:3px; vertical-align:1px;
-  animation:csp 1.6s ease-in-out infinite;
-}
-@keyframes csp{ 0%,100%{opacity:1} 50%{opacity:.25} }
-
-/* THE CRESTS SIT BELOW THE COLOUR LINE, NOT ON IT. The row begins exactly where each club's
-   3px edge is drawn, so a crest with a border or a pale ground of its own touched it and the
-   two read as one smudged bar. Seven pixels of air under the line, which is the same breath
-   the daily card leaves between its edge and its crest. */
-.ep-card .row{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:6px;
-  padding-top:7px }
-.ep-card .tm{ display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0 }
-.ep-card .crest{
-  width:22px; height:22px; border-radius:3px; display:grid; place-items:center;
-  color:#04100b; font-family:'Jersey25',ui-monospace,monospace; font-size:10px;
-  line-height:1; overflow:hidden;
-}
-.ep-card .abbr{
-  font-weight:800; font-size:12px; letter-spacing:.06em; text-transform:uppercase;
-  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-/* THE WINNER IS NAMED IN THE ACCENT'S READABLE INK, not in the accent: an embedder can set
-   ?accent= to anything, and theme.js darkens or lightens it until it reads at 4.5:1 against the
-   ground (--ep-accent-ink). Hard-coding the lume here took that away from every club that had
-   chosen a colour of its own. */
-.ep-card .tm.win .abbr{ color:var(--ep-accent-ink, var(--ep-accent)) }
-.ep-card .tm.lose .abbr{ color:rgba(230,255,241,.42) }
-
-.ep-card .mid{ text-align:center; min-width:52px }
-.ep-card .sc{
-  font-family:'Jersey25',ui-monospace,monospace; font-size:19px; line-height:1;
-  font-variant-numeric:tabular-nums; white-space:nowrap;
-}
-.ep-card .sc .d{ color:rgba(230,255,241,.3); padding:0 3px }
-.ep-card .vs{
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; letter-spacing:0.06em;
-  color:rgba(230,255,241,.38);
-}
-
-.ep-card .when{
-  margin-top:7px; padding-top:6px; border-top:1px solid rgba(147,242,191,.14);
-  display:flex; align-items:center; justify-content:space-between; gap:6px;
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
-  letter-spacing:.08em; text-transform:uppercase; color:rgba(230,255,241,.55);
-}
-.ep-card .when .vn{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
-
-/* THE GAME CLOCK, on a live card only.
-
-   It takes the venue's slot, because a venue is worth reading the week before
-   and worth nothing in the third quarter, when the one thing a glance wants is
-   how long is left. Given the live red so the eye finds it, and TABULAR so the
-   card does not jiggle four times a second as digit widths change — a clock
-   that shifts the layout under itself is worse than no clock. */
-.ep-card .when .vn.clock{
-  color:#ff5f6b; font-variant-numeric:tabular-nums;
-  font-feature-settings:"tnum" 1; letter-spacing:.05em;
-}
-.cse[data-theme="light"] .ep-card .when .vn.clock{ color:#c8324a }
+/* THE GAME CLOCK, under a live score. The strip ticks it itself, tenths in the
+   last minute, so it is TABULAR: a card does not jiggle four times a second as
+   digit widths change — a clock that shifts the layout under itself is worse
+   than no clock. */
+.cse .fxc-clk{ font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1 }
 
 /* the right edge fades rather than cuts, so a card leaving the bar looks like
    it is leaving rather than being sliced by the frame */
@@ -313,12 +208,12 @@
 /* NOTHING MOVES THAT NOBODY CAN SEE: strip.js sets .ep-still while the strip is off the screen or its tab is in the
    background. The sheen never stops by itself, and a frame of it on a page the reader has scrolled away from still
    lays the whole host page out into layers again: 65 ms a frame on a club page at a phone's speed (2026-10-02). */
-.ep-still .ep-strip::before, .ep-still .ep-card .meta .st .dot{ animation-play-state:paused }
+.ep-still .ep-strip::before, .ep-still .fxc-st .dot{ animation-play-state:paused }
 
 @media (prefers-reduced-motion:reduce){
   .ep-strip::before{ animation:none }
-  .ep-card .meta .st .dot{ animation:none }
-  .ep-card, .ep-card:hover{ transition:none; transform:none }
+  .fxc-st .dot{ animation:none }
+  .ep-rail .fxc, .ep-rail .fxc:hover{ transition:none; transform:none }
 }
 
 /* --------------------------------------------------------- the game embed */
@@ -327,7 +222,7 @@
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding-bottom:10px; margin-bottom:12px;
   border-bottom:1px solid rgba(147,242,191,.18);
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:7.5px;
+  font-family:'Archivo',system-ui,sans-serif; font-weight:600; font-size:9.5px;
   letter-spacing:0.07em; text-transform:uppercase; color:rgba(230,255,241,.55);
 }
 .ep-game .board{
@@ -349,7 +244,7 @@
 .cse[data-theme="light"] .ep-game .tm .nm.win{ color:#0f7a52 }
 .cse[data-theme="light"] .ep-game .tm .nm.lose{ color:rgba(13,31,23,.45) }
 .ep-game .tm .rec{
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:7px;
+  font-family:'Archivo',system-ui,sans-serif; font-weight:600; font-size:9px;
   color:rgba(230,255,241,.4); letter-spacing:0.06em; margin-top:3px;
 }
 .ep-game .mid{ text-align:center; min-width:112px }
@@ -359,7 +254,7 @@
 }
 .ep-game .score .sep{ color:rgba(230,255,241,.28); padding:0 6px }
 .ep-game .clk{
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; margin-top:7px;
+  font-family:'Archivo',system-ui,sans-serif; font-weight:700; font-size:10px; margin-top:7px;
   letter-spacing:0.08em; text-transform:uppercase; color:rgba(230,255,241,.6);
 }
 .ep-game .clk.live{ color:#ff5f6b }
@@ -369,7 +264,7 @@
 }
 .ep-game .qs > div{ flex:1; background:#0a1a13; padding:5px 2px; text-align:center }
 .ep-game .qs .ql{
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
+  font-family:'Archivo',system-ui,sans-serif; font-weight:600; font-size:8.5px;
   color:rgba(230,255,241,.4); letter-spacing:0.06em;
 }
 .ep-game .qs .qv{
@@ -379,22 +274,22 @@
 .ep-game .lead{
   margin-top:12px; padding-top:10px; border-top:1px solid rgba(147,242,191,.14);
   display:flex; flex-wrap:wrap; gap:14px;
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:7.5px;
+  font-family:'Archivo',system-ui,sans-serif; font-weight:600; font-size:9.5px;
   letter-spacing:.08em; text-transform:uppercase; color:rgba(230,255,241,.5);
 }
-.ep-game .lead b{ color:#e6fff1; font-weight:400 }
+.ep-game .lead b{ color:#e6fff1; font-weight:800 }
 
 .ep-foot{
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding:7px 12px; border-top:1px solid color-mix(in oklch, var(--ep-accent) 20%, transparent);
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px;
+  font-family:'Archivo',system-ui,sans-serif; font-weight:600; font-size:8.5px;
   letter-spacing:0.08em; text-transform:uppercase; color:rgba(230,255,241,.34);
 }
 .ep-foot a:hover{ color:var(--ep-accent-ink, var(--ep-accent)) }
 
 .ep-empty{
   padding:26px 16px; text-align:center; color:rgba(230,255,241,.45);
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; line-height:2.2;
+  font-family:'Archivo',system-ui,sans-serif; font-weight:600; font-size:11px; line-height:1.6; letter-spacing:.02em;
 }
 
 @media (max-width:520px){
@@ -413,6 +308,12 @@
    ============================================================================ */
 .cse[data-theme="light"]{
   background:#ffffff; color:#0d1f17;
+  /* the kit's light tokens, for the cards (the dark ones are on .cse) */
+  --panel:#ffffff; --panel-2:#e9f4ee;
+  --ink:#0d1f17; --ink-2:rgba(13,31,23,.95); --ink-3:rgba(13,31,23,.86);
+  --rule:rgba(13,31,23,.2); --rule-2:rgba(13,31,23,.4);
+  --lume:var(--ep-accent-ink, #08603f); --aqua:#075a73; --flare:#a01b2a;
+  --ca-x:1px; --ca-r:color-mix(in srgb,#e8175d 30%,transparent); --ca-b:color-mix(in srgb,#0096c7 30%,transparent);
 }
 .cse[data-theme="light"] .ep-plate{
   background:linear-gradient(180deg,#f2f7f4,#e8f0eb);
@@ -422,43 +323,6 @@
   background:linear-gradient(0deg,#0f7a52,#0a8fa3);
   -webkit-background-clip:text; background-clip:text; color:transparent;
 }
-/* THE CARD IS THE SAME IN BOTH THEMES now that it brings its own ground: white, dark ink, a
-   white edge. Only the shadow changes, because on the light record it has to separate a white
-   card from a pale ground rather than from a dark one. */
-/* THE LIGHT CARD: white, dark ink, a white edge against the pale record, and the club washes
-   lighter because they sit on white rather than on a panel. */
-.cse[data-theme="light"] .ep-card{
-  background:#ffffff; color:#0d1f17;
-  border-color:#ffffff;
-  box-shadow:0 1px 6px rgba(13,31,23,.18), inset 0 0 0 1px rgba(13,31,23,.05);
-}
-.cse[data-theme="light"] a.ep-card{ color:#0d1f17 }
-.cse[data-theme="light"] .ep-card:hover{ background:#f4faf7; box-shadow:0 6px 18px rgba(13,31,23,.24) }
-.cse[data-theme="light"] .ep-card .half.h{
-  background:linear-gradient(180deg, color-mix(in oklch, var(--h, var(--ep-accent)) 18%, transparent), transparent 76%);
-}
-.cse[data-theme="light"] .ep-card .half.a{
-  background:linear-gradient(180deg, color-mix(in oklch, var(--a, var(--ep-accent-2)) 18%, transparent), transparent 76%);
-}
-.cse[data-theme="light"] .ep-card .meta{ color:rgba(13,31,23,.62) }
-.cse[data-theme="light"] .ep-card .meta .st{ color:rgba(13,31,23,.78) }
-.cse[data-theme="light"] .ep-card .vs{ color:rgba(13,31,23,.4) }
-.cse[data-theme="light"] .ep-card .sc .d{ color:rgba(13,31,23,.3) }
-.cse[data-theme="light"] .ep-card .when{ color:rgba(13,31,23,.6); border-top-color:rgba(13,31,23,.12) }
-.cse[data-theme="light"] .ep-card .tm.win .abbr{ color:var(--ep-accent-ink, #0c7a54) }
-.cse[data-theme="light"] .ep-card .tm.lose .abbr{ color:rgba(13,31,23,.42) }
-.cse[data-theme="light"] .ep-card::before{ background:rgba(13,31,23,.16) }
-.cse[data-theme="light"] .ep-card.is-live::before{ background:#c8324a }
-.cse[data-theme="light"] .ep-card.is-upcoming::before{ background:#0a8fa3 }
-
-.cse[data-theme="light"] .ep-card.is-live .meta .st{ color:#c8324a }
-/* The lume is unreadable on white, so the light theme takes a green dark enough
-   to carry 6.5px text against the card. */
-.cse[data-theme="light"] .ep-card.is-primed::before{ background:#0f7a4a }
-.cse[data-theme="light"] .ep-card.is-primed .meta .st{ color:#0b6b40 }
-.cse[data-theme="light"] .ep-card.is-primed .meta .st .dot{ background:#0b6b40 }
-.cse[data-theme="light"] .ep-card .meta .st .dot{ background:#c8324a }
-
 .cse[data-theme="light"] .ep-arrow{
   background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.95));
   color:rgba(13,31,23,.6);
@@ -537,8 +401,8 @@
    In the band under the cards that the rail's padding leaves, on the same line as the light/dark
    switch at the other end; one line, cut with an ellipsis rather than wrapped into the cards. */
 .ep-league{
-  position:absolute; left:12px; bottom:6px; z-index:4; max-width:calc(100% - 64px);
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:8px; line-height:1.25;
+  position:absolute; left:12px; bottom:9px; z-index:4; max-width:calc(100% - 64px);
+  font-family:'Archivo',system-ui,sans-serif; font-weight:700; font-size:10px; line-height:1.25;
   letter-spacing:0.07em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   color:color-mix(in srgb, var(--ep-ink) 72%, transparent);
 }
@@ -547,61 +411,33 @@
 .cse[data-theme="light"] .ep-league{ color:rgba(13,31,23,.72) }
 .cse[data-theme="light"] .ep-league:hover, .cse[data-theme="light"] .ep-league:focus-visible{ color:var(--ep-accent-ink, #0c7a54) }
 
-/* WHERE TO WATCH AND WHO WINS ON THE CARD (strip.js actsFor, 2026-10-07): two small buttons under the "v" or the score,
-   each opening a panel OVER ITS OWN CARD - never outside it: the strip is a frame on another site's page and anything
-   drawn past its edge is cut off. The card keeps its height; the buttons use the room beside the clubs. */
-.ep-card .mid{ display:flex; flex-direction:column; align-items:center; gap:4px }
-.ep-card .acts{ display:flex; gap:3px; justify-content:center }
-.ep-card .ec-chip{ position:relative; appearance:none; margin:0; padding:3px 5px 2px; border-radius:999px; cursor:pointer;
-  border:1px solid rgba(147,242,191,.3); background:rgba(4,16,11,.55); color:var(--ep-ink);
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:5.5px; line-height:1; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap;
-  -webkit-tap-highlight-color:transparent; touch-action:manipulation }
-/* a finger's worth of room around a small button */
-.ep-card .ec-chip::after{ content:''; position:absolute; inset:-7px -2px }
-.ep-card .ec-chip:hover, .ep-card .ec-chip:focus-visible{ background:#ffe14d; color:#0a0a0a; border-color:#ffe14d; outline:none }
-.ep-card .ec-chip.pick.mine{ border-color:#93f2bf; color:#93f2bf }
-.ep-card.popped{ transform:none }
-
-/* the panel: the pick strip's black plate, over the whole card */
-.ep-card .ec-pop{ position:absolute; inset:0; z-index:6; display:flex; flex-direction:column; gap:4px; padding:6px 8px 7px;
-  background:linear-gradient(180deg,#151917,#0b0d0c 55%); color:#f4fff9; border-radius:inherit; cursor:default;
+/* WHERE TO WATCH, OVER ITS OWN CARD (strip.js openPop; the fans' pick came off with the card, 2026-10-08). The pill under
+   the "v" or the score is kit/watch.css's; its panel is watch.js's card fitted over the fixture card it belongs to — the
+   yellow band, the league, how its games can be seen, its links — and never outside it: the strip is a frame on
+   another site's page, and anything drawn past its edge is cut off. The card keeps its height. */
+.fxc.popped, .fxc.popped:hover{ transform:none }
+.fxc .ec-pop{ position:absolute; inset:0; z-index:6; display:flex; flex-direction:column; overflow:hidden;
+  background:var(--panel); color:var(--ink); border-radius:inherit; cursor:default;
   opacity:0; transform:translateY(4px); transition:opacity .15s ease, transform .18s ease }
-.ep-card .ec-pop.on{ opacity:1; transform:none }
-.ep-card .ec-hd{ display:flex; align-items:center; justify-content:space-between; gap:6px;
-  font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px; letter-spacing:.12em; text-transform:uppercase; color:#ffe14d }
-.ep-card .ec-x{ appearance:none; border:0; background:rgba(255,255,255,.08); color:#f4fff9; width:16px; height:16px; border-radius:50%;
-  font-size:11px; line-height:1; cursor:pointer; display:grid; place-items:center; padding:0 }
-.ep-card .ec-x:hover{ background:#ffe14d; color:#0a0a0a }
-/* who wins: the two sides as buttons, the split under them in the clubs' colours */
-.ep-card .ec-sides{ display:grid; grid-template-columns:1fr 1fr; gap:4px }
-.ep-card .ec-side{ appearance:none; margin:0; display:flex; align-items:baseline; justify-content:space-between; gap:4px; padding:5px 6px 4px;
-  border:1px solid rgba(255,255,255,.1); border-radius:6px; background:rgba(255,255,255,.04); color:#f4fff9; cursor:pointer; font:inherit }
-.ep-card .ec-side.away{ flex-direction:row-reverse }
-.ep-card .ec-side .cd{ font-family:'Silkscreen',ui-monospace,monospace; font-size:6.5px; letter-spacing:.1em; color:rgba(244,255,249,.7) }
-.ep-card .ec-side .pc{ font-family:'Jersey25',ui-monospace,monospace; font-weight:400; font-size:16px; line-height:.9 }
-.ep-card .ec-side.lead .pc, .ep-card .ec-side.won .pc{ color:#ffe14d }
-.ep-card .ec-side.home.mine{ box-shadow:inset 0 0 0 1px color-mix(in oklch, var(--h,#93f2bf) 80%, #fff); background:color-mix(in oklch, var(--h,#93f2bf) 22%, transparent) }
-.ep-card .ec-side.away.mine{ box-shadow:inset 0 0 0 1px color-mix(in oklch, var(--a,#8ff5ff) 80%, #fff); background:color-mix(in oklch, var(--a,#8ff5ff) 22%, transparent) }
-.ep-card .ec-side.mine .cd::before{ content:'✓ '; color:#ffe14d }
-@media (hover:hover){ .ep-card .ec-side:not(:disabled):hover{ border-color:#ffe14d } }
-.ep-card .ec-side:disabled{ cursor:default }
-.ep-card .ec-bar{ height:3px; background:linear-gradient(90deg, color-mix(in oklch, var(--h,#93f2bf) 78%, #fff) var(--ph,50%), color-mix(in oklch, var(--a,#8ff5ff) 78%, #fff) var(--ph,50%));
-  -webkit-mask:repeating-linear-gradient(90deg,#000 0 4px,transparent 4px 6px); mask:repeating-linear-gradient(90deg,#000 0 4px,transparent 4px 6px) }
-.ep-card .ec-note{ margin-top:auto; font-family:'Silkscreen',ui-monospace,monospace; font-size:5.5px; letter-spacing:.08em; text-transform:uppercase; color:rgba(244,255,249,.6);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.ep-card .ec-note a{ color:#ffe14d; text-decoration:none }
-.ep-card .ec-note a:hover{ text-decoration:underline }
-/* where to watch: the league, how it is shown, and up to three links */
-.ep-card .ec-lg{ font-weight:800; font-size:10px; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
-.ep-card .ec-av{ font-size:7.5px; line-height:1.3; color:rgba(244,255,249,.78); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
-.ep-card .ec-tag{ font-family:'Silkscreen',ui-monospace,monospace; font-weight:400; font-size:5.5px; letter-spacing:.1em; text-transform:uppercase;
-  padding:2px 4px; border-radius:999px; background:rgba(255,255,255,.1); color:#f4fff9; vertical-align:1px }
-.ep-card .ec-tag.k-free{ background:#3ddc84; color:#04100b }
-.ep-card .ec-tag.k-paid{ background:#ffb020; color:#1a1200 }
-.ep-card .ec-links{ display:flex; flex-wrap:wrap; gap:4px; margin-top:auto }
-.ep-card .ec-ln{ padding:3px 6px 2px; border-radius:999px; background:rgba(255,255,255,.08); color:#f4fff9; text-decoration:none;
-  font-size:7px; font-weight:700; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis }
-.ep-card .ec-ln:hover{ background:#ffe14d; color:#0a0a0a }
-@media (prefers-reduced-motion:reduce){ .ep-card .ec-pop{ transition:none } }
-.cse[data-theme="light"] .ep-card .ec-chip{ background:#ffffff; color:#0d1f17; border-color:rgba(13,31,23,.25) }
-.cse[data-theme="light"] .ep-card .ec-chip.pick.mine{ color:#0b6b40; border-color:#0b6b40 }
+.fxc .ec-pop.on{ opacity:1; transform:none }
+.fxc .ec-hd{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px 6px 10px;
+  background:#ffe14d; color:#0a0a0a }
+.fxc .ec-k{ font-family:var(--f-ui); font-weight:800; font-size:9px; letter-spacing:.12em; text-transform:uppercase }
+.fxc .ec-x{ appearance:none; border:0; display:grid; place-items:center; width:22px; height:22px; padding:0; margin:-3px -3px -3px 0;
+  border-radius:50%; background:rgba(0,0,0,.08); color:#0a0a0a; font-size:15px; line-height:1; cursor:pointer }
+.fxc .ec-x:hover, .fxc .ec-x:focus-visible{ background:#0a0a0a; color:#ffe14d; outline:none }
+.fxc .ec-bd{ flex:1; min-height:0; display:flex; flex-direction:column; gap:6px; padding:8px 10px 10px; overflow:auto }
+.fxc .ec-lg{ font-family:var(--f-ui); font-weight:800; font-size:13px; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.fxc .ec-av{ display:flex; flex-direction:column; align-items:flex-start; gap:5px;
+  font-family:var(--f-ui); font-size:10.5px; line-height:1.35; color:var(--ink-2) }
+.fxc .ec-av span{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.fxc .ec-tag{ display:inline-flex; align-items:center; gap:5px; padding:3px 8px 3px 6px; border-radius:999px;
+  background:#0b0d0c; color:#f4fff9; font-family:var(--f-ui); font-weight:700; font-size:8.5px; letter-spacing:.1em; text-transform:uppercase }
+.fxc .ec-tag::before{ content:""; width:5px; height:5px; border-radius:50%; background:#5ee7ff }
+.fxc .ec-tag.k-free::before{ background:#3ddc84 }
+.fxc .ec-tag.k-paid::before{ background:#ffb020 }
+.fxc .ec-links{ display:flex; flex-wrap:wrap; gap:5px; margin-top:auto }
+.fxc .ec-ln{ max-width:100%; padding:4px 9px; border-radius:999px; border:1px solid var(--rule); background:var(--panel-2); color:var(--ink);
+  font-family:var(--f-ui); font-weight:700; font-size:10px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.fxc .ec-ln:hover, .fxc .ec-ln:focus-visible{ background:#ffe14d; border-color:#ffe14d; color:#0a0a0a; outline:none }
+@media (prefers-reduced-motion:reduce){ .fxc .ec-pop{ transition:none } }

@@ -378,7 +378,8 @@ so 0206 does not touch it.
 
      All are per-school or per-host, and slower to integrate.
 5. **Labels still in quarters** (cosmetic, a game in halves still computes correctly):
-   - `embed/strip/strip.js` and `socialcard.js` (a game in halves gets no period table);
+   - `socialcard.js` (a game in halves gets no period table); the fixture strip labels halves H1/H2 from the
+     league's `rules.periods` since it took HOME's card (2026-10-08);
    - `p/video.js`, `video.js` and `video/videohub.js` coverage notes;
    - the scorer app itself (`score/index.html`), which is fed, not scored, for NCAA.
 6. **The snapshots function lists every game on every call.**

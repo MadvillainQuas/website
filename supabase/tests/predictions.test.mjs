@@ -237,12 +237,16 @@ for (const [js, html] of rowsOn) {
   ok(html + ' loads watch.js, gamepeek.js and predict.js, with their sheets', ['watch.js', 'gamepeek.js', 'predict.js'].every(f => H.includes(f + '?v=')) && ['watch.css', 'predict.css', 'gamepeek.css'].every(f => H.includes(f + '?v=')));
 }
 ok('a row\'s bar is the row\'s own: no plate, its ink, the clubs\' colours', /o\.row \? ' row-pred'/.test(P) && /\(o\.big \|\| o\.row\) && hc/.test(P) && /\.ep-pred\.row-pred\{--pl:var\(--panel\);--pi:var\(--ink\)/.test(read('epinoia', 'kit', 'predict.css')));
-/* THE EMBEDDED STRIP (2026-10-07): WATCH and PICK on each card, each a panel over its own card - it is a frame on other sites */
+/* THE EMBEDDED STRIP (2026-10-07): WATCH on each card, a panel over its own card - it is a frame on other sites.
+   Since 2026-10-08 its cards are HOME's (globalgames.js card), WITHOUT the fans' pick: Louie asked for the cards "except
+   without the who wins protrusion", and the strip's own PICK went with it. */
 const ST = read('epinoia', 'embed', 'strip', 'strip.js');
-ok('the strip\'s cards carry WATCH and PICK under the "v" or the score', /mid\.appendChild\(actsFor\(g\)\)/.test(ST) && /chip\('watch', '▶ watch'/.test(ST) && /chip\('pick', 'pick'/.test(ST));
-ok('...each opens a panel over its own card, never outside the frame, and never the game behind it', /cardEl\.appendChild\(pop\)/.test(ST) && /e\.preventDefault\(\); e\.stopPropagation\(\);/.test(ST) && /\.ep-card \.ec-pop\{ position:absolute; inset:0;/.test(read('epinoia', 'kit', 'embed.css')));
-ok('...the drift waits while one is open; the split read once a render', /!POP\.open && \(Date\.now\(\) - lastTouch > IDLE_MS\)/.test(ST) && /askTally\(gs\.map\(g => g\.id\)\)/.test(ST));
-ok('...without a session (another site keeps the frame\'s storage apart) the pick is offered on EPINOIA, in a new tab', /pick on EPINOIΛ ↗/.test(ST) && /a\.target = '_blank'; a\.rel = 'noopener';/.test(ST));
+ok('the strip\'s cards carry WATCH under the "v" or the score, made by the strip, and no pick',
+   /watch: watchPill, air: false, pick: false/.test(ST) && /const b = el\('button', 'ep-watch ec-chip k-' \+ w\.k\);/.test(ST) &&
+   !/prediction_tally|predict_game|EpinoiaPredict/.test(ST));
+ok('...its panel opens over its own card, never outside the frame, and never the game behind it', /cardEl\.appendChild\(pop\)/.test(ST) && /e\.preventDefault\(\); e\.stopPropagation\(\);/.test(ST) && /\.fxc \.ec-pop\{ position:absolute; inset:0;/.test(read('epinoia', 'kit', 'embed.css')));
+ok('...a link in the panel still opens (the card around it is a link too, so the panel is asked)', /if \(link && pop\.contains\(link\)\) return;/.test(ST));
+ok('...the drift waits while it is open', /!POP\.open && \(Date\.now\(\) - lastTouch > IDLE_MS\)/.test(ST));
 ok('the embed page loads watch.js for its data; league and club pages keep the frame', /watch\.js\?v=/.test(read('epinoia', 'embed', 'strip', 'index.html')) && /strip\.src = 'embed\/strip\/\?n=24&l='/.test(read('epinoia', 'home.js')) && /frame\.src = src;/.test(read('epinoia', 't', 'team.js')));ok('YOUR HUB has YOUR PAGE: to fan/?u= once the username is known', /mk\('', '[^']+', 'your page', root \+ 'profile\/'\)/.test(nav) && /yourPage\.href = root \+ 'fan\/\?u='/.test(nav));
 const ed = read('epinoia', 'me', 'fanprofile.js');
 ok('the page editor offers the photo circle and saves it', /'Photo circle'/.test(ed) && /sb\.rpc\('set_fan_circle', \{ p: circle \}\)/.test(ed) && /On the leaderboards/.test(ed));

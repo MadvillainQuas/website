@@ -196,8 +196,9 @@ ok('every embed loads the colour maths before its theme', ['strip', 'table', 'ga
 }));
 ok('no embed script sets its own theme or accent any more', ['strip/strip.js', 'table/table.js', 'game/game.js', 'merch/merch.js']
    .every(f => !/setProperty\('--ep-accent'|body\.setAttribute\('data-theme'|dataset\.theme = 'light'/.test(read('epinoia', 'embed', ...f.split('/')))));
-ok('text in the accent uses its readable ink', /\.tm\.win \.abbr\{ color:var\(--ep-accent-ink, var\(--ep-accent\)\) \}/.test(css));
-ok('the strip names its league bottom left, as a link', /id="leagueLink" hidden/.test(stripHtml) && /\.ep-league\{\s*position:absolute; left:12px; bottom:6px/.test(css));
+ok('text in the accent uses its readable ink: the cards\' --lume is it, in both themes',
+   /--lume:var\(--ep-accent-ink, #93f2bf\);/.test(css) && /--lume:var\(--ep-accent-ink, #08603f\);/.test(css));
+ok('the strip names its league bottom left, as a link', /id="leagueLink" hidden/.test(stripHtml) && /\.ep-league\{\s*position:absolute; left:12px; bottom:9px/.test(css));
 ok('...to the league\'s own page, in the page on Epinoia and a new tab on a club\'s site',
    /new URL\('\.\.\/\.\.\/\?l=' \+ encodeURIComponent\(l\.slug\), location\.href\)/.test(stripJs) && /a\.target = ours \? '_top' : '_blank'/.test(stripJs));
 
@@ -313,11 +314,11 @@ console.log('\n-- an embed far from the reader is not drawn (teamcolour.js drawD
   ok('the strip\'s drift ends while nobody can see it (off the screen, or the tab in the background)',
      /function tick\(now\) \{[\s\S]{0,700}if \(!dragging && !watching\(\)\) \{ rafId = null; return; \}/.test(sj));
   ok('...and starts again when it can, where there are fixtures to drift',
-     /function wake\(\) \{\s*still\(\);\s*if \(!watching\(\)\) return;\s*if \(document\.querySelector\('#rail \.ep-card'\)\) startMotion\(\);/.test(sj));
+     /function wake\(\) \{\s*still\(\);\s*if \(!watching\(\)\) return;\s*if \(document\.querySelector\('#rail \.fxc'\)\) startMotion\(\);/.test(sj));
   ok('...the sheen and the live dot pause with it (.ep-still), set by the observer and the tab\'s visibility',
      /function still\(\) \{ document\.documentElement\.classList\.toggle\('ep-still', !watching\(\)\); \}/.test(sj) &&
      /onScreen = entries\.some\(e => e\.isIntersecting\);\s*still\(\);/.test(sj) &&
-     /\.ep-still \.ep-strip::before, \.ep-still \.ep-card \.meta \.st \.dot\{ animation-play-state:paused \}/.test(css));
+     /\.ep-still \.ep-strip::before, \.ep-still \.fxc-st \.dot\{ animation-play-state:paused \}/.test(css));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

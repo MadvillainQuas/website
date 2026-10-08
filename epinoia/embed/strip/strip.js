@@ -3,10 +3,12 @@
    The fixture strip — a horizontal bar of games for another site's page.
 
    The information a LiveStats bar carries, laid out differently on purpose:
-   the wordmark reads down a narrow edge rather than sitting in a logo box, and
-   a card is a SCOREBOARD — home on the left, away on the right, score between
-   them — rather than two stacked rows with the score down one side. The state
-   is a coloured rule along the card's top edge instead of a word in a header.
+   the wordmark is a record's label at the left rather than a logo box, and
+   each card is HOME's own fixture card (EpinoiaGlobalGames.card, kit/fxc.css)
+   — home on the left, away on the right, score between them — rather than two
+   stacked rows with the score down one side. The state is a coloured rule
+   along the card's top edge as well as a word. The bar is as tall as its
+   cards and says so to the page it is on.
 
    Three things it must get right, because it runs on a page we do not control:
 
@@ -277,12 +279,12 @@ function clockNow(s) {
   return Math.max(0, s.clock_ms - (Date.now() - s.at) - (s.elapsedBase || 0));
 }
 
-/* Q1–Q4, then overtime. A league playing halves would want two labels here;
-   nothing on the platform does yet, and inventing the second one now would be
-   inventing a rule nobody has asked for. */
-function periodLabel(p) {
+/* Q1–Q4, then overtime; H1 and H2 for a league that plays halves (its rules.periods is 2: NCAA men), as HOME's
+   cards label them. */
+function periodLabel(p, n) {
   if (!p) return '';
-  return p <= 4 ? 'Q' + p : p === 5 ? 'OT' : 'OT' + (p - 4);
+  n = n === 2 ? 2 : 4;
+  return p <= n ? (n === 2 ? 'H' : 'Q') + p : p === n + 1 ? 'OT' : 'OT' + (p - n);
 }
 
 /* Broadcast convention: minutes and seconds until the last minute, then
@@ -358,96 +360,45 @@ function scoreOf(g) {
   return [g.home_score == null ? 0 : g.home_score, g.away_score == null ? 0 : g.away_score];
 }
 
-/* ---- painting, without rebuilding ------------------------------------------
+/* ---- painting, without rebuilding the rail ---------------------------------
    The rail holds two copies of every card so the loop can wrap invisibly, and
    it is dragged and animated continuously. Rebuilding it to change a digit
    would fight the scroll, drop the drag and flicker on somebody's homepage —
-   so a score, a clock or a status flip is written straight onto the nodes that
-   are already there. Only a change in WHICH games are shown, or their order,
-   rebuilds anything. */
+   so a score, the clock or the period is written straight onto the cards that
+   are already there. A card that has become a different card (a fixture turned
+   live has a score where its "v" was; its lineups in; its clock come; a result
+   corrected: sigOf, below) is drawn again where it stands, both copies of it.
+   Only a change in WHICH games are shown, or their order, rebuilds the rail. */
 function paint() {
-  document.querySelectorAll('[data-game]').forEach(node => {
+  document.querySelectorAll('#rail .fxc[data-game]').forEach(node => {
     const g = ROWS.get(node.getAttribute('data-game'));
     if (!g) return;
-    const st = statusOf(g), live = st === 'live', final = st === 'final';
-    const primed = lineupsIn(g);
-    const cls = 'ep-card ' + (live ? 'is-live' : final ? 'is-final'
-                                   : primed ? 'is-upcoming is-primed' : 'is-upcoming');
-    if (node.className !== cls) node.className = cls;
-
-    const label = node.querySelector('.st');
-    if (label) {
-      /* _said is the English this code last wrote. The words on screen may be Japanese or
-         Spanish by now (i18n.js), and comparing against them would rewrite the badge, and
-         restart its pulsing dot, on every tick. */
-      if (live) {
-        if (!label.querySelector('.dot') || label._said !== 'LIVE') {
-          label.textContent = '';
-          label.appendChild(el('span', 'dot'));
-          label.appendChild(document.createTextNode('LIVE'));
-          label._said = 'LIVE';
-        }
-      } else if (primed) {
-        /* textContent would read "LINEUPS IN" with the dot counted out of it,
-           so the dot's presence is what is compared. */
-        if (!label.querySelector('.dot') || label._said !== PRIMED_BADGE) {
-          label.textContent = '';
-          label.appendChild(el('span', 'dot'));
-          label.appendChild(document.createTextNode(PRIMED_BADGE));
-          label._said = PRIMED_BADGE;
-        }
-      } else {
-        const want = final ? 'FT' : 'PREVIEW & INFO';
-        if (label.querySelector('.dot') || label._said !== want) {
-          label.textContent = want;
-          label._said = want;
-        }
-      }
+    if (node._sig !== sigOf(g)) {
+      const fresh = card(g);
+      if (node.tabIndex < 0) { fresh.tabIndex = -1; quiet(fresh); }   // the loop's second copy stays out of the tab order
+      node.replaceWith(fresh);
+      return;
     }
-
-    const sc = node.querySelector('.sc');
-    const mid = node.querySelector('.mid');
-    if ((live || final) && mid) {
-      const [h, a] = scoreOf(g);
-      if (!sc) { mid.textContent = ''; mid.appendChild(scoreEl(h, a)); }
-      else {
-        const vs = sc.querySelectorAll('.v');
-        if (vs[0] && vs[0].textContent !== String(h)) vs[0].textContent = String(h);
-        if (vs[1] && vs[1].textContent !== String(a)) vs[1].textContent = String(a);
-      }
-    }
-
-    /* The clock replaces the venue on a live card. A venue is worth reading
-       before tip-off and worth nothing during the third quarter, when the one
-       thing a glance wants is how long is left. */
-    const vn = node.querySelector('.vn');
-    if (vn) {
-      const s = LIVE.get(g.id);
-      const ms = live ? clockNow(s) : null;
-      const want = live
-        ? (ms == null ? (g.venue || 'in progress')
-                      : (periodLabel(s.period) + ' · ' + fmtClock(ms)))
-        : fmtDate(g.tipoff_at);
-      if (vn._said !== want) { vn.textContent = want; vn._said = want; }
-      vn.classList.toggle('clock', live && ms != null);
-    }
-
-    /* ...and what the card invites you to press. The lineups landing while the
-       strip is open is the ordinary case, not the exception. */
-    const go = node.querySelector('.go');
-    if (go) {
-      const want = live ? 'watch ↗' : final ? fmtTime(g.tipoff_at)
-        : fmtTime(g.tipoff_at) + (primed ? ' · lineups ↗' : ' · preview ↗');
-      if (go._said !== want) { go.textContent = want; go._said = want; }
-    }
+    if (statusOf(g) !== 'live') return;
+    const s = LIVE.get(g.id);
+    const [h, a] = scoreOf(g);
+    say(node.querySelector('.fxc-sc.h'), String(h));
+    say(node.querySelector('.fxc-sc.a'), String(a));
+    /* the clock under the score, counted down from the frame's arrival (clockNow); the period on the state line */
+    const clk = node.querySelector('.fxc-clk');
+    if (clk) { say(clk, clockLine(g, s)); clk.classList.toggle('run', !!(s && s.running)); }
+    const lab = node.querySelector('.fxc-st');
+    const t = lab && lab.lastChild;
+    const want = liveWords(g, s);
+    if (t && t.nodeType === 3 && lab._said !== want) { t.nodeValue = want; lab._said = want; }
   });
   tickCadence();
 }
 
-function scoreEl(h, a) {
-  const sc = el('div', 'sc');
-  sc.append(el('span', 'v', String(h)), el('span', 'd', '–'), el('span', 'v', String(a)));
-  return sc;
+/* WRITTEN ONLY WHEN WHAT THIS CODE WOULD WRITE HAS CHANGED. _said is the English it last wrote: the words on screen may
+   be Japanese or Spanish by now (i18n.js), and comparing against them would rewrite a translated card on every tick. */
+function say(n, want) {
+  if (n && n._said !== want) { n.textContent = want; n._said = want; }
 }
 
 /* The repaint beat only exists while a clock is actually running: a stopped
@@ -627,277 +578,189 @@ async function loadState(ids) {
   paint();
 }
 
-function fmtDate(iso) {
-  if (!iso) return 'TBC';
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-function fmtTime(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit' })
-    .replace(/^0/, '').toUpperCase();
-}
-
 /* ============================================================================
-   WHERE TO WATCH AND WHO WINS, ON THE CARD (Louie, 2026-10-07).
+   WHERE TO WATCH, ON THE CARD (Louie, 2026-10-07; the fans' pick came off with
+   the card's redesign, 2026-10-08).
 
-   Two small buttons under the "v" or the score - WATCH (where the league's games can be seen: watch.js's data, the
-   streaming spreadsheet) and PICK (who wins: the fans' split, and a pick) - each opening a small panel OVER ITS OWN
-   CARD. Never a pop-up outside it: this strip is a frame on somebody else's page, and anything drawn past the frame's
-   edge is cut off. The card does not grow for them; the drift stops while one is open.
-
-   A PICK NEEDS A SIGNED-IN FAN. Inside EPINOIA's own pages the frame shares the site's session; on another site the
-   browser keeps the frame's storage apart from the site's own (third-party storage is partitioned), so there is no
-   session to use - the panel shows the split and offers the game on EPINOIA, in a new tab, to pick there.
+   HOME's pill (watch.js's look, kit/watch.css) under the "v" or the score,
+   opening a panel OVER ITS OWN CARD — never a pop-up outside it: this strip is
+   a frame on somebody else's page, and anything drawn past the frame's edge is
+   cut off. So the pill is made here rather than by watch.js, whose card opens
+   on the page beside its pill; watch.js gives only its data. The card does not
+   grow for it, and the drift stops while a panel is open.
    ============================================================================ */
-const PRED = new Map();          // game id -> { home, away, mine, open }
 const POP = { open: false };
-const leagueSlugOf = g => {
-  const c = Array.isArray(g.competitions) ? g.competitions[0] : g.competitions;
-  const s = c && (Array.isArray(c.seasons) ? c.seasons[0] : c.seasons);
-  const l = s && (Array.isArray(s.leagues) ? s.leagues[0] : s.leagues);
-  return (l && l.slug) || null;
+const leagueOf = g => {
+  const one = v => (Array.isArray(v) ? v[0] : v) || null;
+  const c = one(g && g.competitions), s = one(c && c.seasons);
+  return one(s && s.leagues);
 };
-const watchOf = g => { const W = window.EpinoiaWatch, s = leagueSlugOf(g); return W && s ? W.of(s) : null; };
-function predToken() {
-  try { const A = window.EpinoiaAccess, s = A && A.session && A.session(); return s && s.token ? s.token : null; } catch (_) { return null; }
+const watchOf = g => { const W = window.EpinoiaWatch, l = leagueOf(g); return W && l && l.slug ? W.of(l.slug) : null; };
+const TV = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="3" width="13" height="9" rx="1.5"/>' +
+  '<path d="M6.5 5.6v3.8L10 7.5z" class="f"/><path d="M5 14.5h6"/></svg>';
+function watchPill(g, slug) {
+  const W = window.EpinoiaWatch, w = W && slug ? W.of(slug) : null;
+  if (!w) return null;
+  const b = el('button', 'ep-watch ec-chip k-' + w.k);
+  b.type = 'button';
+  b.setAttribute('aria-haspopup', 'dialog');
+  b.setAttribute('aria-expanded', 'false');
+  b.setAttribute('aria-label', 'where to watch ' + w.n);
+  b.innerHTML = TV + '<span>watch</span><i class="ew-dot" aria-hidden="true"></i>';
+  return b;
 }
-async function predRpc(fn, body) {
-  const t = predToken();
-  const h = { apikey: CFG.supabaseAnonKey, 'Content-Type': 'application/json' };
-  if (t) h.Authorization = 'Bearer ' + t;
-  const r = await fetch(`${CFG.supabaseUrl}/rest/v1/rpc/${fn}`, { method: 'POST', cache: 'no-store', headers: h, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(r.status);
-  return r.json();
-}
-/* the split for every card on the strip, once a render; a game that is not there is simply not asked about */
-async function askTally(ids) {
-  if (!ids.length) return;
-  try {
-    const rows = await predRpc('prediction_tally', { p_games: ids.slice(0, 200) });
-    (rows || []).forEach(r => PRED.set(r.game_id, { home: +r.home || 0, away: +r.away || 0, mine: r.mine || null, open: !!r.open }));
-    paintPicks();
-  } catch (_) { /* before 0239, or offline: the PICK button stays, its panel says so */ }
-}
-const pcts = t => { const n = t ? t.home + t.away : 0; if (!n) return null; const h = Math.round(100 * t.home / n); return [h, 100 - h]; };
-function paintPicks() {
-  document.querySelectorAll('.ep-card .ec-chip.pick').forEach(b => {
-    const t = PRED.get(b.closest('.ep-card').getAttribute('data-game'));
-    b.classList.toggle('mine', !!(t && t.mine));
-    b.textContent = t && t.mine ? '✓ picked' : 'pick';
-  });
-  document.querySelectorAll('.ep-card .ec-pop.pick').forEach(p => fillPick(p, ROWS.get(p.closest('.ep-card').getAttribute('data-game'))));
-}
-function actsFor(g) {
-  const acts = el('div', 'acts');
-  const chip = (k, t, label) => { const b = el('button', 'ec-chip ' + k, t); b.type = 'button'; b.setAttribute('aria-label', label); return b; };
-  if (watchOf(g)) acts.appendChild(chip('watch', '▶ watch', 'where to watch'));
-  if (g.status !== 'void') acts.appendChild(chip('pick', 'pick', 'who wins? the fans\' picks'));
-  return acts;
-}
+/* watch.js's card, made to fit over a fixture card: the yellow band, the league, how its games can be seen, and up to
+   three links, each in a new tab */
 function fillWatch(pop, g) {
   const w = watchOf(g);
   if (!w) return;
   const KIND = (window.EpinoiaWatch && window.EpinoiaWatch.KIND) || {};
-  pop.innerHTML = '';
-  const hd = el('div', 'ec-hd'); hd.append(el('span', null, 'where to watch'), Object.assign(el('button', 'ec-x', '×'), { type: 'button' }));
-  pop.appendChild(hd);
-  const lg = el('div', 'ec-lg', w.n); lg.setAttribute('translate', 'no');
-  pop.appendChild(lg);
-  const av = el('div', 'ec-av'); av.append(el('b', 'ec-tag k-' + w.k, KIND[w.k] || 'check'), document.createTextNode(' ' + w.a));
-  pop.appendChild(av);
+  pop.textContent = '';
+  const hd = el('div', 'ec-hd');
+  const x = el('button', 'ec-x', '×');
+  x.type = 'button'; x.setAttribute('aria-label', 'close');
+  hd.append(el('span', 'ec-k', '▶ where to watch'), x);
+  const bd = el('div', 'ec-bd');
+  const lg = el('div', 'ec-lg', w.n);
+  lg.setAttribute('translate', 'no');
+  const av = el('div', 'ec-av');
+  av.append(el('b', 'ec-tag k-' + w.k, KIND[w.k] || 'Check listings'), el('span', null, w.a));
   const ls = el('div', 'ec-links');
   (w.l || []).slice(0, 3).forEach(l => {
-    const a = el('a', 'ec-ln', l[0] + ' ↗'); a.href = l[1]; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.setAttribute('translate', 'no');
+    const a = el('a', 'ec-ln', l[0] + ' ↗');
+    a.href = l[1]; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.setAttribute('translate', 'no');
     ls.appendChild(a);
   });
-  pop.appendChild(ls);
+  bd.append(lg, av, ls);
+  pop.append(hd, bd);
 }
-function fillPick(pop, g) {
-  if (!g) return;
-  const t = PRED.get(g.id), p = pcts(t), final = statusOf(g) === 'final';
-  const res = final && g.home_score !== g.away_score ? (+g.home_score > +g.away_score ? 'home' : 'away') : null;
-  const open = !!(t && t.open);
-  pop.innerHTML = '';
-  const hd = el('div', 'ec-hd');
-  hd.append(el('span', null, res && t && t.mine ? (t.mine === res ? '✓ called it' : 'not this time') : open ? 'who wins?' : 'fans picked'),
-            Object.assign(el('button', 'ec-x', '×'), { type: 'button' }));
-  pop.appendChild(hd);
-  const sides = el('div', 'ec-sides');
-  [['home', g.home], ['away', g.away]].forEach(([k, tm], i) => {
-    const b = el('button', 'ec-side ' + k + (t && t.mine === k ? ' mine' : '') + (p && p[i] > p[1 - i] ? ' lead' : '') + (res === k ? ' won' : ''));
-    b.type = 'button'; b.setAttribute('data-side', k); b.disabled = !open;
-    b.append(el('span', 'cd', abbr(tm)), el('b', 'pc', p ? p[i] + '%' : '–'));
-    b.setAttribute('translate', 'no');
-    sides.appendChild(b);
-  });
-  pop.appendChild(sides);
-  const bar = el('div', 'ec-bar'); bar.style.setProperty('--ph', (p ? p[0] : 50) + '%');
-  pop.appendChild(bar);
-  const n = t ? t.home + t.away : 0;
-  const note = el('div', 'ec-note');
-  if (open && !predToken()) {
-    note.append(document.createTextNode((n ? n + (n === 1 ? ' pick · ' : ' picks · ') : '')));
-    const a = el('a', null, 'pick on EPINOIΛ ↗');
-    a.href = new URL('../../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase', location.href).href; a.target = '_blank'; a.rel = 'noopener';
-    note.appendChild(a);
-  } else note.textContent = n ? n + (n === 1 ? ' pick' : ' picks') + (open ? ' · tap a side' : '') : (open ? 'no picks yet · tap a side' : 'no picks');
-  pop.appendChild(note);
-}
-function openPop(cardEl, kind) {
+function openPop(cardEl) {
   closePop();
   const g = ROWS.get(cardEl.getAttribute('data-game'));
-  if (!g) return;
-  const pop = el('div', 'ec-pop ' + kind);
+  if (!g || !watchOf(g)) return;
+  const pop = el('div', 'ec-pop');
   pop.setAttribute('role', 'dialog');
-  if (kind === 'watch') fillWatch(pop, g); else fillPick(pop, g);
-  const hx = (g.home && g.home.colour) || '', ax = (g.away && g.away.colour) || '';
-  if (/^#[0-9a-f]{6}$/i.test(hx)) pop.style.setProperty('--h', hx);
-  if (/^#[0-9a-f]{6}$/i.test(ax)) pop.style.setProperty('--a', ax);
+  pop.setAttribute('data-i18n-ctx', 'watch');      // FREE here is the price (i18n ctx.watch), not a free throw
+  fillWatch(pop, g);
   cardEl.appendChild(pop);
   cardEl.classList.add('popped');
+  const b = cardEl.querySelector('.ec-chip');
+  if (b) { b.classList.add('on'); b.setAttribute('aria-expanded', 'true'); }
   POP.open = true;
   requestAnimationFrame(() => pop.classList.add('on'));
-  if (kind === 'pick') askTally([g.id]);
 }
 function closePop() {
-  document.querySelectorAll('.ep-card .ec-pop').forEach(p => { const c = p.closest('.ep-card'); if (c) c.classList.remove('popped'); p.remove(); });
+  document.querySelectorAll('.fxc .ec-pop').forEach(p => {
+    const c = p.closest('.fxc');
+    if (c) {
+      c.classList.remove('popped');
+      const b = c.querySelector('.ec-chip');
+      if (b) { b.classList.remove('on'); b.setAttribute('aria-expanded', 'false'); }
+    }
+    p.remove();
+  });
   POP.open = false;
 }
-async function pickSide(g, k) {
-  const t = PRED.get(g.id);
-  if (!t || !t.open || !predToken()) return;
-  try {
-    const r = await predRpc('predict_game', { p_game: g.id, p_pick: t.mine === k ? null : k });
-    if (r && r.home != null) PRED.set(g.id, { home: +r.home || 0, away: +r.away || 0, mine: r.mine || null, open: !!r.open });
-  } catch (_) { /* the panel stays as it was */ }
-  paintPicks();
-}
-/* one listener for every card (the rail is rebuilt, and holds each card twice): the buttons and the panels never open
-   the game behind them */
+/* one listener for every card (the rail is rebuilt, and holds each card twice): the pill and its panel never open the
+   game behind them. A link IN the panel opens; the card around it is a link too, so "in the panel" is asked of the
+   link itself. */
 document.addEventListener('click', e => {
   const tgt = e.target;
   const chip = tgt.closest && tgt.closest('.ec-chip');
   const pop = tgt.closest && tgt.closest('.ec-pop');
   if (chip) {
     e.preventDefault(); e.stopPropagation();
-    const c = chip.closest('.ep-card');
-    const kind = chip.classList.contains('watch') ? 'watch' : 'pick';
-    if (c.querySelector('.ec-pop.' + kind)) closePop(); else openPop(c, kind);
+    const c = chip.closest('.fxc');
+    if (c.querySelector('.ec-pop')) closePop(); else openPop(c);
     return;
   }
   if (pop) {
-    if (tgt.closest('a')) return;                                     // a link out: let it open
+    const link = tgt.closest('a');
+    if (link && pop.contains(link)) return;                          // a link out: let it open
     e.preventDefault(); e.stopPropagation();
-    if (tgt.closest('.ec-x')) { closePop(); return; }
-    const side = tgt.closest('.ec-side');
-    if (side && !side.disabled) pickSide(ROWS.get(pop.closest('.ep-card').getAttribute('data-game')), side.getAttribute('data-side'));
+    if (tgt.closest('.ec-x')) closePop();
     return;
   }
   if (POP.open) closePop();
 }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && POP.open) closePop(); });
 
+/* ============================================================================
+   THE CARD IS HOME'S (Louie, 2026-10-08: "these style score cards inside
+   instead, except without the who wins protrusion").
+
+   EpinoiaGlobalGames.card() draws it exactly as it draws HOME's daily fixtures:
+   the league's badge and the state on top; the two clubs side by side, each
+   under an edge of its own colour, with the score or a "v" between them and
+   WATCH under that; when it is, and where. kit/fxc.css styles it on the kit's
+   tokens, which kit/embed.css gives the frame in both themes. The strip adds
+   what only the strip knows:
+
+     * WHAT IS HAPPENING NOW. statusOf() and scoreOf() decide the state and the
+       score (a frame is faster than the table); the clock is the strip's own,
+       counted down from the moment a frame arrived, tenths in the last minute.
+     * THE LINEUPS ARE IN: the state line says so in the lume, the foot offers them.
+     * EACH CLUB'S LETTERS, from abbr() above (HOME's come from initials.js,
+       which a self-contained embed does not load).
+     * WHERE A PRESS GOES: this page on our own pages, a new tab on a club's site.
+     * WATCH, whose panel opens over its own card (above).
+
+   NO WHO WINS? and no WATCH LIVE: the fans' pick hangs below a card, and WATCH
+   LIVE moves the page it is on, which in a frame is the frame.
+   ============================================================================ */
+const SITE = new URL('../../', location.href).href;              // .../epinoia/: where a card's links go
+const nPeriods = g => { const l = leagueOf(g); return l && +l.periods === 2 ? 2 : 4; };
+const liveWords = (g, s) => 'Live' + (s && s.period ? ' · ' + periodLabel(s.period, nPeriods(g)) : '');
+/* the clock under a live score; a period that has run out says so, as HOME's cards do */
+function clockLine(g, s) {
+  const ms = clockNow(s);
+  if (ms == null) return '';
+  return ms === 0 && s.period ? 'End ' + periodLabel(s.period, nPeriods(g)) : fmtClock(ms);
+}
+/* WHAT A CARD IS: its state, its lineups, whether it has a clock, a result's score. paint() draws a card again when
+   this changes, and writes everything else onto the card that is there. */
+function sigOf(g) {
+  const st = statusOf(g);
+  const s = st === 'live' ? LIVE.get(g.id) : null;
+  return st + (lineupsIn(g) ? '+lineups' : '') + (s && clockNow(s) != null ? '+clock' : '') +
+    (st === 'final' ? '+' + scoreOf(g).join('-') : '');
+}
+
 function card(g) {
-  const phase = statusOf(g);
-  const live = phase === 'live', final = phase === 'final';
+  const phase = statusOf(g), live = phase === 'live';
   const primed = lineupsIn(g);
-  const a = document.createElement('a');
-  /* is-primed sits ALONGSIDE is-upcoming rather than replacing it, so every
-     rule an upcoming card already has still applies and this only adds. */
-  a.className = 'ep-card ' + (live ? 'is-live' : final ? 'is-final'
-                                   : primed ? 'is-upcoming is-primed' : 'is-upcoming');
+  const s = live ? LIVE.get(g.id) : null;
+  const [h, aw] = scoreOf(g);
+  const a = window.EpinoiaGlobalGames.card(Object.assign({}, g, { status: phase }), {
+    base: SITE, watch: watchPill, air: false, pick: false,
+    /* running:false: the strip ticks its own clock (paint), so the card is given a reading and no ticker of its own */
+    state: live ? { score_home: h, score_away: aw, period: s && s.period, clock_ms: s ? clockNow(s) : null, running: false } : null
+  });
   /* paint() finds its cards by this, and finds BOTH copies of each — the rail
      holds the list twice so the scroll can wrap invisibly. */
   a.setAttribute('data-game', g.id);
+  a._sig = sigOf(g);
   a.target = linkTarget(); a.rel = 'noopener';
-  a.href = new URL('../../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase',
-                   location.href).href;
 
-  /* THE TWO CLUBS' COLOURS, cut on a diagonal behind the scoreboard (embed.css .half): the
-     home club's on the left, the away club's on the right, each with its second colour as
-     the dot in its corner. A club without colours of its own leaves its half to the
-     league's accent, as the card always was. */
-  const hex = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : null);
-  const hc = hex(g.home && g.home.colour), ac = hex(g.away && g.away.colour);
-  if (hc && hc.toLowerCase() !== '#93f2bf') a.style.setProperty('--h', hc);
-  if (ac && ac.toLowerCase() !== '#93f2bf') a.style.setProperty('--a', ac);
-  if (hex(g.home && g.home.colour_2)) a.style.setProperty('--h2', g.home.colour_2);
-  if (hex(g.away && g.away.colour_2)) a.style.setProperty('--a2', g.away.colour_2);
-  a.append(el('div', 'half h'), el('div', 'half a'), el('div', 'seam'), el('div', 'scrim'));
-
-  /* competition and state, small, above the scoreboard */
-  const meta = el('div', 'meta');
-  meta.appendChild(el('span', 'comp', (g.competitions && g.competitions.name) || 'Fixture'));
-  const st = el('span', 'st');
-  st.setAttribute('data-i18n-ctx', 'status');      // FT here is the final whistle, not free throws
-  if (live) { st.appendChild(el('span', 'dot')); st.appendChild(document.createTextNode('LIVE')); }
-  /* A scheduled fixture is not a placeholder any more — it has a page with the
-     venue, a map and a written preview behind it, and "UPCOMING" said nothing
-     about that. Saying so is the difference between a card people ignore until
-     tip-off and one worth pressing the week before. */
-  /* The same pulsing dot LIVE uses, in the lume rather than the red: this is
-     "any minute now", which is the one other thing on a strip worth a glance
-     stopping for. Reduced motion already stills it (embed.css). */
-  else if (primed) {
-    st.appendChild(el('span', 'dot'));
-    st.appendChild(document.createTextNode(PRIMED_BADGE));
+  const lab = a.querySelector('.fxc-st');
+  if (lab) lab.setAttribute('data-i18n-ctx', 'status');          // FT and the lineups' badge: the game's state
+  /* THE LINEUPS ARE IN. is-primed sits ALONGSIDE is-upcoming rather than replacing it, so every rule an upcoming card
+     has still applies and this only adds. The pulsing dot LIVE has, in the lume rather than the red: this is "any
+     minute now", the one other thing on a strip worth a glance stopping for. */
+  if (primed) {
+    a.classList.add('is-primed');
+    if (lab) { lab.textContent = ''; lab.append(el('span', 'dot'), document.createTextNode(PRIMED_BADGE)); }
+    const go = a.querySelector('.fxc-go');
+    if (go) go.textContent = 'lineups →';
   }
-  else st.textContent = final ? 'FT' : 'PREVIEW & INFO';
-  meta.appendChild(st);
-  a.appendChild(meta);
+  /* the clock is the strip's (clockLine): tenths in the last minute, as a scoreboard does */
+  const clk = a.querySelector('.fxc-clk');
+  if (clk && s) { clk.textContent = clockLine(g, s); clk.classList.toggle('run', !!s.running); }
 
-  /* home | score | away, laid out across as a scoreboard is */
-  const row = el('div', 'row');
-  const side = (t, sc, other) => {
-    const box = el('div', 'tm' + (final ? (sc > other ? ' win' : sc < other ? ' lose' : '') : ''));
-    const cr = el('span', 'crest', abbr(t).slice(0, 2));
-    cr.style.background = (t && t.colour) || '#93f2bf';
-    /* the club's crest where it has one (uploaded, or from its LiveStats feed) */
-    const crestUrl = (t && window.epinoiaLogoUrl) ? window.epinoiaLogoUrl(t.logo_path) : null;
-    if (crestUrl) {
-      const img = document.createElement('img');
-      img.src = crestUrl; img.alt = '';
-      img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;border-radius:inherit;background:#fff';
-      img.addEventListener('error', () => img.remove());
-      cr.textContent = ''; cr.appendChild(img);
-    }
-    box.append(cr, el('span', 'abbr', abbr(t)));
-    box.setAttribute('translate', 'no');           // a club's letters, never a word to translate
-    return box;
-  };
-  row.appendChild(side(g.home, g.home_score, g.away_score));
-
-  const mid = el('div', 'mid');
-  if (live || final) {
-    const [h, aw] = scoreOf(g);
-    mid.appendChild(scoreEl(h, aw));
-  } else {
-    mid.appendChild(el('div', 'vs', 'v'));
-  }
-  mid.appendChild(actsFor(g));                    // WATCH and PICK (above): each opens a panel over this card
-  row.appendChild(mid);
-  row.appendChild(side(g.away, g.away_score, g.home_score));
-  a.appendChild(row);
-
-  /* On a live card the left slot is the game clock, which paint() then keeps
-     ticking. Until a frame arrives it holds the venue, so a game being scored
-     by somebody who is offline still reads sensibly rather than showing an
-     empty gap where a clock should be. */
-  const s = live ? LIVE.get(g.id) : null;
-  const ms = live ? clockNow(s) : null;
-  const when = el('div', 'when');
-  const vn = el('span', 'vn', live
-    ? (ms == null ? (g.venue || 'in progress') : periodLabel(s.period) + ' · ' + fmtClock(ms))
-    : fmtDate(g.tipoff_at));
-  if (live && ms != null) vn.classList.add('clock');
-  when.appendChild(vn);
-  /* Classed so paint() can rewrite it when the lineups land under a strip that
-     is already on screen — which is when they land. */
-  when.appendChild(el('span', 'go',
-    live ? 'watch ↗' : final ? fmtTime(g.tipoff_at)
-      : fmtTime(g.tipoff_at) + (primed ? ' · lineups ↗' : ' · preview ↗')));
-  a.appendChild(when);
+  /* each club's letters under its crest; a club's name and letters are never words to translate */
+  const codes = a.querySelectorAll('.fxc-nm .short');
+  [g.home, g.away].forEach((t, i) => { if (codes[i]) { codes[i].textContent = abbr(t); codes[i].classList.add('is-code'); } });
+  a.querySelectorAll('.fxc-nm').forEach(n => n.setAttribute('translate', 'no'));
   return a;
 }
 
@@ -972,11 +835,15 @@ async function scope() {
   return scopeQ;
 }
 
+/* each game's league: its slug (the league filter, WATCH's data) and what HOME's card draws from it — the badge (its
+   name, colours and logo) and whether its periods are quarters or halves */
+const COMP = 'competitions(name,seasons(leagues(id,slug,name,colour_a,colour_b,colour_source,logo_path,periods:rules->periods)))';
+
 async function load() {
   const sc = await scope();
   const FIELDS = 'games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
     'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
-    'competitions(name,seasons(leagues(slug,name)))';
+    COMP;
   /* WHAT IS NEXT, AND WHAT HAS JUST BEEN. The soonest fixtures still to come (from six hours ago,
      so a game that tipped late or ran long is not dropped), and the latest results. order() below
      puts whichever is nearest to now first. */
@@ -1030,11 +897,11 @@ async function load() {
          this file gets caught. */
       api('games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
           'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
-          'competitions(name,seasons(leagues(slug,name)))' +
+          COMP +
           '&status=eq.live&order=tipoff_at.asc&limit=40' + sc).catch(() => []),
       api('games?select=id,tipoff_at,status,venue,home_score,away_score,starters,' +
           'home:home_team_id(slug,name,short_name,colour,colour_2,logo_path),away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),' +
-          'competitions(name,seasons(leagues(slug,name)))' +
+          COMP +
           '&status=in.(scheduled,finalising,final)' +
           '&tipoff_at=gte.' + encodeURIComponent(nearFrom) +
           '&tipoff_at=lte.' + encodeURIComponent(nearTo) +
@@ -1098,8 +965,10 @@ async function load() {
      in which state. A score is deliberately NOT part of this fingerprint any
      more: paint() writes digits onto the cards that are already there, so a
      basket no longer tears down a rail that is mid-drag, and a poll returning
-     a score a few seconds behind the broadcast can no longer stomp on it. */
-  const key = gs.map(g => g.id + ':' + statusOf(g)).join('|');
+     a score a few seconds behind the broadcast can no longer stomp on it.
+     THE DAY IS, because a card says "Today" and "Tomorrow": a strip left open past
+     midnight is drawn again on its first poll of the new day. */
+  const key = gs.map(g => g.id + ':' + statusOf(g)).join('|') + '|' + new Date().toDateString();
   if (key === lastKey) { paint(); return; }
   lastKey = key;
 
@@ -1116,14 +985,16 @@ async function load() {
     const dup = document.createElement('div');
     dup.style.cssText = 'display:contents';
     dup.setAttribute('aria-hidden', 'true');
-    gs.forEach(g => { const c = card(g); c.tabIndex = -1; dup.appendChild(c); });
+    gs.forEach(g => { const c = card(g); c.tabIndex = -1; quiet(c); dup.appendChild(c); });
     rail.appendChild(dup);
   }
   paint();
   postHeight();
   startMotion();
-  askTally(gs.map(g => g.id));                    // the fans' split for every card (PICK)
 }
+
+/* the loop's second copy is out of the tab order, its WATCH pill as well as the card */
+function quiet(c) { c.querySelectorAll('button').forEach(b => { b.tabIndex = -1; }); }
 
 
 /* ============================================================================
@@ -1378,7 +1249,7 @@ function watching() { return !document.hidden && onScreen; }
 function wake() {
   still();
   if (!watching()) return;
-  if (document.querySelector('#rail .ep-card')) startMotion();   // the drift, where there are fixtures to drift
+  if (document.querySelector('#rail .fxc')) startMotion();   // the drift, where there are fixtures to drift
   clearTimeout(pollTimer);
   load().catch(() => {}).then(schedule);
 }
@@ -1415,3 +1286,9 @@ function schedule() {
 }
 schedule();
 setTimeout(postHeight, 400);
+/* THE BAR IS AS TALL AS ITS CARDS, and they change: a fixture gone live loses its tip-off row, a face arrives, the
+   theme turns. The page it is on is told each time the bar's height actually changes. */
+if (typeof ResizeObserver === 'function') {
+  try { new ResizeObserver(() => postHeight()).observe(document.querySelector('.ep-strip')); }
+  catch (_) { /* told after every render instead */ }
+}

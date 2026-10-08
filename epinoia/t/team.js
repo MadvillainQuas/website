@@ -2847,6 +2847,18 @@ function teamStrip(team, lg) {
   frame.title = team.name + ' fixtures';
   frame.src = src;
   wrap.hidden = false;
+  /* THE STRIP SAYS HOW TALL IT IS: as tall as its cards (HOME's, since 2026-10-08), which this page cannot know. The
+     height it posts is taken from this frame only, and only a sane one, as the league page and embed.js take it. */
+  if (!teamStrip.heard) {
+    teamStrip.heard = true;
+    window.addEventListener('message', ev => {
+      const f = $('#teamStripFrame');
+      if (ev.origin !== location.origin || !f || ev.source !== f.contentWindow) return;
+      const d = ev.data, h = d && d.epinoiaEmbed === 'height' ? Number(d.height) : NaN;
+      /* the frame wears a border and the kit sizes boxes border-box: the border is added, or the strip loses its foot */
+      if (isFinite(h) && h >= 60 && h <= 400) f.style.height = (Math.ceil(h) + f.offsetHeight - f.clientHeight) + 'px';
+    });
+  }
   /* not drawn while the reader is a screen or more from it (teamcolour.js drawDistance) */
   const TC = window.EpinoiaTeamColour;
   if (TC && TC.drawDistance) TC.drawDistance(frame);
