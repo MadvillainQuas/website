@@ -86,7 +86,10 @@ function brief(S, d, B) {
     /* the league's What wins weights (game.js ensureWinModel, 2026-10-07): story.js weighs the four factors by them */
     model: S.winModel || null,
     /* the game in its season (context.js, game.js ensureGameContext): null until it lands, and at the break */
-    ctx: S.ctx || null
+    ctx: S.ctx || null,
+    /* what the week's preview said of this game (story.js previewFor, game.js ensurePreview; the edge function reads the
+       league's newsdesk file itself): null when no preview named it */
+    preview: S.preview || null
   };
 }
 

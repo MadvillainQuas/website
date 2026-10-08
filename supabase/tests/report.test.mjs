@@ -762,5 +762,44 @@ ok('...and drives the same engine the browser does',
 }
 
 
+/* ---- what the week's preview said, read back against the game (2026-10-08) -------------------------------------
+   The newsdesk's games-to-watch piece keeps, for each of its games, the favourite, the reason with its season figure and
+   the player it named (newsroom.js fWatch); story.js previewFor finds the piece that named this game and turns its clubs
+   into the game's sides, previewCall reads the game against it, report.js says it. Held here: the claims, both ways. */
+console.log('\nwhat the preview said');
+{
+  const desk = { articles: [
+    { kind: 'slump', id: 'x' },
+    { kind: 'watch', id: 'watch:2026-41', head: 'A big week', games: [
+      { game: 'G1', home: 'H', away: 'A', top: true, lean: { favourite: 'H', margin: 3.1 },
+        reason: { key: 'H:glass', slot: 'reason.glass', a: { team: 'H', label: 'of their misses rebounded', value: '30.0%', rank: 1, of: 10 }, b: { team: 'A', label: 'offensive rebounds allowed', value: '33.4%', rank: 9, of: 10 } },
+        player: { pid: 'a1', name: 'Toby Ashworth', team: 'H', line: 'averaging 17 a night so far' } },
+      { game: 'G2', home: 'X', away: 'Y', top: false, lean: null, reason: null, player: null }] }] };
+  const P = Story.previewFor(desk, 'G1', 'H', 'A');
+  ok('previewFor finds the piece that named the game and turns its clubs into sides (0 the hosts)',
+    P && P.top && P.lean && P.lean.fav === 0 && P.reason && P.reason.o === 0 && P.reason.d === 1 && P.player && P.player.side === 0, JSON.stringify(P));
+  ok('...and a game no preview named has none', Story.previewFor(desk, 'G9', 'H', 'A') === null && Story.previewFor(null, 'G1', 'H', 'A') === null);
+  ok('...nor does a piece whose clubs are not this game\'s two', (() => { const q = Story.previewFor(desk, 'G1', 'Q', 'R'); return !q || (!q.lean && !q.reason && !q.player); })());
+
+  const sec = r => (r.sections.find(x => x.heading === 'What the preview said') || { paras: [] }).paras.join(' ');
+  const won = Report.report(game({ preview: P }));
+  const tw = sec(won);
+  ok('the report reads the preview back in a section of its own', tw.length > 0, won.sections.map(x => x.heading).join(' | '));
+  ok('...the top game said as the week\'s game to watch', /week.s game to watch|game of the week/.test(tw), tw);
+  ok('...the favourite that won said to have delivered', /slight favourites, and they delivered/.test(tw) && /Neon City/.test(tw), tw);
+  ok('...the reason read against this game: the glass, 34% of the misses back (30% the season), so it held', /offensive glass, and Neon City did: 34% of their misses/.test(tw), tw);
+  ok('...the player it named, with this game\'s points from the box (24) against his 17 coming in', /Toby Ashworth/.test(tw) && /\b24\b/.test(tw) && /well above the 17 a night/.test(tw), tw);
+  ok('...and nothing in it the facts check refuses', Report.verifyClaims(game({ preview: P }), Story.facts(game({ preview: P })), tw).length === 0);
+
+  const up = Report.report(game({ preview: Object.assign({}, P, { lean: { fav: 1, margin: 9 } }) }));
+  const tu = sec(up);
+  ok('an upset is said plainly: the big favourites lost, and who had other ideas', /big favourites; Neon City had other ideas/.test(tu) && /Harbour Bay/.test(tu), tu);
+  const cold = Report.report(game({ preview: Object.assign({}, P, { reason: Object.assign({}, P.reason, { a: Object.assign({}, P.reason.a, { value: '45.0%' }) }) }) }));
+  ok('a reason the game did not bear out is said so (34% against a 45% season)', /closed out possessions/.test(sec(cold)), sec(cold));
+  const none = Report.report(game());
+  ok('no preview, no section', !none.sections.some(x => x.heading === 'What the preview said'));
+}
+
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

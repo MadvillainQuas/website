@@ -644,6 +644,16 @@ Deno.serve(async (req) => {
         try {
           (brief as any).ctx = await seasonContext(admin, g, d.score, (brief as any).model ?? null);
         } catch (e) { console.error('[finalise] the season around the game:', String(e)); }
+        /* THE WEEK'S PREVIEW OF THIS GAME (2026-10-08): the newsdesk's games-to-watch piece that named it, in the league's
+           public newsdesk file (snapshots/narrative/<league>.json), turned into the game's sides by story.js previewFor
+           (side 0 the hosts, as on the page); the report reads it back against the game (What the preview said). None: as
+           before */
+        try {
+          const { data: nf } = await admin.storage.from('snapshots').download('narrative/' + target.league_id + '.json');
+          const desk = nf ? JSON.parse(await nf.text()) : null;
+          const St = (globalThis as any).EpinoiaStory;
+          if (desk && St && St.previewFor) (brief as any).preview = St.previewFor(desk, gameId, g.home_team_id, g.away_team_id);
+        } catch (_) { /* the report without its preview */ }
         const rep = buildReport(brief);
         const slug = reportSlug(gameId);
         const { error } = await admin.from('news_articles').upsert({

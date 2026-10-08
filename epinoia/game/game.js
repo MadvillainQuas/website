@@ -431,6 +431,7 @@ const BODIES = {
     ensureSeasonPositions();
     ensureWinModel();
     ensureGameContext();          // the season around it (context.js): drawn again when it lands
+    ensurePreview();              // the week's preview of this game (the newsdesk): drawn again when it lands
     const strip = squadsHTML(d);
     setTimeout(squadPhotos, 0);
     return strip ? html.replace('</p></div>', '</p></div>' + strip) : html;   // the standfirst is the last thing in .rep-head
@@ -647,6 +648,21 @@ function ensureWinModel() {
 /* THE LEAGUE'S NEWSDESK, FOR A FIXTURE (narrative.js, built hourly into the public snapshots/narrative/<league>.json): the
    storylines this game touches - a run on the line, a scorer's streak, a first win to chase - from the slate's threads, for
    the preview. One read of a public file a page; the preview draws without it. */
+/* THE WEEK'S PREVIEW OF THIS GAME, FOR THE MATCH REPORT (2026-10-08): the newsdesk's games-to-watch piece that named it, what
+   it said - the favourite, the reason, the player - turned into the game's sides by story.js previewFor() and kept on
+   S.preview; the report reads it back against the game (What the preview said) and is drawn again when it lands. */
+let previewAsked = false;
+function ensurePreview() {
+  const S = window.S, St = window.EpinoiaStory;
+  if (previewAsked || !S || !S.meta || !St || !St.previewFor) return;
+  previewAsked = true;
+  ensureDesk().then(b => {
+    const p = b ? St.previewFor(b, gameId, S.meta.homeTeamId, S.meta.awayTeamId) : null;
+    if (!p) return;
+    S.preview = p;
+    if (fTab === 'report') { lastBodyKey = ''; renderBody(); }
+  }).catch(() => {});
+}
 let deskP = null;
 function ensureDesk() {
   if (deskP) return deskP;

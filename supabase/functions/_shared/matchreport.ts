@@ -70,6 +70,9 @@ export function gameBrief(game: any, d: any, TA: any[], lineupAgg: Function, met
     connections: tabs?.connections ?? null,
     clock: tabs?.clock ?? null,
     atop: tabs?.atop ?? null,
+    /* what the week's preview said of the game (gamefacts.js carries the same): finalise reads the league's newsdesk file
+       and sets it after this (story.js previewFor); null here */
+    preview: null,
     /* venue, crowd, date and competition for the dateline; null when the
        caller has none, and the report simply opens without one */
     meta: meta ? {

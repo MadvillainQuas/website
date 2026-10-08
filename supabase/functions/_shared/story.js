@@ -1670,11 +1670,91 @@ function scout(g, opts) {
            margin: Math.abs(g.score[0] - g.score[1]) };
 }
 
+/* ============================================================ the preview ===
+   THE WEEK'S PREVIEW, AND HOW IT PLAYED OUT (Louie, 2026-10-08: "integrate these with the match report"). The newsroom's
+   games-to-watch piece (newsroom.js fWatch, in the league's public newsdesk file) keeps what it said of each of its games:
+   the favourite and by how much, the reason with its two season figures, the player it named. previewFor() finds the piece
+   that named this game and turns its clubs into the game's sides (0 the hosts, 1 the visitors); previewCall() reads the game
+   against it - did the favourite win, did the reason decide anything, what the named player did. Facts only: report.js says
+   them (sectionPreview), and nothing here is said when the brief has no preview. */
+const PV_SLOTS = /^reason\.(run|runWall|rim|rimWall|three|threeWall|glass|ball|tempo|duel|spot)$/;
+function previewFor(desk, gameId, homeId, awayId) {
+  const arts = desk && Array.isArray(desk.articles) ? desk.articles : [];
+  const side = id => (id != null && String(id) === String(homeId) ? 0 : id != null && String(id) === String(awayId) ? 1 : null);
+  const fig = f => (f ? { label: String(f.label || ''), value: String(f.value == null ? '' : f.value), rank: num(f.rank), of: num(f.of) } : null);
+  for (const a of arts) {
+    if (!a || a.kind !== 'watch' || !Array.isArray(a.games)) continue;
+    const x = a.games.find(y => y && String(y.game) === String(gameId));
+    if (!x) continue;
+    const out = { id: a.id || null, head: a.head || null, top: !!x.top, lean: null, reason: null, player: null };
+    if (x.lean && side(x.lean.favourite) != null && num(x.lean.margin) != null) out.lean = { fav: side(x.lean.favourite), margin: num(x.lean.margin) };
+    const r = x.reason;
+    if (r && PV_SLOTS.test(String(r.slot || '')) && r.a && r.b && side(r.a.team) != null && side(r.b.team) != null) {
+      out.reason = { slot: r.slot, o: side(r.a.team), d: side(r.b.team), a: fig(r.a), b: fig(r.b) };
+    }
+    if (x.player && x.player.name && side(x.player.team) != null) {
+      out.player = { side: side(x.player.team), name: String(x.player.name), pid: x.player.pid || null, line: x.player.line || null };
+    }
+    return out;
+  }
+  return null;
+}
+/* a season figure as the preview printed it ("19.5%", "1.14", "+3.2", "72.4") */
+const pvNum = s => { const m = /[-−]?\d+(?:\.\d+)?/.exec(String(s == null ? '' : s)); return m ? +m[0].replace('−', '-') : null; };
+function previewCall(g) {
+  const P = g && g.preview;
+  if (!P || !g.score || g.score[0] === g.score[1]) return null;
+  const w = g.score[0] > g.score[1] ? 0 : 1, margin = Math.abs(g.score[0] - g.score[1]);
+  const out = { top: !!P.top, winner: w, margin, lean: null, reason: null, player: null };
+  if (P.lean) {
+    const m = P.lean.margin, band = m < 2 ? 'tossup' : m < 4.5 ? 'slight' : m < 8 ? 'clear' : 'heavy';
+    out.lean = { fav: P.lean.fav, band, won: P.lean.fav === w, close: margin <= 6 };
+  }
+  const R = P.reason, A = g.adv || [], T = g.sits || null;
+  if (R && A[R.o] && A[R.d]) {
+    const kind = R.slot.replace(/^reason\./, ''), O = A[R.o], season = pvNum(R.a.value);
+    const sitLine = (t, k) => (T && T[t] && T[t][k] && T[t].all && T[t].all.chances ? { pts: T[t][k].pts || 0, chances: T[t][k].chances || 0, freq: 100 * (T[t][k].chances || 0) / T[t].all.chances } : null);
+    let c = null;
+    if (kind === 'run' || kind === 'runWall') {
+      const s = sitLine(R.o, 'transition');
+      if (s && season != null) c = { kind, freq: s.freq, pts: s.pts, chances: s.chances, season,
+        held: kind === 'run' ? (s.freq >= 0.9 * season || s.pts >= 15) : s.freq < season && s.pts < 15 };
+    } else if (kind === 'rim' || kind === 'rimWall') {
+      const twos = (num(O.fga) || 0) - (num(O.fg3a) || 0), placed = (num(O.rimA) || 0) + (num(O.midA) || 0);
+      if (twos > 0 && placed / twos >= 0.6 && num(O.rimr) != null && season != null) c = { kind, share: O.rimr, acc: num(O.rimp), season,
+        held: kind === 'rim' ? O.rimr >= 0.9 * season : O.rimr < season };
+    } else if (kind === 'three' || kind === 'threeWall') {
+      const allowed = pvNum(R.b.value);
+      if (num(O.p3r) != null && num(O.p3p) != null && num(O.fg3a) >= 8) c = { kind, share: O.p3r, acc: O.p3p, season, allowed,
+        held: kind === 'three' ? O.p3p >= 35 : O.p3p < (allowed != null ? allowed + 2 : 33) };
+    } else if (kind === 'glass') {
+      if (num(O.orebp) != null && season != null) c = { kind, rate: O.orebp, season, held: O.orebp >= 0.9 * season };
+    } else if (kind === 'ball') {
+      if (num(O.tovp) != null && season != null) c = { kind, rate: O.tovp, season, held: O.tovp >= season };
+    } else if (kind === 'tempo') {
+      const fast = season, slow = pvNum(R.b.value), pace = num(O.pace);
+      if (pace != null && fast != null && slow != null) c = { kind, pace, fast, slow, held: Math.abs(pace - fast) < Math.abs(pace - slow) };
+    } else if (kind === 'duel' || kind === 'spot') {
+      const find = n => (g.players || []).find(p => p && String(p.name || '').toLowerCase() === String(n || '').toLowerCase());
+      const p1 = find(R.a.label), p2 = find(R.b.label);
+      if (p1 && p2) c = { kind, p1: { name: p1.name, side: p1.team, pts: p1.pts || 0 }, p2: { name: p2.name, side: p2.team, pts: p2.pts || 0 }, held: (p1.pts || 0) >= (p2.pts || 0) };
+    }
+    if (c) out.reason = Object.assign(c, { o: R.o, d: R.d });
+  }
+  if (P.player) {
+    const byId = P.player.pid && g.byId ? g.byId[P.player.pid] : null;
+    const p = byId || (g.players || []).find(q => q && String(q.name || '').toLowerCase() === P.player.name.toLowerCase());
+    const avg = P.player.line ? pvNum(P.player.line) : null;
+    if (p && p.min && p.team === P.player.side) out.player = { side: p.team, name: p.name, pts: p.pts || 0, reb: (p.or || 0) + (p.dr || 0), ast: p.ast || 0, avg, mins: num(p.min) };
+  }
+  return out.lean || out.reason || out.player ? out : null;
+}
+
 /* FACTS ONLY. The prose that reads these lives in report.js, deliberately
    behind a seam: everything here is numbers with names attached and can be
    tested for being right, everything there is phrasing and cannot. It is also
    where a language model would be handed the brief. */
-return { facts, scout, SCOUT, F, esc, num, one, pct1, mins, ordinal, plural, facetOf, FACET_LABEL,
+return { facts, scout, SCOUT, F, esc, num, one, pct1, mins, ordinal, plural, facetOf, FACET_LABEL, previewFor, previewCall,
          __x: { factResult, factQuarters, factFlow, factFactors,
                 factLineups, factPlayers, factTeamShape,
                 factDefence, factFouls, factPassing, factZones,

@@ -2758,6 +2758,66 @@ function verifyClaims(g, fs, text) {
   return found;
 }
 
+/* ============================================================ the preview ===
+   WHAT THE PREVIEW SAID, AND HOW IT PLAYED OUT (Louie, 2026-10-08: "integrate these with the match report"). When the
+   newsdesk's games-to-watch piece for the week named this game, story.js previewCall() reads the game against what it said
+   - the favourite and by how much, the reason it gave with its season figure, the player it named - and this says it in one
+   paragraph. Plain about a preview that was wrong (an upset is the better story), and never a figure the game does not hold:
+   every number is this game's, or the season figure the preview printed. */
+function sectionPreview(g, fs, R) {
+  const st = S();
+  let c = null;
+  try { c = st.previewCall ? st.previewCall(g) : null; } catch (_) { c = null; }
+  if (!c) return [];
+  const w = c.winner, m = c.margin, seed = 'pv' + g.names.join('') + g.score.join('');
+  const pc = x => Math.round(x) + '%';
+  const bits = [c.top ? pickVaried(seed + 'o', ['The newsdesk picked this as the week\u2019s game to watch.', 'This was the newsdesk\u2019s game of the week.'])
+    : pickVaried(seed + 'o', ['The newsdesk had this among the week\u2019s games to watch.', 'It was one of the newsdesk\u2019s games to watch this week.'])];
+  const Ln = c.lean;
+  if (Ln) {
+    const F = nm(g, Ln.fav), word = { slight: 'slight', clear: 'clear', heavy: 'big' }[Ln.band];
+    if (Ln.band === 'tossup') {
+      bits.push(Ln.close ? 'It called it a coin flip, and it was one: ' + nm(g, w) + ' won by ' + plural(m, 'point') + '.'
+        : 'It called it a coin flip; ' + nm(g, w) + ' made it anything but, winning by ' + plural(m, 'point') + '.');
+    } else if (Ln.won) bits.push('It had ' + F + ' as ' + word + ' favourites, and they delivered' + (m >= 15 ? ', by ' + plural(m, 'point') : '') + '.');
+    else bits.push('It had ' + F + ' as ' + word + ' favourites; ' + nm(g, w) + ' had other ideas' + (m >= 10 ? ', winning by ' + plural(m, 'point') : '') + '.');
+  }
+  const r = c.reason;
+  if (r) {
+    const O = nm(g, r.o), D = nm(g, r.d), held = !!r.held;
+    const line = {
+      run: () => (held ? 'It said ' + O + ' would want to run against a ' + D + ' side that has been easy to run on, and ' + O + ' did: ' + plural(r.pts, 'point') + ' on the break, from ' + pc(r.freq) + ' of their chances (' + pc(r.season) + ' this season).'
+        : 'It said ' + O + ' would want to run; ' + D + ' kept them in the half court, to ' + pc(r.freq) + ' of their chances on the break (' + pc(r.season) + ' this season).'),
+      runWall: () => (held ? 'It said ' + D + ' would be hard to run on, and ' + D + ' were: ' + O + ' got ' + pc(r.freq) + ' of their chances on the break, under their ' + pc(r.season) + ' this season.'
+        : 'It said ' + D + ' would be hard to run on, but ' + O + ' got out anyway: ' + plural(r.pts, 'point') + ' on the break.'),
+      rim: () => (held ? 'It said ' + O + ' would live at the rim against a ' + D + ' side that gives up the paint, and ' + pc(r.share) + ' of ' + possOf(O) + ' shots came there' + (r.acc != null ? ', made at ' + pc(r.acc) : '') + '.'
+        : 'It said ' + O + ' would attack the rim; ' + D + ' kept them out, to ' + pc(r.share) + ' of their shots at the rim (' + pc(r.season) + ' this season).'),
+      rimWall: () => (held ? 'It said ' + D + ' would wall off the rim, and ' + D + ' did: ' + O + ' took ' + pc(r.share) + ' of their shots there (' + pc(r.season) + ' this season).'
+        : 'It said ' + D + ' would wall off the rim; ' + O + ' got there anyway, ' + pc(r.share) + ' of their shots' + (r.acc != null ? ', made at ' + pc(r.acc) : '') + '.'),
+      three: () => (held ? 'It said ' + O + ' would let it fly against a ' + D + ' side that gives up threes, and ' + O + ' made them count: ' + pc(r.acc) + ' from three.'
+        : 'It said ' + O + ' would let it fly against ' + D + '; ' + O + ' did, but made only ' + pc(r.acc) + ' from three.'),
+      threeWall: () => (held ? 'It said ' + D + ' would take the three away, and ' + O + ' shot ' + pc(r.acc) + ' from deep.'
+        : 'It said ' + D + ' would take the three away; ' + O + ' made ' + pc(r.acc) + ' from deep regardless.'),
+      glass: () => (held ? 'It said ' + O + ' would hurt ' + D + ' on the offensive glass, and ' + O + ' did: ' + pc(r.rate) + ' of their misses came back to them.'
+        : 'It said ' + O + ' would hurt ' + D + ' on the offensive glass; ' + D + ' closed out possessions, giving up ' + pc(r.rate) + ' of the misses.'),
+      ball: () => (held ? 'It said ' + O + ' would have to look after the ball against ' + D + '; ' + O + ' did not, turning it over on ' + pc(r.rate) + ' of their possessions.'
+        : 'It said ' + O + ' would have to look after the ball against ' + D + ', and ' + O + ' did: a ' + pc(r.rate) + ' turnover rate, under their ' + pc(r.season) + ' this season.'),
+      tempo: () => 'It said ' + O + ' would want it fast and ' + D + ' slow; it ran at ' + Math.round(r.pace) + ' possessions, ' + (held ? 'nearer ' + possOf(O) + ' pace' : 'nearer ' + possOf(D)) + '.',
+      duel: () => duelLine(r), spot: () => duelLine(r)
+    };
+    const duelLine = x => 'It picked out ' + esc(tc(x.p1.name)) + ' against ' + esc(tc(x.p2.name)) + ': ' + esc(tc(x.p1.name)) + ' scored ' + x.p1.pts + ', ' + esc(tc(x.p2.name)) + ' ' + x.p2.pts + '.';
+    const k = line[r.kind];
+    if (k) bits.push(k());
+  }
+  const p = c.player;
+  if (p) {
+    const n = esc(tc(p.name)), avg = p.avg;
+    const vs = avg == null ? '' : p.pts >= avg + 4 ? ', well above the ' + avg + ' a night coming in' : p.pts <= avg - 4 ? ', short of the ' + avg + ' a night coming in' : ', about the ' + avg + ' a night coming in';
+    bits.push(pickVaried(seed + 'p', ['The name it gave to watch: ' + n + ', who scored ' + p.pts + vs + '.', 'Its player to watch, ' + n + ', finished with ' + plural(p.pts, 'point') + vs + '.']));
+  }
+  return bits.length > 1 ? [bits.join(' ')] : [];
+}
+
 /* ============================================================== revising ===
    THE REPORT IS NOT LEFT AS FIRST WRITTEN. Every paragraph goes through language.js revise(): it is scored on the 0-100 scale
    (grammar, length, rhythm, density, repetition, filler), and while it is below the target the reviser tries each repair it
@@ -2825,6 +2885,8 @@ function report(g) {
      with no possessions to count gets the older four-factor accounting under its old heading */
   const hasLedger = fs.some(f => f.kind === 'ledger' && f.data.winner != null);
   addCapped(hasLedger ? 'What decided it' : 'What the four factors were worth', sectionLedger(g, fs, R), hasLedger ? 'ledger' : 'pointsAdded');
+  /* the week's preview of this game, read back against it (the newsdesk's games to watch, story.js previewCall) */
+  addCapped('What the preview said', sectionPreview(g, fs, R), null);
   addCapped('The numbers that decided it', sectionNumbers(g, fs, R), 'factors');
   addCapped('How the ball moved', sectionPassing(g, fs, R), null);
   addCapped('Play types and rebounds', sectionPlayTypes(g, fs, R), null);
@@ -2856,7 +2918,7 @@ function plain(g) {
 }
 
 return { report, plain, headline, standfirst, five, halftime, verifyClaims,
-         __x: { sectionFlow, sectionNumbers, sectionFactors, sectionPassing, sectionPlayTypes, sectionClock, sectionLineups, sectionPlayers, makeRef, joinSentences } };
+         __x: { sectionFlow, sectionNumbers, sectionFactors, sectionPassing, sectionPlayTypes, sectionClock, sectionLineups, sectionPlayers, sectionPreview, makeRef, joinSentences } };
 }));
 
 /* ---------------------------------------------------------------------------
