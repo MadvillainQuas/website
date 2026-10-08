@@ -344,10 +344,19 @@ function render(g, rep, opts) {
   const c = o.colours || [];
   const tableSec = '<div class="rsec rsec-table" id="repTable"' + (o.tableHTML ? '' : ' hidden') + '>' +
     '<h2>The table</h2>' + (o.tableHTML || '') + '</div>';
-  const secs = rep.sections.map((s, i) => {
+  /* THE REPORT AS ONE PIECE (report.js onePiece, game/matchwriter.js): one column of prose, no headings, each graphic straight
+     after the paragraph it proves and the table after the opening paragraph, as a match report in a paper is laid out. */
+  const flowTable = '<div class="rcard rflow-table" id="repTable"' + (o.tableHTML ? '' : ' hidden') + '>' +
+    '<div class="rcard-h">The table</div>' + (o.tableHTML || '') + '</div>';
+  const secs = rep.onePiece
+    ? '<section class="rsec rsec-flow">' + rep.sections.map((s, i) => {
+        const card = CARDS[s.card] ? CARDS[s.card](g, rep.facts, rep) : '';
+        return '<div class="rprose">' + s.paras.map(p => '<p>' + p + '</p>').join('') + '</div>' + card + (i === 0 && !rep.half ? flowTable : '');
+      }).join('') + '</section>'
+    : rep.sections.map((s, i) => {
     const card = CARDS[s.card] ? CARDS[s.card](g, rep.facts, rep) : '';
     return '<section class="rsec">' +
-      '<h2>' + esc(s.heading) + '</h2>' +
+      (s.heading ? '<h2>' + esc(s.heading) + '</h2>' : '') +
       '<div class="rprose">' + s.paras.map(p => '<p>' + p + '</p>').join('') + '</div>' +
       card +
     '</section>' + (i === 0 && !rep.half ? tableSec : '');

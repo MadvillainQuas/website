@@ -377,6 +377,12 @@
           mask:repeating-linear-gradient(90deg,#000 0 7px,transparent 7px 9px) }
 .rprose{ max-width:66ch; margin:0 auto }
 .rprose p{ color:var(--ink-2) }
+/* the report as one piece (reportview.js onePiece): one panel, paragraph after paragraph, each graphic after the one it proves */
+.rsec-flow .rprose + .rprose{ margin-top:16px }
+.rsec-flow .rcard{ max-width:72ch; margin:20px auto 24px }
+.rsec-flow > .rcard:last-child{ margin-bottom:0 }
+.rsec-flow .rflow-table[hidden]{ display:none }
+.rsec-flow .rprose:first-child p:first-child::first-line{ font-weight:600; color:var(--ink) }
 .rcard{ border-radius:0; border:1px solid var(--rule-2,var(--line)); background:var(--ground,transparent);
   box-shadow:inset 4px 0 0 #0a0a0a }
 .rcard-h{ display:inline-block; padding:3px 8px; background:#0a0a0a; color:#ffe14d; margin-bottom:14px }

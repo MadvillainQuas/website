@@ -25,6 +25,10 @@ import '../_shared/gamepct-data.js';   // side effect: globalThis.EpinoiaGamePct
 import '../_shared/gamepct.js';        // side effect: globalThis.EpinoiaGamePct, which story.js's scout grades with
 import '../_shared/language.js';     // side effect: globalThis.EpinoiaLanguage, which report.js writes with (rules, critic, reviser)
 import '../_shared/story.js';
+// the report as one piece (2026-10-08): the newsroom's voice, its editor and the match writer, before report.js reads them
+import '../_shared/voice.js';
+import '../_shared/scrutiny.js';
+import '../_shared/matchwriter.js';
 import { report as buildReport } from '../_shared/report.js';
 import { seasonContext } from '../_shared/gamecontext.ts';   // the season around the game, for the article (2026-10-07)
 import { gameBrief, articleBody, reportSlug } from '../_shared/matchreport.ts';

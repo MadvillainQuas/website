@@ -31,7 +31,9 @@ const G = path.join(ROOT, 'epinoia', 'game');
 globalThis.EpinoiaStory = require(path.join(G, 'story.js'));
 const Story = globalThis.EpinoiaStory;
 globalThis.EpinoiaLanguage = require(path.join(G, 'language.js'));
-const Report = require(path.join(G, 'report.js'));
+/* the SECTIONED report (the writer for a tie, or a page without the voice): what this file's tests read. The report as one
+   piece, the one written today, has its own: supabase/tests/onepiece.test.mjs */
+const Report = (R => Object.assign({}, R, { report: g => R.report(g, { legacy: true }), plain: g => R.plain(g, { legacy: true }) }))(require(path.join(G, 'report.js')));
 const View = require(path.join(G, 'reportview.js'));
 
 let pass = 0, fail = 0;

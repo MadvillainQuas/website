@@ -300,6 +300,57 @@ const S = {
   ]
 };
 
+/* THE REPORT AS ONE PIECE (game/matchwriter.js, 2026-10-08): not a list kept by hand but every option of every slot of the
+   match writer's phrasebook, said the way the writer says it - by the voice (voice.js), with its joins in each of their forms
+   (a handful of seeds), the clubs and players named, and again as "they" / "he" / "she" after a sentence about the same
+   one. A sentence added to the phrasebook is in this test the moment it is written. */
+{
+  globalThis.EpinoiaVoice = require(path.join(EP, 'voice.js'));
+  const MWr = require(path.join(EP, 'game', 'matchwriter.js'));
+  const V = globalThis.EpinoiaVoice;
+  V.extend(MWr.BANK);
+  const ctx = gd => ({
+    W: V.club('Neon City', { id: 'w', short: 'City' }), L: V.club('Harbour Bay', { id: 'l', short: 'Bay' }),
+    T: V.club('Neon City', { id: 'w', short: 'City' }), O: V.club('Harbour Bay', { id: 'l', short: 'Bay' }),
+    P: V.person('Ada Shaw', { id: 'p', g: gd }), Q: V.person('Bo Lind', { id: 'q', g: gd }),
+    He: gd === 'f' ? 'She' : 'He', he: gd === 'f' ? 'she' : 'he', his: gd === 'f' ? 'her' : 'his', he2: gd === 'f' ? 'she' : 'he',
+    score: '84–71', margin: 13, marginWords: 'thirteen', where: 'at home on Saturday', secs: 'eight seconds', what: 'a three',
+    deficit: 'eleven', deficitCap: 'Eleven', attempt: 'third', gpWords: 'three games', wWords: 'six games', n: 'five', rankW: 'ninth',
+    rankL: 'second', wNth: 'sixth', ppts: '31 points', runWhen: 'late in', runWhenCap: 'Late in', period: 'third', nWords: 'fourteen',
+    dur: 'six minutes', swing: 'eleven', halfLead: 'twelve', totalWords: '40', maxW: 22, lWords: 'five', to: 'third', rec: '9–2',
+    startGap: 9, startWords: 'nine', q1: '24–17', h1: '38–26', by: 20, at5: '66–60', lead5: 'ten', late: '12–4', ftWords: 'four',
+    left: '1:23', trailMins: 'two minutes', ledWords: '38', regScore: '76–76', regEnd: 'after four quarters', otScore: '11–4',
+    otsWords: 'two', tov: 19, tovW: 'eight', pot: 18, sb: 15, stl: 'nine', blk: 'six', oppFg: 31, orb: 'fourteen', sc: 16, reb: '49–31',
+    paint: '40–12', m: 'six', a: 30, m2: 'two', a2: 30, ftm: 'nine', fta: 20, ftaL: 11, missWords: 'eleven', fast: '17–7', bench: '30–8',
+    ast: 27, fgm: 9, fgmWords: 'nine', fga: 15, avg: 12, line: '16 points and six assists', ln: '16 points',
+    five: 'Rupnik, Toma, Villalobos, Mititelu and Mason', pm: 11, day: 'Saturday 10 October', dayW: 'Saturday 10 October',
+    dayL: 'Sunday 11 October', dayT: 'Saturday 10 October', nextW: 'host Leicester Riders', nextL: 'go to London Lions',
+    nextT: 'host Leicester Riders', total: 15, recW: '4–1', recL: '0–5', s1: '3 of 12', s2: '2 of 13', rest: 'nine rebounds and four assists',
+    /* the score a run moved (runScores), how close a fightback got, the second half's margin, the lead a run answered */
+    before: '48–42', after: '62–42', within: 'four', secondHalf: 'fourteen', gapWords: 'six', nWordsCap: 'Fourteen'
+  });
+  V.extend({ 'test.club': [{ say: ['{W} beat {L} 84–71.'] }], 'test.player': [{ say: ['{P} scored 20 points for {W}.'] }] });
+  const got = new Set();
+  let k = 0;
+  Object.keys(MWr.BANK).forEach(slot => MWr.BANK[slot].forEach(e => e.say.forEach(o => {
+    const id = 'test.o' + (++k);
+    V.extend({ [id]: [{ say: [o] }] });
+    ['m', 'f'].forEach(gd => [0, 1, 2, 3, 4, 5].forEach(seed => {
+      const c = ctx(gd);
+      const a = V.writer('i18n|' + id + gd + seed).say(id, c);
+      if (a) got.add(a);
+      /* after a sentence about the club, and one about the player: where the writer would say "they", "he" or "she" */
+      [['test.club'], ['test.player']].forEach(([lead]) => {
+        const w2 = V.writer('i18n2|' + id + gd + seed + lead);
+        w2.say(lead, c);
+        const b = w2.say(id, c);
+        if (b) got.add(b);
+      });
+    }));
+  })));
+  S.onePiece = [...got];
+}
+
 /* a translation that still carries four English words in a row has left part of the sentence behind */
 const ENGLISH_RUN = /\b(?:the|and|of|to|in|for|with|was|were|their|they|points|game|games|season|league|won|lost)\b(?:\W+[a-z’']+){3}/i;
 const NAMES = ['Neon City', 'Harbour Bay', 'Bristol Flyers', 'Cheshire Phoenix', 'Ada Shaw', 'Bo Lind', 'Maeve St John', 'Shaw', 'Sporting CP'];

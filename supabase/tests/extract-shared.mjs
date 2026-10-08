@@ -132,6 +132,28 @@ const FILES = [
     global: 'EpinoiaStory',
     names: ['facts', 'F', 'esc', 'num', 'one', 'pct1', 'mins', 'ordinal', 'plural']
   },
+  /* THE REPORT AS ONE PIECE (2026-10-08): the newsroom's house voice, its editor and the match writer's phrasebook, so the
+     article finalise-game files reads exactly as the game page's report. report.js finds them on globalThis; the voice's
+     jsRealB is not loaded in the function (nor on the page), so the canned sentences and their joins are said. */
+  {
+    src: join(repo, 'epinoia', 'voice.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'voice.js'),
+    global: 'EpinoiaVoice',
+    names: ['writer', 'options', 'extend', 'stakes', 'proof', 'club', 'person', 'cl', 'join', 'rel', 'part', 'frac', 'avg', 'spell', 'spellOut',
+            'nth', 'cap', 'article', 'possOf', 'surname', 'BANK', 'grammar']
+  },
+  {
+    src: join(repo, 'epinoia', 'scrutiny.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'scrutiny.js'),
+    global: 'EpinoiaScrutiny',
+    names: ['scrutinise', 'sentences', 'VERSION', 'ROUND_UP']
+  },
+  {
+    src: join(repo, 'epinoia', 'game', 'matchwriter.js'),
+    out: join(repo, 'supabase', 'functions', '_shared', 'matchwriter.js'),
+    global: 'EpinoiaMatchWriter',
+    names: ['write', 'clubShort', 'clubShorts', 'genderOf', 'whenIn', 'BANK']
+  },
   {
     src: join(repo, 'epinoia', 'game', 'report.js'),
     out: join(repo, 'supabase', 'functions', '_shared', 'report.js'),

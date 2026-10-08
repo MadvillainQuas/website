@@ -280,6 +280,7 @@ function dateline(g, fs) {
    The strongest becomes the headline (a stat or a stretch by the winners, or a player on either side), the next strongest of
    a DIFFERENT kind leads the standfirst, and neither is said again where the body would have repeated it (SPENT). */
 let HEAD_ANGLE = null;
+let ONE_PIECE_HEAD = null;           // headline() for the one-piece report (writeOnePiece): { runOk } - the writer's own judgement of the run
 const sumOf = (g, t, k) => (g.players || []).filter(p => p.team === t).reduce((n, p) => n + (p[k] || 0), 0);
 /* THE GAME'S RUN OR STRETCH, FOR THE LEDE: the winners' "settled it", the losers' "was not enough". The run is the
    longest of the game, whoever made it, and a 12–0 run by the side that lost settled nothing (the standfirst of a
@@ -309,7 +310,10 @@ function ledeAngles(g, fs) {
     const by = isRun ? st.data.team : st.data.owner;
     /* the losers' run or stretch is told, but well down the order: it is not why the game went the way it did */
     const theirs = (isRun ? st.data.team : st.side) !== w;
-    const strength = (isRun ? 60 + Math.min(30, st.data.n * 2.5) : 62 + Math.min(28, st.data.swing * 2)) - (theirs ? 25 : 0);
+    let strength = (isRun ? 60 + Math.min(30, st.data.n * 2.5) : 62 + Math.min(28, st.data.swing * 2)) - (theirs ? 25 : 0);
+    /* THE REPORT AS ONE PIECE does not lead with a run that did not decide it (16 or more, or 14 after the break): a 10-0 run
+       is a detail of the flow, said there in passing (Louie, 2026-10-08) */
+    if (isRun && ONE_PIECE_HEAD && !ONE_PIECE_HEAD.runOk) strength -= 40;
     const text = stretchLine(g, st, w);
     out.push({ cat: 'stretch', key: st.kind, strength, text, spend: [st.kind],
       head: (isRun && by === w) ? () => pick('hrun' + st.data.n + w, [
@@ -2857,7 +2861,7 @@ function finish(g, secs, stand, headline, fs) {
                       paragraphs: final.length, satisfied: final.filter(x => x >= Lg.TARGET).length, revisions: log, logic } };
 }
 
-function report(g) {
+function report(g, opts) {
   const st = S();
   const fs = st.facts(g);
   RECENT = []; lastPick = null;      // what the last few sentences opened with, and the last template used: reset per article
@@ -2870,6 +2874,12 @@ function report(g) {
      cleared per report so one game cannot silence the next. */
   SPENT = new Set();
   HEAD_ANGLE = null;
+  /* THE REPORT AS ONE PIECE (game/matchwriter.js, 2026-10-08): written in the newsroom's voice, a story in paragraphs with a
+     graphic after the paragraph it proves, no headed sections. The sectioned report below is what is written when it cannot
+     be (a tie, or a page without the voice). */
+  /* opts.legacy: the sectioned report on purpose (its tests) */
+  const one = opts && opts.legacy ? null : writeOnePiece(g, fs, R);
+  if (one) return one;
   const hl = headline(g, fs);         // first: the standfirst leaves out whatever the headline has said
   const stand = standfirst(g, fs);
   setCast(g);                         // the body names each player in full once, then by surname
@@ -2902,15 +2912,61 @@ function report(g) {
            sections: secs.filter(x => x.paras.length), facts: fs, scout: sc };
 }
 
+/* ======================================================== the one-piece report ===
+   matchwriter.js writes it (the facts above, the newsroom's voice); the editor (scrutiny.js) reads it as it reads the
+   newsroom's pieces; then the same revising and facts check as every report (finish). Each paragraph is a section with no
+   heading, carrying the graphic that belongs after it, so the page, the article and the tests read it as before. */
+const MW = () => root.EpinoiaMatchWriter || (typeof require === 'function' ? (() => { try { return require('./matchwriter.js'); } catch (_) { return null; } })() : null);
+const ED = () => root.EpinoiaScrutiny || (typeof require === 'function' ? (() => { try { return require('../scrutiny.js'); } catch (_) { return null; } })() : null);
+const unesc = s => String(s == null ? '' : s).replace(/<[^>]*>/g, '').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+function writeOnePiece(g, fs, R) {
+  const M = MW();
+  if (!M || typeof M.write !== 'function') return null;
+  setCast(g);
+  const kit = { tc, surnameOf, dayWords,
+    preview: () => { const x = sectionPreview(g, fs, R); return x && x[0] ? unesc(x[0]) : null; } };
+  let w = null;
+  try { w = M.write(g, fs, kit); } catch (e) { if (root.console) console.warn('[report] matchwriter', e); w = null; }
+  if (!w || !w.paras || w.paras.length < 3) return null;
+  /* the editor: grammar, model-speak, references, near-copies, length - fixed where they stand */
+  let paras = w.paras.map(p => p.text), stand = w.standfirst, head = w.headline, editor = null;
+  const E = ED();
+  if (E && typeof E.scrutinise === 'function') {
+    try {
+      const q = E.scrutinise({ title: head, dek: stand, body: paras.slice() }, { log: w.log || [], clubs: g.names.map(n => tc(n)) });
+      if (q && q.piece) {
+        if (Array.isArray(q.piece.body) && q.piece.body.length === paras.length && q.piece.body.every(x => typeof x === 'string')) paras = q.piece.body;
+        if (typeof q.piece.dek === 'string') stand = q.piece.dek;
+        if (typeof q.piece.title === 'string' && q.piece.title) head = q.piece.title;
+      }
+      editor = q ? q.report : null;
+    } catch (e) { editor = null; }
+  }
+  /* each paragraph keeps the name of the part of the report it is (never shown: the page, the article and the plain text
+     leave it out of a one-piece report), so a reader of the object - a test, the evaluator - can still find "What it means" */
+  const LABEL = { lede: 'The result', flow: 'How it was won', why: 'What decided it', stars: 'The performances', losers: 'The other side',
+    five: 'On the floor', preview: 'What the preview said', next: 'What it means' };
+  const secs = w.paras.map((p, i) => ({ heading: LABEL[p.beat] || '', paras: [esc(paras[i] || p.text)], card: p.card, beat: p.beat }));
+  /* THE HEADLINE: the writer's own when its lede leads with the season or the moment (a first win, a streak ended, a basket
+     at the death); otherwise the headline the lede angles have always chosen (a stat, a stretch or a night) */
+  if (!w.angled) { ONE_PIECE_HEAD = { runOk: !!w.runDecisive }; let h0 = null; try { h0 = headline(g, fs); } finally { ONE_PIECE_HEAD = null; } if (h0) head = unesc(h0); }
+  const done = finish(g, secs, stand ? esc(stand) : '', esc(head), fs);
+  let sc = null;
+  try { sc = S().scout ? S().scout(g) : null; } catch (_) { sc = null; }
+  return { headline: done.headline, standfirst: done.standfirst, quality: Object.assign(done.quality, { editor, writer: 'one piece' }),
+           sections: secs.filter(x => x.paras.length), facts: fs, scout: sc, onePiece: true };
+}
+
 /* Plain text, for a news article body or a feed — same words, no markup. */
-function plain(g) {
-  const r = report(g);
+function plain(g, opts) {
+  const r = report(g, opts);
   const strip = s => String(s).replace(/<[^>]*>/g, '')
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
   const lines = [strip(r.headline), '', strip(r.standfirst), ''];
   r.sections.forEach(s => {
-    lines.push(s.heading.toUpperCase(), '');
+    if (s.heading && !r.onePiece) lines.push(s.heading.toUpperCase(), '');
     s.paras.forEach(p => lines.push(strip(p)));
     lines.push('');
   });

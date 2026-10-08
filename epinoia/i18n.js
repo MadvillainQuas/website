@@ -112,7 +112,10 @@
   const SEPS = [' · ', ' | ', ' / ', ' — ', ' – '];
   const UNIT = /^([+-]?\d[\d,]*(?:\.\d+)?)(\s*)([A-Za-z][A-Za-z%/.]*)$/;
   /* a sentence ends at . ! ? before a capital — but not after an initial (J. Anderson) or a title */
-  const SENTENCE_BREAK = /(?<!(?:^|[\s(])(?:[A-Z]|Mr|Mrs|Ms|Dr|St|Jr|Sr|vs)\.)(?<=[.!?])\s+(?=[A-Z0-9“"‘'(])/;
+  /* the next sentence opens on any capital, not A-Z alone ("Šilutė gave the ball away", "Ömer", "Łukasz"), or on a name in a
+     script without capitals (Japanese, Chinese, Korean): with A-Z alone such a sentence was never split off, and a pattern
+     for the one after swallowed the whole paragraph, leaving the first sentence in English (2026-10-08) */
+  const SENTENCE_BREAK = /(?<!(?:^|[\s(])(?:\p{Lu}|Mr|Mrs|Ms|Dr|St|Jr|Sr|vs)\.)(?<=[.!?])\s+(?=[\p{Lu}0-9“"‘'(]|[぀-ヿ㐀-鿿가-힯])/u;
 
   /* A translation takes the case the page wrote the English in (CSS may uppercase it anyway);
      only the exact and keep lists come back exactly as written. */
@@ -199,9 +202,14 @@
 
   /* A paragraph of generated prose: each sentence on its own, the untranslated ones left as they
      were (and reported), joined as the language joins sentences. */
-  function bySentence(D, core, ctxs, onMiss) {
+  function bySentence(D, core, ctxs, onMiss, strict) {
     const parts = core.split(SENTENCE_BREAK);
     if (parts.length < 2) return null;
+    /* strict: every sentence on its own, or nothing (translateText tries this before the whole paragraph) */
+    if (strict) {
+      const outs = parts.map(p => tr(D, p, ctxs, 0));
+      return outs.every(x => x != null) ? outs.join(D.sentenceJoin) : null;
+    }
     let any = false;
     const outs = [];
     for (let i = 0; i < parts.length; i++) {
@@ -234,8 +242,13 @@
       /* a text node carries the HTML source's own line breaks and indentation, which the page
          renders as single spaces: collapse them, or no sentence pattern could ever match */
       const core = s.slice(lead.length, s.length - trail.length).replace(/\s*\n\s*|[ \t]{2,}/g, ' ');
-      let t = tr(D, core, cx, 0);
-      if (t == null && cx.some(c => D.sentences.has(c))) t = bySentence(D, core, cx, onMiss);
+      /* GENERATED PROSE A SENTENCE AT A TIME FIRST, when every sentence has its pattern: a pattern for one sentence must
+         never take the whole paragraph, the sentence before it read as part of a name ("The turnovers told the story.
+         Šilutė gave the ball away..." came back half English, 2026-10-08). The whole paragraph is tried after. */
+      const sentCtx = cx.some(c => D.sentences.has(c));
+      let t = sentCtx ? bySentence(D, core, cx, null, true) : null;
+      if (t == null) t = tr(D, core, cx, 0);
+      if (t == null && sentCtx) t = bySentence(D, core, cx, onMiss);
       else if (t == null && onMiss) onMiss(core);
       if (t != null) out = lead + t + trail;
     }

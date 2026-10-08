@@ -249,6 +249,12 @@ jobs:
       - name: The match report must say true things
         run: node supabase/tests/report.test.mjs
 
+      - name: The match report reads as one piece
+        # game/matchwriter.js in the newsroom's voice: paragraphs in a match report's order, no headings on the page, in
+        # the plain text or the filed article; graphics after the paragraph they prove; no paragraph opening on "they";
+        # the story in the order it happened (a losers' run is a fightback); "she" in a women's league; short club names
+        run: node supabase/tests/onepiece.test.mjs
+
       - name: Club and player reports over linked competitions (SLB + EuroCup)
         # the linked side's ids counted as the club's and the player's, summed before any rate; ranked against the
         # league's own field all the same, and the cover says so; the RAPM never reads the linked games

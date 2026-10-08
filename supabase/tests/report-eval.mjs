@@ -221,7 +221,13 @@ if (leagueOnly) {
   const ss = lg ? await api(`seasons?league_id=eq.${lg.id}&select=id&order=starts_on.desc&limit=2`) : [];
   leagueComps = ss.length ? (await api(`competitions?season_id=in.(${ss.map(x => x.id).join(',')})&select=id`)).map(c => c.id) : [];
 }
-const games = await api('games?status=eq.final&select=id,home_team_id,away_team_id' +
+/* --cache <file>: the games' briefs (event log replayed, season context read) kept in a file, so a writer can be re-read in
+   seconds while it is being worked on. Written on the first run, read on every one after (delete it to refresh). */
+const CACHE = (() => { const i = process.argv.indexOf('--cache'); return i > 0 ? String(process.argv[i + 1] || '') : ''; })();
+const fsMod = await import('node:fs'), v8Mod = await import('node:v8');
+const CACHED = CACHE && fsMod.existsSync(CACHE) ? v8Mod.deserialize(fsMod.readFileSync(CACHE)) : null;
+const TO_CACHE = [];
+const games = CACHED ? CACHED.map(x => x.g) : await api('games?status=eq.final&select=id,home_team_id,away_team_id' +
   ',competition_id,venue,attendance,tipoff_at,competitions(name,seasons(leagues(name,slug)))' +
   (leagueComps ? '&competition_id=in.(' + (leagueComps.join(',') || '00000000-0000-0000-0000-000000000000') + ')' : '') +
   '&order=tipoff_at.desc&limit=' + limitN);
@@ -242,7 +248,7 @@ async function seasonFor(games) {
   const byId = {}; games.forEach(g => { byId[g.id] = g; });
   return { players: Season.players(pgs, tgs), teams: Season.teams(tgs, byId) };
 }
-const SEASON = await seasonFor(games);
+const SEASON = CACHED ? null : await seasonFor(games);
 if (!games.length) { console.log('no finished games to evaluate'); process.exit(0); }
 
 /* --ctx: THE GAME IN ITS SEASON and THE LEAGUE'S MODEL, as the game page gives them (game.js addSeasonContext,
@@ -316,8 +322,11 @@ const summarise = xs => { const c = {}; xs.forEach(x => { c[x] = (c[x] || 0) + 1
 const rows = [];
 const CROSS = new Map();          // five-word phrase -> how many reports used it
 let shown = 0;
-for (const g of games) {
-  let S, d;
+for (const item of (CACHED || games.map(g => ({ g })))) {
+  const g = item.g;
+  let S, d, b;
+  if (item.b) { b = item.b; S = { leagueSlug: item.slug || null }; }
+  else {
   try {
     const [gs] = await api(`games?id=eq.${g.id}&select=roster_snapshot,starters,tip_winner,arrow_init,period`);
     const snap = gs.roster_snapshot;
@@ -338,7 +347,7 @@ for (const g of games) {
     d = Engine.deriveGame(S);
   } catch (e) { continue; }
 
-  const b = brief(S, d);
+  b = brief(S, d);
   b.season = { players: SEASON.players, teams: SEASON.teams,
                teamIndex: { [g.home_team_id]: 0, [g.away_team_id]: 1 } };
   if (CTX) {
@@ -347,6 +356,8 @@ for (const g of games) {
       b.ctx = c.ctx; b.model = c.model;
       if (c.timezone && b.meta) b.meta.timezone = c.timezone;
     } catch (e) { console.warn('ctx', g.id.slice(0, 8), e.message); }
+  }
+  if (CACHE) TO_CACHE.push({ g, b, slug: S.leagueSlug || null });
   }
   const rep = Report.report(b);
   /* --dump <file>: every report's text, with the names in it, for the translation gap finder (report-i18n-gaps.mjs) */
@@ -388,6 +399,10 @@ for (const g of games) {
   }
 }
 
+if (CACHE && !CACHED && TO_CACHE.length) {
+  try { fsMod.writeFileSync(CACHE, v8Mod.serialize(TO_CACHE)); console.log('  cached ' + TO_CACHE.length + ' briefs in ' + CACHE); }
+  catch (e) { console.warn('  could not cache the briefs: ' + e.message); }
+}
 if (!rows.length) { console.log('no replayable games'); process.exit(0); }
 
 const avg = k => (rows.reduce((a, r) => a + r[k], 0) / rows.length);

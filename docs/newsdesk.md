@@ -60,6 +60,32 @@ same thing for the filed article (`supabase/functions/_shared/gamecontext.ts`).
 
 ## 3. The report's writing
 
+**THE REPORT AS ONE PIECE (2026-10-08, `epinoia/game/matchwriter.js`).** Louie: the sectioned report read "clunky and
+unlike a real game report", with sections that had to be there whether the game gave them anything or not. The full-time
+report is now one story in paragraphs, written in the newsroom's house voice (`voice.js`, the match writer's `mr.*`
+phrasebook added to it with `extend`) and read by its editor (`scrutiny.js`), then revised and fact-checked as before
+(`finish`, `verifyClaims`). The beats, each written only when the game gave it something: **lede** (the result and the
+one thing that matters most about it), **flow** (start, break, turn, finish, told in the order it happened; a losers' run
+is a fightback) + the scoring by period, **why** (the strongest two or three reasons, in a fan's words, and the
+counterpoint when it was won ugly) + what decided it, **stars** + the performances, **losers**, **five** (only when a
+group really won it) + the lineups, **preview**, **next** + form and fixtures. **Runs are weighed by the score they
+started from** (`runScores` replays the log as `factFlow` finds the run): only a run that decided it (14+ after the break
+from a game within six or going the other way, or 18+ from a close game) may make the headline, the standfirst or the
+lede, and it is told as the answer to a lead that had been cut ("With the lead down to six at 48–42, Kėdainiai scored the
+next 14 points…") or the break of a close game; a run of 10 or more that did not is said in passing in the flow, with the
+score it moved ("a gap only opened early in the fourth, off the back of a 10–0 run by Šilutė"; "stretched their lead…
+with a 12–0 run that made it 60–40"); a losers' run only when it made it close again; under 10, never (Louie,
+2026-10-08: "underindex on small 10-0 runs"). The standfirst is written first (the hook,
+then where it leaves them) and the body starts again with the full names; a club is called by its short name after the
+first time (`clubShort`: "Kėdainiai", "Manresa", "Bristol", "ASVEL"), a player by surname, "they"/"he"/"she" only where
+it cannot point elsewhere ("she" in a women's league; never either where the league does not say). No headings on the
+page (`reportview.js` `rsec-flow`), in the plain text or in the article finalise-game files; each section still carries
+its old name for the code. A tie, or a page without the voice, gets the sectioned report (`report(g, { legacy: true })`,
+which the older tests read). The translations: every option of every `mr.*` slot is generated into
+`report-i18n.test.mjs` and must translate in ja and es. Tests: `onepiece.test.mjs`. Reading real output:
+`node supabase/tests/report-eval.mjs --ctx --cache <file> --show N` (the cache keeps the replayed briefs, so a change
+to the writer is re-read in seconds).
+
 - **The moments**: the basket that put the winners ahead for good, a winner at the death, the player who closed it, a
   three at a period's buzzer (`factMoments`).
 - **The shape** (`factArc`): overtime, collapse, heist, comeback, rout, wire, pulled away, held on, see-saw, grind,

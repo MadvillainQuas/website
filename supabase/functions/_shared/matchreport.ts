@@ -117,8 +117,9 @@ const h2 = (t: string) => ({ type: 'h2', spans: [{ t: unescape(t) }] });
    it also points at the box score that evidences every number in it. */
 export function articleBody(rep: any, gameId: string) {
   const blocks: any[] = [];
+  /* the report as one piece (report.js onePiece) has no headings: its paragraphs follow one another */
   (rep.sections ?? []).forEach((s: any) => {
-    blocks.push(h2(s.heading));
+    if (s.heading && !rep.onePiece) blocks.push(h2(s.heading));
     (s.paras ?? []).forEach((para: string) => blocks.push(p(para)));
   });
   blocks.push({ type: 'rule' });
