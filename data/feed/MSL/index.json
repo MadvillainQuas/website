@@ -1,0 +1,753 @@
+{
+"code": "MSL",
+"label": "Macedonian Super League",
+"adapter": "fiba_livestats",
+"updated": "2026-10-08T13:18:36.876578+00:00",
+"games": [
+{
+"id": "2923646",
+"home": "Skopje",
+"away": "MKK Kumanovo",
+"status": "scheduled",
+"date": "2027-03-06T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923645",
+"home": "MZT Skopje - Aerodrom",
+"away": "Tikves Golden Eagle",
+"status": "scheduled",
+"date": "2027-03-06T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923644",
+"home": "Rabotnicki Skopje",
+"away": "GKK Stip",
+"status": "scheduled",
+"date": "2027-03-06T17:00:00+00:00",
+"venue": "Gradski park"
+},
+{
+"id": "2923643",
+"home": "Strumica",
+"away": "TFT",
+"status": "scheduled",
+"date": "2027-03-06T17:00:00+00:00",
+"venue": "Park"
+},
+{
+"id": "2923642",
+"home": "Pelister",
+"away": "Kozuv",
+"status": "scheduled",
+"date": "2027-03-06T17:00:00+00:00",
+"venue": "Boro Curlevski"
+},
+{
+"id": "2923641",
+"home": "GKK Stip",
+"away": "MZT Skopje - Aerodrom",
+"status": "scheduled",
+"date": "2027-02-13T17:00:00+00:00",
+"venue": "Dzekson"
+},
+{
+"id": "2923639",
+"home": "Tikves Golden Eagle",
+"away": "Skopje",
+"status": "scheduled",
+"date": "2027-02-13T17:00:00+00:00",
+"venue": "Jasmin"
+},
+{
+"id": "2923638",
+"home": "MKK Kumanovo",
+"away": "Pelister",
+"status": "scheduled",
+"date": "2027-02-13T17:00:00+00:00",
+"venue": "Kumanovo"
+},
+{
+"id": "2923637",
+"home": "Kozuv",
+"away": "Strumica",
+"status": "scheduled",
+"date": "2027-02-13T17:00:00+00:00",
+"venue": "26 April"
+},
+{
+"id": "2923636",
+"home": "TFT",
+"away": "Rabotnicki Skopje",
+"status": "scheduled",
+"date": "2027-02-13T17:00:00+00:00",
+"venue": "Boris Trajkovski"
+},
+{
+"id": "2923635",
+"home": "TFT",
+"away": "Kozuv",
+"status": "scheduled",
+"date": "2027-02-06T17:00:00+00:00",
+"venue": "Boris Trajkovski"
+},
+{
+"id": "2923634",
+"home": "Strumica",
+"away": "MKK Kumanovo",
+"status": "scheduled",
+"date": "2027-02-06T17:00:00+00:00",
+"venue": "Park"
+},
+{
+"id": "2923631",
+"home": "Pelister",
+"away": "Tikves Golden Eagle",
+"status": "scheduled",
+"date": "2027-02-06T17:00:00+00:00",
+"venue": "Boro Curlevski"
+},
+{
+"id": "2923630",
+"home": "Skopje",
+"away": "GKK Stip",
+"status": "scheduled",
+"date": "2027-02-06T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923627",
+"home": "Rabotnicki Skopje",
+"away": "MZT Skopje - Aerodrom",
+"status": "scheduled",
+"date": "2027-02-06T17:00:00+00:00",
+"venue": "Gradski park"
+},
+{
+"id": "2923625",
+"home": "MZT Skopje - Aerodrom",
+"away": "Skopje",
+"status": "scheduled",
+"date": "2027-01-30T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923624",
+"home": "GKK Stip",
+"away": "Pelister",
+"status": "scheduled",
+"date": "2027-01-30T17:00:00+00:00",
+"venue": "Dzekson"
+},
+{
+"id": "2923623",
+"home": "Tikves Golden Eagle",
+"away": "Strumica",
+"status": "scheduled",
+"date": "2027-01-30T17:00:00+00:00",
+"venue": "Jasmin"
+},
+{
+"id": "2923622",
+"home": "MKK Kumanovo",
+"away": "TFT",
+"status": "scheduled",
+"date": "2027-01-30T17:00:00+00:00",
+"venue": "Kumanovo"
+},
+{
+"id": "2923619",
+"home": "Kozuv",
+"away": "Rabotnicki Skopje",
+"status": "scheduled",
+"date": "2027-01-30T17:00:00+00:00",
+"venue": "26 April"
+},
+{
+"id": "2923620",
+"home": "Pelister",
+"away": "MZT Skopje - Aerodrom",
+"status": "scheduled",
+"date": "2027-01-23T17:00:00+00:00",
+"venue": "Boro Curlevski"
+},
+{
+"id": "2923618",
+"home": "Rabotnicki Skopje",
+"away": "Skopje",
+"status": "scheduled",
+"date": "2027-01-23T17:00:00+00:00",
+"venue": "Gradski park"
+},
+{
+"id": "2923617",
+"home": "TFT",
+"away": "Tikves Golden Eagle",
+"status": "scheduled",
+"date": "2027-01-23T17:00:00+00:00",
+"venue": "Boris Trajkovski"
+},
+{
+"id": "2923616",
+"home": "Kozuv",
+"away": "MKK Kumanovo",
+"status": "scheduled",
+"date": "2027-01-23T17:00:00+00:00",
+"venue": "26 April"
+},
+{
+"id": "2923615",
+"home": "Strumica",
+"away": "GKK Stip",
+"status": "scheduled",
+"date": "2027-01-23T17:00:00+00:00",
+"venue": "Park"
+},
+{
+"id": "2923613",
+"home": "Skopje",
+"away": "Pelister",
+"status": "scheduled",
+"date": "2027-01-16T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923612",
+"home": "MZT Skopje - Aerodrom",
+"away": "Strumica",
+"status": "scheduled",
+"date": "2027-01-16T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923611",
+"home": "GKK Stip",
+"away": "TFT",
+"status": "scheduled",
+"date": "2027-01-16T17:00:00+00:00",
+"venue": "Dzekson"
+},
+{
+"id": "2923605",
+"home": "Tikves Golden Eagle",
+"away": "Kozuv",
+"status": "scheduled",
+"date": "2027-01-16T17:00:00+00:00",
+"venue": "Jasmin"
+},
+{
+"id": "2923604",
+"home": "MKK Kumanovo",
+"away": "Rabotnicki Skopje",
+"status": "scheduled",
+"date": "2027-01-16T17:00:00+00:00",
+"venue": "Kumanovo"
+},
+{
+"id": "2923599",
+"home": "TFT",
+"away": "MZT Skopje - Aerodrom",
+"status": "scheduled",
+"date": "2027-01-09T17:00:00+00:00",
+"venue": "Boris Trajkovski"
+},
+{
+"id": "2923598",
+"home": "Strumica",
+"away": "Skopje",
+"status": "scheduled",
+"date": "2027-01-09T17:00:00+00:00",
+"venue": "Park"
+},
+{
+"id": "2923597",
+"home": "Rabotnicki Skopje",
+"away": "Pelister",
+"status": "scheduled",
+"date": "2027-01-09T17:00:00+00:00",
+"venue": "Gradski park"
+},
+{
+"id": "2923596",
+"home": "MKK Kumanovo",
+"away": "Tikves Golden Eagle",
+"status": "scheduled",
+"date": "2027-01-09T17:00:00+00:00",
+"venue": "Kumanovo"
+},
+{
+"id": "2923595",
+"home": "Kozuv",
+"away": "GKK Stip",
+"status": "scheduled",
+"date": "2027-01-09T17:00:00+00:00",
+"venue": "26 April"
+},
+{
+"id": "2923588",
+"home": "Skopje",
+"away": "TFT",
+"status": "scheduled",
+"date": "2026-12-19T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923585",
+"home": "Pelister",
+"away": "Strumica",
+"status": "scheduled",
+"date": "2026-12-19T17:00:00+00:00",
+"venue": "Boro Curlevski"
+},
+{
+"id": "2923584",
+"home": "MZT Skopje - Aerodrom",
+"away": "Kozuv",
+"status": "scheduled",
+"date": "2026-12-19T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923583",
+"home": "GKK Stip",
+"away": "MKK Kumanovo",
+"status": "scheduled",
+"date": "2026-12-19T17:00:00+00:00",
+"venue": "Dzekson"
+},
+{
+"id": "2923582",
+"home": "Tikves Golden Eagle",
+"away": "Rabotnicki Skopje",
+"status": "scheduled",
+"date": "2026-12-19T17:00:00+00:00",
+"venue": "Jasmin"
+},
+{
+"id": "2923581",
+"home": "Tikves Golden Eagle",
+"away": "GKK Stip",
+"status": "scheduled",
+"date": "2026-12-12T17:00:00+00:00",
+"venue": "Jasmin"
+},
+{
+"id": "2923580",
+"home": "MKK Kumanovo",
+"away": "MZT Skopje - Aerodrom",
+"status": "scheduled",
+"date": "2026-12-12T17:00:00+00:00",
+"venue": "Kumanovo"
+},
+{
+"id": "2923579",
+"home": "Kozuv",
+"away": "Skopje",
+"status": "scheduled",
+"date": "2026-12-12T17:00:00+00:00",
+"venue": "26 April"
+},
+{
+"id": "2923578",
+"home": "TFT",
+"away": "Pelister",
+"status": "scheduled",
+"date": "2026-12-12T17:00:00+00:00",
+"venue": "Boris Trajkovski"
+},
+{
+"id": "2923577",
+"home": "Rabotnicki Skopje",
+"away": "Strumica",
+"status": "scheduled",
+"date": "2026-12-12T17:00:00+00:00",
+"venue": "Gradski park"
+},
+{
+"id": "2923571",
+"home": "TFT",
+"away": "Strumica",
+"status": "scheduled",
+"date": "2026-12-05T17:00:00+00:00",
+"venue": "Boris Trajkovski"
+},
+{
+"id": "2923570",
+"home": "Kozuv",
+"away": "Pelister",
+"status": "scheduled",
+"date": "2026-12-05T17:00:00+00:00",
+"venue": "26 April"
+},
+{
+"id": "2923569",
+"home": "MKK Kumanovo",
+"away": "Skopje",
+"status": "scheduled",
+"date": "2026-12-05T17:00:00+00:00",
+"venue": "Kumanovo"
+},
+{
+"id": "2923568",
+"home": "Tikves Golden Eagle",
+"away": "MZT Skopje - Aerodrom",
+"status": "scheduled",
+"date": "2026-12-05T17:00:00+00:00",
+"venue": "Jasmin"
+},
+{
+"id": "2923567",
+"home": "GKK Stip",
+"away": "Rabotnicki Skopje",
+"status": "scheduled",
+"date": "2026-12-05T17:00:00+00:00",
+"venue": "Dzekson"
+},
+{
+"id": "2923566",
+"home": "MZT Skopje - Aerodrom",
+"away": "GKK Stip",
+"status": "scheduled",
+"date": "2026-11-29T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923564",
+"home": "Skopje",
+"away": "Tikves Golden Eagle",
+"status": "scheduled",
+"date": "2026-11-29T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923561",
+"home": "Rabotnicki Skopje",
+"away": "TFT",
+"status": "scheduled",
+"date": "2026-11-29T17:00:00+00:00",
+"venue": "Gradski park"
+},
+{
+"id": "2923560",
+"home": "Pelister",
+"away": "MKK Kumanovo",
+"status": "scheduled",
+"date": "2026-11-29T17:00:00+00:00",
+"venue": "Boro Curlevski"
+},
+{
+"id": "2923559",
+"home": "Strumica",
+"away": "Kozuv",
+"status": "scheduled",
+"date": "2026-11-29T17:00:00+00:00",
+"venue": "Park"
+},
+{
+"id": "2923565",
+"home": "MKK Kumanovo",
+"away": "Strumica",
+"status": "scheduled",
+"date": "2026-11-14T17:00:00+00:00",
+"venue": "Kumanovo"
+},
+{
+"id": "2923563",
+"home": "Tikves Golden Eagle",
+"away": "Pelister",
+"status": "scheduled",
+"date": "2026-11-14T17:00:00+00:00",
+"venue": "Jasmin"
+},
+{
+"id": "2923562",
+"home": "GKK Stip",
+"away": "Skopje",
+"status": "scheduled",
+"date": "2026-11-14T17:00:00+00:00",
+"venue": "Dzekson"
+},
+{
+"id": "2923558",
+"home": "Kozuv",
+"away": "TFT",
+"status": "scheduled",
+"date": "2026-11-14T17:00:00+00:00",
+"venue": "26 April"
+},
+{
+"id": "2923552",
+"home": "MZT Skopje - Aerodrom",
+"away": "Rabotnicki Skopje",
+"status": "scheduled",
+"date": "2026-11-14T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923556",
+"home": "Pelister",
+"away": "GKK Stip",
+"status": "scheduled",
+"date": "2026-11-07T17:00:00+00:00",
+"venue": "Boro Curlevski"
+},
+{
+"id": "2923555",
+"home": "Strumica",
+"away": "Tikves Golden Eagle",
+"status": "scheduled",
+"date": "2026-11-07T17:00:00+00:00",
+"venue": "Park"
+},
+{
+"id": "2923554",
+"home": "TFT",
+"away": "MKK Kumanovo",
+"status": "scheduled",
+"date": "2026-11-07T17:00:00+00:00",
+"venue": "Boris Trajkovski"
+},
+{
+"id": "2923553",
+"home": "Rabotnicki Skopje",
+"away": "Kozuv",
+"status": "scheduled",
+"date": "2026-11-07T17:00:00+00:00",
+"venue": "Gradski park"
+},
+{
+"id": "2923551",
+"home": "Skopje",
+"away": "MZT Skopje - Aerodrom",
+"status": "scheduled",
+"date": "2026-11-07T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923550",
+"home": "MKK Kumanovo",
+"away": "Kozuv",
+"status": "scheduled",
+"date": "2026-10-31T17:00:00+00:00",
+"venue": "Kumanovo"
+},
+{
+"id": "2923509",
+"home": "MZT Skopje - Aerodrom",
+"away": "Pelister",
+"status": "scheduled",
+"date": "2026-10-31T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923508",
+"home": "Skopje",
+"away": "Rabotnicki Skopje",
+"status": "scheduled",
+"date": "2026-10-31T17:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923499",
+"home": "Tikves Golden Eagle",
+"away": "TFT",
+"status": "scheduled",
+"date": "2026-10-31T17:00:00+00:00",
+"venue": "Jasmin"
+},
+{
+"id": "2923498",
+"home": "GKK Stip",
+"away": "Strumica",
+"status": "scheduled",
+"date": "2026-10-31T17:00:00+00:00",
+"venue": "Dzekson"
+},
+{
+"id": "2923507",
+"home": "Pelister",
+"away": "Skopje",
+"status": "scheduled",
+"date": "2026-10-24T16:00:00+00:00",
+"venue": "Boro Curlevski"
+},
+{
+"id": "2923497",
+"home": "Strumica",
+"away": "MZT Skopje - Aerodrom",
+"status": "scheduled",
+"date": "2026-10-24T16:00:00+00:00",
+"venue": "Park"
+},
+{
+"id": "2923496",
+"home": "TFT",
+"away": "GKK Stip",
+"status": "scheduled",
+"date": "2026-10-24T16:00:00+00:00",
+"venue": "Boris Trajkovski"
+},
+{
+"id": "2923495",
+"home": "Kozuv",
+"away": "Tikves Golden Eagle",
+"status": "scheduled",
+"date": "2026-10-24T16:00:00+00:00",
+"venue": "26 April"
+},
+{
+"id": "2923494",
+"home": "Rabotnicki Skopje",
+"away": "MKK Kumanovo",
+"status": "scheduled",
+"date": "2026-10-24T16:00:00+00:00",
+"venue": "Gradski park"
+},
+{
+"id": "2923557",
+"home": "GKK Stip",
+"away": "Kozuv",
+"status": "scheduled",
+"date": "2026-10-17T16:00:00+00:00",
+"venue": "Dzekson"
+},
+{
+"id": "2923493",
+"home": "Tikves Golden Eagle",
+"away": "MKK Kumanovo",
+"status": "scheduled",
+"date": "2026-10-17T16:00:00+00:00",
+"venue": "Jasmin"
+},
+{
+"id": "2923492",
+"home": "MZT Skopje - Aerodrom",
+"away": "TFT",
+"status": "scheduled",
+"date": "2026-10-17T16:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923491",
+"home": "Skopje",
+"away": "Strumica",
+"status": "scheduled",
+"date": "2026-10-17T16:00:00+00:00",
+"venue": "Jane Sandanski"
+},
+{
+"id": "2923490",
+"home": "Pelister",
+"away": "Rabotnicki Skopje",
+"status": "scheduled",
+"date": "2026-10-17T16:00:00+00:00",
+"venue": "Boro Curlevski"
+},
+{
+"id": "2923483",
+"home": "Strumica",
+"away": "Pelister",
+"status": "scheduled",
+"date": "2026-10-11T15:00:00+00:00",
+"venue": "Park"
+},
+{
+"id": "2923481",
+"home": "Kozuv",
+"away": "MZT Skopje - Aerodrom",
+"status": "scheduled",
+"date": "2026-10-10T17:00:00+00:00",
+"venue": "26 April"
+},
+{
+"id": "2923575",
+"home": "MKK Kumanovo",
+"away": "GKK Stip",
+"status": "scheduled",
+"date": "2026-10-10T16:00:00+00:00",
+"venue": "Kumanovo"
+},
+{
+"id": "2923480",
+"home": "Rabotnicki Skopje",
+"away": "Tikves Golden Eagle",
+"status": "scheduled",
+"date": "2026-10-10T16:00:00+00:00",
+"venue": "Gradski park"
+},
+{
+"id": "2923482",
+"home": "TFT",
+"away": "Skopje",
+"status": "scheduled",
+"date": "2026-10-08T16:30:00+00:00",
+"venue": "Boris Trajkovski"
+},
+{
+"id": "2923476",
+"home": "Pelister",
+"away": "TFT",
+"homeScore": 78,
+"awayScore": 70,
+"status": "final",
+"date": "2026-10-04T17:00:00+00:00",
+"hash": "1bcaf4a41cced40c0d2e6ccd5dd2ffb336c08d68",
+"venue": "Boro Curlevski",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2923476.json",
+"updated": "2026-10-08T13:12:55.344381+00:00"
+},
+{
+"id": "2923477",
+"home": "Skopje",
+"away": "Kozuv",
+"homeScore": 95,
+"awayScore": 101,
+"status": "final",
+"date": "2026-10-04T16:30:00+00:00",
+"hash": "fcaca6918895f58b185abb8899c771856cceedf5",
+"venue": "Jane Sandanski",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2923477.json",
+"updated": "2026-10-08T13:14:13.611634+00:00"
+},
+{
+"id": "2923510",
+"home": "Strumica",
+"away": "Rabotnicki Skopje",
+"homeScore": 85,
+"awayScore": 92,
+"status": "final",
+"date": "2026-10-04T15:00:00+00:00",
+"hash": "6a9ed8c4760469f837f752f8c6e954d31b212182",
+"venue": "Park",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2923510.json",
+"updated": "2026-10-08T13:16:34.515733+00:00"
+},
+{
+"id": "2923574",
+"home": "GKK Stip",
+"away": "Tikves Golden Eagle",
+"homeScore": 65,
+"awayScore": 93,
+"status": "final",
+"date": "2026-10-03T16:00:00+00:00",
+"hash": "bd7889e1c48004acbf9bce94f993b7b487fcc3d5",
+"venue": "Dzekson",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2923574.json",
+"updated": "2026-10-08T13:17:32.450763+00:00"
+},
+{
+"id": "2923479",
+"home": "MZT Skopje - Aerodrom",
+"away": "MKK Kumanovo",
+"homeScore": 85,
+"awayScore": 77,
+"status": "final",
+"date": "2026-10-02T17:00:00+00:00",
+"hash": "8264f866b577c24668aeefe2e2fdae7718ad3cb9",
+"venue": "Jane Sandanski",
+"raw_ref": "https://hhvofgqqadtyvcjudhjx.supabase.co/storage/v1/object/public/feed/fiba_livestats/2923479.json",
+"updated": "2026-10-08T13:15:28.186393+00:00"
+}
+]
+}

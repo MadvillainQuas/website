@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-07T16:14:33.241296+00:00",
+ "updated": "2026-10-08T13:18:36.896498+00:00",
  "competitions": [
   {
    "code": "ABA",
@@ -252,6 +252,13 @@
    "adapter": "lnbbr",
    "games": 0,
    "updated": "2026-09-27T11:09:22.444552+00:00"
+  },
+  {
+   "code": "MSL",
+   "label": "Macedonian Super League",
+   "adapter": "fiba_livestats",
+   "games": 90,
+   "updated": "2026-10-08T13:18:36.876578+00:00"
   },
   {
    "code": "NBB",
