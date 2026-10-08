@@ -831,14 +831,20 @@ console.log('\na new video does not inherit the old one\'s clock');
     'OLD, NEW = "https://youtu.be/AAAAAAAAAAA", "https://www.youtube.com/watch?v=BBBBBBBBBBB&t=1"',
     'out = {}',
     'class DB:',
-    '    def __init__(self): self.q = None',
-    '    def patch(self, table, q, body):',
-    '        self.q = q',
+    '    def __init__(self): self.q = None; self.body = None',
+    '    def _ours(self, q):',
     '        from urllib.parse import unquote',
-    '        return [{"id": 1}] if ("url=eq." not in q or unquote(q.split("url=eq.")[1].split("&")[0]) == NEW) else []',
+    '        return "url=eq." not in q or unquote(q.split("url=eq.")[1].split("&")[0]) == NEW',
+    '    def select(self, table, q):',
+    '        # the row already holds two plays tagged by hand (videotag.js): a re-read must keep them',
+    '        return [{"manual": [{"seq": 7, "t": 12.5}, {"seq": 9, "t": 40.0}]}] if self._ours(q) else []',
+    '    def patch(self, table, q, body):',
+    '        self.q = q; self.body = body',
+    '        return [{"id": 1}] if self._ours(q) else []',
     'track = {"mode": "clock", "samples": [{"t": 1.0, "period": 1, "clock_ms": 600000}], "runs": []}',
     'db = DB()',
     'AW.write_track(db, "g", track, NEW); out["new_ok"] = True; out["q"] = db.q',
+    'out["kept_manual"] = (db.body or {}).get("clock_track", {}).get("manual")',
     'try:',
     '    AW.write_track(db, "g", track, OLD); out["old_written"] = True',
     'except RuntimeError as e:',
@@ -864,6 +870,8 @@ console.log('\na new video does not inherit the old one\'s clock');
   if (got) {
     ok('the worker writes a track onto the video it was read from', got.new_ok === true &&
        /url=eq\.https%3A%2F%2Fwww\.youtube\.com%2Fwatch%3Fv%3DBBBBBBBBBBB%26t%3D1/.test(got.q), got.q);
+    ok('...keeping the plays an admin tagged by hand (clock_track.manual) across the re-read',
+       Array.isArray(got.kept_manual) && got.kept_manual.length === 2 && got.kept_manual[0].seq === 7, JSON.stringify(got.kept_manual));
     ok('...and refuses once the row holds a different video, saying why',
        got.old_written === false && /changed while this one was being read/.test(got.old_msg || ''), JSON.stringify(got));
     ok('a done read of the OLD video does not stop the new one being read', got.requeued_for_new === 1);

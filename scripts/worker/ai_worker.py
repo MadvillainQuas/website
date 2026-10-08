@@ -317,6 +317,81 @@ class Transient(Exception):
     """Not a failure: the job should wait and be tried again."""
 
 
+# ---------------------------------------------------------------- footage too short to hold the game
+# A VIDEO SHORTER THAN THE GAME IS NOT THE GAME. A game's primary video is sometimes its highlights,
+# a press conference, or a stream that died in the first quarter, and the worker used to download and
+# read every one of them for an hour to learn nothing: a reel cut from the game has no clock that runs.
+# So before anything is downloaded the stream's length is asked of YouTube (a metadata call: seconds,
+# no download) and set against the game's own playing time. A broadcast runs well past the game clock
+# (stoppages, time-outs, half-time): a full 40-minute game is 90-120 minutes of stream. Footage under
+# MIN_FOOTAGE_FRAC of the playing time cannot hold even the clock's own minutes with the shortest
+# stoppages, and is skipped. A length nobody can say (a stream still live, a host that will not tell)
+# is never a reason to skip.
+MIN_FOOTAGE_FRAC = 1.25
+
+
+class TooShort(Exception):
+    """The footage cannot hold the game. Not retried: the same footage is the same length tomorrow."""
+    def __init__(self, why, video_s, needs_s):
+        Exception.__init__(self, why)
+        self.video_s, self.needs_s = video_s, needs_s
+
+
+def playing_s(pbp):
+    """The game's playing time in seconds, from its own log: the regular periods at the league's length
+    (FIBA 4 x 10, a college game 2 x 20, an 8-minute youth quarter) plus every overtime it went to.
+    No log: four ten-minute quarters."""
+    reg_min, ot_min, n_reg, n_ot = 10.0, 5.0, 4, 0
+    if isinstance(pbp, dict):
+        reg_min = _num(pbp.get('periodLengthREGULAR')) or reg_min
+        ot_min = _num(pbp.get('periodLengthOVERTIME')) or ot_min
+        n_reg = int(_num(pbp.get('periodsMax')) or n_reg)
+        acts = pbp.get('pbp') or []
+        ots = {a.get('period') for a in acts if isinstance(a, dict) and str(a.get('periodType') or '').upper() == 'OVERTIME'}
+        n_ot = len(ots)
+        if not n_ot:                        # a log that numbers overtimes past the regular periods
+            pers = [int(_num(a.get('period')) or 0) for a in acts if isinstance(a, dict)]
+            n_ot = max(0, max(pers or [0]) - n_reg)
+    return int(round(60 * (n_reg * reg_min + n_ot * ot_min)))
+
+
+def probe_duration_s(url, cfg):
+    """(seconds, live_status) of a YouTube stream from its metadata, without downloading it; (None, why)
+    when YouTube will not say (a live or upcoming stream has no length, a sign-in wall answers nothing)."""
+    vid = youtube_id(url)
+    if not vid:
+        return None, 'not a YouTube address'
+    base = [sys.executable, '-m', 'yt_dlp'] if _module_ok('yt_dlp') else ['yt-dlp']
+    cmd = base + ['-J', '--skip-download', '--no-playlist', 'https://www.youtube.com/watch?v=' + vid]
+    if shutil.which('node'):
+        cmd[-1:-1] = ['--js-runtimes', 'node']
+    if cfg.get('yt_cookies_file') and os.path.exists(str(cfg['yt_cookies_file'])):
+        cmd[-1:-1] = ['--cookies', str(cfg['yt_cookies_file'])]
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=120)
+        meta = json.loads(p.stdout or '{}')
+    except Exception as exc:
+        return None, 'metadata unavailable (%s)' % str(exc)[:80]
+    live = meta.get('live_status')
+    if live in ('is_live', 'is_upcoming', 'post_live'):
+        return None, live
+    d = _num(meta.get('duration'))
+    return (d if d and d > 0 else None), live
+
+
+def footage_too_short(video_s, pbp, cfg):
+    """(too short?, why, playing seconds) for footage of video_s seconds."""
+    need = playing_s(pbp)
+    frac = float(cfg.get('min_footage_frac') or MIN_FOOTAGE_FRAC)
+    if not video_s or video_s <= 0:
+        return False, '', need
+    if video_s < need * frac:
+        return True, ('the video is %d min long and the game alone is %d min of playing time; footage under %d min '
+                      'cannot hold the whole game (highlights, a press conference or a stream that stopped early)'
+                      % (round(video_s / 60), round(need / 60), round(need * frac / 60))), need
+    return False, '', need
+
+
 def _module_ok(name):
     try:
         __import__(name)
@@ -869,6 +944,18 @@ def write_track(db, game_id, track, video_url=None):
     q = 'game_id=eq.%s&is_primary=eq.true' % game_id
     if video_url:
         q += '&url=eq.%s' % quote(video_url, safe='')
+    # A PERSON'S TAGS SURVIVE A RE-READ. The tagger on the game page (epinoia/videotag.js) stores the
+    # plays an admin placed by hand in clock_track.manual; they are the most trusted positions there
+    # are, and re-reading the footage must not wipe them. Read just that part of the row (same footage
+    # only, by the same filter) and carry it into the new track.
+    try:
+        cur = db.select('game_videos', q + '&select=manual:clock_track->manual')
+        manual = cur[0].get('manual') if cur else None
+        if isinstance(manual, list) and manual:
+            slim['manual'] = manual
+    except Exception as exc:
+        log('  (could not read the hand-set tags to keep them: %s)' % exc)
+        raise RuntimeError('refusing to overwrite the track without first reading its hand-set tags')
     rows = db.patch('game_videos', q, {'clock_track': slim, 'updated_at': now_iso()})
     if not rows:
         raise RuntimeError('this game has no primary video row to hold the track'
@@ -1047,11 +1134,22 @@ class Job(object):
         heartbeat(db, cfg, self.id, 'processing ' + game_id[:8])
         video_path = None
         try:
+            # THE LOG FIRST, THEN THE LENGTH, THEN THE DOWNLOAD: the log says how long the game was, and
+            # a video that cannot hold it is scrapped here, in seconds, not after an hour of reading
+            self.report('play-by-play', 0, 1, 'fetching the archived log')
+            pbp = pbp_for_game(db, game_id)
+            self.report('checking length', 0, 1, 'asking how long the video is')
+            video_s, live = probe_duration_s(row['video_url'], cfg)
+            short, why, need = footage_too_short(video_s, pbp, cfg)
+            if short:
+                raise TooShort(why, video_s, need)
             video_path = fetch_video(row['video_url'], cfg, self.report)
             if self.stop():
                 raise KeyboardInterrupt('cancelled')
-            self.report('play-by-play', 0, 1, 'fetching the archived log')
-            pbp = pbp_for_game(db, game_id)
+            if video_s is None:                 # a host that would not say: measured once it is here
+                short, why, need = footage_too_short(video_duration_s(video_path, cfg), pbp, cfg)
+                if short:
+                    raise TooShort(why, video_duration_s(video_path, cfg), need)
             mode = row.get('mode_requested') or 'auto'
             if mode == 'score' and not pbp:
                 raise RuntimeError('score mode needs the play-by-play, and this game has no archived FIBA log')
@@ -1119,6 +1217,15 @@ class Job(object):
             db.patch('video_jobs', 'id=eq.%s' % self.id, {'status': 'done', 'finished_at': now_iso(), 'result': result,
                                                             'progress': dict(self.progress, stage='done', i=1, n=1)})
             return True
+        except TooShort as exc:
+            # failed, with the reason and a marker the hourly sweep reads (backfill): the same footage is
+            # never offered again, while a new video pasted over it gets its own look
+            db.patch('video_jobs', 'id=eq.%s' % self.id, {'status': 'failed', 'finished_at': now_iso(),
+                                                            'error': ('too short: %s' % exc)[:1000],
+                                                            'result': {'too_short': {'video_s': exc.video_s, 'playing_s': exc.needs_s}},
+                                                            'progress': dict(self.progress, stage='skipped: too short')})
+            log('  skipped: %s' % exc)
+            return False
         except KeyboardInterrupt:
             db.patch('video_jobs', 'id=eq.%s' % self.id, {'status': 'cancelled', 'finished_at': now_iso(),
                                                             'progress': dict(self.progress, stage='cancelled')})
@@ -1283,19 +1390,23 @@ def backfill(db, cfg):
         r['clock_track'] = slim_track_row(r)
     ids = ','.join(r['game_id'] for r in rows)
     # oldest first: may_queue counts only the failures that came AFTER the last finished reading
-    have = db.select('video_jobs', 'select=game_id,status,video_url&game_id=in.(%s)&order=requested_at' % ids)
+    have = db.select('video_jobs', 'select=game_id,status,video_url,short:result->too_short&game_id=in.(%s)&order=requested_at' % ids)
     # a job counts against the footage it was for: a video pasted over a read one (0115
     # clears its track) is new footage, and gets its own read
     url_of = {r['game_id']: r['url'] for r in rows}
     have = [j for j in have if j.get('video_url') == url_of.get(j['game_id'])]
-    statuses = {}
+    statuses, short = {}, set()
     for j in have:
         statuses.setdefault(j['game_id'], []).append(j['status'])
+        if j.get('short'):
+            short.add(j['game_id'])
     n, again, held = 0, 0, 0
     for r in rows:
         g = r['game_id']
         if held_back(cfg, g):
             held += 1
+            continue
+        if g in short:                      # this footage was measured and cannot hold the game
             continue
         queue, why = may_queue(r.get('clock_track'), statuses.get(g, []))
         if not queue:

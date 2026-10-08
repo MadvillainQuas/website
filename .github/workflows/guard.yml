@@ -1238,6 +1238,18 @@ jobs:
         # tip cancels) and that a clip still contains the shot at either cadence.
         run: node supabase/tests/videosync.test.mjs
 
+      - name: Plays tagged by hand on the footage (the video tagger)
+        # epinoia/videotag.js + video.js applyManual: a tagged play sits on its tag, its neighbours move by the
+        # error the tags showed, plays between two tags are placed by game clock; the three ways in, admins only
+        run: node supabase/tests/videotag.test.mjs
+
+      - name: The AI worker skips footage too short to hold the game
+        # scripts/worker/ai_worker.py: the stream's length (metadata, no download) against the game's playing time
+        # from its own log; a too-short video fails at once with result.too_short and the sweep never re-offers it
+        run: |
+          pip install requests
+          python scripts/worker/footage_length_test.py
+
       - name: Two games that mapped to the wrong footage
         # held as fixtures because the ways they broke are not ways anybody would
         # think to invent: 106394dc read 6% of its broadcast and listed no first

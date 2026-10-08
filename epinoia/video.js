@@ -1074,6 +1074,72 @@ function pairAssists(events) {
   return { assistOf, pairedAst };
 }
 
+/* ------------------------------------------------------------ manual tags --- */
+/* A PERSON'S TAG IS THE ANSWER. The tagger (videotag.js) lets an admin watch the footage and say
+   "this play starts here"; it stores {seq, t (video seconds), period, clock_ms} in
+   clock_track.manual, beside the reader's samples (the worker keeps them when it re-reads).
+
+   applyManual does three things with them, in order of how sure each is:
+     1. a tagged play is placed exactly on its tag;
+     2. an untagged play that had a position is MOVED by the error its tagged neighbours showed:
+        the difference between where they were placed and where a person put them, interpolated
+        by game clock between the tag before and the tag after in the same period (one side only:
+        that side's difference). A clock reading 6 s late everywhere is fixed by tagging one play;
+     3. an untagged play with no position at all, bracketed by two tags in its period, is put
+        between them by game clock (stoppages make it approximate, and it is marked approximate).
+   Across a period boundary nothing is carried: half-time breaks every difference. */
+function manualTags(video) {
+  const tr = video && video.clock_track;
+  const m = new Map();
+  (tr && Array.isArray(tr.manual) ? tr.manual : []).forEach(x => {
+    const t = x ? +x.t : NaN;
+    if (x && x.seq != null && isFinite(t) && t >= 0) m.set(String(x.seq), t * 1000);
+  });
+  return m;
+}
+function applyManual(rows, manual) {
+  rows.forEach((row, i) => {
+    row.i = i;
+    row.E = cumElapsed(row.e);
+    const tag = manual.size ? manual.get(String(seqOf(row.e))) : undefined;
+    row.tagged = tag !== undefined;
+    row.pos = row.tagged ? tag : row.pred;
+    row.delta = row.tagged && row.pred != null ? tag - row.pred : null;
+  });
+  if (!manual.size) return;
+  const byPeriod = new Map();
+  rows.forEach(r => {
+    const p = r.e.period || 1;
+    if (!byPeriod.has(p)) byPeriod.set(p, []);
+    byPeriod.get(p).push(r);
+  });
+  /* where a row sits between two others: by game clock, and by log order where the clock stood still */
+  const frac = (r, a, b) => (b.E !== a.E ? (r.E - a.E) / (b.E - a.E) : (b.i !== a.i ? (r.i - a.i) / (b.i - a.i) : 0));
+  const before = (r, list) => { let x = null; for (const c of list) { if (c.E < r.E || (c.E === r.E && c.i < r.i)) x = c; } return x; };
+  const after = (r, list) => { for (const c of list) { if (c.E > r.E || (c.E === r.E && c.i > r.i)) return c; } return null; };
+  byPeriod.forEach(list => {
+    const order = list.slice().sort((a, b) => a.E - b.E || a.i - b.i);
+    const tags = order.filter(r => r.tagged);
+    if (!tags.length) return;
+    const withDelta = tags.filter(r => r.delta != null);
+    for (const r of order) {
+      if (r.tagged) continue;
+      if (r.pred != null) {
+        if (!withDelta.length) continue;
+        const a = before(r, withDelta), b = after(r, withDelta);
+        const d = a && b ? a.delta + (b.delta - a.delta) * frac(r, a, b) : (a || b).delta;
+        r.pos = r.pred + d;
+        continue;
+      }
+      const a = before(r, tags), b = after(r, tags);
+      if (a && b && b.pos >= a.pos) {
+        r.pos = a.pos + (b.pos - a.pos) * frac(r, a, b);
+        r.betweenTags = true;
+      }
+    }
+  });
+}
+
 function index(events, video, opts) {
   const o = opts || {};
   const label = o.label || (e => e.t);
@@ -1103,8 +1169,11 @@ function index(events, video, opts) {
      than no foul in the list. So the list holds the plays the track can vouch for. */
   const scoreOnly = !!(track && track.mode === 'score');
 
+  /* TAGS A PERSON SET BY HAND (videotag.js: clock_track.manual) outrank everything: see
+     applyManual below. A game with tags and nothing else is still placed between them. */
+  const manual = manualTags(video);
   const gap = gapMs(video);
-  if (gap == null && !track) return out;
+  if (gap == null && !track && !manual.size) return out;
 
   /* Two passes. The first takes every play that can say for itself how long
      after tip it happened; the second fills in the ones that cannot, from
@@ -1165,7 +1234,7 @@ function index(events, video, opts) {
        an event that is already in this list; including them would show the
        same basket three times. */
     if (e.t === 'loc' || e.t === 'tag' || e.t === 'stype') continue;
-    if (scoreOnly && !(e.t === 'p2_made' || e.t === 'p3_made' || e.t === 'ft_made')) continue;
+    if (scoreOnly && !(e.t === 'p2_made' || e.t === 'p3_made' || e.t === 'ft_made') && !manual.has(String(seqOf(e)))) continue;
     /* ONE ROW PER MOMENT. An assist paired with its basket is the same second of video
        as the basket, which already reads "two-pointer made · ASSIST: X"; a second row
        saying "assist" underneath it was the same clip listed twice. Only an assist the
@@ -1181,18 +1250,27 @@ function index(events, video, opts) {
   fillGaps(rows);
 
   for (const row of rows) {
-    const e = row.e;
     const tp = row.trackPos;
+    row.pred = null;
     if (tp == null && (row.since == null || gap == null)) continue;
     /* see wallMeansSomething: an untracked play in an untimed log has no
        honest position, and the import instant is not one */
     if (tp == null && !wallMeansSomething) continue;
-    const pos = tp != null ? tp : gap + row.since;
-    if (pos < 0) continue;
+    row.pred = tp != null ? tp : gap + row.since;
+  }
+  applyManual(rows, manual);
+
+  for (const row of rows) {
+    const e = row.e;
+    const tp = row.trackPos;
+    const pos = row.pos;
+    if (pos == null || pos < 0) continue;
     const [pre, post] = clipOf(e.t, e.wall_err);
     out.push({
-      /* placed by the clock overlay rather than by wall clock */
-      byClock: tp != null,
+      /* placed by the clock overlay rather than by wall clock (or by a person's own tag) */
+      byClock: tp != null || !!row.tagged,
+      /* set by hand in the tagger: exactly where a person saw it */
+      tagged: !!row.tagged,
       id: e.seq != null ? e.seq : e.id,
       t: e.t,
       pid: e.pid != null ? e.pid : (e.payload || {}).pid || null,
@@ -1202,7 +1280,7 @@ function index(events, video, opts) {
       ms: pos,
       /* Marked, because a reader deciding whether a clip is worth clipping
          should know which ones were placed rather than timed. */
-      approx: tp == null && !!row.guessed,
+      approx: !row.tagged && ((tp == null && !!row.guessed) || !!row.betweenTags),
       start: Math.max(0, pos - pre),
       end: pos + post,
       assist: assistOf[e.seq != null ? e.seq : e.id] || null,
@@ -1427,5 +1505,5 @@ return { parse, safeUrl, embedSrc, watchHref, gapMs, anchorKind, gapLooksOdd,
          hasAnchor, videoMsOf, sinceTipMs,
          cumElapsed, logIsTimed, distrustedStamps, saneTrack, stampIsPossible,
          liveEmbedSrc, providerFromServer, pairAssists, coverageNote,
-         index, select, FILTERS, filterBy, stamp, gapText, clipOf, ROLL };
+         index, select, FILTERS, filterBy, stamp, gapText, clipOf, ROLL, manualTags };
 }));

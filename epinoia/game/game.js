@@ -1554,6 +1554,7 @@ async function offerToAttachVideo() {
     cta.textContent = (window.S && window.S.video && window.S.video.url)
       ? 'video sync' : 'attach video';
     cta.onclick = openAttach;
+    offerTagger();
     offerLiveStatsLink();                      // same people, same moment
     watchVideoJob();                           // a job already running shows on the button
   } catch (_) {
@@ -1946,9 +1947,71 @@ async function importClockTrack(file) {
   } catch (err) { note.textContent = 'not a clock track: ' + (err && err.message || err); }
 }
 
+/* ---- THE VIDEO TAGGER (videotag.js) ------------------------------------------------------------
+   Placing each play on the footage by hand: for the people who may attach video (vidShown), once a
+   video a player can be steered in (YouTube, a file) is attached. Opened from the top bar's "tag
+   video", from the video tab's "Tag plays" (at the play being watched), and by ?tag=1 (the watch
+   page's link for a full game). Saves through saveClockTrack, into clock_track.manual. */
+function taggable() {
+  const v = window.S && window.S.video;
+  if (!v || !v.url) return false;
+  const P = window.EpinoiaVideo && window.EpinoiaVideo.parse ? window.EpinoiaVideo.parse(v.url) : null;
+  return !!((P && P.provider === 'youtube') || v.provider === 'youtube' || v.provider === 'mp4');
+}
+let taggerAsked = false;
+function offerTagger() {
+  const cta = document.getElementById('tagCta');
+  if (!cta || !vidShown) return;
+  const ok = taggable();
+  cta.classList.toggle('hide', !ok);
+  cta.onclick = () => openTagger(null);
+  if (ok && !taggerAsked && qp.get('tag') === '1') { taggerAsked = true; openTagger(qp.get('vs')); }
+}
+let taggerP = null;
+function taggerKit() {
+  if (window.EpinoiaVideoTagger) return Promise.resolve(window.EpinoiaVideoTagger);
+  if (taggerP) return taggerP;
+  const me = Array.from(document.scripts).find(x => /\/game\/game\.js(\?|$)/.test(x.src || ''));
+  const v = (/[?&]v=(\d+)/.exec((me && me.src) || '') || [])[1];
+  const sfx = v ? '?v=' + v : '';
+  if (!document.querySelector('link[href*="kit/videotag.css"]')) {
+    const l = document.createElement('link');
+    l.rel = 'stylesheet'; l.href = '../kit/videotag.css' + sfx;
+    document.head.appendChild(l);
+  }
+  taggerP = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = '../videotag.js' + sfx;
+    sc.onload = () => (window.EpinoiaVideoTagger ? res(window.EpinoiaVideoTagger) : rej(new Error('no videotag.js')));
+    sc.onerror = () => { taggerP = null; rej(new Error('could not load videotag.js')); };
+    document.head.appendChild(sc);
+  });
+  return taggerP;
+}
+async function openTagger(seq) {
+  const S = window.S;
+  if (!vidShown || !S || !S.video || !taggable()) return;
+  let T;
+  try { T = await taggerKit(); } catch (_) { return; }
+  const d = window.derive ? window.derive() : null;
+  const labels = {};
+  ((d && d.pbp) || []).forEach(p => { labels[p.id] = p.txt; });
+  const teams = [0, 1].map(t => (S.teams && S.teams[t] && S.teams[t].name) || (t ? 'Away' : 'Home'));
+  T.open({ video: S.video, events: S.events, labels, teams, seq,
+           title: teams[0] + ' v ' + teams[1] + (S.video.label ? ' · ' + S.video.label : ''),
+           save: track => saveClockTrack(track) });
+}
+
 async function saveClockTrack(track) {
   const token = storedToken();
   if (!token || !gameId) return false;
+  /* A NEW READING DOES NOT WIPE A PERSON'S TAGS. The tagger (videotag.js) keeps the plays placed by
+     hand in clock_track.manual; a track read off the page or imported from a file says nothing about
+     them, so the ones on file are carried across. The tagger itself passes its own list. */
+  const cur = window.S && window.S.video && window.S.video.clock_track;
+  if (track && !Array.isArray(track.manual) && cur && Array.isArray(cur.manual) && cur.manual.length) {
+    track = Object.assign({}, track, { manual: cur.manual });
+  }
   const r = await rpcCallRaw('set_video_clock_track', { p_game: gameId, p_track: track }, token);
   if (!r.ok) return false;
   if (window.S && window.S.video) { window.S.video.clock_track = track; mountVideo(window.derive()); }
@@ -2293,6 +2356,7 @@ function offerAdminControls() {
   if (cta && vidShown) {
     cta.textContent = (window.S && window.S.video && window.S.video.url) ? 'video sync' : 'attach video';
   }
+  offerTagger();               // a video attached since: the tagger can be offered now
 }
 
 /* THE HOUR-OLD TOKEN.
@@ -2598,6 +2662,8 @@ function mountVideo(d) {
       return A && typeof A.featureLocked === 'function' ? !!A.featureLocked('videoRuns', S && S.leagueId) : analyticsLocked(); })(),
     /* the people who may attach a video may also nudge it; the same check */
     canEdit: vidShown,
+    /* ...and tag its plays by hand (videotag.js), from the play being watched */
+    onTag: taggable() ? (seq => openTagger(seq)) : null,
     onTrim: nudgeVideo,
     game: { id: gameId, home: S.teams[0] && S.teams[0].name, away: S.teams[1] && S.teams[1].name,
             tipoff_at: S.meta && S.meta.tipoff_at || null }

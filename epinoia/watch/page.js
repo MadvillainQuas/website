@@ -52,6 +52,34 @@
     league(d.league);
     playerIn($('wpPlayer'), d.video, d.title);
     boxWhenNear($('wpBox'), d.game);
+    if (d.kind === 'Full game') offerTagging(d);
+  }
+
+  /* A FULL GAME, FOR THE PEOPLE WHO MAY ATTACH ITS VIDEO: a way to the tagger (videotag.js), where each play
+     is placed on the footage by hand. The tagger works on the game's own video (game_videos), so the link
+     says whether that is this one. Asked of the database (may_attach_video), never guessed; a reader who is
+     not signed in, or not allowed, sees nothing and costs one read at most. */
+  async function offerTagging(d) {
+    if (!UUID.test(d.game || '')) return;
+    for (let i = 0; i < 6 && !M.token(); i++) await new Promise(r => setTimeout(r, 500));   // the session restores
+    if (!M.token()) return;
+    let may = false;
+    try { may = (await M.rpc('may_attach_video', { p_game: d.game }, { auth: true })) === true; } catch (_) { may = false; }
+    if (!may) return;
+    let own = null;
+    try {
+      const rows = await M.rest('game_videos?game_id=eq.' + encodeURIComponent(d.game) + '&is_primary=eq.true&select=url,video_ref&limit=1');
+      own = rows && rows[0] ? rows[0] : null;
+    } catch (_) { own = null; }
+    if (!own || !own.url) return;            // nothing attached to the game to tag
+    const same = own.video_ref === d.video || (own.url || '').indexOf(d.video) !== -1;
+    const h = $('videoH');
+    const head = h && h.parentElement;
+    if (!head || head.querySelector('.wp-tag')) return;
+    const a = M.el('a', 'showall wp-tag', same ? M.tr('tag plays in this video') + ' →' : M.tr('tag plays in the game’s own video') + ' →');
+    a.href = '../game/?g=' + encodeURIComponent(d.game) + '&tag=1';
+    a.title = M.tr('Place each play on the footage by hand (admins of this game)');
+    head.appendChild(a);
   }
 
   /* ---------------------------------------------------------------- the bare page */

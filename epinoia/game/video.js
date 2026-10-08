@@ -72,7 +72,10 @@ function plays() {
   const v = ctx.video;
   const key = (ctx.events.length) + ':' + (v.tip_wall || v.tip_at || '') + ':' +
               (v.stream_started_at || '') + ':' + (v.trim_ms || 0) + ':' +
-              (v.clock_track && v.clock_track.samples ? v.clock_track.samples.length : 0);
+              (v.clock_track && v.clock_track.samples ? v.clock_track.samples.length : 0) + ':' +
+              /* a tag set by hand moves its play and its neighbours: the index is rebuilt */
+              (v.clock_track && Array.isArray(v.clock_track.manual)
+                ? v.clock_track.manual.map(x => x && x.seq + '@' + x.t).join(',') : '');
   if (indexed && key === indexedKey) return indexed;
   indexedKey = key;
   indexed = buildPlays();
@@ -362,7 +365,10 @@ function render() {
   const channelOnly = !!(v.live_src && !v.url);
   /* a clock track places plays by the game clock, so neither a timed log nor
      a tip-off anchor is needed when one is present */
-  const hasTrack = !!(v.clock_track && Array.isArray(v.clock_track.samples) && v.clock_track.samples.length);
+  /* plays tagged by hand (videotag.js) place themselves and the plays between them, so a video
+     with tags and no reading is lined up too */
+  const hasTrack = !!(v.clock_track && ((Array.isArray(v.clock_track.samples) && v.clock_track.samples.length) ||
+                                         (Array.isArray(v.clock_track.manual) && v.clock_track.manual.length)));
   /* a clock was read (not score changes alone): the runs exist, so minutes and fives can be placed */
   const clocked = hasTrack && v.clock_track.mode !== 'score' &&
     V().runsFromTrack(V().saneTrack ? V().saneTrack(v.clock_track, v) : v.clock_track).length > 0;
@@ -505,8 +511,12 @@ function render() {
             ' · late? <button data-n="-1000" title="move every clip 1 s earlier">−1 s</button>' +
             '<button data-n="-5000" title="move every clip 5 s earlier">−5 s</button>' +
             (v.trim_ms ? '<i>(' + (v.trim_ms > 0 ? '+' : '') + (v.trim_ms / 1000) + ' s)</i>' : '') + '</span>' : '') +
+        /* THE TAGGER (videotag.js): the people who may attach the video place plays on it by hand -
+           which is also how a video nothing has lined up yet gets lined up */
+        (ctx.canEdit && ctx.onTag
+          ? '<button class="videxport tag" id="vidTag" title="place each play on the footage by hand: the play-by-play beside the video, a timeline to drag, keys to work through it">tag plays</button>' : '') +
         (lined && timed && list.length
-          ? '<button class="videxport" id="vidExport" title="every listed play as a clip list (JSON) for the labelling studio or an editor">export clips</button>' : '') +
+          ? '<button class="videxport" id="vidExport"title="every listed play as a clip list (JSON) for the labelling studio or an editor">export clips</button>' : '') +
         (lined && timed && list.length
           ? '<button class="videxport hl" id="vidHl" title="a vertical reel of the plays you choose, cut from the footage, the ball kept in frame">export highlights</button>' : '') +
       '</div>' +
@@ -739,6 +749,8 @@ function wire() {
   });
   const ex = host.querySelector('#vidExport');
   if (ex) ex.onclick = exportClips;
+  const tg = host.querySelector('#vidTag');
+  if (tg) tg.onclick = () => { if (ctx.onTag) ctx.onTag(st.current); };
   host.querySelectorAll('.vidlink').forEach(a => { a.onclick = e => e.stopPropagation(); });
   host.querySelectorAll('.viditem[data-id]').forEach(li => {
     const go = () => jumpTo(+li.dataset.id);
@@ -795,6 +807,7 @@ function render_(opts) {
   const fresh = !ctx || ctx.video !== opts.video || ctx.events !== opts.events;
   ctx = { video: opts.video, events: opts.events || [], S: opts.S, d: opts.d,
           canEdit: !!opts.canEdit, onTrim: opts.onTrim || null, game: opts.game || null,
+          onTag: opts.onTag || null,
           runsLocked: !!opts.runsLocked };
   if (opts.focus && opts.focus.pid != null) st.pid = opts.focus.pid;
   if (opts.focus && opts.focus.filter) st.filter = opts.focus.filter;
