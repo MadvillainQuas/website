@@ -283,6 +283,13 @@ async function readExtras(api, lg, x) {
       (res.rows || []).forEach(r => { if (r.key) out.sos[r.key] = { games: r.games, elo: r.elo, sosNet: r.sosNetRtg, sosElo: r.sosElo, adjNet: r.adjNet, rawNet: r.rawNet, adjO: r.adjOrtg, adjD: r.adjDrtg }; });
     })(),
     (async () => {
+      /* the site's own season awards, as they stand (season_awards_resolved: a league's editorial pick where it made one) */
+      if (!x.leagueComp || !x.leagueComp.id) return;
+      const rows = (await rpc('season_awards_resolved', { p_competition: x.leagueComp.id })) || [];
+      out.awards = rows.filter(r => r && r.code && (r.player_id || r.team_id)).map(r => ({ code: r.code, player: r.player_id || null, team: r.team_id || null,
+        value: r.value != null ? +r.value : null, detail: r.detail || null, chosen: !!r.chosen }));
+    })(),
+    (async () => {
       const ids = (x.players || []).filter(p => p && p.id && +p.gp >= 3).map(p => p.id).slice(0, 1000);
       if (!ids.length) return;
       out.bio = {};
@@ -401,7 +408,7 @@ export async function buildLeague(api, lg, o) {
     lines: D.lines, teamLines: D.teamLines, names: D.names, players: D.players, recaps, model: D.model, tallies: D.tallies, previous,
     rest: D.rest, lastLine: D.lastLine, lastTotal: D.lastTotal, released: D.released, ties: D.ties,
     news: D.extra.news || null, significance: D.extra.significance || null, highlights: D.extra.highlights || null, fanvote: D.extra.fanvote || null,
-    sos: D.extra.sos || null, bio: D.extra.bio || null };
+    sos: D.extra.sos || null, bio: D.extra.bio || null, awards: D.extra.awards || null };
   let out = N.build(input);
   /* A SUSPENSION THE LEAGUE HAS RECORDED (player_ban), asked only for the players the newsdesk says are not playing: one is
      said as the reason, and the build is made again with it. Nothing else is ever given as a reason. */

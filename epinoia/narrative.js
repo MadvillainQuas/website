@@ -1406,7 +1406,7 @@ function build(input) {
   });
 
   const ctxObj = { nowMs, tz, C, S, posOf, name, short, fixtures, games, regular, recaps, tallies, P, model: o.model, LENS, PL, pname, ID, DISTINCT, F, maxGp, qualifiers, nextText,
-    shape, SERIES, isPost: isPostFix, pairKey, SIG, VID, NEWS, written, stories };
+    shape, SERIES, isPost: isPostFix, pairKey, SIG, VID, NEWS, written, stories, awards: o.awards || null };
   /* the clubs the file names, so a page can draw a slate or a link without asking for them */
   const clubsOut = {};
   new Set(games.concat(fixtures).flatMap(g => [g.home_team_id, g.away_team_id])).forEach(id => {
@@ -1665,6 +1665,14 @@ function coverage(stories, X) {
   });
   teams.sort((a, b) => (b.stories.length - a.stories.length) || ((a.rank || 99) - (b.rank || 99)));
 
+  /* THE AWARD RACES: the site's own season awards as they stand (season_awards_resolved), each leader with the number the
+     award is decided on; a league's own pick is said as chosen */
+  const AWARD = { mvp: 'Most valuable player', scorer: 'Leading scorer', rebounder: 'Leading rebounder', playmaker: 'Leading playmaker', defender: 'Best defender',
+    marksman: 'Best from three', best_offence: 'Best offence', best_defence: 'Best defence' };
+  const awards = (X.awards || []).filter(a => a && AWARD[a.code]).map(a => ({ code: a.code, label: AWARD[a.code], player: a.player || null, team: a.team || null,
+    who: a.player ? X.pname(a.player) : null, club: a.team ? X.name(a.team) : null, value: num(a.value), detail: a.detail || null, chosen: !!a.chosen }))
+    .filter(a => (a.player ? !!a.who : !!a.club));
+
   /* DATA NOTES */
   const notes = [];
   const close = [...X.C.values()].filter(c => c.close.w + c.close.l >= 3).sort((a, b) => (b.close.w / (b.close.w + b.close.l)) - (a.close.w / (a.close.w + a.close.l)));
@@ -1713,12 +1721,13 @@ function coverage(stories, X) {
     slate: sl, recaps, players: players.slice(0, 8), teams: teams.slice(0, 10), notes, calendar,
     /* what has been written in the last fortnight, and the storylines nobody has written about yet (with the news read) */
     written: X.written || null,
+    awards: awards.length ? awards : null,
     gaps: X.written ? live.slice(0, 12).filter(s => !s.written).map(s => s.id) : null
   };
 }
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 8;
+const VERSION = 9;
 return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));

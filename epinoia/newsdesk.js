@@ -223,6 +223,13 @@ function coverageHTML(build, o) {
     (t.luck != null && Math.abs(t.luck) >= 1 ? '<span>' + esc(luckLine(t.luck)) + '</span>' : '') +
     '<span>' + esc('close games ' + t.close) + '</span>' + (t.next ? '<span>' + esc('next: ' + t.next) + '</span>' : '') + '</div>').join('') + '</div>' : '';
   const notes = (C.notes || []).length ? '<dl class="nd-notes">' + C.notes.map(n => '<div><dt>' + esc(n.head) + '</dt><dd>' + nb(esc(n.line)) + '</dd></div>').join('') + '</dl>' : '';
+  /* the award races as they stand: the site's own season awards, the leader and the number each is decided on */
+  const awards = (C.awards || []).length ? '<dl class="nd-notes nd-awards">' + C.awards.map(a => {
+    const who = a.who ? (a.player ? '<a href="' + esc(safeHref(opts.base, 'p/?p=' + a.player) || '#') + '" translate="no">' + esc(a.who) + '</a>' : '<span translate="no">' + esc(a.who) + '</span>') : '';
+    const club = a.club ? '<span translate="no">' + esc(a.club) + '</span>' : '';
+    return '<div><dt>' + esc(a.label) + '</dt><dd>' + (who ? who + (club ? ', ' + club : '') : club) +
+      (a.value != null ? ' <small>' + esc(String(a.value)) + (a.detail ? ' · ' + esc(a.detail) : '') + '</small>' : '') + (a.chosen ? ' <small>chosen by the league</small>' : '') + '</dd></div>';
+  }).join('') + '</dl>' : '';
   const cal = (C.calendar || []).length ? '<div class="nd-cal">' + C.calendar.map(d => '<div class="nd-day"><b>' + esc(d.day) + '</b><ul>' +
     d.items.map(i => '<li data-kind="' + esc(i.kind) + '">' + esc(i.what) + '</li>').join('') + '</ul></div>').join('') + '</div>' : '';
   return '<div class="nd-plan" data-i18n-ctx="newsdesk">' +
@@ -236,6 +243,7 @@ function coverageHTML(build, o) {
     sec('ndRecaps', 'Recaps worth writing', 'The week’s games, the most worth a piece first', recaps) +
     sec('ndPeople', 'Players to feature', null, people) +
     sec('ndClubs', 'Clubs to feature', 'What wins for them, the record against the points, the close games and what is next', clubs) +
+    sec('ndAwards', 'The award races', 'The season’s awards as they stand, by the site’s own measures', awards) +
     sec('ndWritten', 'Already written', 'The last fortnight’s pieces about the league, and the storylines each one covers', written) +
     sec('ndNotes', 'Data notes', null, notes) +
     sec('ndCal', 'The week’s calendar', 'What to publish, and when', cal) +

@@ -1899,7 +1899,11 @@
       'The closer': 'Decisivo al final',
       'Serving a suspension': 'Sancionado',
       'Questions to ask': 'Preguntas que hacer',
-      'How it has developed': 'Cómo ha evolucionado'
+      'How it has developed': 'Cómo ha evolucionado',
+      'The award races': 'La carrera por los premios',
+      'The season’s awards as they stand, by the site’s own measures': 'Los premios de la temporada tal como van, según los criterios del sitio',
+      'Best defender': 'Mejor defensor',
+      'chosen by the league': 'elegido por la liga'
     },
 
     ctx: {

@@ -1897,7 +1897,11 @@
       'The closer': '勝負強さ',
       'Serving a suspension': '出場停止中',
       'Questions to ask': '質問の案',
-      'How it has developed': 'これまでの経緯'
+      'How it has developed': 'これまでの経緯',
+      'The award races': '個人賞争い',
+      'The season’s awards as they stand, by the site’s own measures': '現時点のシーズン個人賞（当サイト独自の基準）',
+      'Best defender': '最優秀守備選手',
+      'chosen by the league': 'リーグ選出'
     },
 
     ctx: {
