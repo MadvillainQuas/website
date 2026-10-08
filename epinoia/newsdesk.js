@@ -264,6 +264,7 @@ function planText(b) {
   if ((C.slate || []).length) { out.push('THE WEEK AHEAD'); C.slate.forEach(x => out.push('- ' + x.day + ': ' + x.title + (x.angle ? ' — ' + x.angle : '') + ' — ' + (x.plan || []).join(', '))); out.push(''); }
   if ((C.recaps || []).length) { out.push('RECAPS WORTH WRITING'); C.recaps.forEach(r => out.push('- ' + r.headline + (r.angle ? ' (' + r.angle + ')' : '') + (r.reasons && r.reasons.length ? ' [' + r.reasons.join('; ') + ']' : ''))); out.push(''); }
   if ((C.written || []).length) { out.push('ALREADY WRITTEN'); C.written.forEach(w => out.push('- ' + w.title)); out.push(''); }
+  if ((C.awards || []).length) { out.push('THE AWARD RACES'); C.awards.forEach(a => out.push('- ' + a.label + ': ' + [a.who, a.club].filter(Boolean).join(', ') + (a.value != null ? ' (' + a.value + (a.detail ? ', ' + a.detail : '') + ')' : ''))); out.push(''); }
   if ((C.notes || []).length) { out.push('DATA NOTES'); C.notes.forEach(n => out.push('- ' + n.head + ': ' + n.line)); out.push(''); }
   if ((C.calendar || []).length) { out.push('THE CALENDAR'); C.calendar.forEach(d => out.push('- ' + d.day + ': ' + d.items.map(i => i.what).join(' / '))); }
   return out.join('\n').trim();

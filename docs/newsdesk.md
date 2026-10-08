@@ -143,6 +143,22 @@ games it rests on, and the pieces that name its player (a player's storyline), b
 or two of its clubs (the race). The coverage plan lists what has been written, with the storylines each piece covers, and
 "Not yet covered": the openings.
 
+**The closer and suspensions.** The recaps carry clutch time (clutch.js: the last four minutes of a close game, and
+overtime) per side and player; the week's leader, from seven points, is "The closer", against the club's points in the same
+minutes. A player not playing is said as that, and a reason is given only when the league has recorded one: the builder
+asks `player_ban` for the players the newsdesk says are not playing, and a suspension is said ("serving a suspension, with
+one game left to serve").
+
+**Questions to ask.** Each storyline carries one or two questions a desk would take to the press conference, to a club's
+coach or to a player by name, grounded in the storyline's own numbers ("Your shooting has been worth +11.0 points a game in
+the run, against −3.7 before it: what changed?"), never in anything the numbers do not show.
+
+**Timelines.** Each storyline keeps how it has developed: when it opened and each change since, dated by the game that made
+it (the last six); a resolved one ends with how it ended.
+
+**The award races.** The coverage plan lists the site's own season awards as they stand (`season_awards_resolved`), each
+leader with the number the award is decided on.
+
 **Threads.** Each game of the week ahead carries the running storylines it touches, said as what the game means for each
 ("X put their unbeaten record on the line", "Y's run of five straight 20-point games is on the line"). A storyline rides
 on its club's next game only. The game page's preview shows them as "On the newsdesk".
