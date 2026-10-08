@@ -2,7 +2,9 @@
    EPINOIΛ'S MODEL, THE RUN (tools/build-odds.mjs), against a stand-in database:
      * a first run learns every finished game, writes a record pick for each it could judge and a fixture pick for each
        game to come, and keeps its state packed and gzipped;
-     * it reads nine numbers of each feature line, never the line, and the named stats of each player line;
+     * it reads 22 numbers of each feature line, never the line, and the named stats of each player line;
+     * a week after it last tuned itself it tunes again: every line read, the settings kept in the state, record picks
+       only for the games new since the last run, and not again the next hour;
      * a run with nothing new learns nothing and leaves the state be, but still brings the fixtures' picks up to date;
      * the next run reads only what finished after the watermark;
      * the pick's side is never sent (the table generates it); before migration 0253 it says so and keeps learning.
@@ -65,9 +67,9 @@ ok('a fixture pick for each game to come', fx.length === 12 && fx.every(x => x.k
 ok('the pick\'s side is never sent (the table generates it from p_home)', [...recs, ...fx].every(x => !('pick' in x)));
 ok('the strongest club at home to the weakest is favoured', (() => { const f = fixtures.find(g => g.home_team_id === 'h0' && g.away_team_id === 'h3'); const row = fx.find(x => x.game_id === f.id); return row && row.p_home > 0.6; })());
 ok('the state kept gzipped (1f 8b)', db.uploads === 1 && db.state[0] === 0x1f && db.state[1] === 0x8b);
-ok('...and packed: every id once', (() => { const j = JSON.parse(zlib.gunzipSync(db.state)); return j.v === 3 && Array.isArray(j.id) && new Set(j.id).size === j.id.length && j.wm && j.wm.id === 'g' + '019'.padStart(3, '0'); })());
+ok('...and packed: every id once', (() => { const j = JSON.parse(zlib.gunzipSync(db.state)); return j.v === 4 && Array.isArray(j.id) && new Set(j.id).size === j.id.length && j.wm && j.wm.id === 'g' + '019'.padStart(3, '0'); })());
 const fq = db.urls.find(u => u.startsWith('/rest/v1/game_features'));
-ok('nine numbers of each feature line, never the whole line', /q0:f->\d+/.test(fq) && /q8:f->\d+/.test(fq) && !/select=[^&]*(^|,)f(,|&)/.test(fq), fq);
+ok('22 numbers of each feature line, never the whole line', /q0:f->\d+/.test(fq) && /q21:f->\d+/.test(fq) && !/q22:/.test(fq) && !/select=[^&]*(^|,)f(,|&)/.test(fq), fq);
 const pq = db.urls.find(u => u.startsWith('/rest/v1/player_game_stats'));
 ok('the named stats of each player line, never the blob', /min:stats->min/.test(pq) && !/select=[^&]*(^|,)stats(,|&)/.test(pq) && !/player_uuid/.test(pq), pq);
 
@@ -93,6 +95,25 @@ console.log('\na plain (not gzipped) state');
 db.state = Buffer.from(JSON.stringify({ v: 1, w: [] })); db.picks404 = false;
 const r5 = await B.run(api, { now: NOW, days: 30, log: quiet });
 ok('read as JSON; of another layout, so the model starts again from every game', r5.learned === 24, r5.learned);
+
+console.log('\na week on: it tunes itself');
+{
+  const j = JSON.parse(zlib.gunzipSync(db.state));
+  j.tunedAt = NOW - 8 * DAY;
+  db.state = zlib.gzipSync(JSON.stringify(j));
+  db.lines = lines.slice(0, 52); db.picks = []; db.urls = [];
+  const up = db.uploads;
+  const r6 = await B.run(api, { now: NOW, days: 30, log: quiet, tuneBudgetMs: 20000 });
+  const reads = db.urls.filter(u => u.startsWith('/rest/v1/game_features'));
+  ok('it reads every line again (no watermark), tunes, and says what it tried', !!r6.tune && r6.tune.tried >= 1 && reads.some(u => !/finalised_at\.gt\./.test(u)), r6.tune);
+  ok('...only the two games new since the last run are learned as new and get record picks', r6.learned === 2 &&
+     db.picks.filter(x => /ignore-duplicates/.test(x.prefer)).flatMap(x => x.rows).length <= 2, r6.learned);
+  const k = JSON.parse(zlib.gunzipSync(db.state));
+  ok('...and its settings and the time it tuned are kept in the state', db.uploads === up + 1 && k.tunedAt === NOW && !!k.tuned && typeof k.tuned === 'object', { tunedAt: k.tunedAt, tuned: k.tuned });
+  db.urls = [];
+  const r7 = await B.run(api, { now: NOW + 3600000, days: 30, log: quiet });
+  ok('...the next hour it does not tune again', !r7.tune && db.urls.filter(u => u.startsWith('/rest/v1/game_features')).every(u => /finalised_at\.gt\./.test(u)));
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

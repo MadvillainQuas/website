@@ -7,6 +7,8 @@
      … --full                   the model from nothing: every finished game in the database, in tip-off order
      … --eval                   with --dry-run --full: how its picks have done, against home-only and Elo
      … --days 14                how far ahead fixtures are given their probability
+     … --tune / --no-tune       tune its settings now (Odds.tune) / not this run even if a week has passed
+     … --tune-budget 240        seconds the tuning may take
 
    ONE RUN, DATA-EFFICIENT: the model's state (analytics/odds/state.json in the private bucket: sixteen weights, a few
    numbers a club and a player) is read; only the What wins feature lines (game_features) finished since its watermark
@@ -34,6 +36,8 @@ const Features = require(path.join(ROOT, 'epinoia', 'features.js'));
    labelled so and is told apart on the way back by gzip's first two bytes */
 const BUCKET = 'analytics', STATE_PATH = 'odds/state.v' + Odds.V + '.json.gz';
 const DAY = 86400000, LATE_MS = 2 * DAY, KEEP_MS = 420 * DAY;
+/* it tunes its own settings once a week, in at most four minutes (Odds.tune) */
+const TUNE_EVERY = 7 * DAY, TUNE_BUDGET_MS = 240000;
 /* nine numbers of each feature line (f->i), not the line's hundred and more */
 const FEATURE_SELECT = 'game_id,team_idx,league_id,season_id,finalised_at,' + Odds.lineSelect(Features.INDEX);
 const GAME_SELECT = 'id,status,home_team_id,away_team_id,home_score,away_score,tipoff_at,venue_id';
@@ -136,13 +140,31 @@ export async function run(api, o) {
   const now = o.now || Date.now(), log = o.log || console.log;
   const out = { learned: 0, records: 0, fixtures: 0, late: 0, wrote: { records: 0, fixtures: 0 }, warnings: [] };
   let S = o.full ? null : await api.download(BUCKET, STATE_PATH).catch(() => null);
-  S = S ? Odds.unpack(S) : null;
+  S = S ? Odds.unpack(S) : null;                      // its tuned settings back in force with it
+  if (!S) Odds.apply({});
   const fresh = !S || !S.wm;
   if (!S) S = Odds.create();
-  const lines = await readLines(api, fresh ? null : S.wm);
-  const games = await readGames(api, lines);
-  const lastSeen = S.lastT || 0;
-  const recs = Odds.walk(S, games, { late: g => !fresh && lastSeen && g.t < lastSeen - LATE_MS });
+  const lastSeen = S.lastT || 0, prevWm = S.wm;
+  const isNew = L => !prevWm || L.finalised_at > prevWm.at || (L.finalised_at === prevWm.at && (L.game_id > prevWm.id || (L.game_id === prevWm.id && L.team_idx > prevWm.ti)));
+  let lines, recs;
+  /* A WEEK SINCE IT LAST TUNED ITSELF (or --tune): every finished game read once, its settings tuned on the whole walk
+     (Odds.tune: strict, out of sample), and the state rebuilt under them. Only the games new since the last run get a
+     record pick, as on any other run */
+  if (o.tune || (!fresh && !o.noTune && now - (S.tunedAt || 0) > TUNE_EVERY)) {
+    lines = await readLines(api, null);
+    const all = await readGames(api, lines);
+    const fresh_ids = new Set(lines.filter(isNew).map(L => L.game_id));
+    const t = Odds.tune(all, { budgetMs: o.tuneBudgetMs || TUNE_BUDGET_MS, start: S.tuned || {}, log });
+    out.tune = { tried: t.tried, from: +t.base.ll.toFixed(5), to: +t.best.ll.toFixed(5), changed: t.changed, settings: t.over };
+    const tuned = Odds.create();
+    recs = Odds.walk(tuned, all, { late: g => fresh_ids.has(g.id) && !!lastSeen && g.t < lastSeen - LATE_MS })
+      .filter(r => fresh_ids.has(r.game.id));
+    S = Object.assign(tuned, { tuned: t.over, tunedAt: now });
+  } else {
+    lines = await readLines(api, fresh ? null : S.wm);
+    recs = Odds.walk(S, await readGames(api, lines), { late: g => !fresh && lastSeen && g.t < lastSeen - LATE_MS });
+    if (fresh) { S.tuned = S.tuned || {}; S.tunedAt = S.tunedAt || now; }
+  }
   out.learned = recs.length;
   if (lines.length) { const L = lines[lines.length - 1]; S.wm = { at: L.finalised_at, id: L.game_id, ti: L.team_idx }; }
   const recordRows = recs.filter(r => r.pre.ok && !r.late).map(r => pickRow(r.game, r.pre, 'record'));
@@ -170,7 +192,7 @@ export async function run(api, o) {
     else throw e;
   }
   /* the state only goes back when the run learned something */
-  if (recs.length || fresh) await api.upload(BUCKET, STATE_PATH, packed(S, now));
+  if (recs.length || fresh || out.tune) await api.upload(BUCKET, STATE_PATH, packed(S, now));
   return out;
 }
 
@@ -200,13 +222,15 @@ async function main() {
   }
   if (!url || !key) { console.error('SUPABASE_URL / SUPABASE_SERVICE_KEY missing'); process.exit(2); }
   const t0 = Date.now();
-  const out = await run(client(url, key), { dryRun: has('--dry-run'), full: has('--full'), eval: has('--eval'), days: +val('--days', 14) });
+  const out = await run(client(url, key), { dryRun: has('--dry-run'), full: has('--full'), eval: has('--eval'), days: +val('--days', 14),
+    tune: has('--tune'), noTune: has('--no-tune'), tuneBudgetMs: has('--tune-budget') ? 1000 * +val('--tune-budget', 240) : undefined });
   const s = out.summary;
   console.log('learned ' + out.learned + ' games (' + out.late + ' late), ' + out.records + ' record picks, ' + out.fixtures + ' of ' + out.fixturesSeen + ' fixtures; '
     + 'wrote ' + out.wrote.records + ' + ' + out.wrote.fixtures + '; ' + Math.round((Date.now() - t0) / 100) / 10 + ' s');
   console.log('model: ' + s.games + ' games, judged ' + s.judged + ', right ' + (s.right == null ? '–' : (100 * s.right).toFixed(1) + '%') + ', Brier ' + (s.brier == null ? '–' : s.brier.toFixed(4)) +
     ', sigma ' + s.sigma.toFixed(1) + ', cal ' + s.cal.map(v => v.toFixed(3)).join('/') + ', w ' + JSON.stringify(Object.fromEntries(Object.entries(s.w).map(([k, v]) => [k, +v.toFixed(3)]))));
   if (out.eval) console.log('eval (record games): ' + JSON.stringify(out.eval));
+  if (out.tune) console.log('tuned itself: ' + JSON.stringify(out.tune));
   out.warnings.forEach(w => console.log('warning: ' + w));
   if (process.env.GITHUB_STEP_SUMMARY) {
     try { fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, '## EPINOIA model\n\n' + out.learned + ' games learned, ' + out.records + ' record picks, ' + out.fixtures + ' fixtures; right ' +

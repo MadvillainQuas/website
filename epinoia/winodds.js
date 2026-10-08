@@ -30,6 +30,9 @@
        residual): an injury, a new signing or a coach's change shows here before the season's numbers move;
      * WHO IS PLAYING: its last game's players, each rated by their game score a minute this season, against its whole
        roster rated the same way - an absence or a return;
+     * STYLE (style()): half-court points a chance, transition (how often, and points a chance), second chances, and the
+       shot diet (rim / mid-range / three shares and make rates) - each attack against the defence it meets against the
+       league, as points a game; where the league's feed has situations and zones;
      * rest, back-to-backs, and the home court (none at a neutral site: away from the home club's commonest venue).
        margin = w · x + the league's own home edge,     P(home) = expit(a + b · 1.702 · margin / σ)
    WHAT IT LEARNS, AFTER EVERY GAME, FROM EVERY LEAGUE AT ONCE:
@@ -38,15 +41,20 @@
      * each league's home edge, from what the model missed on home games there, kept near the shared one;
      * σ, how far its margins miss, as an exponentially weighted spread;
      * a and b, ITS OWN WINS AND LOSSES: a logistic recalibration of its probabilities on whether its picks came off;
-     * every club's numbers above, and every player's.
+     * every club's numbers above, and every player's;
+     * once a week, ITS OWN SETTINGS (tune()): the whole database walked again under each candidate, kept only on a gain
+       that holds in both halves of the games.
    It says nothing before both clubs have played MIN_GP games this season (ok: false): early numbers are too thin.
    WHAT EACH IS WORTH is measured on the walk over the whole database (tools/build-odds.mjs --dry-run --full --eval);
    C.use switches each family of inputs off, and every constant below was set that way (docs/what-wins-model.md §7.8.1).
-   2026-10-08, 1,540 games judged: Brier 0.2009, 68.1% right, log loss 0.5828 - against 0.2026 / 67.3% / 0.5873 for
-   the four factors, Elo, the margin and the home court alone (Elo alone 0.2046, the home side always 0.2456). Form is
-   the gain that holds; the rest are level within the noise, so they start at nothing and earn their weight.
+   2026-10-08, 1,540 games judged: Brier 0.2007, 67.8% right, log loss 0.5819 tuned (0.2011 / 68.0% / 0.5830 on the
+   defaults) - against 0.2026 / 67.3% / 0.5873 for the four factors, Elo, the margin and the home court alone (Elo
+   alone 0.2046, the home side always 0.2456). Form is the gain that holds. The style inputs are alive (the shot diet
+   alone correlates 0.46 with the result, the whole model 0.55) but carry what the model already knows (0.81 with its
+   margin, −0.05 with what it misses): level, like the schedule-adjusted factors, positions and who is playing - so
+   they start at nothing and earn their weight.
 
-   EVERYTHING IS INCREMENTAL AND COMPACT: a run reads only the games finished since the last (nine numbers a side, the
+   EVERYTHING IS INCREMENTAL AND COMPACT: a run reads only the games finished since the last (22 numbers a side, the
    named stats of each player line), feeds them in, and keeps the state as pack() makes it - every id written once and
    referred to by its place, every club, league and player one array, numbers to the precision they carry, the
    weights' covariance by its upper triangle - gzipped by the run. Nothing is ever refitted from scratch. The same file
@@ -58,16 +66,22 @@
   else root.EpinoiaOdds = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
-const V = 3;                               // the packed state's layout
-const MODEL = 'epinoia-2';
+const V = 4;                               // the packed state's layout
+const MODEL = 'epinoia-3';
 const MIN_GP = 3;
-const X_KEYS = ['home', 'efg', 'tov', 'orb', 'ftr', 'elo', 'net', 'rest', 'b2b', 'aefg', 'atov', 'aorb', 'aftr', 'pos', 'form', 'avail'];
+const X_KEYS = ['home', 'efg', 'tov', 'orb', 'ftr', 'elo', 'net', 'rest', 'b2b', 'aefg', 'atov', 'aorb', 'aftr', 'pos', 'form', 'avail',
+                'hc', 'tr', 'sc', 'shot'];
 const P = X_KEYS.length;
 /* the counts a side carries, in order: eFG makes (FGM + ½ 3PM), FGA, FTA, turnovers, offensive rebounds, the other
-   side's defensive rebounds of this side's misses, points, possessions - all competitive (garbage time out) */
-const COUNTS = ['efgm', 'fga', 'fta', 'tov', 'ro', 'rd', 'pts', 'poss'];
+   side's defensive rebounds of this side's misses, points, possessions - all competitive (garbage time out); then the
+   chances by how they began (situations.js: all of them, transition, half-court, second chance - chances and points)
+   and the shots by zone (rim, mid-range, three - attempts and makes), zero where the league's feed has none */
+const COUNTS = ['efgm', 'fga', 'fta', 'tov', 'ro', 'rd', 'pts', 'poss',
+                'sit', 'trc', 'trp', 'hcc', 'hcp', 'scc', 'scp', 'rima', 'rimm', 'mida', 'midm', 'f3a', 'f3m'];
+const NC = COUNTS.length, K = COUNTS.reduce((o, k, i) => (o[k] = i, o), {});
 /* ...read from these features.js keys (competitive possessions = all of them less garbage time's, g_poss) */
-const LINE_KEYS = ['c_efgm', 'c_fga', 'c_fta', 'c_tov', 'c_reb_off', 'c_reb_def', 'c_pts', 'poss', 'g_poss'];
+const LINE_KEYS = ['c_efgm', 'c_fga', 'c_fta', 'c_tov', 'c_reb_off', 'c_reb_def', 'c_pts', 'poss', 'g_poss',
+                   'sit_ch', 'tr_ch', 'tr_pts', 'hc_ch', 'hc_pts', 'sc_ch', 'sc_pts', 'rim_a', 'rim_m', 'mid_a', 'mid_m', 'fg3a', 'fg3m'];
 const C = {
   shrink: 5,          // games of the league's average a club's profile starts with
   adjK: 20,           // the schedule-adjusted factors: games of nothing-special each club's starts with
@@ -85,13 +99,14 @@ const C = {
   rest: 7, b2b: 1.5,
   posScale: 0.1,      // the position edge (game score a 36 minutes) to the model's units
   availScale: 0.1,    // who is playing (game score a game) to the model's units
+  styleK: 120,        // the style's rates: chances (or shots) of the league's each side's own starts with
   /* pace scaling the four factors (pace) and the spread (paceSig) */
-  use: { adj: true, pos: true, form: true, avail: true, pace: false, paceSig: false },
+  use: { adj: true, pos: true, form: true, avail: true, style: true, pace: false, paceSig: false },
   /* where the margin weights start (points of margin a unit) and how sure of them (variances): the schedule-adjusted
      factors, positions and who is playing start at nothing and are held close (on the walk they add nothing measurable
      yet), so they earn their weight game by game as the evidence grows */
-  w0: [2.5, 1.2, -1.2, 0.35, 0.15, 3, 1, 0.25, -1.5, 0, 0, 0, 0, 0, 0.3, 0],
-  p0: [4, 1, 1, 0.25, 0.1, 4, 2, 0.25, 4, 0.05, 0.05, 0.05, 0.02, 0.05, 0.25, 0.05]
+  w0: [2.5, 1.2, -1.2, 0.35, 0.15, 3, 1, 0.25, -1.5, 0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0],
+  p0: [4, 1, 1, 0.25, 0.1, 4, 2, 0.25, 4, 0.05, 0.05, 0.05, 0.02, 0.05, 0.25, 0.05, 0.05, 0.05, 0.05, 0.05]
 };
 const DAY = 86400000, MIN = 60000;
 const isNum = v => typeof v === 'number' && isFinite(v);
@@ -112,7 +127,10 @@ function create() {
 /* ------------------------------------------------------------ the inputs --- */
 const countsBy = v => {
   const n = k => { const x = +v(k); return isNum(x) && x >= 0 ? x : 0; };
-  return [n('c_efgm'), n('c_fga'), n('c_fta'), n('c_tov'), n('c_reb_off'), n('c_reb_def'), n('c_pts'), Math.max(0, n('poss') - n('g_poss'))];
+  const zones = n('rim_a') + n('mid_a') > 0, z = k => (zones ? n(k) : 0);   // a three is a zone only where the zones are
+  return [n('c_efgm'), n('c_fga'), n('c_fta'), n('c_tov'), n('c_reb_off'), n('c_reb_def'), n('c_pts'), Math.max(0, n('poss') - n('g_poss')),
+          n('sit_ch'), n('tr_ch'), n('tr_pts'), n('hc_ch'), n('hc_pts'), n('sc_ch'), n('sc_pts'),
+          z('rim_a'), z('rim_m'), z('mid_a'), z('mid_m'), z('fg3a'), z('fg3m')];
 };
 /* a side's counts from a whole features.js line (f) and that file's INDEX */
 const countsOf = (f, I) => countsBy(k => (f && I && I[k] != null ? f[I[k]] : NaN));
@@ -132,7 +150,7 @@ const gmsc = l => l[3] + 0.4 * l[4] - 0.7 * l[5] - 0.4 * (l[6] - l[7]) + 0.7 * l
 const blankPos = () => ({ at: zeros(3), am: zeros(3), dv: zeros(3), dm: zeros(3), tot: zeros(6) });   // tot: min, trb, ast, stl, blk, pf
 /* a club's season: counts both ends, record, positions, form, roster and last line-up, the schedule solve's sums
    (so/sd: each game's factor logits for and against; op: games against each opponent) */
-const blankSeason = T => Object.assign(T, { n: 0, o: zeros(8), d: zeros(8), t: 0, f: 0, ps: blankPos(), ro: {}, last: [], so: zeros(4), sd: zeros(4), op: {} });
+const blankSeason = T => Object.assign(T, { n: 0, o: zeros(NC), d: zeros(NC), t: 0, f: 0, ps: blankPos(), ro: {}, last: [], so: zeros(4), sd: zeros(4), op: {} });
 function teamOf(S, id, lg, s, make) {
   let T = S.teams[id];
   if (!T && make) T = S.teams[id] = blankSeason({ lg, s, e: C.elo0, hv: {} });
@@ -148,7 +166,8 @@ function season(T, lg, s) {
 const nOf = (T, s) => (T && T.s === s ? T.n : 0);
 function leagueOf(S, lg, s) {
   const k = lg + '|' + s;
-  return S.lg[k] || (S.lg[k] = { n: 0, c: zeros(8), ga: zeros(3), gm: zeros(3), tm: [] });
+  /* k: the sides with situations, and with zones (their averages are over those) */
+  return S.lg[k] || (S.lg[k] = { n: 0, c: zeros(NC), k: [0, 0], ga: zeros(3), gm: zeros(3), tm: [] });
 }
 /* the four factors from counts (features.js FACTORS c_efg, c_tovp, c_orebp, c_ftr) */
 function factors(c) {
@@ -239,6 +258,56 @@ function avail(S, T, L, s) {
   return am > 0 && bm > 0 ? 200 * (a / am - b / bm) : 0;
 }
 
+/* ------------------------------------------------------------ the style --- */
+/* HOW EACH SIDE SCORES, AGAINST HOW THE OTHER DEFENDS, AGAINST THE LEAGUE: points a game each side can expect
+     hc    half-court chances (their share of all chances) × points per half-court chance
+     tr    transition: how often it gets out (its share) × points per transition chance
+     sc    second chances (their share) × points per second chance
+     shot  the shot diet: rim / mid-range / three shares of the shots × the make rate at each × its value
+   each rate this side's attack and the other's defence (the opponents' same rate against it) blended against the
+   league's - a share on the logit scale, a rate a chance added - every one shrunk toward the league's by STYLEK chances
+   or shots; × the league's chances (or zoned shots) a game. Each input is the home side's points less the away side's.
+   Zero for a league whose feed has no situations or zones, and for a side with none yet */
+function style(Th, Ta, L, s) {
+  const out = { hc: 0, tr: 0, sc: 0, shot: 0 };
+  if (!L || !L.k || !Th || !Ta || Th.s !== s || Ta.s !== s) return out;
+  const c = L.c, k = C.styleK;
+  const lr = (num, den) => (c[den] > 0 ? c[num] / c[den] : null);
+  const rate = (A, num, den, lg, kk) => (A[num] + kk * lg) / (A[den] + kk);
+  const share = (o, d, lg) => expit(logit(o) + logit(d) - logit(lg));
+  if (L.k[0] > 0 && c[K.sit] > 0) {
+    const chances = c[K.sit] / L.k[0];
+    const side = (A, B) => {
+      const part = (cc, cp) => {
+        const lgS = lr(cc, K.sit), lgP = lr(cp, cc);
+        if (lgS == null || lgP == null || lgS <= 0) return 0;
+        const sh = share(rate(A.o, cc, K.sit, lgS, k), rate(B.d, cc, K.sit, lgS, k), lgS);
+        const ppc = rate(A.o, cp, cc, lgP, k / 2) + rate(B.d, cp, cc, lgP, k / 2) - lgP;
+        return chances * sh * ppc;
+      };
+      return { hc: part(K.hcc, K.hcp), tr: part(K.trc, K.trp), sc: part(K.scc, K.scp) };
+    };
+    const h = side(Th, Ta), a = side(Ta, Th);
+    out.hc = h.hc - a.hc; out.tr = h.tr - a.tr; out.sc = h.sc - a.sc;
+  }
+  const zf = c[K.rima] + c[K.mida] + c[K.f3a];
+  if (L.k[1] > 0 && zf > 0) {
+    const shots = zf / L.k[1], Z = [[K.rima, K.rimm, 2], [K.mida, K.midm, 2], [K.f3a, K.f3m, 3]];
+    const pps = (A, B) => {
+      const fa = X => X[K.rima] + X[K.mida] + X[K.f3a];
+      const sh = Z.map(([za]) => { const lg = c[za] / zf; return lg > 0 ? share((A.o[za] + k * lg) / (fa(A.o) + k), (B.d[za] + k * lg) / (fa(B.d) + k), lg) : 0; });
+      const tot = sh.reduce((x, y) => x + y, 0) || 1;
+      return Z.reduce((e, [za, zm, v], i) => {
+        const lg = lr(zm, za);
+        if (lg == null || lg <= 0) return e;
+        return e + (sh[i] / tot) * share(rate(A.o, zm, za, lg, k / 2), rate(B.d, zm, za, lg, k / 2), lg) * v;
+      }, 0);
+    };
+    out.shot = shots * (pps(Th, Ta) - pps(Ta, Th));
+  }
+  return out;
+}
+
 /* -------------------------------------------------------- the prediction --- */
 function features(S, fx) {
   const Th = teamOf(S, fx.h), Ta = teamOf(S, fx.a);
@@ -292,6 +361,8 @@ function features(S, fx) {
   const x = [home, ex[0] * fp, ex[1] * fp, ex[2] * fp, ex[3] * fp, (elo(Th) - elo(Ta)) / 100, (net(Th, nh, rh0) - net(Ta, na, ra0)) / 10, rh - ra,
              (rh < C.b2b ? 1 : 0) - (ra < C.b2b ? 1 : 0), adj[0] * fp, adj[1] * fp, adj[2] * fp, adj[3] * fp, pos, form,
              C.use.avail ? (avail(S, Th, L, fx.s) - avail(S, Ta, L, fx.s)) * C.availScale : 0];
+  const st = C.use.style ? style(Th, Ta, L, fx.s) : { hc: 0, tr: 0, sc: 0, shot: 0 };
+  x.push(st.hc, st.tr, st.sc, st.shot);
   return { x, n: [nh, na], home, pace: sp };
 }
 function predict(S, fx) {
@@ -371,12 +442,14 @@ function learn(S, g, opts) {
       Th.so[j] += yh; Th.sd[j] += ya; Ta.so[j] += ya; Ta.sd[j] += yh;
     });
     Th.op[g.a] = (Th.op[g.a] || 0) + 1; Ta.op[g.h] = (Ta.op[g.h] || 0) + 1;
-    for (let k = 0; k < 8; k++) {
-      Th.o[k] += c0[k]; Th.d[k] += c1[k];
-      Ta.o[k] += c1[k]; Ta.d[k] += c0[k];
-      L.c[k] += c0[k] + c1[k];
+    for (let k = 0; k < NC; k++) {
+      const a0 = c0[k] || 0, a1 = c1[k] || 0;          // a shorter line (no situations, no zones) adds nothing past its end
+      Th.o[k] += a0; Th.d[k] += a1;
+      Ta.o[k] += a1; Ta.d[k] += a0;
+      L.c[k] += a0 + a1;
     }
     L.n += 2;
+    [c0, c1].forEach(c => { if (c[K.sit] > 0) L.k[0]++; if (c[K.rima] + c[K.mida] > 0) L.k[1]++; });
   }
   /* positions: each player's game against their own usual, credited to the defence they met and their club's position */
   if (Array.isArray(g.pl) && g.pl.length) {
@@ -457,28 +530,31 @@ function pack(S, o) {
   const lg = [];
   Object.keys(S.lg).forEach(k => {
     const [l, s] = k.split('|'), L = S.lg[k];
-    if (!keepAfter || live.has(s)) lg.push([I(l), I(s), L.n, L.c.map(v => rd(v, 1)), L.ga.map(v => rd(v, 2)), L.gm.map(v => rd(v, 2)), L.tm.map(I)]);
+    if (!keepAfter || live.has(s)) lg.push([I(l), I(s), L.n, L.c.map(v => rd(v, 1)), L.ga.map(v => rd(v, 2)), L.gm.map(v => rd(v, 2)), L.tm.map(I), L.k]);
   });
   const pl = [];
   Object.keys(S.pl).forEach(id => { const p = S.pl[id]; if (!keepAfter || live.has(p.s)) pl.push([I(id), I(p.s), rd(p.m, 2), rd(p.gs, 2), p.trb, p.ast, p.stl, p.blk, p.pf]); });
   const tri = [];
   for (let i = 0; i < P; i++) for (let j = i; j < P; j++) tri.push(r6(S.P[i * P + j]));
   const M = S.metrics;
-  return { v: V, model: MODEL, n: S.n, lastT: S.lastT, wm: S.wm || null, w: S.w.map(r6), P: tri, sig2: r6(S.sig2), cal: S.cal.map(r6),
+  return { v: V, model: MODEL, n: S.n, lastT: S.lastT, wm: S.wm || null, tuned: S.tuned || {}, tunedAt: S.tunedAt || 0, w: S.w.map(r6), P: tri, sig2: r6(S.sig2), cal: S.cal.map(r6),
            m: [M.n, M.right, r6(M.brier), r6(M.ll)], hca: flat(S.hca, I).map((v, i) => (i % 2 ? r6(v) : v)),
            by: Object.keys(S.by).map(l => [I(l), S.by[l].n, S.by[l].right, r6(S.by[l].brier)]), id: ids, lg, tm, pl };
 }
 /* unpack(): the state pack() kept, or a new one when it is of another layout */
 function unpack(j) {
-  if (!j || j.v !== V || !Array.isArray(j.w) || j.w.length !== P || !Array.isArray(j.P) || j.P.length !== P * (P + 1) / 2) return create();
+  if (!j || j.v !== V || !Array.isArray(j.w) || j.w.length !== P || !Array.isArray(j.P) || j.P.length !== P * (P + 1) / 2) { apply({}); return create(); }
+  /* the settings it was tuned to, back in force: the state means what it says only under them */
+  apply(j.tuned || {});
   const id = j.id || [], S = create();
+  S.tuned = j.tuned || {}; S.tunedAt = j.tunedAt || 0;
   const pairs = (a, f) => { const o = {}; for (let i = 0; i + 1 < a.length; i += 2) o[id[a[i]]] = f ? f(a[i + 1]) : a[i + 1]; return o; };
   Object.assign(S, { n: j.n, lastT: j.lastT, wm: j.wm || null, w: j.w.slice(), sig2: j.sig2, cal: j.cal.slice(),
     metrics: { n: j.m[0], right: j.m[1], brier: j.m[2], ll: j.m[3] }, hca: pairs(j.hca) });
   let k = 0;
   for (let a = 0; a < P; a++) for (let b = a; b < P; b++) { S.P[a * P + b] = S.P[b * P + a] = j.P[k++]; }
   (j.by || []).forEach(([l, n, right, brier]) => { S.by[id[l]] = { n, right, brier }; });
-  (j.lg || []).forEach(([l, s, n, c, ga, gm, tms]) => { S.lg[id[l] + '|' + id[s]] = { n, c, ga, gm, tm: tms.map(i => id[i]) }; });
+  (j.lg || []).forEach(([l, s, n, c, ga, gm, tms, k]) => { S.lg[id[l] + '|' + id[s]] = { n, c, ga, gm, tm: tms.map(i => id[i]), k: k || [0, 0] }; });
   (j.tm || []).forEach(r => {
     const ps = r[10], last = [];
     for (let i = 0; i + 1 < r[12].length; i += 2) last.push([id[r[12][i]], r[12][i + 1]]);
@@ -494,6 +570,81 @@ function ratings(S, lg, s) {
   const L = S.lg[lg + '|' + s];
   return L && L.n ? schedule(S, L, s, factors(L.c)) : {};
 }
+/* ------------------------------------------------------- tuning itself --- */
+/* THE MODEL TUNES ITS OWN SETTINGS (Louie, 2026-10-08). Its weights learn from every result as it goes; its settings -
+   how far early numbers are shrunk, how fast form moves, how freely each family of inputs may weigh, and which families
+   it uses at all - are tuned on the whole database: every finished game walked again in tip-off order under each
+   candidate setting, each game predicted before it is learned, so every score is out of sample. Coordinate descent: a
+   setting at a time, its two neighbours tried, kept only when the log loss falls by MIN_GAIN overall AND by HALF_GAIN
+   in each half of the games (older, newer) on its own - a change that only fits one stretch of games is not kept.
+   STRICT ON PURPOSE (2026-10-08): tuned on the older half of the database and tried on the newer, looser rules found
+   changes worth 0.006 of log loss on the games they were tuned on and nothing on the others; under these rules it
+   moves two (the spread's pace, the home edges' learning rate) and the newer half is level (Brier 0.2139 v 0.2140,
+   paired t −0.1) - no harm, and as the games pile up a gain that holds is what moves a setting.
+   Settings are kept as what differs from the defaults (S.tuned), and unpack() puts them back. */
+const DEFAULTS = JSON.parse(JSON.stringify(C));
+const GROUPS = { 'p0.adj': [9, 10, 11, 12], 'p0.pa': [13, 15], 'p0.style': [16, 17, 18, 19] };
+const TUNE = ['shrink', 'adjK', 'srsK', 'formA', 'formK', 'forget', 'sigA', 'calEta', 'eloK', 'eloCarry', 'styleK', 'posShrink', 'hcaEta',
+              'p0.adj', 'p0.pa', 'p0.style', 'use.adj', 'use.pos', 'use.form', 'use.avail', 'use.style', 'use.pace', 'use.paceSig'];
+const MIN_GAIN = 0.001, HALF_GAIN = 0.0003;
+/* the defaults with these settings over them */
+function apply(over) {
+  const d = JSON.parse(JSON.stringify(DEFAULTS));
+  Object.keys(d).forEach(k => { C[k] = d[k]; });
+  Object.keys(over || {}).forEach(k => {
+    const v = over[k];
+    if (k.indexOf('use.') === 0) C.use[k.slice(4)] = !!v;
+    else if (GROUPS[k]) GROUPS[k].forEach(i => { C.p0[i] = d.p0[i] * v; });
+    else if (typeof d[k] === 'number' && isNum(v)) C[k] = v;
+  });
+}
+const valueOf = (over, k) => (k in over ? over[k] : k.indexOf('use.') === 0 ? !!DEFAULTS.use[k.slice(4)] : GROUPS[k] ? 1 : DEFAULTS[k]);
+function neighbours(k, v) {
+  if (typeof v === 'boolean') return [!v];
+  if (k === 'forget') return [1 - (1 - v) * 2, 1 - (1 - v) / 2];
+  if (k === 'eloCarry') return [v * 0.8, Math.min(0.95, v * 1.2)];
+  return [v / 1.6, v * 1.6].map(x => +x.toPrecision(3));
+}
+/* the walk's log loss over the games it judged (draws out), and over each half of them */
+function judge(games) {
+  const recs = walk(create(), games).filter(r => r.pre.ok && r.game.hs !== r.game.as);
+  const ll = a => a.reduce((s, r) => s - Math.log(clamp(r.game.hs > r.game.as ? r.pre.p : 1 - r.pre.p, 1e-9, 1)), 0) / Math.max(1, a.length);
+  const h = Math.floor(recs.length / 2);
+  return { n: recs.length, ll: ll(recs), h1: ll(recs.slice(0, h)), h2: ll(recs.slice(h)) };
+}
+function tune(games, o) {
+  const opt = o || {}, log = opt.log || (() => {});
+  const deadline = Date.now() + (isNum(opt.budgetMs) ? opt.budgetMs : 240000);
+  let over = Object.assign({}, opt.start || {});
+  const score = ov => { apply(ov); try { return judge(games); } finally { apply(over); } };
+  const base = score(over);
+  if (base.n < (opt.minGames || 300)) { apply(over); return { over, base, best: base, changed: [], tried: 1, enough: false }; }
+  let best = base, tried = 1;
+  const changed = [];
+  for (let pass = 0; pass < (opt.passes || 3); pass++) {
+    let moved = false;
+    for (const k of TUNE) {
+      if (Date.now() > deadline) break;
+      for (const v of neighbours(k, valueOf(over, k))) {
+        if (Date.now() > deadline) break;
+        const cand = Object.assign({}, over, { [k]: v });
+        const sc = score(cand); tried++;
+        const mg = isNum(opt.minGain) ? opt.minGain : MIN_GAIN, hg = isNum(opt.halfGain) ? opt.halfGain : HALF_GAIN;
+        if (sc.ll < best.ll - mg && sc.h1 < best.h1 - hg && sc.h2 < best.h2 - hg) {
+          log('tune: ' + k + ' ' + valueOf(over, k) + ' -> ' + v + ' (log loss ' + best.ll.toFixed(4) + ' -> ' + sc.ll.toFixed(4) + ')');
+          over = cand; best = sc; moved = true; changed.push([k, v, +sc.ll.toFixed(5)]);
+          break;
+        }
+      }
+    }
+    if (!moved || Date.now() > deadline) break;
+  }
+  /* settings back at the defaults are not kept */
+  Object.keys(over).forEach(k => { if (JSON.stringify(over[k]) === JSON.stringify(valueOf({}, k))) delete over[k]; });
+  apply(over);
+  return { over, base, best, changed, tried, enough: true };
+}
+
 function summary(S) {
   const M = S.metrics;
   return { model: MODEL, games: S.n, judged: M.n, right: M.n ? M.right / M.n : null, brier: M.n ? M.brier / M.n : null, logloss: M.n ? M.ll / M.n : null,
@@ -501,5 +652,5 @@ function summary(S) {
 }
 
 return { V, MODEL, MIN_GP, X_KEYS, COUNTS, LINE_KEYS, C, create, countsOf, countsOfRow, lineSelect, lineOf, gmsc, factors,
-         predict, learn, walk, ratings, pack, unpack, summary };
+         predict, learn, walk, ratings, pack, unpack, summary, apply, tune, judge, TUNE, DEFAULTS };
 }));

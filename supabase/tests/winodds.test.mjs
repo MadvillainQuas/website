@@ -6,9 +6,12 @@
      * form: a club that turns better mid-season is rated up before its season's numbers catch up;
      * positions: a rebounder and shot-blocker is a big, a passer a guard; a defence that shuts guards down shows it;
      * who is playing: the game after a club's best player sits, its line-up rates below its roster;
+     * the style: half-court points a chance and the shot diet, each attack against the defence it meets, against the
+       league - a rim-heavy attack gains more against a defence that gives up the rim than one that protects it;
      * one tip-off: games tipping off together are all predicted before any is learned;
      * its own wins and losses: on coin-flip games it stays near even (Brier near 0.25);
-     * the state saved and loaded predicts the same; a state of another layout is started again.
+     * the state saved and loaded predicts the same; a state of another layout is started again;
+     * it tunes its own settings: strictly, kept in the state and back in force when the state is read.
 
      node supabase/tests/winodds.test.mjs
    ============================================================================ */
@@ -51,7 +54,7 @@ function league(lg, s, rounds, noise, o) {
 }
 
 console.log('the shape of it');
-ok('sixteen inputs, every one named', O.X_KEYS.length === 16 && O.C.w0.length === 16 && O.C.p0.length === 16);
+ok('twenty inputs, every one named', O.X_KEYS.length === 20 && O.C.w0.length === 20 && O.C.p0.length === 20 && O.X_KEYS.slice(16).join() === 'hc,tr,sc,shot');
 ok('a player line from the engine\'s named stats: minutes from ms, makes and attempts of both kinds',
    (() => { const l = O.lineOf('p', 0, { min: 1800000, pts: 20, p2m: 5, p2a: 9, p3m: 2, p3a: 6, fta: 5, ftm: 4, or: 1, dr: 5, ast: 3, stl: 1, blk: 0, to: 2, pf: 3 });
             return l[2] === 30 && l[4] === 7 && l[5] === 15 && l[8] === 1 && l[9] === 5; })());
@@ -164,6 +167,41 @@ console.log('\npositions and who is playing');
   ok('a position edge is worked out for every matchup', Number.isFinite(pe));
 }
 
+console.log('\nthe style');
+{
+  /* five clubs level at the four factors; A's attack lives at the rim and scores well in the half court, P's defence
+     protects the rim and the half court, W's gives up both. The style lines: chances (all, transition, half-court,
+     second) and points, then the shots by zone */
+  const att = { A: { rim: 0.12, hc: 0.15 } }, def = { P: { rim: -0.12, hc: -0.15 }, W: { rim: 0.12, hc: 0.15 } };
+  const clubs = ['A', 'P', 'W', 'N1', 'N2'];
+  const line = (x, y) => {
+    const a = att[x] || {}, d = def[y] || {}, fga = 70;
+    const rimA = Math.round(fga * (0.33 + (a.rim || 0) + (d.rim || 0))), f3a = Math.round(fga * 0.36), midA = fga - rimA - f3a;
+    const hcp = Math.round(60 * (0.9 + (a.hc || 0) + (d.hc || 0)));
+    return side(0.5, 0.14, 0.28, 0.25).concat([90, 15, 18, 60, hcp, 12, 13, rimA, Math.round(rimA * 0.6), midA, Math.round(midA * 0.4), f3a, Math.round(f3a * 0.34)]);
+  };
+  const games = [];
+  let t = T0, k = 0;
+  for (let r = 0; r < 4; r++) for (const h of clubs) for (const a of clubs) {
+    if (h === a) continue;
+    games.push({ id: 'y' + (k++), h, a, lg: 'y', s: 'y-26', t: (t += DAY / 3), v: 'v' + h, hs: 80, as: 78, c: [line(h, a), line(a, h)], pl: [] });
+  }
+  const S = O.create();
+  O.walk(S, games);
+  const ix = key => O.X_KEYS.indexOf(key);
+  const x = opp => O.predict(S, { h: 'A', a: opp, lg: 'y', s: 'y-26', t: t + DAY, v: 'vA' }).x;
+  const xw = x('W'), xp = x('P'), xn = x('N1');
+  ok('the rim-heavy attack gains more on the shot diet against the defence that gives up the rim than the one that protects it',
+     xw[ix('shot')] > xp[ix('shot')] + 0.5, [xw[ix('shot')], xp[ix('shot')]]);
+  ok('...and in half-court points a chance the same way', xw[ix('hc')] > xp[ix('hc')] + 0.5, [xw[ix('hc')], xp[ix('hc')]]);
+  ok('...against an average defence the better attack still has the edge at both', xn[ix('shot')] > 0 && xn[ix('hc')] > 0, [xn[ix('shot')], xn[ix('hc')]]);
+  ok('...and where both sides are alike at something (transition), no edge', Math.abs(xn[ix('tr')]) < 0.5, xn[ix('tr')]);
+  const S2 = O.create();
+  O.walk(S2, league('q', [3, 0, -3], 3, 3));
+  const x2 = O.predict(S2, { h: 'cq0', a: 'cq1', lg: 'q', s: 'q-26', t: T0 + 40 * DAY, v: 'vq0' }).x;
+  ok('a feed with neither situations nor zones: the four style inputs are nothing', ['hc', 'tr', 'sc', 'shot'].every(key => x2[ix(key)] === 0), x2.slice(16));
+}
+
 console.log('\none tip-off');
 {
   const S = O.create();
@@ -200,7 +238,7 @@ console.log('\nthe state');
   const kept = JSON.stringify(O.pack(S)), S2 = O.unpack(JSON.parse(kept));
   ok('packed and unpacked, it predicts the same (to 4 places)', Math.abs(O.predict(S, fx).p - O.predict(S2, fx).p) < 1e-4, [O.predict(S, fx).p, O.predict(S2, fx).p]);
   ok('...every id written once', (() => { const j = JSON.parse(kept); return new Set(j.id).size === j.id.length && j.id.includes('ck0') && j.id.includes('kck0a'); })());
-  ok('...the covariance by its upper triangle', JSON.parse(kept).P.length === 16 * 17 / 2);
+  ok('...the covariance by its upper triangle', JSON.parse(kept).P.length === 20 * 21 / 2);
   ok('...and it goes on learning from where it was', (() => { const a = O.learn(S2, Object.assign({}, g[0], { id: 'more', t: T0 + 51 * DAY })); return a && S2.n === S.n + 1; })());
   ok('...its clubs, leagues and players all back', Object.keys(S2.teams).length === 4 && Object.keys(S2.pl).length === 4 && !!S2.lg['k|k-26']);
   ok('a state of another layout is started again', O.unpack({ v: 1, w: [1, 2, 3], P: [] }).n === 0);
@@ -210,12 +248,43 @@ console.log('\nthe state');
 
 console.log('\nthe reads');
 {
-  const I = { c_efgm: 90, c_fga: 89, c_fta: 91, c_tov: 93, c_reb_off: 94, c_reb_def: 95, c_pts: 88, poss: 3, g_poss: 87 };
-  ok('nine numbers of a feature line, not the line', O.lineSelect(I) === 'q0:f->90,q1:f->89,q2:f->91,q3:f->93,q4:f->94,q5:f->95,q6:f->88,q7:f->3,q8:f->87');
-  const r = { q0: 30, q1: 60, q2: 20, q3: 12, q4: 9, q5: 25, q6: 80, q7: 75, q8: 4 };
-  ok('possessions are the competitive ones: all less garbage time\'s', JSON.stringify(O.countsOfRow(r)) === JSON.stringify([30, 60, 20, 12, 9, 25, 80, 71]));
+  const I = require(path.join(ROOT, 'epinoia', 'features.js')).INDEX;
+  const sel = O.lineSelect(I);
+  ok('22 numbers of a feature line, not the line\'s 108', sel.split(',').length === 22 && /^q0:f->90,/.test(sel) && sel.indexOf('q12:f->' + I.hc_ch + ',') >= 0 && /q21:f->4$/.test(sel), sel);
+  const r = { q0: 30, q1: 60, q2: 20, q3: 12, q4: 9, q5: 25, q6: 80, q7: 75, q8: 4,
+              q9: 90, q10: 18, q11: 20, q12: 50, q13: 50, q14: 12, q15: 13, q16: 24, q17: 15, q18: 12, q19: 5, q20: 24, q21: 8 };
+  const cr = O.countsOfRow(r);
+  ok('possessions are the competitive ones: all less garbage time\'s', JSON.stringify(cr.slice(0, 8)) === JSON.stringify([30, 60, 20, 12, 9, 25, 80, 71]));
+  ok('...then the chances by how they began and the shots by zone', JSON.stringify(cr.slice(8)) === JSON.stringify([90, 18, 20, 50, 50, 12, 13, 24, 15, 12, 5, 24, 8]));
+  ok('...a feed without zones: no zone counts, its threes not counted as a zone', JSON.stringify(O.countsOfRow(Object.assign({}, r, { q16: 0, q18: 0 })).slice(15)) === JSON.stringify([0, 0, 0, 0, 0, 0]));
   const f = []; Object.keys(I).forEach(k => { f[I[k]] = r['q' + O.LINE_KEYS.indexOf(k)]; });
   ok('...the same from a whole line', JSON.stringify(O.countsOf(f, I)) === JSON.stringify(O.countsOfRow(r)));
+}
+
+console.log('\nit tunes itself');
+{
+  O.apply({ formA: 0.2, 'use.style': false, 'p0.style': 3 });
+  ok('settings over the defaults: a number, a family switched off, a family\'s freedom', O.C.formA === 0.2 && O.C.use.style === false && Math.abs(O.C.p0[16] - O.DEFAULTS.p0[16] * 3) < 1e-12);
+  O.apply({});
+  ok('...and back to the defaults', O.C.formA === O.DEFAULTS.formA && O.C.use.style === true && O.C.p0[16] === O.DEFAULTS.p0[16]);
+  seed = 99;
+  const g = league('u', [8, 4, 1, -1, -4, -8], 6, 9);
+  const few = O.tune(g.slice(0, 40), { budgetMs: 5000 });
+  ok('too few judged games: it changes nothing', few.enough === false && Object.keys(few.over).length === 0);
+  const r = O.tune(g, { budgetMs: 20000, minGames: 50, passes: 1 });
+  ok('it never keeps a setting that scores worse than where it started', r.enough && r.tried > 10 && r.best.ll <= r.base.ll + 1e-12, { tried: r.tried, base: r.base.ll, best: r.best.ll });
+  ok('...and what it keeps is in force after it', Object.keys(r.over).every(key => key.indexOf('.') > 0 || O.C[key] === r.over[key]), r.over);
+  const loose = O.tune(g, { budgetMs: 20000, minGames: 50, passes: 1, minGain: 0, halfGain: -1 });
+  ok('...strict: rules that let any gain through move at least as much', loose.changed.length >= r.changed.length, [loose.changed.length, r.changed.length]);
+  O.apply({});
+  const S = O.create();
+  O.walk(S, g);
+  S.tuned = { formA: 0.08 }; S.tunedAt = 123;
+  const j = JSON.parse(JSON.stringify(O.pack(S)));
+  O.apply({});
+  const S2 = O.unpack(j);
+  ok('the state keeps its settings, and reading it puts them back in force', O.C.formA === 0.08 && S2.tuned.formA === 0.08 && S2.tunedAt === 123);
+  O.apply({});
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
