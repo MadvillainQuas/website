@@ -752,8 +752,9 @@ function badge(league, opts) {
 
 /* card(g, { base, now, state, badge:false, watch, air:false, pick:false }) -> <a class="fxc">
    watch: false for no pill, or a function (g, leagueSlug) -> the page's own pill (the embedded strip's, whose panel opens
-   over its card: a pop-up outside a frame on another site is cut off); air:false leaves out WATCH LIVE (its press moves
-   the page it is on, which in a frame is the frame); pick:false leaves out who wins? */
+   over its card: a pop-up outside a frame on another site is cut off); air:false leaves out WATCH LIVE and the pill into
+   the site's own player on a finished game (their press moves the page it is on, which in a frame is the frame);
+   pick:false leaves out who wins? */
 function card(g, opts) {
   const o = opts || {};
   const base = o.base == null ? '../' : o.base;
@@ -864,7 +865,7 @@ function card(g, opts) {
   /* A FINISHED GAME THE SITE HAS A VIDEO FOR (watch.js site, 0255: highlights, the whole game, its kept stream): a pill
      into the site's own player even in a league with no entry; a league's pill is marked instead. One read for the
      page, kept, so a redrawn card has it at once. */
-  if (isFinal && root.EpinoiaWatch && root.EpinoiaWatch.siteInto) {
+  if (isFinal && o.air !== false && root.EpinoiaWatch && root.EpinoiaWatch.siteInto) {
     root.EpinoiaWatch.siteInto(body, g.id, { cls: 'fxc-watch', added: () => { body.className += ' has-watch'; } });
   }
   a.appendChild(body);

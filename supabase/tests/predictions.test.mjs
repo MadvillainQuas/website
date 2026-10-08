@@ -228,7 +228,7 @@ ok('the data is made by tools/build-watch.py, between its markers', /WATCH-DATA:
   ok('sitePill: nothing outside a browser', SW.sitePill(A1, 'full') === null && typeof SW.siteInto === 'function');
   ok("its pill's press goes straight into the site's player, never a card", /if \(b\.classList\.contains\('ew-site'\)\) \{ close\(\); airGo\(b\.getAttribute\('data-game'\)\); return; \}/.test(W)
      && /b\.className = 'ep-watch k-here ew-site'/.test(W));
-  ok('every fixture list puts it on its finished games', /isFinal && root\.EpinoiaWatch && root\.EpinoiaWatch\.siteInto\) \{\s*root\.EpinoiaWatch\.siteInto\(body, g\.id, \{ cls: 'fxc-watch'/.test(gg)
+  ok('every fixture list puts it on its finished games (the embedded strip, a frame, leaves it out: air:false)', /isFinal && o\.air !== false && root\.EpinoiaWatch && root\.EpinoiaWatch\.siteInto\) \{\s*root\.EpinoiaWatch\.siteInto\(body, g\.id, \{ cls: 'fxc-watch'/.test(gg)
      && ['home.js', 'fixtures/fixtures.js', 'l/league.js'].every(f => /final && window\.EpinoiaWatch && window\.EpinoiaWatch\.siteInto\) window\.EpinoiaWatch\.siteInto\((mid|sb), g\.id, \{ cls: 'fx-watch' \}\)/.test(read('epinoia', ...f.split('/')))));
   ok('...its dot in WATCH HERE\'s yellow, and a league pill with a video here marked the same', /\.ep-watch\.k-here,\.ep-watch\.ew-has\{--wd:#ffe14d\}/.test(read('epinoia', 'kit', 'watch.css')));
   ok('the migration: anyone may ask, at most 200 games, the same rules as game_watch',

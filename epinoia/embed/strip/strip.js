@@ -669,7 +669,8 @@ document.addEventListener('click', e => {
   const chip = tgt.closest && tgt.closest('.ec-chip');
   const pop = tgt.closest && tgt.closest('.ec-pop');
   if (chip) {
-    e.preventDefault(); e.stopPropagation();
+    /* immediate: nothing else on the page (watch.js's own pill handlers, were they ever wired here) acts on it */
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
     const c = chip.closest('.fxc');
     if (c.querySelector('.ec-pop')) closePop(); else openPop(c);
     return;
