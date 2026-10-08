@@ -1908,7 +1908,7 @@
       'One for the future': 'Una promesa',
       'The fans’ vote': 'La votación de la afición',
       'The closer': 'Decisivo al final',
-      'Serving a suspension': 'Sancionado',
+      'Serving a suspension': 'Cumpliendo sanción',
       'Questions to ask': 'Preguntas que hacer',
       'How it has developed': 'Cómo ha evolucionado',
       'The award races': 'La carrera por los premios',

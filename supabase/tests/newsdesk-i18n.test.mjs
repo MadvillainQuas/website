@@ -20,12 +20,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { createRequire } from 'node:module';
+import { build as nrBuild, BENCH } from './newsroom-fixture.mjs';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 const EP = path.join(ROOT, 'epinoia');
 const require = createRequire(import.meta.url);
 const core = require(path.join(EP, 'i18n.js'));
 const N = require(path.join(EP, 'narrative.js'));
+const NR = require(path.join(EP, 'newsroom.js'));
 
 let pass = 0, fail = 0;
 const ok = (n, c, d) => { if (c) { pass++; console.log('  PASS  ' + n); } else { fail++; console.log('  FAIL  ' + n + (d ? '\n          ' + d : '')); } };
@@ -195,6 +197,53 @@ builds.forEach(({ b }) => {
   /* the award races: the label is the core dictionary's; the number and its measure are one text node, as the page draws them */
   (C.awards || []).forEach(a => { if (a.value != null) put('awards', String(a.value) + (a.detail ? ' · ' + a.detail : '')); });
 });
+
+/* --------------------------------------------------- the newsroom's pieces --- */
+/* THE NEWSROOM (newsroom.js) on its own synthetic league with every format open (newsroom-fixture.mjs), moved on a week
+   at a time for half a season (a piece picks its templates by its week and month, the game to watch's reasons by its
+   game; each week turns a branch the league cannot reach at once: every club trait, a one-point game, the on/off the
+   wrong way round) in a men's and a women's league: every headline a piece could test, its standfirst, paragraphs, subheads, figures,
+   kicker and date; the game to watch's card (newsdesk.js watchCardHTML); and the words the card, the list and the news
+   page draw around them. A learned phrase (the style library's) cannot be known here: the packs say each slot by what it
+   is for, so one still translates. */
+const NR_NAMES = new Set(['Test League']);
+const dayShort = ms => new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+const dayLong = ms => new Date(ms).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+const sgn = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1);
+for (let wk = 0; wk < 26; wk++) for (const gender of ['men', 'women']) {
+  const input = nrBuild(gender, { full: true, shift: wk * 7, variant: wk });
+  const nowMs = input.now.getTime(), b = N.build(input);
+  Object.values(input.teams).forEach(t => NR_NAMES.add(t.name));
+  Object.values(input.names).forEach(x => { NR_NAMES.add(x.name); NR_NAMES.add(x.name.split(' ').slice(1).join(' ')); });
+  NR.candidates(input, b, { nowMs }).forEach(c => {
+    let a = null;
+    try { a = c.write(); } catch (_) { a = null; }
+    if (!a) return;
+    [].concat(a.head).forEach(h => put('newsroom heads', h));
+    put('newsroom deks', a.dek); put('newsroom kickers', a.kicker);
+    (a.body || []).forEach(x => { if (typeof x === 'string') put('newsroom body', x); else if (x && x.h) put('newsroom subheads', x.h); });
+    (a.facts || []).forEach(f => { put('newsroom labels', f.label); put('newsroom values', f.value); });
+  });
+  put('newsroom dates', dayShort(nowMs));
+  const w = NR.gameCard(input, b, { nowMs });
+  if (!w) continue;
+  put('newsroom dates', dayLong(Date.parse(w.at)));
+  put('watch card', w.line); put('watch card', w.angle); (w.threads || []).forEach(t => put('watch card', t));
+  [w.home, w.away].forEach(s => { put('watch card', [s.rec, s.rank ? ord(s.rank) : null].filter(Boolean).join(' · ')); if (s.form) put('watch card', 'form ' + s.form); });
+  (w.reasons || []).forEach(r => { put('watch card', r.title); put('watch card', r.text);
+    [r.off, r.def].filter(Boolean).forEach(x => { put('watch card', x.value); put('watch card', x.label); put('watch card', ord(x.rank) + ' of ' + x.of); }); });
+  (w.players || []).forEach(p => { put('watch card', p.line); if (p.onoff) put('watch card', sgn(p.onoff.on) + ' on · ' + sgn(p.onoff.off) + ' off'); });
+  /* every pairing's reasons, as a card or the week's article would say them (the fixture's own game opens only a few) */
+  const L = NR.__x.league(input, b, { nowMs });
+  input.fixtures.length && Object.keys(input.teams).forEach(A => Object.keys(input.teams).forEach(B => { if (A === B) return;
+    NR.__x.reasons(L, A, B, 'pair' + wk + A + B).forEach(r => { put('watch card', r.title); put('watch card', r.text);
+      [r.a, r.b].filter(Boolean).forEach(x => { put('watch card', x.label); put('watch card', x.value); put('watch card', ord(x.rank) + ' of ' + x.of); }); }); }));
+}
+BENCH.flat().forEach(x => { NR_NAMES.add(x); NR_NAMES.add(x.split(' ').slice(1).join(' ')); });
+/* the words drawn around them: the list (articlesHTML), a piece on the news page (articleHTML, news-page.js), the card */
+['From the newsdesk', 'Written by the newsdesk from the league’s own numbers: every figure here is from the games.', 'That piece is no longer on the newsdesk.',
+ 'Game to watch this week', 'v', 'won', 'lost', 'Why it matters', 'Where it will be decided', 'Players to watch', 'The game’s preview', 'Read the week’s games to watch',
+ 'Follow this game', 'Following this game'].forEach(x => put('newsroom page', x));
 function ord(n) { const v = Math.round(+n), t = v % 100; return v + (t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th')); }
 
 if (process.argv.includes('--list')) {
@@ -207,7 +256,7 @@ if (process.argv.includes('--list')) {
    Latin letters too, so four words in a row alone is not English) */
 const ENGLISH_RUN = /\b(?:the|and|of|to|in|for|with|was|were|their|they|points|game|games|season|league|won|lost|have|has|is|are|on|at|by)\b(?:\W+[a-z’']+){3}/i;
 const NAMES = CLUBS.concat(['Pat Archer', 'Mo Ash', 'Bo Birch', 'Cy Cedar', 'Test League', 'The League', 'Qualifiers', 'Play-offs']).concat(Object.values(names).map(n => n.name))
-  .sort((a, b) => b.length - a.length);
+  .concat([...NR_NAMES].filter(Boolean)).sort((a, b) => b.length - a.length);
 /* a string with its names taken out: what is left is what a language has to say */
 const NAME_RE = new RegExp(NAMES.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
 const bare = s => String(s).replace(NAME_RE, '');

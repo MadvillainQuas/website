@@ -209,7 +209,7 @@ function league(o, b, opts) {
   const NR = NARR();
   const nowMs = opts && opts.nowMs ? opts.nowMs : (o.now instanceof Date ? o.now.getTime() : time(o.now) || Date.now());
   const tz = o.league && o.league.timezone || null;
-  const lname = (o.league && o.league.name) || 'the league';
+  const lname = (o.league && o.league.name) || 'league';
   const gender = o.league && o.league.gender ? o.league.gender : WOMEN.test([o.league && o.league.name, o.league && o.league.slug].join(' ')) ? 'women' : 'men';
   const pr = gender === 'women' ? { he: 'she', him: 'her', his: 'her', He: 'She', His: 'Her' } : { he: 'he', him: 'him', his: 'his', He: 'He', His: 'His' };
   const tmap = o.teams instanceof Map ? o.teams : new Map(Object.keys(o.teams || {}).map(k => [k, o.teams[k]]));
@@ -265,14 +265,17 @@ function league(o, b, opts) {
            day: ms => dayWords(ms, tz), slug: id => (names[id] && names[id].slug) || null };
 }
 
-/* where a rank sits, said: "the best in the league", "second-best in the league", "the league's worst", "ninth" */
-function rankText(R, seed) {
+/* where a rank sits, said: "the best in the league", "second-best in the league", "the league's worst", "ninth".
+   o.among narrows the field ("among the league’s regulars"), o.best / o.worst rename its ends ("highest share", "lowest
+   share": a share is high or low, not good or bad); either way it is never "the league's best", which is the whole league's */
+function rankText(R, seed, o) {
   if (!R) return '';
-  if (R.r === 1) return pick(seed, ['the best in the league', 'the league’s best', 'first in the league']);
-  if (R.r === R.n) return pick(seed, ['the worst in the league', 'the league’s worst', 'last in the league']);
-  if (R.r <= 3) return place(R.r) + '-best in the league';
-  if (R.r > R.n - 3) return place(R.n - R.r + 1) + '-worst in the league';
-  return place(R.r) + ' in the league';
+  const op = o || {}, where = op.among || 'in the league', best = op.best || 'best', worst = op.worst || 'worst', whole = !op.among && !op.best && !op.worst;
+  if (R.r === 1) return pick(seed, whole ? ['the best in the league', 'the league’s best', 'first in the league'] : ['the ' + best + ' ' + where, 'first ' + where]);
+  if (R.r === R.n) return pick(seed, whole ? ['the worst in the league', 'the league’s worst', 'last in the league'] : ['the ' + worst + ' ' + where, 'last ' + where]);
+  if (R.r <= 3) return place(R.r) + '-' + best + ' ' + where;
+  if (R.r > R.n - 3) return place(R.n - R.r + 1) + '-' + worst + ' ' + where;
+  return place(R.r) + ' ' + where;
 }
 /* a club's last result, said: "a 92–70 win over X", "an 81–79 defeat at X" */
 function resultText(L, x, say, seed) {
@@ -312,7 +315,9 @@ function fWatch(L, say) {
   const wk = first.getUTCFullYear() + '-' + Math.ceil(((first - Date.UTC(first.getUTCFullYear(), 0, 1)) / DAY + 1) / 7);
   const salience = clamp(0.35 + slate[0].stakes / 2.6 + (slate.length >= 3 ? 0.08 : 0) + (slate[1].stakes >= 1 ? 0.07 : 0) + (slate.some(x => x.rival) ? 0.08 : 0));
   return [{ kind: 'watch', id: 'watch:' + wk, subject: 'week:' + wk, salience, write: () => {
-    const seed = 'watch' + wk, top = slate[0];
+    /* seeded by the league too: every league writes its week's piece the same week, and a feed showing several should not
+       read the same headline shape down the page */
+    const seed = 'watch' + wk + ((L.o.league && L.o.league.id) || ''), top = slate[0];
     const A = L.club(top.home.id), B = L.club(top.away.id);
     const head = headsOf(seed + 'h', [A + ' v ' + B + ' heads the week’s games to watch', 'The week ahead: ' + A + ' v ' + B + ' and the games that matter',
       'Games to watch: ' + A + ' v ' + B + ' leads a big week']);
@@ -403,7 +408,7 @@ function reasons(L, A, B, seed) {
     }
     const ob = R('ff_oreb', o), obD = R('dff_oreb', d, -1);
     if (ob && obD && top(ob) && bottom(obD)) add(o + ':glass', 2 + ob.z / 3, 'The battle of the boards',
-      no + ' rebound ' + pc(ob.v) + ' of their own misses, ' + rankWord(ob, 'most', 'fewest') + ', and ' + nd + ' give up ' + pc(obD.v) + ' of theirs (' + rankWord(obD, 'best', 'worst') + '). Second chances could be the difference.',
+      no + ' rebound ' + pc(ob.v) + ' of their own misses, ' + rankWord(ob, 'most', 'fewest') + ', and ' + nd + ' give up offensive rebounds on ' + pc(obD.v) + ' of opponents’ misses (' + rankWord(obD, 'best', 'worst') + '). Second chances could be the difference.',
       fig(o, 'of their misses rebounded', pc(ob.v), ob), fig(d, 'offensive rebounds allowed', pc(obD.v), obD));
     const to2 = R('ff_tov', o, -1), toD = R('dff_tov', d);
     if (to2 && toD && bottom(to2) && top(toD)) add(o + ':ball', 2.1 - to2.z / 3, 'Look after the ball',
@@ -455,8 +460,9 @@ function onOffLine(L, team, seed, named) {
   const p = xs[0];
   if (!p) return null;
   if (named) named.add(L.pname(p.id));
-  return ok(pick(seed, ['With ' + L.pname(p.id) + ' on the floor, ' + L.club(team) + ' have outscored opponents by ' + one(p.on_net) + ' points per 100 possessions; without ' + pr.him + ', ' + signed(p.off_net) + '.',
-    L.club(team) + ' are ' + one(p.diff_net) + ' points per 100 possessions better with ' + L.pname(p.id) + ' on the floor (' + signed(p.on_net) + ') than without ' + pr.him + ' (' + signed(p.off_net) + ').']).replace('by -', 'by −'));
+  const by = L.club(team) + ' are ' + one(p.diff_net) + ' points per 100 possessions better with ' + L.pname(p.id) + ' on the floor (' + signed(p.on_net) + ') than without ' + pr.him + ' (' + signed(p.off_net) + ').';
+  /* "outscored opponents by" only when they have: a side outscored even with him on the floor is said by the difference */
+  return ok(num(p.on_net) > 0 ? pick(seed, ['With ' + L.pname(p.id) + ' on the floor, ' + L.club(team) + ' have outscored opponents by ' + one(p.on_net) + ' points per 100 possessions; without ' + pr.him + ', ' + signed(p.off_net) + '.', by]) : by);
 }
 
 /* ------------------------------------------------------------------ a slump --- */
@@ -487,25 +493,25 @@ function fSlump(L, say) {
       const head = headsOf(seed + 'h', heads);
       const dek = one(rp) + ' points a game in ' + pr.his + ' last four, down from ' + one(bp) + '. What has changed, and what has not.';
       const body = [];
-      body.push(ok(res ? nm + ' had ' + last.pts + ' points' + (last.fga ? ' on ' + last.fgm + '-of-' + last.fga + ' shooting' : '') + ' in ' + possOf(team) + ' ' + resultText(L, res, say, seed) + ' on ' + L.day(res.at) + '.'
-        : nm + ' had ' + last.pts + ' points last time out.'));
+      body.push(ok(res ? nm + ' had ' + last.pts + (last.pts === 1 ? ' point' : ' points') + (last.fga ? ' on ' + last.fgm + '-of-' + last.fga + ' shooting' : '') + ' in ' + possOf(team) + ' ' + resultText(L, res, say, seed).replace(/^an? /, '') + ' on ' + L.day(res.at) + '.'
+        : nm + ' had ' + last.pts + (last.pts === 1 ? ' point' : ' points') + ' last time out.'));
       const scR = L.rank(L.regulars, 'ppg', pid);
       body.push(ok('It was the fourth game in a row well short of ' + pr.his + ' standard. Through ' + spell(before.length) + ' games ' + pr.he + ' had averaged ' + one(bp) + ' points' +
-        (scR && scR.r <= 15 ? ', ' + rankText(scR, seed + 'r').replace('in the league', 'among the league’s regulars') : '') + '; over the last four it is ' + one(rp) + '.'));
+        (scR && scR.r <= 15 ? ', ' + rankText(scR, seed + 'r', { among: 'among the league’s regulars' }) : '') + '; over the last four it is ' + one(rp) + '.'));
       if (fg) body.push(ok('The shots are not falling. ' + cap(pr.he) + ' is ' + fg[0] + '-of-' + fg[1] + ' from the field across the four (' + pc(fg[0] / fg[1] * 100) + ')' +
         (bfg != null ? ', against ' + pc(bfg) + ' before' : '') + (p3 ? '; from three, ' + p3[0] + ' of ' + p3[1] + (bp3 != null ? ' after ' + pc(bp3) + ' earlier in the season' : '') : '') + '.'));
       const steady = Math.abs(rm - bm) <= 3;
-      body.push(ok(steady ? say('turn', seed + 't') + ' it is not a question of opportunity: ' + pr.he + ' has played ' + one(rm) + ' minutes a game in the run, against ' + one(bm) + ' before' +
+      body.push(ok(steady ? 'It is not a question of opportunity: ' + pr.he + ' has played ' + one(rm) + ' minutes a game over the four, against ' + one(bm) + ' before' +
         (fg && bsum('fga') ? ', and ' + pr.his + ' shot attempts are steady at ' + one(fg[1] / recent.length) + ' a game' : '') + '. That points to a shooting slump rather than a change of role.'
-        : 'The minutes have moved too: ' + one(rm) + ' a game in the run, against ' + one(bm) + ' before.'));
+        : 'The minutes have moved too: ' + one(rm) + ' a game over the four, against ' + one(bm) + ' before.'));
       const prof = shotProfile(L, p, pr, seed);
       if (prof) body.push(prof);
       if (num(p.on_net) != null && num(p.off_net) != null && num(p.on_poss) >= 200) body.push(ok(p.diff_net > 0
-        ? team + ' have still been better with ' + pr.him + ' this season: ' + signed(p.on_net) + ' points per 100 possessions with ' + nm.split(' ')[0] + ' on the floor, ' + signed(p.off_net) + ' without.'
+        ? team + ' have still been better with ' + pr.him + ' this season: ' + signed(p.on_net) + ' points per 100 possessions when ' + pr.he + ' plays, ' + signed(p.off_net) + ' when ' + pr.he + ' sits.'
         : 'The season’s on/off numbers were already against ' + pr.him + ': ' + team + ' are ' + signed(p.on_net) + ' per 100 possessions with ' + pr.him + ' and ' + signed(p.off_net) + ' without.'));
       if (won.length) body.push(ok(team + ' have gone ' + w + '–' + (won.length - w) + ' in those four games.'));
       const ts = L.rank(L.regulars, 'ts', pid);
-      body.push(ok('Four games are four games. ' + possOf(sn) + ' true shooting for the season is ' + pc(p.ts) + (ts ? ', ' + rankText(ts, seed + 'ts').replace('in the league', 'among the regulars') : '') + ', and that is the standard ' + pr.he + ' will be measured against.'));
+      body.push(ok('Four games are four games. ' + possOf(sn) + ' true shooting for the season is ' + pc(p.ts) + (ts ? ', ' + rankText(ts, seed + 'ts', { among: 'among the regulars' }) : '') + ', and that is the standard ' + pr.he + ' will be measured against.'));
       const nx = nextText(L, pl.team);
       if (nx) body.push(ok('Next for ' + team + ': ' + nx.line + '.'));
       return { kicker: 'Under the microscope', head, dek, body: body.filter(Boolean), players: [pid], teams: [pl.team],
@@ -520,7 +526,7 @@ function fSlump(L, say) {
 function shotProfile(L, p, pr, seed) {
   if (num(p.rim_rate) == null || num(p.p3_rate) == null) return null;
   const rr = L.rank(L.regulars, 'rim_rate', p.id), tr = L.rank(L.regulars, 'p3_rate', p.id);
-  const lead = rr && rr.r <= 5 ? 'Most of ' + pr.his + ' work is at the rim: ' + pc(p.rim_rate) + ' of ' + pr.his + ' shots come there, ' + rankText(rr, seed + 'rr').replace('the best in the league', 'the highest share in the league').replace('-best in the league', '-highest share in the league')
+  const lead = rr && rr.r <= 5 && rr.r <= Math.ceil(rr.n / 2) ? (num(p.rim_rate) >= 50 ? 'Most of ' : 'Much of ') + pr.his + ' work is at the rim: ' + pc(p.rim_rate) + ' of ' + pr.his + ' shots come there, ' + rankText(rr, seed + 'rr', { best: 'highest share', worst: 'lowest share' })
     : tr && tr.r <= 5 ? cap(pr.he) + ' lives behind the arc: ' + pc(p.p3_rate) + ' of ' + pr.his + ' shots are threes'
     : 'Over the season ' + pr.his + ' shots split ' + pc(p.rim_rate) + ' at the rim, ' + pc(p.mid_rate) + ' from mid-range and ' + pc(p.p3_rate) + ' from three';
   const t = num(p.ev_transition_efg), h = num(p.ev_half_efg);
@@ -557,9 +563,9 @@ function fMvp(L, say) {
     if (swing != null) {
       const dr = L.rank(L.regulars.filter(x => num(x.on_poss) >= 250), 'diff_net', p.id);
       const on = 'With ' + pr.him + ' on the floor ' + tn + ' have ' + (p.on_net >= 0 ? 'outscored opponents by ' + one(p.on_net) : 'been outscored by ' + one(-p.on_net)) + ' points per 100 possessions; without ' + pr.him + ', ' +
-        (p.off_net >= 0 ? 'by ' + one(p.off_net) : 'they are outscored by ' + one(-p.off_net)) + '.';
+        (p.off_net >= 0 ? (p.on_net >= 0 ? 'by ' : 'they outscore opponents by ') + one(p.off_net) : 'they are outscored by ' + one(-p.off_net)) + '.';
       /* the swing said for what it is: the case made, a deep side (neutral), or the one number against it */
-      body.push(ok(swing >= 4 ? 'The team numbers say the same thing. ' + on + (dr && dr.r <= 5 ? ' That swing is ' + rankText(dr, seed + 'd').replace('in the league', 'among the league’s regulars') + '.' : '')
+      body.push(ok(swing >= 4 ? 'The team numbers say the same thing. ' + on + (dr && dr.r <= 5 ? ' That swing is ' + rankText(dr, seed + 'd', { among: 'among the league’s regulars' }) + '.' : '')
         : swing > -4 ? 'The team numbers are more even. ' + on + ' That is the mark of a deep side as much as of one player.'
         : 'One number does not fit. ' + on + ' Voters will ask about that.'));
       const ff = [['efg', 'effective shooting', 'on_efg', 'off_efg', 1], ['tov', 'turnover rate', 'on_tov', 'off_tov', -1], ['oreb', 'offensive rebounding', 'on_oreb', 'off_oreb', 1]]
@@ -604,7 +610,7 @@ function fProspect(L, say) {
       const youngest = older.length === r - 1 && older.every(x => bio[x.id].age > age);
       const body = [];
       body.push(ok(nm + ' is ' + a + '. Of the ' + sorted.length + ' players who have played 14 or more minutes a game in the ' + L.lname + ' this season, ' +
-        (r === 1 ? 'none has a better box plus-minus.' : (r === 2 ? 'only one has a better box plus-minus' : 'only ' + spell(r - 1) + ' have a better box plus-minus') + (youngest ? ', and every one of them is older.' : '.'))));
+        (r === 1 ? 'none has a better box plus-minus.' : (r === 2 ? 'only one has a better box plus-minus' : 'only ' + spell(r - 1) + ' have a better box plus-minus') + (youngest ? (r === 2 ? ', and that player is older.' : ', and every one of them is older.') : '.'))));
       body.push(ok('Per 36 minutes ' + pr.he + ' is producing ' + per('ppg') + ' points, ' + per('rpg') + ' rebounds and ' + per('apg') + ' assists, on ' + pc(p.ts) + ' true shooting' +
         (mean(L.regulars.map(x => num(x.ts)).filter(v => v != null)) ? ' (the regulars’ average is ' + pc(mean(L.regulars.map(x => num(x.ts)).filter(v => v != null))) + ')' : '') + '.'));
       if (num(p.usg) != null) body.push(ok(cap(pr.he) + ' is using ' + pc(p.usg) + ' of ' + possOf(tn) + ' possessions while on the floor' + (p.usg >= 24 ? ', a lead role at any age' : p.usg <= 16 ? ', and doing it without needing the ball' : '') + '.'));
@@ -645,9 +651,9 @@ const FACETS = [
     clause: (T, v) => T + ' rebound ' + pc(v) + ' of their own misses',
     mirror: ['dff_oreb', -1, (T, v) => T + ' give up ' + pc(v) + ' of their opponents’ misses'] },
   { k: 'rimD', key: 'evd_all_rim_pct', dir: -1, def: true, label: 'opponents’ shooting at the rim', noun: 'rim protection', fmt: 'pct',
-    good: ['Why the rim is closed against {T}', '{T} have made the paint a no-go area'], bad: ['{T} cannot protect the rim', 'The open door: {T} and the rim'],
+    good: ['Why nobody gets to the rim against {T}', '{T} have made the paint a no-go area'], bad: ['{T} cannot protect the rim', 'The open door: {T} and the rim'],
     clause: (T, v) => 'opponents make ' + pc(v) + ' of their shots at the rim against ' + T,
-    mirror: ['rim_share', 1, (T, v) => T + ' take ' + pc(v) + ' of their shots there'] },
+    mirror: ['rim_share', 1, (T, v) => T + ' take ' + pc(v) + ' of their shots there', { best: 'highest share', worst: 'lowest share' }] },
   { k: 'tovD', key: 'dff_tov', def: true, label: 'turnovers forced', noun: 'ball pressure', fmt: 'pct',
     good: ['{T}’s defence lives on turnovers', 'Ball-hawks: how {T} force the turnovers'], bad: ['{T} are not forcing turnovers'],
     clause: (T, v) => T + ' force a turnover on ' + pc(v) + ' of their opponents’ possessions',
@@ -743,7 +749,7 @@ function identityPiece(L, say, t, f, R, month) {
   const nx = nextText(L, t.id);
   if (nx) {
     const mr = f.mirror ? L.rank(L.T, f.mirror[0], nx.opp, f.mirror[1]) : null;
-    body.push(ok('Next: ' + nx.line + '.' + (mr ? ' ' + cap(f.mirror[2](L.club(nx.opp), mr.v)) + ', ' + rankText(mr, seed + 'n') + '.' : '')));
+    body.push(ok('Next: ' + nx.line + '.' + (mr ? ' ' + cap(f.mirror[2](L.club(nx.opp), mr.v)) + ', ' + rankText(mr, seed + 'n', f.mirror[3]) + '.' : '')));
   }
   return { kicker: good ? 'What makes them tick' : 'The problem', head, dek, body: body.filter(Boolean), teams: [t.id], links: [teamLink(L, t.id)].filter(Boolean),
     facts: [{ label: f.label, value: fmtV(f, R.v) }, { label: 'league rank', value: ordShortN(R.r) + ' of ' + R.n }, { label: 'league average', value: fmtV(f, R.avg) },
@@ -762,7 +768,7 @@ function fRun(L, say) {
     const salience = clamp(0.35 + Math.min(0.3, (cg.streak.n - 4) * 0.07) + (won ? 0.08 : 0.05) + (s.score ? Math.min(0.15, s.score / 60) : 0));
     out.push({ kind: won ? 'run' : 'skid', id: 'run:' + id + ':' + cg.streak.from, subject: id, salience, write: () => {
       const tn = L.club(id), n = cg.streak.n, seed = 'run' + id + cg.streak.from;
-      const head = won ? headsOf(seed + 'h', ['Inside ' + possOf(tn) + ' ' + n + '-game winning run', 'How ' + tn + ' won ' + spell(n) + ' in a row', 'What is behind ' + possOf(tn) + ' run'].concat(learnedHeads(L, 'run', tn)))
+      const head = won ? headsOf(seed + 'h', ['Inside ' + possOf(tn) + ' ' + spell(n) + '-game winning run', 'How ' + tn + ' won ' + spell(n) + ' in a row', 'What is behind ' + possOf(tn) + ' run'].concat(learnedHeads(L, 'run', tn)))
         : headsOf(seed + 'h', ['What has gone wrong at ' + tn + '?', possOf(tn) + ' slide, in numbers', spell(n) + ' straight defeats: inside ' + possOf(tn) + ' slump'].map(cap));
       const avgM = mean(run.map(x => x.for - x.against));
       const ff = factorsOver(L, id, run, rest);
@@ -770,7 +776,7 @@ function fRun(L, say) {
       const dek = cap(spell(n)) + ' straight ' + (won ? 'wins' : 'defeats') + ', by an average of ' + one(Math.abs(avgM)) + ' points.' + (lead ? ' The numbers say it comes down to ' + lead.label + '.' : '');
       const last = run[run.length - 1], body = [];
       body.push(ok(tn + ' have ' + (won ? 'won ' : 'lost ') + spell(n) + ' in a row, the latest ' + resultText(L, last, say, seed) + ' on ' + L.day(last.at) + '.'));
-      if (ff.length) body.push(ok('In the run they have ' + ff.slice(0, 2).map(x => x.say).join(', and ') + '.'));
+      if (ff.length) body.push(ok((won ? 'In the run' : 'In the slide') + ' they have ' + ff.slice(0, 2).map(x => x.say).join(', and ') + '.'));
       body.push(ok('They are scoring ' + one(mean(run.map(x => x.for))) + ' and allowing ' + one(mean(run.map(x => x.against))) + ' a game in it, against ' + one(mean(rest.map(x => x.for))) + ' and ' + one(mean(rest.map(x => x.against))) + ' before.'));
       const star = [...L.PL.values()].filter(p => p.team === id).map(p => { const g = p.games.filter(x => cg.streak.games.indexOf(x.game) >= 0), b2 = p.games.filter(x => cg.streak.games.indexOf(x.game) < 0);
         return { p, r: mean(g.map(x => x.pts)), b: mean(b2.map(x => x.pts)), n: g.length }; }).filter(x => x.n >= Math.ceil(n / 2) && x.r != null && x.b != null && L.pname(x.p.pid))
@@ -795,13 +801,15 @@ function factorsOver(L, id, run, rest) {
   const side = x => { const g = L.games.find(y => y.id === x.id); return g ? (g.home_team_id === id ? 0 : 1) : null; };
   const avg = (xs, k, opp) => mean(xs.map(x => { const l = lines.get(x.id), s = side(x); return l && s != null && l[opp ? 1 - s : s] ? num(l[opp ? 1 - s : s][k]) : null; }).filter(v => v != null));
   const W = { efg: 2, tovp: 1.4, orebp: 0.7, ftr: 0.4 };
-  const F = [['efg', 'shooting', false, 'shot ', '% effective'], ['tovp', 'ball security', false, 'turned it over on ', '% of possessions'], ['orebp', 'the offensive glass', false, 'rebounded ', '% of their own misses'],
-    ['efg', 'their defence', true, 'held opponents to ', '% effective shooting']];
-  return F.map(([k, label, opp, verb, unit]) => {
+  /* each: the key, its label, the opponents' number or the club's own, and how it is said (better, worse) */
+  const F = [['efg', 'shooting', false, ['shot ', '% effective']], ['tovp', 'ball security', false, ['turned it over on ', '% of possessions']],
+    ['orebp', 'the offensive glass', false, ['rebounded ', '% of their own misses']],
+    ['efg', 'their defence', true, ['held opponents to ', '% effective shooting'], ['let opponents shoot ', '% effective']]];
+  return F.map(([k, label, opp, good, bad]) => {
     const a = avg(run, k, opp), b2 = avg(rest, k, opp);
     if (a == null || b2 == null) return null;
-    const better = (k === 'tovp' || opp ? -1 : 1) * (a - b2);
-    return { label, value: Math.abs(a - b2) * (W[k] || 1), better, now: one(a) + '%', was: one(b2) + '%', say: verb + one(a) + unit + ' (' + one(b2) + ' before)' };
+    const better = (k === 'tovp' || opp ? -1 : 1) * (a - b2), w = better < 0 && bad ? bad : good;
+    return { label, value: Math.abs(a - b2) * (W[k] || 1), better, now: one(a) + '%', was: one(b2) + '%', say: w[0] + one(a) + w[1] + ' (' + one(b2) + '% before)' };
   }).filter(x => x && x.value >= 1.5).sort((a, c) => c.value - a.value);
 }
 /* a club's five with the most minutes together in the replayed games (15 minutes or more) */
@@ -815,7 +823,7 @@ function bestFive(L, id) {
 function fFive(L, say) {
   const out = [], wk = Math.floor(L.nowMs / (7 * DAY));
   L.deep.forEach((D, id) => {
-    const f = [...D.fives.values()].filter(x => x.dur >= 1200 && x.pf - x.pa >= 15).sort((a, c) => (c.pf - c.pa) - (a.pf - a.pa))[0];
+    const f = [...D.fives.values()].filter(x => x.dur >= 1200 && x.pf - x.pa >= 15 && x.games >= 2).sort((a, c) => (c.pf - c.pa) - (a.pf - a.pa))[0];
     if (!f) return;
     const pm = f.pf - f.pa, ps = L.pos(id);
     const salience = clamp(0.3 + Math.min(0.35, pm / 60) + Math.min(0.12, (f.dur / 60 - 20) / 150) + (ps && ps.rank <= Math.ceil(ps.n / 2) ? 0.1 : 0.04));
@@ -823,10 +831,10 @@ function fFive(L, say) {
       const tn = L.club(id), seed = 'five' + id + wk, mins = Math.round(f.dur / 60), names = f.n.map(surname);
       const head = headsOf(seed + 'h', ['The five who are winning games for ' + tn, possOf(tn) + ' best five, by the numbers', 'Inside the ' + L.lname + '’s most effective lineup']);
       const dek = list(names) + ': +' + pm + ' in ' + mins + ' minutes together over the last fortnight.';
-      const share = D.dur ? f.dur / (D.dur / 5) : null;
+      const share = D.dur ? f.dur / D.dur : null;
       const body = [];
       body.push(ok('Over the last fortnight, in ' + spell(f.games) + ' replayed games, ' + list(f.n) + ' have shared the floor for ' + mins + ' minutes for ' + tn + ' and outscored opponents by ' + pm + ', ' + f.pf + ' points to ' + f.pa + '.'));
-      body.push(ok('That is ' + one(pm / mins * 40) + ' points per 40 minutes' + (D.dur ? ', against ' + signed((D.pf - D.pa) / (D.dur / 60 / 5) * 40) + ' per 40 for the club as a whole in the same games' : '') + '.'));
+      body.push(ok('That is ' + signed(pm / mins * 40) + ' points per 40 minutes' + (D.dur ? ', against ' + signed((D.pf - D.pa) / (D.dur / 60) * 40) + ' per 40 for the club as a whole in the same games' : '') + '.'));
       if (share) body.push(ok('They have played ' + Math.round(share * 100) + '% of the club’s minutes in those games together' + (share < 0.25 ? ' — an argument for more' : '') + '.'));
       body.push(ok(say('caveat', seed + 't') + ' ' + mins + ' minutes is a small sample, and a lineup’s numbers move quickly.'));
       const nx = nextText(L, id);
@@ -894,18 +902,19 @@ function fAbsence(L, say) {
     out.push({ kind: 'absence', id: 'absence:' + pid + ':' + pl.lastAt, subject: pid, salience, write: () => {
       const pr = L.pr, nm = L.pname(pid), sn = surname(nm), tn = L.club(team), seed = 'abs' + pid + pl.lastAt, banned = /suspension/i.test(s.kicker || '');
       const cg = L.C.get(team), without = cg ? cg.games.filter(x => x.at > pl.lastAt) : [], withIt = cg ? cg.games.filter(x => x.at <= pl.lastAt && pl.games.some(y => y.game === x.id)) : [];
+      if (without.length < 2) return null;                       // the league's own games without him: two at least to say anything
       const w = without.filter(x => x.won).length, l = without.filter(x => !x.won && !x.tied).length;
       const pctS = Math.round(share * 100) + '%';
       const head = headsOf(seed + 'h', [tn + ' without ' + nm + ': what the numbers say they are missing', 'How much is ' + nm + ' worth to ' + tn + '?',
         'The ' + sn + '-shaped hole in ' + possOf(tn) + ' side', tn + ' are learning to live without ' + nm]);
-      const nMiss = without.length || missed;
+      const nMiss = without.length;
       const dek = nm + ' has missed ' + possOf(tn) + ' last ' + spell(nMiss) + ' games' + (banned ? ', suspended' : '') + '. By box plus-minus and minutes, ' + pr.he + ' carries ' + pctS + ' of what the club’s players are worth.';
       const body = [];
       body.push(ok(tn + ' have played ' + spell(nMiss) + ' games without ' + nm + (banned ? ', who is serving a suspension' : '') + ', and gone ' + w + '–' + l + ' in them.'));
       const br = L.rank(L.regulars, 'bpm', pid);
       body.push(ok('Put how good a player has been together with how much of the game ' + pr.he + ' plays, and ' + nm + ' accounts for ' + pctS + ' of ' + possOf(tn) + ' value this season, ' +
         (r === 1 ? 'the most of anybody on the club' : r === 2 ? 'the second-most on the club' : place(r) + ' on the club') + '. ' + cap(pr.his) + ' box plus-minus is ' + signed(p.bpm) + ' in ' + one(p.mpg) + ' minutes a game' +
-        (br && br.r <= 20 ? ', ' + rankText(br, seed + 'b').replace('in the league', 'among the league’s regulars') : '') + '.'));
+        (br && br.r <= 20 ? ', ' + rankText(br, seed + 'b', { among: 'among the league’s regulars' }) : '') + '.'));
       if (num(p.on_net) != null && num(p.off_net) != null && num(p.on_poss) >= 200) body.push(ok(p.diff_net >= 3
         ? 'The team numbers say the same: ' + tn + ' have been ' + signed(p.on_net) + ' per 100 possessions with ' + pr.him + ' on the floor and ' + signed(p.off_net) + ' without.'
         : 'The team numbers soften it: ' + tn + ' have been ' + signed(p.on_net) + ' per 100 possessions with ' + pr.him + ' on the floor and ' + signed(p.off_net) + ' without, a side used to coping.'));
@@ -1004,12 +1013,28 @@ function orderHeads(heads, model, league) {
   return list.map((h, i) => ({ h, i, p: FR.ctrPredict(model, { kind: 'desk', title: h, league_slug: league }) || 0 }))
     .sort((x, y) => y.p - x.p || x.i - y.i).slice(0, 3).map(x => x.h);
 }
+/* A FORMAT'S WRITER, by version: a piece out already, written by an older writer of its format, is written again from its
+   candidate under the same id - its link, its date and the headlines it is being tested with kept, the rest from the
+   writer as it is now - and dropped if it no longer has one. How a correction reaches what readers can already open.
+     five 2 (2026-10-08): the club's rate per 40 and the five's share of its minutes had been divided by five twice */
+const WRITER = { five: 2 };
+const writerOf = kind => WRITER[kind] || 1;
 function publish(o, b, opts) {
   const op = opts || {};
   const nowMs = op.nowMs || (o && o.now instanceof Date ? o.now.getTime() : Date.now());
   const lslug = o && o.league ? o.league.slug : null;
-  /* the pieces already out: kept as written, a headline test decided once it has run long enough */
+  const cands = candidates(o, b, Object.assign({}, op, { nowMs }));
+  /* the pieces already out: kept as written (or written again, above), a headline test decided once it has run long enough */
   const prev = (op.previous || []).filter(a => a && a.id && time(a.written) != null && nowMs - time(a.written) < KEEP_DAYS * DAY)
+    .map(a => {
+      if ((a.wv || 1) >= writerOf(a.kind)) return a;
+      const c = cands.find(x => x.id === a.id);
+      let w = null;
+      try { w = c ? c.write() : null; } catch (_) { w = null; }
+      if (!w || (w.body || []).filter(x => typeof x === 'string').length < 3) return null;
+      return Object.assign({}, a, { kicker: w.kicker, dek: w.dek, body: w.body, facts: w.facts, links: w.links, teams: w.teams, players: w.players,
+                                    wv: writerOf(a.kind), corrected: new Date(nowMs).toISOString() });
+    }).filter(Boolean)
     .map(a => decide(a, op.ctr ? op.ctr[a.id] : null));
   const have = new Set(prev.map(a => a.id));
   const lately = new Map(prev.map(a => [a.kind + '|' + a.subject, time(a.written)]));
@@ -1018,7 +1043,7 @@ function publish(o, b, opts) {
   let room = op.all ? 99 : Math.max(0, Math.min(MAX_NEW, MAX_WEEK - week));
   const fresh = [];
   const weighed = c => c.salience * (op.kindW && op.kindW[c.kind] ? op.kindW[c.kind] : 1);
-  for (const c of candidates(o, b, Object.assign({}, op, { nowMs })).sort((x, y) => weighed(y) - weighed(x))) {
+  for (const c of cands.slice().sort((x, y) => weighed(y) - weighed(x))) {
     if (!room) break;
     /* what readers open: a format whose pieces they open more than the newsroom's average is a little more salient */
     const kw = op.kindW && op.kindW[c.kind] ? op.kindW[c.kind] : 1;
@@ -1029,7 +1054,7 @@ function publish(o, b, opts) {
     try { a = c.write(); } catch (_) { a = null; }
     if (a) { const hs = orderHeads(a.head, op.model, lslug).filter(ok); a.head = hs[0] || null; if (hs.length > 1) a.heads = hs; }
     if (!a || !a.head || (a.body || []).filter(x => typeof x === 'string').length < 3) continue;
-    fresh.push(Object.assign({ id: c.id, kind: c.kind, subject: c.subject, salience: c.salience, written: new Date(nowMs).toISOString() }, a));
+    fresh.push(Object.assign({ id: c.id, kind: c.kind, subject: c.subject, salience: c.salience, written: new Date(nowMs).toISOString(), wv: writerOf(c.kind) }, a));
     lately.set(c.kind + '|' + c.subject, nowMs);
     room--;
   }

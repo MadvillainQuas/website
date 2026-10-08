@@ -214,12 +214,16 @@ The design follows what automated sports writing and news aggregation learned th
 - a briefing has an end;
 - "since your last visit" is kept on the reader's own device.
 
-## 9. The newsroom (newsroom.js): articles the newsdesk writes itself
+## 8. The newsroom (newsroom.js): articles the newsdesk writes itself
 
 Beside the storylines, every hour, the newsroom looks for what deserves a whole article, scores each candidate for
 SALIENCE (0-1: how far from normal, how much rides on it, how fresh) and writes the ones at 0.6 or above - two new an
 hour at most, eight a week, one a fortnight on the same subject. A piece, once written, is kept as it was for three
 weeks (a reader's link never changes under them), in the league's own newsdesk file (`articles`).
+A correction is the one exception: when a format's writer is fixed, its `WRITER` version in newsroom.js goes up, and
+the pieces the older writer wrote are written again from their candidate under the same id - the link, the date and the
+headlines being tested kept - or dropped when the candidate has gone (`five` 2, 2026-10-08: the club's rate per 40 and
+the five's share of its minutes had been divided by five twice).
 
 | kind | what | the deep numbers it uses |
 |---|---|---|
@@ -248,7 +252,7 @@ the mismatch inside or from three, open court, the battle of the boards, look af
 on the wing or at the big spot (positional BPM and VORP), the form they bring - and the rivalry first, when the two are
 rivals.
 
-## 10. What it learns
+## 9. What it learns
 
 **The style library** (platform console, Newsroom tab; table `newsroom_style`, migration 0252, platform admins only).
 Paste an article: the newsroom digests it for its phrasing - the verb between two clubs before a score (filed by the
@@ -274,14 +278,14 @@ story's own counts as `snapshots/feed/salience.json`. Then:
 The console's Newsroom tab shows what the library has taught and what works: the platform's rate, the headline features
 that lift and sink a story, and the formats against each other.
 
-## 11. Rivals
+## 10. Rivals
 
 A platform administrator names two clubs rivals from a club's page ("edit links": `team_rivals`, `team_rival_set`,
 migration 0252). A rivalry raises its games' stakes on the slate (said first, "a rivalry"), leads the game to watch's
 reasons, makes the week's article more salient, and gives a match report of one 20 points more in the feed
 (`news_report_significance`).
 
-## 12. Tests
+## 11. Tests
 
 | file | what |
 |---|---|
@@ -291,5 +295,6 @@ reasons, makes the week's article more salient, and gives a match report of one 
 | `supabase/tests/report-i18n.test.mjs` | every new template comes back fully translated in each visible language |
 | `supabase/tests/newsdesk-i18n.test.mjs [ja\|es] [--list]` | every string the newsdesk draws, from fixture leagues that open every kind of storyline, comes back whole in each language (the `newsdesk` pack: `epinoia/i18n/<code>/newsdesk.js`, one anchored pattern per template) |
 | `supabase/tests/report-eval.mjs --ctx [--league <slug>] [--show N]` | real games: coverage, repetition, stock phrases, logic |
-| `supabase/tests/newsroom.test.mjs` | the newsroom on a synthetic league (every format, salience, persistence, the headline test, the game to watch, rivals), digest/learn, the click-through model |
+| `supabase/tests/newsroom.test.mjs` | the newsroom on a synthetic league (`newsroom-fixture.mjs`, `full`: every format open, the run and the slide, a star missing, the replays' shot clock and fives): whole articles with no empty slot, her pronouns, salience, persistence, the headline test, the game to watch, rivals; digest/learn, the click-through model |
+| `supabase/tests/newsdesk-i18n.test.mjs` (the newsroom groups) | every newsroom string - each format over half a season of weeks, every headline it could test, every pairing's reasons, the card and the page's own words - whole in each language |
 | `node tools/build-narratives.mjs --local --league <slug> --articles all [--input-out f.json]` | every candidate article a real league offers, with its salience (and the newsroom's input saved, to work on the writing without reading the league again) |
