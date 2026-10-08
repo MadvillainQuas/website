@@ -1816,6 +1816,17 @@
       'reading the season…': 'シーズンを読み込み中…',
       'Not enough games yet this season to compare them.': '今季はまだ比較できるほどの試合がありません。',
       'The season could not be read just now.': 'シーズンを読み込めませんでした。',
+      /* EPINOIΛ's win probability (winprob.js) and the model on the leaderboards (boards.js) */
+      'win probability': '勝利確率',
+      'EPINOIΛ’s model: What wins, Elo, form and the home court': 'EPINOIΛのモデル：勝因分析、Elo、調子、ホームコート',
+      'Sign in to see the model’s chance for each side.': 'ログインすると、両チームの勝利確率が見られます。',
+      'Members see the model’s chance for each side.': '両チームの勝利確率は会員向けです。',
+      'Once both clubs have played three games this season.': '両チームが今季3試合を終えると表示されます。',
+      'a toss-up': '互角',
+      'worked out from the games before it': 'この試合より前の試合から算出',
+      'the model': 'モデル',
+      'right–wrong': '的中–外れ',
+      'It picks the side it makes more likely in every game it can judge, before tip-off, and never changes a pick after.': '判断できるすべての試合で、勝つ可能性が高い方を試合開始前に予想します。開始後に予想を変えることはありません。',
       'videos': '動画',
       'videos: highlights, full games, press conferences and every game streaming now, from every league': '動画：全リーグのハイライト、フルゲーム、記者会見、配信中の試合',
       'What decided it': '勝敗を分けたもの',
@@ -2806,6 +2817,14 @@
     patterns: [
       /* the shot chart's key and the zone table's (shotchart.js): a zone under the attempt floor */
       [/^fewer than (\d+) attempts$/, '試投$1本未満'],
+      /* EPINOIΛ's win probability (winprob.js) and the model on the leaderboards (boards.js) */
+      [/^(.+) by (\d+\.\d)$/, '$1が$2点差で優勢'],
+      [/^after (\d+) and (\d+) games$/, '$1試合と$2試合の結果から'],
+      [/^(\d+) of (\d+) right in this league$/, 'このリーグで$2試合中$1試合的中'],
+      [/^picked (.+) ✓$/, '予想：$1 ✓ 的中'],
+      [/^picked (.+) ✗$/, '予想：$1 ✗ 外れ'],
+      [/^ahead of (\d+) of (\d+) fans? with 5\+ picks$/, '5試合以上予想したファン$2人中$1人を上回る'],
+      [/^(\d+) to play$/, '未消化$1試合'],
       /* the player profile (2026-10-02): career stats, the game log, on the floor with, the position breakdown */
       [/^the newest (\d+)$/, '最新$1件'],
       [/^chart (.+) game by game$/, (m, T) => T(m[1]) + 'を試合ごとにグラフ表示'],

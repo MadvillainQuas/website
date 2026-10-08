@@ -8,6 +8,7 @@
                       three on a podium, the rest in a list; the reader's own line above it (prediction_mine), with
                       their rank even when it is further down than the list goes. GO's page adds a button per
                       league that has picks (prediction_leagues), and remembers the choice in the address (?lg=).
+     EPINOIΛ          the What wins model as a competitor of its own (prediction_model, 0253), pinned above the fans.
      ARENAS STAMPED   (the league's page) the league's EPINOIA GO board by arenas (go_leaderboard, 0166), away while
                       it is empty or before GO's functions exist.
 
@@ -200,11 +201,49 @@
   }
   const pct = r => (r.pct == null ? '–' : (Math.round(Number(r.pct) * 10) / 10) + '%');
 
+  /* EPINOIΛ ON THE BOARD (Louie, 2026-10-08): the What wins model as a competitor of its own (prediction_model, 0253),
+     pinned above the fans rather than ranked among them - it picks every game it can judge, so its count of right
+     picks would bury everyone's. Its wins and losses, its hit rate, and how many of the fans with five decided picks
+     or more it is ahead of. Away before 0253, before it has a decided pick here, and for a private league */
+  let modelSeq = 0;
+  function drawModel(m) {
+    const host = $('#lbModel');
+    if (!host) return;
+    host.textContent = '';
+    if (!m || !(Number(m.decided) > 0)) return;
+    const right = Number(m.correct), lost = Number(m.decided) - right;
+    const card = el('div', 'lb-model-c');
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', 'EPINOIA, the model: ' + right + ' right, ' + lost + ' wrong');
+    const who = el('span', 'lb-model-who');
+    who.appendChild(data('b', 'lb-model-mk epinoia-mark', 'EPINOIΛ'));
+    who.appendChild(el('small', null, 'the model'));
+    card.appendChild(who);
+    const wl = el('span', 'lb-model-wl');
+    wl.appendChild(data('b', null, num(right) + '–' + num(lost)));
+    wl.appendChild(el('small', null, 'right–wrong'));
+    card.appendChild(wl);
+    const rate = el('span', 'lb-model-rate');
+    const bar = el('i', 'lb-rate');
+    bar.style.setProperty('--p', (m.pct == null ? 0 : Number(m.pct)) + '%');
+    rate.appendChild(bar);
+    rate.appendChild(data('span', null, pct(m)));
+    card.appendChild(rate);
+    const t = [];
+    if (Number(m.fans) > 0) t.push('ahead of ' + num(m.ahead) + ' of ' + num(m.fans) + (Number(m.fans) === 1 ? ' fan' : ' fans') + ' with 5+ picks');
+    if (Number(m.pending) > 0) t.push(num(m.pending) + ' to play');
+    if (t.length) card.appendChild(el('span', 'lb-model-t', t.join(' · ')));
+    card.appendChild(el('span', 'lb-model-how', 'It picks the side it makes more likely in every game it can judge, before tip-off, and never changes a pick after.'));
+    host.appendChild(card);
+  }
+
   async function drawPredictions() {
     const host = $('#lbBoard');
     host.setAttribute('aria-busy', 'true');
     const args = { p_league: state.league ? state.league.id : null, p_since: since(state.when) };
     let rows, mine = null;
+    const seq = ++modelSeq;   // a later choice of league or time wins over a slower answer to an earlier one
+    rpc('prediction_model', args, { anon: true }).then(m => { if (seq === modelSeq) drawModel(m); }, () => { if (seq === modelSeq) drawModel(null); });
     try {
       [rows, mine] = await Promise.all([
         rpc('prediction_board', Object.assign({ p_limit: state.limit }, args)),

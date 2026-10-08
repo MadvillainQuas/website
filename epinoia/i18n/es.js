@@ -1818,6 +1818,17 @@
       'reading the season…': 'Cargando la temporada…',
       'Not enough games yet this season to compare them.': 'Aún no hay partidos suficientes esta temporada para compararlos.',
       'The season could not be read just now.': 'No se pudo cargar la temporada.',
+      /* EPINOIΛ's win probability (winprob.js) and the model on the leaderboards (boards.js) */
+      'win probability': 'probabilidad de victoria',
+      'EPINOIΛ’s model: What wins, Elo, form and the home court': 'El modelo de EPINOIΛ: lo que gana, Elo, la forma y el factor cancha',
+      'Sign in to see the model’s chance for each side.': 'Inicia sesión para ver la probabilidad de cada equipo según el modelo.',
+      'Members see the model’s chance for each side.': 'Los socios ven la probabilidad de cada equipo según el modelo.',
+      'Once both clubs have played three games this season.': 'Cuando los dos equipos hayan jugado tres partidos esta temporada.',
+      'a toss-up': 'muy igualado',
+      'worked out from the games before it': 'calculado con los partidos anteriores',
+      'the model': 'el modelo',
+      'right–wrong': 'aciertos–fallos',
+      'It picks the side it makes more likely in every game it can judge, before tip-off, and never changes a pick after.': 'Elige al equipo que ve más probable en cada partido que puede valorar, antes del salto inicial, y nunca cambia su pronóstico después.',
       'videos': 'Vídeos',
       'videos: highlights, full games, press conferences and every game streaming now, from every league': 'Vídeos: resúmenes, partidos completos, ruedas de prensa y todos los partidos en directo de cada liga',
       'What decided it': 'Lo que lo decidió',
@@ -2807,6 +2818,14 @@
     patterns: [
       /* the shot chart's key and the zone table's (shotchart.js): a zone under the attempt floor */
       [/^fewer than (\d+) attempts$/, 'menos de $1 intentos'],
+      /* EPINOIΛ's win probability (winprob.js) and the model on the leaderboards (boards.js) */
+      [/^(.+) by (\d+\.\d)$/, '$1 por $2'],
+      [/^after (\d+) and (\d+) games$/, 'tras $1 y $2 partidos'],
+      [/^(\d+) of (\d+) right in this league$/, '$1 de $2 aciertos en esta liga'],
+      [/^picked (.+) ✓$/, 'eligió a $1 ✓'],
+      [/^picked (.+) ✗$/, 'eligió a $1 ✗'],
+      [/^ahead of (\d+) of (\d+) fans? with 5\+ picks$/, 'por delante de $1 de $2 aficionados con 5+ pronósticos'],
+      [/^(\d+) to play$/, '$1 por jugar'],
       /* the player profile (2026-10-02): career stats, the game log, on the floor with, the position breakdown */
       [/^the newest (\d+)$/, 'las $1 más recientes'],
       [/^chart (.+) game by game$/, (m, T) => 'ver ' + T(m[1]) + ' partido a partido en el gráfico'],

@@ -68,3 +68,20 @@ jobs:
           if [ "$FULL" = "true" ]; then args+=(--full); fi
           if [ -n "$UNIT" ]; then args+=(--unit "$UNIT"); fi
           node tools/build-analytics.mjs "${args[@]}"
+      # EPINOIΛ's model of who wins (epinoia/winodds.js, docs/what-wins-model.md §7.8.1): the games finished since its
+      # watermark, every league at once, learned on top of its state (analytics/odds/, packed and gzipped); each fixture
+      # of the next fortnight given its probability in model_picks (0253), frozen at tip-off. Seconds a run; its own
+      # step, so it runs when the build above fails
+      - name: EPINOIA's model (win probabilities)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          FULL: ${{ github.event.inputs.full == 'true' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          if [ "$FULL" = "true" ]; then args+=(--full); fi
+          node tools/build-odds.mjs "${args[@]}"

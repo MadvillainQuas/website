@@ -806,6 +806,10 @@ function render(ctx) {
         '</section>'
       : '') +
 
+    /* EPINOIΛ'S WIN PROBABILITY (winprob.js, filled by the page): hidden until it has something to say */
+    '<section class="pv-sec pv-wp" hidden>' + head('Win probability', 'EPINOIΛ’s model: What wins, Elo, form and the home court') +
+      '<div class="pv-wp-slot"></div></section>' +
+
     '<section class="pv-sec">' + head('How to get there') +
       '<div class="pv-tiles two">' +
         tile('tip-off', w.time, w.day) +

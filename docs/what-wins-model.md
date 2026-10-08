@@ -531,6 +531,35 @@ total; block-bootstrap intervals (B = 200).
   better than Elo here", and the Front office uses Elo expectations.
 - League-out transfer (pooled): each league with n ≥ 50 predicted from a fit on the others; Brier per league.
 
+### 7.8.1 EPINOIA's model (epinoia/winodds.js; the run tools/build-odds.mjs; picks in model_picks, 0253)
+One online model for every game in every league, beside §7.8's per-unit forecast: what the preview card, the game's
+preview and the board's EPINOIA competitor show (signed in now; `gate_open('model', league)` once memberships are on).
+- Inputs a fixture, 16: home (0 at a neutral venue: away from the home club's modal venue, ≥ 3 home games); §7.8's
+  expected differentials of the four factors (shrink 5 games); the same factors schedule-adjusted (`y_ig = μ + o_i +
+  d_j`, logit, every club of a league-season solved together, Gauss-Seidel × 10, shrink 20 games); Elo (K 20, margin
+  multiplier, ⅓ back to 1500 a season, home term from the model's own edge); the margin rating (competitive margin a game
+  `= r_i − r_j`, solved with the factors, shrink 8); rest and back-to-back; positions (bpm.js position estimate → guard
+  < 2.5 ≤ wing < 3.75 ≤ big; each club's game score a 36 at each position against the league's, and its defence's pull on
+  opposing players at each against their own season rate, shrink 200 minutes); form (EW residual of the model's own
+  margin, α 0.05, × n/(n + 10)); who is playing (last game's minutes-weighted player rating against the season roster's).
+- Learning, after each game: RLS on the margin (forgetting 0.9995, each weight's variance capped at 4 × its prior);
+  each league's home edge (SGD, near the shared one); σ (EW, α 0.02); a calibration `P = expit(a + b · 1.702 z)` by
+  SGD on its own wins and losses. Silent until both clubs have played 3 games this season.
+- Data: each run reads only lines finalised after the watermark — nine numbers of each game_features line (`f->i`:
+  competitive eFG makes, FGA, FTA, turnovers, offensive / defensive rebounds, points, possessions − garbage time's) and
+  the named stats of each player line. State: `pack()` (ids interned, one array a club / league / player, the
+  covariance's upper triangle, numbers to their precision), gzipped, `analytics/odds/state.v3.json.gz` (≈ 0.6 MB;
+  a pick moves < 1e-4 through a pack); put back only when a run learned something.
+- Picks: a fixture's pick rewritten each run until tip-off, then frozen (trigger); a game first met after it was played
+  gets a record pick made from earlier games only, never replacing a fixture pick; `pick` is generated from `p_home`.
+- Walk (2026-10-08, every finished game, 1,540 judged): Brier 0.2009, 68.1% right, log loss 0.5828; the four factors,
+  Elo, the margin and the home court alone 0.2026 / 67.3% / 0.5873; Elo with home 0.2046 / 66.4%; home always 0.2456 /
+  57.5%. Form is the gain that holds (paired Brier −0.003, t −2.6 over the older half, full seasons; level early in a
+  season, where every version is within the noise); the schedule-adjusted factors, positions and who
+  is playing are level within the noise, so they start at weight 0 with a small prior variance and earn weight as the
+  evidence grows. Pace scaling (factors and σ) measured worse: off. Each family switches off in `C.use` for the next
+  walk (`node tools/build-odds.mjs --worker-config --dry-run --full --eval`).
+
 ### 7.9 Curves and hard numbers
 Per diff factor: 10 equal-count bins of Δx merged to n ≥ 30 (`[lo, hi, x̄, n, wins, p, Wilson lo, hi, mean margin]`);
 logistic `logit P = s(Δx) + α h` (natural cubic spline, knots at the 5/35/65/95th percentiles, ridge), evaluated at h = 0

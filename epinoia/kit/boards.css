@@ -54,6 +54,28 @@
 .lb-me-u{flex-basis:100%;font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--py);text-decoration:none}
 .lb-me-u:hover{text-decoration:underline}
 
+/* EPINOIΛ, THE MODEL: a competitor of its own, pinned above the fans - a black plate edged in the kit's lume */
+.lb-model:empty{display:none}
+.lb-model-c{display:grid;grid-template-columns:auto auto minmax(120px,1fr);grid-template-areas:"who wl rate" "t t t" "how how how";
+  align-items:center;gap:8px 20px;margin:0 auto calc(var(--u)*3.5);max-width:620px;padding:14px 20px 12px;
+  background:var(--plate);color:var(--pi);border-radius:14px;border:1px solid color-mix(in oklch,var(--lume) 55%,transparent);
+  box-shadow:0 14px 30px -14px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06),0 0 22px -12px var(--lume)}
+.lb-model-who{grid-area:who;display:flex;flex-direction:column;gap:4px;line-height:1}
+.lb-model-mk{font-size:18px;letter-spacing:.06em;color:var(--lume)}
+.lb-model-who small,.lb-model-wl small{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--pd)}
+.lb-model-wl{grid-area:wl;display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1;padding:0 18px;
+  border-left:1px solid rgba(255,255,255,.14);border-right:1px solid rgba(255,255,255,.14)}
+.lb-model-wl b{font-family:var(--f-score);font-weight:400;font-size:34px;color:var(--py)}
+.lb-model-rate{grid-area:rate;display:flex;align-items:center;gap:9px;font-family:var(--f-data);font-size:13px;color:var(--pi)}
+.lb-model-rate .lb-rate{background:rgba(255,255,255,.14)}
+.lb-model-rate .lb-rate::before{background:var(--lume)}
+.lb-model-t{grid-area:t;font-family:var(--f-micro);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--pd)}
+.lb-model-how{grid-area:how;font-family:var(--f-ui);font-size:12px;line-height:1.45;color:rgba(244,255,249,.62)}
+@media (max-width:560px){
+  .lb-model-c{grid-template-columns:auto 1fr;grid-template-areas:"who wl" "rate rate" "t t" "how how";padding:12px 14px}
+  .lb-model-wl{border-right:0;padding-right:0;align-items:flex-end}
+}
+
 /* a fan's name: their username, or their tag (quieter) */
 .lb-name{font-family:var(--f-ui);font-weight:800;font-size:15px;color:var(--ink);text-decoration:none;
   min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

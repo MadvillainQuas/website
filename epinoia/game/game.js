@@ -3730,6 +3730,14 @@ async function renderPreview() {
   offerToRevert();
   offerToAttachVideo(); offerToMoveCompetition();
 
+  /* EPINOIΛ's win probability after the key players (winprob.js): the section shows once there is something to say */
+  const wpSlot = $('#view').querySelector('.pv-wp-slot');
+  if (wpSlot && window.EpinoiaWinProb) {
+    window.EpinoiaWinProb.mount(wpSlot, gameId, {
+      home: { name: home.name || S.teams[0].name, colour: colourA }, away: { name: away.name || S.teams[1].name, colour: colourB }, status: S.status || 'scheduled'
+    }).then(() => { const sec = wpSlot.closest('.pv-wp'); if (sec) sec.hidden = wpSlot.hidden; }, () => {});
+  }
+
   /* EPINOIA GO: STAMP THIS GAME, in "How to get there". Only where the arena is known as one (a stamp is kept
      against an arena); it stamps THIS game, when its window opens two hours before tip-off (go/venuestamp.js). */
   const goHost = document.getElementById('pvGo');

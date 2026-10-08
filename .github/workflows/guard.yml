@@ -9,7 +9,7 @@ on:
     paths: ['epinoia/**', 'share/**', 'sw.js', 'supabase/**', '.github/workflows/guard.yml',
             '.well-known/**', 'android/**', '.github/workflows/android.yml', 'tools/ios-team.mjs',
             # What wins: the builder, the backfill and their workflows (the run-ww tests read them)
-            'tools/build-analytics.mjs', 'scripts/backfill_features.mjs', 'scripts/backfill_situations.mjs',
+            'tools/build-analytics.mjs', 'tools/build-odds.mjs', 'scripts/backfill_features.mjs', 'scripts/backfill_situations.mjs',
             '.github/workflows/analytics.yml', '.github/workflows/backfill-features.yml',
             # the records backfill's runner and workflow (records-backfill.test.mjs reads them)
             'scripts/records_backfill.mjs', '.github/workflows/records-backfill.yml']
@@ -414,6 +414,17 @@ jobs:
         # only a platform administrator rejects a picture and warns; the pill and the strip never open the card
         # they sit in; the watch data is the spreadsheet's
         run: TZ=UTC node supabase/tests/predictions.test.mjs
+
+      - name: EPINOIA's model - the win probabilities, the run, and its picks (winodds.js, build-odds.mjs, migration 0253)
+        # known answers on invented games (the better club, the home court, the schedule, form, positions, who is
+        # playing, one tip-off, its own calibration, the packed state, the nine-number reads); the run against a
+        # stand-in database (only what is new, the state gzipped, the pick's side never sent); and on a real Postgres
+        # (PGlite) the table closed to readers, picks frozen at tip-off, game_forecast's gates and prediction_model
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/winodds.test.mjs
+          node supabase/tests/build-odds.test.mjs
+          node supabase/tests/model-picks.test.mjs
 
       - name: EPINOIA GO's "Games been to", the fans' photographs (migration 0167)
         # private until a person approves; a fan writes only in their own folder; a public file named for

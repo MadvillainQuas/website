@@ -3,7 +3,8 @@
    A GAME AT A GLANCE — the card that opens from the middle of a fixture's pick strip (predict.js), on HOME and the
    global fixtures (Louie, 2026-10-07): hovering "who wins?" with a mouse, or tapping it on a phone, shows the
    preview's numbers condensed: each club's record and net rating, the four factors side by side with the better side
-   lit, the ratings and the pace, and each club's two leading players. "Full preview" goes to the game.
+   lit, the ratings and the pace, each club's two leading players, and under them EPINOIΛ's win probability
+   (winprob.js, where the page loads it). "Full preview" goes to the game.
 
      EpinoiaPeek.attach(el, game)   el: the strip's middle; game: the fixture card's game ({ id, competition_id, home, away })
 
@@ -94,6 +95,8 @@
           '<div class="gk-sec"><div class="gk-k">ratings · per 100 possessions</div>' + RT.map(([l, k, lo, st]) => row(l, hm[k], aw[k], lo, st)).join('') + '</div>'
         : '<p class="gk-none">Not enough games yet this season to compare them.</p>') +
       '<div class="gk-sec gk-leads"><div class="gk-k">leading players</div><div class="gk-lcols"><div>' + lead(ln.h, ln.hn) + '</div><div>' + lead(ln.a, ln.an) + '</div></div></div>' +
+      /* EPINOIΛ's win probability (winprob.js), filled after: hidden until it has something to say */
+      '<div class="gk-sec gk-wp" hidden></div>' +
       '<a class="gk-go" href="' + esc(g.href || ('../game/?g=' + encodeURIComponent(g.id) + '&mode=supabase')) + '">full preview →</a>';
   }
 
@@ -127,7 +130,11 @@
     pop.style.left = left + 'px';
     /* no taller than the screen (in the kit's own pixels: the body is zoomed); the rest scrolls inside */
     const inner = pop.querySelector('.gk-in');
-    if (inner) inner.style.maxHeight = Math.max(160, vh - 16) + 'px';
+    if (inner) {
+      /* the card's own padding and border are outside the scrolling part: taken off too, or a tall card runs off the foot */
+      const cs = getComputedStyle(pop), edge = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0) + (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+      inner.style.maxHeight = Math.max(160, vh - 16 - edge) + 'px';
+    }
     const h = pop.offsetHeight;
     const below = r.bottom / z + 10, above = r.top / z - 10 - h;
     /* under the strip when it fits, else over it, else as low as the screen allows (never off its foot; the nib goes) */
@@ -162,6 +169,11 @@
       const [hn, an] = await Promise.all([namesOf(h.map(p => p.id)), namesOf(a.map(p => p.id))]);
       if (t !== ticket) return;
       fill(html(g, S, hm, aw, { h, a, hn, an }));
+      const wp = pop.querySelector('.gk-wp');
+      if (wp && root.EpinoiaWinProb) {
+        root.EpinoiaWinProb.mount(wp, g.id, { home: g.home, away: g.away, status: g.status, homeScore: g.home_score, awayScore: g.away_score })
+          .then(() => { if (t === ticket) place(); }, () => {});
+      }
     } catch (_) {
       if (t !== ticket) return;
       fill('<div class="gk-hd"><span>preview</span><button type="button" class="gk-x" aria-label="close">×</button></div><p class="gk-none">The season could not be read just now.</p>');
