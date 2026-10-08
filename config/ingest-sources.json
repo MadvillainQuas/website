@@ -3166,6 +3166,35 @@
       ]
     },
     {
+      "code": "LNBF",
+      "label": "Liga Nationala de Baschet Feminin",
+      "adapter": "fiba_livestats",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        10,
+        23
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "lnbf",
+      "league_name": "Liga Nationala de Baschet Feminin",
+      "league_country": "RO",
+      "league_gender": "women",
+      "adapter_config": {
+        "code": "LNBF",
+        "client_code": "FRB",
+        "timezone": "Europe/Bucharest",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hosted.wh.geniussports.com/FRB/en/competition/50109/schedule?roundNumber=-1&"
+      ]
+    },
+    {
       "code": "NBB",
       "label": "NBB",
       "adapter": "lnbbr",

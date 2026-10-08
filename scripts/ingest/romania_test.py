@@ -65,6 +65,22 @@ import run_ingest  # noqa: E402
 src = dict(row, schedule_url=url)
 ok("expand_competition_sources leaves a pinned competition alone", run_ingest.expand_competition_sources([src]) == [src])
 
+# THE WOMEN'S LEAGUE (LNBF, 2026-10-08): the same client and the same method, its own competition (50109, "LNBF BT" on
+# its games' LiveStats pages; the client's picker calls it "English" too)
+wrows = [s for s in reg["sources"] if s.get("code") == "LNBF"]
+ok("one LNBF row", len(wrows) == 1, len(wrows))
+wrow = wrows[0] if wrows else {}
+wac = wrow.get("adapter_config") or {}
+wurl = (wrow.get("scheduleUrls") or [""])[0]
+ok("LNBF: fiba_livestats on client FRB, Bucharest time, country RO, slug lnbf, a women's league",
+   wrow.get("adapter") == "fiba_livestats" and wac.get("client_code") == "FRB" and wac.get("timezone") == "Europe/Bucharest"
+   and wrow.get("league_country") == "RO" and wrow.get("league_slug") == "lnbf" and wrow.get("league_gender") == "women",
+   (wrow.get("adapter"), wac, wrow.get("league_slug"), wrow.get("league_gender")))
+ok("LNBF: its own pinned competition, the whole season, not the men's",
+   re.search(r"/FRB/en/competition/\d+/schedule\?roundNumber=-1", wurl) is not None and wurl != url
+   and not wac.get("client_is_league") and not wac.get("sync_clubs"), wurl)
+ok("LNBF: expand_competition_sources leaves it alone too", run_ingest.expand_competition_sources([dict(wrow, schedule_url=wurl)]) == [dict(wrow, schedule_url=wurl)])
+
 print("hosted schedule")
 html = read(DATA, "schedule-50100.html")
 games = {g.external_id: g for g in FibaLiveStatsAdapter().parse_schedule(html, "Europe/Bucharest")}
@@ -90,7 +106,7 @@ for rel in ("epinoia/country.js", "epinoia/nav.js"):
     m = re.search(r"HAVE_FLAG = \[([^\]]*)\]", read(ROOT, *rel.split("/")))
     ok(f"RO in HAVE_FLAG ({rel})", m is not None and "'RO'" in m.group(1))
 clients = json.loads(read(ROOT, "epinoia", "livestats-clients.json"))["clients"]
-ok("livestats-clients.json: LNBM -> FRB", clients.get("LNBM") == "FRB", clients.get("LNBM"))
+ok("livestats-clients.json: LNBM and LNBF -> FRB", clients.get("LNBM") == "FRB" and clients.get("LNBF") == "FRB", clients)
 
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

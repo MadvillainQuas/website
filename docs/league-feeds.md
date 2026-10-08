@@ -714,6 +714,17 @@ are the ordinary data.json path (box, play-by-play, shots, stints).
 - Play-offs: not yet seen. Check the hosted page near the end of the regular season (a new competition, or phases
   of 50100) and add a play-off row if needed.
 
+### Liga Nationala de Baschet Feminin (LNBF)
+
+Added 2026-10-08, the same way as LNBM. Source `LNBF`, `client_code FRB`, `timezone Europe/Bucharest`, slug `lnbf`,
+country RO, `league_gender women`. On frbaschet.ro it is BasketHotel league 25503, season 133419 (ids 61908xx); its
+games are Genius competition **50109** ("LNBF BT" on each game's LiveStats page, "English" in the client's picker):
+`https://hosted.wh.geniussports.com/FRB/en/competition/50109/schedule?roundNumber=-1&`, 90 games of 2026-27 between
+10 clubs, LiveStats ids 2913067-2913172. Pinned like the men's, so it changes each season the same way (read
+`page_comp_id_<N>` off any LNBF game's LiveStats page). Checked: the 4 finished games of the first round
+reconcile (box = stints = the schedule's score, 200 minutes a side). 127-13 (Targoviste v Politehnica Timisoara,
+3 Oct) is the feed's real result, on the hosted schedule as well.
+
 ## Czech Republic: ŽBL and 1. liga mužů (FIBA LiveStats via the federation's system)
 
 ### host
