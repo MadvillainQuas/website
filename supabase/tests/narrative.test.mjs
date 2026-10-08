@@ -114,6 +114,17 @@ console.log('\nthreading, from one build to the next');
   ok('...and carries the storylines it still writes', bv.stories.some(s => s.id === 'run:t1'));
 }
 
+console.log('\nthe storylines each game touches (the preview’s threads)');
+{
+  const f1 = b1.coverage.slate.find(s => s.game === 'f1');
+  ok('a fixture carries the running storylines of its clubs', f1 && f1.threads.some(t => t.story === 'run:t1' && /^Ash City’s run of five straight wins is on the line$/.test(t.line)), f1 && f1.threads);
+  ok('...and of their players', f1 && f1.threads.some(t => t.story === 'scoring:p1' && /^Pat Archer’s run of four straight 20-point games is on the line$/.test(t.line)), f1 && f1.threads);
+  /* a later game of the same club does not: by then the run may be over */
+  const later = N.build(Object.assign({}, base, { fixtures: base.fixtures.concat([{ id: 'f9', home_team_id: 't3', away_team_id: 't1', tipoff_at: new Date(NOW + 6 * 86400000).toISOString() }]) }));
+  const f9 = later.coverage.slate.find(s => s.game === 'f9');
+  ok('...only on the club’s next game', f9 && !f9.threads.some(t => t.story === 'run:t1'), f9 && f9.threads);
+}
+
 console.log('\nthe briefing and the coverage plan');
 ok('the briefing leads with the top storyline and ends', b1.briefing.lead === b1.stories[0].id && /^The story: /.test(b1.briefing.lines[0]) && !!b1.briefing.end);
 ok('the slate is in order of what is at stake', b1.coverage.slate.length === 2 && b1.coverage.slate[0].stakes >= b1.coverage.slate[1].stakes, b1.coverage.slate.map(s => s.title + ' ' + s.stakes));

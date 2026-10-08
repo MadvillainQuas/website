@@ -644,6 +644,24 @@ function ensureWinModel() {
     });
   return winModelP;
 }
+/* THE LEAGUE'S NEWSDESK, FOR A FIXTURE (narrative.js, built hourly into the public snapshots/narrative/<league>.json): the
+   storylines this game touches - a run on the line, a scorer's streak, a first win to chase - from the slate's threads, for
+   the preview. One read of a public file a page; the preview draws without it. */
+let deskP = null;
+function ensureDesk() {
+  if (deskP) return deskP;
+  const S = window.S, CFG = window.EPINOIA_CONFIG;
+  if (!S || !S.leagueId || !CFG || !CFG.supabaseUrl) return (deskP = Promise.resolve(null));
+  deskP = fetch(CFG.supabaseUrl + '/storage/v1/object/public/snapshots/narrative/' + encodeURIComponent(S.leagueId) + '.json')
+    .then(r => (r.ok ? r.json() : null))
+    .then(b => (b && b.v === 1 && b.league && String(b.league.id) === String(S.leagueId) && b.coverage ? b : null))
+    .catch(() => null);
+  return deskP;
+}
+function threadsFor(b, id) {
+  const sl = b && b.coverage && Array.isArray(b.coverage.slate) ? b.coverage.slate.find(x => x && x.game === id) : null;
+  return sl && Array.isArray(sl.threads) ? sl.threads.filter(t => t && t.kicker && t.line) : [];
+}
 function ensureSeasonPositions() {
   if (seasonAsked || !window.EpinoiaModernBox || !window.S) return;
   seasonAsked = true;
@@ -3639,12 +3657,14 @@ async function renderPreview() {
      only extra request is the clubs' releases, and a league without that table yet
      gets an empty list rather than a broken preview. The names are already on the
      season rows from the playerMeta merge above, so nobody is asked for twice. */
-  const [out, pin, table] = await Promise.all([
+  const [out, pin, table, desk] = await Promise.all([
     outFor(season, m),
     venuePin(m),
     /* where the two clubs stand, and the table they stand in (epinoia/tablepos.js) */
     window.EpinoiaTablePos && m.competitionId
-      ? window.EpinoiaTablePos.load(api, m.competitionId).catch(() => null) : null
+      ? window.EpinoiaTablePos.load(api, m.competitionId).catch(() => null) : null,
+    /* the storylines this game touches, from the league's newsdesk */
+    ensureDesk()
   ]);
   const TP = window.EpinoiaTablePos;
   const placeOf = id => (TP && table && id ? TP.place(table, id) : null);
@@ -3678,7 +3698,7 @@ async function renderPreview() {
        not render. */
     startersA: startingFive(S, 0), startersB: startingFive(S, 1), nameLabels: gameNameLabels(S),
     outA: out.A, outB: out.B,
-    pre: pre, names: pnames,
+    pre: pre, names: pnames, threads: threadsFor(desk, gameId),
     tipoff: m.tipoff_at, venue: m.venue, address: m.venue_address, pin: pin,
     competition: S.competition, leagueSlug: S.leagueSlug
   });

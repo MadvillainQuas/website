@@ -410,7 +410,10 @@
       'Expand': 'Desplegar',
       'time on court': 'Tiempo en pista',
       'game clock at each check-in and check-out': 'Reloj de partido en cada entrada y salida',
-      'turnover %': '% de pérdidas'
+      'turnover %': '% de pérdidas',
+      'On the newsdesk': 'En la redacción',
+      'the storylines this game touches': 'las historias que toca este partido',
+      'every storyline in the league ↗': 'todas las historias de la liga ↗'
     },
 
     ctx: {

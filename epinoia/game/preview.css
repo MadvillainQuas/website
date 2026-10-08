@@ -121,6 +121,14 @@
 .pv-go:empty{ display:none }
 .pv-go .gv{ margin-top:18px; max-width:none }
 
+/* ------------------------------------------------- on the newsdesk (preview.js threads) */
+.pv-threads{ list-style:none; margin:0 auto; padding:0; max-width:68ch; display:flex; flex-direction:column; gap:10px }
+.pv-threads li{ display:flex; flex-direction:column; gap:3px; padding:10px 14px; border-left:3px solid var(--pa,var(--ink,#000));
+  background:var(--ground,transparent) }
+.pv-threads li.b{ border-left-color:var(--pb,var(--ink,#000)) }
+.pv-thk{ font-family:var(--f-micro,ui-monospace,monospace); font-size:8.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3,inherit) }
+.pv-thl{ font-size:15px; line-height:1.5; color:var(--ink,inherit) }
+
 /* ------------------------------------------------------------- the prose */
 .pv-prose p{ margin:0 auto 12px; font-size:15px; line-height:1.72; color:var(--ink-2,inherit); max-width:68ch }
 .pv-prose p:last-child{ margin-bottom:0 }

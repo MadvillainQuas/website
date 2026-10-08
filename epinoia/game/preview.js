@@ -681,6 +681,15 @@ function render(ctx) {
         '<div class="pv-prose" data-i18n-ctx="report">' + paras + '</div></section>'
       : '') +
 
+    /* ON THE NEWSDESK: the league's running storylines this game touches (narrative.js threadsOf, from the league's hourly
+       newsdesk file), each said as what the game means for it; and the way to all of them */
+    (ctx.threads && ctx.threads.length
+      ? '<section class="pv-sec">' + head('On the newsdesk', 'the storylines this game touches') +
+        '<ul class="pv-threads" data-i18n-ctx="newsdesk">' + ctx.threads.slice(0, 4).map(t =>
+          '<li' + (t.side === 1 ? ' class="b"' : '') + '><span class="pv-thk">' + esc(t.kicker) + '</span><span class="pv-thl">' + esc(t.line) + '</span></li>').join('') + '</ul>' +
+        (ctx.leagueSlug ? '<a class="pv-more" href="../' + scope + '#storySec">every storyline in the league ↗</a>' : '') + '</section>'
+      : '') +
+
     /* THE TABLE, with both clubs lit (epinoia/tablepos.js); only once somebody in it has played */
     (ctx.tableHTML
       ? '<section class="pv-sec pv-table">' + head('The table', ctx.tableName || '') + ctx.tableHTML +

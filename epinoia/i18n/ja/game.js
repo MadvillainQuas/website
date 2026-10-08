@@ -403,7 +403,10 @@
       'Expand': '展開する',
       'time on court': '出場時間帯',
       'game clock at each check-in and check-out': '各出場・交代時の試合時計',
-      'turnover %': 'ターンオーバー率'
+      'turnover %': 'ターンオーバー率',
+      'On the newsdesk': 'ニュースデスク',
+      'the storylines this game touches': 'この試合に関わるストーリーライン',
+      'every storyline in the league ↗': 'リーグのすべてのストーリーライン ↗'
     },
 
     ctx: {

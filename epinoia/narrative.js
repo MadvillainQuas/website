@@ -1311,7 +1311,7 @@ function build(input) {
   });
 
   const ctxObj = { nowMs, tz, C, S, posOf, name, short, fixtures, games, regular, recaps, tallies, P, model: o.model, LENS, PL, pname, ID, DISTINCT, F, maxGp, qualifiers, nextText,
-    shape, SERIES, isPost: isPostFix, pairKey, SIG, VID, NEWS, written };
+    shape, SERIES, isPost: isPostFix, pairKey, SIG, VID, NEWS, written, stories };
   /* the clubs the file names, so a page can draw a slate or a link without asking for them */
   const clubsOut = {};
   new Set(games.concat(fixtures).flatMap(g => [g.home_team_id, g.away_team_id])).forEach(id => {
@@ -1396,6 +1396,42 @@ function briefing(stories, X) {
 /* THE GAMES AHEAD, ranked by what is at stake, each with the angle a preview should take: where the two stand, the form,
    the meetings, what the season's numbers expect and the one facet the matchup turns on, the fans' picks, a player to
    watch on each side. */
+/* THE STORYLINES A GAME TOUCHES (threading games into stories): the running storylines about either club or one of
+   their players, best first, each said as what this game means for it - a run on the line, a streak, a first win to
+   chase, two contenders meeting, a player missing. The preview on the game page shows them under the fixture. */
+function threadsOf(X, g) {
+  const a = g.home_team_id, b = g.away_team_id, both = [a, b];
+  const live = (X.stories || []).filter(s => s.status !== 'resolved' && (s.teams || []).some(t => both.indexOf(t) >= 0));
+  const out = [];
+  const club = id => X.name(id);
+  /* a storyline is true as of now: it rides on the club's NEXT game only (by the one after, the run may be over); what
+     wins for a club is the exception, true of any game */
+  const isNext = id => { const f = X.fixtures.find(x => x.home_team_id === id || x.away_team_id === id); return !!f && f.id === g.id; };
+  live.forEach(s => {
+    const t = (s.teams || []).find(x => both.indexOf(x) >= 0);
+    if (s.kind !== 'identity' && !(s.teams || []).filter(x => both.indexOf(x) >= 0).every(isNext)) return;
+    const pid = (s.players || [])[0], pn = pid ? X.pname(pid) : null;
+    const v = s.tracks ? s.tracks.value : null;
+    let line = null;
+    switch (s.kind) {
+      case 'run': line = possOf(club(t)) + ' run of ' + spell(v) + ' straight wins is on the line'; break;
+      case 'skid': line = club(t) + ' have lost ' + spell(v) + ' straight: a chance to end it'; break;
+      case 'perfect': line = club(t) + ' put their unbeaten record on the line'; break;
+      case 'winless': line = club(t) + ' go looking for a first win again'; break;
+      case 'scoring': line = pn ? possOf(pn) + ' run of ' + spell(v) + ' straight 20-point games is on the line' : null; break;
+      case 'milestone': line = pn && v != null ? pn + ' needs ' + spell(v) + ' points for ' + String(s.id).split(':').pop() + ' this season' : null; break;
+      case 'absence': line = pn ? pn + ' has missed ' + possOf(club(t)) + ' last ' + spell(v) + ' games' : null; break;
+      case 'race': line = (s.teams || []).filter(x => both.indexOf(x) >= 0).length === 2 ? 'Two of the clubs at the top meet' : null; break;
+      case 'line': line = (s.teams || []).filter(x => both.indexOf(x) >= 0).length === 2 ? 'Two of the clubs fighting for the line meet' : null; break;
+      case 'identity': line = X.DISTINCT && X.DISTINCT.get(t) ? possOf(club(t)) + ' results turn on ' + FACET[X.DISTINCT.get(t).k] : null; break;
+      case 'form': line = pn ? pn + ' comes in scoring ' + String(s.tracks.value) + ' a game over the last five' : null; break;
+      default: line = null;
+    }
+    if (line) out.push({ story: s.id, kicker: s.kicker, line: cap(line), side: t === a ? 0 : 1 });
+  });
+  return out.slice(0, 4);
+}
+
 function slate(X, horizon) {
   const until = X.nowMs + (horizon || 7 * DAY);
   return X.fixtures.filter(g => time(g.tipoff_at) <= until).map(g => {
@@ -1441,6 +1477,7 @@ function slate(X, horizon) {
       away: { id: b, rank: pb ? pb.pos : null, rec: cb ? rec(cb.w, cb.l) : null, form: cb ? cb.last5.join('') : '', streak: cb && cb.streak ? (cb.streak.won ? 'W' : 'L') + cb.streak.n : null, watch: watchP(b) },
       expect: ex ? { margin: Math.round(ex.margin * 10) / 10, favourite: ex.margin >= 0 ? a : b, model: ex.model } : null,
       turn, meetings: met.length ? { played: met.length, winsHome: winsA, winsAway: met.length - winsA } : null, fans,
+      threads: threadsOf(X, g),
       plan: ser ? ['a series preview the day before', 'a live thread', 'the recap, and where the series stands']
         : stakes0 >= 1.1 ? ['a full preview the day before', 'a live thread', 'the recap and the numbers that decided it']
         : stakes0 >= 0.8 ? ['a short preview', 'the recap'] : ['the recap if it surprises']
@@ -1587,6 +1624,6 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 4;
+const VERSION = 5;
 return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));
