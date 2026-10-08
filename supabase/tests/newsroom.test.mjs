@@ -120,6 +120,7 @@ console.log('\nsalience, persistence and the headline test');
   delete oldW.wv;
   const rew = watch && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [oldW] }).find(a => a.id === watch.id);
   ok('...a week\'s games to watch by the older writer is written again, under its id and date', rew && rew.corrected && rew.body[0] !== 'old' && rew.written === watch.written, rew && rew.body);
+  ok('...with everything the writer gives now: what it said of each game (games), for the match report', rew && Array.isArray(rew.games) && rew.games.length >= 2 && rew.games.every(x => x.game), rew && rew.games);
   const gone0 = Object.assign({}, oldW, { id: 'watch:1999-1', head: 'A week long past', heads: undefined });
   const moved = watch && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [gone0] }).find(a => a.id === gone0.id);
   /* watch 4 (drop): a week's games to watch from before the voice had been kept as written and stamped as the voice's */

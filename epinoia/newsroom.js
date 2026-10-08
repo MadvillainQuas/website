@@ -1065,9 +1065,11 @@ function orderHeads(heads, model, league) {
        sides to run on ... the fourth-best in the league"): written again while its week is on, dropped after. A piece kept
        as written is now marked kept, never given a writer's version it was not written by.
      watch 5 (2026-10-08, drop): the week's games to watch keep what they said of each game (games: the lean, the reason,
-       the player) for the match report to read back; and the preview keeps its week (round-up, its own bar) */
+       the player) for the match report to read back; and the preview keeps its week (round-up, its own bar)
+     watch 6 (2026-10-08, drop): a piece written again kept only the fields it was written with before, so the 5s written
+       again had no games and no round-up: they carry everything the writer gives now */
 const VOICED = { v: 3, heads: true };
-const WRITER = { five: { v: 3, drop: true, heads: true }, watch: { v: 5, drop: true, heads: true }, slump: VOICED, mvp: VOICED, prospect: VOICED, identity: VOICED, run: VOICED, skid: VOICED, clock: VOICED, absence: VOICED };
+const WRITER = { five: { v: 3, drop: true, heads: true }, watch: { v: 6, drop: true, heads: true }, slump: VOICED, mvp: VOICED, prospect: VOICED, identity: VOICED, run: VOICED, skid: VOICED, clock: VOICED, absence: VOICED };
 const writerOf = kind => (WRITER[kind] && WRITER[kind].v) || 1;
 /* the writer a piece was last answered for: written by it (wv), or kept as it was when it could not be written again (kept) */
 const answered = a => Math.max(a.wv || 1, a.kept || 0);
@@ -1101,7 +1103,7 @@ function publish(o, b, opts) {
         /* a correction that may change the headlines (heads) takes the new ones, in the model's order; the test starts again */
         const nh = keeps ? null : orderHeads(w.head, op.model, lslug).filter(ok);
         const base = keeps ? a : Object.assign({}, a, { head: nh[0] || a.head, heads: nh.length > 1 ? nh : undefined, locked: undefined });
-        const ed = edit(Object.assign({}, base, { kicker: w.kicker, dek: w.dek, body: w.body, facts: w.facts, links: w.links, teams: w.teams, players: w.players, __log: w.__log, __sections: w.__sections }), meta, nowMs);
+        const ed = edit(Object.assign({}, base, { kicker: w.kicker, dek: w.dek, body: w.body, facts: w.facts, links: w.links, teams: w.teams, players: w.players, games: w.games, __log: w.__log, __sections: w.__sections, __roundup: w.__roundup }), meta, nowMs);
         if (ed.ok) return Object.assign(ed.piece, { wv: writerOf(a.kind), corrected: new Date(nowMs).toISOString() });
       }
       if (WRITER[a.kind] && WRITER[a.kind].drop) return null;
