@@ -258,5 +258,22 @@ ok("a void RPC (finish_season_backfill, progress_season_backfill, heartbeat_seas
 row_sb = RI.Supabase("https://x.example", "k", session=_RowSession())
 ok("an RPC that actually returns a row still comes back as that row", row_sb.rpc("claim_season_backfill", {}) == {"id": "x"})
 
+print("\n-- only discovery moves a game between a league's phases")
+# A league fed by two rows (the regular season unlabelled - its competition IS the catch-all - and the
+# play-offs labelled) had a regular-season game moved under the play-offs whenever a pass handed that game
+# to BOTH rows: the catch-up and the stuck-game repair look games up by (adapter, code), which the two rows
+# share, and --ids and the live passes do the same. GAS Komotini v Protefs Voulas, the Greek Elite League's
+# opening round, was filed under "Greek Elite League Playoffs" (2026-10-08); three LNBP games before it.
+_src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read().replace("\r\n", "\n")
+import re as _re  # noqa: E402
+ok("write_platform is told whether this source's own schedule listed the game, and assumes not",
+   _re.search(r"def write_platform\([^)]*from_schedule: bool = False\) -> bool:", _src) is not None)
+ok("...and moves a game out of the catch-all only when it did",
+   'if (from_schedule and src.get("competition_label") and cur\n                and cur[0].get("competition_id") not in (None, comp["id"])):' in _src)
+_calls = _re.findall(r"write_platform\(sb, src, b, run[^\n]*(?:\n[^\n]*from_schedule=[^\n]*)?", _src)
+ok("the main loop says so only for a discovery pass: not --ids, not a catch-up or repair, not the live pass",
+   sum("from_schedule=not (args.ids or args.catch_up or args.live_only)" in c for c in _calls) == 2, _calls)
+ok("...and the live keeper never does", any("observer.stamps(xid)" in c and "from_schedule" not in c for c in _calls), _calls)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

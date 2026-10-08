@@ -1049,7 +1049,7 @@ def video_due(game_id, status: str) -> bool:
 
 
 def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None,
-                   stamps: dict | None = None, venue: str | None = None) -> bool:
+                   stamps: dict | None = None, venue: str | None = None, from_schedule: bool = False) -> bool:
     """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
     A league connected from the console (auto_create) has its clubs / players / rosters created
     from the payload the first time they appear; a hand-mapped league only matches, never invents.
@@ -1111,7 +1111,16 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
         # A game filed under the league's catch-all competition before the feed's phases were known
         # moves to the phase this source is (Trophy, League, playoffs). A game an administrator has
         # already placed somewhere specific is never touched - only the catch-all is.
-        if src.get("competition_label") and cur and cur[0].get("competition_id") not in (None, comp["id"]):
+        #
+        # ONLY A GAME THIS SOURCE'S OWN SCHEDULE LISTED (from_schedule). A league fed by two rows (the regular season
+        # unlabelled, so its competition IS the catch-all, and the play-offs labelled) has every regular-season game
+        # in the catch-all: a pass that hands a game to BOTH rows - the catch-up and the stuck-game repair look games
+        # up by (adapter, code), which the two rows share; --ids and the live passes the same - had the play-offs row
+        # move it. GAS Komotini v Protefs Voulas, the Greek Elite League's opening round, was filed under "Greek
+        # Elite League Playoffs" so (2026-10-08), as three LNBP games had been (2026-09-23). Discovery is the only
+        # pass that knows which phase a game belongs to, so only it moves one.
+        if (from_schedule and src.get("competition_label") and cur
+                and cur[0].get("competition_id") not in (None, comp["id"])):
             dflt = default_competition_id(plat, src, league_id, ac)
             if dflt and cur[0]["competition_id"] == dflt:
                 extra["competition_id"] = comp["id"]
@@ -3232,7 +3241,8 @@ def main() -> int:
                 entries[g.external_id] = entry
                 if sb:
                     try:
-                        write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every), venue=(g.extra or {}).get("venue"))
+                        write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every), venue=(g.extra or {}).get("venue"),
+                                       from_schedule=not (args.ids or args.catch_up or args.live_only))
                     except Exception as exc:
                         print(f"    (platform write failed: {exc})")
                 if args.fixture_out:
@@ -3277,7 +3287,8 @@ def main() -> int:
                     entries[g.external_id] = entry_for(b, prev, raw_ref, g)
                     if sb:
                         try:
-                            write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every), venue=(g.extra or {}).get("venue"))
+                            write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every), venue=(g.extra or {}).get("venue"),
+                                           from_schedule=not (args.ids or args.catch_up or args.live_only))
                         except Exception as exc:
                             print(f"    (platform write failed: {exc})")
                     print(f"    ~ {b.home_name} {entries[g.external_id]['homeScore']}-{entries[g.external_id]['awayScore']} {b.away_name} ({b.status}) {datetime.now(timezone.utc).strftime('%H:%M:%S')}")

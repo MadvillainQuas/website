@@ -203,5 +203,27 @@ ok("two source rows, one league filed under Bulgaria: the regular season and the
    and {s["league_slug"] for s in rows} == {"nbl-bulgaria"} and all(s["league_country"] == "BG" for s in rows)
    and [s.get("competition_kind") for s in rows if s["adapter_config"]["stage"] == "playoffs"] == ["playoff"], rows)
 
+print("\n-- a new season, before the embed has moved on to it (8 Oct 2026)")
+from adapters import bgnbl as _bg  # noqa: E402
+ok("2026-27's season is recorded", _bg.SEASONS.get(2026) == "82efe64f-b74a-11f1-8cb6-256d030dc581")
+ok("a fixture list's season is its first date's: October 2026 is 2026-27, March 2027 still is",
+   _bg.feed_year([{"startTimeLocal": "2026-10-10T18:00:00"}]) == 2026 and _bg.feed_year([{"startTimeLocal": "2027-03-01T18:00:00"}]) == 2026
+   and _bg.feed_year([]) is None)
+_pages = {_bg.SITE + "/game-live-11": '<script data-website-id="308" data-season-id="aaaaaaaa-0000-0000-0000-000000000001"></script>',
+          _bg.SITE + "/game-live-12": '<script data-season-id="aaaaaaaa-0000-0000-0000-000000000001"></script>',
+          _bg.SITE + "/game-live-13": '<script data-season-id="bbbbbbbb-0000-0000-0000-000000000002"></script>'}
+_seen = _bg.site_season_ids('<a href="game-11">x</a><a href="game-live-11#div_main">L</a><a href="game-live-12">L</a>'
+                            '<a href="game-live-11">L</a><a href="game-live-13">L</a>', _pages.get)
+ok("the league's own game pages name their seasons, each once, in the order they are linked",
+   _seen == ["aaaaaaaa-0000-0000-0000-000000000001", "bbbbbbbb-0000-0000-0000-000000000002"], _seen)
+ok("...a page that names none is passed over", _bg.site_season_ids('<a href="game-live-99">L</a>', lambda u: None) == [])
+_early = [{"round": f"Round: {r}", "startTimeUTC": f"2026-10-{9 + r * 3:02d}T15:00:00Z"} for r in (1, 2, 3)]
+_early.append({"round": "Round: 1", "startTimeUTC": "2026-11-20T15:00:00Z"})      # a round-1 game put back
+ok("the first rounds alone have no play-offs: a round-1 game put back past round 3 stays regular season",
+   _bg.playoff_cutoff(_early) is None)
+_full = [{"round": f"Round: {r}", "startTimeUTC": f"2026-{10 + r // 8:02d}-{1 + r % 8:02d}T15:00:00Z"} for r in range(1, 34)]
+ok("...a whole regular season still has its cut-off (the last game of round 33)",
+   _bg.playoff_cutoff(_full) == max(f["startTimeUTC"] for f in _full if f["round"] == "Round: 33"))
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

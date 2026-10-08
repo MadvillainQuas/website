@@ -85,8 +85,8 @@ ok("...and a row with no venue carries none", rows[1].extra.get("venue") is None
 
 print("\n-- the pipeline")
 src = open(os.path.join(HERE, "run_ingest.py"), encoding="utf-8").read()
-ok("write_platform takes the schedule's venue", re.search(r"def write_platform\([^)]*venue: str \| None = None\)", src) is not None)
-ok("...at all three call sites", len(re.findall(r'write_platform\([^\n]*venue=\(g\.extra or \{\}\)\.get\("venue"\)\)', src)) == 3)
+ok("write_platform takes the schedule's venue", re.search(r"def write_platform\([^)]*venue: str \| None = None[,)]", src) is not None)
+ok("...at all three call sites", len(re.findall(r'write_platform\([^\n]*venue=\(g\.extra or \{\}\)\.get\("venue"\)[),]', src)) == 3)
 ok("...falling back on the game's own page", 'venue = (venue or "").strip() or venue_of(b)' in src)
 ok("...written on a new game", '**({"venue": venue} if venue else {})}, "id")' in src)
 ok("...patched onto a stored one only when it differs, never cleared",

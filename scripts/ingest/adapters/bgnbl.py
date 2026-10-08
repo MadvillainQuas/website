@@ -20,13 +20,23 @@ and it tipped off hours ago.
 
 ONE SEASON AT A TIME. Embed 308 publishes no season list (LNBP's embed 14 does), so the season
 read is the one the feed is on now - its year read off its own fixture dates - or one recorded in
-SEASONS. A platform season that is neither is refused with a reason, never read as the current
-one: that is how one season's games get filed under another's name.
+SEASONS, or the one the league's own site names. A platform season that is none of them is refused
+with a reason, never read as the current one: that is how one season's games get filed under
+another's name.
+
+THE EMBED'S DEFAULT LAGS A NEW SEASON. On 8 Oct 2026, two days before 2026-27's first round, it still
+answered with 2025-26, and the league page sat empty. The league's own site had moved on: every game's
+LIVE page (nbl.basketball.bg/game-live-<n>) carries the EUI widget with its data-season-id. So a
+season missing from both is looked for there - the season of the most fixtures in the wanted year among
+the games the site links, so a Supercup's two-game season is never taken for the league.
 
 REGULAR SEASON AND PLAY-OFFS ARE ONE EUI SEASON with no fixtureType, told apart by the round
 numbers: the regular season runs Round 1..33, and the play-offs start again at Round 1 after it
 (quarter-finals, semi-finals, final: 2025-26 from 29 Apr). A fixture dated after the last game of
-the highest round is a play-off game. adapter_config.stage picks which a source row takes.
+the highest round is a play-off game - once the season HAS a regular season's worth of rounds
+(REGULAR_MIN_ROUNDS): the schedule is published a few rounds at a time (2026-27's first: rounds 1-3),
+and a round-1 game put back past round 3's last would otherwise have been filed as a play-off.
+adapter_config.stage picks which a source row takes.
 
 CLUBS are keyed by the EUI entityId (the feed has no club code), the same id in the fixtures list
 and the game feed, so a club created from a fixture and one named by a played game are one club.
@@ -36,8 +46,11 @@ standard spells letters, and the capitals are the club's own.
 from __future__ import annotations
 
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, Optional
+
+import requests
 
 import names as _names                  # noqa: E402  (scripts/ingest is on sys.path via fiba_livestats)
 
@@ -48,8 +61,15 @@ from .twobbl import current_season, normalize_season
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0 Safari/537.36",
            "Referer": "https://nbl.basketball.bg/", "Origin": "https://nbl.basketball.bg"}
-#: EUI season uuids by START year, for a season the feed is no longer on (it lists none itself)
-SEASONS = {2025: "3f73b7bb-9a47-11f0-8a96-b5a52c2e9fb9"}
+#: EUI season uuids by START year, for a season the feed is no longer (or not yet) on: it lists none itself
+SEASONS = {2025: "3f73b7bb-9a47-11f0-8a96-b5a52c2e9fb9",
+           2026: "82efe64f-b74a-11f1-8cb6-256d030dc581"}     # off game-live-384275, 8 Oct 2026
+#: the league's own site, whose game pages name the EUI season they are on
+SITE = "https://nbl.basketball.bg"
+#: the most of the site's LIVE pages read when looking for a season (each one request)
+SITE_PAGES = 8
+#: the fewest rounds a season has before any of its games can be a play-off game
+REGULAR_MIN_ROUNDS = 20
 DROPPED = {"CANCELLED", "CANCELED", "POSTPONED", "ABANDONED"}
 LIVE_STATUS = {"IN_PROGRESS", "INPROGRESS", "LIVE", "STARTED", "HALFTIME", "BREAK"}
 #: a scored fixture this long past its tip-off is a result, whatever its status says
@@ -91,12 +111,39 @@ def scored_and_past(f: dict, now: Optional[datetime] = None) -> bool:
 
 def playoff_cutoff(fixtures: list) -> Optional[str]:
     """The tip-off of the last game of the highest round: anything later is a play-off game
-    (their rounds start again at 1). None until the season has a highest round at all."""
+    (their rounds start again at 1). None until the season has a regular season's worth of rounds."""
     rounds = [(_round(f), f.get("startTimeUTC") or "") for f in fixtures if _round(f)]
     if not rounds:
         return None
     top = max(r for r, _ in rounds)
+    if top < REGULAR_MIN_ROUNDS:
+        return None
     return max(t for r, t in rounds if r == top) or None
+
+
+def feed_year(fixtures: list) -> Optional[int]:
+    """The START year of the season a fixture list is from, off its first date (July on = that year)."""
+    dates = sorted(str(f.get("startTimeLocal") or "")[:10] for f in fixtures if f.get("startTimeLocal"))
+    if not dates:
+        return None
+    y, mo = int(dates[0][:4]), int(dates[0][5:7])
+    return y if mo >= 7 else y - 1
+
+
+LIVE_LINK = re.compile(r"game-live-(\d+)")
+SEASON_ATTR = re.compile(r'data-season-id="([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"')
+
+
+def site_season_ids(games_page: str, get_page) -> list:
+    """The EUI season ids the site's game pages name, in the order the games page links them.
+    get_page(url) -> html or None."""
+    out = []
+    for n in list(dict.fromkeys(LIVE_LINK.findall(games_page or "")))[:SITE_PAGES]:
+        page = get_page(f"{SITE}/game-live-{n}") or ""
+        m = SEASON_ATTR.search(page)
+        if m and m.group(1) not in out:
+            out.append(m.group(1))
+    return out
 
 
 class BgNblAdapter(LnbAdapter):
@@ -145,19 +192,22 @@ class BgNblAdapter(LnbAdapter):
         if stage not in ("regular", "playoffs"):
             raise ValueError(f"bgnbl: stage must be 'regular' or 'playoffs', not {stage!r}")
         sid, fixtures = self._season_fixtures("")
-        dates = sorted(str(f.get("startTimeLocal") or "")[:10] for f in fixtures if f.get("startTimeLocal"))
-        feed_year = None
-        if dates:
-            y, mo = int(dates[0][:4]), int(dates[0][5:7])
-            feed_year = y if mo >= 7 else y - 1
-        if feed_year != want:
-            if want not in SEASONS:
-                print(f"     NBL Bulgaria {season}: not on the feed yet (it is on "
-                      f"{feed_year}/{feed_year + 1 if feed_year else '?'}; known: "
-                      f"{', '.join(f'{y}/{y + 1}' for y in sorted(SEASONS)) or 'none'}) - nothing read")
-                self.last_competitions = []
-                return []
-            sid, fixtures = self._season_fixtures(SEASONS[want])
+        on = feed_year(fixtures)
+        if on != want:
+            if want in SEASONS:
+                sid, fixtures = self._season_fixtures(SEASONS[want])
+            else:
+                found = self._site_season(want)
+                if not found:
+                    print(f"     NBL Bulgaria {season}: not on the feed yet (it is on "
+                          f"{on}/{on + 1 if on else '?'}; known: "
+                          f"{', '.join(f'{y}/{y + 1}' for y in sorted(SEASONS)) or 'none'}; "
+                          f"the league's site names none) - nothing read")
+                    self.last_competitions = []
+                    return []
+                sid, fixtures = found
+                print(f"     NBL Bulgaria {season}: season {sid} from the league's own site "
+                      f"(add it to bgnbl.SEASONS)")
         cutoff = playoff_cutoff(fixtures)
         out = []
         for f in fixtures:
@@ -169,6 +219,23 @@ class BgNblAdapter(LnbAdapter):
         print(f"     NBL Bulgaria {season} {stage}: {len(out)} games "
               f"({sum(1 for g in out if g.status == 'final')} final)")
         return out
+
+    def _site_season(self, want: int):
+        """(season id, fixtures) of the wanted year's season as the league's own site names it, or None:
+        of the seasons its game pages name, the one with the most fixtures in that year."""
+        def get_page(url):
+            time.sleep(0.5)
+            try:
+                r = requests.get(url, headers=self.headers, timeout=30)
+                return r.text if r.status_code == 200 else None
+            except requests.RequestException:
+                return None
+        best = None
+        for cand in site_season_ids(get_page(f"{SITE}/games") or "", get_page):
+            sid, fx = self._season_fixtures(cand)
+            if feed_year(fx) == want and (best is None or len(fx) > len(best[1])):
+                best = (sid, fx)
+        return best
 
     def _game(self, season_id: str, f: dict, stage: str, cutoff: Optional[str]):
         fixture = (f.get("fixtureId") or "").strip()
