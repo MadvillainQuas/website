@@ -315,6 +315,13 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/video-clubs.test.mjs
 
+      - name: Scheduled streams - a stream still to come, its WATCH pill and the live notice (0256)
+        # every migration on PGlite: a channel's "LIVE" video on an unplayed game is SCHEDULED (not a full game), the pill
+        # says 'scheduled', at tip-off it plays in LIVE, the game's followers are told once; and the pages' side of it
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/scheduled-streams.test.mjs
+
       - name: The live chat's moderator, and the league's Video and Live tabs (0237)
         # the moderator's policy, the message as data, the fail-closed verdict and the function's order (gate, model, store);
         # the tabs hidden until needed, one idle-time call, the player's state from YouTube's frame, cinema, the game's embed

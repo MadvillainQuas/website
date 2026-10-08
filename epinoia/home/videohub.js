@@ -9,6 +9,13 @@
    whole theatre - stream, scorebug and chat - on the screen. Read again every minute while the view is open and seen.
    With nothing live, a test card says so.
 
+   SCHEDULED, at the foot of LIVE (a row that opens, there whether or not anything is live): every game still to come
+   with a stream to be played here - a channel's "LIVE ..." stream published days ahead, or the game's own stream found
+   by the ingest (0256 scheduled_streams; Louie, 2026-10-08) - in a card per league like the highlights' leagues (the
+   leagues followed first, then the soonest), each game with its tip-off and NOTIFY ME (the game's follow bell: its
+   followers are told the moment the stream starts, 0256 notify_stream_live). Such a stream is no video yet, so LATEST
+   VIDEOS leaves it out (media.js upcoming). Before 0256, the channels' streams already in the feed.
+
    LATEST VIDEOS, under it: the newest videos of every league, the ones from what the reader follows first, each part
    in the feed's own order (feedrank.js: their reading, the highlights of a game first, a series as its newest episode);
    ALL, HIGHLIGHTS or VIDEOS. A tile opens the cinema player as a playlist (media.js stagePlayer): Up next beside it,
@@ -141,7 +148,22 @@
     /* NOTHING LIVE: the section folds to its title line (is-off), saying so beside the title - it used to hold a test card a
        third of the screen tall over nothing (2026-10-08). It opens again the moment a stream starts (read every minute). */
     live.classList.add('is-off');
-    live.append(lh, gamesRow, theatre);
+    /* SCHEDULED: a row that opens (closed until pressed, or opened by #scheduled), at the foot of LIVE */
+    const sched = el('details', 'vh-sched');
+    sched.id = 'scheduled';
+    sched.hidden = true;
+    const schSum = el('summary', 'vh-sched-h');
+    const schK = el('span', 'vh-sched-k');
+    schK.append(el('i', 'vh-sched-ic'), document.createTextNode(tr('Scheduled')));
+    const schN = el('span', 'vh-sched-n');
+    const schNext = el('span', 'vh-sched-next');
+    const schTog = el('i', 'vh-sched-tog');
+    schTog.setAttribute('aria-hidden', 'true');
+    schSum.append(schK, schN, schNext, schTog);
+    const schBd = el('div', 'vh-sched-bd');
+    sched.append(schSum, schBd);
+    sched.addEventListener('toggle', () => { if (sched.open) act('scheduled-open'); });
+    live.append(lh, gamesRow, theatre, sched);
 
     let games = [], chosen = null;
     const abbr = t => M.abbr(t);
@@ -264,7 +286,7 @@
       if (!st.alive) return;
       games = Array.isArray(list) ? list.filter(g => g && g.id && g.home && g.away && (!team || isTeam(g))) : [];
       /* the club's version: LIVE is there only while the club is playing */
-      if (team) live.hidden = !games.length;
+      if (team) live.hidden = !games.length && !schedRows.length;
       else try { if (window.EpinoiaHomeModes && window.EpinoiaHomeModes.setLive) window.EpinoiaHomeModes.setLive(games.length); } catch (_) { /* the strip's own */ }
       lsub.textContent = games.length ? (games.length === 1 ? tr('1 game streaming now') : games.length + ' ' + tr('games streaming now'))
         : tr('Nothing live right now · games appear here the moment their stream starts');
@@ -276,6 +298,108 @@
       else if (first || !chosen) { chosen = games[0]; drawGames(); enter(chosen); }
       else drawGames();
     }
+    /* ---- SCHEDULED: the games still to come with a stream to be played here ---- */
+    let schedRows = [], schedFol = new Set();
+    const whenOf = iso => {
+      const d = iso ? new Date(iso) : null;
+      if (!d || isNaN(d)) return '';
+      /* as the fixtures say it: Sun 11 Oct, 16:00 (English pages in the British order, a language's own otherwise) */
+      const lang = document.documentElement.lang || 'en';
+      try { return d.toLocaleString(/^en\b/.test(lang) ? 'en-GB' : lang, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); }
+      catch (_) { return d.toISOString().slice(0, 16).replace('T', ' '); }
+    };
+    async function readSched() {
+      let list = await rpc('scheduled_streams', { p_days: 14 });
+      if (!Array.isArray(list)) {
+        /* before 0256: the channels' streams already in the feed, on games still to come */
+        const feed = await rpc('video_full_games', { p_limit: 60 });
+        const by = new Map();
+        (Array.isArray(feed) ? feed : []).forEach(r => {
+          if (M.upcoming(r) && r.game.id && !by.has(r.game.id)) by.set(r.game.id, Object.assign({}, r.game, { video: { provider: 'youtube', ref: r.video_id, from: 'channel' } }));
+        });
+        list = [...by.values()];
+      }
+      schedFol = new Set();
+      try {
+        const F = window.EpinoiaFollow, s = F && F.session ? F.session() : null;
+        if (s && s.token && typeof F.load === 'function') { const pr = await F.load(); ((pr && pr.fav_league_ids) || []).forEach(id => schedFol.add(id)); }
+      } catch (_) { /* signed out */ }
+      if (!st.alive) return;
+      schedRows = list.filter(g => g && g.id && g.home && g.away && g.status === 'scheduled' && (!team || isTeam(g)))
+        .sort((a, b) => (Date.parse(a.tipoff_at) || 0) - (Date.parse(b.tipoff_at) || 0));
+      drawSched();
+    }
+    function drawSched() {
+      schBd.textContent = '';
+      sched.hidden = !schedRows.length;
+      if (team) live.hidden = !games.length && !schedRows.length;
+      if (!schedRows.length) return;
+      const n = schedRows.length;
+      schN.textContent = n === 1 ? tr('1 game to be streamed here') : n + ' ' + tr('games to be streamed here');
+      schNext.textContent = tr('Next') + ' · ' + whenOf(schedRows[0].tipoff_at);
+      /* A CARD A LEAGUE, as the highlights' leagues: the leagues followed first, then the soonest */
+      const by = new Map();
+      schedRows.forEach(g => {
+        const lg = g.league || {}, k = lg.slug || lg.name || '?';
+        if (!by.has(k)) by.set(k, { lg, id: g.league_id || null, games: [] });
+        by.get(k).games.push(g);
+      });
+      const cards = [...by.values()].sort((a, b) => (Number(schedFol.has(b.id)) - Number(schedFol.has(a.id)))
+        || ((Date.parse(a.games[0].tipoff_at) || 0) - (Date.parse(b.games[0].tipoff_at) || 0)));
+      const grid = el('div', 'vh-sched-grid');
+      cards.forEach(c => grid.appendChild(schedCard(c)));
+      schBd.append(grid, el('p', 'vh-sched-ft', tr('Each one streams here from tip-off, in LIVE above, with the box score and the chat. Notify me tells you the moment it starts.')));
+    }
+    function schedCard(c) {
+      const card = el('section', 'vh-sc');
+      const lg = c.lg || {};
+      if (/^#?[0-9a-f]{6}$/i.test(lg.colour || '')) card.style.setProperty('--lg', lg.colour.charAt(0) === '#' ? lg.colour : '#' + lg.colour);
+      const head = el('header', 'vh-sc-h');
+      const logo = el('span', 'vh-lg-logo');
+      const u = lg.logo && typeof window.epinoiaLogoUrl === 'function' ? window.epinoiaLogoUrl(lg.logo, 64) : null;
+      if (u) { const im = el('img'); im.src = u; im.alt = ''; im.loading = 'lazy'; im.decoding = 'async'; im.addEventListener('error', () => { im.remove(); logo.textContent = M.abbr({ name: lg.name }); }); logo.appendChild(im); }
+      else logo.textContent = M.abbr({ name: lg.name || '?' });
+      head.append(logo, el('span', 'vh-sc-n', lg.name || ''), el('span', 'vh-lg-c', String(c.games.length)));
+      if (c.id && schedFol.has(c.id)) { card.classList.add('is-followed'); head.title = tr('You follow this league'); }
+      const ul = el('ul', 'vh-sc-l');
+      c.games.forEach(g => {
+        const li = el('li', 'vh-sg');
+        li.dataset.game = g.id;
+        M.inks(li, { game: g }, true);
+        const t = el('time', 'vh-sg-t', whenOf(g.tipoff_at));
+        if (g.tipoff_at) t.dateTime = g.tipoff_at;
+        const m = el('a', 'vh-sg-m');
+        m.href = base + 'game/?g=' + encodeURIComponent(g.id);
+        const h = el('span', 'vh-sg-s');
+        h.append(M.crest(g.home), el('b', null, g.home.name || abbr(g.home)));
+        const a = el('span', 'vh-sg-s');
+        a.append(M.crest(g.away), el('b', null, g.away.name || abbr(g.away)));
+        m.append(h, el('i', 'vh-sg-v', tr('v')), a);
+        m.addEventListener('click', () => act('scheduled-game', about(g)));
+        const nb = el('span', 'vh-sg-nb');
+        const F = window.EpinoiaFollow;
+        if (F && typeof F.bell === 'function') {
+          const b = F.bell('game', g.id, { label: tr('Notify me'), labelOn: tr('You will be told'), cls: 'lbl vh-notify', name: (g.home.name || '') + ' v ' + (g.away.name || '') });
+          b.addEventListener('click', () => act('scheduled-notify', about(g)));
+          nb.appendChild(b);
+        }
+        li.append(t, m, nb);
+        ul.appendChild(li);
+      });
+      card.append(head, ul);
+      return card;
+    }
+    /* a game asked for that is still to come (?play=, #scheduled): SCHEDULED opened on it */
+    function showSched(id) {
+      if (!schedRows.length) return false;
+      sched.open = true;
+      const li = id ? schBd.querySelector('.vh-sg[data-game="' + id + '"]') : null;
+      if (id && !li) return false;
+      if (li) li.classList.add('is-asked');
+      (li || sched).scrollIntoView({ block: 'center' });
+      return true;
+    }
+
     /* FULL SCREEN is the one full screen: the stream and the column beside it (landOn), as the tab under the stream */
     full.addEventListener('click', () => {
       if (land) { landOff(); return; }
@@ -622,7 +746,8 @@
     }
     more.addEventListener('click', () => { shown += STEP - 1; paint(); act('more'); });
 
-    await Promise.all([readLive(true), loadVideos()]);
+    await Promise.all([readLive(true), loadVideos(), readSched()]);
+    if (!team && location.hash === '#scheduled' && st.alive) showSched(null);
     /* OPENED ON ONE GAME (?view=video&play=<game>: WATCH HERE in a fixture's where-to-watch card, watch.js): streaming
        now, it is LIVE's game; else its best video (its whole game, else its highlights: 0244 game_watch) plays on the
        stage, first in the list */
@@ -633,6 +758,8 @@
       if (g) {
         if (!chosen || chosen.id !== g.id) { chosen = g; drawGames(); enter(g); }
         theatre.scrollIntoView({ block: 'start' });
+      } else if (showSched(want)) {
+        /* still to come: its stream is not a video yet - SCHEDULED, on that game */
       } else {
         const j = await rpc('game_watch', { p_game: want });
         const v = j && j.video;
@@ -649,8 +776,13 @@
         }
       }
     }
-    /* LIVE again every minute, while the view is open and seen */
-    const iv = setInterval(() => { if (!document.hidden && st.alive) readLive(false); }, LIVE_EVERY);
+    /* LIVE again every minute, while the view is open and seen; SCHEDULED every ten */
+    let ticks = 0;
+    const iv = setInterval(() => {
+      if (document.hidden || !st.alive) return;
+      readLive(false);
+      if (++ticks % 10 === 0) readSched();
+    }, LIVE_EVERY);
     st.timers.push(() => clearInterval(iv));
   }
 

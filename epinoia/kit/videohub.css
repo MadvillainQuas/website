@@ -319,3 +319,57 @@ html.vh-land-on,html.vh-land-on body{overflow:hidden}
 .vh-lgs-arrow.prev::before{content:"‹"}
 .vh-lgs-arrow.next::before{content:"›"}
 @media (prefers-reduced-motion:reduce){ .vh-lg{transition:none} .vh-lg:hover{transform:none} }
+
+/* ---- SCHEDULED (videohub.js, 0256; Louie 2026-10-08): at the foot of LIVE, a row that opens - every game still to come
+   with a stream to be played here, a card a league (as the highlights' leagues), NOTIFY ME on each. There whether or not
+   anything is live: under the folded LIVE line it is that line's second half. ---- */
+.vh-sched{margin:calc(var(--u)*2) 0 0;border:1px solid var(--rule);border-left:3px solid var(--amber);background:rgba(255,209,102,.035)}
+.vh-sched[hidden]{display:none}
+.vh-live.is-off .vh-sched{margin-top:-1px;border-top-style:dashed}
+.vh-sched-h{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;padding:12px 46px 12px 16px;position:relative;cursor:pointer;list-style:none;
+  -webkit-tap-highlight-color:transparent}
+.vh-sched-h::-webkit-details-marker{display:none}
+.vh-sched-h::marker{content:''}
+.vh-sched-h:focus-visible{outline:2px solid var(--amber);outline-offset:-3px}
+.vh-sched-k{display:inline-flex;align-items:center;gap:9px;font-family:var(--f-ui);font-weight:900;font-size:13px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--amber)}
+.vh-sched-ic{width:14px;height:14px;flex:none;border:2px solid currentColor;border-radius:50%;position:relative}
+.vh-sched-ic::before{content:"";position:absolute;left:4px;top:1.5px;width:2px;height:5px;background:currentColor;border-radius:1px}
+.vh-sched-ic::after{content:"";position:absolute;left:4px;top:5.5px;width:4px;height:2px;background:currentColor;border-radius:1px}
+.vh-sched-n{font-family:var(--f-ui);font-weight:700;font-size:12px;color:var(--ink-2)}
+.vh-sched-next{font-family:var(--f-ui);font-weight:600;font-size:12px;color:var(--ink-3)}
+.vh-sched-tog{position:absolute;right:14px;top:50%;width:22px;height:22px;margin-top:-11px;border-radius:50%;border:1px solid var(--rule-2);
+  transition:transform .18s ease,background-color .14s ease}
+.vh-sched-tog::before{content:"";position:absolute;left:7px;top:5px;width:6px;height:6px;border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);
+  transform:rotate(45deg)}
+.vh-sched[open] .vh-sched-tog{transform:rotate(180deg)}
+@media (hover:hover){ .vh-sched-h:hover{background:rgba(255,209,102,.06)} .vh-sched-h:hover .vh-sched-tog{background:rgba(255,209,102,.16)} }
+.vh-sched-bd{padding:4px 16px 16px}
+.vh-sched-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:12px}
+.vh-sched-ft{margin:12px 0 0;font-family:var(--f-ui);font-size:12px;color:var(--ink-3)}
+/* a league's card: its logo, its name and how many, then its games */
+.vh-sc{--lg:var(--lume);border:1px solid rgba(255,255,255,.12);border-top:3px solid var(--lg);background:rgba(255,255,255,.03);min-width:0}
+.vh-sc-h{display:flex;align-items:center;gap:10px;padding:9px 12px 8px 9px;border-bottom:1px solid var(--rule);
+  font-family:var(--f-ui);font-weight:800;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+.vh-sc-h .vh-lg-logo{width:30px;height:30px}
+.vh-sc-n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vh-sc.is-followed .vh-sc-n::after{content:"★";margin-left:7px;color:#ffd23f}
+.vh-sc-l{list-style:none;margin:0;padding:0}
+.vh-sg{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"t nb" "m nb";align-items:center;gap:5px 12px;padding:10px 12px;
+  border-top:1px solid rgba(255,255,255,.06)}
+.vh-sg-t{grid-area:t} .vh-sg-m{grid-area:m} .vh-sg-nb{grid-area:nb}
+.vh-sg:first-child{border-top:0}
+.vh-sg.is-asked{background:rgba(255,209,102,.1);box-shadow:inset 3px 0 0 var(--amber)}
+.vh-sg-t{font-family:var(--f-ui);font-weight:800;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);
+  white-space:nowrap;font-variant-numeric:tabular-nums}
+.vh-sg-m{display:flex;flex-direction:column;gap:4px;min-width:0;color:var(--ink);text-decoration:none}
+.vh-sg-m:hover .vh-sg-s b{text-decoration:underline}
+.vh-sg-s{display:flex;align-items:center;gap:7px;min-width:0;font-family:var(--f-ui);font-weight:800;font-size:12px}
+.vh-sg-s b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vh-sg-s .md-crest{width:20px;height:20px;flex:none}
+.vh-sg-v{display:none}
+.vh-sg-nb .ep-follow{color:var(--ink-2);border-color:var(--rule-2)}
+.vh-sg-nb .ep-follow:hover{color:var(--amber);border-color:var(--amber)}
+.vh-sg-nb .ep-follow.on{background:var(--amber);border-color:var(--amber);color:#1a1200}
+@media (max-width:520px){ .vh-sched-h{padding-right:42px} }
+@media (prefers-reduced-motion:reduce){ .vh-sched-tog{transition:none} }

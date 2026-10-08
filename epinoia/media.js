@@ -230,11 +230,18 @@
   const KIND = { highlights: ['HIGHLIGHTS', ''], full: ['FULL GAME', 'f'], press: ['PRESS CONFERENCE', 'p'], video: ['VIDEO', 'v'] };
   /* ONE TILE A VIDEO. A channel added twice (a league's own and the platform's) reads each of its videos twice, as two
      stories; the board shows it once, the copy that is on a game if one is. */
+  /* A STREAM STILL TO COME is no video yet: a channel publishes its "LIVE ..." stream days before the game, the matcher puts
+     it on the fixture as a full game, and LATEST VIDEOS showed a FULL GAME of a game nobody had played (Louie, 2026-10-08).
+     It belongs in the VIDEO view's LIVE, under SCHEDULED (home/videohub.js), and on the fixture's WATCH pill (watch.js);
+     every list of videos leaves it out (uniq, below, is the one every list goes through). */
+  function upcoming(r) {
+    return !!(r && r.video_kind === 'full' && r.game && r.game.status === 'scheduled');
+  }
   function uniq(list) {
     const at = new Map(), out = [];
     (list || []).forEach(r => {
       const k = r && (r.video_id || r.id);
-      if (!k) return;
+      if (!k || upcoming(r)) return;
       if (!at.has(k)) { at.set(k, out.length); out.push(r); }
       else if (r.game && !out[at.get(k)].game) out[at.get(k)] = r;
     });
@@ -910,5 +917,5 @@
   /* run fn when the browser is idle (or after a beat where it cannot say) - the probes a page does not wait for */
   const idle = fn => ('requestIdleCallback' in window) ? requestIdleCallback(fn, { timeout: 2500 }) : setTimeout(fn, 600);
 
-  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, boxCue, upCue, videoBoard, stagePlayer, wide, wideButton, wideReset, tile, inks, uniq, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
+  window.EpinoiaMedia = { load, css, player, playFrame, cineEnter, cineExit, embedGame, boxCue, upCue, videoBoard, stagePlayer, wide, wideButton, wideReset, tile, inks, uniq, upcoming, prioritise, crest, abbr, when, day, idOf, thumb, rest, rpc, token, idle, el, tr, BASE };
 })();

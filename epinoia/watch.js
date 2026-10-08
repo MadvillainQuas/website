@@ -142,7 +142,16 @@
     ask(id).then(j => {
       if (!j || !(j.live || j.video) || owner !== btn || !pop || !pop.classList.contains('on')) return;
       const bd = pop.querySelector('.ew-bd');
-      if (!bd || bd.querySelector('.ew-here')) return;
+      if (!bd || bd.querySelector('.ew-here, .ew-sched-row')) return;
+      /* A GAME STILL TO COME whose stream is already out (a channel publishes it days ahead): it is not a full game to
+         watch, it is to be streamed here from tip-off - said so, with the press to be told when it starts (0256) */
+      const gj = j.game_json || null;
+      if (!j.live && gj && gj.status === 'scheduled') {
+        bd.insertAdjacentHTML('afterbegin', schedRowHTML(id, gj.tipoff_at));
+        notifyInto(bd, gj);
+        place();
+        return;
+      }
       bd.insertAdjacentHTML('afterbegin', hereHTML(id, j));
       const a = bd.querySelector('.ew-here');
       a.addEventListener('click', e => {
@@ -186,24 +195,27 @@
     pop.classList.toggle('up', !down);
     pop.style.setProperty('--ax', Math.max(14, Math.min(W - 14, cx - left)) + 'px');
   }
+  function ensurePop() {
+    if (pop) return;
+    pop = document.createElement('div');
+    pop.className = 'ep-watch-pop';
+    pop.setAttribute('data-i18n-ctx', 'watch');   // FREE here is the price (i18n ctx.watch), not a free throw or a free agent
+    pop.setAttribute('role', 'dialog');
+    pop.addEventListener('mouseenter', () => clearTimeout(shutT));
+    pop.addEventListener('mouseleave', () => { if (!pinned) shutSoon(); });
+    pop.addEventListener('click', e => {
+      e.stopPropagation();
+      if (e.target.closest('.ew-x')) close();
+    });
+    document.body.appendChild(pop);
+  }
   function open(btn, pin) {
     clearTimeout(shutT); clearTimeout(openT);
+    if (btn.classList.contains('ew-sched')) { openSched(btn, pin); return; }
     const w = of(btn.getAttribute('data-watch'));
     if (!w) return;
     if (owner && owner !== btn) owner.setAttribute('aria-expanded', 'false');
-    if (!pop) {
-      pop = document.createElement('div');
-      pop.className = 'ep-watch-pop';
-      pop.setAttribute('data-i18n-ctx', 'watch');   // FREE here is the price (i18n ctx.watch), not a free throw or a free agent
-      pop.setAttribute('role', 'dialog');
-      pop.addEventListener('mouseenter', () => clearTimeout(shutT));
-      pop.addEventListener('mouseleave', () => { if (!pinned) shutSoon(); });
-      pop.addEventListener('click', e => {
-        e.stopPropagation();
-        if (e.target.closest('.ew-x')) close();
-      });
-      document.body.appendChild(pop);
-    }
+    ensurePop();
     const fresh = owner !== btn || !pop.classList.contains('on');
     if (fresh) pop.innerHTML = cardHTML(w);
     pop.setAttribute('aria-label', 'where to watch ' + w.n);
@@ -235,7 +247,7 @@
       if (b) {
         e.preventDefault(); e.stopPropagation();
         /* a pill for the site's own video (site, below): straight into the player, no card */
-        if (b.classList.contains('ew-site')) { close(); airGo(b.getAttribute('data-game')); return; }
+        if (b.classList.contains('ew-site') && !b.classList.contains('ew-sched')) { close(); airGo(b.getAttribute('data-game')); return; }
         if (owner === b && pinned) close(); else open(b, true);
         return;
       }
@@ -384,30 +396,119 @@
     siteWait.get(id).push(cb);
     if (!siteT) siteT = setTimeout(siteFlush, 30);
   }
-  const SITE_SAYS = { live: 'watch the game live on EPINOIΛ', full: 'watch the whole game on EPINOIΛ', highlights: 'watch the highlights on EPINOIΛ' };
-  function sitePill(id, kind) {
+  const SITE_SAYS = { live: 'watch the game live on EPINOIΛ', full: 'watch the whole game on EPINOIΛ', highlights: 'watch the highlights on EPINOIΛ',
+                      scheduled: 'to be streamed live on EPINOIΛ from tip-off' };
+  function sitePill(id, kind, tip) {
     if (!UUID.test(String(id || '')) || typeof document === 'undefined') return null;
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'ep-watch k-here ew-site';
+    b.className = 'ep-watch k-here ew-site' + (kind === 'scheduled' ? ' ew-sched' : '');
     b.setAttribute('data-game', String(id));
     b.setAttribute('data-kind', SITE_SAYS[kind] ? kind : 'full');
+    if (tip) b.setAttribute('data-tip', String(tip));
     b.setAttribute('aria-label', SITE_SAYS[kind] || SITE_SAYS.full);
     b.title = SITE_SAYS[kind] || SITE_SAYS.full;
+    if (kind === 'scheduled') { b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false'); }
     b.innerHTML = TV + '<span>watch</span><i class="ew-dot" aria-hidden="true"></i>';
     wire();
     return b;
   }
 
+  /* ------------------------------------------------------------ SCHEDULED --- */
+  /* A GAME STILL TO COME WITH A STREAM TO BE PLAYED HERE (0256 games_watchable 'scheduled': a channel's stream published
+     ahead of the game, or the game's own stream found by the ingest; Louie, 2026-10-08). Its WATCH pill opens a card
+     of its own: it is to be fed live on the site at tip-off, NOTIFY ME (the game's own follow bell - its followers are
+     told the moment the stream starts, 0256 notify_stream_live) and the VIDEO view's list of every scheduled stream. A
+     league's own pill on such a game leads its card with the same row (here, above). */
+  const ALL_SCHED = () => BASE + 'home/?view=video#scheduled';
+  function whenText(tip) {
+    const d = tip ? new Date(tip) : null;
+    if (!d || isNaN(d)) return '';
+    const lang = (typeof document !== 'undefined' && document.documentElement.lang) || 'en';     // as the fixtures say it: Sun 11 Oct, 16:00
+    try { return d.toLocaleString(/^en\b/.test(lang) ? 'en-GB' : lang, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }); }
+    catch (_) { return d.toISOString().slice(0, 16).replace('T', ' '); }
+  }
+  function schedRowHTML(id, tip) {
+    const when = whenText(tip);
+    return '<div class="ew-sched-row"><span class="ew-sched-ic" aria-hidden="true"><i></i></span>' +
+      '<span class="ew-here-tx"><b>Live here at tip-off</b><small>Scheduled to be fed live on the website at tip-off</small>' +
+      (when ? '<em class="ew-sched-when">' + esc(when) + '</em>' : '') + '</span></div>' +
+      '<div class="ew-sched-act"><span class="ew-notify" data-game="' + esc(id) + '"></span>' +
+      '<a class="ew-sched-all" href="' + esc(ALL_SCHED()) + '">All scheduled streams →</a></div>';
+  }
+  function schedHTML(id, tip) {
+    return '<div class="ew-hd"><span class="ew-k">▶ live on EPINOIΛ</span>' +
+      '<button type="button" class="ew-x" aria-label="close">×</button></div>' +
+      '<div class="ew-bd">' + schedRowHTML(id, tip) +
+      '<p class="ew-ft">With the box score and the chat beside the stream, in the VIDEO view.</p></div>';
+  }
+  /* the game's follow bell, labelled NOTIFY ME; follow.js where the page has not loaded it (a league's page) */
+  let followP = null;
+  function followJs() {
+    if (root.EpinoiaFollow) return Promise.resolve(root.EpinoiaFollow);
+    if (followP) return followP;
+    const q = /\?.*$/.exec(SRC || '');
+    followP = new Promise(res => {
+      const s = document.createElement('script');
+      s.src = BASE + 'follow.js' + (q ? q[0] : '');
+      s.onload = () => res(root.EpinoiaFollow || null);
+      s.onerror = () => res(null);
+      document.head.appendChild(s);
+    });
+    return followP;
+  }
+  function notifyInto(host, game) {
+    host.querySelectorAll('.ew-notify:not(.on)').forEach(slot => {
+      slot.classList.add('on');
+      const id = slot.getAttribute('data-game');
+      followJs().then(F => {
+        if (!slot.isConnected) return;
+        if (F && typeof F.bell === 'function') {
+          const name = game && game.home && game.away ? (game.home.name || '') + ' v ' + (game.away.name || '') : undefined;
+          const b = F.bell('game', id, { label: 'Notify me', labelOn: 'You will be told', cls: 'lbl ew-bell', name });
+          b.title = 'Be told the moment the stream starts (this follows the game: its reminder, line-ups and result too)';
+          slot.appendChild(b);
+        } else {
+          const a = document.createElement('a');
+          a.className = 'ew-bell-ln';
+          a.href = BASE + 'game/?g=' + encodeURIComponent(id);
+          a.textContent = 'Notify me on the game’s page';
+          slot.appendChild(a);
+        }
+        place();
+      });
+    });
+  }
+  function openSched(btn, pin) {
+    clearTimeout(shutT); clearTimeout(openT);
+    if (owner && owner !== btn) owner.setAttribute('aria-expanded', 'false');
+    ensurePop();
+    const id = btn.getAttribute('data-game');
+    const fresh = owner !== btn || !pop.classList.contains('on');
+    if (fresh) { pop.innerHTML = schedHTML(id, btn.getAttribute('data-tip')); notifyInto(pop); }
+    pop.setAttribute('aria-label', 'to be streamed live on EPINOIΛ from tip-off');
+    pinned = !!pin || (pinned && owner === btn);
+    owner = btn;
+    btn.setAttribute('aria-expanded', 'true');
+    btn.classList.add('on');
+    pop.classList.add('on');
+    place();
+  }
+
   /* the cards' one call: in `slot` (where the card keeps its pill), mark the league's pill if it has one, else put the
      site's own in; opts.cls goes on a new pill, opts.added(pill) runs once it is in */
+  /* opts.status: the card's game's status - a game still to come takes only a stream to come ('scheduled'; before 0256 the
+     read answered 'full' for a channel's stream on it), a game played never takes one; opts.tip its tip-off, for the card */
   function siteInto(slot, id, opts) {
     if (!slot) return;
     const o = opts || {};
-    site(id, kind => {
+    site(id, kind0 => {
+      let kind = kind0;
+      if (o.status === 'scheduled') { if (kind !== 'full' && kind !== 'scheduled') return; kind = 'scheduled'; }
+      else if (kind === 'scheduled') return;
       const have = slot.querySelector('.ep-watch');
       if (have) { have.classList.add('ew-has'); return; }
-      const sp = sitePill(id, kind);
+      const sp = sitePill(id, kind, o.tip);
       if (!sp) return;
       if (o.cls) sp.classList.add(o.cls);
       slot.appendChild(sp);
@@ -415,5 +516,6 @@
     });
   }
 
-  root.EpinoiaWatch = { of, pill, close, sync: () => { if (pop && pop.classList.contains('on')) place(); }, DATA, KIND, onAir, livePill, airFeed, airFresh, site, sitePill, siteInto };
+  root.EpinoiaWatch = { of, pill, close, sync: () => { if (pop && pop.classList.contains('on')) place(); }, DATA, KIND, onAir, livePill, airFeed, airFresh, site, sitePill, siteInto,
+                         schedRowHTML, notifyInto, whenText };
 })(typeof window !== 'undefined' ? window : globalThis);

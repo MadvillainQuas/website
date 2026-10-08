@@ -226,10 +226,13 @@ ok('the data is made by tools/build-watch.py, between its markers', /WATCH-DATA:
   await new Promise(r => setTimeout(r, 80));
   ok('...before 0255 (the read 404s) it stops asking for the page', calls.length === 2, calls.length);
   ok('sitePill: nothing outside a browser', SW.sitePill(A1, 'full') === null && typeof SW.siteInto === 'function');
-  ok("its pill's press goes straight into the site's player, never a card", /if \(b\.classList\.contains\('ew-site'\)\) \{ close\(\); airGo\(b\.getAttribute\('data-game'\)\); return; \}/.test(W)
-     && /b\.className = 'ep-watch k-here ew-site'/.test(W));
-  ok('every fixture list puts it on its finished games (the embedded strip, a frame, leaves it out: air:false)', /isFinal && o\.air !== false && root\.EpinoiaWatch && root\.EpinoiaWatch\.siteInto\) \{\s*root\.EpinoiaWatch\.siteInto\(body, g\.id, \{ cls: 'fxc-watch'/.test(gg)
-     && ['home.js', 'fixtures/fixtures.js', 'l/league.js'].every(f => /final && window\.EpinoiaWatch && window\.EpinoiaWatch\.siteInto\) window\.EpinoiaWatch\.siteInto\((mid|sb), g\.id, \{ cls: 'fx-watch' \}\)/.test(read('epinoia', ...f.split('/')))));
+  ok("its pill's press goes straight into the site's player, never a card - unless the game is still to come (0256: its card says it streams here from tip-off)",
+     /if \(b\.classList\.contains\('ew-site'\) && !b\.classList\.contains\('ew-sched'\)\) \{ close\(\); airGo\(b\.getAttribute\('data-game'\)\); return; \}/.test(W)
+     && /b\.className = 'ep-watch k-here ew-site' \+ \(kind === 'scheduled' \? ' ew-sched' : ''\)/.test(W)
+     && /if \(btn\.classList\.contains\('ew-sched'\)\) \{ openSched\(btn, pin\); return; \}/.test(W));
+  ok('every fixture list puts it on its finished games and its games still to come (0256), with the status and tip-off (the embedded strip, a frame, leaves it out: air:false)',
+     /\(isFinal \|\| g\.status === 'scheduled'\) && o\.air !== false && root\.EpinoiaWatch && root\.EpinoiaWatch\.siteInto\) \{\s*root\.EpinoiaWatch\.siteInto\(body, g\.id, \{ cls: 'fxc-watch', status: isFinal \? 'final' : 'scheduled', tip: g\.tipoff_at/.test(gg)
+     && ['home.js', 'fixtures/fixtures.js', 'l/league.js'].every(f => /\(final \|\| g\.status === 'scheduled'\) && window\.EpinoiaWatch && window\.EpinoiaWatch\.siteInto\)\s*window\.EpinoiaWatch\.siteInto\((mid|sb), g\.id, \{ cls: 'fx-watch', status: final \? 'final' : 'scheduled', tip: g\.tipoff_at \}\)/.test(read('epinoia', ...f.split('/')))));
   ok('...its dot in WATCH HERE\'s yellow, and a league pill with a video here marked the same', /\.ep-watch\.k-here,\.ep-watch\.ew-has\{--wd:#ffe14d\}/.test(read('epinoia', 'kit', 'watch.css')));
   ok('the migration: anyone may ask, at most 200 games, the same rules as game_watch',
      (m => /create or replace function public\.games_watchable\(p_games uuid\[\]\)/.test(m) && /\[1:200\]/.test(m) && /public\.can_read_game\(g\.id\) and public\.league_visible\(se\.league_id\)/.test(m)

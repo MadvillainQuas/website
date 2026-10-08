@@ -141,3 +141,21 @@
 @media (hover:hover){ .ew-air:hover{transform:translateY(-1px);box-shadow:0 14px 30px -10px rgba(255,59,59,.95)} }
 .ew-air:focus-visible{outline:2px solid #ffe14d;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){ .ew-air,.ew-air-b{transition:none} }
+
+/* ---- SCHEDULED (watch.js, 0256): a game still to come with a stream to be played here from tip-off. Its pill's dot is the
+   clock's amber; its card (and a league's card on such a game) says so, with NOTIFY ME (the game's follow bell) ---- */
+.ep-watch.ew-sched{--wd:#ffd166}
+.ew-sched-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:center;margin:0 0 10px;padding:9px 12px 9px 9px;
+  border-radius:8px;background:#0b0d0c;--hk:#ffd166}
+.ew-sched-row .ew-here-tx small{white-space:normal;-webkit-line-clamp:3}
+.ew-sched-when{font-style:normal;font-family:var(--f-ui);font-weight:800;font-size:11px;letter-spacing:.04em;color:#ffd166}
+.ew-sched-ic{position:relative;width:30px;height:30px;border-radius:50%;background:#ffd166}
+.ew-sched-ic i{position:absolute;left:8px;top:8px;width:14px;height:14px;border:2px solid #0a0a0a;border-radius:50%;box-sizing:border-box}
+.ew-sched-ic i::before{content:"";position:absolute;left:4px;top:1px;width:2px;height:5px;background:#0a0a0a}
+.ew-sched-ic i::after{content:"";position:absolute;left:4px;top:5px;width:4px;height:2px;background:#0a0a0a}
+.ew-sched-act{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;margin:0 0 4px}
+.ew-sched-act .ep-follow{height:30px}
+.ew-sched-act .ep-follow.on{background:#ffd166;border-color:#ffd166;color:#1a1200}
+.ew-sched-all{font-family:var(--f-ui);font-weight:800;font-size:11px;letter-spacing:.06em;color:var(--ink-2);text-decoration:none}
+.ew-sched-all:hover{color:var(--lume);text-decoration:underline}
+.ew-bell-ln{font-family:var(--f-ui);font-weight:800;font-size:11px;color:var(--lume)}

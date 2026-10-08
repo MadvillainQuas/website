@@ -865,8 +865,11 @@ function card(g, opts) {
   /* A FINISHED GAME THE SITE HAS A VIDEO FOR (watch.js site, 0255: highlights, the whole game, its kept stream): a pill
      into the site's own player even in a league with no entry; a league's pill is marked instead. One read for the
      page, kept, so a redrawn card has it at once. */
-  if (isFinal && o.air !== false && root.EpinoiaWatch && root.EpinoiaWatch.siteInto) {
-    root.EpinoiaWatch.siteInto(body, g.id, { cls: 'fxc-watch', added: () => { body.className += ' has-watch'; } });
+  /* and a game still to come with a stream to be played here from tip-off (0256 'scheduled'): its pill opens a card that
+     says so, with NOTIFY ME */
+  if ((isFinal || g.status === 'scheduled') && o.air !== false && root.EpinoiaWatch && root.EpinoiaWatch.siteInto) {
+    root.EpinoiaWatch.siteInto(body, g.id, { cls: 'fxc-watch', status: isFinal ? 'final' : 'scheduled', tip: g.tipoff_at,
+      added: () => { body.className += ' has-watch'; } });
   }
   a.appendChild(body);
 

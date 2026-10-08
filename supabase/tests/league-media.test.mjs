@@ -133,7 +133,7 @@ console.log('\nHOME: MAIN | VIDEO, and the VIDEO view');
   ok('ON THIS PAGE holds still while VIDEO is open (nav.js), and an entry of it pressed goes back to MAIN first',
      /classList\.contains\('vh-on'\)\) return;/.test(nav) && /\.tt-index a\[href\^="#"\]/.test(vm));
   ok('LIVE: every game streaming (live_streams), its stream, its box score dark, its chat, FULL SCREEN; read again every minute while seen',
-     /rpc\('live_streams'/.test(hubjs) && /M\.embedGame\(box, g\.id, \{ theme: 'dark', fit: true \}\)/.test(hubjs) && /EpinoiaGameChat/.test(hubjs)
+     /rpc\('live_streams'/.test(hubjs) && /M\.embedGame\(box, g\.id, \{ theme: 'dark', fit: true[,}]/.test(hubjs) && /EpinoiaGameChat/.test(hubjs)
      && /requestFullscreen/.test(hubjs) && /LIVE_EVERY = 60000/.test(hubjs) && /\.vh-theatre:fullscreen/.test(hubcss));
   ok('LATEST VIDEOS: what the reader follows first, each part in the feed order, as a playlist (dark tiles and stage)',
      /const lead = ranked\.filter\(r => followed\.has\(r\.id\)\)/.test(hubjs) && /M\.stagePlayer\(stage, \{\s*dark: true/.test(hubjs) && /dark: true \}\)/.test(hubjs));
