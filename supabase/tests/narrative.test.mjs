@@ -78,6 +78,11 @@ console.log('\nwho is missing, and how many of a kind');
   const ab = bm.stories.find(s => s.id === 'absence:p9');
   ok('a rotation player who has missed the last two games is a storyline', ab && ab.tracks.value === 2, bm.stories.map(s => s.id));
   ok('...said as not playing, never as a reason', ab && /has not played in Ash City’s last two games/.test(ab.head) && !/injur|hurt|ill\b/i.test(JSON.stringify(ab)), ab && ab.head);
+  /* a suspension the league has recorded is the one reason that is said */
+  const bb = N.build(Object.assign({}, base, { lines: lines.concat(extra), names: Object.assign({}, names, { p9: { name: 'Mo Ash' } }), bans: { p9: { games: 3, served: 2, endsOn: null } } }));
+  const sb = bb.stories.find(s => s.id === 'absence:p9');
+  ok('a recorded suspension is said, with the games left', sb && sb.kicker === 'Serving a suspension' && sb.head === 'Mo Ash is suspended, with one game left to serve', sb && [sb.kicker, sb.head]);
+  ok('...and how long it is', sb && /^Out of Ash City’s last two games: a suspension of three games\. Ash City are /.test(sb.dek), sb && sb.dek);
   ok('...with the record without them', ab && ab.numbers.some(x => x.label === 'record without' && x.value === '2–0'), ab && ab.numbers);
   /* forty upsets do not make a desk: no kind past its cap, no more than two dozen running */
   const many = N.build(Object.assign({}, base, { now: new Date(NOW) }));
@@ -112,6 +117,16 @@ console.log('\nthreading, from one build to the next');
   const bv = N.build(Object.assign({}, base, { previous: old }));
   ok('an engine change resolves nothing it did not write', !bv.stories.some(s => s.id === 'identity:gone'), bv.stories.filter(s => s.status === 'resolved').map(s => s.id));
   ok('...and carries the storylines it still writes', bv.stories.some(s => s.id === 'run:t1'));
+}
+
+console.log('\nthe closer (clutch time, from the replayed recaps)');
+{
+  const rc = Object.assign({}, base.recaps, { g6: Object.assign({}, base.recaps.g6, { clutch: { sec: 240, pts: [12, 9], players: [{ pid: 'p1', side: 0, pts: 9, name: 'Pat Archer' }] } }) });
+  const bc = N.build(Object.assign({}, base, { recaps: rc }));
+  const c = bc.stories.find(s => s.kind === 'closer');
+  ok('the week’s points in clutch time make a storyline', c && c.head === 'Pat Archer scored 9 points in clutch time this week', c && c.head);
+  ok('...against the club’s in the same minutes', c && c.dek === 'That is 9 of Ash City’s 12 points in the closing minutes of a close game they won.', c && c.dek);
+  ok('...and not from a handful of points', !N.build(Object.assign({}, base, { recaps: Object.assign({}, rc, { g6: Object.assign({}, rc.g6, { clutch: { sec: 240, pts: [5, 4], players: [{ pid: 'p1', side: 0, pts: 4 }] } }) }) })).stories.some(s => s.kind === 'closer'));
 }
 
 console.log('\nthe storylines each game touches (the preview’s threads)');

@@ -1893,7 +1893,9 @@
       'By the adjusted numbers': '補正後の数字で見ると',
       'Team records': 'チーム記録',
       'One for the future': '未来のスター候補',
-      'The fans’ vote': 'ファン投票'
+      'The fans’ vote': 'ファン投票',
+      'The closer': '勝負強さ',
+      'Serving a suspension': '出場停止中'
     },
 
     ctx: {

@@ -119,6 +119,37 @@ fades less), a little more for new and less for resolved. On top of that:
 box plus-minus at half the games and 20 minutes a night. A table where half the clubs are within a game and a half of
 the top is "Nobody has broken away yet".
 
+**The competitions.** Records, runs, the table and the luck are the league competitions' (the table the league page
+shows counts nothing else). A `playoff` competition's games are series: who leads, Game N and where, the seeds (only when
+the regular season came first), the regular-season meetings, the facet the matchup turns on, the lower seed leading. A
+fixture a feed files under the league inside a running series (within ten days of the pair's last play-off game) is the
+next game of that series. The bracket (`bracket_ties`) says a tie's legs and decider: `aggregate` is two legs, told leg
+by leg and decided on points ("go through on aggregate, 141–140"); `wins` with N legs is a best of N ("one win from going
+through"). When the play-offs have begun and nothing of the regular season is left, the race becomes who finished top,
+and runs and slides stop.
+
+**The season's shape.** From every regular-season game still to play: "Seven games into a 40-game season, the table is a
+first draft; by the margins, X have been the best side". In the run-in: who can still catch the leaders, who is sure of a
+top-N finish and who is out of it, against the competition's own `qualifiers` or, said as that, last season's play-offs.
+Only on a schedule known to be whole: it runs well past three weeks, or its total is last season's games a club or a
+whole number of round robins. A feed that loads a fortnight ahead is never read as a run-in.
+
+**What the site publishes, read in.** The builder also reads, each part on its own: the match reports filed for the
+league's games and the fortnight's pieces from creators, outlets and channels (this league's own); `game_significance`
+(the site's measure of a finished game, with its reasons); `league_videos` (which games have highlights: `watch/?g=`);
+`fanvote_winners` (a story from 25 ballots up); `sos.js` on the season's team lines (the schedule so far, and margins
+adjusted for it); `player_bio` (ages). Each storyline cites what has been written about it: the match report of the
+games it rests on, and the pieces that name its player (a player's storyline), both clubs (a game's), the club (a club's)
+or two of its clubs (the race). The coverage plan lists what has been written, with the storylines each piece covers, and
+"Not yet covered": the openings.
+
+**Threads.** Each game of the week ahead carries the running storylines it touches, said as what the game means for each
+("X put their unbeaten record on the line", "Y's run of five straight 20-point games is on the line"). A storyline rides
+on its club's next game only. The game page's preview shows them as "On the newsdesk".
+
+**The engine's version.** `VERSION` in narrative.js is written into each file and the index; a file from an older engine
+is rebuilt on the next run, and the first build on a new engine resolves nothing it did not write.
+
 **The briefing**: the story, the results since yesterday, the games to watch, a milestone or two, and an end.
 
 **The coverage plan** (creator hub):
@@ -170,4 +201,5 @@ The design follows what automated sports writing and news aggregation learned th
 | `supabase/tests/context.test.mjs` | context.js, the season facts, the ledger, the preview |
 | `supabase/tests/narrative.test.mjs` | storylines, threading, caps, the coverage plan |
 | `supabase/tests/report-i18n.test.mjs` | every new template comes back fully translated in each visible language |
+| `supabase/tests/newsdesk-i18n.test.mjs [ja\|es] [--list]` | every string the newsdesk draws, from fixture leagues that open every kind of storyline, comes back whole in each language (the `newsdesk` pack: `epinoia/i18n/<code>/newsdesk.js`, one anchored pattern per template) |
 | `supabase/tests/report-eval.mjs --ctx [--league <slug>] [--show N]` | real games: coverage, repetition, stock phrases, logic |

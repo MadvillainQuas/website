@@ -374,6 +374,8 @@ function build(input) {
     return k === 1 ? 'Yes, but nobody has had an easier schedule so far.' : 'Yes, but only ' + plural(k - 1, 'club') + ' ' + (k === 2 ? 'has' : 'have') + ' had an easier schedule so far.';
   };
   const ageOf = pid => (BIO[pid] && num(BIO[pid].age) > 0 ? +BIO[pid].age : null);
+  /* the suspensions the league has recorded for the players not playing (player_ban): {pid: {games, served, endsOn}} */
+  const BANS = o.bans || {};
   const names = o.names || {};
   const pname = pid => { const n = names[pid]; return n && n.name ? String(n.name) : null; };
   const maxGp = [...C.values()].reduce((m, c) => Math.max(m, c.gp), 0);
@@ -805,9 +807,17 @@ function build(input) {
     if (after.length < 2 || after.length > 4) return;
     const res = after.filter(x => !x.tied);
     const w = res.filter(x => x.won).length;
-    story({ id: 'absence:' + pid, kind: 'absence', kicker: 'Not playing', head: nm + ' has not played in ' + possOf(name(p.team)) + ' last ' + spell(after.length) + ' games',
-      dek: 'Before that: ' + one(p.mpg) + ' minutes and ' + one(p.ppg) + ' points a game. ' + name(p.team) + ' are ' + rec(w, res.length - w) + ' without them.',
-      why: 'A player taking this many minutes is a big part of how a side plays; how they cope without them is the story.',
+    /* a suspension the league has recorded (player_ban) is the reason, and it is said; nothing else ever is */
+    const ban = BANS[pid] || null;
+    const left = ban && num(ban.games) != null ? Math.max(0, +ban.games - (num(ban.served) || 0)) : null;
+    const back = ban && ban.endsOn ? dayWords(String(ban.endsOn) + 'T12:00:00Z', tz, { weekday: undefined }) : null;
+    story({ id: 'absence:' + pid, kind: 'absence', kicker: ban ? 'Serving a suspension' : 'Not playing',
+      head: ban ? nm + ' is suspended' + (left ? ', with ' + plural(left, 'game') + ' left to serve' : '')
+        : nm + ' has not played in ' + possOf(name(p.team)) + ' last ' + spell(after.length) + ' games',
+      dek: (ban ? 'Out of ' + possOf(name(p.team)) + ' last ' + spell(after.length) + ' games' + (num(ban.games) != null ? ': a suspension of ' + plural(+ban.games, 'game') + '. ' : '. ')
+        : 'Before that: ' + one(p.mpg) + ' minutes and ' + one(p.ppg) + ' points a game. ') + name(p.team) + ' are ' + rec(w, res.length - w) + ' without them.',
+      why: ban ? (back ? 'The suspension runs to ' + back + '; ' : 'Until it is served, ') + name(p.team) + ' are without ' + one(p.mpg) + ' minutes and ' + one(p.ppg) + ' points a game.'
+        : 'A player taking this many minutes is a big part of how a side plays; how they cope without them is the story.',
       numbers: [{ label: 'games missed', value: String(after.length) }, { label: 'minutes before', value: one(p.mpg) }, { label: 'points before', value: one(p.ppg) },
         { label: 'record without', value: rec(w, res.length - w) }],
       counter: null, next: nextText(p.team) ? 'Next: ' + nextText(p.team) + '.' : null,
@@ -895,6 +905,39 @@ function build(input) {
       teams: [gw.g.home_team_id, gw.g.away_team_id], games: [gw.g.id], tracks: { metric: 'game', value: gw.g.id }, importance: 6, magnitude: Math.min(1, gw.s / 6), stakes: 0.5,
       lastAt: time(gw.g.tipoff_at), angles: ['the recap, rewritten as a feature with the moments in it', VID[gw.g.id] ? 'the highlights, cut around the finish' : 'a clip of the finish'],
       links: [gameLink(gw.g.id), videoLink(gw.g.id)].filter(Boolean) });
+  }
+
+  /* ---- THE CLOSER: the week's points in clutch time (clutch.js through the replayed recaps: the last four minutes of the
+     last regular period within five points, and overtime), by player, against the club's in the same minutes ---------- */
+  {
+    const by = new Map();
+    games.filter(g => time(g.tipoff_at) >= nowMs - 7 * DAY && recaps[g.id] && recaps[g.id].clutch).forEach(g => {
+      const c = recaps[g.id].clutch, sides = [g.home_team_id, g.away_team_id];
+      (c.players || []).forEach(p => {
+        if (!p || !(p.pts > 0) || (p.side !== 0 && p.side !== 1)) return;
+        const key = sides[p.side] + '|' + p.pid;
+        const x = by.get(key) || { pid: p.pid, team: sides[p.side], name: p.name || null, pts: 0, teamPts: 0, games: [], won: 0, lastAt: 0 };
+        x.pts += p.pts; x.teamPts += num(c.pts && c.pts[p.side]) || 0; x.games.push(g.id); x.lastAt = Math.max(x.lastAt, time(g.tipoff_at));
+        if (p.side === 0 ? +g.home_score > +g.away_score : +g.away_score > +g.home_score) x.won++;
+        by.set(key, x);
+      });
+    });
+    const top = [...by.values()].sort((a, b) => b.pts - a.pts || b.won - a.won)[0];
+    const nm = top ? (pname(top.pid) || top.name) : null;
+    if (top && nm && top.pts >= 7) {
+      const n = top.games.length, share = top.teamPts > 0 ? top.pts / top.teamPts : null;
+      story({ id: 'closer:' + top.pid, kind: 'closer', kicker: 'The closer', head: nm + ' scored ' + top.pts + ' points in clutch time this week',
+        /* "the closing minutes": the last four of a close game, and overtime when there was one */
+        dek: n === 1
+          ? 'That is ' + top.pts + ' of ' + possOf(name(top.team)) + ' ' + top.teamPts + ' points in the closing minutes of a close game they ' + (top.won ? 'won' : 'lost') + '.'
+          : 'That is ' + top.pts + ' of ' + possOf(name(top.team)) + ' ' + top.teamPts + ' points in the closing minutes of ' + spell(n) + ' close games; they won ' +
+            (top.won === n ? (n === 2 ? 'both' : 'all ' + spell(n)) : spell(top.won)) + '.',
+        why: share != null && share >= 0.5 ? 'When the game is on the line, the ball goes to ' + nm + '.' : 'Points at the end of close games are the ones a season turns on.',
+        numbers: [{ label: 'points in clutch time', value: String(top.pts) }, { label: 'close finishes', value: String(n) }, share != null ? { label: 'share of the club’s', value: Math.round(100 * share) + '%' } : null],
+        teams: [top.team], players: [top.pid], games: top.games, tracks: { metric: 'closer', value: top.pts },
+        importance: 5, magnitude: Math.min(1, top.pts / 15), stakes: 0.5, lastAt: top.lastAt,
+        angles: ['the closer: a feature built on the last four minutes', 'a clip of every basket in clutch time'], links: [playerLink(top.pid), teamLink(top.team)].filter(Boolean) });
+    }
   }
 
   const winnerOf = g => (+g.home_score > +g.away_score ? g.home_team_id : g.away_team_id);
@@ -1624,6 +1667,6 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 5;
+const VERSION = 6;
 return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));

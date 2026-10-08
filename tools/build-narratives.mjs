@@ -55,6 +55,7 @@ export function load(url) {
   try { g('EpinoiaConnections', path.join('game', 'connections.js')); } catch (_) { /* no connections here */ }
   g('EpinoiaGamePctData', 'gamepct-data.js'); g('EpinoiaGamePct', 'gamepct.js'); g('EpinoiaBPM', 'bpm.js');
   try { g('EpinoiaSOS', 'sos.js'); } catch (_) { /* no schedule strength: the storylines go without it */ }
+  try { g('EpinoiaClutch', 'clutch.js'); } catch (_) { /* no clutch time: the recaps go without it */ }
   g('EpinoiaLanguage', path.join('game', 'language.js')); g('EpinoiaStory', path.join('game', 'story.js'));
   g('EpinoiaReport', path.join('game', 'report.js')); g('EpinoiaContext', path.join('game', 'context.js'));
   return g('EpinoiaNarrative', 'narrative.js');
@@ -349,11 +350,26 @@ async function recapOf(api, g, D, lg, o) {
   const dec = L && L.data.decisive ? { key: L.data.decisive.key, label: L.data.decisive.label, pts: Math.round(Math.abs(L.data.decisive.pts) * 10) / 10 } : null;
   /* what the season's numbers said before the tip (the home side's margin), for "an upset by the numbers" */
   const ex = brief.ctx && brief.ctx.expect && isFinite(brief.ctx.expect.margin) ? Math.round(brief.ctx.expect.margin * 10) / 10 : null;
+  /* CLUTCH TIME (clutch.js: the last four minutes of the last regular period within five points, and overtime): each side's
+     points in it, and the players who scored them, for the week's closer */
+  let clutch = null;
+  try {
+    const CL = globalThis.EpinoiaClutch;
+    if (CL && CL.clutchGame) {
+      const sides = [0, 1].map(s => CL.clutchGame({ id: g.id, starters: S.starters, events, teams: S.teams, period: S.period }, s));
+      if (sides[0].ok && sides[1].ok && sides[0].dur > 0) {
+        const who = [];
+        sides.forEach((c, s) => Object.keys(c.players).forEach(pid => { const p = c.players[pid]; if (p.pts > 0) who.push({ pid, side: s, pts: p.pts, name: byId[pid] ? byId[pid].name : null }); }));
+        who.sort((a, b) => b.pts - a.pts);
+        clutch = { sec: Math.round(sides[0].dur), pts: [sides[0].own.pts, sides[1].own.pts], players: who.slice(0, 4) };
+      }
+    }
+  } catch (_) { clutch = null; }
   return { headline: strip(rep.headline), standfirst: strip(rep.standfirst), arc: arc ? arc.data.kind : null, decisive: dec,
-           moment: mo && mo.data.p ? { kind: mo.kind, name: mo.data.p.name, clock: mo.data.clock } : null, expect: ex, v: RECAP_V };
+           moment: mo && mo.data.p ? { kind: mo.kind, name: mo.data.p.name, clock: mo.data.clock } : null, expect: ex, clutch, v: RECAP_V };
 }
-/* a recap made by an older version is made again (the names and the expectation came in version 2) */
-const RECAP_V = 2;
+/* a recap made by an older version is made again (the names and the expectation came in version 2, clutch time in 3) */
+const RECAP_V = 3;
 
 /* ----------------------------------------------------------------------------------------------- one build --- */
 export async function buildLeague(api, lg, o) {
@@ -377,15 +393,30 @@ export async function buildLeague(api, lg, o) {
   Object.keys(cache.recaps).forEach(id => { if (!D.games.some(g => g.id === id && Date.parse(g.tipoff_at) >= o.nowMs - 15 * DAY)) delete cache.recaps[id]; });
   const recaps = {};
   Object.keys(cache.recaps).forEach(id => { const r = cache.recaps[id]; recaps[id] = { headline: r.headline, standfirst: r.standfirst, arc: r.arc, decisive: r.decisive, moment: r.moment,
-    expect: r.expect != null ? r.expect : null }; });
+    expect: r.expect != null ? r.expect : null, clutch: r.clutch || null }; });
   const previous = o.previous !== undefined ? o.previous : await api.publicJson('snapshots/narrative/' + lg.id + '.json').catch(() => null);
-  const out = N.build({ now: new Date(o.nowMs), league: { id: lg.id, slug: lg.slug, name: lg.name, timezone: lg.timezone || null },
+  const input = { now: new Date(o.nowMs), league: { id: lg.id, slug: lg.slug, name: lg.name, timezone: lg.timezone || null },
     season: { id: D.season.id, name: D.season.name }, comp: D.leagueComp, comps: D.comps.map(c => ({ id: c.id, kind: c.kind || 'league', name: c.name })),
     table: D.table, teams: D.teams, games: D.games, fixtures: D.fixtures,
     lines: D.lines, teamLines: D.teamLines, names: D.names, players: D.players, recaps, model: D.model, tallies: D.tallies, previous,
     rest: D.rest, lastLine: D.lastLine, lastTotal: D.lastTotal, released: D.released, ties: D.ties,
     news: D.extra.news || null, significance: D.extra.significance || null, highlights: D.extra.highlights || null, fanvote: D.extra.fanvote || null,
-    sos: D.extra.sos || null, bio: D.extra.bio || null });
+    sos: D.extra.sos || null, bio: D.extra.bio || null };
+  let out = N.build(input);
+  /* A SUSPENSION THE LEAGUE HAS RECORDED (player_ban), asked only for the players the newsdesk says are not playing: one is
+     said as the reason, and the build is made again with it. Nothing else is ever given as a reason. */
+  const absent = out.stories.filter(s => s.kind === 'absence').map(s => (s.players || [])[0]).filter(id => UUID.test(String(id))).slice(0, 6);
+  if (absent.length) {
+    const bans = {};
+    for (const pid of absent) {
+      try {
+        const rows = await api.rest('rpc/player_ban', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ p_player: pid, p_comp: D.leagueComp.id }) });
+        const b = (rows || []).find(r => r && r.active);
+        if (b) bans[pid] = { games: b.games != null ? +b.games : null, served: b.served != null ? +b.served : null, endsOn: b.ends_on || null };
+      } catch (_) { /* no suspension read: said as not playing */ }
+    }
+    if (Object.keys(bans).length) out = N.build(Object.assign({}, input, { bans }));
+  }
   out.token = D.games.length + '@' + D.games.reduce((m, g) => (g.finalised_at && g.finalised_at > m ? g.finalised_at : m), '');
   o.log && o.log('    ' + out.stories.length + ' storylines, ' + replayed + ' games replayed, top: ' + (out.stories[0] ? out.stories[0].head : '(none)'));
   return { out, cache };

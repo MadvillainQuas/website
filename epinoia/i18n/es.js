@@ -1895,7 +1895,9 @@
       'By the adjusted numbers': 'Según los números ajustados',
       'Team records': 'Récords de equipo',
       'One for the future': 'Una promesa',
-      'The fans’ vote': 'La votación de la afición'
+      'The fans’ vote': 'La votación de la afición',
+      'The closer': 'Decisivo al final',
+      'Serving a suspension': 'Sancionado'
     },
 
     ctx: {
