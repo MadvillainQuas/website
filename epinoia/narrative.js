@@ -1748,6 +1748,7 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 12;     // 12: the house voice (voice.js): the slate's angle, the storylines in words; no "what wins" storyline
+const VERSION = 13;     // 13: the editor reads every piece already out; a game to watch only with something to say
+                        // 12: the house voice (voice.js): the slate's angle, the storylines in words; no "what wins" storyline
 return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));

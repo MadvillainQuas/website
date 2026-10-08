@@ -16,6 +16,10 @@
    anonymous counts): the platform's rate, the headline words and shapes that lift a story and those that sink it, the
    kinds and leagues readers open most, and how the newsroom's formats are doing against each other.
 
+   THE EDITOR'S REPORTS: league by league (the public newsdesk files), what the editor (scrutiny.js) did to every piece
+   before it was posted and to the game to watch - each fix located, classed, with its reason and the words before and
+   after - each piece's score (salience x format x quality, the bar it cleared), and what it held back and why.
+
    Platform administrators only: the table's own policy refuses everybody else (0252), whatever this page shows.
    ============================================================================ */
 (function (root, factory) {
@@ -146,6 +150,58 @@ function mount(o) {
     list('opened more', ws.filter(x => x[1] > 0).slice(0, 15));
     list('opened less', ws.filter(x => x[1] < 0).slice(-15).reverse());
     if (m.formats && Object.keys(m.formats).length) list('the newsroom’s formats', Object.entries(m.formats).map(([k, v]) => ['k:' + k, Math.log(v)]));
+  })();
+
+  /* --- the editor's reports: what the last reader fixed and held back, league by league (the public newsdesk files) --- */
+  host.appendChild(el('h3', null, 'The editor’s reports'));
+  host.appendChild(el('p', 'lead', 'Every piece the newsroom posts, and the game to watch, is read whole by the editor first: each fix where it made it, why, and what it said before and after; what it held back and why. A piece is posted when its salience × its format’s weight × the editor’s quality clears the bar.'));
+  const qaBox = host.appendChild(el('div', 'nrm-qa'));
+  const pick = qaBox.appendChild(el('select'));
+  const out = qaBox.appendChild(el('div'));
+  (async () => {
+    const c = root.EPINOIA_CONFIG || {}, U = c.supabaseUrl + '/storage/v1/object/public/snapshots/narrative/';
+    let idx = null;
+    try { const r = await fetch(U + 'index.json', { cache: 'no-store' }); idx = r.ok ? await r.json() : null; } catch (_) { idx = null; }
+    const ls = idx && idx.leagues ? Object.entries(idx.leagues).map(([id, l]) => ({ id, slug: l.slug || id })).sort((a, b) => a.slug.localeCompare(b.slug)) : [];
+    if (!ls.length) { out.appendChild(el('p', 'muted', 'No newsdesk files yet.')); return; }
+    ls.forEach(l => { const op = pick.appendChild(el('option', null, l.slug)); op.value = l.id; });
+    const fixes = (qa, box) => ((qa && qa.fixes) || []).forEach(f => {
+      const r = box.appendChild(el('div', 'nrm-fix'));
+      r.appendChild(el('b', null, [f.at, f.kind, f.rule].filter(Boolean).join(' · ')));
+      r.appendChild(el('span', null, f.note));
+      if (f.before) r.appendChild(el('del', null, f.before));
+      if (f.after && f.after !== f.before) r.appendChild(el('ins', null, f.after));
+    });
+    const show = async () => {
+      out.textContent = '';
+      let b = null;
+      try { const r = await fetch(U + pick.value + '.json', { cache: 'no-store' }); b = r.ok ? await r.json() : null; } catch (_) { b = null; }
+      if (!b) { out.appendChild(el('p', 'err', 'Could not read that league’s file.')); return; }
+      const nm = id => (b.clubs && b.clubs[id] ? b.clubs[id].name : id), w = b.watchCard;
+      if (w) {
+        const box = out.appendChild(el('div', 'nrm-qa-piece'));
+        box.appendChild(el('b', null, 'The game to watch: ' + nm(w.home.id) + ' v ' + nm(w.away.id)));
+        box.appendChild(el('span', 'muted', ['score ' + (w.score != null ? w.score : '—'), 'stakes ' + w.stakes, w.qa ? 'substance ' + w.qa.substance : null, w.qa ? 'quality ' + w.qa.quality : null].filter(Boolean).join(' · ')));
+        fixes(w.qa, box);
+      }
+      (b.articles || []).forEach(a => {
+        const box = out.appendChild(el('div', 'nrm-qa-piece'));
+        box.appendChild(el('b', null, a.kind + ': ' + a.head));
+        box.appendChild(el('span', 'muted', [new Date(a.written).toLocaleString('en-GB'), a.qa && a.qa.score != null ? 'posted at ' + a.qa.score : null,
+          a.qa ? 'quality ' + a.qa.quality + ', substance ' + a.qa.substance : 'written before the editor', a.qa ? a.qa.fixes.length + ' fix' + (a.qa.fixes.length === 1 ? '' : 'es') : null,
+          a.corrected ? 'rewritten ' + new Date(a.corrected).toLocaleString('en-GB') : null].filter(Boolean).join(' · ')));
+        fixes(a.qa, box);
+      });
+      (b.qaHeld || []).forEach(h => {
+        const box = out.appendChild(el('div', 'nrm-qa-piece held'));
+        box.appendChild(el('b', null, 'Held back: ' + h.kind + (h.head ? ': ' + h.head : '')));
+        (h.held || []).forEach(x => box.appendChild(el('span', null, x.rule + ': ' + x.note)));
+        fixes({ fixes: h.fixes }, box);
+      });
+      if (!w && !(b.articles || []).length && !(b.qaHeld || []).length) out.appendChild(el('p', 'muted', 'Nothing written for this league yet.'));
+    };
+    pick.addEventListener('change', show);
+    show();
   })();
 
   library();

@@ -63,6 +63,8 @@ const jac = (a, b) => { const A = new Set(a), B = new Set(b); if (!A.size || !B.
 
 /* the model's words, and what a writer says instead (null: the sentence goes) */
 const MODEL = [
+  [/\bwhere the numbers say each will be decided\b/gi, 'what will decide each one'],
+  [/\bwhere this week’s biggest games will be won and lost, according to the numbers\b/gi, 'where this week’s biggest games will be won and lost'],
   [/\bthe numbers say (?:it|this|that) (?:comes down to|turns on)\b/gi, 'it comes down to'],
   [/,?\s*(?:according to|by) the numbers\b/gi, ''],
   [/\bthe numbers say\b/gi, null],
@@ -258,8 +260,16 @@ function scrutinise(piece0, o) {
     if (P.some(u => u.dropHead) && left < 2) hold('body', 'illogical', 'thin', 'a piece about the week\'s games with fewer than two games left worth a word', '');
   }
 
-  /* -------- the standfirst's count against the piece -------- */
+  /* -------- the standfirst's count against the piece (and its words) -------- */
   if (!isCard && piece.dek) {
+    for (const [re, to] of MODEL) {
+      if (!re.test(piece.dek)) { re.lastIndex = 0; continue; }
+      re.lastIndex = 0;
+      if (to === null) { hold('dek', 'style', 'model-speak', 'a standfirst in the words of a model', piece.dek); break; }
+      const d = piece.dek.replace(re, to).replace(/\s{2,}/g, ' ');
+      note('dek', 'style', 'model-speak', 'said as a writer would', piece.dek, d);
+      piece.dek = d;
+    }
     const m = /\b([Tt]he) (two|three|four|five) (games|pieces)\b/.exec(piece.dek), N = { two: 2, three: 3, four: 4, five: 5 }, W2 = ['', 'one', 'two', 'three', 'four', 'five'];
     const sections = (piece.body || []).filter(x => x && x.h).length;
     /* two or more left (with fewer, the piece is held back) */

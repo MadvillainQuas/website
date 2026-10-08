@@ -122,7 +122,7 @@ console.log('\nsalience, persistence and the headline test');
   ok('...a week\'s games to watch by the older writer is written again, under its id and date', rew && rew.corrected && rew.body[0] !== 'old' && rew.written === watch.written, rew && rew.body);
   const gone0 = Object.assign({}, oldW, { id: 'watch:1999-1', head: 'A week long past', heads: undefined });
   const moved = watch && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [gone0] }).find(a => a.id === gone0.id);
-  ok('...one that cannot be written again (its week gone) is kept as written, marked so it is not tried again', moved && !moved.corrected && moved.body[0] === 'old' && moved.wv >= 2, moved);
+  ok('...one that cannot be written again (its week gone) is kept as the editor edits it, marked so it is not tried again', moved && !moved.corrected && /^Old\.$/.test(moved.body[0]) && moved.qa && moved.wv >= 2, moved);
   const gone = five && NR.publish(fullIn, fullB, { nowMs: NOW + 3600000, previous: [Object.assign({}, old, { id: 'five:gone:1' })] }).find(a => a.id === 'five:gone:1');
   ok('...and a piece whose older writer got a figure wrong is dropped when it cannot be written again', five && gone === undefined);
   const fake = { v: 1, base: 0.05, bias: Math.log(0.05 / 0.95), w: { 's:question': 1.5 } };

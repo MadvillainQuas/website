@@ -37,6 +37,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
 const NARR = () => root.EpinoiaNarrative || (typeof require === 'function' ? require('./narrative.js') : null);
+const CARD_BAR = 0.4;           // the game to watch: stakes x what its card can say x quality, at least
 const SALIENCE = 0.6, MAX_NEW = 2, MAX_WEEK = 8, KEEP_DAYS = 21, SUBJECT_DAYS = 14, MAX_KEEP = 16;
 const HOUR = 3600000, DAY = 86400000;
 
@@ -918,7 +919,9 @@ function gameCard(o, b, opts) {
   const cards = slate.slice(0, 3).filter(g => g && g.home && g.away).map(g => cardFor(L, o, b, g)).filter(Boolean);
   if (!cards.length) return null;
   cards.forEach(c => { const q = c.qa || {}; c.score = Math.round(c.stakes * (0.6 + 0.4 * Math.min(1, (q.substance != null ? q.substance : c.reasons.length) / 3)) * (q.quality != null ? q.quality : 1) * 1000) / 1000; });
-  return cards.sort((a, c) => c.score - a.score || c.stakes - a.stakes)[0];
+  const best = cards.sort((a, c) => c.score - a.score || c.stakes - a.stakes)[0];
+  /* the card's own bar: one with nothing to say (no stake, no reason) is not posted - a fixture is not a preview */
+  return best.score >= CARD_BAR ? best : null;
 }
 function cardFor(L, o, b, g) {
   const side = s => ({ id: s.id, rec: s.rec || null, rank: s.rank || null, form: s.form || null, streak: s.streak || null });
@@ -1041,7 +1044,11 @@ function publish(o, b, opts) {
         const ed = edit(Object.assign({}, base, { kicker: w.kicker, dek: w.dek, body: w.body, facts: w.facts, links: w.links, teams: w.teams, players: w.players, __log: w.__log, __sections: w.__sections }), meta, nowMs);
         if (ed.ok) return Object.assign(ed.piece, { wv: writerOf(a.kind), corrected: new Date(nowMs).toISOString() });
       }
-      return WRITER[a.kind] && WRITER[a.kind].drop ? null : Object.assign({}, a, { wv: writerOf(a.kind) });
+      if (WRITER[a.kind] && WRITER[a.kind].drop) return null;
+      /* nothing to write it again from, or the new one held back: the editor reads the piece as it is - kept as it edits it,
+         or it goes (everything on the site has passed the editor) */
+      const old = edit(Object.assign({}, a), meta, nowMs);
+      return old.ok ? Object.assign(old.piece, { wv: writerOf(a.kind) }) : null;
     }).filter(Boolean)
     .map(a => decide(a, op.ctr ? op.ctr[a.id] : null));
   const have = new Set(prev.map(a => a.id));

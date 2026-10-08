@@ -16,13 +16,13 @@
 <title>Platform · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
-<script src="../../appmode.js?v=753"></script>
-<script src="../../i18n.js?v=753" data-i18n-packs="admin platform"></script>
-<script src="../../glyphs.js?v=753" defer></script>
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=753">
-<link rel="stylesheet" href="../../kit/nav.css?v=753">
-<link rel="stylesheet" href="../../kit/labeltype.css?v=753">
-<link rel="stylesheet" href="../jobbar.css?v=753">
+<script src="../../appmode.js?v=754"></script>
+<script src="../../i18n.js?v=754" data-i18n-packs="admin platform"></script>
+<script src="../../glyphs.js?v=754" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=754">
+<link rel="stylesheet" href="../../kit/nav.css?v=754">
+<link rel="stylesheet" href="../../kit/labeltype.css?v=754">
+<link rel="stylesheet" href="../jobbar.css?v=754">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -100,6 +100,14 @@
   .nrm-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--rule)}
   .nrm-row div{display:flex;flex-direction:column;gap:2px}
   .nrm-lib{max-width:900px}
+  .nrm-qa{max-width:960px}
+  .nrm-qa select{margin:4px 0 10px}
+  .nrm-qa-piece{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-top:1px solid var(--rule)}
+  .nrm-qa-piece.held>b{color:var(--warn, #b45309)}
+  .nrm-fix{display:flex;flex-direction:column;gap:2px;margin:4px 0 4px 12px;padding-left:10px;border-left:2px solid var(--rule);font-size:13px}
+  .nrm-fix b{font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .nrm-fix del{opacity:.65}
+  .nrm-fix ins{text-decoration:none}
   /* ---- the Links tab (links-ui.js): possible matches, the finder, the linked groups ---- */
   .lk-bar{justify-content:space-between}
   .lk-seg{display:inline-flex;border:1px solid var(--rule-2)}
@@ -325,9 +333,9 @@
   .gq-cap{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2)}
   .gq-card .row{padding:0 10px 10px;margin:0}
 </style>
-<link rel="stylesheet" href="../../kit/suggest.css?v=753">
-<link rel="stylesheet" href="../../kit/newsrefresh.css?v=753">
-<link rel="stylesheet" href="../../kit/legibility.css?v=753">
+<link rel="stylesheet" href="../../kit/suggest.css?v=754">
+<link rel="stylesheet" href="../../kit/newsrefresh.css?v=754">
+<link rel="stylesheet" href="../../kit/legibility.css?v=754">
 </head>
 <body>
 <div class="ep-frame">
@@ -862,29 +870,29 @@
   </div>
 </div>
 
-<script src="../../config.js?v=753" defer></script>
-<script src="../../vendor/supabase.js?v=753" defer></script>
-<script src="../../access.js?v=753" defer></script>
-<script src="../access-ui.js?v=753" defer></script>
-<script src="../../newsrefresh.js?v=753" defer></script>
-<script src="../creators-ui.js?v=753" defer></script>
-<script src="../../homearenas.js?v=753" defer></script>
-<script src="arenas-ui.js?v=753" defer></script>
-<script src="analytics-ui.js?v=753" defer></script>
-<script src="links-ui.js?v=753" defer></script>
-<script src="../../voice.js?v=753" defer></script>
-<script src="../../scrutiny.js?v=753" defer></script>
-<script src="../../newsroom.js?v=753" defer></script>
-<script src="newsroom-ui.js?v=753" defer></script>
-<script src="go-photos-ui.js?v=753" defer></script>
-<script src="../suggestions-ui.js?v=753" defer></script>
-<script src="../jobbar.js?v=753" defer></script>
-<script src="reset-ui.js?v=753" defer></script>
-<script src="../../upload.js?v=753" defer></script>
-<script src="../../synergy.js?v=753" defer></script>
-<script src="reports-manager.js?v=753" defer></script>
-<script src="platform.js?v=753" defer></script>
-<script src="../../go/logo.js?v=753" defer></script>
-<script src="../../nav.js?v=753" defer></script>
+<script src="../../config.js?v=754" defer></script>
+<script src="../../vendor/supabase.js?v=754" defer></script>
+<script src="../../access.js?v=754" defer></script>
+<script src="../access-ui.js?v=754" defer></script>
+<script src="../../newsrefresh.js?v=754" defer></script>
+<script src="../creators-ui.js?v=754" defer></script>
+<script src="../../homearenas.js?v=754" defer></script>
+<script src="arenas-ui.js?v=754" defer></script>
+<script src="analytics-ui.js?v=754" defer></script>
+<script src="links-ui.js?v=754" defer></script>
+<script src="../../voice.js?v=754" defer></script>
+<script src="../../scrutiny.js?v=754" defer></script>
+<script src="../../newsroom.js?v=754" defer></script>
+<script src="newsroom-ui.js?v=754" defer></script>
+<script src="go-photos-ui.js?v=754" defer></script>
+<script src="../suggestions-ui.js?v=754" defer></script>
+<script src="../jobbar.js?v=754" defer></script>
+<script src="reset-ui.js?v=754" defer></script>
+<script src="../../upload.js?v=754" defer></script>
+<script src="../../synergy.js?v=754" defer></script>
+<script src="reports-manager.js?v=754" defer></script>
+<script src="platform.js?v=754" defer></script>
+<script src="../../go/logo.js?v=754" defer></script>
+<script src="../../nav.js?v=754" defer></script>
 </body>
 </html>
