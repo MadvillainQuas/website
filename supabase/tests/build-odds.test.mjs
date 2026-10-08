@@ -47,6 +47,8 @@ async function fakeFetch(url, init) {
   }
   if (p.startsWith('/rest/v1/games?id=in.')) { const ids = /id=in\.\(([^)]*)\)/.exec(p)[1].split(','); return res(200, games.filter(g => ids.includes(g.id))); }
   if (p.startsWith('/rest/v1/player_game_stats')) return res(200, []);
+  /* two of the four arenas placed (Leicester and Bristol), two not */
+  if (p.startsWith('/rest/v1/venues?id=in.')) { db.venueReads = (db.venueReads || 0) + 1; return res(200, [{ id: 'v0', lat: 52.63, lng: -1.13 }, { id: 'v1', lat: 51.45, lng: -2.59 }, { id: 'v2', lat: null, lng: null }]); }
   if (p.startsWith('/rest/v1/games?status=eq.scheduled')) return res(200, fixtures);
   if (p.startsWith('/rest/v1/model_picks')) {
     if (db.picks404) return res(404, '{"code":"PGRST205","message":"Could not find the table public.model_picks"}');
@@ -67,7 +69,7 @@ ok('a fixture pick for each game to come', fx.length === 12 && fx.every(x => x.k
 ok('the pick\'s side is never sent (the table generates it from p_home)', [...recs, ...fx].every(x => !('pick' in x)));
 ok('the strongest club at home to the weakest is favoured', (() => { const f = fixtures.find(g => g.home_team_id === 'h0' && g.away_team_id === 'h3'); const row = fx.find(x => x.game_id === f.id); return row && row.p_home > 0.6; })());
 ok('the state kept gzipped (1f 8b)', db.uploads === 1 && db.state[0] === 0x1f && db.state[1] === 0x8b);
-ok('...and packed: every id once', (() => { const j = JSON.parse(zlib.gunzipSync(db.state)); return j.v === 4 && Array.isArray(j.id) && new Set(j.id).size === j.id.length && j.wm && j.wm.id === 'g' + '019'.padStart(3, '0'); })());
+ok('...and packed: every id once', (() => { const j = JSON.parse(zlib.gunzipSync(db.state)); return j.v === 5 && Array.isArray(j.id) && new Set(j.id).size === j.id.length && j.wm && j.wm.id === 'g' + '019'.padStart(3, '0'); })());
 const fq = db.urls.find(u => u.startsWith('/rest/v1/game_features'));
 ok('22 numbers of each feature line, never the whole line', /q0:f->\d+/.test(fq) && /q21:f->\d+/.test(fq) && !/q22:/.test(fq) && !/select=[^&]*(^|,)f(,|&)/.test(fq), fq);
 const pq = db.urls.find(u => u.startsWith('/rest/v1/player_game_stats'));
@@ -78,6 +80,7 @@ db.picks = []; db.urls = [];
 const r2 = await B.run(api, { now: NOW, days: 30, log: quiet });
 ok('learns nothing and leaves the state be', r2.learned === 0 && db.uploads === 1, [r2.learned, db.uploads]);
 ok('...but brings the fixtures\' picks up to date', db.picks.flatMap(x => x.rows).length === 12);
+ok('...and no venue it has met is read again (placed or not)', !db.urls.some(u => u.startsWith('/rest/v1/venues')), db.urls.filter(u => u.startsWith('/rest/v1/venues')));
 ok('...reading from the watermark', db.urls.some(u => u.startsWith('/rest/v1/game_features') && /finalised_at\.gt\."/.test(u)));
 
 console.log('\nthe next games');

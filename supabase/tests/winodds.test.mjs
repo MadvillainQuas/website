@@ -54,7 +54,7 @@ function league(lg, s, rounds, noise, o) {
 }
 
 console.log('the shape of it');
-ok('twenty inputs, every one named', O.X_KEYS.length === 20 && O.C.w0.length === 20 && O.C.p0.length === 20 && O.X_KEYS.slice(16).join() === 'hc,tr,sc,shot');
+ok('21 inputs, every one named', O.X_KEYS.length === 21 && O.C.w0.length === 21 && O.C.p0.length === 21 && O.X_KEYS.slice(16).join() === 'hc,tr,sc,shot,km');
 ok('a player line from the engine\'s named stats: minutes from ms, makes and attempts of both kinds',
    (() => { const l = O.lineOf('p', 0, { min: 1800000, pts: 20, p2m: 5, p2a: 9, p3m: 2, p3a: 6, fta: 5, ftm: 4, or: 1, dr: 5, ast: 3, stl: 1, blk: 0, to: 2, pf: 3 });
             return l[2] === 30 && l[4] === 7 && l[5] === 15 && l[8] === 1 && l[9] === 5; })());
@@ -202,6 +202,48 @@ console.log('\nthe style');
   ok('a feed with neither situations nor zones: the four style inputs are nothing', ['hc', 'tr', 'sc', 'shot'].every(key => x2[ix(key)] === 0), x2.slice(16));
 }
 
+console.log('\nWhat wins\' own refinements (built, off until they earn it)');
+{
+  ok('travel, the shrinkage by each factor\'s spread and each league\'s own weights are off by default', !O.C.use.km && !O.C.use.ebk && !O.C.use.lgw);
+  /* travel: the away club's last game was in Bristol, this one is in Leicester (about 150 km); the home club was at home */
+  O.apply({ 'use.km': true });
+  const LEI = [52.63, -1.13], BRI = [51.45, -2.59];
+  const g = league('m', [2, 0, -2], 3, 2).map(x => Object.assign({}, x, { v: x.h === 'cm0' ? 'vLEI' : 'vBRI', vc: x.h === 'cm0' ? LEI : BRI }));
+  const S = O.create();
+  O.walk(S, g);
+  S.teams.cm0.lv = 'vLEI'; S.teams.cm1.lv = 'vBRI';
+  const ix = O.X_KEYS.indexOf('km');
+  const xk = O.predict(S, { h: 'cm0', a: 'cm1', lg: 'm', s: 'm-26', t: T0 + 60 * DAY, v: 'vLEI', vc: LEI }).x[ix];
+  ok('travel: the away club came about 150 km, the home club none: −0.15 (thousands of km, home less away)', Math.abs(xk + 0.15) < 0.02, xk);
+  ok('...a venue nobody has placed: no travel either way', O.predict(S, { h: 'cm0', a: 'cm1', lg: 'm', s: 'm-26', t: T0 + 60 * DAY, v: 'vX' }).x[ix] === 0);
+  O.apply({});
+  ok('...and off by default: nothing', O.predict(S, { h: 'cm0', a: 'cm1', lg: 'm', s: 'm-26', t: T0 + 60 * DAY, v: 'vLEI', vc: LEI }).x[ix] === 0);
+  /* the shrinkage by the spread: the clubs' turnovers differ for good (a club always loses the ball 10%, another 20%),
+     their shooting is game-to-game noise - so turnovers are believed sooner (smaller k) than shooting */
+  O.apply({ 'use.ebk': true, ebN: 0.001 });
+  seed = 5;
+  const tv = [0.10, 0.13, 0.16, 0.19, 0.22], ng = [];
+  let t = T0, k = 0;
+  for (let r = 0; r < 4; r++) for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) {
+    if (i === j) continue;
+    ng.push({ id: 'k' + (k++), h: 'e' + i, a: 'e' + j, lg: 'e', s: 'e-26', t: (t += DAY / 3), v: 've' + i, hs: 80, as: 77,
+              c: [side(0.40 + 0.2 * rnd(), tv[i], 0.28, 0.25), side(0.40 + 0.2 * rnd(), tv[j], 0.28, 0.25)], pl: [] });
+  }
+  const SE = O.create();
+  O.walk(SE, ng);
+  const K = O.shrinkOf(SE, 'e', 'e-26');
+  ok('...a factor that differs between clubs for good is believed sooner than one that is noise (k turnovers < k shooting)', K && K.o[1] < K.o[0], K && K.o);
+  O.apply({});
+  /* each league's own weights: learned, small, kept through a pack */
+  O.apply({ 'use.lgw': true, lwEta: 0.05 });
+  const SL = O.create();
+  O.walk(SL, league('w', [5, 1, -1, -5], 4, 4));
+  const d = SL.lw.w;
+  ok('...each league its own weights, learned from what the shared ones miss there, and finite', Array.isArray(d) && d.length === 6 && d.every(Number.isFinite) && d.some(v => v !== 0), d);
+  ok('...kept through a pack', JSON.stringify(O.unpack(JSON.parse(JSON.stringify(O.pack(SL)))).lw.w) === JSON.stringify(d.map(v => +v.toPrecision(6))));
+  O.apply({});
+}
+
 console.log('\none tip-off');
 {
   const S = O.create();
@@ -238,7 +280,7 @@ console.log('\nthe state');
   const kept = JSON.stringify(O.pack(S)), S2 = O.unpack(JSON.parse(kept));
   ok('packed and unpacked, it predicts the same (to 4 places)', Math.abs(O.predict(S, fx).p - O.predict(S2, fx).p) < 1e-4, [O.predict(S, fx).p, O.predict(S2, fx).p]);
   ok('...every id written once', (() => { const j = JSON.parse(kept); return new Set(j.id).size === j.id.length && j.id.includes('ck0') && j.id.includes('kck0a'); })());
-  ok('...the covariance by its upper triangle', JSON.parse(kept).P.length === 20 * 21 / 2);
+  ok('...the covariance by its upper triangle', JSON.parse(kept).P.length === 21 * 22 / 2);
   ok('...and it goes on learning from where it was', (() => { const a = O.learn(S2, Object.assign({}, g[0], { id: 'more', t: T0 + 51 * DAY })); return a && S2.n === S.n + 1; })());
   ok('...its clubs, leagues and players all back', Object.keys(S2.teams).length === 4 && Object.keys(S2.pl).length === 4 && !!S2.lg['k|k-26']);
   ok('a state of another layout is started again', O.unpack({ v: 1, w: [1, 2, 3], P: [] }).n === 0);

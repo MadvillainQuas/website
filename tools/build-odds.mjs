@@ -115,6 +115,19 @@ export async function readGames(api, lines) {
   }
   return out;
 }
+/* each venue's place, for the travel: only the venues the state has not met (or, on a tuning run, those it met without
+   a place - one may have been placed since), kept in the state; each game and fixture then carries its venue's */
+export async function attachVenues(api, list, S, refresh) {
+  if (!S.vc) S.vc = {};
+  const want = Array.from(new Set(list.map(g => g.v).filter(v => v && (refresh ? !S.vc[v] : !(v in S.vc)))));
+  for (const c of chunks(want, 150)) {
+    const rows = (await api.rest('venues?id=in.(' + c.join(',') + ')&select=id,lat,lng')) || [];
+    const got = new Map(rows.map(r => [r.id, r.lat != null && r.lng != null && isFinite(+r.lat) && isFinite(+r.lng) ? [+r.lat, +r.lng] : null]));
+    c.forEach(v => { S.vc[v] = got.get(v) || null; });
+  }
+  list.forEach(g => { if (g.v && S.vc[g.v]) g.vc = S.vc[g.v]; });
+  return list;
+}
 /* the fixtures to come: scheduled, tipping off between now and `days` ahead */
 export async function readFixtures(api, now, days) {
   const out = [];
@@ -152,24 +165,24 @@ export async function run(api, o) {
      record pick, as on any other run */
   if (o.tune || (!fresh && !o.noTune && now - (S.tunedAt || 0) > TUNE_EVERY)) {
     lines = await readLines(api, null);
-    const all = await readGames(api, lines);
+    const all = await attachVenues(api, await readGames(api, lines), S, true);
     const fresh_ids = new Set(lines.filter(isNew).map(L => L.game_id));
     const t = Odds.tune(all, { budgetMs: o.tuneBudgetMs || TUNE_BUDGET_MS, start: S.tuned || {}, log });
     out.tune = { tried: t.tried, from: +t.base.ll.toFixed(5), to: +t.best.ll.toFixed(5), changed: t.changed, settings: t.over };
-    const tuned = Odds.create();
+    const tuned = Object.assign(Odds.create(), { vc: Object.assign({}, S.vc) });
     recs = Odds.walk(tuned, all, { late: g => fresh_ids.has(g.id) && !!lastSeen && g.t < lastSeen - LATE_MS })
       .filter(r => fresh_ids.has(r.game.id));
     S = Object.assign(tuned, { tuned: t.over, tunedAt: now });
   } else {
     lines = await readLines(api, fresh ? null : S.wm);
-    recs = Odds.walk(S, await readGames(api, lines), { late: g => !fresh && lastSeen && g.t < lastSeen - LATE_MS });
+    recs = Odds.walk(S, await attachVenues(api, await readGames(api, lines), S), { late: g => !fresh && lastSeen && g.t < lastSeen - LATE_MS });
     if (fresh) { S.tuned = S.tuned || {}; S.tunedAt = S.tunedAt || now; }
   }
   out.learned = recs.length;
   if (lines.length) { const L = lines[lines.length - 1]; S.wm = { at: L.finalised_at, id: L.game_id, ti: L.team_idx }; }
   const recordRows = recs.filter(r => r.pre.ok && !r.late).map(r => pickRow(r.game, r.pre, 'record'));
   out.records = recordRows.length; out.late = recs.filter(r => r.late).length;
-  const fixtures = await readFixtures(api, now, o.days || 14);
+  const fixtures = await attachVenues(api, await readFixtures(api, now, o.days || 14), S);
   const fixtureRows = [];
   fixtures.forEach(fx => { const pre = Odds.predict(S, fx); if (pre.ok) fixtureRows.push(pickRow(fx, pre, 'fixture')); });
   out.fixtures = fixtureRows.length; out.fixturesSeen = fixtures.length;

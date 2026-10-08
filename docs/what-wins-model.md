@@ -534,7 +534,7 @@ total; block-bootstrap intervals (B = 200).
 ### 7.8.1 EPINOIA's model (epinoia/winodds.js; the run tools/build-odds.mjs; picks in model_picks, 0253)
 One online model for every game in every league, beside §7.8's per-unit forecast: what the preview card, the game's
 preview and the board's EPINOIA competitor show (signed in now; `gate_open('model', league)` once memberships are on).
-- Inputs a fixture, 20: home (0 at a neutral venue: away from the home club's modal venue, ≥ 3 home games); §7.8's
+- Inputs a fixture, 21 — every input of §7.8's forecast, on the same feature lines, and more: home (0 at a neutral venue: away from the home club's modal venue, ≥ 3 home games); §7.8's
   expected differentials of the four factors (shrink 5 games); the same factors schedule-adjusted (`y_ig = μ + o_i +
   d_j`, logit, every club of a league-season solved together, Gauss-Seidel × 10, shrink 20 games); Elo (K 20, margin
   multiplier, ⅓ back to 1500 a season, home term from the model's own edge); the margin rating (competitive margin a game
@@ -545,7 +545,13 @@ preview and the board's EPINOIA competitor show (signed in now; `gate_open('mode
   style, points a game each side can expect, each attack against the defence it meets against the league (a share on
   the logit scale, a rate a chance added; shrink 120 chances or shots): half-court (share of chances × points a
   half-court chance), transition (share × points a transition chance), second chances (share × points), the shot diet
-  (rim / mid / three shares × make rates × 2, 2, 3) - only where the feed has situations and zones (`need` bits).
+  (rim / mid / three shares × make rates × 2, 2, 3) - only where the feed has situations and zones (`need` bits);
+  travel (§7.8's km term: from each club's last venue, where both are placed).
+- §7.8's three refinements, built and OFF until the weekly tuning finds they gain in both halves (2026-10-08 it tried
+  each on and none did): `ebk` the shrinkage by each factor's own spread (k = σ²_within/τ²_between, [2, 30]) - gains on
+  full seasons (0.1868 v 0.1882 on the older half), loses on the recent games (0.2153 v 0.2140, t 2.5); `km` travel -
+  243 of 517 venues placed, under §7.8's own 70% bar; `lgw` each league its own weights (offsets on the four factors,
+  Elo and the margin, normalised steps) - quick, they fit a small league's noise (0.2040 v 0.2011), slow, level.
 - Learning, after each game: RLS on the margin (forgetting 0.9995, each weight's variance capped at 4 × its prior);
   each league's home edge (SGD, near the shared one); σ (EW, α 0.02); a calibration `P = expit(a + b · 1.702 z)` by
   SGD on its own wins and losses. Silent until both clubs have played 3 games this season.

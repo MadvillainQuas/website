@@ -66,11 +66,11 @@
   else root.EpinoiaOdds = api;
 }(typeof globalThis !== 'undefined' ? globalThis : self, function () {
 
-const V = 4;                               // the packed state's layout
-const MODEL = 'epinoia-3';
+const V = 5;                               // the packed state's layout
+const MODEL = 'epinoia-4';
 const MIN_GP = 3;
 const X_KEYS = ['home', 'efg', 'tov', 'orb', 'ftr', 'elo', 'net', 'rest', 'b2b', 'aefg', 'atov', 'aorb', 'aftr', 'pos', 'form', 'avail',
-                'hc', 'tr', 'sc', 'shot'];
+                'hc', 'tr', 'sc', 'shot', 'km'];
 const P = X_KEYS.length;
 /* the counts a side carries, in order: eFG makes (FGM + ½ 3PM), FGA, FTA, turnovers, offensive rebounds, the other
    side's defensive rebounds of this side's misses, points, possessions - all competitive (garbage time out); then the
@@ -100,13 +100,25 @@ const C = {
   posScale: 0.1,      // the position edge (game score a 36 minutes) to the model's units
   availScale: 0.1,    // who is playing (game score a game) to the model's units
   styleK: 120,        // the style's rates: chances (or shots) of the league's each side's own starts with
+  ebN: 10,            // What wins' own shrinkage k trusted as n / (n + ebN) of a club's games (else SHRINK)
+  ebMin: 0,           // ...and not at all before the clubs have played ebMin games on average
+  lwEta: 0.002, lwL2: 0.05,  // each league's own weights (normalised steps), held near the shared ones: slow, or they
+                             // fit a small league's noise (0.05 cost 0.003 of Brier on the walk)
   /* pace scaling the four factors (pace) and the spread (paceSig) */
-  use: { adj: true, pos: true, form: true, avail: true, style: true, pace: false, paceSig: false },
+  /* WHAT WINS' OWN THREE REFINEMENTS - built, and off until they earn it (the weekly tuning switches each on once it
+     gains in both halves of the games; walk 2026-10-08):
+       ebk  the shrinkage by each factor's spread: gains on full seasons (Brier 0.1868 v 0.1882 on the older half),
+            loses on the recent games the live picks are made among (0.2153 v 0.2140, paired t 2.5);
+       km   travel: 243 of the 517 venues games were played at are placed, under What wins' own bar (70% of games)
+            for using it at all; level to slightly worse;
+       lgw  each league its own weights: at a quick rate they fit a small league's noise (Brier 0.2040 v 0.2011),
+            slowly they are level to slightly worse - What wins too pools a league under 200 games */
+  use: { adj: true, pos: true, form: true, avail: true, style: true, km: false, ebk: false, lgw: false, pace: false, paceSig: false },
   /* where the margin weights start (points of margin a unit) and how sure of them (variances): the schedule-adjusted
      factors, positions and who is playing start at nothing and are held close (on the walk they add nothing measurable
      yet), so they earn their weight game by game as the evidence grows */
-  w0: [2.5, 1.2, -1.2, 0.35, 0.15, 3, 1, 0.25, -1.5, 0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0],
-  p0: [4, 1, 1, 0.25, 0.1, 4, 2, 0.25, 4, 0.05, 0.05, 0.05, 0.02, 0.05, 0.25, 0.05, 0.05, 0.05, 0.05, 0.05]
+  w0: [2.5, 1.2, -1.2, 0.35, 0.15, 3, 1, 0.25, -1.5, 0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0],
+  p0: [4, 1, 1, 0.25, 0.1, 4, 2, 0.25, 4, 0.05, 0.05, 0.05, 0.02, 0.05, 0.25, 0.05, 0.05, 0.05, 0.05, 0.05, 1]
 };
 const DAY = 86400000, MIN = 60000;
 const isNum = v => typeof v === 'number' && isFinite(v);
@@ -121,7 +133,7 @@ function create() {
   const Pm = zeros(P * P);
   for (let i = 0; i < P; i++) Pm[i * P + i] = C.p0[i];
   return { v: V, model: MODEL, n: 0, lastT: 0, wm: null, w: C.w0.slice(), P: Pm, sig2: C.sig0 * C.sig0, cal: [0, 1],
-           hca: {}, lg: {}, teams: {}, pl: {}, metrics: { n: 0, right: 0, brier: 0, ll: 0 }, by: {} };
+           hca: {}, lw: {}, vc: {}, lg: {}, teams: {}, pl: {}, metrics: { n: 0, right: 0, brier: 0, ll: 0 }, by: {} };
 }
 
 /* ------------------------------------------------------------ the inputs --- */
@@ -150,7 +162,10 @@ const gmsc = l => l[3] + 0.4 * l[4] - 0.7 * l[5] - 0.4 * (l[6] - l[7]) + 0.7 * l
 const blankPos = () => ({ at: zeros(3), am: zeros(3), dv: zeros(3), dm: zeros(3), tot: zeros(6) });   // tot: min, trb, ast, stl, blk, pf
 /* a club's season: counts both ends, record, positions, form, roster and last line-up, the schedule solve's sums
    (so/sd: each game's factor logits for and against; op: games against each opponent) */
-const blankSeason = T => Object.assign(T, { n: 0, o: zeros(NC), d: zeros(NC), t: 0, f: 0, ps: blankPos(), ro: {}, last: [], so: zeros(4), sd: zeros(4), op: {} });
+/* (q: each factor's per-game sum and sum of squares, for and against - What wins' shrinkage by the factor's own spread;
+   lv: the last venue, for the travel) */
+const blankSeason = T => Object.assign(T, { n: 0, o: zeros(NC), d: zeros(NC), t: 0, f: 0, ps: blankPos(), ro: {}, last: [], so: zeros(4), sd: zeros(4), op: {},
+                                            q: zeros(16), lv: null });
 function teamOf(S, id, lg, s, make) {
   let T = S.teams[id];
   if (!T && make) T = S.teams[id] = blankSeason({ lg, s, e: C.elo0, hv: {} });
@@ -308,16 +323,67 @@ function style(Th, Ta, L, s) {
   return out;
 }
 
+/* --------------------------------------------- What wins' own refinements --- */
+/* THE SHRINKAGE BY THE FACTOR'S OWN SPREAD (winmodel.js pregame(): k = σ²_within / τ²_between, clamped [2, 30], 10
+   with too few clubs): a factor that really differs between clubs is believed sooner, one that is mostly game-to-game
+   noise later. Per league-season and end (for, against), from each club's per-game sums and sums of squares; kept until
+   the league's next game is learned */
+const ebMemo = typeof WeakMap === 'function' ? new WeakMap() : null;
+function ebShrink(S, L, s) {
+  const memo = ebMemo && (ebMemo.get(S) || (ebMemo.set(S, new Map()), ebMemo.get(S)));
+  const hit = memo && memo.get(L);
+  if (hit && hit.ver === L.ver) return hit.K;
+  const ts = L.tm.map(id => S.teams[id]).filter(T => T && T.s === s && T.n >= 2 && T.q);
+  const K = { o: [10, 10, 10, 10], d: [10, 10, 10, 10] };
+  if (ts.length >= 3) {
+    ['o', 'd'].forEach(end => {
+      const b = end === 'o' ? 0 : 8;
+      for (let j = 0; j < 4; j++) {
+        let ssw = 0, N = 0, inv = 0;
+        const means = ts.map(T => { const m = T.q[b + j] / T.n; ssw += T.q[b + 4 + j] - T.n * m * m; N += T.n; inv += 1 / T.n; return m; });
+        const s2w = ssw / Math.max(1, N - ts.length), mm = means.reduce((a, v) => a + v, 0) / means.length;
+        const vb = means.reduce((a, v) => a + (v - mm) * (v - mm), 0) / Math.max(1, means.length - 1);
+        const t2 = vb - s2w * inv / ts.length;
+        K[end][j] = t2 > 0 ? clamp(s2w / t2, 2, 30) : 30;
+      }
+    });
+    /* a spread measured on a few games a club is noise itself: the fixed SHRINK until the clubs have played EBN games
+       or so (early in a season the measured k cost 0.0015 of Brier on the walk; on full seasons it gains 0.001) */
+    const nb = ts.reduce((a, T) => a + T.n, 0) / ts.length, wq = C.ebMin && nb < C.ebMin ? 0 : nb / (nb + C.ebN);
+    ['o', 'd'].forEach(end => { K[end] = K[end].map(k => wq * k + (1 - wq) * C.shrink); });
+  } else K.o = K.d = [C.shrink, C.shrink, C.shrink, C.shrink];
+  if (memo) memo.set(L, { ver: L.ver, K });
+  return K;
+}
+/* EACH LEAGUE ITS OWN WEIGHTS (What wins fits each league's own, partially pooled): offsets on the shared weights of
+   the four factors, Elo and the margin, learned from what the shared weights miss there */
+const LGW = [1, 2, 3, 4, 5, 6];
+function leagueTerm(S, lg, x) {
+  const d = C.use.lgw && S.lw ? S.lw[lg] : null;
+  if (!d) return 0;
+  let m = 0;
+  LGW.forEach((i, j) => { m += d[j] * x[i]; });
+  return m;
+}
+/* the great-circle distance in km (winmodel.js hav) */
+const hav = (a, b) => {
+  const r = Math.PI / 180, dLat = (b[0] - a[0]) * r, dLng = (b[1] - a[1]) * r;
+  const q = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(q)));
+};
+
 /* -------------------------------------------------------- the prediction --- */
 function features(S, fx) {
   const Th = teamOf(S, fx.h), Ta = teamOf(S, fx.a);
   const nh = nOf(Th, fx.s), na = nOf(Ta, fx.s);
   const cur = T => (T && T.s === fx.s ? T : null);
   const L = S.lg[fx.lg + '|' + fx.s], mu = L && L.n ? factors(L.c) : { efg: null, tov: null, orb: null, ftr: null };
+  /* each factor shrunk by its own k (What wins §7.8: σ²_within / τ²_between in the league's season), or SHRINK games */
+  const KB = C.use.ebk && L && L.n ? ebShrink(S, L, fx.s) : null;
   const prof = (T, n, end) => {
     const f = cur(T) ? factors(end === 'o' ? T.o : T.d) : {};
     const out = {};
-    FF.forEach(k => { const m = mu[k], v = f[k]; out[k] = isNum(m) ? (isNum(v) ? (n * v + C.shrink * m) / (n + C.shrink) : m) : (isNum(v) ? v : null); });
+    FF.forEach((k, j) => { const m = mu[k], v = f[k], kk = KB ? KB[end][j] : C.shrink; out[k] = isNum(m) ? (isNum(v) ? (n * v + kk * m) / (n + kk) : m) : (isNum(v) ? v : null); });
     return out;
   };
   const hO = prof(Th, nh, 'o'), hD = prof(Th, nh, 'd'), aO = prof(Ta, na, 'o'), aD = prof(Ta, na, 'd');
@@ -363,11 +429,16 @@ function features(S, fx) {
              C.use.avail ? (avail(S, Th, L, fx.s) - avail(S, Ta, L, fx.s)) * C.availScale : 0];
   const st = C.use.style ? style(Th, Ta, L, fx.s) : { hc: 0, tr: 0, sc: 0, shot: 0 };
   x.push(st.hc, st.tr, st.sc, st.shot);
+  /* travel (What wins §7.8): km from each club's last venue to this one, where both are placed; a club's first game, 0 */
+  const here = fx.vc || (fx.v && S.vc && S.vc[fx.v]) || null;
+  const km = T => { if (!here) return null; if (!cur(T) || !T.lv) return 0; const c0 = S.vc[T.lv]; return c0 ? hav(c0, here) : null; };
+  const kh = C.use.km ? km(Th) : null, ka = C.use.km ? km(Ta) : null;
+  x.push(isNum(kh) && isNum(ka) ? (kh - ka) / 1000 : 0);
   return { x, n: [nh, na], home, pace: sp };
 }
 function predict(S, fx) {
   const F = features(S, fx);
-  let m = F.home * (S.hca[fx.lg] || 0);
+  let m = F.home * (S.hca[fx.lg] || 0) + leagueTerm(S, fx.lg, F.x);
   for (let i = 0; i < P; i++) m += S.w[i] * F.x[i];
   const sigma = Math.sqrt(S.sig2 * F.pace), z = m / sigma;
   const p = expit(S.cal[0] + S.cal[1] * 1.702 * z);
@@ -384,7 +455,8 @@ function learn(S, g, opts) {
   const x = pre.x, home = pre.home;
   /* w: recursive least squares on the margin, the league's home edge held aside */
   const hcaL = S.hca[g.lg] || 0;
-  let yhat = home * hcaL;
+  const lwT = leagueTerm(S, g.lg, x);
+  let yhat = home * hcaL + lwT;
   for (let i = 0; i < P; i++) yhat += S.w[i] * x[i];
   const e = y - yhat;
   const Px = zeros(P);
@@ -398,10 +470,16 @@ function learn(S, g, opts) {
     for (let i = 0; i < P; i++) if (S.P[i * P + i] > C.p0[i] * 4) { const k = Math.sqrt(C.p0[i] * 4 / S.P[i * P + i]); for (let j = 0; j < P; j++) { S.P[i * P + j] *= k; S.P[j * P + i] *= k; } }
   }
   /* the league's own home edge: what the model still misses on its home games, kept near the shared edge */
-  if (home) {
-    let r = y - hcaL;
-    for (let i = 0; i < P; i++) r -= S.w[i] * x[i];
-    S.hca[g.lg] = hcaL + C.hcaEta * (r - C.hcaL2 * hcaL);
+  let r = y - home * hcaL - lwT;
+  for (let i = 0; i < P; i++) r -= S.w[i] * x[i];
+  if (home) S.hca[g.lg] = hcaL + C.hcaEta * (r - C.hcaL2 * hcaL);
+  /* the league's own weights on the four factors, Elo and the margin (What wins fits each league its own): what the
+     shared weights still miss there, in normalised steps, held near nothing (the shared weights) */
+  if (C.use.lgw) {
+    const d = S.lw[g.lg] || (S.lw[g.lg] = zeros(LGW.length));
+    let nx = 1;
+    LGW.forEach(i => { nx += x[i] * x[i]; });
+    LGW.forEach((i, j) => { d[j] += C.lwEta * (r * x[i] / nx - C.lwL2 * d[j]); });
   }
   /* σ and its own wins and losses, on the games it would have spoken about */
   if (pre.ok) {
@@ -440,6 +518,9 @@ function learn(S, g, opts) {
     FF.forEach((k, j) => {
       const yh = isNum(fH[k]) ? logit(fH[k] / 100) : 0, ya = isNum(fA[k]) ? logit(fA[k] / 100) : 0;
       Th.so[j] += yh; Th.sd[j] += ya; Ta.so[j] += ya; Ta.sd[j] += yh;
+      const ph = isNum(fH[k]) ? fH[k] : 0, pa = isNum(fA[k]) ? fA[k] : 0;
+      Th.q[j] += ph; Th.q[4 + j] += ph * ph; Th.q[8 + j] += pa; Th.q[12 + j] += pa * pa;
+      Ta.q[j] += pa; Ta.q[4 + j] += pa * pa; Ta.q[8 + j] += ph; Ta.q[12 + j] += ph * ph;
     });
     Th.op[g.a] = (Th.op[g.a] || 0) + 1; Ta.op[g.h] = (Ta.op[g.h] || 0) + 1;
     for (let k = 0; k < NC; k++) {
@@ -481,6 +562,7 @@ function learn(S, g, opts) {
   }
   Th.n++; Ta.n++;
   Th.t = g.t; Ta.t = g.t;
+  if (g.v) { Th.lv = g.v; Ta.lv = g.v; if (g.vc) S.vc[g.v] = g.vc; }
   if (g.v) Th.hv[g.v] = (Th.hv[g.v] || 0) + 1;
   S.n++;
   if (g.t > S.lastT) S.lastT = g.t;
@@ -525,7 +607,7 @@ function pack(S, o) {
     tm.push([I(id), I(T.lg), I(T.s), T.n, T.o.map(v => rd(v, 1)), T.d.map(v => rd(v, 1)), rd(T.e, 2), Math.round(T.t / MIN),
              flat(T.hv, I), rd(T.f, 3), [].concat(ps.at, ps.am, ps.dv, ps.dm, ps.tot).map(v => rd(v, 2)),
              flat(T.ro, I).map((v, i) => (i % 2 ? rd(v, 2) : v)), [].concat(...T.last.map(([p, m]) => [I(p), rd(m, 2)])),
-             T.so.map(v => rd(v, 4)), T.sd.map(v => rd(v, 4)), flat(T.op, I)]);
+             T.so.map(v => rd(v, 4)), T.sd.map(v => rd(v, 4)), flat(T.op, I), (T.q || zeros(16)).map(v => rd(v, 1)), I(T.lv)]);
   });
   const lg = [];
   Object.keys(S.lg).forEach(k => {
@@ -539,7 +621,10 @@ function pack(S, o) {
   const M = S.metrics;
   return { v: V, model: MODEL, n: S.n, lastT: S.lastT, wm: S.wm || null, tuned: S.tuned || {}, tunedAt: S.tunedAt || 0, w: S.w.map(r6), P: tri, sig2: r6(S.sig2), cal: S.cal.map(r6),
            m: [M.n, M.right, r6(M.brier), r6(M.ll)], hca: flat(S.hca, I).map((v, i) => (i % 2 ? r6(v) : v)),
-           by: Object.keys(S.by).map(l => [I(l), S.by[l].n, S.by[l].right, r6(S.by[l].brier)]), id: ids, lg, tm, pl };
+           by: Object.keys(S.by).map(l => [I(l), S.by[l].n, S.by[l].right, r6(S.by[l].brier)]),
+           lw: Object.keys(S.lw || {}).map(l => [I(l)].concat(S.lw[l].map(r6))),
+           vc: [].concat(...Object.keys(S.vc || {}).map(v => [I(v)].concat(S.vc[v] ? S.vc[v].map(c => rd(c, 4)) : [null, null]))),
+           id: ids, lg, tm, pl };
 }
 /* unpack(): the state pack() kept, or a new one when it is of another layout */
 function unpack(j) {
@@ -560,9 +645,12 @@ function unpack(j) {
     for (let i = 0; i + 1 < r[12].length; i += 2) last.push([id[r[12][i]], r[12][i + 1]]);
     S.teams[id[r[0]]] = { lg: id[r[1]], s: id[r[2]], n: r[3], o: r[4], d: r[5], e: r[6], t: r[7] * MIN, hv: pairs(r[8]), f: r[9],
       ps: { at: ps.slice(0, 3), am: ps.slice(3, 6), dv: ps.slice(6, 9), dm: ps.slice(9, 12), tot: ps.slice(12, 18) },
-      ro: pairs(r[11]), last, so: r[13], sd: r[14], op: pairs(r[15]) };
+      ro: pairs(r[11]), last, so: r[13], sd: r[14], op: pairs(r[15]), q: r[16] || zeros(16), lv: r[17] >= 0 ? id[r[17]] : null };
   });
   (j.pl || []).forEach(([i, s, m, gs, trb, ast, stl, blk, pf]) => { S.pl[id[i]] = { s: id[s], m, gs, trb, ast, stl, blk, pf }; });
+  (j.lw || []).forEach(r => { S.lw[id[r[0]]] = r.slice(1); });
+  const vc = j.vc || [];
+  for (let i = 0; i + 2 < vc.length; i += 3) S.vc[id[vc[i]]] = vc[i + 1] == null ? null : [vc[i + 1], vc[i + 2]];
   return S;
 }
 /* the schedule-adjusted ratings of a league's season: { club: { o: [efg, tov, orb, ftr], d: [...] } } on the logit scale */
@@ -583,9 +671,10 @@ function ratings(S, lg, s) {
    paired t −0.1) - no harm, and as the games pile up a gain that holds is what moves a setting.
    Settings are kept as what differs from the defaults (S.tuned), and unpack() puts them back. */
 const DEFAULTS = JSON.parse(JSON.stringify(C));
-const GROUPS = { 'p0.adj': [9, 10, 11, 12], 'p0.pa': [13, 15], 'p0.style': [16, 17, 18, 19] };
-const TUNE = ['shrink', 'adjK', 'srsK', 'formA', 'formK', 'forget', 'sigA', 'calEta', 'eloK', 'eloCarry', 'styleK', 'posShrink', 'hcaEta',
-              'p0.adj', 'p0.pa', 'p0.style', 'use.adj', 'use.pos', 'use.form', 'use.avail', 'use.style', 'use.pace', 'use.paceSig'];
+const GROUPS = { 'p0.adj': [9, 10, 11, 12], 'p0.pa': [13, 15], 'p0.style': [16, 17, 18, 19], 'p0.km': [20] };
+const TUNE = ['shrink', 'ebN', 'ebMin', 'adjK', 'srsK', 'formA', 'formK', 'forget', 'sigA', 'calEta', 'eloK', 'eloCarry', 'styleK', 'posShrink', 'hcaEta',
+              'lwEta', 'lwL2', 'p0.adj', 'p0.pa', 'p0.style', 'p0.km',
+              'use.adj', 'use.pos', 'use.form', 'use.avail', 'use.style', 'use.km', 'use.ebk', 'use.lgw', 'use.pace', 'use.paceSig'];
 const MIN_GAIN = 0.001, HALF_GAIN = 0.0003;
 /* the defaults with these settings over them */
 function apply(over) {
@@ -652,5 +741,6 @@ function summary(S) {
 }
 
 return { V, MODEL, MIN_GP, X_KEYS, COUNTS, LINE_KEYS, C, create, countsOf, countsOfRow, lineSelect, lineOf, gmsc, factors,
-         predict, learn, walk, ratings, pack, unpack, summary, apply, tune, judge, TUNE, DEFAULTS };
+         predict, learn, walk, ratings, pack, unpack, summary, apply, tune, judge, TUNE, DEFAULTS,
+         shrinkOf: (S, lg, s) => { const L = S.lg[lg + '|' + s]; return L ? ebShrink(S, L, s) : null; } };
 }));
