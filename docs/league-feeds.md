@@ -749,6 +749,37 @@ Added 2026-10-08. Test `scripts/ingest/macedonia_test.py` (in guard). Source `MS
 - Play-offs: not yet seen. Check the hosted page near the end of the regular season (March) and add a play-off row
   if they are a separate competition. The cup ("Kup na Makedonija") is not added.
 
+## Israel: Winner League (basket.co.il + Segev Stats)
+
+Added 2026-10-08. Adapter `ibsl` (`scripts/ingest/adapters/ibsl.py`, its docstring has the detail), test
+`scripts/ingest/ibsl_test.py` (in guard). Source `IBSL`, three rows: the regular season, the play-offs
+(`competition_kind playoff`) and the Winner Cup (`cup`); league slug `winner-league`, country IL (`brand/flags/il.svg`).
+Not FIBA LiveStats: the league's stats are kept by **Segev Stats**, which basket.co.il's own LIVESTATS page reads.
+
+- **Schedule:** `basket.co.il/ws/ws.asmx/Games?...&cYear=Y` (JSON, every competition of a season; cYear = the season's END
+  year, 2026-27 is 2027). Each game: basket.co.il's game id (the key; `game-zone.asp?GameId=`), date + time in Israel
+  time, both clubs (team1 home), the score once played, the board (5 Winner League, 16/26/17 its quarter-finals,
+  semi-finals and final series, 10 Winner Cup, 34 Supercup) and **ExternalID = the Segev game id**, "0" until assigned
+  (21 of the 182 league games of 2026-27 had one on 8 Oct 2026). Rows pick boards by name (`stage` regular / playoffs /
+  cup, or `board_match`). The Supercup is not added (Segev has no 2025 Supercup: "game not found").
+- **Clubs:** `ws.asmx/Teams?board_id=5&cYear=Y`: **TeamUID** is the club's id every season (Maccabi Tel Aviv 10, Hapoel
+  Holon 7 through its sponsor's change) and is the club code; the Games list's team ids are new every season.
+- **Game:** `stats.segevstats.com/realtimestat_heb/api/?method=getActions|getBoxScore&game_id=S` (no key). Translated
+  into FIBA data.json shape like the other translated leagues. Checked on 15 games of 2025-26 (overtime, double
+  overtime, every play-off round, the cup): box = actions re-counted for every player (352 lines), 5 starters, 200/225/250
+  minutes, stints cover the game with five a side and add up to the final; 3 cup games of 2026-27 the same, except
+  Segev's own box minutes a minute or two short of 200 and one game's operator slips (players scoring while recorded off).
+- **Segev's habits, handled:** a change typed across running seconds (2026-27) is one moment; a change at a period's 0:00
+  goes to the next period; an and-one's drawn foul points at the foul, not the shot; lay-ups, dunks and alley-oops are
+  drawn back to 1.2 m from the basket (operators tap them by area: only 14% within 1.22 m as tapped); `blocked` is a
+  miss; a game Segev never flags as finished is final once basket.co.il posts the same score three hours on; a result
+  that differs from the feed's (a 2025-26 semi-final awarded 20-1, the feed three quarters to 77-67) is held.
+- **Not in the play-by-play:** second-chance and off-turnover flags (the stint buckets stay 0); the box carries Segev's
+  own per-player fast-break and second-chance points and the club's published paint, off-turnover and bench points.
+- **Bio:** `bio_sources.ibsl`: the Winner League's clubs, then `ws.asmx/Players?team_uid=U&cYear=Y` per club (English
+  name, height in metres, birth date day-first; its "jersy" is the list's order, not the shirt, so no number).
+- **Next season:** nothing to change (cYear follows the season). Watch the board names if the league renames a phase.
+
 ## Czech Republic: ŽBL and 1. liga mužů (FIBA LiveStats via the federation's system)
 
 ### host

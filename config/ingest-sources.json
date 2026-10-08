@@ -3224,6 +3224,91 @@
       ]
     },
     {
+      "code": "IBSL",
+      "label": "Winner League",
+      "adapter": "ibsl",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "winner-league",
+      "league_name": "Winner League",
+      "league_country": "IL",
+      "adapter_config": {
+        "code": "IBSL",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://basket.co.il/ws/ws.asmx/Games"
+      ]
+    },
+    {
+      "code": "IBSL",
+      "label": "Winner League",
+      "adapter": "ibsl",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "winner-league",
+      "league_name": "Winner League",
+      "league_country": "IL",
+      "competition_label": "Winner League Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "IBSL",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://basket.co.il/ws/ws.asmx/Games#playoffs"
+      ]
+    },
+    {
+      "code": "IBSL",
+      "label": "Winner League",
+      "adapter": "ibsl",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        10,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "winner-league",
+      "league_name": "Winner League",
+      "league_country": "IL",
+      "competition_label": "Winner Cup",
+      "competition_kind": "cup",
+      "adapter_config": {
+        "code": "IBSL",
+        "stage": "cup",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://basket.co.il/ws/ws.asmx/Games#cup"
+      ]
+    },
+    {
       "code": "NBB",
       "label": "NBB",
       "adapter": "lnbbr",

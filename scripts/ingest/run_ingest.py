@@ -2736,7 +2736,7 @@ REFRESH = {"on": False}             # set from --refresh in main(): reopen final
 
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
                          "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel", "kbl",
-                         "aba", "basketfi", "lnbbr", "nbl", "ncaa", "fiba_events"}
+                         "aba", "basketfi", "lnbbr", "nbl", "ncaa", "fiba_events", "ibsl"}
 #: adapters that cannot read a past season at all, and why - said on the console's request, not only in a log
 NO_PAST = {"bbl": "the BBL's schedule is its site's season being played, and its API refuses scripts"}
 _SPLIT_SEASON = re.compile(r"\d{4}\s*[-/]\s*\d{2,4}")

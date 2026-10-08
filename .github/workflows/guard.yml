@@ -1042,6 +1042,12 @@ jobs:
         # no club codes on that page, so sync_clubs takes each club's code and crest off a LiveStats preview page
         run: python scripts/ingest/macedonia_test.py
 
+      - name: Winner League (Israel) from basket.co.il + Segev Stats
+        # basket.co.il's Games list (key: its game id; ExternalID = the Segev id, "0" until assigned) and Teams (TeamUID,
+        # the club's id every season); Segev's actions + box translated to FIBA shape: box = actions re-counted, stints,
+        # changes typed across seconds as one, and-one drawn fouls to their foul, lay-ups at the rim, awarded games held
+        run: python scripts/ingest/ibsl_test.py
+
       - name: CEBL (Canada) on FIBA LiveStats via the league's own API
         # fiba_site_schedule site "cebl": api.data.cebl.ca's season (the calendar year) names every game's
         # LiveStats match; the regular season and the finals apart, cancelled if-necessary games left out,

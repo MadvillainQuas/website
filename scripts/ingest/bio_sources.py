@@ -11,6 +11,7 @@ What each source gives, found by looking, not assumed (2026-09-27):
   euroleague / eurocup   one feed for the season's whole people list: height, weight, date of birth (~97% with all three)
   basketligaen (men)     the site's own API: a roster per club, then one athlete page per NEW player (height, weight, date)
   lega-basket-serie-a    the league's API: one roster per club (date, height, weight, shirt)
+  winner-league          basket.co.il's own services: one roster per club (date, height in metres; no weight, no shirt)
   lnb-elite / -2         the league's API: one roster per club (date, height; no weight anywhere). Refuses a GitHub runner
   nbl / wnbl / nbl1-*    the NBL service's players-in-season list (date, height, weight; NBL1 often has no height)
   aba-league(-2, -u19)   each club's page on the league's site: a roster table (date, height; no weight)
@@ -234,6 +235,40 @@ def lba(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]
                 yield {"first": p.get("name"), "last": p.get("surname"), "team": p.get("team_name") or t.get("name"),
                        "number": p.get("player_number"), "height_cm": p.get("height"), "weight_kg": p.get("weight"),
                        "birth": p.get("birth_date"), "label": f"{p.get('name')} {p.get('surname')}"}
+
+
+# ------------------------------------------------------------------- Winner League ---
+def _dmy(s) -> str | None:
+    """basket.co.il's '04/12/1994' (day first) -> '1994-12-04'."""
+    m = re.match(r"^\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*$", str(s or ""))
+    return f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}" if m else None
+
+
+def ibsl(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+    """basket.co.il's own services (what its LIVESTATS page reads): the Winner League's clubs for the season, then one
+    roster per club - English name, height in metres, date of birth day-first; no weight. A nickname in quotes
+    ('Gabriel "Iffe" Lundberg') is left out of the name. This season and last (a season goes by its END year)."""
+    from adapters import ibsl as I
+    y = _season_start(today)
+    for start in (y, y - 1):
+        year = start + 1
+        teams = (get_json(f"{I.SITE}/ws/ws.asmx/Teams", {"board_id": 5, "cYear": year}) or {}).get("teams") or []
+        n = 0
+        for t in teams:
+            club = _html.unescape(t.get("teamEng") or "").strip()
+            for p in (get_json(f"{I.SITE}/ws/ws.asmx/Players", {"team_uid": t.get("TeamUID"), "cYear": year, "team_id": 0}) or {}).get("players") or []:
+                name = re.sub(r'\s*"[^"]*"\s*', " ", _html.unescape(p.get("name_eng") or "")).strip()
+                if not name:
+                    continue
+                try:
+                    h = float(str(p.get("Height") or "").replace(",", "."))
+                except ValueError:
+                    h = 0.0
+                n += 1
+                # no shirt: its "jersy" is the roster's own order (00, 01, 02 ... down a club's list), not the number worn
+                yield {"name": name, "team": club,
+                       "height_cm": round(h * 100) if 1.4 <= h <= 2.4 else None, "birth": _dmy(p.get("birth_date")), "label": name}
+        log(f"     basket.co.il {year - 1}-{str(year)[2:]}: {len(teams)} clubs, {n} players")
 
 
 # ------------------------------------------------------------------------------ LNB ---
@@ -1243,6 +1278,7 @@ READERS: dict = {
     "basketligaen": basketligaen,
     "bnxt-league": bnxt,
     "lega-basket-serie-a": lba,
+    "winner-league": ibsl,
     "lnb-elite": lnb(1),
     "lnb-elite-2": lnb(2),
     "nbl": nbl_family("nbl"),
