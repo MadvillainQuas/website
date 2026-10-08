@@ -6,6 +6,20 @@
   if (!I) return;
   I.register('ja', {
     phrases: {
+      /* every stamp on the feed and HOME, the stamp on screen, arenas ticked off (0258, 2026-10-08) */
+      'a fan': 'ファン',
+      'you': 'あなた',
+      'arena ticked off': 'アリーナ達成',
+      'arenas ticked off': 'アリーナ達成',
+      'tap to carry on': 'タップして続ける',
+      'just stamped': 'たった今のスタンプ',
+      'Nobody has stamped an arena yet. Be the first: go to a game and stamp it on EPINOIA GO.': 'まだ誰もアリーナをスタンプしていません。最初の一人に：試合に行って、EPINOIA GOでスタンプしましょう。',
+      'how it works →': '使い方 →',
+      'once': '1回',
+      'No arenas ticked off yet.': 'まだ達成したアリーナはありません。',
+      'Arenas ticked off': '達成したアリーナ',
+      'ticked off on your profile →': 'プロフィールで達成を見る →',
+      'on the feed →': 'フィードで見る →',
       /* a league's Community page (community/) */
       'Forum': 'フォーラム',
       'Content creators': 'コンテンツクリエイター',
@@ -230,12 +244,12 @@
       'Stamped: another visit.': 'スタンプしました：再訪です。',
       'stamp this game': 'この試合をスタンプ',
       'You are public': 'あなたは公開中です',
-      'Your stamps are on the feed, and you are on the leaderboards.': 'あなたのスタンプはフィードに、あなた自身はランキングに表示されています。',
+      'Your stamps are on the feed under your name, and you are on the leaderboards.': 'あなたのスタンプはあなたの名前でフィードに表示され、ランキングにも載っています。',
       'go private': '非公開にする',
-      'Your stamps are not on the feed yet': 'あなたのスタンプはまだフィードに表示されていません',
-      'Show your stamps on the feed too?': 'スタンプもフィードに表示しますか？',
-      'show my stamps': 'スタンプを表示する',
-      'Want your stamps on the feed?': 'あなたのスタンプをフィードに載せませんか？',
+      'Your stamps are on the feed without your name': 'あなたのスタンプは名前なしでフィードに表示されています',
+      'Put your name on your stamps too?': 'スタンプにも名前を表示しますか？',
+      'show my name': '名前を表示する',
+      'Want your name on your stamps?': 'スタンプに名前を表示しませんか？',
       'go public': '公開する',
       'Choose a username first: it is how everyone sees you.': 'まずユーザー名を選んでください。みんなにはその名前で表示されます。',
       'Your username and your stamps show to everyone, on the feed and the leaderboards. Never your email or your notes, and you can go private any time.': 'ユーザー名とスタンプが、フィードとランキングで全員に表示されます。メールアドレスやメモは表示されません。いつでも非公開に戻せます。',
@@ -271,6 +285,12 @@
       'hit rate': '的中率',
       'to the fixtures': '試合日程へ'
     },
+    patterns: [
+      /* EPINOIA GO: how long ago, how many times (stampcard.js, arenaticks.js) */
+      [/^(\d+) min ago$/, '$1分前'],
+      [/^(\d+) h ago$/, '$1時間前'],
+      [/^(\d+) times$/, '$1回'],
+    ],
     units: {
       'arena': '{n}アリーナ',
       'arenas': '{n}アリーナ'

@@ -17,6 +17,14 @@
 
   I.register('es', {
     phrases: {
+      /* the hub's arenas ticked off (EPINOIA GO, 2026-10-08) */
+      'Arenas ticked off': 'Pabellones conseguidos',
+      'Every arena you have stamped on EPINOIA GO': 'Todos los pabellones que has sellado en EPINOIA GO',
+      'your stamps →': 'tus sellos →',
+      'No arenas ticked off yet. Go to a game, stamp the arena with your phone, and it is ticked off here.': 'Aún no hay pabellones conseguidos. Ve a un partido, sella el pabellón con tu móvil y aparecerá conseguido aquí.',
+      'arena ticked off': 'pabellón conseguido',
+      'arenas ticked off': 'pabellones conseguidos',
+      'once': 'una vez',
       /* the fan's page editor (me/fanprofile.js, 0197) */
       'Your page': 'Tu página',
       'From your accounts': 'Desde tus cuentas',
@@ -398,6 +406,8 @@
 
     /* sentences the pages build around a name, a date, an address or a count */
     patterns: [
+      /* EPINOIA GO: how long ago, how many times (stampcard.js, arenaticks.js) */
+      [/^(\d+) times$/, '$1 veces'],
       /* your profile */
       [/^(\d+) clubs? followed$/, m => m[1] + (m[1] === '1' ? ' club seguido' : ' clubes seguidos')],
       [/^Nobody by that name in (.+)\.$/, 'No hay nadie con ese nombre en $1.'],

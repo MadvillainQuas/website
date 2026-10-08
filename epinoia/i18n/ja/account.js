@@ -12,6 +12,14 @@
 
   I.register('ja', {
     phrases: {
+      /* the hub's arenas ticked off (EPINOIA GO, 2026-10-08) */
+      'Arenas ticked off': '達成したアリーナ',
+      'Every arena you have stamped on EPINOIA GO': 'EPINOIA GOでスタンプしたすべてのアリーナ',
+      'your stamps →': 'あなたのスタンプ →',
+      'No arenas ticked off yet. Go to a game, stamp the arena with your phone, and it is ticked off here.': 'まだ達成したアリーナはありません。試合に行ってスマートフォンでアリーナをスタンプすると、ここで達成になります。',
+      'arena ticked off': 'アリーナ達成',
+      'arenas ticked off': 'アリーナ達成',
+      'once': '1回',
       /* the fan's page editor (me/fanprofile.js, 0197) */
       'Your page': 'あなたのページ',
       'From your accounts': 'アカウントから',
@@ -393,6 +401,8 @@
 
     /* sentences the pages build around a name, a date, an address or a count */
     patterns: [
+      /* EPINOIA GO: how long ago, how many times (stampcard.js, arenaticks.js) */
+      [/^(\d+) times$/, '$1回'],
       /* your profile */
       [/^(\d+) clubs? followed$/, '$1クラブをフォロー中'],
       [/^Nobody by that name in (.+)\.$/, '$1にその名前の選手はいません。'],

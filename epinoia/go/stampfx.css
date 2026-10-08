@@ -1,0 +1,61 @@
+/* ============================================================================
+   THE STAMP, ON SCREEN (stampfx.js): the screen dims, the plate comes down at a slant and lands, a ring of ink
+   and a burst of the kit's colours where it does, the screen gives a little; then "ARENA TICKED OFF ✓" and the
+   numbers. Fixed over everything, sized by its insets (the kit zooms <body>). Reduced motion: a fade.
+   ============================================================================ */
+.gsx{position:fixed;inset:0;z-index:7000;display:grid;place-items:center;padding:24px;cursor:pointer;
+  background:radial-gradient(60% 50% at 50% 46%,rgba(147,242,191,.18),rgba(4,10,8,.9) 70%);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);opacity:0;transition:opacity .22s ease}
+.gsx.on{opacity:1}
+.gsx.out{opacity:0;transition:opacity .38s ease}
+.gsx-stage{position:relative;display:grid;place-items:center;gap:22px;max-width:min(520px,100%)}
+.gsx.on:not(.calm) .gsx-stage{animation:gsx-shake .26s linear .3s 1}
+
+/* the plate: GO's stamp, big */
+.gsx-plate{position:relative;display:grid;justify-items:center;gap:6px;padding:20px 30px 18px;text-align:center;color:#93f2bf;
+  border:4px double currentColor;border-radius:10px;background:rgba(4,12,8,.72);
+  box-shadow:0 0 0 2px rgba(147,242,191,.18),0 0 40px -8px rgba(147,242,191,.55);
+  transform:rotate(-7deg) scale(2.6);opacity:0;max-width:100%}
+.gsx.on .gsx-plate{animation:gsx-slam .42s cubic-bezier(.2,1.5,.35,1) .06s forwards}
+.gsx-plate::after{content:"";position:absolute;inset:7px;border:1px dashed rgba(147,242,191,.4);border-radius:6px;pointer-events:none}
+.gsx-k{font-family:var(--f-micro,var(--f-ui,sans-serif));font-size:10px;letter-spacing:.32em;text-transform:uppercase;opacity:.9}
+.gsx-v{font-family:var(--f-go,var(--f-score,sans-serif));font-weight:700;font-size:clamp(24px,7vw,40px);line-height:1.05;letter-spacing:.02em;
+  text-transform:uppercase;overflow-wrap:anywhere;text-shadow:0 0 18px rgba(147,242,191,.55)}
+.gsx-d{font-family:var(--f-data,var(--f-ui,sans-serif));font-size:12px;letter-spacing:.06em;opacity:.85}
+
+/* where it lands */
+.gsx-ring{position:absolute;left:50%;top:var(--gsx-y,38%);width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;
+  border:3px solid rgba(147,242,191,.85);opacity:0;pointer-events:none}
+.gsx.on:not(.calm) .gsx-ring{animation:gsx-ring .7s ease-out .36s forwards}
+.gsx-burst{position:absolute;left:50%;top:var(--gsx-y,38%);width:0;height:0;pointer-events:none}
+.gsx-burst i{position:absolute;left:0;top:0;width:var(--s);height:var(--s);margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+  background:var(--c);border-radius:2px;opacity:0;transform:translate(0,0) rotate(0)}
+.gsx.on .gsx-burst i{animation:gsx-fly .9s cubic-bezier(.15,.8,.3,1) .38s forwards}
+
+/* after it lands */
+.gsx-after{display:grid;justify-items:center;gap:10px;opacity:0;transform:translateY(10px)}
+.gsx.on .gsx-after{animation:gsx-up .4s ease .62s forwards}
+.gsx-tick{display:inline-flex;align-items:center;gap:4px;padding:9px 18px;border-radius:999px;background:#93f2bf;color:#04100b;
+  font-family:var(--f-micro,var(--f-ui,sans-serif));font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+  box-shadow:0 10px 26px -10px rgba(147,242,191,.9)}
+.gsx-tick b{font-size:14px;letter-spacing:0}
+.gsx-new{font-family:var(--f-micro,var(--f-ui,sans-serif));font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#ffe14d}
+.gsx-n{display:flex;gap:14px;align-items:baseline;color:rgba(240,250,245,.8);font-family:var(--f-ui,sans-serif);font-size:12px}
+.gsx-n b{font-family:var(--f-score,sans-serif);font-weight:400;font-size:22px;color:#f4fbf8;margin-left:5px}
+.gsx-tap{font-family:var(--f-micro,var(--f-ui,sans-serif));font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:rgba(240,250,245,.5)}
+
+@keyframes gsx-slam{0%{transform:rotate(-16deg) scale(2.6);opacity:0}
+  55%{opacity:1}
+  70%{transform:rotate(-6deg) scale(.94);opacity:1}
+  100%{transform:rotate(-7deg) scale(1);opacity:1}}
+@keyframes gsx-shake{0%,100%{transform:translate(0,0)}20%{transform:translate(-4px,2px)}40%{transform:translate(3px,-3px)}
+  60%{transform:translate(-2px,3px)}80%{transform:translate(2px,-1px)}}
+@keyframes gsx-ring{0%{opacity:.9;transform:scale(.6)}100%{opacity:0;transform:scale(3.2)}}
+@keyframes gsx-fly{0%{opacity:1;transform:translate(0,0) rotate(0)}
+  100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r))}}
+@keyframes gsx-up{to{opacity:1;transform:none}}
+
+/* reduced motion: a fade, the plate in place */
+.gsx.calm .gsx-plate{transform:rotate(-7deg);opacity:1}
+.gsx.calm .gsx-after{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){ .gsx .gsx-plate,.gsx .gsx-after,.gsx .gsx-stage{animation:none !important} }

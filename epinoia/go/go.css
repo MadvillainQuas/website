@@ -399,3 +399,7 @@ a.lb-who:hover{text-decoration:underline;text-underline-offset:3px}
 .go-hero-tag,.gb-sub,.lb-by .d,.feed-empty p{text-wrap:balance}
 :root:lang(ja) .go-hero-tag,:root:lang(ja) .gb-sub,:root:lang(ja) .lb-by .d,:root:lang(ja) .gi-msg,
 :root:lang(ja) .go-empty,:root:lang(ja) .sl-side{word-break:auto-phrase}
+/* after a stamp: to the profile, where it is ticked off, and to the feed */
+.go-stamped-links{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px}
+.go-stamped-links a{font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--lume);text-decoration:none}
+.go-stamped-links a:hover{text-decoration:underline}

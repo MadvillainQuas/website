@@ -206,6 +206,12 @@ function mount(host, o) {
       if (r.missing) return show('EPINOIA GO opens soon.', 'warn');
       if (r.error || !r.data) return show('It did not stamp. Try again in a moment.', 'bad');
       if (r.data.ok) {
+        /* the stamp, on screen (stampfx.js, where the page loads it): a fresh one only */
+        const FX = typeof globalThis !== 'undefined' ? globalThis.EpinoiaStampFx : null;
+        if (!r.data.already && FX) {
+          FX.play({ venue: r.data.venue || g.venue || o.venueName, city: g.city, at: r.data.stamped_at,
+                                     first: !!r.data.first_time_here, arenas: r.data.arenas, stamps: r.data.stamps });
+        }
         const pairs = r.data.already ? [] : [['Arenas', String(r.data.arenas)], ['Stamps', String(r.data.stamps)]];
         return show(r.data.already ? 'You had already stamped this game.' : (r.data.first_time_here ? 'Stamped: a new arena.' : 'Stamped: another visit.'),
           'ok', pairs, { text: 'your stamps', href: base + 'go/stamps/' });

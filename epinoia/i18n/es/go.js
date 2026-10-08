@@ -6,6 +6,20 @@
   if (!I) return;
   I.register('es', {
     phrases: {
+      /* every stamp on the feed and HOME, the stamp on screen, arenas ticked off (0258, 2026-10-08) */
+      'a fan': 'un aficionado',
+      'you': 'ti',
+      'arena ticked off': 'pabellón conseguido',
+      'arenas ticked off': 'pabellones conseguidos',
+      'tap to carry on': 'toca para seguir',
+      'just stamped': 'últimos sellos',
+      'Nobody has stamped an arena yet. Be the first: go to a game and stamp it on EPINOIA GO.': 'Aún nadie ha sellado un pabellón. Sé el primero: ve a un partido y séllalo en EPINOIA GO.',
+      'how it works →': 'cómo funciona →',
+      'once': 'una vez',
+      'No arenas ticked off yet.': 'Aún no hay pabellones conseguidos.',
+      'Arenas ticked off': 'Pabellones conseguidos',
+      'ticked off on your profile →': 'conseguido en tu perfil →',
+      'on the feed →': 'en el muro →',
       /* a league's Community page (community/) */
       'Forum': 'Foro',
       'Content creators': 'Creadores de contenido',
@@ -230,12 +244,12 @@
       'Stamped: another visit.': 'Sellado: otra visita.',
       'stamp this game': 'sellar este partido',
       'You are public': 'Eres público',
-      'Your stamps are on the feed, and you are on the leaderboards.': 'Tus sellos están en el muro y apareces en las clasificaciones.',
+      'Your stamps are on the feed under your name, and you are on the leaderboards.': 'Tus sellos están en el muro con tu nombre y apareces en las clasificaciones.',
       'go private': 'volver a privado',
-      'Your stamps are not on the feed yet': 'Tus sellos todavía no están en el muro',
-      'Show your stamps on the feed too?': '¿Quieres mostrar también tus sellos en el muro?',
-      'show my stamps': 'mostrar mis sellos',
-      'Want your stamps on the feed?': '¿Quieres tus sellos en el muro?',
+      'Your stamps are on the feed without your name': 'Tus sellos están en el muro sin tu nombre',
+      'Put your name on your stamps too?': '¿Quieres poner también tu nombre en tus sellos?',
+      'show my name': 'mostrar mi nombre',
+      'Want your name on your stamps?': '¿Quieres tu nombre en tus sellos?',
       'go public': 'hacerme público',
       'Choose a username first: it is how everyone sees you.': 'Elige primero un nombre de usuario: es como te verán todos.',
       'Your username and your stamps show to everyone, on the feed and the leaderboards. Never your email or your notes, and you can go private any time.': 'Tu nombre de usuario y tus sellos se muestran a todos, en el muro y en las clasificaciones. Nunca tu correo ni tus notas, y puedes volver a privado cuando quieras.',
@@ -271,6 +285,12 @@
       'hit rate': '% de acierto',
       'to the fixtures': 'Al calendario'
     },
+    patterns: [
+      /* EPINOIA GO: how long ago, how many times (stampcard.js, arenaticks.js) */
+      [/^(\d+) min ago$/, 'hace $1 min'],
+      [/^(\d+) h ago$/, 'hace $1 h'],
+      [/^(\d+) times$/, '$1 veces'],
+    ],
     units: {
       'arena': '{n} pabellón',
       'arenas': '{n} pabellones'

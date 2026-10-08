@@ -8,6 +8,8 @@
    and - later - a public profile. It takes a row of go_feed() (kind 'stamp') and returns one link.
 
    A stamp of a game that was removed later has no clubs: the card is the arena and the day.
+   WHO (0258): a fan who went public is "@user"; every other stamp is on the feed with no name - "a fan" - and the
+   reader's own (go_stamps_latest `mine`) is "you". o.ago adds how long ago it was stamped ("4 min ago").
    ============================================================================ */
 (function (root, factory) {
   const api = factory();
@@ -39,6 +41,23 @@ function whenText(iso, tz, locale, now) {
     day: new Intl.DateTimeFormat(locale, opts).format(ms),
     time: clock === '00:00' ? '' : new Intl.DateTimeFormat(locale, { timeZone: zone, hour: '2-digit', minute: '2-digit' }).format(ms),
   };
+}
+
+/* how long ago, in words a card has room for: "just now", "4 min ago", "3 h ago", then the day */
+function agoText(iso, now) {
+  const ms = Date.parse(iso);
+  if (!isFinite(ms)) return '';
+  const s = Math.max(0, ((now == null ? Date.now() : now) - ms) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + ' min ago';
+  if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+  return '';
+}
+/* who stamped it, as the card says it: "@user", "you", or "a fan" (a stamp shown without a name, 0258) */
+function whoOf(row) {
+  if (row && row.mine) return { text: 'you', named: false };
+  if (row && row.username) return { text: '@' + row.username, named: true };
+  return { text: 'a fan', named: false };
 }
 
 /* a club as epinoiaCrest reads it, from a feed row's flat columns */
@@ -81,7 +100,12 @@ function build(row, o) {
   const k = body.appendChild(el('span', 'sc-k'));
   k.appendChild(el('span', null, 'stamped by'));
   k.appendChild(document.createTextNode(' '));
-  k.appendChild(data('b', null, '@' + (row.username || '')));
+  const who = whoOf(row);
+  k.appendChild(who.named ? data('b', null, who.text) : el('b', null, who.text));
+  const ago = opt.ago ? agoText(row.created_at) : '';
+  if (ago) { k.appendChild(document.createTextNode(' · ')); k.appendChild(el('span', 'sc-ago', ago)); }
+  if (!row.username) a.classList.add('sc-anon');
+  if (row.mine) a.classList.add('sc-mine');
   body.appendChild(data('span', 'sc-title', teams ? (row.home || '—') + ' v ' + (row.away || '—') : (row.venue || '—')));
   const w = whenText(row.tipoff_at || row.created_at, row.tz, loc);
   if (w.day) {
@@ -95,5 +119,5 @@ function build(row, o) {
   return a;
 }
 
-return { build, whenText, teamOf, colourOf };
+return { build, whenText, teamOf, colourOf, agoText, whoOf };
 }));

@@ -419,6 +419,16 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/go-range.test.mjs
 
+      - name: Every stamp on the feed and HOME (EPINOIA GO, migration 0258), and the phone's best fix
+        # on a real Postgres (PGlite): every stamp on the feed, a public fan by username and everybody else with none;
+        # a username searched for never finds an unnamed stamp; youth and private leagues kept out; go_stamps_latest
+        # newest first with the reader's own as theirs; neither read names an account id. And geo.js: the phone
+        # watched for its best fix (a cell mast's answer never taken while a better one comes)
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/go-every-stamp.test.mjs
+          node supabase/tests/geo.test.mjs
+
       - name: The EPINOIA GO page (epinoia/go/)
         # what a game is to a fan standing somewhere, the order games are listed in; every refusal the
         # check can give has words, in ja and es too; the location leaves the phone in the stamp call only

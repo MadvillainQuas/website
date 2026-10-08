@@ -147,13 +147,13 @@ const buttons = n => all(n, c => c.tagName === 'button' || (c.tagName === 'a' &&
   const host = new N('div');
   P.mount(host, { rpc: s.rpc, settings: Object.assign({}, st), variant: 'card' });
   ok('on the leaderboards from before the feed: asked once about the stamps - show them, or come off',
-     /Show your stamps on the feed too\?/.test(host.textContent) && buttons(host).map(b => b.textContent).join() === 'show my stamps,take me off');
+     /Put your name on your stamps too\?/.test(host.textContent) && buttons(host).map(b => b.textContent).join() === 'show my name,take me off');
   buttons(host)[0].click();
   await settle();
   ok('...one tap and they are shown', st.stamps === true && /You are public/.test(host.textContent));
   const strip = new N('div');
   P.mount(strip, { rpc: s.rpc, settings: { public: true, stamps: false, adult: true, username: 'louie' }, variant: 'strip' });
-  ok('a strip for such a fan says so, in one line, with one button', /Your stamps are not on the feed yet/.test(strip.textContent) && buttons(strip).length === 1);
+  ok('a strip for such a fan says so, in one line, with one button', /Your stamps are on the feed without your name/.test(strip.textContent) && buttons(strip).length === 1);
   const none = new N('div');
   P.mount(none, { rpc: s.rpc, settings: { public: true, stamps: true, adult: true, username: 'louie' }, variant: 'strip' });
   ok('a strip asks a fan who is already public nothing', none.children.length === 0);
@@ -280,18 +280,19 @@ ok('the lede says what comes first', /Photographs of stamped games first, then t
 /* ------------------------------------------------------------------- what is promised --- */
 console.log('\nthe privacy notice and the words');
 const priv = rd('epinoia', 'privacy', 'index.html');
-ok('the notice says what going public shows, never the email or the notes, and that stamps are private otherwise',
+ok('the notice says what going public shows, never the email or the notes, and that every stamp shows without a name otherwise (0258)',
    /Going public<\/div>/.test(priv) && /your stamps on the feed: the game, the arena and the date, under your username\. Never your email or your notes\./.test(priv)
-   && /Your stamps are private too, unless you go public/.test(priv));
+   && /Every stamp shows on EPINOIA GO&rsquo;s feed and on HOME: without your name, as &ldquo;a fan&rdquo;, with the game, the arena and the time only, unless you go public/.test(priv)
+   && !/Your stamps are private too, unless you go public/.test(priv));
 ok('...and no longer says the leaderboards never show which arenas', !/never your email or which arenas/.test(priv));
-ok('...says a fan already on the leaderboards keeps their stamps private until they say otherwise', /your stamps stay private until you say otherwise/.test(priv));
+ok('...says a fan already on the leaderboards has their stamps shown without their name until they say otherwise', /your stamps show without your name until you say otherwise/.test(priv));
 for (const code of ['ja', 'es']) {
   const go = rd('epinoia', 'i18n', code, 'go.js'), info = rd('epinoia', 'i18n', code, 'info.js');
-  const miss = ['You are public', 'go private', 'go public', 'show my stamps', 'Want your stamps on the feed?', 'stamped by', 'Stamps without a photograph',
-    'Your stamps are not on the feed yet', 'Show your stamps on the feed too?', 'Confirm you are 18 or over.', 'Nothing here yet.', 'username'].filter(w => !go.includes("'" + w + "':"));
+  const miss = ['You are public', 'go private', 'go public', 'show my name', 'Want your name on your stamps?', 'stamped by', 'Stamps without a photograph',
+    'Your stamps are on the feed without your name', 'Put your name on your stamps too?', 'Confirm you are 18 or over.', 'Nothing here yet.', 'username'].filter(w => !go.includes("'" + w + "':"));
   ok(code + ': the card, the strip, the cards and the wall are translated', !miss.length, miss);
   ok(code + ': the privacy notice\'s new paragraphs are translated and the old ones gone',
-     info.includes("'Going public':") && info.includes('Your stamps are private too, unless you go public') && !info.includes('never your email or which arenas'));
+     info.includes("'Going public':") && info.includes('Every stamp shows on EPINOIA GO’s feed and on HOME') && !info.includes('Your stamps are private too, unless you go public') && !info.includes('never your email or which arenas'));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

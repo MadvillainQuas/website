@@ -178,9 +178,10 @@ function photoAt(i, dir) {
   return -1;
 }
 
-/* A STAMP: the find-a-game cards' look (stampcard.js), two tiles wide, into that fan's page on the wall */
+/* A STAMP: the find-a-game cards' look (stampcard.js), two tiles wide, into that fan's page on the wall - or, a stamp
+   shown without a name (0258), that game's */
 function stampTile(x) {
-  const f = { sort: S.f.sort, username: x.username };
+  const f = x.username ? { sort: S.f.sort, username: x.username } : x.game_id ? { sort: S.f.sort, game: x.game_id } : { sort: S.f.sort, venue: x.venue_id };
   return window.EpinoiaGoStampCard.build(x, { href: location.pathname + writeParams(f), cls: 'gp-sc', onOpen: () => go(f) });
 }
 

@@ -416,3 +416,23 @@ cards, the strip and today's games list are `go/arenas.css`, which every page sh
       hover, it is always shown. The section stays shut when GO is not open. HOME's pills are HOME's own pill (the
       micro face, the count in a lume bubble, a caret), and the section sits above the ones after it so the list hangs
       over them. Ja/es. Tests: `go-page.test.mjs` (the HOME section, `openAt`, the stylesheet split).
+- [x] **7.18 Every stamp on the feed and HOME; the stamp on screen; arenas ticked off** (Louie, 2026-10-08; migration
+      0258) - "it all needs to go into the feed and show on the home page when stamped, an animation on screen when a
+      place is stamped, and the EPINOIA profile showing that arena ticked off".
+      - **Every stamp on the feed** (`go_feed`, rewritten): a fan who went public (0177's rule) by username, everybody
+        else with NO name - "a fan" - never an account id, note or location; a username searched for finds only named
+        stamps (an unnamed one is never matched by the name it hides). Youth and private leagues as before. No stamp
+        existed on 2026-10-08 (17 tries, 16 refused as imprecise), so nobody's old stamp became visible; any made
+        since shows by itself (the feed is read from the stamps, nothing is copied). The privacy notice says so (ja/es),
+        and GO's go-public card now asks about "your name on your stamps".
+      - **HOME, JUST STAMPED** (`home/go-home.js`, `go_stamps_latest`): every stamp newest first as stamp cards, "you"
+        for the reader's own (`mine`, never anybody else's), with how long ago; read every minute while in view, a new
+        one landing; none yet, an invitation; before 0258, away.
+      - **The stamp on screen** (`go/stampfx.js`, `stampfx.css`): the plate slams down at a slant, a ring of ink, a
+        burst, the screen gives; "ARENA TICKED OFF ✓", a new arena, the numbers; a buzz; a tap or 3.8 s ends it;
+        reduced motion fades. On the GO page and STAMP THIS GAME (game and club pages).
+      - **Arenas ticked off** (`go/arenaticks.js`): the hub (`profile/#arenas`, the fan's own stamps; `?ticked=` lands
+        the one just stamped - the GO page's stamped panel links there) and the fan page (the stamps they show).
+      - **The phone's best fix** (`go/geo.js`): watched up to 10 s for a fix within 100 m, else the best it gave, a
+        cell mast's first answer no longer taken - the cause of the 2026-10-04 refusals.
+      Tests: `go-every-stamp.test.mjs` (PGlite 16), `geo.test.mjs` 14, go-public 70, go-page 173; Chromium 48.

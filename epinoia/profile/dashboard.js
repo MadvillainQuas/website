@@ -15,6 +15,8 @@
      LEAGUES       a tile each: the badge, the name, the next game
      CLUBS         a tile each: the crest, the league, the last result (won or lost) and the next game
      PLAYERS       a tile each: the picture, the club, the latest line and when it was
+     ARENAS        EPINOIA GO: every arena they have stamped, ticked off (their own stamps; go/arenaticks.js), the one
+                   just stamped (?ticked=) landing
    The follow lists are fan_prefs' own (the bells on every league, club and player page write them). Every read
    failing leaves its section away rather than the page broken, and a database without 0224/0225 draws the rest.
 
@@ -534,7 +536,20 @@ async function mount(o) {
   S.fan = (fp && !fp.error && fp.data) || null;
   paintHead();
   wireCustomise();
-  await Promise.all([loadReports(), loadFollows().catch(() => { /* the sections stay as they are */ })]);
+  await Promise.all([loadReports(), loadFollows().catch(() => { /* the sections stay as they are */ }), loadArenas().catch(() => { /* away */ })]);
+}
+
+/* ARENAS TICKED OFF: the fan's own stamps (only they may read them, 0165), an arena a tile */
+async function loadArenas() {
+  const sec = doc.getElementById('arenas'), host = doc.getElementById('arGrid'), T = root.EpinoiaArenaTicks;
+  if (!sec || !host || !T) return;
+  const r = await S.sb.from('stamps').select('id,stamped_at,venue_id,venues(id,name,city,country)').order('stamped_at', { ascending: false }).limit(1000);
+  if (r.error) return;                                   // before EPINOIA GO's tables: the section stays away
+  let fresh = null;
+  try { fresh = new URLSearchParams(root.location.search).get('ticked'); } catch (_) { fresh = null; }
+  T.draw(host, T.group(r.data || []), { goHref: '../go/', fresh,
+    empty: 'No arenas ticked off yet. Go to a game, stamp the arena with your phone, and it is ticked off here.' });
+  sec.classList.remove('hide');
 }
 
 return { mount, kindOf, sizeWords, dayWords, fileName, initialOf, isNew, titleOf, bannerOf, resultOf, lineOf, lineBits, latestLines, glance,

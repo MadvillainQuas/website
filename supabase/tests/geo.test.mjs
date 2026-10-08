@@ -23,5 +23,21 @@ r=await G.locate(); ok('falls back to a coarse fix', r.lat===3&&calls.join()==='
 calls=[]; G=mk(IOS,{geo:{getCurrentPosition:(ok1,err,o)=>{calls.push(1);err({code:1})}}});
 r=await G.locate(); ok('denied is final', r.error==='denied'&&calls.length===1);
 G=mk(IOS,{secure:false,geo:{getCurrentPosition(){}}}); r=await G.locate(); ok('insecure', r.error==='insecure');
+// THE FIX GIVEN TIME TO SETTLE (2026-10-08): a phone that can be watched is, for its best fix
+const watcher=(fixes,o={})=>{ const w={cleared:0,opts:null,coarse:0};
+  w.geo={ watchPosition:(okf,errf,opts)=>{ w.opts=opts; (o.err?[()=>errf(o.err)]:[]).concat(fixes.map(a=>()=>okf({coords:{latitude:a[0],longitude:a[1],accuracy:a[2]}}))).forEach((f,i)=>setTimeout(f,5+i*5)); return 7; },
+          clearWatch:id=>{ if(id===7) w.cleared++; },
+          getCurrentPosition:(okf,errf,opts)=>{ w.coarse++; okf({coords:{latitude:9,longitude:9,accuracy:2500}}); } };
+  return w; };
+let w=watcher([[1,1,1800],[2,2,40],[3,3,20]]); G=mk(AND,{geo:w.geo}); r=await G.locate({settleMs:400});
+ok('watched: the first good fix (40 m) is taken at once, over a cell mast\'s 1,800 m, and the watch is stopped', r.lat===2&&r.accuracy===40&&w.cleared===1&&w.opts.enableHighAccuracy===true&&w.coarse===0);
+w=watcher([[1,1,1500],[2,2,900],[3,3,1200]]); G=mk(AND,{geo:w.geo}); r=await G.locate({settleMs:120});
+ok('...none good enough by the end: the best of them (900 m), never a timeout', r.lat===2&&r.accuracy===900&&w.cleared===1&&w.coarse===0);
+w=watcher([],{err:{code:1}}); G=mk(AND,{geo:w.geo}); r=await G.locate({settleMs:120});
+ok('...a refusal while watching is final', r.error==='denied'&&w.coarse===0);
+w=watcher([],{err:{code:2}}); G=mk(AND,{geo:w.geo}); r=await G.locate({settleMs:120});
+ok('...no precise fix at all: the coarse one, as before', r.lat===9&&w.coarse===1);
+w=watcher([]); G=mk(AND,{geo:w.geo}); r=await G.locate({settleMs:60});
+ok('...nothing in the time: the coarse one', r.lat===9&&w.coarse===1);
 G=mk(IOS,{}); r=await G.locate(); ok('no geolocation', r.error==='none');
 console.log(String.fromCharCode(10) + n + ' passed, ' + f + ' failed'); process.exit(f ? 1 : 0);

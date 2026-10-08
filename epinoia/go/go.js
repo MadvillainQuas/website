@@ -1452,9 +1452,11 @@ function feedCard(p) {
   };
 }
 
-/* A STAMP AS A TILE: the find-a-game cards' look (stampcard.js), into that fan's page on the wall */
+/* A STAMP AS A TILE: the find-a-game cards' look (stampcard.js), into that fan's page on the wall - or, a stamp shown
+   without a name (0258), into that game's */
 function stampTile(q) {
-  return window.EpinoiaGoStampCard.build(q, { href: 'photos/?u=' + encodeURIComponent(q.username || ''), cls: 'feed-card' });
+  const href = q.username ? 'photos/?u=' + encodeURIComponent(q.username) : q.game_id ? 'photos/?g=' + encodeURIComponent(q.game_id) : 'photos/';
+  return window.EpinoiaGoStampCard.build(q, { href, cls: 'feed-card' });
 }
 
 /* TWO ROWS OF THE FEED: the fans' photographs first, one changing every few seconds, and after them the stamps of the
@@ -1591,6 +1593,12 @@ function showStamped(r) {
     side.appendChild(el('div', 'go-new', r.first_time_here ? 'a new arena' : 'another visit'));
     facts(side, [['Arenas', String(r.arenas)], ['Stamps', String(r.stamps)]]);
   }
+  /* ticked off on their profile, the arena landing there (profile/ ?ticked=); on the feed and HOME (0258) */
+  const links = side.appendChild(el('div', 'go-stamped-links'));
+  const prof = links.appendChild(el('a', null, 'ticked off on your profile →'));
+  prof.href = '../profile/' + (r.venue_id ? '?ticked=' + encodeURIComponent(r.venue_id) : '') + '#arenas';
+  const feed = links.appendChild(el('a', null, 'on the feed →'));
+  feed.href = 'photos/';
 }
 
 /* AFTER A STAMP: a note about the occasion (0168, only the fan sees it, on their stamps page) and a
@@ -1637,6 +1645,11 @@ async function stamp(g, btn) {
     if (r.error || !r.data) return say('It did not stamp. Try again in a moment.', 'bad');
     if (r.data.ok) {
       showStamped(r.data);
+      /* the stamp, on screen (stampfx.js): a fresh one only, not "you had already stamped this game" */
+      if (!r.data.already && window.EpinoiaStampFx) {
+        window.EpinoiaStampFx.play({ venue: r.data.venue || g.venue, city: g.city, at: r.data.stamped_at, first: !!r.data.first_time_here,
+                                     arenas: r.data.arenas, stamps: r.data.stamps });
+      }
       await loadMine();
       afterStamp(g.game_id);
       drawList();

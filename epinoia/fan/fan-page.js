@@ -9,6 +9,7 @@
      THE HEAD      their picture, name, @username and since when, their line,
                    and the ways to them: their social accounts and Discord
      THEIR CLUB    the club they chose, to its page
+     ARENAS        the arenas of the stamps they show, ticked off (go/arenaticks.js)
      THE PASSPORT  EPINOIA GO's numbers - arenas, stamps, kilometres - and the
                    board rank; their stamps as GO's stamp cards and their
                    photographs, when they show them (go_feed, 0177)
@@ -129,8 +130,19 @@
       sec.appendChild(grid);
       wrap.appendChild(sec);
       try {
-        const rows = await rpc('go_feed', { p_username: p.username, p_sort: 'new', p_offset: 0, p_limit: 24 }) || [];
-        rows.forEach(row => {
+        const rows = await rpc('go_feed', { p_username: p.username, p_sort: 'new', p_offset: 0, p_limit: 96 }) || [];
+        /* ARENAS TICKED OFF: the arenas of the stamps they show, a tick each (go/arenaticks.js), above the games */
+        const AT = window.EpinoiaArenaTicks, ticked = AT ? AT.group(rows.filter(r => r.kind === 'stamp')) : [];
+        if (p.stamps_public && AT && ticked.length) {
+          const ts = el('section', 'fn-ticks');
+          const th = el('div', 'pc-sec-h');
+          th.appendChild(el('span', null, 'Arenas ticked off'));
+          ts.appendChild(th);
+          const tg = ts.appendChild(el('div'));
+          AT.draw(tg, ticked, {});
+          wrap.insertBefore(ts, sec);
+        }
+        rows.slice(0, 24).forEach(row => {                // the games: the newest 24 (the arenas above read them all)
           if (row.kind === 'photo' && row.thumb_path) {
             const a = el('a', 'fn-photo');
             a.href = '../go/photos/?p=' + encodeURIComponent(row.id);

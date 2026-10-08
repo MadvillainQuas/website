@@ -39,10 +39,43 @@
     });
   }
 
-  async function locate() {
-    if (!nav().geolocation) return { error: 'none' };
+  /* THE PRECISE FIX, GIVEN A FEW SECONDS TO SETTLE (2026-10-08). Inside an arena a phone's first answer is often a cell
+     mast's, a kilometre or more out, and its Wi-Fi and GPS answers only come after it: on 2026-10-04 sixteen of the
+     seventeen tries at a stamp, by two fans at two arenas, were refused as too imprecise. So the phone is watched: the
+     best fix it gives, as soon as one is within GOOD_M, else the best at the end of SETTLE_MS - a fix in hand is never
+     thrown away for a timeout. The watch is the call made from the tap, so the permission question still comes up. */
+  const GOOD_M = 100, SETTLE_MS = 10000;
+  function settle(g, ms) {
+    return new Promise(res => {
+      let best = null, id = null, done = false, timer = 0;
+      const finish = r => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        try { if (id != null) g.clearWatch(id); } catch (_) { /* gone */ }
+        res(r);
+      };
+      timer = setTimeout(() => finish(best || { error: 'timeout' }), ms);
+      try {
+        id = g.watchPosition(p => {
+          const f = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, at: Date.now() };
+          if (!best || !(best.accuracy <= f.accuracy)) best = f;
+          if (best.accuracy != null && best.accuracy <= GOOD_M) finish(best);
+        }, e => {
+          if (e && e.code === 1) finish({ error: 'denied' });
+          else if (!best && !(e && e.code === 3)) finish({ error: 'unavailable' });    // a timeout: keep watching to the end
+        }, { enableHighAccuracy: true, maximumAge: 0, timeout: ms });
+      } catch (_) { finish({ error: 'unavailable' }); }
+    });
+  }
+
+  async function locate(o) {
+    const g = nav().geolocation;
+    if (!g) return { error: 'none' };
     if (!env().secure) return { error: 'insecure' };
-    let r = await one({ enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 });
+    let r = typeof g.watchPosition === 'function'
+      ? await settle(g, (o && o.settleMs) || SETTLE_MS)
+      : await one({ enableHighAccuracy: true, timeout: 12000, maximumAge: 10000 });
     if (r.error === 'timeout' || r.error === 'unavailable') r = await one({ enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
     return r;
   }

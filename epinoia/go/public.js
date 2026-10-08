@@ -107,15 +107,15 @@ function mount(host, o, msg) {
     who.appendChild(el('span', null, 'Your username'));
     who.appendChild(document.createTextNode(': '));
     who.appendChild(data('b', 'at', '@' + (st.username || '')));
-    text.appendChild(el('span', null, 'Your stamps are on the feed, and you are on the leaderboards.'));
+    text.appendChild(el('span', null, 'Your stamps are on the feed under your name, and you are on the leaderboards.'));
     button('go private', '', b => flag(false, b));
   } else if (s === 'boards') {
-    text.appendChild(el('b', null, strip ? 'Your stamps are not on the feed yet' : 'You are on the leaderboards'));
-    if (!strip) text.appendChild(el('span', null, 'Show your stamps on the feed too?'));
-    button('show my stamps', 'pri', b => flag(true, b));
+    text.appendChild(el('b', null, strip ? 'Your stamps are on the feed without your name' : 'You are on the leaderboards'));
+    if (!strip) text.appendChild(el('span', null, 'Put your name on your stamps too?'));
+    button('show my name', 'pri', b => flag(true, b));
     if (!strip) button('take me off', '', b => flag(false, b));
   } else if (s === 'name') {
-    text.appendChild(el('b', null, strip ? 'Want your stamps on the feed?' : 'Go public'));
+    text.appendChild(el('b', null, strip ? 'Want your name on your stamps?' : 'Go public'));
     if (strip) {
       text.appendChild(el('span', null, 'Choose a username first.'));
       const a = acts.appendChild(el('a', 'ep-btn pri', 'choose one'));
@@ -135,7 +135,7 @@ function mount(host, o, msg) {
       goBtn = button(goLabel(st), 'pri', b => flag(true, b));
     }
   } else {
-    text.appendChild(el('b', null, strip ? 'Want your stamps on the feed?' : 'Go public'));
+    text.appendChild(el('b', null, strip ? 'Want your name on your stamps?' : 'Go public'));
     if (!strip) {
       text.appendChild(el('span', null,
         'Your username and your stamps show to everyone, on the feed and the leaderboards. Never your email or your notes, and you can go private any time.'));
