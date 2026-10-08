@@ -60,5 +60,6 @@
      not the news archive, which is why one file answers both questions rather
      than each page carrying its own copy of this. */
   /* ...and on the news page, one publisher's story (?i=, where a notification lands) is one thing too */
-  root.classList.add(q.get('a') || (q.get('i') && /\/news\//.test(location.pathname)) ? 'm-article' : 'm-list');
+  /* ...and one of the newsdesk's own pieces (?d=, newsroom.js) */
+  root.classList.add(q.get('a') || ((q.get('i') || q.get('d')) && /\/news\//.test(location.pathname)) ? 'm-article' : 'm-list');
 }());

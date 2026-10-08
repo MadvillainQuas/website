@@ -176,7 +176,7 @@ function wire() {
       const load = { acct: loadAccounts, clubs: loadClubs, mod: loadModeration,
                      keys: loadKeys, audit: loadAudit, set: loadSettings,
                      plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas,
-                     analytics: loadAnalytics, links: loadLinks, maint: loadReset, news: loadNewsSources };
+                     analytics: loadAnalytics, links: loadLinks, maint: loadReset, news: loadNewsSources, newsroom: loadNewsroom };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -1592,6 +1592,13 @@ function loadNewsSources() {
 /* ------------------------------------------------------------- analytics --- */
 /* How the site is used, anonymously (migration 0173, track.js): analytics-ui.js draws the whole
    tab from one analytics_report call, afresh each time it opens. */
+/* What the league newsdesks' writer learns (0252): the style library fed to it and the click-through model, newsroom-ui.js */
+function loadNewsroom() {
+  const N = window.EpinoiaNewsroomUI;
+  if (!N) return say('newsroom-ui.js did not load, so the newsroom cannot be shown. Reload the page.', 'err');
+  N.mount({ host: '#newsroomHost', sb, say });
+}
+
 function loadAnalytics() {
   const A = window.EpinoiaAnalyticsUI;
   if (!A) return say('analytics-ui.js did not load, so the analytics cannot be drawn. Reload the page.', 'err');

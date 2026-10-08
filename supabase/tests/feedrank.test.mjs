@@ -445,7 +445,8 @@ console.log('\nwhat leaves the device: nothing about the reader');
   const res = await FR.rankRows(pool, { store, net, now: NOW, country: 'AU', followedIds: ['read-1'] });
   const wire = calls.map(c => c.url + ' ' + c.body).join('\n');
   ok('ranking works end to end: the partners, the countries and the report\'s points come from the public calls', res.ranked === true && res.partners.has('source:eurohoops') && res.rows.length === 3 && res.rows.some(r => r.why === 'Cup final'), res.rows.map(r => r.why));
-  ok('what was asked: the partners, the leagues\' countries, the match reports\' points, the publishers\' languages - and only those', calls.length === 4 && calls.every(c => /official_partners|leagues\?select=id,slug,country|news_report_significance|news_source_languages/.test(c.url)), calls.map(c => c.url));
+  ok('what was asked: the partners, the leagues\' countries, the match reports\' points, the publishers\' languages, the click-through model\'s two public files - and only those',
+     calls.length === 6 && calls.every(c => /official_partners|leagues\?select=id,slug,country|news_report_significance|news_source_languages|\/storage\/v1\/object\/public\/snapshots\/feed\/(model|salience)\.json$/.test(c.url)), calls.map(c => c.url));
   ok('the points of a report are asked for by the ARTICLE ids in the candidate pool, which every reader has', calls.find(c => /significance/.test(c.url)).body === JSON.stringify({ p_article_ids: [rp.id] }));
   ok('nothing about the reader is in any request: not what they read, the leagues they like, the publishers they open, their country, their time on a page',
      !/read-1|nbl|kbl|eurohoops|hoops-pod|\bAU\b|dwell|profile|reads|followed/i.test(wire), wire);

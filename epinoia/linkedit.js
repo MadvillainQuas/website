@@ -33,6 +33,10 @@
    are in different leagues, they have played each other, or one has a game not yet finished) and shows it. Only then does "merge" run
    platform_player_merge / platform_team_merge, which moves everything to THIS row and deletes the other. It cannot be undone; the old
    address redirects here.
+
+   AND A CLUB'S RIVALS (0252): the clubs an administrator calls its rivals, each with a "not rivals" button, and a search for
+   another to add (team_rivals_of / team_rival_set). A rivalry makes the two clubs' games bigger news: the newsdesk's slate and
+   its game to watch, the newsroom's pieces, and the feed (a match report of one is worth 20 points more).
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -174,6 +178,65 @@ function mount(o) {
   const teams = () => (linked && (P ? linked.players : linked.teams)) || [];
   const excluded = () => { const s = teams().map(c => c.id); if (s.indexOf(team.id) < 0) s.push(team.id); return s; };
   async function rpc(name, args) { const r = await sb.rpc(name, args); if (r.error) throw r.error; return r.data; }
+
+  /* --- THE RIVALS (0252): clubs an administrator calls rivals (Barça and Real Madrid), whose games the newsdesk and the
+     feed treat as bigger news. A club's panel only, read when it opens; team_rival_set refuses anybody but a platform
+     administrator, as every call here does. --- */
+  const riv = P ? null : (() => {
+    const wrap = panel.appendChild(el('div', 'le-riv'));
+    wrap.appendChild(el('div', 'le-h')).appendChild(el('b', null, 'rivals'));
+    const box2 = wrap.appendChild(el('div', 'le-mems'));
+    const sw = wrap.appendChild(el('div', 'le-sw'));
+    const inp = sw.appendChild(el('input', 'le-search'));
+    inp.type = 'search'; inp.placeholder = 'search a club to call a rival'; inp.setAttribute('autocomplete', 'off');
+    inp.setAttribute('aria-label', 'search a club to mark as a rival of this one');
+    const ul = sw.appendChild(el('ul', 'le-list'));
+    ul.hidden = true;
+    let mine = [], rseq = 0, rtimer = 0;
+    function draw() {
+      box2.textContent = '';
+      if (!mine.length) { box2.appendChild(el('div', 'le-none', 'No rivals yet. A rivalry makes these clubs’ games bigger news: the game to watch, the newsdesk and the feed.')); return; }
+      mine.forEach(c => {
+        const row = box2.appendChild(el('div', 'le-mem'));
+        const top = row.appendChild(el('div', 'le-main')).appendChild(el('div', 'le-top'));
+        const a = top.appendChild(nm('a', 'le-name', c.name || '—'));
+        a.href = teamHref({ slug: c.slug });
+        if (c.league) top.appendChild(nm('span', 'le-lg', c.league));
+        const x = row.appendChild(el('button', 'le-x', 'not rivals'));
+        x.type = 'button';
+        x.addEventListener('click', () => set(c, false));
+      });
+    }
+    async function load() { try { mine = (await rpc('team_rivals_of', { p_team: team.id })) || []; } catch (_) { mine = []; } draw(); }
+    async function set(c, on) {
+      if (busy) return;
+      busy = true;
+      say(on ? 'marking them rivals…' : 'unmarking…');
+      try { await rpc('team_rival_set', { p_a: team.id, p_b: c.id, p_on: on }); say(on ? c.name + ' marked as a rival.' : c.name + ' is no longer a rival.', 'ok'); await load(); }
+      catch (e) { say(errorWords(e), 'err'); }
+      finally { busy = false; }
+    }
+    async function search() {
+      const q = inp.value.trim(), s = ++rseq;
+      if (!q) { ul.hidden = true; return; }
+      try {
+        const res = await rpc('platform_link_search', { p_kind: 'team', p_q: q, p_limit: 6, p_exclude: [team.id].concat(mine.map(c => c.id)) });
+        if (s !== rseq) return;
+        ul.textContent = '';
+        ((res && res.rows) || []).forEach(r => {
+          const li = ul.appendChild(el('li', 'le-opt'));
+          const top = li.appendChild(el('div', 'le-top'));
+          top.appendChild(nm('b', 'le-name', r.name));
+          if (r.league) top.appendChild(nm('span', 'le-lg', r.league));
+          li.addEventListener('pointerdown', e => { if (e.preventDefault) e.preventDefault(); inp.value = ''; ul.hidden = true; set(r, true); });
+        });
+        ul.hidden = !ul.children.length;
+      } catch (e) { say(errorWords(e), 'err'); }
+    }
+    inp.addEventListener('input', () => { clearTimeout(rtimer); rtimer = setTimeout(search, DELAY); });
+    inp.addEventListener('blur', () => { setTimeout(() => { ul.hidden = true; }, 120); });
+    return { load };
+  })();
 
   /* --- the teams it is linked to --- */
   function drawMembers() {
@@ -363,6 +426,7 @@ function mount(o) {
   function open() {
     panel.hidden = false; toggle.setAttribute('aria-expanded', 'true');
     drawMembers();
+    if (riv) riv.load();
     if (input.focus) input.focus();
   }
   function close() {

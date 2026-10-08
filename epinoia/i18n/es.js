@@ -2739,7 +2739,11 @@
       'competition': '{n} competición',
       'competitions': '{n} competiciones',
       'pick': '{n} pronóstico',
-      'picks': '{n} pronósticos'
+      'picks': '{n} pronósticos',
+      'storyline': '{n} historia',
+      'storylines': '{n} historias',
+      'new': 'Nuevas: {n}',
+      'updated': 'Actualizadas: {n}'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */

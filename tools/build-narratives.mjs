@@ -58,7 +58,10 @@ export function load(url) {
   try { g('EpinoiaClutch', 'clutch.js'); } catch (_) { /* no clutch time: the recaps go without it */ }
   g('EpinoiaLanguage', path.join('game', 'language.js')); g('EpinoiaStory', path.join('game', 'story.js'));
   g('EpinoiaReport', path.join('game', 'report.js')); g('EpinoiaContext', path.join('game', 'context.js'));
-  return g('EpinoiaNarrative', 'narrative.js');
+  const N = g('EpinoiaNarrative', 'narrative.js');
+  try { g('EpinoiaFeedRank', 'feedrank.js'); } catch (_) { /* no click-through model: the newsroom writes in its own order */ }
+  try { g('EpinoiaNewsroom', 'newsroom.js'); } catch (_) { /* no newsroom: the storylines go out alone */ }
+  return N;
 }
 
 /* PostgREST and Storage: reads with the publishable key, writes with the service key */
@@ -101,13 +104,23 @@ function client(url, readKey, writeKey, f) {
     if (!r.ok) return null;
     try { return await r.json(); } catch (_) { return null; }
   };
-  return { rest, restAll, publicJson, upload, download, base };
+  /* THE PRIVATE READS, with the service key: only the newsroom's training data (the style library fed in the platform
+     console, the feed's click counts), never anything that goes into a public file as it is */
+  const restPrivate = async p => {
+    if (!writeKey) return null;
+    const r = await f(base + '/rest/v1/' + p, { headers: Object.assign({ Accept: 'application/json' }, hdr(writeKey)) });
+    if (!r.ok) return null;                                  // a table not made yet (before its migration): nothing
+    const t = await r.text();
+    return t ? JSON.parse(t) : null;
+  };
+  return { rest, restAll, publicJson, upload, download, restPrivate, base };
 }
 
 /* --------------------------------------------------------------------------------------------- one league --- */
 const ADV_KEYS = ['efg', 'tovp', 'orebp', 'ftr', 'possessions', 'fga', 'fgm', 'fg3a', 'fg3m', 'fta', 'ftm', 'oreb', 'dreb', 'tov', 'rimA', 'rimM', 'midA', 'midM', 'pace'];
 const TL_SELECT = 'game_id,team_idx,' + ADV_KEYS.map(k => k + ':stats->adv->' + k).join(',');
-const PL_SELECT = 'game_id,team_idx,player_uuid,player_id,min:stats->min,pts:stats->pts,or:stats->or,dr:stats->dr,ast:stats->ast,stl:stats->stl,blk:stats->blk,p3m:stats->p3m';
+const PL_SELECT = 'game_id,team_idx,player_uuid,player_id,min:stats->min,pts:stats->pts,or:stats->or,dr:stats->dr,ast:stats->ast,stl:stats->stl,blk:stats->blk,p3m:stats->p3m,' +
+  'p2m:stats->p2m,p2a:stats->p2a,p3a:stats->p3a,ftm:stats->ftm,fta:stats->fta,tov:stats->tov';
 const GAME_SELECT = 'id,home_team_id,away_team_id,home_score,away_score,tipoff_at,attendance,competition_id,finalised_at';
 
 async function readLeague(api, lg, o) {
@@ -153,13 +166,14 @@ async function readLeague(api, lg, o) {
   const table = await api.rest(`standings?competition_id=eq.${leagueComp.id}&select=team_id,rank,gp,w,l,pts_for,pts_against,diff,league_points,group_name&order=group_name.asc.nullsfirst,rank.asc.nullslast`).catch(() => []);
   const teamIds = [...new Set(games.concat(fixtures).flatMap(g => [g.home_team_id, g.away_team_id]).concat((table || []).map(r => r.team_id)).filter(Boolean))];
   const teams = {};
-  for (const c of chunks(teamIds, 100)) ((await api.rest(`teams?id=in.(${c.join(',')})&select=id,name,short_name,slug`)) || []).forEach(t => { teams[t.id] = t; });
+  for (const c of chunks(teamIds, 100)) ((await api.rest(`teams?id=in.(${c.join(',')})&select=id,name,short_name,slug,colour,logo_path`)) || []).forEach(t => { teams[t.id] = t; });
   const gids = games.map(g => g.id);
   const lines = [], teamLines = [];
   for (const c of chunks(gids, 40)) {
     (await api.restAll(`player_game_stats?game_id=in.(${c.join(',')})&select=${PL_SELECT}`)).forEach(r => {
       const pid = r.player_uuid || r.player_id;
-      if (pid) lines.push({ game_id: r.game_id, team_idx: r.team_idx, pid, min: r.min, pts: r.pts, reb: (r.or || 0) + (r.dr || 0), ast: r.ast, stl: r.stl, blk: r.blk, p3m: r.p3m });
+      if (pid) lines.push({ game_id: r.game_id, team_idx: r.team_idx, pid, min: r.min, pts: r.pts, reb: (r.or || 0) + (r.dr || 0), ast: r.ast, stl: r.stl, blk: r.blk, p3m: r.p3m,
+        fgm: (r.p2m || 0) + (r.p3m || 0), fga: (r.p2a || 0) + (r.p3a || 0), p3a: r.p3a, ftm: r.ftm, fta: r.fta, tov: r.tov });
     });
     ((await api.rest(`team_game_stats?game_id=in.(${c.join(',')})&select=${TL_SELECT}`)) || []).forEach(r => {
       const adv = {};
@@ -171,6 +185,12 @@ async function readLeague(api, lg, o) {
      everybody on it, so the players are not asked for one by one */
   let season0 = null;
   try { season0 = globalThis.EpinoiaData && globalThis.EpinoiaData.latestSeason ? await globalThis.EpinoiaData.latestSeason(ids) : null; } catch (_) { season0 = null; }
+  /* A SEASON WITH PLAY-OFFS (or a cup) has its file under the league competitions alone: the site's pages ask for the
+     league's own scope, and nothing ever built one for every competition together (LNBP and Korisliiga had no players
+     and no clubs here until 2026-10-08) */
+  if ((!season0 || !(season0.players || []).length) && leagueIds.length && leagueIds.length < ids.length) {
+    try { season0 = await globalThis.EpinoiaData.latestSeason(leagueIds); } catch (_) { /* keeps the empty one */ }
+  }
   const names = {};
   const meta = season0 && season0.meta ? season0.meta : null;
   if (meta) (meta instanceof Map ? [...meta.entries()] : Object.entries(meta)).forEach(([id, m]) => { if (m && m.name && !m.unregistered) names[id] = { name: m.name, slug: m.slug || null }; });
@@ -181,6 +201,8 @@ async function readLeague(api, lg, o) {
     if (n) names[p.id] = { name: n, slug: p.slug || null };
   });
   const players = season0 && Array.isArray(season0.players) ? season0.players : [];
+  /* and its club rows: the four factors both ways, the shot zones and the events splits (the newsroom's deep numbers) */
+  const teamRows = season0 && Array.isArray(season0.teams) ? season0.teams : [];
   const model = await api.publicJson('snapshots/whatwins-explain/' + lg.id + '.json').then(m => (m && m.b && String(m.league) === String(lg.id) ? m : null)).catch(() => null);
   /* the fans' picks: for the games to come (the slate) and the last three weeks' results (the fans' record) */
   let tallies = {};
@@ -196,6 +218,10 @@ async function readLeague(api, lg, o) {
      and winner, so a two-legged tie is never read as a series of wins */
   const poIds = comps.filter(c => c.kind === 'playoff').map(c => c.id);
   const ties = poIds.length ? await api.rest(`bracket_ties?competition_id=in.(${poIds.join(',')})&is_bye=eq.false&select=competition_id,round,label,home_team_id,away_team_id,winner_team_id,home_agg,away_agg,legs,decider`).catch(() => []) : [];
+  /* THE RIVALS an administrator has named (0252 team_rivals, public; a few dozen rows on the whole platform): those of this
+     league's clubs. A database without 0252 answers 404: none. */
+  const rivals = await api.rest('team_rivals?select=team_a,team_b&limit=2000').then(rows => (rows || []).filter(r => teamIds.indexOf(r.team_a) >= 0 || teamIds.indexOf(r.team_b) >= 0)
+    .map(r => [r.team_a, r.team_b]), () => []);
   /* the players a club has said have gone (player_releases): never "not playing" */
   const released = teamIds.length ? await api.rest(`player_releases?team_id=in.(${teamIds.join(',')})&select=team_id,player_id`).catch(() => []) : [];
   const extra = await readExtras(api, lg, { games, leagueComp, players, nowMs: o.nowMs, teamIds, teams, gids, teamLines }).catch(e => { log && log('    extras: ' + String(e.message || e).slice(0, 120)); return {}; });
@@ -206,8 +232,8 @@ async function readLeague(api, lg, o) {
   log && log('  ' + lg.slug + ': ' + games.length + ' games, ' + fixtures.length + ' to come, ' + lines.length + ' player lines, ' + (model ? 'the league’s model' : 'fixed weights') +
     ', ' + rest.length + ' league games still to play' + (lastLine ? ', last season’s play-offs took ' + lastLine.n + ' of ' + lastLine.of : '') +
     ((released || []).length ? ', ' + released.length + ' released' : ''));
-  return { season, comps, leagueComp, games, fixtures, table: { comp: leagueComp, rows: table || [] }, teams, lines, teamLines, names, model, tallies, players,
-           rest, lastLine, lastTotal, released: released || [], ties: ties || [], extra };
+  return { season, comps, leagueComp, games, fixtures, table: { comp: leagueComp, rows: table || [] }, teams, lines, teamLines, names, model, tallies, players, teamRows,
+           rest, lastLine, lastTotal, released: released || [], ties: ties || [], rivals, extra };
 }
 
 /* EVERYTHING ELSE THE SITE PUBLISHES ABOUT A LEAGUE, read as a signed-out reader reads it, each part on its own (one that
@@ -372,11 +398,30 @@ async function recapOf(api, g, D, lg, o) {
       }
     }
   } catch (_) { clutch = null; }
+  /* THE DEEP NUMBERS, for the newsroom (newsroom.js): each side's first chances by the shot clock (0-8, 8-16 and past 16
+     seconds: chances and points) and its average possession, its three fives with the most minutes (names, seconds,
+     points for and against) and its stints' totals. From the replay already made: nothing more is read. */
+  let deep = null;
+  try {
+    const SC = globalThis.EpinoiaShotClock, R0 = SC ? SC.forGame(S) : null, avgs = SC && R0 && R0.ok ? SC.averages(S) : null;
+    const clock = [0, 1].map(t => {
+      if (!R0 || !R0.ok) return null;
+      const c = [0, 0, 0, 0, 0, 0];
+      R0.chances.forEach(r => { if (r.team !== t || r.second || r.dur == null) return; const w = r.dur < 8 ? 0 : r.dur < 16 ? 2 : 4; c[w]++; c[w + 1] += r.pts || 0; });
+      return c.concat([avgs && avgs[t] != null ? Math.round(avgs[t] * 10) / 10 : null]);
+    });
+    const nameOf = id => (byId[id] ? byId[id].name : null);
+    const fives = [0, 1].map(t => (brief.lineups[t] || []).slice(0, 3).filter(l => (l.ids || []).every(nameOf))
+      .map(l => ({ n: l.ids.map(nameOf), dur: Math.round(l.dur / 1000), pf: l.pf, pa: l.pa })));
+    const total = [0, 1].map(t => (brief.lineups[t] || []).reduce((a, l) => [a[0] + Math.round(l.dur / 1000), a[1] + l.pf, a[2] + l.pa], [0, 0, 0]));
+    deep = { clock, fives, total };
+  } catch (_) { deep = null; }
   return { headline: strip(rep.headline), standfirst: strip(rep.standfirst), arc: arc ? arc.data.kind : null, decisive: dec,
-           moment: mo && mo.data.p ? { kind: mo.kind, name: mo.data.p.name, clock: mo.data.clock } : null, expect: ex, clutch, v: RECAP_V };
+           moment: mo && mo.data.p ? { kind: mo.kind, name: mo.data.p.name, clock: mo.data.clock } : null, expect: ex, clutch, deep, v: RECAP_V };
 }
-/* a recap made by an older version is made again (the names and the expectation came in version 2, clutch time in 3) */
-const RECAP_V = 3;
+/* a recap made by an older version is made again (the names and the expectation came in version 2, clutch time in 3, the
+   deep numbers in 4) */
+const RECAP_V = 4;
 
 /* ----------------------------------------------------------------------------------------------- one build --- */
 export async function buildLeague(api, lg, o) {
@@ -400,13 +445,14 @@ export async function buildLeague(api, lg, o) {
   Object.keys(cache.recaps).forEach(id => { if (!D.games.some(g => g.id === id && Date.parse(g.tipoff_at) >= o.nowMs - 15 * DAY)) delete cache.recaps[id]; });
   const recaps = {};
   Object.keys(cache.recaps).forEach(id => { const r = cache.recaps[id]; recaps[id] = { headline: r.headline, standfirst: r.standfirst, arc: r.arc, decisive: r.decisive, moment: r.moment,
-    expect: r.expect != null ? r.expect : null, clutch: r.clutch || null }; });
+    expect: r.expect != null ? r.expect : null, clutch: r.clutch || null, deep: r.deep || null }; });
   const previous = o.previous !== undefined ? o.previous : await api.publicJson('snapshots/narrative/' + lg.id + '.json').catch(() => null);
-  const input = { now: new Date(o.nowMs), league: { id: lg.id, slug: lg.slug, name: lg.name, timezone: lg.timezone || null },
+  const input = { now: new Date(o.nowMs), league: { id: lg.id, slug: lg.slug, name: lg.name, timezone: lg.timezone || null, gender: lg.gender || null },
     season: { id: D.season.id, name: D.season.name }, comp: D.leagueComp, comps: D.comps.map(c => ({ id: c.id, kind: c.kind || 'league', name: c.name })),
     table: D.table, teams: D.teams, games: D.games, fixtures: D.fixtures,
-    lines: D.lines, teamLines: D.teamLines, names: D.names, players: D.players, recaps, model: D.model, tallies: D.tallies, previous,
-    rest: D.rest, lastLine: D.lastLine, lastTotal: D.lastTotal, released: D.released, ties: D.ties,
+    lines: D.lines, teamLines: D.teamLines, names: D.names, players: D.players, teamRows: D.teamRows, seasonTeams: D.teamRows.length ? D.teamRows : undefined,
+    recaps, model: D.model, tallies: D.tallies, previous,
+    rest: D.rest, lastLine: D.lastLine, lastTotal: D.lastTotal, released: D.released, ties: D.ties, rivals: D.rivals,
     news: D.extra.news || null, significance: D.extra.significance || null, highlights: D.extra.highlights || null, fanvote: D.extra.fanvote || null,
     sos: D.extra.sos || null, bio: D.extra.bio || null, awards: D.extra.awards || null };
   let out = N.build(input);
@@ -424,8 +470,22 @@ export async function buildLeague(api, lg, o) {
     }
     if (Object.keys(bans).length) out = N.build(Object.assign({}, input, { bans }));
   }
+  /* THE NEWSROOM (newsroom.js): the articles the storylines earn, written once and kept, in the same file */
+  const NR = globalThis.EpinoiaNewsroom;
+  if (NR) {
+    try { out.articles = NR.publish(input, out, { style: o.style || null, previous: previous && Array.isArray(previous.articles) ? previous.articles : [], nowMs: o.nowMs, all: !!o.allArticles,
+      model: o.ctrModel || null, ctr: o.ctr || null, kindW: o.kindW || null }); }
+    catch (e) { o.log && o.log('    newsroom: ' + String(e.message || e).slice(0, 160)); out.articles = previous && Array.isArray(previous.articles) ? previous.articles : []; }
+    /* a local run that asked for every article also lists every candidate, with its salience, and keeps what the
+       newsroom was given (--input-out), so the writing can be worked on without reading the league again */
+    if (o.allArticles && o.log) NR.candidates(input, out, { style: o.style || null, nowMs: o.nowMs }).forEach(c => o.log('    candidate ' + c.salience.toFixed(3) + ' ' + c.id));
+    if (o.inputOut) fs.writeFileSync(o.inputOut, JSON.stringify({ input: Object.assign({}, input, { previous: null }), build: Object.assign({}, out, { articles: [] }), nowMs: o.nowMs }));
+  }
+  /* the week's game to watch, as the front page's card draws it */
+  if (NR) { try { out.watchCard = NR.gameCard(input, out, { nowMs: o.nowMs }); } catch (_) { out.watchCard = null; } }
   out.token = D.games.length + '@' + D.games.reduce((m, g) => (g.finalised_at && g.finalised_at > m ? g.finalised_at : m), '');
-  o.log && o.log('    ' + out.stories.length + ' storylines, ' + replayed + ' games replayed, top: ' + (out.stories[0] ? out.stories[0].head : '(none)'));
+  o.log && o.log('    ' + out.stories.length + ' storylines, ' + replayed + ' games replayed, top: ' + (out.stories[0] ? out.stories[0].head : '(none)') +
+    (out.articles ? '; ' + out.articles.length + ' articles' + (out.articles.length ? ', newest: ' + out.articles[0].head : '') : ''));
   return { out, cache };
 }
 
@@ -443,7 +503,7 @@ export async function run(opts) {
   if (!o.local && !o.serviceKey && !o.dryRun) { log('no SUPABASE_SERVICE_KEY: nothing to write with (use --local or --dry-run)'); return { built: [] }; }
 
   /* the leagues a signed-out reader may read */
-  const leagues = (await api.rest('leagues?select=id,slug,name,timezone&order=slug')) || [];
+  const leagues = (await api.rest('leagues?select=id,slug,name,timezone,gender&order=slug')) || [];
   const index = (await api.publicJson('snapshots/narrative/index.json').catch(() => null)) || { v: 1, leagues: {} };
   let due = [];
   if (o.league) due = leagues.filter(l => l.slug === o.league || l.id === o.league);
@@ -471,12 +531,54 @@ export async function run(opts) {
   }
   log('narratives: ' + due.length + ' league(s) due' + (due.length ? ': ' + due.map(l => l.slug + (l.why ? ' (' + l.why + ')' : '')).join(', ') : ''));
 
+  /* THE NEWSROOM'S STYLE (newsroom.js digest/learn): the articles fed to it in the platform console (newsroom_style, 0252,
+     read with the service key), or for a local run a folder of .txt/.md files or a learned style .json (--style). None:
+     the house words alone. */
+  let style = null;
+  const NR = globalThis.EpinoiaNewsroom;
+  try {
+    let texts = [];
+    if (o.style) {
+      const st = fs.statSync(o.style);
+      if (st.isDirectory()) texts = fs.readdirSync(o.style).filter(n => /\.(txt|md)$/i.test(n)).map(n => ({ title: '', body: fs.readFileSync(path.join(o.style, n), 'utf8') }));
+      else if (/\.json$/i.test(o.style)) style = JSON.parse(fs.readFileSync(o.style, 'utf8'));
+      else texts = [{ title: '', body: fs.readFileSync(o.style, 'utf8') }];
+    } else if (write) texts = (await api.restPrivate('newsroom_style?select=title,body&order=created_at.desc&limit=400')) || [];
+    if (!style && texts.length && NR) style = NR.learn(texts.map(t => NR.digest(t.body, t.title)));
+  } catch (e) { log('newsroom style: ' + String(e.message || e).slice(0, 120)); style = null; }
+  if (style) log('newsroom style: ' + style.articles + ' article(s) digested');
+
+  /* THE CLICK-THROUGH COUNTS AND THE MODEL (0252, feedrank.js ctrFit): the counts read once (feed_ctr_totals, service key)
+     and the model as it was last published (the public file), both handed to every league's newsroom - its headlines in
+     the model's order, its headline tests decided on the counts, its formats weighed by what readers open of them. After
+     the run the model is fitted again on everything and published, with each recent story's own counts, for every feed. */
+  const FRk = globalThis.EpinoiaFeedRank;
+  let ctrRows = [], ctrModel = null;
+  try { ctrModel = await api.publicJson('snapshots/feed/model.json'); if (!ctrModel || !ctrModel.w) ctrModel = null; } catch (_) { ctrModel = null; }
+  if (write) { try { ctrRows = (await api.restPrivate('rpc/feed_ctr_totals?p_days=30')) || []; } catch (_) { ctrRows = []; } }
+  const deskOf = item => { const m = /^desk:([0-9a-f-]{36}):(.+)$/.exec(String(item || '')); return m ? { league: m[1], art: m[2] } : null; };
+  /* a format's weight: its pieces' click-through against the newsroom's average (square-rooted, 0.75 to 1.3), from 200 showings */
+  const kindW = (() => {
+    const by = {}; let S = 0, O = 0;
+    ctrRows.forEach(r => { const d = deskOf(r.item); if (!d) return; const k = d.art.split(':')[0]; by[k] = by[k] || [0, 0]; by[k][0] += +r.shown || 0; by[k][1] += +r.opened || 0; S += +r.shown || 0; O += +r.opened || 0; });
+    const out = {};
+    if (S < 500 || !O) return out;
+    const base = O / S;
+    Object.keys(by).forEach(k => { if (by[k][0] >= 200) out[k] = Math.round(Math.min(1.3, Math.max(0.75, Math.sqrt(((by[k][1] + 10 * base) / (by[k][0] + 10)) / base))) * 100) / 100; });
+    return out;
+  })();
+  if (ctrRows.length) log('click-through: ' + ctrRows.length + ' item counts' + (ctrModel ? ', the model of ' + ctrModel.trained : '') + (Object.keys(kindW).length ? ', formats ' + JSON.stringify(kindW) : ''));
+  /* a league's headline tests: its pieces' counts by headline */
+  const ctrOf = leagueId => { const out = {}; ctrRows.forEach(r => { const d = deskOf(r.item); if (d && d.league === leagueId) (out[d.art] = out[d.art] || []).push({ variant: +r.variant || 0, shown: +r.shown || 0, opened: +r.opened || 0 }); }); return out; };
+  const deskTitles = {};
+
   const built = [], failed = [];
   for (const lg of due) {
     if (Date.now() > deadline) { log('budget reached: the rest stay due'); break; }
     try {
       const cache = write ? await api.download(PRIVATE_BUCKET, 'narrative-cache/' + lg.id + '.json') : null;
-      const res = await buildLeague(api, lg, { nowMs, log, cache, maxReplays: o.maxReplays, previous: o.local ? (o.previous || null) : undefined });
+      const res = await buildLeague(api, lg, { nowMs, log, cache, maxReplays: o.maxReplays, previous: o.local ? (o.previous || null) : undefined, style, allArticles: o.local && o.allArticles, inputOut: o.local ? o.inputOut : null,
+        ctrModel, ctr: ctrOf(lg.id), kindW });
       if (!res) { log('  ' + lg.slug + ': no season'); continue; }
       const body = JSON.stringify(res.out);
       if (write) {
@@ -488,10 +590,23 @@ export async function run(opts) {
       if (o.out) fs.writeFileSync(o.out, body);
       if (o.print) printBuild(res.out, log);
       built.push({ league: lg.slug, bytes: body.length, stories: res.out.stories.length });
+      (res.out.articles || []).forEach(a => { deskTitles['desk:' + lg.id + ':' + a.id] = { heads: a.heads || [a.head], league: lg.slug }; });
     } catch (e) {
       failed.push({ league: lg.slug, error: String(e.message || e).slice(0, 200) });
       log('  ' + lg.slug + ' FAILED: ' + String(e.message || e).slice(0, 200));
     }
+  }
+  if (write && FRk && FRk.ctrFit && ctrRows.length) {
+    try {
+      const rows = ctrRows.map(r => { const t = deskTitles[r.item]; return t ? Object.assign({}, r, { title: t.heads[+r.variant || 0] || t.heads[0], kind: 'desk', league_slug: t.league }) : r; }).filter(r => r.title);
+      const m = FRk.ctrFit(rows);
+      if (m) { m.trained = new Date(nowMs).toISOString(); if (Object.keys(kindW).length) m.formats = kindW; await api.upload(PUBLIC_BUCKET, 'feed/model.json', JSON.stringify(m), 600);
+        log('click-through model: ' + m.items + ' stories, ' + m.shown + ' showings, ' + Object.keys(m.w).length + ' features, platform rate ' + (m.base * 100).toFixed(2) + '%'); }
+      const items = {};
+      ctrRows.forEach(r => { if (!/^(league|creator|outlet|channel):/.test(r.item)) return; const v = items[r.item] || [0, 0]; v[0] += +r.shown || 0; v[1] += +r.opened || 0; items[r.item] = v; });
+      Object.keys(items).forEach(k => { items[k] = items[k].map(x => Math.round(x * 10) / 10); });
+      await api.upload(PUBLIC_BUCKET, 'feed/salience.json', JSON.stringify({ v: 1, built: new Date(nowMs).toISOString(), items }), 600);
+    } catch (e) { log('click-through model: ' + String(e.message || e).slice(0, 160)); }
   }
   if (write && built.length) {
     index.v = 1; index.built = new Date(nowMs).toISOString();
@@ -538,7 +653,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const val = k => { const i = a.indexOf(k); return i >= 0 ? a[i + 1] : null; };
   const env = k => (process.env[k] != null && process.env[k] !== '' ? process.env[k] : null);
   run({ url: env('SUPABASE_URL') || DEFAULT_URL, serviceKey: env('SUPABASE_SERVICE_KEY'), local: flag('--local'), dryRun: flag('--dry-run'),
-        league: val('--league'), print: flag('--print') || flag('--local'), out: val('--out'), budgetMin: val('--budget-min'), maxReplays: val('--max-replays') ? +val('--max-replays') : undefined })
+        league: val('--league'), print: flag('--print') || flag('--local'), out: val('--out'), budgetMin: val('--budget-min'), maxReplays: val('--max-replays') ? +val('--max-replays') : undefined,
+        style: val('--style'), allArticles: val('--articles') === 'all', inputOut: val('--input-out') })
     .then(r => { if (r && r.failed && r.failed.length && !r.built.length) process.exitCode = 1; })
     .catch(e => { console.error(e); process.exitCode = 1; });
 }

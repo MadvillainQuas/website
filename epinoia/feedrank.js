@@ -35,7 +35,7 @@
                     + FOLLOW_BONUS * sqrt(recency)      when it comes from something they follow
                     + PARTNER_BOOST * fade(age)         when it is an official partner's and UNREAD
    The partner boost is full for a week from publication and gone two days after, and it is more than any other story
-   can score at all (scoreMax: 9.14 against 10), so an unread partner piece of the last week leads. Then the order is
+   can score at all (scoreMax: 11.7 against 12.5, salience at its cap counted), so an unread partner piece of the last week leads. Then the order is
    made to vary: never more than two in a row from one source, and no more than two boosted partner items in the first six.
    A PARTNER'S STORY SHOWN FOUR TIMES AND NEVER OPENED keeps only a quarter of its boost (PARTNER_DROP_AT, PARTNER_WEAK), and only ONE
    STORY PER PARTNER takes the whole boost: each further one of the same source half of the one before (PARTNER_REPEAT). And any story about a LEAGUE AWAY
@@ -126,7 +126,7 @@ const W = Object.freeze({
   REPORT_SIG_GAIN: 0.85,               // ...and lift a report's base by this much: 0.35 -> 1.2 at most
   SIG_WHY_MIN: 10,                     // a game worth this many says why
   AUTO_AUTHOR: 'Epinoia match report', // how finalise-game signs a report: the low tier
-  PARTNER_BOOST: 10,                   // an official partner's unread story: more than any other story can score (scoreMax, 9.14), so it leads
+  PARTNER_BOOST: 12.5,                 // an official partner's unread story: more than any other story can score (scoreMax, 11.7 with salience), so it leads
   PARTNER_FULL_H: 168,                 // ...in full for a week from publication
   PARTNER_END_H: 216,                  // ...and fading until nothing is left, two days after
   /* language: a story in a language the reader does not read is multiplied by LANG_PENALTY, less as they engage with it */
@@ -151,7 +151,7 @@ const W = Object.freeze({
      which the reader has never followed and has next to no points for, is multiplied by AWAY_FACTOR; an official partner's boost
      there is cut to AWAY_BOOST_SHARE of itself, so it no longer leads the feed by itself. Opening the league (its points reach
      AWAY_MIN_L), following it, or being in its country lifts it entirely. A league whose country is not known is never "away". */
-  AWAY_FACTOR: 0.5, AWAY_BOOST_SHARE: 0.08, AWAY_MIN_L: 0.05,
+  AWAY_FACTOR: 0.5, AWAY_BOOST_SHARE: 0.064, AWAY_MIN_L: 0.05,   // 0.064 x 12.5 = 0.8, the share it was at a boost of 10
 
   /* THE GROUPS THE READER OPENS (THE THREE GROUPS, in the file's head): partner, press (a publisher's story, a creator's
      piece or post, a league's own article) or auto (a match report). Each first open is a click for its group; the clicks
@@ -186,7 +186,17 @@ const W = Object.freeze({
   LEAGUES_MAX: 80, PUBS_MAX: 120, PRUNE_BELOW: 0.05,
 
   /* what "why" says: the smallest term worth saying */
-  WHY_LEAGUE_MIN: 0.3, WHY_PUB_MIN: 0.25, WHY_COUNTRY_MIN: 0.2
+  WHY_LEAGUE_MIN: 0.3, WHY_PUB_MIN: 0.25, WHY_COUNTRY_MIN: 0.2,
+
+  /* SALIENCE (0252): what readers open, learned from every visit's anonymous counts (the click-through model, fitted every
+     hour by the newsdesk build into snapshots/feed/model.json, and each recent story's own counts, salience.json). A story's
+     base is multiplied by (its expected click-through / the league-wide rate) ^ SAL_POWER, held between SAL_MIN and SAL_MAX;
+     the expectation is the model's guess for its headline, kind and league, blended with its own record (SAL_PRIOR
+     impressions' worth of the guess, then what it has actually done); one shown fewer than SAL_EXPLORE_N times gets up to
+     SAL_EXPLORE more room, so a new story is tried before it is judged. */
+  SAL_POWER: 0.8, SAL_MIN: 0.7, SAL_MAX: 1.3, SAL_PRIOR: 20, SAL_EXPLORE_N: 30, SAL_EXPLORE: 0.2,
+  SAL_KEY: 'epinoia_feed_sal', SAL_TTL_MS: 10 * 60e3,
+  WHY_SAL_MIN: 0.12                    // salience this far above 1 is worth saying why
 });
 
 /* ============================================================================================ the curves === */
@@ -438,7 +448,93 @@ function groupWeights(profile, now, w) {
 function scoreMax(w) {
   const c = w || W;
   const base = Math.max(c.TIER.publisher, c.TIER.creator, c.TIER.league, c.TIER.report + c.REPORT_SIG_GAIN);
-  return base * c.KIND_MAX * (1 + c.W_LEAGUE + c.W_COUNTRY + c.W_PUB) + c.FOLLOW_BONUS;
+  return base * (c.SAL_MAX || 1) * c.KIND_MAX * (1 + c.W_LEAGUE + c.W_COUNTRY + c.W_PUB) + c.FOLLOW_BONUS;
+}
+
+/* ============================================================================== the click-through model === */
+/* AN ITEM'S KEY in the counts (0252 feed_track): a news_feed row's kind and id, or a page's own (data-ctr, it.ctr) */
+function ctrKey(it) {
+  const r = (it && (it.row || it)) || {};
+  if (r.kind && r.id && /^(league|creator|outlet|channel)$/.test(r.kind)) return r.kind + ':' + r.id;
+  return (it && it.ctr) || null;
+}
+/* WHAT THE MODEL READS IN A STORY: its headline's words and pairs of words, its shape (a question, a number, its length,
+   a name in it), its kind (a match report apart) and its league. The same function in the build that fits the model and
+   on the page that uses it, so the two cannot disagree. */
+const CTR_STOP = new Set('a an the of to in on at for and or but with from by as is are was were be been it its their his her they this that these those after before over under than into v vs his her who what how why'.split(' '));
+function ctrFeatures(it) {
+  const r = (it && (it.row || it)) || {};
+  const title = String(r.title || (it && it.title) || '');
+  const words = title.toLowerCase().replace(/[’']/g, '').match(/[a-z\u00c0-\u024f0-9]+/g) || [];
+  const f = new Set();
+  words.forEach(w => { if (/^\d+$/.test(w)) f.add('w:#'); else if (w.length > 2 && !CTR_STOP.has(w)) f.add('w:' + w); });
+  for (let i = 0; i + 1 < words.length; i++) if (!CTR_STOP.has(words[i]) && !CTR_STOP.has(words[i + 1]) && !/^\d+$/.test(words[i] + words[i + 1])) f.add('b:' + words[i] + '_' + words[i + 1]);
+  if (/\?\s*$/.test(title)) f.add('s:question');
+  if (/\d/.test(title)) f.add('s:number');
+  f.add('s:len' + (words.length <= 6 ? 'short' : words.length <= 11 ? 'mid' : 'long'));
+  if (/[A-Z][a-z]+\s+[A-Z][a-z]+/.test(title)) f.add('s:name');
+  f.add('k:' + (r.kind || 'none') + (isReport(r) ? ':report' : ''));
+  const lg = r.league_slug || (Array.isArray(r.leagues) && r.leagues[0] && r.leagues[0].slug) || null;
+  if (lg) f.add('l:' + lg);
+  return [...f];
+}
+const logistic = z => 1 / (1 + Math.exp(-z));
+/* the model's guess at a story's click-through, or null with no model */
+function ctrPredict(model, it) {
+  if (!model || !model.w) return null;
+  let z = num(model.bias);
+  ctrFeatures(it).forEach(k => { const v = model.w[k]; if (v) z += v; });
+  return logistic(z);
+}
+/* FITTED ON THE COUNTS, every hour (the newsdesk build): a logistic regression of opened on shown, by full-batch AdaGrad on
+   the binomial likelihood, with an L2 pull (l2 impressions' worth) towards nothing, so a word seen in three stories cannot
+   carry much; the intercept starts at the platform's rate. rows: [{ shown, opened, title, kind, league_slug, report }],
+   the counts already decayed by age (feed_ctr_totals). Null until there is enough to learn from. */
+function ctrFit(rows, o) {
+  const opts = o || {};
+  const data = (rows || []).filter(r => r && num(r.shown) >= (opts.minShown || 3) && r.title)
+    .map(r => ({ s: num(r.shown), o: Math.min(num(r.opened), num(r.shown)), f: ctrFeatures({ kind: r.kind, title: r.title, league_slug: r.league_slug, author: r.report ? W.AUTO_AUTHOR : '' }) }));
+  const S = data.reduce((a, d) => a + d.s, 0), O = data.reduce((a, d) => a + d.o, 0);
+  if (data.length < (opts.minItems || 20) || S < (opts.minShownTotal || 200) || O < 5) return null;
+  const base = O / S;
+  const count = {};
+  data.forEach(d => d.f.forEach(k => { count[k] = (count[k] || 0) + 1; }));
+  const keys = Object.keys(count).filter(k => count[k] >= (opts.minCount || 2));
+  const idx = new Map(keys.map((k, i) => [k, i]));
+  const X = data.map(d => d.f.map(k => idx.get(k)).filter(i => i != null));
+  const w = new Float64Array(keys.length), G = new Float64Array(keys.length);
+  let b = Math.log(base / (1 - base)), Gb = 0;
+  const lam = opts.l2 != null ? opts.l2 : 4, lr = opts.lr || 0.3;
+  for (let it = 0; it < (opts.iters || 300); it++) {
+    const g = new Float64Array(keys.length);
+    let gb = 0;
+    data.forEach((d, j) => {
+      let z = b;
+      X[j].forEach(i => { z += w[i]; });
+      const e = d.o - d.s * logistic(z);
+      gb += e;
+      X[j].forEach(i => { g[i] += e; });
+    });
+    Gb += gb * gb; b += lr * gb / (Math.sqrt(Gb) + 1e-9);
+    for (let i = 0; i < w.length; i++) { const gi = g[i] - lam * w[i]; G[i] += gi * gi; w[i] += lr * gi / (Math.sqrt(G[i]) + 1e-9); }
+  }
+  const out = {};
+  keys.map((k, i) => [k, w[i]]).filter(x => Math.abs(x[1]) >= 0.01).sort((a, c) => Math.abs(c[1]) - Math.abs(a[1])).slice(0, opts.maxFeatures || 3000)
+    .forEach(([k, v]) => { out[k] = Math.round(v * 10000) / 10000; });
+  return { v: 1, items: data.length, shown: Math.round(S), opened: Math.round(O), base: Math.round(base * 1e5) / 1e5, bias: Math.round(b * 10000) / 10000, w: out };
+}
+/* A STORY'S SALIENCE: its expected click-through against the platform's rate - the model's guess for its headline, blended
+   with its own record once it has one, a little more room while it is new - as the multiplier on its base */
+function salienceOf(it, S, w) {
+  const c = w || W;
+  if (!S || !S.model || !S.model.w || !(num(S.model.base) > 0)) return 1;
+  const guess = ctrPredict(S.model, it);
+  if (guess == null) return 1;
+  const key = ctrKey(it), own = key && S.items ? S.items[key] : null;
+  const shown = own ? num(own[0]) : 0, opened = own ? num(own[1]) : 0;
+  const post = (opened + c.SAL_PRIOR * guess) / (shown + c.SAL_PRIOR);
+  const explore = shown < c.SAL_EXPLORE_N ? 1 + c.SAL_EXPLORE * (1 - shown / c.SAL_EXPLORE_N) : 1;
+  return Math.min(c.SAL_MAX, Math.max(c.SAL_MIN, Math.pow(post / S.model.base, c.SAL_POWER) * explore));
 }
 
 /* ============================================================================================= scoring === */
@@ -464,6 +560,9 @@ function scoreOf(it, profile, now, w) {
   const sig = (it && it.sig) || (P.sig && P.sig[it && it.id]) || null;
   const sigPoints = tier === 'report' && sig ? Math.max(0, num(sig.points)) : 0;
   if (sigPoints) base += c.REPORT_SIG_GAIN * Math.min(1, sigPoints / c.REPORT_SIG_FULL);
+  /* what readers open of stories like this one (the click-through model) */
+  const sal = salienceOf(it, P.salience, c);
+  base *= sal;
 
   const read = readKeys(it).some(k => isRead(P, k, now, c));
   let imp = 1;
@@ -960,6 +1059,21 @@ function createNet(o) {
         return { country, idToSlug };
       });
     },
+    /* THE CLICK-THROUGH MODEL AND THE RECENT STORIES' COUNTS (0252, the newsdesk build's public files): from the CDN, not the
+       database, so even a front page that asks the database nothing more may have them; kept for the tab ten minutes */
+    salience() {
+      return once('salience', async () => {
+        const kept = readCache(W.SAL_KEY, W.SAL_TTL_MS, sessArea);
+        if (kept && typeof kept === 'object') return kept;
+        const f = fetcher(), c = cfg();
+        if (!f || !c.supabaseUrl) return null;
+        const get = async name => { try { const r = await f(c.supabaseUrl + '/storage/v1/object/public/snapshots/feed/' + name); return r.ok ? r.json() : null; } catch (_) { return null; } };
+        const [model, items] = await Promise.all([get('model.json'), get('salience.json')]);
+        const out = model && model.w ? { model, items: (items && items.items) || {} } : null;
+        writeCache(W.SAL_KEY, out, out ? 0 : W.SAL_TTL_MS - 60e3, sessArea);
+        return out;
+      });
+    },
     /* the points and reasons of the match reports among `rows`: { articleId: { points, reasons } } */
     async significance(rows, lo) {
       /* cachedOnly: only what this tab was already told (HOME or News asked); nothing is asked */
@@ -1026,7 +1140,8 @@ async function rankRows(rows, opts) {
   if (!st.enabled()) return { rows: rank(rows, { off: true, partners }, t), ranked: false, partners };
   try {
     const co = { cachedOnly: !!o.cachedOnly };
-    const [lm0, sig, langMap] = await Promise.all([n.leagueMap(co), n.significance(rows, co), n.languages(co).catch(() => ({}))]);
+    const [lm0, sig, langMap, salience] = await Promise.all([n.leagueMap(co), n.significance(rows, co), n.languages(co).catch(() => ({})),
+      n.salience ? n.salience().catch(() => null) : null]);
     const lm = { country: Object.assign({}, lm0.country, o.leagues && o.leagues.country), idToSlug: Object.assign({}, lm0.idToSlug, o.leagues && o.leagues.idToSlug) };
     let followedLeagues = [];
     try {
@@ -1034,7 +1149,7 @@ async function rankRows(rows, opts) {
       const prefs = F && typeof F.load === 'function' && F.session && F.session() ? await F.load() : null;
       followedLeagues = ((prefs && prefs.fav_league_ids) || []).map(id => lm.idToSlug[id]).filter(Boolean);
     } catch (_) { /* signed out or no follows */ }
-    const P = Object.assign({}, st.profile(), { country: o.country !== undefined ? o.country : country(), leagueCountry: lm.country, partners, sig,
+    const P = Object.assign({}, st.profile(), { country: o.country !== undefined ? o.country : country(), leagueCountry: lm.country, partners, sig, salience,
       followedIds: o.followedIds || [], followedLeagues,
       langMap, readLangs: o.readLangs || readerLangs(), langAll: st.langAll ? st.langAll() : false });
     return { rows: rank(rows, P, t), ranked: true, partners };
@@ -1044,6 +1159,66 @@ async function rankRows(rows, opts) {
 }
 
 /* ============================================================== the wiring of a page (browser only) === */
+/* CLICK-THROUGH, COUNTED (0252 feed_track): which stories a visit was shown and which it opened, as anonymous counts the
+   hourly build trains the click-through model on. A card says what it is (data-ctr, newscard.js and newsdesk.js);
+   shown = at least half of it on screen for a second, opened = a press on it. One call when the page is hidden, and one at
+   the moment a card is opened (with what had been shown by then). Only where the site counts visits at all (track.js
+   enabled(): analytics on, not Do Not Track or GPC, not opted out, not staff, not a robot); nothing about the reader goes. */
+const ctr = (() => {
+  const shown = new Set(), opened = new Set(), sent = new Set();
+  let io = null, wired = false;
+  const timers = new Map();
+  const on = () => { try { return !!(root.EpinoiaTrack && typeof root.EpinoiaTrack.enabled === 'function' && root.EpinoiaTrack.enabled()); } catch (_) { return false; } };
+  function send() {
+    const s = [...shown].filter(k => !sent.has('s' + k)).slice(0, 60), o = [...opened].filter(k => !sent.has('o' + k)).slice(0, 10);
+    if (!s.length && !o.length) return;
+    s.forEach(k => sent.add('s' + k)); o.forEach(k => sent.add('o' + k));
+    const c = root.EPINOIA_CONFIG || {};
+    try {
+      root.fetch(c.supabaseUrl + '/rest/v1/rpc/feed_track', { method: 'POST', keepalive: true,
+        headers: { apikey: c.supabaseAnonKey, 'Content-Type': 'application/json' },      /* the anon key alone: a reader is no one */
+        body: JSON.stringify({ p_shown: s, p_opened: o }) }).catch(() => { /* counts are never in the reader's way */ });
+    } catch (_) { /* nothing sent */ }
+  }
+  function wire() {
+    if (wired) return;
+    wired = true;
+    io = new IntersectionObserver(es => es.forEach(e => {
+      const k = e.target.getAttribute('data-ctr');
+      if (!k) return;
+      if (e.isIntersecting && e.intersectionRatio >= 0.5) { if (!timers.has(e.target)) timers.set(e.target, setTimeout(() => { shown.add(k); timers.delete(e.target); }, 1000)); }
+      else if (timers.has(e.target)) { clearTimeout(timers.get(e.target)); timers.delete(e.target); }
+    }), { threshold: [0, 0.5] });
+    const press = ev => { const t = ev.target, card = t && t.closest ? t.closest('[data-ctr]') : null;
+      if (card && t.closest('a,button')) { const k = card.getAttribute('data-ctr'); shown.add(k); opened.add(k); send(); } };
+    root.document.addEventListener('click', press, true);
+    root.document.addEventListener('auxclick', press, true);
+    root.document.addEventListener('visibilitychange', () => { if (root.document.visibilityState === 'hidden') send(); });
+    root.addEventListener('pagehide', send);
+  }
+  function watch(el) {
+    if (!el || !el.getAttribute || !el.getAttribute('data-ctr') || !on() || typeof root.IntersectionObserver !== 'function') return;
+    wire();
+    io.observe(el);
+  }
+  /* every card with a key, now and as they arrive */
+  function auto() {
+    const d = root.document;
+    if (!d || !d.body || !on() || typeof root.MutationObserver !== 'function') return;
+    d.querySelectorAll('[data-ctr]').forEach(watch);
+    new root.MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+      if (n.nodeType !== 1) return;
+      if (n.getAttribute('data-ctr')) watch(n);
+      if (n.querySelectorAll) n.querySelectorAll('[data-ctr]').forEach(watch);
+    }))).observe(d.body, { childList: true, subtree: true });
+  }
+  return { watch, auto, send, state: () => ({ shown: [...shown], opened: [...opened] }) };
+})();
+if (typeof root.document !== 'undefined' && root.document && typeof module === 'undefined') {
+  const go = () => setTimeout(() => ctr.auto(), 0);
+  if (root.document.readyState === 'loading') root.document.addEventListener('DOMContentLoaded', go); else go();
+}
+
 /* THE DWELL OF A LEAGUE'S PAGE, and its follows: interest.js calls this. No network, nothing when the reader has switched
    personalisation off or the page is nobody's league; a follow of a league or a club on a league's page counts a little. */
 function watchDwell(win, o) {
@@ -1232,6 +1407,7 @@ return {
   langCode, langOf, langOfKey, siteLang, readerLangs, SOURCE_LANG, LANG_CACHE,
   detectCountry, countryMatch, countryCodes, neighbours, country, TZ, REGIONS,
   tierOf, isReport, pkeyOf, sourceOf, leaguesOf, readKeys, partnerSet, isRead,
+  ctrKey, ctrFeatures, ctrPredict, ctrFit, salienceOf, ctr,
   emptyState, sane, addPoints, addDwell, noteOpen, noteVisit, noteFollow, noteShown, prune,
   dwellTracker, dwellPage, watchDwell,
   createStore, createNet, memoryStorage, control,

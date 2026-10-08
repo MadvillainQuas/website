@@ -133,3 +133,5 @@ a.ls-item:hover{ border-color:var(--lume, #93f2bf); background:color-mix(in srgb
 .le-merge-go{ border-color:var(--bad, #b32433); color:var(--bad, #b32433) }
 .le-merge{ margin-left:6px }
 .le-merge-opt{ display:inline-block; margin-top:4px; font-size:11px; text-decoration:underline; cursor:pointer; color:var(--bad, #b32433) }
+/* a club's rivals (0252), under its links */
+.le-riv{ margin-top:12px; padding-top:10px; border-top:1px solid var(--rule, rgba(255,255,255,.14)) }

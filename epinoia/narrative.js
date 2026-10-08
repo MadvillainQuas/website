@@ -244,7 +244,9 @@ function playerSeason(lines, games) {
     if (at == null) return;
     if (!by.has(r.pid)) by.set(r.pid, []);
     by.get(r.pid).push({ game: r.game_id, at, team: (side.get(r.game_id) || [])[r.team_idx] || null, min: num(r.min) / 60000,
-      pts: num(r.pts) || 0, reb: num(r.reb) || 0, ast: num(r.ast) || 0, stl: num(r.stl) || 0, blk: num(r.blk) || 0, p3m: num(r.p3m) || 0 });
+      pts: num(r.pts) || 0, reb: num(r.reb) || 0, ast: num(r.ast) || 0, stl: num(r.stl) || 0, blk: num(r.blk) || 0, p3m: num(r.p3m) || 0,
+      /* the shooting, where the line has it (the newsroom's slumps) */
+      fgm: num(r.fgm), fga: num(r.fga), p3a: num(r.p3a), ftm: num(r.ftm), fta: num(r.fta), tov: num(r.tov) });
   });
   const out = new Map();
   by.forEach((xs, pid) => {
@@ -1417,13 +1419,16 @@ function build(input) {
       .concat((s.questions || []).map(x => 'To ' + x.to + ': ' + x.q)).filter(Boolean).join('\n');
   });
 
-  const ctxObj = { nowMs, tz, C, S, posOf, name, short, fixtures, games, regular, recaps, tallies, P, model: o.model, LENS, PL, pname, ID, DISTINCT, F, maxGp, qualifiers, nextText,
+  /* THE RIVALS an administrator has named (0252 team_rivals): each pair as 'a|b', the lesser id first */
+  const RIVALS = new Set((o.rivals || []).filter(x => x && x[0] && x[1]).map(x => [String(x[0]), String(x[1])].sort().join('|')));
+  const ctxObj = { nowMs, tz, C, S, posOf, name, short, fixtures, games, regular, recaps, tallies, P, model: o.model, LENS, PL, pname, ID, DISTINCT, F, maxGp, qualifiers, nextText, RIVALS,
     shape, SERIES, isPost: isPostFix, pairKey, SIG, VID, NEWS, written, stories, awards: o.awards || null };
   /* the clubs the file names, so a page can draw a slate or a link without asking for them */
   const clubsOut = {};
   new Set(games.concat(fixtures).flatMap(g => [g.home_team_id, g.away_team_id])).forEach(id => {
     const t = T.get(id);
-    if (t) clubsOut[id] = { name: String(t.name || ''), short: t.short_name || null, slug: t.slug || null };
+    if (t) clubsOut[id] = Object.assign({ name: String(t.name || ''), short: t.short_name || null, slug: t.slug || null },
+      t.colour ? { colour: t.colour } : {}, t.logo_path ? { logo: t.logo_path } : {});      // the crest and colour a card draws
   });
   return {
     v: 1, engine: VERSION, built: builtIso, clubs: clubsOut,
@@ -1571,15 +1576,18 @@ function slate(X, horizon) {
     const bits = [];
     /* a play-off game is a game in a series: its number and the series first, and it outranks the regular season */
     const ser = X.isPost && X.isPost(g) && X.SERIES ? X.SERIES.get(X.pairKey(g)) : null;
+    /* a rivalry, said before anything else: it is why many will watch */
+    const rival = !!(X.RIVALS && X.RIVALS.has([a, b].sort().join('|')));
+    if (rival) bits.push('a rivalry');
     if (ser) bits.push(ser.agg ? (ser.n ? 'Second leg: ' + ser.status : 'First leg') : 'Game ' + (ser.n + 1) + (ser.n ? ': ' + ser.status : ' of the series'));
     if (pa && pb && Math.min(pa.gp || 0, pb.gp || 0) >= 3) bits.push(ordShort(pa.pos) + ' against ' + ordShort(pb.pos));
     if (turn) bits.push('the numbers say it turns on ' + turn.label);
     if (met.length && !ser) bits.push(met.length === 1 ? 'a rematch' : 'meeting ' + spell(met.length + 1) + ' this season');
     const angle = cap(bits.join('; ')) || null;
     /* a series game outranks the regular season; among series games, the regular measure still orders them */
-    const stakes0 = ser ? Math.round(100 * (1.2 + 0.5 * stakes)) / 100 : stakes;
+    const stakes0 = Math.round(100 * ((ser ? 1.2 + 0.5 * stakes : stakes) + (rival ? 0.45 : 0))) / 100;
     return {
-      game: g.id, at: g.tipoff_at, day: dayWords(g.tipoff_at, X.tz), title, angle, stakes: stakes0, series: ser ? { game: ser.n + 1, status: ser.n ? ser.status : null } : null,
+      game: g.id, at: g.tipoff_at, day: dayWords(g.tipoff_at, X.tz), title, angle, stakes: stakes0, rival, series: ser ? { game: ser.n + 1, status: ser.n ? ser.status : null } : null,
       home: { id: a, rank: pa ? pa.pos : null, rec: ca ? rec(ca.w, ca.l) : null, form: ca ? ca.last5.join('') : '', streak: ca && ca.streak ? (ca.streak.won ? 'W' : 'L') + ca.streak.n : null, watch: watchP(a) },
       away: { id: b, rank: pb ? pb.pos : null, rec: cb ? rec(cb.w, cb.l) : null, form: cb ? cb.last5.join('') : '', streak: cb && cb.streak ? (cb.streak.won ? 'W' : 'L') + cb.streak.n : null, watch: watchP(b) },
       expect: ex ? { margin: Math.round(ex.margin * 10) / 10, favourite: ex.margin >= 0 ? a : b, model: ex.model } : null,
@@ -1740,6 +1748,6 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 10;
+const VERSION = 11;     // 11: the newsroom's articles and the game to watch in the file, rivals on the slate
 return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));

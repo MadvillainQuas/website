@@ -1808,6 +1808,16 @@ jobs:
           node supabase/tests/feedrank.test.mjs
           node supabase/tests/partners-ui.test.mjs
 
+      - name: The newsroom - articles from the data, salience, the headline test, the click-through model
+        # epinoia/newsroom.js on a synthetic league: every format writes whole articles with no empty slot (her
+        # pronouns in a women's league), nothing under the salience bar, two new an hour, a piece kept as written,
+        # the headline test decided on the counts, a rivalry first on the game to watch; digest/learn file a fed
+        # article's phrasing and never a name or a figure; feedrank.js's click-through model (features, fit,
+        # prediction, salience held in its bounds, a new story given room) and the newsdesk's storylines
+        run: |
+          node supabase/tests/newsroom.test.mjs
+          node supabase/tests/narrative.test.mjs
+
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the
         # listing query (a primary recording with readings in it AND a finished job), the

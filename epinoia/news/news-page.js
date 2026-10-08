@@ -42,6 +42,8 @@ const WANT = Q.get('l') || '';
 const SLUG = Q.get('a') || '';
 const SRC = Q.get('s') || '';
 const ITEM = Q.get('i') || '';
+/* one of the league newsdesk's own pieces (newsroom.js), from its hourly file: ?l=<league>&d=<article> */
+const DESK = Q.get('d') || '';
 const PAGE = 24;
 /* the post cards: a lead and two dozen under it, three to a row */
 const FIRST = 25, MORE = 24;
@@ -158,12 +160,41 @@ function storedOrder() { try { const v = localStorage.getItem(ORDER_KEY); return
   $('#footLeague').href = back;
 
   if (await newsWall(league)) return;
+  if (DESK) return deskArticle(league);
   if (SLUG) await one(league);
   else {
     await all(league, 0);
     press(league);
   }
 })();
+
+/* ------------------------------------------------------- a newsroom piece ---
+   What the league's newsdesk wrote itself (newsroom.js): read from the newsdesk's hourly file, the CDN's copy, in one
+   request; drawn in this page's article layout, its sentences in the 'newsdesk' context. A piece gone from the file
+   (they are kept three weeks) says so. */
+async function deskArticle(league) {
+  const host = $('#one'), ND = window.EpinoiaNewsdesk;
+  host.textContent = '';
+  const b = ND ? await ND.load(league.id) : null;
+  const a = b && (b.articles || []).find(x => x.id === DESK);
+  if (!a) {
+    $('#head').textContent = 'Not found';
+    host.appendChild(el('div', 'empty', 'That piece is no longer on the newsdesk.'));
+    return;
+  }
+  /* the headline the reader was shown on the card that brought them (a piece testing several: ?v=) */
+  const v = +(Q.get('v') || 0), head = (Array.isArray(a.heads) && a.heads[v]) || a.head;
+  document.title = head + ' · ' + league.name;
+  $('#head').dataset.i18nCtx = 'newsdesk';
+  $('#head').textContent = head;
+  $('#leagueName').textContent = league.name + ' · ' + N.when(a.written) + ' · ' + a.kicker;
+  host.insertAdjacentHTML('beforeend', ND.articleHTML(b, a, { base: '../' }));
+  const foot = el('div', 'art-foot');
+  const link = el('a', 'ep-chip', 'all news →');
+  link.href = '?l=' + encodeURIComponent(league.slug);
+  foot.appendChild(link);
+  host.appendChild(foot);
+}
 
 /* ------------------------------------------------------------ one article --- */
 async function one(league) {

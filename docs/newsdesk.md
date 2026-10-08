@@ -82,7 +82,12 @@ same thing for the filed article (`supabase/functions/_shared/gamecontext.ts`).
 - the matchup valued: the expected margin, the facet worth most of it with both sides' expected figures, the
   underdog's edge, home court;
 - an honest lean (a toss-up, a lean, clear favourites, comfortable) and what argues against it;
-- who carries each side's form, and a milestone in reach.
+- who carries each side's form, and a milestone in reach;
+- how each side comes in (the wire services' opening line): its last game in the fortnight, the score winner first,
+  where, against whom, and whoever carried it ("with 31 from X"; "despite" only for a line that stood out); a run says
+  its latest game; two who met last time out get that game once;
+- home and road records when they are all one way or far apart, close-game records when a close game is expected,
+  the only meeting's top scorer.
 
 Without three games a side it keeps the season-average observations it had before.
 
@@ -209,7 +214,74 @@ The design follows what automated sports writing and news aggregation learned th
 - a briefing has an end;
 - "since your last visit" is kept on the reader's own device.
 
-## 8. Tests
+## 9. The newsroom (newsroom.js): articles the newsdesk writes itself
+
+Beside the storylines, every hour, the newsroom looks for what deserves a whole article, scores each candidate for
+SALIENCE (0-1: how far from normal, how much rides on it, how fresh) and writes the ones at 0.6 or above - two new an
+hour at most, eight a week, one a fortnight on the same subject. A piece, once written, is kept as it was for three
+weeks (a reader's link never changes under them), in the league's own newsdesk file (`articles`).
+
+| kind | what | the deep numbers it uses |
+|---|---|---|
+| `watch` | the week's games to watch | the slate's stakes; for each game the reasons (below), the season's lean, a player to watch |
+| `slump` | a key scorer gone cold (four games well under his standard) | his game lines (shooting, minutes, the shots that are not falling), shot profile, half court against transition, on/off, the team's record |
+| `mvp` | the MVP case (the box plus-minus leader of a top side) | BPM and the gap, usage and true shooting, on/off said for what it is (the case made, a deep side, or the number against), the four factors with and without, shot profile, rim protection on/off, the rival's case |
+| `prospect` | a player under 22 near the top by BPM | per 36, true shooting against the regulars, usage, shot profile, on/off, "every one better is older", the sample |
+| `identity` | what a club is built on, or its problem (the league's best or worst on a facet) | transition, half court for and against, second chances, rim protection, turnovers forced and given: the zones in that situation, who does it, what it is worth (points a game, or the league's model), the other side of them, the next opponent's matching number |
+| `run` / `skid` | a run of five, from the inside | the four factors in the run against before, points for and against, the player up or down, the five on the floor, close games |
+| `five` | the best five of the fortnight | the replayed games' lineups: minutes, plus-minus, per 40 against the club |
+| `clock` | the late-clock specialists | the replayed games' shot clock: points a chance past 16 seconds against the league, what a long possession costs them |
+| `absence` | a star missing | his share of the club's value (box plus-minus above replacement x minutes, VORP's own baseline), the record and scoring without him, on/off, who has had his minutes; a suspension only when the league recorded one |
+
+Every figure comes from what the hourly build already holds (the season file's club and player rows with the events
+splits and on/off, the game lines, the last fortnight's replays' `deep` numbers, the league's What Wins model): nothing
+more is read for an article. Pronouns follow the league (leagues.gender, else the women's markers in its name).
+
+**Where they are read**: three on the league's front page ("From the newsdesk", in the Storylines section), each whole
+on the news page at `news/?l=<league>&d=<article>`.
+
+**The game to watch** (`gameCard`, open above the folded storylines): the slate's highest stakes in the next week as a
+card - crests, records, places, form, the season's lean as a chance, why it matters, where it will be decided (the
+reasons, each with both sides' figures and a meter of where each stands), a player on each side with the on/off, the
+week's article and "Follow this game" (follow.js). The reasons are said as a preview writer would: a clash of tempos,
+the mismatch inside or from three, open court, the battle of the boards, look after the ball, the matchup at the point,
+on the wing or at the big spot (positional BPM and VORP), the form they bring - and the rivalry first, when the two are
+rivals.
+
+## 10. What it learns
+
+**The style library** (platform console, Newsroom tab; table `newsroom_style`, migration 0252, platform admins only).
+Paste an article: the newsroom digests it for its phrasing - the verb between two clubs before a score (filed by the
+score's margin: a rout, a narrow win), the scoring verb before "N points", the predicate of a hot or a cold hand, the
+connectives that turn or add to an argument, the shape of a question headline - and writes in it from the next build.
+It learns short, generic phrasing, never a sentence or a name or a figure, and every slot is filled from the data.
+
+**The click-through model** (migration 0252; `feedrank.js`). Every visit counts which feed cards and newsroom pieces it
+was shown (half on screen for a second) and which it opened, as anonymous daily counts (`feed_track`: no visitor, no
+session, no address; only where the site counts visits at all - analytics on, not Do Not Track or GPC, not opted out,
+not staff, not a robot). Every hour the build reads the decayed counts (`feed_ctr_totals`, service role), fits a
+logistic regression of opens on showings over the headline's words and pairs, its shape (a question, a number, its
+length, a name), its kind and its league (`ctrFit`), and publishes it as `snapshots/feed/model.json`, with each recent
+story's own counts as `snapshots/feed/salience.json`. Then:
+- **every feed** multiplies a story's base by its salience: its expected click-through (the model's guess for its
+  headline, blended with its own record) against the platform's, held between 0.7 and 1.3, with room for a new story to
+  be tried (exploration) - beside what a game's significance already gave a match report;
+- **the newsroom** orders a new piece's headlines by the model and keeps three for a **headline test**: each reader is
+  shown one (the same for their tab), and once they have been shown 300 times between them the best click-through wins
+  for good;
+- **the formats** readers open more are weighed up (0.75 to 1.3) in the salience that decides what is written.
+
+The console's Newsroom tab shows what the library has taught and what works: the platform's rate, the headline features
+that lift and sink a story, and the formats against each other.
+
+## 11. Rivals
+
+A platform administrator names two clubs rivals from a club's page ("edit links": `team_rivals`, `team_rival_set`,
+migration 0252). A rivalry raises its games' stakes on the slate (said first, "a rivalry"), leads the game to watch's
+reasons, makes the week's article more salient, and gives a match report of one 20 points more in the feed
+(`news_report_significance`).
+
+## 12. Tests
 
 | file | what |
 |---|---|
@@ -219,3 +291,5 @@ The design follows what automated sports writing and news aggregation learned th
 | `supabase/tests/report-i18n.test.mjs` | every new template comes back fully translated in each visible language |
 | `supabase/tests/newsdesk-i18n.test.mjs [ja\|es] [--list]` | every string the newsdesk draws, from fixture leagues that open every kind of storyline, comes back whole in each language (the `newsdesk` pack: `epinoia/i18n/<code>/newsdesk.js`, one anchored pattern per template) |
 | `supabase/tests/report-eval.mjs --ctx [--league <slug>] [--show N]` | real games: coverage, repetition, stock phrases, logic |
+| `supabase/tests/newsroom.test.mjs` | the newsroom on a synthetic league (every format, salience, persistence, the headline test, the game to watch, rivals), digest/learn, the click-through model |
+| `node tools/build-narratives.mjs --local --league <slug> --articles all [--input-out f.json]` | every candidate article a real league offers, with its salience (and the newsroom's input saved, to work on the writing without reading the league again) |

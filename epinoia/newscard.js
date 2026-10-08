@@ -392,6 +392,8 @@ function card(item, opts) {
   /* the two ways to the piece tell the page it was opened (a press, a keyboard Enter, a middle click): the feed's "read" */
   const opened = a => { if (typeof o.onOpen === 'function') ['click', 'auxclick'].forEach(t => a.addEventListener(t, () => { try { o.onOpen(it); } catch (_) { /* never in the reader's way */ } })); };
   const art = el('article', 'pc pc-' + (it.kind || 'story') + (o.lead ? ' pc-lead' : '') + (it.image ? '' : ' pc-noimg'));
+  /* the story's key in the click-through counts (feedrank.js ctr, 0252): a news_feed row's kind and id */
+  if (it.row && it.row.kind && it.row.id && /^(league|creator|outlet|channel)$/.test(it.row.kind)) art.setAttribute('data-ctr', it.row.kind + ':' + it.row.id);
   art.style.setProperty('--bc', colour);
   const partner = it.partner === true || !!(it.pkey && o.partners && typeof o.partners.has === 'function' && o.partners.has(it.pkey));
   if (partner) art.classList.add('pc-partnered');

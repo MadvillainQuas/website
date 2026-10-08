@@ -973,16 +973,16 @@ async function storylines() {
   if (!b || !b.stories.some(s => s.status !== 'resolved')) return;
   if (season && b.season && b.season.id && b.season.id !== season.id) return;
   const seen = ND.seen(LEAGUE.id);
-  host.innerHTML = '<div class="nd-front">' + ND.briefingHTML(b, { base: '' }) + ND.storiesHTML(b, { base: '', max: 6, seen, resolved: 1 }) + '</div>';
+  /* THE WEEK'S GAME TO WATCH, open (newsroom.js gameCard, built with the file), then the storylines FOLDED (2026-10-08): a
+     bar with the count, what is new and the lead; the cards are drawn when it is opened */
+  host.innerHTML = (ND.watchCardHTML ? ND.watchCardHTML(b, { base: '' }) : '') + (ND.articlesHTML ? ND.articlesHTML(b, { base: '', max: 3 }) : '') + ND.foldHTML(b, { max: 6, seen });
+  if (ND.wireWatch) ND.wireWatch(host, b);
   sec.classList.remove('hide');
   renumber();
   try { window.dispatchEvent(new Event('epinoia:sections')); } catch (_) { /* ON THIS PAGE redraws on its own early on */ }
-  /* marked as seen once the reader has had the section in front of them */
-  const mark = () => ND.markSeen(LEAGUE.id, b);
-  if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); setTimeout(mark, 4000); } });
-    io.observe(sec);
-  } else setTimeout(mark, 8000);
+  /* marked as seen once the reader has opened them and had them in front of them a moment */
+  ND.wireFold(host, () => '<div class="nd-front">' + ND.briefingHTML(b, { base: '' }) + ND.storiesHTML(b, { base: '', max: 6, seen, resolved: 1 }) + '</div>',
+    () => setTimeout(() => ND.markSeen(LEAGUE.id, b), 4000));
 }
 
 /* ------------------------------------------------------- the fans' vote ---

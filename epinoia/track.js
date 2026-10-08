@@ -411,6 +411,8 @@ function counting() { return !optedOut(); }
 
 return {
   boot, flush, entity, setCounting, counting, search, piece, flushPieces, action, view, MINE_KEY,
+  /* whether this browser counts at all (feedrank.js's click-through counts ask the same question) */
+  enabled,
   _test: {
     env(e) { ENV = e || null; ENTITY = {}; sentOnce = false; queue.length = 0; stopped = false; searchStopped = false; session = null; ref = undefined; timer = null;
              pieceQueue.length = 0; seenOnce.clear(); pieceStopped = false; pieceTimer = null; pieceHooked = false; },

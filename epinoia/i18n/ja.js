@@ -2738,7 +2738,11 @@
       'competition': '{n}大会',
       'competitions': '{n}大会',
       'pick': '{n}件の予想',
-      'picks': '{n}件の予想'
+      'picks': '{n}件の予想',
+      'storyline': '{n}件のストーリーライン',
+      'storylines': '{n}件のストーリーライン',
+      'new': '新着{n}件',
+      'updated': '更新{n}件'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */
