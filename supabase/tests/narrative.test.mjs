@@ -227,8 +227,8 @@ console.log('\nthe week’s results, read as a desk reads them');
   /* an upset by the numbers: the match report's season context had Damson City by six at home */
   const bu = N.build(Object.assign({}, base, { recaps: Object.assign({}, base.recaps, { g20: { headline: 'Cedar City stun Damson City 74–70', expect: 6, decisive: { key: 'efg', label: 'the shots that fell', pts: 7 } } }) }));
   const u = bu.stories.find(s => s.id === 'upset:g20');
-  ok('an upset by the numbers says what the numbers said before the tip', u && /The season’s numbers had Damson City by about six before the tip\./.test(u.dek), u && u.dek);
-  ok('...and a plural facet takes a plural verb', u && /The shots that fell were worth about 7 points to them\./.test(u.dek), u && u.dek);
+  ok('an upset by the numbers says who had been favourites, in words', u && /Damson City had been favourites by about six points\./.test(u.dek) && !/the numbers/i.test(u.dek), u && u.dek);
+  ok('...and what decided it, as a fan would say it (never "worth about N points")', u && /They simply made more of their shots\./.test(u.dek) && !/worth about/.test(u.dek), u && u.dek);
   /* a run's next game away from home reads as a sentence */
   const ba = N.build(Object.assign({}, base, { fixtures: [{ id: 'f9', home_team_id: 't2', away_team_id: 't1', tipoff_at: new Date(NOW + 2 * 86400000).toISOString() }] }));
   const run = ba.stories.find(s => s.id === 'run:t1');

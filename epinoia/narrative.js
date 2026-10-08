@@ -861,9 +861,9 @@ function build(input) {
   if (lines0.length >= 8) {
     const byBpm = lines0.slice().sort((a, b) => b.bpm - a.bpm), byPts = lines0.slice().sort((a, b) => (b.ppg || 0) - (a.ppg || 0));
     const top = byBpm[0], club = PL.get(top.id) ? PL.get(top.id).team : null;
-    story({ id: 'bpm:' + top.id, kind: 'bpm', kicker: 'The best player, by the numbers', head: pname(top.id) + ' leads the league in box plus-minus',
-      dek: signed(top.bpm) + ' BPM on ' + one(top.ppg) + ' points, ' + one(top.rpg) + ' rebounds and ' + one(top.apg) + ' assists a game' + (club ? ' for ' + name(club) : '') + '.',
-      why: (byBpm[1] ? one(top.bpm - byBpm[1].bpm) + ' clear of ' + pname(byBpm[1].id) + ', the next best. ' : '') + 'Box plus-minus counts everything in the box score against what a player’s minutes are worth.',
+    story({ id: 'bpm:' + top.id, kind: 'bpm', kicker: 'The best player, by the numbers', head: pname(top.id) + ' has been the best player in the league so far, by our numbers',
+      dek: fan(top.ppg) + ' points, ' + fan(top.rpg) + ' rebounds and ' + fan(top.apg) + ' assists a game' + (club ? ' for ' + name(club) : '') + ', and the best all-in-one rating in the league.',
+      why: (byBpm[1] ? (top.bpm - byBpm[1].bpm >= 2 ? 'Comfortably' : 'Just') + ' ahead of ' + pname(byBpm[1].id) + '. ' : '') + 'Our all-in-one rating counts everything a player does on the floor, not just the points.',
       numbers: [{ label: 'BPM', value: signed(top.bpm) }, { label: 'points', value: one(top.ppg) }, { label: 'minutes', value: one(top.mpg) },
         byBpm[1] ? { label: 'next best', value: pname(byBpm[1].id) + ' ' + signed(byBpm[1].bpm) } : null],
       questions: [Q(pname(top.id), 'You lead the league in box plus-minus on ' + one(top.ppg) + ' points a game: what part of your game do people miss?')],
@@ -874,10 +874,10 @@ function build(input) {
     const quiet = byBpm.slice(0, 5).find(r => byPts.indexOf(r) >= 15 && r.id !== top.id);
     if (quiet) {
       const qc = PL.get(quiet.id) ? PL.get(quiet.id).team : null;
-      story({ id: 'quiet:' + quiet.id, kind: 'quiet', kicker: 'Under the radar', head: pname(quiet.id) + ' is one of the league’s best players on ' + one(quiet.ppg) + ' points a game',
-        dek: signed(quiet.bpm) + ' BPM, ' + ordShort(byBpm.indexOf(quiet) + 1) + ' in the league, ' + ordShort(byPts.indexOf(quiet) + 1) + ' in scoring' + (qc ? ', for ' + name(qc) : '') + '.',
+      story({ id: 'quiet:' + quiet.id, kind: 'quiet', kicker: 'Under the radar', head: pname(quiet.id) + ' is one of the league’s best players on ' + fan(quiet.ppg) + ' points a game',
+        dek: ordShort(byBpm.indexOf(quiet) + 1) + ' in the league by our all-in-one rating, but only ' + ordShort(byPts.indexOf(quiet) + 1) + ' in scoring' + (qc ? ', for ' + name(qc) : '') + '.',
         why: (() => { const k1 = byBpm.indexOf(quiet), k2 = byPts.indexOf(quiet);
-          return 'Only ' + plural(k1, 'player') + ' in the league ' + (k1 === 1 ? 'has' : 'have') + ' a better box plus-minus; ' + spell(k2) + ' score more.'; })(),
+          return 'Only ' + plural(k1, 'player') + ' in the league ' + (k1 === 1 ? 'has' : 'have') + ' done more for their team, and ' + spell(k2) + ' score more. The box score does not tell the whole story.'; })(),
         numbers: [{ label: 'BPM', value: signed(quiet.bpm) }, { label: 'points', value: one(quiet.ppg) }, { label: 'rebounds', value: one(quiet.rpg) }, { label: 'assists', value: one(quiet.apg) }],
         questions: [qc ? Q(coachOf(qc), pname(quiet.id) + ' ranks ' + ordShort(byBpm.indexOf(quiet) + 1) + ' in the league by box plus-minus on ' + one(quiet.ppg) + ' points a game: what does the box score miss?') : null],
         teams: qc ? [qc] : [], players: [quiet.id], tracks: { metric: 'quiet', value: quiet.id }, importance: 4.5, magnitude: 0.6, stakes: 0.4,
@@ -967,7 +967,7 @@ function build(input) {
           ? 'That is ' + top.pts + ' of ' + possOf(name(top.team)) + ' ' + top.teamPts + ' points in the closing minutes of a close game they ' + (top.won ? 'won' : 'lost') + '.'
           : 'That is ' + top.pts + ' of ' + possOf(name(top.team)) + ' ' + top.teamPts + ' points in the closing minutes of ' + spell(n) + ' close games; ' +
             (top.won === n ? 'they won ' + (n === 2 ? 'both' : 'all ' + spell(n)) : top.won === 0 ? 'they lost ' + (n === 2 ? 'both' : 'all ' + spell(n)) : 'they won ' + spell(top.won)) + '.',
-        why: share != null && share >= 0.5 ? 'When the game is on the line, the ball goes to ' + nm + '.' : 'Points at the end of close games are the ones a season turns on.',
+        why: share != null && share >= 0.5 ? 'When the game is on the line, the ball goes to ' + nm + '.' : 'These are the points people remember.',
         numbers: [{ label: 'points in clutch time', value: String(top.pts) }, { label: 'close finishes', value: String(n) }, share != null ? { label: 'share of the club’s', value: Math.round(100 * share) + '%' } : null],
         questions: [Q(coachOf(top.team), nm + ' scored ' + top.pts + ' of your ' + top.teamPts + ' points in the closing minutes: does the ball always go to ' + nm + ' at the end?')],
         teams: [top.team], players: [top.pid], games: top.games, tracks: { metric: 'closer', value: top.pts },
@@ -1047,16 +1047,16 @@ function build(input) {
     if (!byNumbers && !byTable) return;
     const ended = runBefore(l, g);
     const why = ended && ended.won && ended.n >= 3 ? 'It ended ' + possOf(name(l)) + ' run of ' + spell(ended.n) + ' straight wins.'
-      : byNumbers && exW <= -8 ? 'The season’s numbers made ' + name(l) + ' clear favourites, by about ' + spell(Math.round(-exW)) + ' points.'
+      : byNumbers && exW <= -8 ? name(l) + ' had been clear favourites, by about ' + spell(Math.round(-exW)) + ' points.'
       : gap >= 6 ? cap(spell(gap)) + ' places separate them in the table.'
       : 'Results like this are where tables get rearranged.';
     story({ id: 'upset:' + g.id, kind: 'upset', kicker: 'Upset', head: r && r.headline ? r.headline
         : name(w) + (pw ? ', ' + ordShort(pw.pos) + ',' : '') + ' beat ' + name(l) + (pl ? ', ' + ordShort(pl.pos) + ',' : '') + ' ' + scoreOf(g),
       dek: (pw && pl ? name(w) + ' (' + ordShort(pw.pos) + ') beat ' + name(l) + ' (' + ordShort(pl.pos) + ').' : name(w) + ' beat ' + name(l) + ' ' + scoreOf(g) + '.') +
-        (byNumbers ? ' The season’s numbers had ' + name(l) + ' by about ' + spell(Math.round(-exW)) + ' before the tip.' : '') +
-        (r && r.decisive ? ' ' + cap(r.decisive.label) + ' ' + wasWere(r.decisive.label) + ' worth about ' + Math.round(r.decisive.pts) + ' points to them.' : ''),
+        (byNumbers ? ' ' + name(l) + ' had been favourites by about ' + spell(Math.round(-exW)) + ' points.' : '') +
+        (r && r.decisive ? ({ efg: ' They simply made more of their shots.', tovp: ' They won it on turnovers.', orebp: ' They won it on the offensive glass.', ftr: ' They won it at the free-throw line.' }[r.decisive.key] || '') : ''),
       why, teams: [w, l], games: [g.id], tracks: { metric: 'game', value: g.id },
-      questions: [byNumbers ? Q(coachOf(w), 'The season’s numbers had ' + name(l) + ' by about ' + spell(Math.round(-exW)) + ': what did you do that they did not expect?')
+      questions: [byNumbers ? Q(coachOf(w), name(l) + ' were favourites by about ' + spell(Math.round(-exW)) + ' points: what did you do that they did not expect?')
         : Q(coachOf(w), 'What did you see in ' + name(l) + ' that the table did not?')],
       importance: 6 + Math.min(2, byNumbers ? -exW / 5 : gap / 4), magnitude: Math.min(1, byNumbers ? -exW / 10 : gap / 8), stakes: 0.7, lastAt: time(g.tipoff_at),
       angles: ['the recap', 'what the winners did that nobody expected'], links: [gameLink(g.id)] });
@@ -1196,7 +1196,7 @@ function build(input) {
     const h = byHard[0], hc = h.c, adjRank = byAdj.indexOf(h) + 1;
     if (hc.w > hc.l) story({ id: 'schedule:' + h.id, kind: 'schedule', kicker: 'The schedule',
       head: possOf(name(h.id)) + ' ' + rec(hc.w, hc.l) + ' has come against the hardest schedule in the league',
-      dek: 'Their opponents so far average ' + signed(h.sosNet) + ' points per 100 possessions, adjusted; the easiest schedule has been ' + possOf(name(byHard[byHard.length - 1].id)) + ' (' + signed(byHard[byHard.length - 1].sosNet) + ').',
+      dek: 'No side in the league has faced a tougher set of opponents so far; ' + name(byHard[byHard.length - 1].id) + ' have had the easiest.',
       why: adjRank <= 3 ? 'Against the schedule they have played, their margins rank ' + place(adjRank) + ' in the league: the record undersells them.'
         : 'A record against the league’s best is worth more than the same record against its worst.',
       numbers: [{ label: 'record', value: rec(hc.w, hc.l) }, { label: 'opponents, adjusted net', value: signed(h.sosNet) }, { label: 'their adjusted net', value: signed(h.adjNet) + ' (' + ordShort(adjRank) + ')' }],
@@ -1280,19 +1280,8 @@ function build(input) {
       angles: ['the fans’ pick against the numbers’ pick, side by side'], links: [playerLink(p.id)].filter(Boolean) });
   }
 
-  /* ---- THE LEAGUE'S LENS: what wins here (What Wins), as a standing data story ------------------------------- */
-  if (LENS && LENS.rows.length >= 3) {
-    const a = LENS.rows[0], b = LENS.rows[1];
-    story({ id: 'lens', kind: 'lens', kicker: 'What wins here', head: cap(a.label) + ' decides more games in this league than anything else',
-      dek: 'One standard step better than the average club at ' + a.label + ' is worth about ' + one(a.pts) + ' points a game here; at ' + b.label + ', ' + one(b.pts) + '.',
-      why: (() => { /* how often it has been the facet that decided a game here */
-        let n0 = 0, nA = 0;
-        F.forEach(f => { if (f.decisive && f.decisive.pts >= 2) { nA++; if (f.decisive.k === a.k) n0++; } });
-        return nA >= 10 ? 'Game by game, it has been the facet that decided ' + Math.round(100 * n0 / nA) + '% of the results here.' : 'It is the lens to read every result and every preview through.'; })(),
-      numbers: LENS.rows.map(r => ({ label: r.label, value: one(r.pts) + ' pts', note: 'a game, for one standard step' })).concat(LENS.home != null ? [{ label: 'home court', value: one(LENS.home) + ' pts' }] : []),
-      tracks: { metric: 'lens', value: a.k }, importance: 4, magnitude: 0.5, stakes: 0.3, lastAt: nowMs - 2 * DAY, evergreen: true,
-      angles: ['an explainer for new readers', 'a recurring "the number that matters" box'] });
-  }
+  /* WHAT WINS HERE is no longer a storyline (2026-10-08): a model's lens is not a story a reader follows. The coverage
+     plan's big picture keeps it, in words. */
 
   /* ============================================================== threading === */
   const prev = new Map(((o.previous && o.previous.stories) || []).map(s => [s.id, s]));
@@ -1535,7 +1524,7 @@ function threadsOf(X, g) {
       case 'absence': line = pn ? pn + ' has missed ' + possOf(club(t)) + ' last ' + spell(v) + ' games' : null; break;
       case 'race': line = (s.teams || []).filter(x => both.indexOf(x) >= 0).length === 2 ? 'Two of the clubs at the top meet' : null; break;
       case 'line': line = (s.teams || []).filter(x => both.indexOf(x) >= 0).length === 2 ? 'Two of the clubs fighting for the line meet' : null; break;
-      case 'identity': line = X.DISTINCT && X.DISTINCT.get(t) ? possOf(club(t)) + ' results turn on ' + FACET[X.DISTINCT.get(t).k] : null; break;
+      case 'identity': line = X.DISTINCT && X.DISTINCT.get(t) ? possOf(club(t)) + ' season keeps coming down to ' + FACET[X.DISTINCT.get(t).k] : null; break;
       case 'form': line = pn ? pn + ' comes in scoring ' + String(s.tracks.value) + ' a game over the last five' : null; break;
       default: line = null;
     }
@@ -1544,6 +1533,9 @@ function threadsOf(X, g) {
   return out.slice(0, 4);
 }
 
+/* THE HOUSE VOICE (voice.js), for the slate's angle; and a number as a fan says it: whole above ten ("19 a night") */
+const VOICE = () => (typeof globalThis !== 'undefined' && globalThis.EpinoiaVoice) || (typeof require === 'function' ? (() => { try { return require('./voice.js'); } catch (_) { return null; } })() : null);
+const fan = v => (v == null || !isFinite(+v) ? '' : Math.abs(+v) >= 10 ? String(Math.round(+v)) : (Math.round(+v * 10) / 10).toFixed(1));
 function slate(X, horizon) {
   const until = X.nowMs + (horizon || 7 * DAY);
   return X.fixtures.filter(g => time(g.tipoff_at) <= until).map(g => {
@@ -1568,22 +1560,31 @@ function slate(X, horizon) {
       let best = null;
       X.PL.forEach((p, pid) => { if (p.team === side && p.gp >= 3 && X.pname(pid) && (!best || (p.last5ppg || 0) > (best.p.last5ppg || 0))) best = { pid, p }; });
       const k = Math.min(5, best ? best.p.gp : 0);
-      return best ? { pid: best.pid, name: X.pname(best.pid), line: one(best.p.last5ppg) + ' ppg ' + (k >= 5 ? 'over the last five' : 'so far') } : null;
+      return best ? { pid: best.pid, name: X.pname(best.pid), line: k >= 5 ? 'scoring ' + fan(best.p.last5ppg) + ' a night over the last five' : 'averaging ' + fan(best.p.last5ppg) + ' a night so far' } : null;
     };
     const t = X.tallies[g.id];
     const fans = t && (+t.home + +t.away) >= 10 ? { home: Math.round(100 * t.home / (+t.home + +t.away)), n: +t.home + +t.away } : null;
     const title = X.name(a) + ' v ' + X.name(b);
-    const bits = [];
-    /* a play-off game is a game in a series: its number and the series first, and it outranks the regular season */
+    /* THE ANGLE, said as a writer would (voice.js): a rivalry and the series first, then what is at stake - both unbeaten,
+       the top two, a streak against a slide, the rematch. A record or a run only when this is the club's next game (another
+       first can change it); never "the numbers say it turns on" (true of nearly every game, so it says nothing). */
     const ser = X.isPost && X.isPost(g) && X.SERIES ? X.SERIES.get(X.pairKey(g)) : null;
-    /* a rivalry, said before anything else: it is why many will watch */
     const rival = !!(X.RIVALS && X.RIVALS.has([a, b].sort().join('|')));
-    if (rival) bits.push('a rivalry');
-    if (ser) bits.push(ser.agg ? (ser.n ? 'Second leg: ' + ser.status : 'First leg') : 'Game ' + (ser.n + 1) + (ser.n ? ': ' + ser.status : ' of the series'));
-    if (pa && pb && Math.min(pa.gp || 0, pb.gp || 0) >= 3) bits.push(ordShort(pa.pos) + ' against ' + ordShort(pb.pos));
-    if (turn) bits.push('the numbers say it turns on ' + turn.label);
-    if (met.length && !ser) bits.push(met.length === 1 ? 'a rematch' : 'meeting ' + spell(met.length + 1) + ' this season');
-    const angle = cap(bits.join('; ')) || null;
+    const lead = [];
+    if (rival) lead.push('A rivalry game.');
+    if (ser) lead.push(cap(ser.agg ? (ser.n ? 'second leg: ' + ser.status : 'first leg') : 'game ' + (ser.n + 1) + (ser.n ? ': ' + ser.status : ' of the series')) + '.');
+    const V = VOICE();
+    let said = [];
+    if (V) {
+      const fresh = id => X.fixtures.find(f => f.home_team_id === id || f.away_team_id === id) === g;
+      const W = V.writer('slate' + g.id), eA = V.club(X.name(a), { id: a, role: 'the hosts' }), eB = V.club(X.name(b), { id: b, role: 'the visitors' });
+      const enough = pa && pb && Math.min(pa.gp || 0, pb.gp || 0) >= 3;
+      said = V.stakes(W, { A: eA, B: eB, rankA: enough ? pa.pos : null, rankB: enough ? pb.pos : null, n: of,
+        recA: fresh(a) && ca ? { w: ca.w, l: ca.l } : null, recB: fresh(b) && cb ? { w: cb.w, l: cb.l } : null,
+        runA: fresh(a) && ca && ca.streak ? { won: ca.streak.won, n: ca.streak.n } : null, runB: fresh(b) && cb && cb.streak ? { won: cb.streak.won, n: cb.streak.n } : null,
+        meetings: ser ? [] : met.map(m => ({ aWon: (m.home_team_id === a) === (+m.home_score > +m.away_score), hi: Math.max(m.home_score, m.away_score), lo: Math.min(m.home_score, m.away_score) })) }).lines;
+    }
+    const angle = lead.concat(said).join(' ') || null;
     /* a series game outranks the regular season; among series games, the regular measure still orders them */
     const stakes0 = Math.round(100 * ((ser ? 1.2 + 0.5 * stakes : stakes) + (rival ? 0.45 : 0))) / 100;
     return {
@@ -1641,8 +1642,7 @@ function coverage(stories, X) {
       ' points between the two sides; ' + Math.round(100 * closeN / X.games.length) + '% have been decided by five or fewer.');
   }
   if (X.LENS && X.LENS.rows.length >= 2) {
-    big.push('What wins here, in points a game for being one standard step better than the average club: ' +
-      list(X.LENS.rows.slice(0, 4).map(r => r.label + ' ' + one(r.pts))) + '.' + (X.LENS.model ? ' Weighed by this league’s own model of what wins.' : ''));
+    big.push('In this league, ' + X.LENS.rows[0].label + ' decides games more than anything else, then ' + X.LENS.rows[1].label + '.');
   }
   /* how often each facet was the one that decided a game */
   const dec = {};
@@ -1748,6 +1748,6 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 11;     // 11: the newsroom's articles and the game to watch in the file, rivals on the slate
+const VERSION = 12;     // 12: the house voice (voice.js): the slate's angle, the storylines in words; no "what wins" storyline
 return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));

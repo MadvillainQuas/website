@@ -219,7 +219,7 @@ function watchCardHTML(build, o) {
     const h = p.slug ? safeHref(opts.base, 'p/?p=' + p.slug) : null;
     return '<div class="nd-w-player" style="--club:' + col(p.team) + '">' + (h ? '<a href="' + esc(h) + '" translate="no">' + esc(p.name) + '</a>' : '<b translate="no">' + esc(p.name) + '</b>') +
       (p.line ? '<span>' + esc(p.line) + '</span>' : '') +
-      (p.onoff ? '<span class="nd-w-oo">' + esc((p.onoff.on >= 0 ? '+' : '−') + Math.abs(p.onoff.on).toFixed(1) + ' on · ' + (p.onoff.off >= 0 ? '+' : '−') + Math.abs(p.onoff.off).toFixed(1) + ' off') + '</span>' : '') + '</div>';
+      (p.onoff ? '<span class="nd-w-oo">' + esc((p.onoff.on >= 0 ? '+' : '−') + Math.abs(p.onoff.on).toFixed(1) + ' on court · ' + (p.onoff.off >= 0 ? '+' : '−') + Math.abs(p.onoff.off).toFixed(1) + ' off court') + '</span>' : '') + '</div>';
   }).join('');
   const game = safeHref(opts.base, 'game/?g=' + w.game);
   const artRow = w.article ? (build.articles || []).find(a => a.id === w.article) : null, artV = artRow ? variantOf(artRow) : 0, art = artRow ? articleHref(build, artRow, opts.base, artV) : null;

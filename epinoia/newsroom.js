@@ -288,6 +288,33 @@ const nextText = (L, id) => { const f = L.nextOf(id); if (!f) return null; const
   return { line: (home ? 'at home to ' : 'away at ') + L.club(home ? f.away_team_id : f.home_team_id) + ' on ' + L.day(time(f.tipoff_at)), opp: home ? f.away_team_id : f.home_team_id, game: f.id }; };
 const teamLink = (L, id) => { const t = L.o.teams && (L.o.teams instanceof Map ? L.o.teams.get(id) : L.o.teams[id]); return t && t.slug ? { label: L.club(id), href: 't/?t=' + t.slug } : null; };
 const playerLink = (L, id) => (L.slug(id) ? { label: L.pname(id), href: 'p/?p=' + L.slug(id) } : null);
+/* THE HOUSE VOICE (voice.js): every piece is written by a writer that plans its sentences, makes them grammatical and
+   reads them back; the clubs and players in a piece go to it as entities, so it can name them, then call them "the
+   hosts" or by surname, then "they" or "she" */
+const VOICE = () => root.EpinoiaVoice || (typeof require === 'function' ? require('./voice.js') : null);
+/* THE EDITOR (scrutiny.js): the last reader of every piece and card before it is posted */
+const EDITOR = () => root.EpinoiaScrutiny || (typeof require === 'function' ? (() => { try { return require('./scrutiny.js'); } catch (_) { return null; } })() : null);
+/* the league's next game for each club (a record claimed for a later game can change before it), its clubs' names */
+function editorMeta(L, o) {
+  const schedule = {}, clubs = [];
+  const tm = o && o.teams ? (o.teams instanceof Map ? [...o.teams.keys()] : Object.keys(o.teams)) : [];
+  tm.forEach(id => { const f = L.nextOf(id); if (f) schedule[id] = f.id; const n = L.club(id); if (n) clubs.push(n); });
+  return { schedule, clubs };
+}
+/* a piece through the editor: { piece (fixed, its report as qa), ok } */
+function edit(a, meta, nowMs, game) {
+  const E = EDITOR();
+  const log = a.__log || [], sections = a.__sections || null;
+  delete a.__log; delete a.__sections;
+  if (!E) return { piece: a, ok: true };
+  const q = E.scrutinise(a, { log, schedule: meta.schedule, clubs: meta.clubs, sectionGame: sections, game: game || null, nowMs });
+  return { piece: Object.assign(q.piece, { qa: q.report }), ok: q.report.ok };
+}
+const eClub = (L, id, role) => VOICE().club(L.club(id), { id, role: role || null });
+const ePlayer = (L, pid) => VOICE().person(L.pname(pid), { id: pid, g: L.gender === 'women' ? 'f' : 'm' });
+const prons = L => ({ he: L.pr.he, his: L.pr.his, him: L.pr.him, He: cap(L.pr.he), His: cap(L.pr.his) });
+const nextCtx = (L, id) => { const f = L.nextOf(id); if (!f) return null; const home = f.home_team_id === id, opp = home ? f.away_team_id : f.home_team_id;
+  return { day: L.day(time(f.tipoff_at)), where: (home ? 'at home to ' : 'away at ') + L.club(opp), opp, game: f.id }; };
 
 /* ============================================================== the formats ===
    Each format looks at the league and returns its candidates: { kind, id, subject, salience, write() }. write() is
@@ -299,14 +326,21 @@ const SIT = { transition: 'transition', half: 'the half court', second: 'second 
 
 /* ---------------------------------------------------------- games to watch --- */
 /* the season's lean on a game, said in its band: a toss-up, slightly, better, clear favourites */
-const leanText = (L, ex) => {
+const leanText = (L, ex, W, eFav, eDog) => {
   if (!ex || !isFinite(ex.margin)) return null;
-  const m = Math.abs(ex.margin), fav = L.club(ex.favourite);
-  return m < 2 ? 'On the season’s numbers it is close to a toss-up.'
-    : m < 4.5 ? 'The season’s numbers make ' + fav + ' slightly better, by about ' + one(m) + ' points.'
-    : m < 7 ? 'The season’s numbers make ' + fav + ' about ' + one(m) + ' points better.'
-    : 'The season’s numbers make ' + fav + ' clear favourites, by about ' + one(m) + ' points.';
+  const m = Math.abs(ex.margin), w = W || VOICE().writer('lean' + ex.favourite);
+  return w.say('game.lean', { band: m < 2 ? 'tossup' : m < 4.5 ? 'slight' : m < 8 ? 'clear' : 'heavy', Fav: eFav || eClub(L, ex.favourite), Dog: eDog || null });
 };
+/* WHY A GAME MATTERS, said (voice.js stakes): both unbeaten, the top two, a streak against a slide, the rematch */
+function stakesOf(L, g, W, eA, eB) {
+  const A = g.home.id, B = g.away.id, fresh = id => { const f = L.nextOf(id); return !!f && f.id === g.game; };
+  const cA = fresh(A) ? L.C.get(A) : null, cB = fresh(B) ? L.C.get(B) : null;
+  const met = (L.games || []).filter(x => (x.home_team_id === A && x.away_team_id === B) || (x.home_team_id === B && x.away_team_id === A));
+  return VOICE().stakes(W, { A: eA, B: eB, rankA: num(g.home.rank), rankB: num(g.away.rank), n: ((L.pos(A) || L.pos(B)) || {}).n || 0,
+    recA: cA ? { w: cA.w, l: cA.l } : null, recB: cB ? { w: cB.w, l: cB.l } : null,
+    runA: cA && cA.streak ? { won: cA.streak.won, n: cA.streak.n } : null, runB: cB && cB.streak ? { won: cB.streak.won, n: cB.streak.n } : null,
+    meetings: met.map(m => ({ aWon: (m.home_team_id === A) === (num(m.home_score) > num(m.away_score)), hi: Math.max(m.home_score, m.away_score), lo: Math.min(m.home_score, m.away_score) })) });
+}
 function fWatch(L, say) {
   const slate = ((L.b && L.b.coverage && L.b.coverage.slate) || []).filter(x => time(x.at) > L.nowMs && time(x.at) < L.nowMs + 7 * DAY && x.stakes >= 0.5)
     .sort((a, c) => c.stakes - a.stakes).slice(0, 3);
@@ -318,27 +352,32 @@ function fWatch(L, say) {
     /* seeded by the league too: every league writes its week's piece the same week, and a feed showing several should not
        read the same headline shape down the page */
     const seed = 'watch' + wk + ((L.o.league && L.o.league.id) || ''), top = slate[0];
-    const A = L.club(top.home.id), B = L.club(top.away.id);
-    const head = headsOf(seed + 'h', [A + ' v ' + B + ' heads the week’s games to watch', 'The week ahead: ' + A + ' v ' + B + ' and the games that matter',
-      'Games to watch: ' + A + ' v ' + B + ' leads a big week']);
-    const dek = pick(seed + 'd', ['The ' + spell(slate.length) + ' games worth your time this week, and where the numbers say each will be decided.',
-      'Where this week’s biggest games will be won and lost, according to the numbers.']);
-    const side = s => L.club(s.id) + (s.rec || s.rank ? ' (' + [s.rec, s.rank ? place(s.rank) : null].filter(Boolean).join(', ') + ')' : '');
-    const body = [ok(cap(top.day) + ' brings the pick of the week: ' + side(top.home) + ' host ' + side(top.away) + '.' +
-      ((top.threads || []).length ? ' ' + cap(top.threads[0].line.replace(/\.$/, '')) + '.' : ''))];
-    const used = new Set(), named = new Set();
+    const V = VOICE(), W = V.writer(seed);
+    const ent = g => [eClub(L, g.home.id, 'the hosts'), eClub(L, g.away.id, 'the visitors')];
+    const [tA, tB] = ent(top);
+    const c0 = { A: tA, B: tB, league: L.lname, count: spell(slate.length), day: top.day, Day: cap(top.day) };
+    const head = headsOf(seed + 'h', W.all('watch.head', c0));
+    const dek = W.say('watch.dek', c0);
+    const body = [];
+    const used = new Set(), named = new Set(), secGame = { 0: top.game };
     slate.forEach((g, i) => {
-      const h = g.home.id, a = g.away.id;
+      const h = g.home.id, a = g.away.id, [eH, eA] = i === 0 ? [tA, tB] : ent(g);
+      if (i === 0) body.push(ok([W.say('watch.lede', c0)].concat(stakesOf(L, g, W, eH, eA).lines).filter(Boolean).join(' ')));
       body.push({ h: L.club(h) + ' v ' + L.club(a) + ' · ' + g.day });
-      const e = reasons(L, h, a, seed + i).filter(x => !used.has(x.key))[0];
-      if (e) { body.push(e.text); used.add(e.key); }
-      const onoff = [h, a].map(t => onOffLine(L, t, seed + i + t, named)).filter(Boolean)[0];
+      W.section(g.game);
+      secGame[i + 1] = g.game;
+      if (i > 0) { const st = stakesOf(L, g, W, eH, eA).lines; if (st.length) body.push(st.join(' ')); }
+      const e = reasons(L, h, a, seed + i, W, eH, eA).filter(x => !used.has(x.key))[0], ew = e ? e.write() : null;
+      if (ew) { body.push(ew.text); used.add(e.key); }
+      const onoff = [[h, eH], [a, eA]].map(([t, et]) => onOffLine(L, t, W, named, et)).filter(Boolean)[0];
       if (onoff) body.push(onoff);
       const w = [g.home.watch, g.away.watch].find(x => x && !named.has(x.name));
       if (w) named.add(w.name);
-      body.push(ok([leanText(L, g.expect), w ? 'Keep an eye on ' + w.name + ' (' + w.line + ').' : null].filter(Boolean).join(' ')));
+      const fav = g.expect ? g.expect.favourite : null;
+      const [eF, eD] = fav === h ? [eH, eA] : [eA, eH];
+      body.push(ok([leanText(L, g.expect, W, eF, eD), w && w.pid ? W.say('game.player', { P: ePlayer(L, w.pid), line: w.line }) : null].filter(Boolean).join(' ')));
     });
-    return { kicker: 'Games to watch', head, dek, body: body.filter(Boolean), teams: [top.home.id, top.away.id],
+    return { __log: W.log(), __sections: secGame, kicker: 'Games to watch', head, dek, body: body.filter(Boolean), teams: [top.home.id, top.away.id],
       links: slate.map(g => ({ label: L.club(g.home.id) + ' v ' + L.club(g.away.id), href: 'game/?g=' + g.game })),
       facts: slate.map(g => ({ label: g.day, value: L.club(g.home.id) + ' v ' + L.club(g.away.id) })) };
   } }];
@@ -363,65 +402,57 @@ function rankWord(R, hi, lo) {
 }
 const top = R => R && R.r <= Math.max(3, Math.round(R.n / 5)), bottom = R => R && R.r > R.n - Math.max(3, Math.round(R.n / 5));
 const fig = (team, label, value, R) => ({ team, label, value, rank: R.r, of: R.n });
-function reasons(L, A, B, seed) {
+function reasons(L, A, B, seed, W0, eA0, eB0) {
   const ta = L.trow(A), tb = L.trow(B);
   if (!ta || !tb) return [];
-  const R = (k, id, d) => L.rank(L.T, k, id, d), nA = L.club(A), nB = L.club(B), out = [];
-  const add = (key, s, title, text, a, b) => { if (ok(text)) out.push({ key, s, title, text, a, b }); };
+  const V = VOICE(), W = W0 || V.writer('reasons' + seed);
+  const eA = eA0 || eClub(L, A, 'the hosts'), eB = eB0 || eClub(L, B, 'the visitors'), E = id => (id === A ? eA : eB);
+  const R = (k, id, d) => L.rank(L.T, k, id, d), out = [];
+  /* a reason, chosen now and written when it is shown (write()): its title, then the clash said and what it means */
+  const add = (key, s, slot, c, a, b) => out.push({ key, s, a, b, write: () => {
+    const title = W.say(slot + '.title', c), text = W.say(slot, c), coda = text ? W.say(slot + '.coda', c) : null;
+    return title && ok(text) ? { title, text: [text, coda].filter(Boolean).join(' ') } : null;
+  } });
   /* the tempo: one wants it fast, the other slow */
   const pa = R('pace', A), pb = R('pace', B);
   if (pa && pb && ((top(pa) && bottom(pb)) || (top(pb) && bottom(pa)))) {
     const [f, sl, Rf, Rs] = top(pa) ? [A, B, pa, pb] : [B, A, pb, pa];
-    add('tempo', 2.2 + (Rf.z - Rs.z) / 3, 'A clash of tempos', pick(seed + 'pace', [
-      L.club(f) + ' want this game played fast, ' + one(Rf.v) + ' possessions per 40, ' + rankWord(Rf, 'quickest', 'slowest') + '; ' + L.club(sl) + ' want it slow, at ' + one(Rs.v) + ', ' + rankWord(Rs, 'quickest', 'slowest') + '. Whoever sets the pace will be playing their own game.',
-      'Two speeds meet here. ' + L.club(f) + ' play at ' + one(Rf.v) + ' possessions per 40 (' + rankWord(Rf, 'quickest', 'slowest') + '), ' + L.club(sl) + ' at ' + one(Rs.v) + ' (' + rankWord(Rs, 'quickest', 'slowest') + '): the side that drags the game to its tempo has most of the work done.']),
+    add('tempo', 2.2 + (Rf.z - Rs.z) / 3, 'reason.tempo', { F: E(f), Sl: E(sl), fastBest: Rf.r === 1 },
       fig(f, 'possessions per 40', one(Rf.v), Rf), fig(sl, 'possessions per 40', one(Rs.v), { r: Rs.n - Rs.r + 1, n: Rs.n }));
   }
   /* each side's attack against the other's defence, both ways round */
   [[A, B, ta, tb], [B, A, tb, ta]].forEach(([o, d, to, td]) => {
-    const no = L.club(o), nd = L.club(d);
+    const base = { O: E(o), D: E(d) };
     const rim = R('rim_share', o), rimD = R('evd_all_rim_pct', d, -1);
     if (rim && rimD && top(rim) && (bottom(rimD) || top(rimD))) {
       const weak = bottom(rimD);
-      add(o + ':rim', (weak ? 2.4 : 1.9) + rim.z / 3, weak ? 'The mismatch inside' : 'Strength on strength inside', weak
-        ? pick(seed + 'rim' + o, [no + ' live at the rim, ' + pc(rim.v) + ' of their shots, ' + rankWord(rim, 'most', 'fewest') + ', and ' + nd + ' have been one of the league’s softest touches there: opponents make ' + pc(rimD.v) + ' at the rim against them (' + rankWord(rimD, 'best', 'worst') + '). If ' + no + ' get into the paint, it is their game.',
-          (rimD.r === rimD.n ? 'Nobody has been easier to score on inside than ' + nd + ' (' + pc(rimD.v) + ' allowed at the rim)' : 'Few sides have been easier to score on inside than ' + nd + ' (' + pc(rimD.v) + ' allowed at the rim, ' + rankWord(rimD, 'best', 'worst') + ')') +
-            ', and few go there as often as ' + no + ' (' + pc(rim.v) + ' of their shots). That is the matchup ' + no + ' will hunt.'])
-        : no + ' go to the rim more than almost anybody (' + pc(rim.v) + ' of their shots, ' + rankWord(rim, 'most', 'fewest') + '), and ' + nd + ' protect it better than almost anybody (' + pc(rimD.v) + ' allowed, ' + rankWord(rimD, 'best', 'worst') + '). Something has to give.',
+      add(o + ':rim', (weak ? 2.4 : 1.9) + rim.z / 3, weak ? 'reason.rim' : 'reason.rimWall', Object.assign({ rimFrac: V.frac(rim.v), dWorst: rimD.r === rimD.n, dBest: rimD.r === 1 }, base),
         fig(o, 'of their shots at the rim', pc(rim.v), rim), fig(d, 'allowed at the rim', pc(rimD.v), rimD));
     }
     const three = R('p3_share', o), p3D = R('evd_all_p3_pct', d, -1);
     if (three && p3D && top(three) && (bottom(p3D) || top(p3D))) {
       const weak = bottom(p3D);
-      add(o + ':three', (weak ? 2.2 : 1.8) + three.z / 3, weak ? 'Space to shoot' : 'Something has to give from three', weak
-        ? no + ' take ' + pc(three.v) + ' of their shots from three, ' + rankWord(three, 'most', 'fewest') + ', and ' + nd + ' have let opponents make ' + pc(p3D.v) + ' from deep (' + rankWord(p3D, 'best', 'worst') + '). It has the look of a night a hot hand from the arc decides.'
-        : no + ' shoot more threes than almost anybody (' + pc(three.v) + ' of their shots), and ' + nd + ' defend the arc as well as anybody: opponents make ' + pc(p3D.v) + ' from three against them, ' + rankWord(p3D, 'best', 'worst') + '.',
+      add(o + ':three', (weak ? 2.2 : 1.8) + three.z / 3, weak ? 'reason.three' : 'reason.threeWall', Object.assign({ p3Frac: V.frac(three.v), dBest: p3D.r === 1 }, base),
         fig(o, 'of their shots from three', pc(three.v), three), fig(d, 'allowed from three', pc(p3D.v), p3D));
     }
     const tr = R('ev_transition_freq', o), trD = R('evd_transition_ppp', d, -1);
     if (tr && trD && top(tr) && (bottom(trD) || top(trD)) && num(to.ev_transition_ppp) != null) {
       const weak = bottom(trD);
-      add(o + ':run', (weak ? 2.3 : 1.8) + tr.z / 3, weak ? 'Open court' : 'Can ' + nd + ' slow them down?', weak
-        ? no + ' get ' + pc(tr.v) + ' of their chances on the break, ' + rankWord(tr, 'most', 'fewest') + ', and ' + nd + ' have been one of the easiest sides in the league to run on: ' + two(trD.v) + ' points a chance allowed in transition (' + rankWord(trD, 'best', 'worst') + '). Every long rebound is an invitation.'
-        : no + ' want to run (' + pc(tr.v) + ' of their chances in transition, ' + rankWord(tr, 'most', 'fewest') + '), and ' + nd + ' get back as well as anybody (' + two(trD.v) + ' points a chance allowed on the break, ' + rankWord(trD, 'best', 'worst') + '). If ' + no + ' have to play in the half court, the game changes.',
-        fig(o, 'of their chances in transition', pc(tr.v), tr), fig(d, 'allowed a chance on the break', two(trD.v), trD));
+      add(o + ':run', (weak ? 2.3 : 1.8) + tr.z / 3, weak ? 'reason.run' : 'reason.runWall', base,
+        fig(o, 'of their chances on the break', pc(tr.v), tr), fig(d, 'points allowed per fast break', two(trD.v), trD));
     }
     const ob = R('ff_oreb', o), obD = R('dff_oreb', d, -1);
-    if (ob && obD && top(ob) && bottom(obD)) add(o + ':glass', 2 + ob.z / 3, 'The battle of the boards',
-      no + ' rebound ' + pc(ob.v) + ' of their own misses, ' + rankWord(ob, 'most', 'fewest') + ', and ' + nd + ' give up offensive rebounds on ' + pc(obD.v) + ' of opponents’ misses (' + rankWord(obD, 'best', 'worst') + '). Second chances could be the difference.',
+    if (ob && obD && top(ob) && bottom(obD)) add(o + ':glass', 2 + ob.z / 3, 'reason.glass', base,
       fig(o, 'of their misses rebounded', pc(ob.v), ob), fig(d, 'offensive rebounds allowed', pc(obD.v), obD));
     const to2 = R('ff_tov', o, -1), toD = R('dff_tov', d);
-    if (to2 && toD && bottom(to2) && top(toD)) add(o + ':ball', 2.1 - to2.z / 3, 'Look after the ball',
-      no + ' turn it over on ' + pc(to2.v) + ' of their possessions (' + rankWord(to2, 'best', 'worst') + '), and ' + nd + ' force turnovers on ' + pc(toD.v) + ' (' + rankWord(toD, 'best', 'worst') + '). Every loose pass will cost them.',
+    if (to2 && toD && bottom(to2) && top(toD)) add(o + ':ball', 2.1 - to2.z / 3, 'reason.ball', base,
       fig(o, 'turnover rate', pc(to2.v), to2), fig(d, 'turnovers forced', pc(toD.v), toD));
   });
-  /* THE MATCHUP AT A SPOT: each side's main player at the point, on the wing and at the big spot (most minutes there),
-     by box plus-minus and VORP, ranked among the league's regulars at the same spot */
-  const SPOTS = [['the point', 'point guards', p => p.bpm_pos < 2], ['the wing', 'wings', p => p.bpm_pos >= 2 && p.bpm_pos < 3.6], ['the big spot', 'bigs', p => p.bpm_pos >= 3.6]];
-  SPOTS.forEach(([spot, group, inSpot]) => {
-    /* five games before a box plus-minus is said at all (three games of +16 is noise, not a player), ten before its VORP
-       (the site's is BPM above replacement times the share of minutes: it does not grow with the games, so early it is the
-       same noise, larger) */
+  /* THE MATCHUP AT A SPOT: each side's main player at the point, on the wing and in the middle (most minutes there), by
+     box plus-minus, ranked among the league's regulars at the same spot */
+  const SPOTS = [['at point guard', 'point guards', p => p.bpm_pos < 2], ['on the wing', 'wings', p => p.bpm_pos >= 2 && p.bpm_pos < 3.6], ['in the middle', 'bigs', p => p.bpm_pos >= 3.6]];
+  SPOTS.forEach(([atSpot, group, inSpot]) => {
+    /* five games before a box plus-minus is said at all (three games of +16 is noise, not a player) */
     const pool = L.regulars.filter(p => num(p.bpm_pos) != null && num(p.bpm) != null && num(p.mpg) >= 18 && num(p.gp) >= 5 && inSpot(p));
     if (pool.length < 6) return;
     const main = id => pool.filter(p => L.teamOf(p) === id).sort((a, c) => c.mpg - a.mpg)[0];
@@ -430,39 +461,22 @@ function reasons(L, A, B, seed) {
     const [hi, lo] = pa2.bpm >= pb2.bpm ? [pa2, pb2] : [pb2, pa2];
     const gap = hi.bpm - lo.bpm, Rh = L.rank(pool, 'bpm', hi.id), Rl = L.rank(pool, 'bpm', lo.id);
     if (!Rh || !Rl || (gap < 3 && !(Rh.r <= 5 && Rl.r <= 5))) return;
-    const th = L.teamOf(hi), nh = L.pname(hi.id), nl = L.pname(lo.id), vorp = p => (num(p.vorp) != null && num(p.gp) >= 10 ? one(p.vorp) + ' VORP' : null);
-    const both = Rh.r <= 5 && Rl.r <= 5;
-    add(spot, both ? 2.1 : 1.7 + gap / 6, both ? 'The heavyweights at ' + spot : cap(spot), both
-      ? 'The matchup of the night may be at ' + spot + ': ' + nh + ' (' + signed(hi.bpm) + ' box plus-minus, ' + rankWord(Rh, 'best', 'worst').replace('in the league', 'among the league’s ' + group) + ') against ' + nl + ' (' + signed(lo.bpm) + ', ' + rankWord(Rl, 'best', 'worst').replace('in the league', 'among the league’s ' + group) + ').'
-      : 'At ' + spot + ', ' + nh + ' has been one of the league’s most valuable ' + group + ': ' + [signed(hi.bpm) + ' box plus-minus', vorp(hi)].filter(Boolean).join(' and ') + ', ' + rankWord(Rh, 'best', 'worst').replace('in the league', 'among the league’s ' + group) +
-        '. Across from ' + L.pr.him + ', ' + possOf(L.club(L.teamOf(lo))) + ' ' + nl + ' is at ' + signed(lo.bpm) + '. It is the matchup ' + L.club(th) + ' will want.',
-      fig(th, nh + ', box plus-minus', signed(hi.bpm), Rh), fig(L.teamOf(lo), nl + ', box plus-minus', signed(lo.bpm), Rl));
+    const th = L.teamOf(hi), both = Rh.r <= 5 && Rl.r <= 5;
+    add(atSpot, both ? 2.1 : 1.7 + gap / 6, both ? 'reason.duel' : 'reason.spot', { P1: ePlayer(L, hi.id), P2: ePlayer(L, lo.id), T1: E(th), group, atSpot },
+      fig(th, L.pname(hi.id), signed(hi.bpm), Rh), fig(L.teamOf(lo), L.pname(lo.id), signed(lo.bpm), Rl));
   });
-  /* FORM: the two runs they bring (the season's games in order) */
-  const run = id => { const c = L.C.get(id); return c && c.streak && c.streak.n >= 3 ? c.streak : null; };
-  const ra = run(A), rb = run(B);
-  if (ra && rb && (ra.won || rb.won)) {
-    const both = ra.won && rb.won, [h, c2] = ra.won && !rb.won ? [A, B] : rb.won && !ra.won ? [B, A] : [A, B];
-    const sh = both ? null : (h === A ? ra : rb), sc = both ? null : (h === A ? rb : ra);
-    add('form', both ? 1.6 + Math.min(ra.n, rb.n) / 4 : 1.4 + (sh.n + sc.n) / 6, both ? 'Something has to give' : 'Form going in', both
-      ? nA + ' have won ' + spell(ra.n) + ' in a row and ' + nB + ' ' + spell(rb.n) + ': one of those runs ends here.'
-      : L.club(h) + ' come in on ' + spell(sh.n) + ' straight wins; ' + L.club(c2) + ' have lost ' + spell(sc.n) + ' in a row. The table and the numbers say one thing, the mood around the two clubs another.',
-      { team: A, label: ra.won ? 'wins in a row' : 'defeats in a row', value: String(ra.n), rank: ra.won ? 1 : 2, of: 2 }, { team: B, label: rb.won ? 'wins in a row' : 'defeats in a row', value: String(rb.n), rank: rb.won ? 1 : 2, of: 2 });
-  }
   return out.sort((a, c) => c.s - a.s);
 }
 
 /* a club's player whose minutes swing it most, said as on and off */
-function onOffLine(L, team, seed, named) {
-  const pr = L.pr;
+function onOffLine(L, team, W, named, eT) {
   const xs = L.regulars.filter(p => L.teamOf(p) === team && num(p.on_poss) >= 250 && num(p.diff_net) != null && num(p.diff_net) >= 8 && !(named && named.has(L.pname(p.id))))
     .sort((a, c) => c.diff_net - a.diff_net);
   const p = xs[0];
   if (!p) return null;
   if (named) named.add(L.pname(p.id));
-  const by = L.club(team) + ' are ' + one(p.diff_net) + ' points per 100 possessions better with ' + L.pname(p.id) + ' on the floor (' + signed(p.on_net) + ') than without ' + pr.him + ' (' + signed(p.off_net) + ').';
-  /* "outscored opponents by" only when they have: a side outscored even with him on the floor is said by the difference */
-  return ok(num(p.on_net) > 0 ? pick(seed, ['With ' + L.pname(p.id) + ' on the floor, ' + L.club(team) + ' have outscored opponents by ' + one(p.on_net) + ' points per 100 possessions; without ' + pr.him + ', ' + signed(p.off_net) + '.', by]) : by);
+  const w = !W || typeof W === 'string' ? VOICE().writer(String(W || team)) : W;
+  return ok(w.say('game.onoff', { T: eT || eClub(L, team), P: ePlayer(L, p.id), flip: num(p.on_net) > 0 && num(p.off_net) < 0 }));
 }
 
 /* ------------------------------------------------------------------ a slump --- */
@@ -481,40 +495,32 @@ function fSlump(L, say) {
     const salience = clamp(0.32 + (drop - 0.35) * 0.9 + (teamTop[0] === pid ? 0.14 : 0.06) + (ps && ps.rank <= Math.ceil(ps.n / 2) ? 0.08 : 0) + (bp >= 16 ? 0.08 : 0));
     const wk = Math.floor(L.nowMs / (7 * DAY));
     out.push({ kind: 'slump', id: 'slump:' + pid + ':' + wk, subject: pid, salience, write: () => {
-      const pr = L.pr, nm = L.pname(pid), sn = surname(nm), team = L.club(pl.team), seed = 'slump' + pid + wk;
+      const pr = L.pr, nm = L.pname(pid), sn = surname(nm), team = L.club(pl.team), seed = 'slump' + pid + wk, V = VOICE(), W = V.writer(seed);
+      const P = Object.assign({ P: ePlayer(L, pid), T: eClub(L, pl.team) }, prons(L));
       const last = recent[recent.length - 1], cg = L.C.get(pl.team), res = cg ? cg.games.find(x => x.id === last.game) : null;
       const sum = k => recent.reduce((s, x) => s + (x[k] || 0), 0), bsum = k => before.reduce((s, x) => s + (x[k] || 0), 0);
       const fg = sum('fga') ? [sum('fgm'), sum('fga')] : null, bfg = bsum('fga') ? bsum('fgm') / bsum('fga') * 100 : null;
       const p3 = sum('p3a') >= 6 ? [sum('p3m'), sum('p3a')] : null, bp3 = bsum('p3a') ? bsum('p3m') / bsum('p3a') * 100 : null;
       const won = recent.map(x => (cg ? cg.games.find(y => y.id === x.game) : null)).filter(Boolean);
       const w = won.filter(x => x.won).length;
-      const heads = [ 'What has happened to ' + nm + '?', 'Searching for ' + nm, nm + '’s quiet spell, in numbers', nm + ' ' + say('cold', seed + 'hv') + ' — and ' + team + ' have noticed']
-        .concat(learnedHeads(L, 'slump', nm));
-      const head = headsOf(seed + 'h', heads);
-      const dek = one(rp) + ' points a game in ' + pr.his + ' last four, down from ' + one(bp) + '. What has changed, and what has not.';
+      const head = headsOf(seed + 'h', W.all('slump.head', Object.assign({ cold: say('cold', seed + 'hv') }, P)).concat(learnedHeads(L, 'slump', nm)));
+      const dek = W.say('slump.dek', Object.assign({ rp: V.avg(rp), bp: V.avg(bp) }, P));
       const body = [];
-      body.push(ok(res ? nm + ' had ' + last.pts + (last.pts === 1 ? ' point' : ' points') + (last.fga ? ' on ' + last.fgm + '-of-' + last.fga + ' shooting' : '') + ' in ' + possOf(team) + ' ' + resultText(L, res, say, seed).replace(/^an? /, '') + ' on ' + L.day(res.at) + '.'
-        : nm + ' had ' + last.pts + (last.pts === 1 ? ' point' : ' points') + ' last time out.'));
+      if (res) body.push(W.say('slump.lede', Object.assign({ pts: last.pts + (last.pts === 1 ? ' point' : ' points'), fg: last.fga ? last.fgm + '-of-' + last.fga : null,
+        result: resultText(L, res, say, seed).replace(/^an? /, ''), day: L.day(res.at) }, P)));
       const scR = L.rank(L.regulars, 'ppg', pid);
-      body.push(ok('It was the fourth game in a row well short of ' + pr.his + ' standard. Through ' + spell(before.length) + ' games ' + pr.he + ' had averaged ' + one(bp) + ' points' +
-        (scR && scR.r <= 15 ? ', ' + rankText(scR, seed + 'r', { among: 'among the league’s regulars' }) : '') + '; over the last four it is ' + one(rp) + '.'));
-      if (fg) body.push(ok('The shots are not falling. ' + cap(pr.he) + ' is ' + fg[0] + '-of-' + fg[1] + ' from the field across the four (' + pc(fg[0] / fg[1] * 100) + ')' +
-        (bfg != null ? ', against ' + pc(bfg) + ' before' : '') + (p3 ? '; from three, ' + p3[0] + ' of ' + p3[1] + (bp3 != null ? ' after ' + pc(bp3) + ' earlier in the season' : '') : '') + '.'));
-      const steady = Math.abs(rm - bm) <= 3;
-      body.push(ok(steady ? 'It is not a question of opportunity: ' + pr.he + ' has played ' + one(rm) + ' minutes a game over the four, against ' + one(bm) + ' before' +
-        (fg && bsum('fga') ? ', and ' + pr.his + ' shot attempts are steady at ' + one(fg[1] / recent.length) + ' a game' : '') + '. That points to a shooting slump rather than a change of role.'
-        : 'The minutes have moved too: ' + one(rm) + ' a game over the four, against ' + one(bm) + ' before.'));
-      const prof = shotProfile(L, p, pr, seed);
+      body.push(W.say('slump.context', Object.assign({ bp: V.avg(bp), rp: V.avg(rp), best: scR && scR.r === 1 ? ', more than anyone in the league' : scR && scR.r <= 5 ? ', one of the best marks in the league' : '' }, P)));
+      if (fg) body.push(W.say('slump.shots', Object.assign({ fgm: fg[0], fga: fg[1], before: bfg != null ? V.frac(bfg) : null }, P)));
+      body.push(W.say('slump.role', Object.assign({ steady: Math.abs(rm - bm) <= 3, rm: V.avg(rm), bm: V.avg(bm) }, P)));
+      const prof = shotProfile(L, p, pr, seed, W);
       if (prof) body.push(prof);
-      if (num(p.on_net) != null && num(p.off_net) != null && num(p.on_poss) >= 200) body.push(ok(p.diff_net > 0
-        ? team + ' have still been better with ' + pr.him + ' this season: ' + signed(p.on_net) + ' points per 100 possessions when ' + pr.he + ' plays, ' + signed(p.off_net) + ' when ' + pr.he + ' sits.'
-        : 'The season’s on/off numbers were already against ' + pr.him + ': ' + team + ' are ' + signed(p.on_net) + ' per 100 possessions with ' + pr.him + ' and ' + signed(p.off_net) + ' without.'));
-      if (won.length) body.push(ok(team + ' have gone ' + w + '–' + (won.length - w) + ' in those four games.'));
+      if (num(p.on_net) != null && num(p.off_net) != null && num(p.on_poss) >= 200) body.push(W.say('slump.onoff', Object.assign({ better: p.diff_net > 0 }, P)));
+      if (won.length) body.push(W.say('slump.team', Object.assign({ w, l: won.length - w }, P)));
       const ts = L.rank(L.regulars, 'ts', pid);
-      body.push(ok('Four games are four games. ' + possOf(sn) + ' true shooting for the season is ' + pc(p.ts) + (ts ? ', ' + rankText(ts, seed + 'ts', { among: 'among the regulars' }) : '') + ', and that is the standard ' + pr.he + ' will be measured against.'));
-      const nx = nextText(L, pl.team);
-      if (nx) body.push(ok('Next for ' + team + ': ' + nx.line + '.'));
-      return { kicker: 'Under the microscope', head, dek, body: body.filter(Boolean), players: [pid], teams: [pl.team],
+      body.push(W.say('slump.verdict', Object.assign({ efficient: !!(ts && ts.r <= Math.max(5, Math.round(ts.n / 5))) }, P)));
+      const nx = nextCtx(L, pl.team);
+      if (nx) body.push(W.say('slump.next', Object.assign({ day: nx.day, where: nx.where }, P)));
+      return { __log: W.log(), kicker: 'Under the microscope', head, dek, body: body.filter(Boolean), players: [pid], teams: [pl.team],
         links: [playerLink(L, pid), teamLink(L, pl.team)].filter(Boolean),
         facts: [{ label: 'last four', value: one(rp) + ' ppg' }, { label: 'before', value: one(bp) + ' ppg' }, fg ? { label: 'shooting, last four', value: fg[0] + '/' + fg[1] } : null,
           { label: 'minutes, last four', value: one(rm) }, won.length ? { label: 'team, last four', value: w + '–' + (won.length - w) } : null].filter(Boolean) };
@@ -523,17 +529,13 @@ function fSlump(L, say) {
   return out;
 }
 /* where a player's shots come from, and which situation suits them: one sentence, the most telling half of it */
-function shotProfile(L, p, pr, seed) {
+function shotProfile(L, p, pr, seed, W) {
   if (num(p.rim_rate) == null || num(p.p3_rate) == null) return null;
   const rr = L.rank(L.regulars, 'rim_rate', p.id), tr = L.rank(L.regulars, 'p3_rate', p.id);
-  const lead = rr && rr.r <= 5 && rr.r <= Math.ceil(rr.n / 2) ? (num(p.rim_rate) >= 50 ? 'Most of ' : 'Much of ') + pr.his + ' work is at the rim: ' + pc(p.rim_rate) + ' of ' + pr.his + ' shots come there, ' + rankText(rr, seed + 'rr', { best: 'highest share', worst: 'lowest share' })
-    : tr && tr.r <= 5 ? cap(pr.he) + ' lives behind the arc: ' + pc(p.p3_rate) + ' of ' + pr.his + ' shots are threes'
-    : 'Over the season ' + pr.his + ' shots split ' + pc(p.rim_rate) + ' at the rim, ' + pc(p.mid_rate) + ' from mid-range and ' + pc(p.p3_rate) + ' from three';
-  const t = num(p.ev_transition_efg), h = num(p.ev_half_efg);
-  const tail = t != null && h != null && num(p.ev_transition_fga) >= 15 && num(p.ev_half_fga) >= 40
-    ? (t - h >= 8 ? ', and ' + pr.he + ' is at ' + pr.his + ' most dangerous in transition (' + pc(t) + ' effective shooting, against ' + pc(h) + ' in the half court)'
-      : h - t >= 5 ? ', and ' + pr.he + ' is more efficient in the half court (' + pc(h) + ' effective) than on the break (' + pc(t) + ')' : '') : '';
-  return ok(lead + tail + '.');
+  const rim = !!(rr && rr.r <= 5 && rr.r <= Math.ceil(rr.n / 2)), three = !!(tr && tr.r <= 5 && tr.r <= Math.ceil(tr.n / 2));
+  /* a split of shares says nothing to a fan: only a profile that stands out is said */
+  const w = W || VOICE().writer(seed + 'prof');
+  return w.say('profile', { he: pr.he, his: pr.his, He: cap(pr.he), rim, rimMost: rim && num(p.rim_rate) >= 50, three, rimFrac: VOICE().frac(p.rim_rate), p3Frac: VOICE().frac(p.p3_rate) });
 }
 function learnedHeads(L, theme, x) {
   const H = L.style && L.style.heads && L.style.heads[theme];
@@ -549,39 +551,25 @@ function fMvp(L, say) {
   const gap = p.bpm - p2.bpm, fort = Math.floor(L.nowMs / (14 * DAY));
   const salience = clamp(0.42 + Math.min(0.25, gap / 8) + (ps.rank === 1 ? 0.15 : 0.07) + (num(p.gp) >= 10 ? 0.1 : 0.04) + (num(p.diff_net) >= 10 ? 0.05 : 0));
   return [{ kind: 'mvp', id: 'mvp:' + p.id + ':' + fort, subject: p.id, salience, write: () => {
-    const pr = L.pr, nm = L.pname(p.id), sn = surname(nm), tn = L.club(team), seed = 'mvp' + p.id + fort, lg = L.lname;
-    const head = headsOf(seed + 'h', ['Is ' + nm + ' the best player in the ' + lg + '?', 'The case for ' + nm, nm + ' and the MVP question',
-      'Nobody in the ' + lg + ' is doing more than ' + nm].concat(learnedHeads(L, 'mvp', nm)));
+    const pr = L.pr, nm = L.pname(p.id), sn = surname(nm), tn = L.club(team), seed = 'mvp' + p.id + fort, lg = L.lname, V = VOICE(), W = V.writer(seed);
+    const P = Object.assign({ P: ePlayer(L, p.id), T: eClub(L, team), league: lg }, prons(L));
+    const head = headsOf(seed + 'h', W.all('mvp.head', P).concat(learnedHeads(L, 'mvp', nm)));
     const swing = num(p.diff_net) != null && num(p.on_poss) >= 250 ? p.diff_net : null;
-    const dek = one(p.bpm) + ' box plus-minus, ' + tn + ' ' + place(ps.rank) + ' in the table' + (swing != null && swing >= 3 ? ', and a ' + one(swing) + '-point on/off swing' : '') + ': the numbers behind the case.';
+    const dek = W.say('mvp.dek', Object.assign({ pos: place(ps.rank) }, P));
     const body = [];
-    body.push(ok(pick(seed + 'l', ['In ' + L.gpOf(p) + ' games this season, nobody in the ' + lg + ' has been more productive by box plus-minus than ' + nm + '.',
-      'Nobody in the ' + lg + ' has been more productive this season, by box plus-minus, than ' + nm + '.']) + ' ' + cap(pr.his) + ' ' + one(p.bpm) + ' leads the league, ' +
-      one(gap) + ' clear of ' + L.pname(p2.id) + '.'));
-    body.push(ok(cap(pr.he) + ' is averaging ' + one(p.ppg) + ' points, ' + one(p.rpg) + ' rebounds and ' + one(p.apg) + ' assists in ' + one(p.mpg) + ' minutes, on ' + pc(p.ts) + ' true shooting' +
-      (num(p.usg) != null ? ', while using ' + pc(p.usg) + ' of ' + possOf(tn) + ' possessions when ' + pr.he + ' is on the floor' : '') + '.'));
-    if (swing != null) {
-      const dr = L.rank(L.regulars.filter(x => num(x.on_poss) >= 250), 'diff_net', p.id);
-      const on = 'With ' + pr.him + ' on the floor ' + tn + ' have ' + (p.on_net >= 0 ? 'outscored opponents by ' + one(p.on_net) : 'been outscored by ' + one(-p.on_net)) + ' points per 100 possessions; without ' + pr.him + ', ' +
-        (p.off_net >= 0 ? (p.on_net >= 0 ? 'by ' : 'they outscore opponents by ') + one(p.off_net) : 'they are outscored by ' + one(-p.off_net)) + '.';
-      /* the swing said for what it is: the case made, a deep side (neutral), or the one number against it */
-      body.push(ok(swing >= 4 ? 'The team numbers say the same thing. ' + on + (dr && dr.r <= 5 ? ' That swing is ' + rankText(dr, seed + 'd', { among: 'among the league’s regulars' }) + '.' : '')
-        : swing > -4 ? 'The team numbers are more even. ' + on + ' That is the mark of a deep side as much as of one player.'
-        : 'One number does not fit. ' + on + ' Voters will ask about that.'));
-      const ff = [['efg', 'effective shooting', 'on_efg', 'off_efg', 1], ['tov', 'turnover rate', 'on_tov', 'off_tov', -1], ['oreb', 'offensive rebounding', 'on_oreb', 'off_oreb', 1]]
-        .map(([k, lab, a, b2, d]) => ({ lab, a: num(p[a]), b: num(p[b2]), g: num(p[a]) != null && num(p[b2]) != null ? d * (p[a] - p[b2]) : -1 })).sort((a, c) => c.g - a.g)[0];
-      if (ff && ff.g >= 2 && swing >= 4) body.push(ok('Most of it shows in ' + possOf(tn) + ' ' + ff.lab + ': ' + pc(ff.a) + ' with ' + pr.him + ', ' + pc(ff.b) + ' without.'));
-    }
-    const prof = shotProfile(L, p, pr, seed);
+    body.push(ok([W.say('mvp.lede', P), W.say('mvp.lead', Object.assign({ P2: ePlayer(L, p2.id), clear: gap >= 2 }, P))].filter(Boolean).join(' ')));
+    const usg = num(p.usg), tsR = L.rank(L.regulars, 'ts', p.id);
+    const style = usg != null && usg >= 28 ? ', with the offence running through ' + pr.him : tsR && tsR.r <= 5 ? ', and doing it efficiently' : usg != null && usg <= 18 ? ', without needing the ball to do it' : '';
+    body.push(W.say('mvp.line', Object.assign({ ppg: V.avg(p.ppg), rpg: V.avg(p.rpg), apg: V.avg(p.apg), style }, P)));
+    if (swing != null) body.push(W.say('mvp.onoff', Object.assign({ swing, onWords: p.on_net >= 0 ? 'outscore opponents' : 'barely hold their own', offWords: p.off_net >= 0 ? 'still get by' : 'get outscored' }, P)));
+    const prof = shotProfile(L, p, pr, seed, W);
     if (prof) body.push(prof);
-    if (!(prof && /half court/.test(prof)) && num(p.ev_half_ppg) != null && num(p.ev_half_efg) != null && num(p.ev_half_fga) >= 40) body.push(ok('In the half court, where most of a game is played, ' + pr.he + ' has scored ' + one(p.ev_half_ppg) + ' points a game on ' + pc(p.ev_half_efg) + ' effective shooting.'));
-    if (num(p.def_rim_fg_on) != null && num(p.def_rim_fg_off) != null && num(p.def_rim_a_on) >= 40 && p.def_rim_fg_off - p.def_rim_fg_on >= 5)
-      body.push(ok('At the other end, opponents have made ' + pc(p.def_rim_fg_on) + ' at the rim with ' + pr.him + ' on the floor and ' + pc(p.def_rim_fg_off) + ' without.'));
+    if (num(p.def_rim_fg_on) != null && num(p.def_rim_fg_off) != null && num(p.def_rim_a_on) >= 40 && p.def_rim_fg_off - p.def_rim_fg_on >= 5) body.push(W.say('mvp.rimD', P));
     const ps2 = L.pos(L.teamOf(p2));
-    body.push(ok(say('turn', seed + 't') + ' ' + L.pname(p2.id) + ' has a case of ' + (L.pr.his) + ' own: ' + one(p2.bpm) + ' box plus-minus for ' + L.club(L.teamOf(p2)) + (ps2 ? ', ' + place(ps2.rank) + ' in the table' : '') + '.'));
-    const nx = nextText(L, team);
-    if (nx) body.push(ok('Next for ' + sn + ' and ' + tn + ': ' + nx.line + '.'));
-    return { kicker: 'The MVP race', head, dek, body: body.filter(Boolean), players: [p.id, p2.id], teams: [team], links: [playerLink(L, p.id), teamLink(L, team)].filter(Boolean),
+    body.push(W.say('mvp.rival', Object.assign({ P2: ePlayer(L, p2.id), T2: eClub(L, L.teamOf(p2)), pos2: ps2 ? place(ps2.rank) : 'high' }, P)));
+    const nx = nextCtx(L, team);
+    if (nx) body.push(W.say('mvp.next', Object.assign({ day: nx.day, where: nx.where }, P)));
+    return { __log: W.log(), kicker: 'The MVP race', head, dek, body: body.filter(Boolean), players: [p.id, p2.id], teams: [team], links: [playerLink(L, p.id), teamLink(L, team)].filter(Boolean),
       facts: [{ label: 'box plus-minus', value: one(p.bpm) }, { label: 'points, rebounds, assists', value: one(p.ppg) + ' / ' + one(p.rpg) + ' / ' + one(p.apg) },
         { label: 'true shooting', value: pc(p.ts) }, swing != null ? { label: 'on/off, per 100', value: signed(swing) } : null, { label: tn + ', in the table', value: ordShortN(ps.rank) }].filter(Boolean) };
   } }];
@@ -601,27 +589,25 @@ function fProspect(L, say) {
     const month = Math.floor(L.nowMs / (30 * DAY));
     const salience = clamp(0.3 + (pctl - 0.7) * 1.2 + (22 - age) * 0.06 + (num(p.mpg) >= 24 ? 0.06 : 0));
     out.push({ kind: 'prospect', id: 'prospect:' + p.id + ':' + month, subject: p.id, salience, write: () => {
-      const pr = L.pr, nm = L.pname(p.id), team = L.teamOf(p), tn = L.club(team), seed = 'young' + p.id + month, a = Math.floor(age);
-      const head = headsOf(seed + 'h', ['Is ' + nm + ' the real thing?', a + ' and already among the ' + L.lname + '’s best: ' + nm, 'How good is ' + nm + '?']
-        .concat(learnedHeads(L, 'prospect', nm)));
-      const dek = 'At ' + a + ', ' + nm + ' is ' + (r === 1 ? 'the league’s best player' : place(r) + ' in the league') + ' by box plus-minus. Here is what the detail says.';
-      const per = k => (num(p[k]) != null && num(p.mpg) > 0 ? one(p[k] * 36 / p.mpg) : null);
+      const pr = L.pr, nm = L.pname(p.id), team = L.teamOf(p), tn = L.club(team), seed = 'young' + p.id + month, a = Math.floor(age), V = VOICE(), W = V.writer(seed);
+      const P = Object.assign({ P: ePlayer(L, p.id), T: eClub(L, team), league: L.lname, age: a }, prons(L));
+      const head = headsOf(seed + 'h', W.all('prospect.head', P).concat(learnedHeads(L, 'prospect', nm)));
+      const dek = W.say('prospect.dek', Object.assign({ better: r === 1 ? null : r === 2 ? 'one player' : spell(r - 1) + ' players', have: r === 2 ? 'has' : 'have' }, P));
+      const per = k => (num(p[k]) != null && num(p.mpg) > 0 ? String(Math.round(p[k] * 36 / p.mpg)) : null);
       const older = sorted.slice(0, r - 1).filter(x => bio[x.id] && num(bio[x.id].age) != null);
       const youngest = older.length === r - 1 && older.every(x => bio[x.id].age > age);
       const body = [];
-      body.push(ok(nm + ' is ' + a + '. Of the ' + sorted.length + ' players who have played 14 or more minutes a game in the ' + L.lname + ' this season, ' +
-        (r === 1 ? 'none has a better box plus-minus.' : (r === 2 ? 'only one has a better box plus-minus' : 'only ' + spell(r - 1) + ' have a better box plus-minus') + (youngest ? (r === 2 ? ', and that player is older.' : ', and every one of them is older.') : '.'))));
-      body.push(ok('Per 36 minutes ' + pr.he + ' is producing ' + per('ppg') + ' points, ' + per('rpg') + ' rebounds and ' + per('apg') + ' assists, on ' + pc(p.ts) + ' true shooting' +
-        (mean(L.regulars.map(x => num(x.ts)).filter(v => v != null)) ? ' (the regulars’ average is ' + pc(mean(L.regulars.map(x => num(x.ts)).filter(v => v != null))) + ')' : '') + '.'));
-      if (num(p.usg) != null) body.push(ok(cap(pr.he) + ' is using ' + pc(p.usg) + ' of ' + possOf(tn) + ' possessions while on the floor' + (p.usg >= 24 ? ', a lead role at any age' : p.usg <= 16 ? ', and doing it without needing the ball' : '') + '.'));
-      const prof = shotProfile(L, p, pr, seed);
+      body.push(W.say('prospect.lede', Object.assign({ r, n: sorted.length, k: spell(r - 1), older: youngest ? (r === 2 ? ', and that player is older' : ', and every one of them is older') : '' }, P)));
+      const tsAvg = mean(L.regulars.map(x => num(x.ts)).filter(v => v != null));
+      body.push(W.say('prospect.line', Object.assign({ p36: per('ppg'), r36: per('rpg'), a36: per('apg'), eff: tsAvg != null && num(p.ts) >= tsAvg + 3 ? 'shooting it better than most veterans' : 'and still learning on the job' }, P)));
+      if (num(p.usg) != null) body.push(W.say('prospect.role', Object.assign({ lead: p.usg >= 24, quiet: p.usg <= 16 }, P)));
+      const prof = shotProfile(L, p, pr, seed, W);
       if (prof) body.push(prof);
-      if (num(p.diff_net) != null && num(p.on_poss) >= 150) body.push(ok(p.diff_net > 0 ? tn + ' are ' + one(p.diff_net) + ' points per 100 possessions better with ' + pr.him + ' on the floor.'
-        : 'The one number against ' + pr.him + ': ' + tn + ' have been ' + one(-p.diff_net) + ' points per 100 possessions better without ' + pr.him + '.'));
-      body.push(ok(say('caveat', seed + 't') + ' the sample is ' + spell(p.gp) + ' games and ' + Math.round(num(p.min) || p.mpg * p.gp) + ' minutes — enough to notice, not yet enough to be sure.'));
-      const nx = nextText(L, team);
-      if (nx) body.push(ok('Next for ' + nm + ': ' + nx.line + '.'));
-      return { kicker: 'One for the future', head, dek, body: body.filter(Boolean), players: [p.id], teams: [team], links: [playerLink(L, p.id), teamLink(L, team)].filter(Boolean),
+      if (num(p.diff_net) != null && num(p.on_poss) >= 150) body.push(W.say('prospect.onoff', Object.assign({ better: p.diff_net > 0 }, P)));
+      body.push(W.say('prospect.caveat', Object.assign({ gp: spell(p.gp) }, P)));
+      const nx = nextCtx(L, team);
+      if (nx) body.push(W.say('prospect.next', Object.assign({ day: nx.day, where: nx.where }, P)));
+      return { __log: W.log(), kicker: 'One for the future', head, dek, body: body.filter(Boolean), players: [p.id], teams: [team], links: [playerLink(L, p.id), teamLink(L, team)].filter(Boolean),
         facts: [{ label: 'age', value: String(a) }, { label: 'box plus-minus', value: one(p.bpm) + ' (' + place(r) + ')' }, { label: 'per 36', value: per('ppg') + ' / ' + per('rpg') + ' / ' + per('apg') },
           { label: 'true shooting', value: pc(p.ts) }].filter(Boolean) };
     } });
@@ -634,31 +620,31 @@ function fProspect(L, say) {
    better, its words (headlines for a strength and for a weakness, the clause that says it, the label on its figure),
    and the next opponent's number that meets it (mirror) */
 const FACETS = [
-  { k: 'transition', key: 'ev_transition_ppp', vol: 'ev_transition_ch_pg', sit: 'transition', label: 'transition points a chance', noun: 'transition attack', fmt: 'ppp',
+  { k: 'transition', say: { best: 'nobody is more dangerous on the break', good: 'few teams are more dangerous on the break', worst: 'nobody gets less out of the fast break', bad: 'they rarely get anything going on the break', mirror: 'getting back in transition' }, key: 'ev_transition_ppp', vol: 'ev_transition_ch_pg', sit: 'transition', label: 'points per fast-break possession', noun: 'transition attack', fmt: 'ppp',
     good: ['How {T} became the {L}’s most dangerous team on the break', '{T} are at their best in transition', 'Run with {T} at your peril'],
-    bad: ['{T} cannot get anything going on the break'], clause: (T, v) => T + ' score ' + two(v) + ' points a chance in transition',
+    bad: ['{T} cannot get anything going on the break'], clause: (T, v) => T + ' score ' + two(v) + ' points every time they run',
     mirror: ['evd_transition_ppp', -1, (T, v) => T + ' allow ' + two(v) + ' a chance in transition'] },
-  { k: 'half', key: 'ev_half_ppp', vol: 'ev_half_ch_pg', sit: 'half', label: 'half-court points a chance', noun: 'half-court offence', fmt: 'ppp',
+  { k: 'half', say: { best: 'nobody runs a better half-court offence', good: 'few teams score as well when the game slows down', worst: 'nobody struggles more to score when the game slows down', bad: 'they struggle to score when the game slows down', mirror: 'defending the half court' }, key: 'ev_half_ppp', vol: 'ev_half_ch_pg', sit: 'half', label: 'half-court points per possession', noun: 'half-court offence', fmt: 'ppp',
     good: ['Inside {T}’s half-court offence', '{T} have the {L}’s best half-court offence'], bad: ['{T}’s half-court problem', 'Where {T}’s offence gets stuck'],
-    clause: (T, v) => T + ' score ' + two(v) + ' points a chance in the half court',
+    clause: (T, v) => T + ' score ' + two(v) + ' points a possession in the half court',
     mirror: ['evd_half_ppp', -1, (T, v) => T + ' allow ' + two(v) + ' a chance in the half court'] },
-  { k: 'halfD', key: 'evd_half_ppp', vol: 'evd_half_ch_pg', dir: -1, sit: 'half', def: true, label: 'half-court points a chance allowed', noun: 'half-court defence', fmt: 'ppp',
+  { k: 'halfD', say: { best: 'nobody gets easy baskets against them in the half court', good: 'few teams are harder to score on in the half court', worst: 'nobody has a harder time getting stops in the half court', bad: 'they struggle to get stops when the game slows down', mirror: 'scoring in the half court' }, key: 'evd_half_ppp', vol: 'evd_half_ch_pg', dir: -1, sit: 'half', def: true, label: 'half-court points allowed per possession', noun: 'half-court defence', fmt: 'ppp',
     good: ['Why nobody can score against {T} in the half court', 'The half-court wall: inside {T}’s defence'], bad: ['Where {T} are leaking points', '{T} cannot get stops in the half court'],
-    clause: (T, v) => T + ' allow ' + two(v) + ' points a chance in the half court',
+    clause: (T, v) => T + ' allow ' + two(v) + ' points a possession in the half court',
     mirror: ['ev_half_ppp', 1, (T, v) => T + ' score ' + two(v) + ' a chance in the half court'] },
-  { k: 'second', key: 'ff_oreb', sit: 'second', label: 'offensive rebound rate', noun: 'offensive rebounding', fmt: 'pct',
+  { k: 'second', say: { best: 'nobody turns misses into second chances like they do', good: 'few teams crash the offensive glass harder', worst: 'nobody gets fewer second chances', bad: 'they rarely get a second shot', mirror: 'keeping teams off the glass' }, key: 'ff_oreb', sit: 'second', label: 'offensive rebound rate', noun: 'offensive rebounding', fmt: 'pct',
     good: ['{T} and the art of the second chance', 'Why {T} keep getting a second shot'], bad: ['{T} are not getting second chances'],
     clause: (T, v) => T + ' rebound ' + pc(v) + ' of their own misses',
     mirror: ['dff_oreb', -1, (T, v) => T + ' give up ' + pc(v) + ' of their opponents’ misses'] },
-  { k: 'rimD', key: 'evd_all_rim_pct', dir: -1, def: true, label: 'opponents’ shooting at the rim', noun: 'rim protection', fmt: 'pct',
+  { k: 'rimD', say: { best: 'the paint is a no-go area against them', good: 'few teams are harder to score on at the rim', worst: 'teams walk straight to the rim against them', bad: 'they struggle to protect the rim', mirror: 'attacking the rim' }, key: 'evd_all_rim_pct', dir: -1, def: true, label: 'opponents’ shooting at the rim', noun: 'rim protection', fmt: 'pct',
     good: ['Why nobody gets to the rim against {T}', '{T} have made the paint a no-go area'], bad: ['{T} cannot protect the rim', 'The open door: {T} and the rim'],
     clause: (T, v) => 'opponents make ' + pc(v) + ' of their shots at the rim against ' + T,
     mirror: ['rim_share', 1, (T, v) => T + ' take ' + pc(v) + ' of their shots there', { best: 'highest share', worst: 'lowest share' }] },
-  { k: 'tovD', key: 'dff_tov', def: true, label: 'turnovers forced', noun: 'ball pressure', fmt: 'pct',
+  { k: 'tovD', say: { best: 'nobody forces more turnovers', good: 'they feed on turnovers', worst: 'nobody forces fewer turnovers', bad: 'they rarely force a mistake', mirror: 'looking after the ball' }, key: 'dff_tov', def: true, label: 'turnovers forced', noun: 'ball pressure', fmt: 'pct',
     good: ['{T}’s defence lives on turnovers', 'Ball-hawks: how {T} force the turnovers'], bad: ['{T} are not forcing turnovers'],
     clause: (T, v) => T + ' force a turnover on ' + pc(v) + ' of their opponents’ possessions',
     mirror: ['ff_tov', -1, (T, v) => T + ' turn it over on ' + pc(v) + ' of their possessions'] },
-  { k: 'tov', key: 'ff_tov', dir: -1, label: 'turnover rate', noun: 'ball security', fmt: 'pct',
+  { k: 'tov', say: { best: 'nobody looks after the ball better', good: 'they almost never give the ball away', worst: 'nobody gives the ball away more', bad: 'they keep giving the ball away', mirror: 'forcing turnovers' }, key: 'ff_tov', dir: -1, label: 'turnover rate', noun: 'ball security', fmt: 'pct',
     good: ['{T} do not give the ball away', 'Safe hands: inside {T}’s ball security'], bad: ['{T}’s turnover trouble', 'The numbers behind {T}’s turnover problem'],
     clause: (T, v) => T + ' turn it over on ' + pc(v) + ' of their possessions',
     mirror: ['dff_tov', 1, (T, v) => T + ' force a turnover on ' + pc(v) + ' of possessions'] }
@@ -679,82 +665,64 @@ function fIdentity(L, say) {
   return out;
 }
 function identityPiece(L, say, t, f, R, month) {
-  const tn = L.club(t.id), seed = 'id' + t.id + f.k + month, good = R.z > 0, ps = L.pos(t.id), cg = L.C.get(t.id), pr = L.pr;
+  const V = VOICE(), tn = L.club(t.id), seed = 'id' + t.id + f.k + month, good = R.z > 0, ps = L.pos(t.id), cg = L.C.get(t.id), pr = L.pr;
+  const W = V.writer(seed), T = eClub(L, t.id), best = R.r === 1, worst = R.r === R.n;
   const head = headsOf(seed + 'h', (good ? f.good : f.bad).map(h => h.replace('{T}', tn).replace('{L}', L.lname)));
-  const said = cap(f.clause(tn, R.v)) + ', ' + rankText(R, seed + 'r');
-  const dek = pick(seed + 'd', good ? [said + '. How they do it, who does it and what it is worth.', 'The numbers behind ' + possOf(tn) + ' ' + f.noun + ', ' + rankText(R, seed + 'r') + '.']
-    : [said + '. Where it goes wrong, and what it costs.', 'Inside ' + possOf(tn) + ' ' + f.noun + ', ' + rankText(R, seed + 'r') + ', and what it costs them.']);
-  const body = [];
   const wl = cg ? cg.w + '–' + cg.l : null, rec = wl ? wl + (ps ? ', ' + place(ps.rank) + ' in the table' : '') : null;
-  /* the hook, then the number */
-  if (rec) body.push(ok(pick(seed + 'k', good ? [tn + ' are ' + rec + ', and one number explains a good deal of it.', 'There is one thing ' + tn + ' (' + rec + ') do better than anybody in the ' + L.lname + '.',
-      'Ask what ' + tn + ' are built on and the numbers give a clear answer: their ' + f.noun + '.', 'Every good side has something it can lean on. For ' + tn + ' (' + rec + ') it is their ' + f.noun + '.',
-      'Look past the ' + wl + ' record and one part of ' + possOf(tn) + ' game stands out from the rest of the ' + L.lname + '.']
-    : [tn + ' are ' + rec + ', and one number goes a long way to explaining it.', 'For ' + tn + ' (' + rec + '), one number keeps coming back.',
-      'If ' + tn + ' (' + rec + ') want to know where their season is going wrong, their ' + f.noun + ' is the place to start.'])
-    .replace('better than anybody in the', R.r === 1 ? 'better than anybody in the' : 'as well as almost anybody in the')));
-  body.push(ok((rec ? cap(f.clause(f.k === 'rimD' ? 'them' : 'They', R.v)) + ', ' + rankText(R, seed + 'r') : said) + ', against a league average of ' + fmtV(f, R.avg) + '.'));
-  const pre = f.def ? 'evd_' : 'ev_', s = f.sit;
-  /* HOW: where the shots in that situation come from, or what the facet turns into */
-  if (s && num(t[pre + s + '_rim_sh']) != null && num(t[pre + s + '_fga']) >= 30) {
-    const rim = num(t[pre + s + '_rim_sh']), p3 = num(t[pre + s + '_p3_sh']), rp = num(t[pre + s + '_rim_pct']), p3p = num(t[pre + s + '_p3_pct']);
-    body.push(ok((f.def ? 'Against them, ' + pc(rim) + ' of the shots opponents take' : cap(pc(rim)) + ' of the shots they take') + ' in ' + (SIT[s] || s) + ' come at the rim' +
-      (rp != null ? ', where ' + pc(rp) + ' go in' : '') + (p3 != null ? '; ' + pc(p3) + ' are threes' + (p3p != null ? ', made at ' + pc(p3p) : '') : '') + '.'));
-  }
-  if (f.k === 'tovD' && num(t.ev_offTo_ppg) != null && num(t.ev_offTo_ppp) != null) {
-    const r2 = L.rank(L.T, 'ev_offTo_ppp', t.id);
-    body.push(ok((r2 && r2.r > r2.n / 2 ? 'What they do with them is another matter: ' : 'And they make them count: ') + one(t.ev_offTo_ppg) + ' points a game off turnovers, at ' + two(t.ev_offTo_ppp) + ' a chance' + (r2 ? ', ' + rankText(r2, seed + 'o') : '') + '.'));
-  }
-  if (f.k === 'tov') {
-    const h = num(t.ev_half_tov_pct), tr = num(t.ev_transition_tov_pct);
-    if (h != null && tr != null && Math.abs(h - tr) >= 3) body.push(ok('Most of the damage is ' + (h > tr ? 'in the half court, where ' + pc(h) + ' of their chances end in a turnover against ' + pc(tr) + ' on the break'
-      : 'on the break, where ' + pc(tr) + ' of their chances end in a turnover against ' + pc(h) + ' in the half court') + '.'));
-    if (num(t.evd_offTo_ppg) != null) body.push(ok('Opponents score ' + one(t.evd_offTo_ppg) + ' points a game off them.'));
-  }
-  if (f.k === 'rimD' && num(t.evd_all_rim_sh) != null) {
-    const r2 = L.rank(L.T, 'evd_all_rim_sh', t.id, -1);
-    if (r2) body.push(ok(r2.r <= 3 ? 'Opponents have mostly stopped trying: only ' + pc(t.evd_all_rim_sh) + ' of their shots against them come at the rim, ' + (r2.r === 1 ? 'the lowest share in the league' : place(r2.r) + '-lowest in the league') + '.'
-      : r2.r > r2.n - 3 ? 'Opponents keep coming, ' + pc(t.evd_all_rim_sh) + ' of their shots at the rim, one of the highest shares in the league; they just do not finish.'
-      : 'Opponents still take ' + pc(t.evd_all_rim_sh) + ' of their shots at the rim against them, about the league’s norm (' + pc(r2.avg) + '); they just make fewer.'));
-  }
-  /* WHAT IT IS WORTH: the points a game against an average side's return, or the league's model's step */
+  const c0 = { T, good, trait: good ? (best ? f.say.best : f.say.good) : null, flaw: good ? null : (worst ? f.say.worst : f.say.bad),
+    anyone: best || worst ? 'anybody' : 'almost anybody', league: L.lname, rec, wl };
+  const dek = W.say('identity.dek', c0);
+  const body = [];
+  /* the hook, then its figure in the same paragraph: one number, said plainly, "they" plainly the club */
+  body.push(ok([W.say('identity.lede', c0), W.line(cap(f.clause(f.k === 'rimD' ? 'them' : 'they', R.v)) + ', ' + rankText(R, seed + 'r') + '.')].filter(Boolean).join(' ')));
+  /* WHAT IT IS WORTH: points a game, against an average side's return */
   if (f.fmt === 'ppp' && f.vol && num(t[f.vol]) != null) {
     const w = (f.dir === -1 ? -1 : 1) * (R.v - R.avg) * num(t[f.vol]);
-    if (Math.abs(w) >= 0.8) body.push(ok('Against the league’s average return, that is worth about ' + one(Math.abs(w)) + ' points a game ' + (w > 0 ? 'to them' : 'against them') + '.'));
-  } else if (L.lens && L.lens.rows) {
-    const lr = L.lens.rows.find(x => x.k === ({ second: 'orebp', tovD: 'tovp', tov: 'tovp' })[f.k]);
-    if (lr) body.push(ok('In this league, one standard step on ' + lr.label + ' has been worth about ' + one(lr.pts) + ' points a game' + (L.lens.model ? ', by the league’s own model of what wins' : '') + '.'));
+    if (Math.abs(w) >= 0.8) body.push(W.say('identity.worth', { pts: Math.abs(w) >= 1.5 ? String(Math.round(Math.abs(w))) : one(Math.abs(w)), toWhom: w > 0 ? 'to them' : 'against them' }));
+  }
+  if (f.k === 'tovD' && num(t.ev_offTo_ppg) != null) {
+    const r2 = L.rank(L.T, 'ev_offTo_ppp', t.id);
+    body.push(W.line((r2 && r2.r > r2.n / 2 ? 'What they do with them is another matter: ' : 'And they make them count: ') + avgN(t.ev_offTo_ppg) + ' points a game off turnovers.'));
+  }
+  if (f.k === 'tov' && num(t.evd_offTo_ppg) != null) body.push(W.line('Opponents are scoring ' + avgN(t.evd_offTo_ppg) + ' points a game off them.'));
+  if (f.k === 'rimD' && num(t.evd_all_rim_sh) != null) {
+    const r2 = L.rank(L.T, 'evd_all_rim_sh', t.id, -1);
+    if (r2) body.push(W.line(r2.r <= 3 ? 'Opponents have mostly stopped trying: fewer of their shots come at the rim against them than against almost anyone.'
+      : r2.r > r2.n - 3 ? 'Opponents keep coming at the rim; they just do not finish.' : 'Opponents still go to the rim as often as anywhere else; they just make fewer.'));
   }
   /* WHO: the players carrying it */
   const mine = L.regulars.filter(p => L.teamOf(p) === t.id);
-  const two2 = (key, unit) => mine.filter(p => num(p[key]) != null).sort((a, c) => c[key] - a[key]).slice(0, 2);
-  if (s && !f.def && f.k !== 'second') {
-    const who = two2('ev_' + s + '_ppg');
-    if (who.length === 2 && num(who[1]['ev_' + s + '_ppg']) >= 1) body.push(ok(L.pname(who[0].id) + ' (' + one(who[0]['ev_' + s + '_ppg']) + ' a game) and ' + L.pname(who[1].id) + ' (' + one(who[1]['ev_' + s + '_ppg']) + ') score the most of it.'));
-  }
-  const pair = (key, what) => { const w = two2(key); return w.length === 2 && num(w[1][key]) > 0 ? L.pname(w[0].id) + ' (' + one(w[0][key]) + ' ' + what + ' a game) and ' + L.pname(w[1].id) + ' (' + one(w[1][key]) + ')' : null; };
-  if (f.k === 'second') { const w = pair('orpg', 'offensive rebounds'); if (w) body.push(ok(w + ' lead the charge on the glass.')); }
-  if (f.k === 'tovD') { const w = pair('spg', 'steals'); if (w) body.push(ok(w + ' do the most to take it away.')); }
-  if (f.k === 'tov' && !good) { const w = pair('topg', 'turnovers'); if (w) body.push(ok(w + ' give it away the most.')); }
-  if (f.k === 'rimD') {
+  const two2 = key => mine.filter(p => num(p[key]) != null).sort((a, c) => c[key] - a[key]).slice(0, 2);
+  const pair = (key, what) => { const w = two2(key); return w.length === 2 && num(w[1][key]) > 0 ? L.pname(w[0].id) + ' and ' + L.pname(w[1].id) + ' ' + what : null; };
+  const s0 = f.sit;
+  if (good && s0 && !f.def && f.k !== 'second') { const w = pair('ev_' + s0 + '_ppg', 'do most of the scoring.'); if (w) body.push(W.line(w)); }
+  if (good && f.k === 'second') { const w = pair('orpg', 'lead the charge on the glass.'); if (w) body.push(W.line(w)); }
+  if (good && f.k === 'tovD') { const w = pair('spg', 'do the most to take it away.'); if (w) body.push(W.line(w)); }
+  if (f.k === 'tov' && !good) { const w = pair('topg', 'give it away the most.'); if (w) body.push(W.line(w)); }
+  if (good && f.k === 'rimD') {
     const guard = mine.filter(p => num(p.def_rim_fg_on) != null && num(p.def_rim_fg_off) != null && num(p.def_rim_a_on) >= 40)
       .sort((a, c) => (c.def_rim_fg_off - c.def_rim_fg_on) - (a.def_rim_fg_off - a.def_rim_fg_on))[0];
-    if (guard && guard.def_rim_fg_off - guard.def_rim_fg_on >= 4) body.push(ok('The anchor is ' + L.pname(guard.id) + ': opponents make ' + pc(guard.def_rim_fg_on) + ' at the rim with ' + pr.him + ' on the floor and ' + pc(guard.def_rim_fg_off) + ' without.'));
-    else { const w = pair('bpg', 'blocks'); if (w) body.push(ok(w + ' do most of the shot-blocking.')); }
+    if (guard && guard.def_rim_fg_off - guard.def_rim_fg_on >= 4) body.push(W.line('The anchor is ' + L.pname(guard.id) + ': opponents finish far worse at the rim with ' + pr.him + ' on the floor.'));
+    else { const w = pair('bpg', 'do most of the shot-blocking.'); if (w) body.push(W.line(w)); }
   }
-  /* THE OTHER SIDE OF THEM: the facet furthest the other way */
+  /* THE OTHER SIDE OF THEM: the trait furthest the other way */
   const other = FACETS.filter(x => x.k !== f.k).map(x => ({ x, R: L.rank(L.T, x.key, t.id, x.dir) })).filter(x => x.R).sort((a, c) => (good ? a.R.z - c.R.z : c.R.z - a.R.z))[0];
-  if (other && (good ? other.R.z < -0.8 : other.R.z > 0.8)) body.push(ok((good ? say('turn', seed + 't') + ' there is another side to them: ' : 'It is not all bad: ') + other.x.clause(tn, other.R.v) + ', ' + rankText(other.R, seed + 'w') + '.'));
+  if (other && (good ? other.R.z < -0.8 : other.R.z > 0.8)) {
+    const ob = other.R.r === 1, ow = other.R.r === other.R.n;
+    body.push(W.say('identity.other', { good, turn: say('turn', seed + 't'), flaw: ow ? other.x.say.worst : other.x.say.bad, trait: ob ? other.x.say.best : other.x.say.good }));
+  }
   /* NEXT: the opponent's number that meets it */
-  const nx = nextText(L, t.id);
+  const nx = nextCtx(L, t.id);
   if (nx) {
     const mr = f.mirror ? L.rank(L.T, f.mirror[0], nx.opp, f.mirror[1]) : null;
-    body.push(ok('Next: ' + nx.line + '.' + (mr ? ' ' + cap(f.mirror[2](L.club(nx.opp), mr.v)) + ', ' + rankText(mr, seed + 'n', f.mirror[3]) + '.' : '')));
+    const strong = !!(mr && mr.r <= 3), weak = !!(mr && mr.r > mr.n - 3);
+    body.push(ok([W.say('identity.next', { day: nx.day, where: nx.where }), strong || weak ? W.say('identity.test', { good, strong, weak, Opp: eClub(L, nx.opp), mirror: f.say.mirror }) : null].filter(Boolean).join(' ')));
   }
-  return { kicker: good ? 'What makes them tick' : 'The problem', head, dek, body: body.filter(Boolean), teams: [t.id], links: [teamLink(L, t.id)].filter(Boolean),
+  return { __log: W.log(), kicker: good ? 'What makes them tick' : 'The problem', head, dek, body: body.filter(Boolean), teams: [t.id], links: [teamLink(L, t.id)].filter(Boolean),
     facts: [{ label: f.label, value: fmtV(f, R.v) }, { label: 'league rank', value: ordShortN(R.r) + ' of ' + R.n }, { label: 'league average', value: fmtV(f, R.avg) },
       cg ? { label: 'record', value: cg.w + '–' + cg.l } : null].filter(Boolean) };
 }
+const avgN = v => (Math.abs(v) >= 10 ? String(Math.round(v)) : one(v));
 const ordShortN = n => { const v = Math.round(+n), t = v % 100; return v + (t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th')); };
 
 /* ---------------------------------------------------------- a run, inside --- */
@@ -767,28 +735,26 @@ function fRun(L, say) {
     if (rest.length < 2) return;
     const salience = clamp(0.35 + Math.min(0.3, (cg.streak.n - 4) * 0.07) + (won ? 0.08 : 0.05) + (s.score ? Math.min(0.15, s.score / 60) : 0));
     out.push({ kind: won ? 'run' : 'skid', id: 'run:' + id + ':' + cg.streak.from, subject: id, salience, write: () => {
-      const tn = L.club(id), n = cg.streak.n, seed = 'run' + id + cg.streak.from;
+      const tn = L.club(id), n = cg.streak.n, seed = 'run' + id + cg.streak.from, V = VOICE(), W = V.writer(seed), T = eClub(L, id);
       const head = won ? headsOf(seed + 'h', ['Inside ' + possOf(tn) + ' ' + spell(n) + '-game winning run', 'How ' + tn + ' won ' + spell(n) + ' in a row', 'What is behind ' + possOf(tn) + ' run'].concat(learnedHeads(L, 'run', tn)))
-        : headsOf(seed + 'h', ['What has gone wrong at ' + tn + '?', possOf(tn) + ' slide, in numbers', spell(n) + ' straight defeats: inside ' + possOf(tn) + ' slump'].map(cap));
+        : headsOf(seed + 'h', ['What has gone wrong at ' + tn + '?', 'Inside ' + possOf(tn) + ' slide', spell(n) + ' straight defeats: inside ' + possOf(tn) + ' slump'].map(cap));
       const avgM = mean(run.map(x => x.for - x.against));
       const ff = factorsOver(L, id, run, rest);
-      const lead = ff[0];
-      const dek = cap(spell(n)) + ' straight ' + (won ? 'wins' : 'defeats') + ', by an average of ' + one(Math.abs(avgM)) + ' points.' + (lead ? ' The numbers say it comes down to ' + lead.label + '.' : '');
+      const dek = W.say('run.dek', { T, N: cap(spell(n)), margin: V.avg(Math.abs(avgM)), won });
       const last = run[run.length - 1], body = [];
-      body.push(ok(tn + ' have ' + (won ? 'won ' : 'lost ') + spell(n) + ' in a row, the latest ' + resultText(L, last, say, seed) + ' on ' + L.day(last.at) + '.'));
-      if (ff.length) body.push(ok((won ? 'In the run' : 'In the slide') + ' they have ' + ff.slice(0, 2).map(x => x.say).join(', and ') + '.'));
-      body.push(ok('They are scoring ' + one(mean(run.map(x => x.for))) + ' and allowing ' + one(mean(run.map(x => x.against))) + ' a game in it, against ' + one(mean(rest.map(x => x.for))) + ' and ' + one(mean(rest.map(x => x.against))) + ' before.'));
+      body.push(W.line(tn + ' have ' + (won ? 'won ' : 'lost ') + spell(n) + ' in a row, the latest ' + resultText(L, last, say, seed) + ' on ' + L.day(last.at) + '.'));
+      ff.slice(0, 2).forEach(x => body.push(W.say('run.change', { won, k: x.k2 })));
       const star = [...L.PL.values()].filter(p => p.team === id).map(p => { const g = p.games.filter(x => cg.streak.games.indexOf(x.game) >= 0), b2 = p.games.filter(x => cg.streak.games.indexOf(x.game) < 0);
         return { p, r: mean(g.map(x => x.pts)), b: mean(b2.map(x => x.pts)), n: g.length }; }).filter(x => x.n >= Math.ceil(n / 2) && x.r != null && x.b != null && L.pname(x.p.pid))
         .sort((a, c) => (won ? (c.r - c.b) - (a.r - a.b) : (a.r - a.b) - (c.r - c.b)))[0];
-      if (star && Math.abs(star.r - star.b) >= 3) body.push(ok(L.pname(star.p.pid) + ' has averaged ' + one(star.r) + ' points in the run, ' + (star.r > star.b ? 'up' : 'down') + ' from ' + one(star.b) + ' before.'));
+      if (star && Math.abs(star.r - star.b) >= 3) body.push(W.say('run.star', { T, P: ePlayer(L, star.p.pid), r: V.avg(star.r), b: V.avg(star.b), up: star.r > star.b }));
       const five = bestFive(L, id);
-      if (five) body.push(ok('The five on the floor most in the replayed games, ' + list(five.n.map(surname)) + ', have ' + (five.pf >= five.pa ? 'outscored opponents by ' + (five.pf - five.pa) : 'been outscored by ' + (five.pa - five.pf)) + ' in ' + Math.round(five.dur / 60) + ' minutes together.'));
+      if (five) body.push(W.say('run.five', { names: list(five.n.map(surname)), pm: Math.abs(five.pf - five.pa), mins: Math.round(five.dur / 60), up: five.pf >= five.pa }));
       const close = run.filter(x => Math.abs(x.for - x.against) <= 5).length;
-      if (close >= 2) body.push(ok(say('turn', seed + 't') + ' ' + spell(close) + ' of the ' + spell(n) + ' were decided by five points or fewer.'));
-      const nx = nextText(L, id);
-      if (nx) body.push(ok((won ? 'The run is on the line ' : 'The next chance to stop it: ') + nx.line + '.'));
-      return { kicker: won ? 'Inside the run' : 'Inside the slide', head, dek, body: body.filter(Boolean), teams: [id], links: [teamLink(L, id)].filter(Boolean),
+      if (close >= 2) body.push(W.say('run.close', { won, close: spell(close), N2: spell(n) }));
+      const nx = nextCtx(L, id);
+      if (nx) body.push(W.say('run.next', { won, n: spell(n), day: nx.day, where: nx.where }));
+      return { __log: W.log(), kicker: won ? 'Inside the run' : 'Inside the slide', head, dek, body: body.filter(Boolean), teams: [id], links: [teamLink(L, id)].filter(Boolean),
         facts: [{ label: won ? 'wins in a row' : 'defeats in a row', value: String(n) }, { label: 'average margin', value: signed(avgM) }].concat(ff.slice(0, 2).map(x => ({ label: x.label, value: x.now + ' (was ' + x.was + ')' }))) };
     } });
   });
@@ -809,7 +775,8 @@ function factorsOver(L, id, run, rest) {
     const a = avg(run, k, opp), b2 = avg(rest, k, opp);
     if (a == null || b2 == null) return null;
     const better = (k === 'tovp' || opp ? -1 : 1) * (a - b2), w = better < 0 && bad ? bad : good;
-    return { label, value: Math.abs(a - b2) * (W[k] || 1), better, now: one(a) + '%', was: one(b2) + '%', say: w[0] + one(a) + w[1] + ' (' + one(b2) + '% before)' };
+    return { label, value: Math.abs(a - b2) * (W[k] || 1), better, now: one(a) + '%', was: one(b2) + '%', say: w[0] + one(a) + w[1] + ' (' + one(b2) + '% before)',
+             k2: opp ? 'def' : k === 'efg' ? 'shot' : k === 'tovp' ? 'ball' : 'glass' };
   }).filter(x => x && x.value >= 1.5).sort((a, c) => c.value - a.value);
 }
 /* a club's five with the most minutes together in the replayed games (15 minutes or more) */
@@ -828,18 +795,19 @@ function fFive(L, say) {
     const pm = f.pf - f.pa, ps = L.pos(id);
     const salience = clamp(0.3 + Math.min(0.35, pm / 60) + Math.min(0.12, (f.dur / 60 - 20) / 150) + (ps && ps.rank <= Math.ceil(ps.n / 2) ? 0.1 : 0.04));
     out.push({ kind: 'five', id: 'five:' + id + ':' + wk, subject: id, salience, write: () => {
-      const tn = L.club(id), seed = 'five' + id + wk, mins = Math.round(f.dur / 60), names = f.n.map(surname);
+      const tn = L.club(id), seed = 'five' + id + wk, mins = Math.round(f.dur / 60), names = f.n.map(surname), V = VOICE(), W = V.writer(seed), T = eClub(L, id);
       const head = headsOf(seed + 'h', ['The five who are winning games for ' + tn, possOf(tn) + ' best five, by the numbers', 'Inside the ' + L.lname + '’s most effective lineup']);
       const dek = list(names) + ': +' + pm + ' in ' + mins + ' minutes together over the last fortnight.';
       const share = D.dur ? f.dur / D.dur : null;
       const body = [];
-      body.push(ok('Over the last fortnight, in ' + spell(f.games) + ' replayed games, ' + list(f.n) + ' have shared the floor for ' + mins + ' minutes for ' + tn + ' and outscored opponents by ' + pm + ', ' + f.pf + ' points to ' + f.pa + '.'));
-      body.push(ok('That is ' + signed(pm / mins * 40) + ' points per 40 minutes' + (D.dur ? ', against ' + signed((D.pf - D.pa) / (D.dur / 60) * 40) + ' per 40 for the club as a whole in the same games' : '') + '.'));
-      if (share) body.push(ok('They have played ' + Math.round(share * 100) + '% of the club’s minutes in those games together' + (share < 0.25 ? ' — an argument for more' : '') + '.'));
-      body.push(ok(say('caveat', seed + 't') + ' ' + mins + ' minutes is a small sample, and a lineup’s numbers move quickly.'));
-      const nx = nextText(L, id);
-      if (nx) body.push(ok('Next: ' + nx.line + '.'));
-      return { kicker: 'Lineup lab', head, dek, body: body.filter(Boolean), teams: [id], links: [teamLink(L, id)].filter(Boolean),
+      body.push(W.say('five.lede', { T, names: list(f.n), pm, mins }));
+      body.push(W.say('five.per40', { per40: Math.round(pm / mins * 40) }));
+      if (D.dur) body.push(W.say('five.rest', { restLost: (D.pf - D.pa) - pm < 0 }));
+      if (share) body.push(W.say('five.share', { T, shareFrac: V.frac(share * 100), rare: share < 0.25 }));
+      body.push(W.say('five.caveat', { mins }));
+      const nx = nextCtx(L, id);
+      if (nx) body.push(W.line('Next: ' + nx.day + ', ' + nx.where + '.'));
+      return { __log: W.log(), kicker: 'Lineup lab', head, dek, body: body.filter(Boolean), teams: [id], links: [teamLink(L, id)].filter(Boolean),
         facts: [{ label: 'together', value: mins + ' min' }, { label: 'plus-minus', value: '+' + pm }, { label: 'per 40', value: signed(pm / mins * 40) }] };
     } });
   });
@@ -861,18 +829,17 @@ function fClock(L, say) {
   const wk = Math.floor(L.nowMs / (7 * DAY)), id = best.r.id;
   const salience = clamp(0.3 + (best.R.z - 1.3) * 0.25 + 0.15);
   return [{ kind: 'clock', id: 'clock:' + id + ':' + wk, subject: id, salience, write: () => {
-    const tn = L.club(id), r = best.r, seed = 'clock' + id + wk, dr = R('dur', id);
+    const tn = L.club(id), r = best.r, seed = 'clock' + id + wk, dr = R('dur', id), V = VOICE(), W = V.writer(seed), T = eClub(L, id);
     const head = headsOf(seed + 'h', [tn + ' are the ' + L.lname + '’s late-clock specialists', 'Beat the clock: how ' + tn + ' score when time runs short']);
-    const dek = two(r.late) + ' points a chance when the shot clock is past 16 seconds, the best in the league over the last fortnight.';
+    const dek = W.say('clock.dek', { T, league: L.lname });
     const body = [];
-    const lgLate = mean(rows.map(x => x.late)), lgDrop = mean(rows.filter(x => x.early != null).map(x => x.early - x.late));
-    body.push(ok('When the shot clock runs down, the ' + L.lname + ' scores ' + two(lgLate) + ' points a chance. ' + tn + ' score ' + two(r.late) + ': over the last fortnight’s replayed games they have taken ' + r.lateN + ' first chances past 16 seconds of the clock, and nobody has done more with them.'));
-    if (r.early != null) body.push(ok('Earlier in the clock they score ' + two(r.early) + ' a chance, so a long possession costs them ' + (r.late >= r.early ? 'nothing at all' : two(r.early - r.late) + ' a chance, against ' + two(lgDrop) + ' for the league as a whole') + '.'));
-    if (dr) body.push(ok('Their possessions last ' + one(r.dur) + ' seconds on average, ' + (dr.r <= 3 ? 'among the longest in the league' : dr.r > dr.n - 3 ? 'among the shortest in the league' : place(dr.r) + ' in the league by length') + '.'));
-    body.push(ok(say('caveat', seed + 't') + ' it is ' + r.lateN + ' possessions, not a season — a few late threes either way would move it.'));
-    const nx = nextText(L, id);
-    if (nx) body.push(ok('Next: ' + nx.line + '.'));
-    return { kicker: 'The shot clock', head, dek, body: body.filter(Boolean), teams: [id], links: [teamLink(L, id)].filter(Boolean),
+    body.push(W.say('clock.lede', { T, league: L.lname }));
+    if (r.early != null) body.push(W.say('clock.detail', { noCost: r.late >= r.early }));
+    if (dr) body.push(W.say('clock.pace', { long: dr.r <= 3, short: dr.r > dr.n - 3 }));
+    body.push(W.say('clock.caveat', { n: r.lateN }));
+    const nx = nextCtx(L, id);
+    if (nx) body.push(W.line('Next: ' + nx.day + ', ' + nx.where + '.'));
+    return { __log: W.log(), kicker: 'The shot clock', head, dek, body: body.filter(Boolean), teams: [id], links: [teamLink(L, id)].filter(Boolean),
       facts: [{ label: 'late-clock points a chance', value: two(r.late) }, { label: 'late chances', value: String(r.lateN) }, r.dur ? { label: 'average possession', value: one(r.dur) + ' s' } : null].filter(Boolean) };
   } }];
 }
@@ -904,33 +871,29 @@ function fAbsence(L, say) {
       const cg = L.C.get(team), without = cg ? cg.games.filter(x => x.at > pl.lastAt) : [], withIt = cg ? cg.games.filter(x => x.at <= pl.lastAt && pl.games.some(y => y.game === x.id)) : [];
       if (without.length < 2) return null;                       // the league's own games without him: two at least to say anything
       const w = without.filter(x => x.won).length, l = without.filter(x => !x.won && !x.tied).length;
-      const pctS = Math.round(share * 100) + '%';
-      const head = headsOf(seed + 'h', [tn + ' without ' + nm + ': what the numbers say they are missing', 'How much is ' + nm + ' worth to ' + tn + '?',
-        'The ' + sn + '-shaped hole in ' + possOf(tn) + ' side', tn + ' are learning to live without ' + nm]);
-      const nMiss = without.length;
-      const dek = nm + ' has missed ' + possOf(tn) + ' last ' + spell(nMiss) + ' games' + (banned ? ', suspended' : '') + '. By box plus-minus and minutes, ' + pr.he + ' carries ' + pctS + ' of what the club’s players are worth.';
+      const pctS = Math.round(share * 100) + '%', nMiss = without.length, VO = VOICE(), W = VO.writer(seed);
+      const P = Object.assign({ P: ePlayer(L, pid), T: eClub(L, team), S: sn, top: r === 1 }, prons(L));
+      const head = headsOf(seed + 'h', W.all('absence.head', P));
+      const dek = W.say('absence.dek', Object.assign({ nMiss: spell(nMiss), ban: banned ? ', suspended' : '' }, P));
       const body = [];
-      body.push(ok(tn + ' have played ' + spell(nMiss) + ' games without ' + nm + (banned ? ', who is serving a suspension' : '') + ', and gone ' + w + '–' + l + ' in them.'));
-      const br = L.rank(L.regulars, 'bpm', pid);
-      body.push(ok('Put how good a player has been together with how much of the game ' + pr.he + ' plays, and ' + nm + ' accounts for ' + pctS + ' of ' + possOf(tn) + ' value this season, ' +
-        (r === 1 ? 'the most of anybody on the club' : r === 2 ? 'the second-most on the club' : place(r) + ' on the club') + '. ' + cap(pr.his) + ' box plus-minus is ' + signed(p.bpm) + ' in ' + one(p.mpg) + ' minutes a game' +
-        (br && br.r <= 20 ? ', ' + rankText(br, seed + 'b', { among: 'among the league’s regulars' }) : '') + '.'));
-      if (num(p.on_net) != null && num(p.off_net) != null && num(p.on_poss) >= 200) body.push(ok(p.diff_net >= 3
-        ? 'The team numbers say the same: ' + tn + ' have been ' + signed(p.on_net) + ' per 100 possessions with ' + pr.him + ' on the floor and ' + signed(p.off_net) + ' without.'
-        : 'The team numbers soften it: ' + tn + ' have been ' + signed(p.on_net) + ' per 100 possessions with ' + pr.him + ' on the floor and ' + signed(p.off_net) + ' without, a side used to coping.'));
+      body.push(W.say('absence.lede', Object.assign({ nMiss: spell(nMiss), banTail: banned ? ', who is serving a suspension' : '', w, l }, P)));
+      body.push(W.say('absence.value', Object.assign({ shareFrac: VO.frac(share * 100) }, P)));
+      if (num(p.on_net) != null && num(p.off_net) != null && num(p.on_poss) >= 200) body.push(W.say('absence.onoff', Object.assign({ big: p.diff_net >= 3 }, P)));
       const ppg = xs => mean(xs.map(x => x.for)), papg = xs => mean(xs.map(x => x.against));
-      if (without.length >= 2 && withIt.length >= 3) body.push(ok('In the games without ' + pr.him + ', ' + tn + ' have scored ' + one(ppg(without)) + ' and allowed ' + one(papg(without)) +
-        ' a game, against ' + one(ppg(withIt)) + ' and ' + one(papg(withIt)) + ' with ' + pr.him + '.'));
+      if (without.length >= 2 && withIt.length >= 3) {
+        const pf = ppg(without), pa = papg(without), pf0 = ppg(withIt), pa0 = papg(withIt);
+        body.push(W.say('absence.games', Object.assign({ pf: VO.avg(pf), pa: VO.avg(pa), pf0: VO.avg(pf0), pa0: VO.avg(pa0), offence: pf0 - pf >= 5, defence: pa - pa0 >= 5 }, P)));
+      }
       /* who has had the minutes: the biggest rise in minutes a game, without him against with him */
       const ids = new Set(without.map(x => x.id)), had = new Set(withIt.map(x => x.id));
       const rise = [...L.PL.values()].filter(q => q.team === team && q.pid !== pid && L.pname(q.pid)).map(q => {
         const a = q.games.filter(x => ids.has(x.game)), b2 = q.games.filter(x => had.has(x.game));
         return { q, a: mean(a.map(x => x.min)), b: mean(b2.map(x => x.min)), n: a.length };
       }).filter(x => x.n >= Math.min(2, without.length) && x.a != null && x.b != null).sort((x, y) => (y.a - y.b) - (x.a - x.b))[0];
-      if (rise && rise.a - rise.b >= 4) body.push(ok(L.pname(rise.q.pid) + ' has taken on the most of the minutes: ' + one(rise.a) + ' a game without ' + sn + ', up from ' + one(rise.b) + '.'));
-      const nx = nextText(L, team);
-      if (nx) body.push(ok('Next for ' + tn + ': ' + nx.line + '.'));
-      return { kicker: banned ? 'Serving a suspension' : 'The missing piece', head, dek, body: body.filter(Boolean), players: [pid], teams: [team],
+      if (rise && rise.a - rise.b >= 4) body.push(W.say('absence.minutes', { Q: ePlayer(L, rise.q.pid), a: VO.avg(rise.a), b: VO.avg(rise.b) }));
+      const nx = nextCtx(L, team);
+      if (nx) body.push(W.say('absence.next', Object.assign({ day: nx.day, where: nx.where }, P)));
+      return { __log: W.log(), kicker: banned ? 'Serving a suspension' : 'The missing piece', head, dek, body: body.filter(Boolean), players: [pid], teams: [team],
         links: [playerLink(L, pid), teamLink(L, team)].filter(Boolean),
         facts: [{ label: 'games missed', value: String(nMiss) }, { label: 'share of the club’s value', value: pctS }, { label: 'box plus-minus', value: signed(p.bpm) },
           { label: 'record without', value: w + '–' + l }] };
@@ -949,19 +912,38 @@ function gameCard(o, b, opts) {
   const L = league(o || {}, b || {}, opts || {});
   const slate = ((b && b.coverage && b.coverage.slate) || []).filter(x => time(x.at) > L.nowMs && time(x.at) < L.nowMs + 7 * DAY)
     .sort((a, c) => c.stakes - a.stakes);
-  const g = slate[0];
-  if (!g || !g.home || !g.away) return null;
+  /* THE GAME TO WATCH, chosen with the salience it is written for: the week's three biggest games by what is at stake, each
+     written as a card and edited; the one shown matters most by how much its card can say (the editor's substance) and
+     how ready it is (quality). A big game the numbers have nothing to say about yields to one nearly as big that they do */
+  const cards = slate.slice(0, 3).filter(g => g && g.home && g.away).map(g => cardFor(L, o, b, g)).filter(Boolean);
+  if (!cards.length) return null;
+  cards.forEach(c => { const q = c.qa || {}; c.score = Math.round(c.stakes * (0.6 + 0.4 * Math.min(1, (q.substance != null ? q.substance : c.reasons.length) / 3)) * (q.quality != null ? q.quality : 1) * 1000) / 1000; });
+  return cards.sort((a, c) => c.score - a.score || c.stakes - a.stakes)[0];
+}
+function cardFor(L, o, b, g) {
   const side = s => ({ id: s.id, rec: s.rec || null, rank: s.rank || null, form: s.form || null, streak: s.streak || null });
-  const why = reasons(L, g.home.id, g.away.id, 'card' + g.game).slice(0, g.rival ? 2 : 3)
-    .map(r => ({ title: r.title, text: r.text, off: r.a, def: r.b }));
-  /* a rivalry an administrator has named leads the reasons: it is why many will watch */
-  if (g.rival) {
-    const met = (L.games || []).filter(x => (x.home_team_id === g.home.id && x.away_team_id === g.away.id) || (x.home_team_id === g.away.id && x.away_team_id === g.home.id)).slice(-1)[0];
-    const last = met ? (num(met.home_score) > num(met.away_score) ? L.club(met.home_team_id) : L.club(met.away_team_id)) + ' won the last meeting, ' + Math.max(met.home_score, met.away_score) + '\u2013' + Math.min(met.home_score, met.away_score) + '.' : 'Their first meeting of the season.';
-    why.unshift({ title: 'The rivalry', text: L.club(g.home.id) + ' and ' + L.club(g.away.id) + ' are rivals, and nobody needs the table to tell them what this one means. ' + last, off: null, def: null });
-  }
+  /* one writer for the card, in the order it is read: the lean under the bar, why it matters, where it will be decided */
+  const W = VOICE().writer('card' + g.game), eH = eClub(L, g.home.id, 'the hosts'), eA = eClub(L, g.away.id, 'the visitors');
+  W.section(g.game);
   const ex = g.expect && isFinite(g.expect.margin) ? g.expect : null;
   const pFav = ex ? 1 / (1 + Math.exp(-0.15 * Math.abs(ex.margin))) : null;
+  const [eF, eD] = ex && ex.favourite === g.away.id ? [eA, eH] : [eH, eA];
+  const line = leanText(L, ex, W, eF, eD);
+  /* WHY IT MATTERS: the stakes said, then the storylines it touches - less what the stakes have said, and never the
+     storylines that talk like a model ("results turn on shooting") */
+  const ST = stakesOf(L, g, W, eH, eA);
+  const covers = k => (k === 'race' || k === 'line') ? !!(ST.c.top2 || ST.c.top4 || ST.c.topBottom)
+    : (k === 'run' || k === 'skid' || k === 'perfect' || k === 'winless') ? !!(ST.c.bothUnbeaten || ST.c.bothHot || ST.c.hotCold) : k === 'identity';
+  const whyLines = ST.lines.concat((g.threads || []).filter(t => !covers(String(t.story || '').split(':')[0])).map(t => t.line)).slice(0, 3);
+  /* WHERE IT WILL BE DECIDED: a rivalry an administrator has named leads, it is why many will watch */
+  const why = reasons(L, g.home.id, g.away.id, 'card' + g.game, W, eH, eA).slice(0, g.rival ? 2 : 3)
+    .map(r => { const w = r.write(); return w ? { title: w.title, text: w.text, off: r.a, def: r.b } : null; }).filter(Boolean);
+  if (g.rival) {
+    const met = (L.games || []).filter(x => (x.home_team_id === g.home.id && x.away_team_id === g.away.id) || (x.home_team_id === g.away.id && x.away_team_id === g.home.id)).slice(-1)[0];
+    const last = met ? W.line((num(met.home_score) > num(met.away_score) ? L.club(met.home_team_id) : L.club(met.away_team_id)) + ' won the last meeting, ' + Math.max(met.home_score, met.away_score) + '\u2013' + Math.min(met.home_score, met.away_score) + '.')
+      : W.line('This is their first meeting of the season.');
+    why.unshift({ title: 'The rivalry', text: [W.say('reason.rivalry', { A: eH, B: eA }), last].filter(Boolean).join(' '), off: null, def: null });
+  }
   const named = new Set();
   const players = [g.home, g.away].map(s => {
     const team = s.id, sw = L.regulars.filter(p => L.teamOf(p) === team && num(p.on_poss) >= 250 && num(p.diff_net) >= 6).sort((a, c) => c.diff_net - a.diff_net)[0];
@@ -974,9 +956,19 @@ function gameCard(o, b, opts) {
              onoff: row && num(row.on_poss) >= 250 && num(row.on_net) != null && num(row.off_net) != null ? { on: Math.round(row.on_net * 10) / 10, off: Math.round(row.off_net * 10) / 10 } : null };
   }).filter(Boolean);
   const art = ((b && b.articles) || []).find(a => a.kind === 'watch' && (a.links || []).some(l => l.href === 'game/?g=' + g.game));
-  return { game: g.game, at: g.at, day: g.day, stakes: g.stakes, rival: !!g.rival, angle: g.angle || null, threads: (g.threads || []).slice(0, 3).map(t => t.line),
+  const card = { game: g.game, at: g.at, day: g.day, stakes: g.stakes, rival: !!g.rival, angle: whyLines[0] || null, threads: whyLines.slice(1),
            home: side(g.home), away: side(g.away), lean: ex ? { favourite: ex.favourite, margin: Math.round(Math.abs(ex.margin) * 10) / 10, chance: Math.round(pFav * 100) } : null,
-           reasons: why, players, article: art ? art.id : null, line: leanText(L, ex) };
+           reasons: why, players, article: art ? art.id : null, line };
+  /* the editor reads the card's words (the lean, why it matters, each reason) as one piece */
+  const E = EDITOR();
+  if (!E) return card;
+  const m = editorMeta(L, o || {});
+  const q = E.scrutinise({ kind: 'card', line: card.line, angle: card.angle, threads: card.threads, reasons: card.reasons.map(r => ({ title: r.title, text: r.text })) },
+    { log: W.log(), schedule: m.schedule, clubs: m.clubs, game: g.game, sectionGame: { 0: g.game, 1: g.game }, nowMs: L.nowMs });
+  card.line = q.piece.line; card.angle = q.piece.angle; card.threads = (q.piece.threads || []).filter(Boolean);
+  card.reasons = card.reasons.map((r, i) => Object.assign({}, r, { text: q.piece.reasons[i] && q.piece.reasons[i].text })).filter(r => r.text);
+  card.qa = { checked: q.report.checked, fixes: q.report.fixes, quality: q.report.quality, substance: q.report.substance };
+  return card;
 }
 
 /* ============================================================ the newsroom === */
@@ -1020,14 +1012,19 @@ function orderHeads(heads, model, league) {
    is dropped when the old writer got a figure wrong (drop), and otherwise kept as it was written, marked so it is not
    tried again. How a correction reaches what readers can already open.
      five 2 (2026-10-08, drop): the club's rate per 40 and the five's share of its minutes had been divided by five twice
-     watch 2 (2026-10-08): "outscored opponents by −0.8" of a side outscored with the player on; "give up N% of theirs" */
-const WRITER = { five: { v: 2, drop: true }, watch: { v: 2 } };
+     watch 2 (2026-10-08): "outscored opponents by −0.8" of a side outscored with the player on; "give up N% of theirs"
+     every format 3 (2026-10-08, heads): the house voice (voice.js) and the editor (scrutiny.js) - written again, the
+       headlines too (heads: no headline test had counts yet, the click-through tables not being live) */
+const VOICED = { v: 3, heads: true };
+const WRITER = { five: { v: 3, drop: true, heads: true }, watch: VOICED, slump: VOICED, mvp: VOICED, prospect: VOICED, identity: VOICED, run: VOICED, skid: VOICED, clock: VOICED, absence: VOICED };
 const writerOf = kind => (WRITER[kind] && WRITER[kind].v) || 1;
 function publish(o, b, opts) {
   const op = opts || {};
   const nowMs = op.nowMs || (o && o.now instanceof Date ? o.now.getTime() : Date.now());
   const lslug = o && o.league ? o.league.slug : null;
   const cands = candidates(o, b, Object.assign({}, op, { nowMs }));
+  const meta = editorMeta(cands.length ? cands[0].L : league(o || {}, b || {}, Object.assign({}, op, { nowMs })), o);
+  const held = op.qa ? (op.qa.held = []) : [];
   /* the pieces already out: kept as written (or written again, above), a headline test decided once it has run long enough */
   const prev = (op.previous || []).filter(a => a && a.id && time(a.written) != null && nowMs - time(a.written) < KEEP_DAYS * DAY)
     .map(a => {
@@ -1036,9 +1033,14 @@ function publish(o, b, opts) {
       let w = null;
       try { w = c ? c.write() : null; } catch (_) { w = null; }
       const hs = w ? [].concat(w.head || []) : [];
-      if (w && (w.body || []).filter(x => typeof x === 'string').length >= 3 && (Array.isArray(a.heads) ? a.heads : [a.head]).every(h => hs.indexOf(h) >= 0))
-        return Object.assign({}, a, { kicker: w.kicker, dek: w.dek, body: w.body, facts: w.facts, links: w.links, teams: w.teams, players: w.players,
-                                      wv: writerOf(a.kind), corrected: new Date(nowMs).toISOString() });
+      const keeps = w && (Array.isArray(a.heads) ? a.heads : [a.head]).every(h => hs.indexOf(h) >= 0), anew = !!(WRITER[a.kind] && WRITER[a.kind].heads);
+      if (w && (w.body || []).filter(x => typeof x === 'string').length >= 3 && (keeps || anew)) {
+        /* a correction that may change the headlines (heads) takes the new ones, in the model's order; the test starts again */
+        const nh = keeps ? null : orderHeads(w.head, op.model, lslug).filter(ok);
+        const base = keeps ? a : Object.assign({}, a, { head: nh[0] || a.head, heads: nh.length > 1 ? nh : undefined, locked: undefined });
+        const ed = edit(Object.assign({}, base, { kicker: w.kicker, dek: w.dek, body: w.body, facts: w.facts, links: w.links, teams: w.teams, players: w.players, __log: w.__log, __sections: w.__sections }), meta, nowMs);
+        if (ed.ok) return Object.assign(ed.piece, { wv: writerOf(a.kind), corrected: new Date(nowMs).toISOString() });
+      }
       return WRITER[a.kind] && WRITER[a.kind].drop ? null : Object.assign({}, a, { wv: writerOf(a.kind) });
     }).filter(Boolean)
     .map(a => decide(a, op.ctr ? op.ctr[a.id] : null));
@@ -1060,6 +1062,19 @@ function publish(o, b, opts) {
     try { a = c.write(); } catch (_) { a = null; }
     if (a) { const hs = orderHeads(a.head, op.model, lslug).filter(ok); a.head = hs[0] || null; if (hs.length > 1) a.heads = hs; }
     if (!a || !a.head || (a.body || []).filter(x => typeof x === 'string').length < 3) continue;
+    /* the gate: the editor reads it, fixes what it can, and holds back what it cannot */
+    const ed = edit(a, meta, nowMs);
+    if (!ed.ok) { held.push({ id: c.id, kind: c.kind, head: a.head, report: ed.piece.qa }); continue; }
+    a = ed.piece;
+    /* WHAT IS POSTED: how much it matters (salience, the format's weight) by how ready the edit left it (quality). A piece
+       that matters but came out thin waits, and the next most salient one gets its place */
+    const quality = a.qa && a.qa.quality != null ? a.qa.quality : 1, score = Math.round(c.salience * kw * quality * 1000) / 1000;
+    if (a.qa) a.qa.score = score;
+    if (!op.all && score < SALIENCE) {
+      held.push({ id: c.id, kind: c.kind, head: a.head, report: Object.assign({}, a.qa, { held: [{ at: 'piece', kind: 'unwieldy', rule: 'salience',
+        note: 'salience ' + c.salience + (kw !== 1 ? ' x format ' + kw : '') + ' x quality ' + quality + ' = ' + score + ', under the bar (' + SALIENCE + ')' }] }) });
+      continue;
+    }
     fresh.push(Object.assign({ id: c.id, kind: c.kind, subject: c.subject, salience: c.salience, written: new Date(nowMs).toISOString(), wv: writerOf(c.kind) }, a));
     lately.set(c.kind + '|' + c.subject, nowMs);
     room--;
@@ -1067,5 +1082,5 @@ function publish(o, b, opts) {
   return fresh.concat(prev).sort((a, c) => time(c.written) - time(a.written)).slice(0, MAX_KEEP);
 }
 
-return { publish, candidates, digest, learn, gameCard, SALIENCE, BOOK, __x: { rankText, rankWord, reasons, onOffLine, sayer, league, leanText } };
+return { publish, candidates, digest, learn, gameCard, SALIENCE, BOOK, __x: { rankText, rankWord, reasons, onOffLine, sayer, league, leanText, stakesOf } };
 }));

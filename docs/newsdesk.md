@@ -285,7 +285,53 @@ migration 0252). A rivalry raises its games' stakes on the slate (said first, "a
 reasons, makes the week's article more salient, and gives a match report of one 20 points more in the feed
 (`news_report_significance`).
 
-## 11. Tests
+## 11. The house voice, the editor and what is posted
+
+**Written for fans, not analysts** (Louie, 2026-10-08): stakes, characters and feeling first; a number only where it
+lands, said the way a fan would say it ("nearly half their shots are threes", "unbeaten", "a different team when he
+sits"); never model-speak ("the numbers say", "points a chance", "per 100 possessions", "one standard step"). The
+storyline "What wins here" left the front page (a model's lens is not a story); the creators' big picture keeps it, in
+words.
+
+**The voice** (`epinoia/voice.js`) writes every sentence of the newsroom's pieces, the game to watch and the slate's
+angles, in four steps, in the SimpleNLG tradition:
+1. *content*: a format passes the facts, and the clubs and players in them as entities (`club(name, {role, id})`,
+   `person(name, {g, id})`);
+2. *plan*: a phrasebook slot holds entries (the situation each fits, and its options - a canned sentence, or a plan of
+   clauses: `cl(subject, verb, rest, {t, perf, prog, neg, mod})`, joined by what links them: contrast, clash, addition,
+   cause, condition, concession, time). The planner chooses the form - compound ("a, but b"), complex ("While a, b",
+   "b because a"), a relative clause ("X, who have won five straight, come..."), a participle ("Having won five
+   straight, X arrive...", same subject only), two sentences - avoiding the form, connective and sentence type it
+   used last. A contrast is never "although" (that is a concession);
+3. *realise*: jsRealB (`tools/vendor/jsrealb`, the builder only; Apache-2.0, its lexicon CC BY-SA 4.0) makes the
+   grammar - a club takes the plural ("Panathinaikos have"), a player the singular - and the referring expressions
+   are the writer's: a name in full first, then a role ("the hosts") or a surname, "they" / "she" only as the subject
+   after a sentence about them alone; a headline or standfirst does not introduce anybody, a section names everybody
+   again;
+4. *proof*: each sentence read back as it is made (a/an by sound, "1 point", a numeral opening a sentence, British
+   spelling, a club's plural in canned text, doubled words); a sentence that opens like the one before, repeats a phrase
+   or runs past forty words is sent back for the next option.
+
+**The editor** (`epinoia/scrutiny.js`) reads the whole piece before it is posted - every sentence against the ones
+around it - with the writer's log of each sentence (who is in it, what it claims, which game's section it sits in).
+Each finding is located (`p4.s2 (Perth Wildcats v NZ Breakers)`), classed (incorrect, illogical, unwieldy, style) and
+fixed where it stands: a role or pronoun before the name in its section, a record or run claimed for a game a club
+plays another game before, the same claim made twice, near-copies, a sentence past forty words (split at its seam), a
+section with nothing to say beyond a lean and a name (it goes; fewer than two left and the piece is held back), the
+standfirst's count, headline form, model-speak. What it cannot fix and is incorrect or illogical holds the piece back.
+Its report travels with the piece (`qa`: fixes, quality, substance, score) and with the card; what it held back is in
+the file's `qaHeld`, never posted. The builder logs it per league.
+
+**What is posted** is salience by readiness: the candidate's salience x its format's weight x the editor's quality
+(0.4-1: what it had to fix, and the substance left - sentences with a fact or a judgement, not the boilerplate of a
+lean, a name to watch, the next fixture) must clear 0.6. **The game to watch** is chosen the same way: of the week's
+three biggest games by what is at stake, the one whose card says most (substance) and reads best (quality).
+
+A correction that may change the headlines (`WRITER[kind].heads`) rewrites published pieces whole; every format went
+to version 3 with the voice. Japanese and Spanish patterns for the new wording are still to come (a sentence without
+one is shown whole in English).
+
+## 12. Tests
 
 | file | what |
 |---|---|
@@ -295,6 +341,7 @@ reasons, makes the week's article more salient, and gives a match report of one 
 | `supabase/tests/report-i18n.test.mjs` | every new template comes back fully translated in each visible language |
 | `supabase/tests/newsdesk-i18n.test.mjs [ja\|es] [--list]` | every string the newsdesk draws, from fixture leagues that open every kind of storyline, comes back whole in each language (the `newsdesk` pack: `epinoia/i18n/<code>/newsdesk.js`, one anchored pattern per template) |
 | `supabase/tests/report-eval.mjs --ctx [--league <slug>] [--show N]` | real games: coverage, repetition, stock phrases, logic |
+| `supabase/tests/voice.test.mjs` | the voice's grammar (agreement, a/an, counts, possessives, spelling), the planner (forms by relation, relative clauses, no dangling participle), references, and the editor (each rule located and fixed, the gate, quality) |
 | `supabase/tests/newsroom.test.mjs` | the newsroom on a synthetic league (`newsroom-fixture.mjs`, `full`: every format open, the run and the slide, a star missing, the replays' shot clock and fives): whole articles with no empty slot, her pronouns, salience, persistence, the headline test, the game to watch, rivals; digest/learn, the click-through model |
 | `supabase/tests/newsdesk-i18n.test.mjs` (the newsroom groups) | every newsroom string - each format over half a season of weeks, every headline it could test, every pairing's reasons, the card and the page's own words - whole in each language |
 | `node tools/build-narratives.mjs --local --league <slug> --articles all [--input-out f.json]` | every candidate article a real league offers, with its salience (and the newsroom's input saved, to work on the writing without reading the league again) |

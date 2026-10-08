@@ -232,11 +232,11 @@ for (let wk = 0; wk < 26; wk++) for (const gender of ['men', 'women']) {
   [w.home, w.away].forEach(s => { put('watch card', [s.rec, s.rank ? ord(s.rank) : null].filter(Boolean).join(' · ')); if (s.form) put('watch card', 'form ' + s.form); });
   (w.reasons || []).forEach(r => { put('watch card', r.title); put('watch card', r.text);
     [r.off, r.def].filter(Boolean).forEach(x => { put('watch card', x.value); put('watch card', x.label); put('watch card', ord(x.rank) + ' of ' + x.of); }); });
-  (w.players || []).forEach(p => { put('watch card', p.line); if (p.onoff) put('watch card', sgn(p.onoff.on) + ' on · ' + sgn(p.onoff.off) + ' off'); });
+  (w.players || []).forEach(p => { put('watch card', p.line); if (p.onoff) put('watch card', sgn(p.onoff.on) + ' on court · ' + sgn(p.onoff.off) + ' off court'); });
   /* every pairing's reasons, as a card or the week's article would say them (the fixture's own game opens only a few) */
   const L = NR.__x.league(input, b, { nowMs });
   input.fixtures.length && Object.keys(input.teams).forEach(A => Object.keys(input.teams).forEach(B => { if (A === B) return;
-    NR.__x.reasons(L, A, B, 'pair' + wk + A + B).forEach(r => { put('watch card', r.title); put('watch card', r.text);
+    NR.__x.reasons(L, A, B, 'pair' + wk + A + B).map(r => Object.assign({ a: r.a, b: r.b }, r.write() || {})).forEach(r => { put('watch card', r.title); put('watch card', r.text);
       [r.a, r.b].filter(Boolean).forEach(x => { put('watch card', x.label); put('watch card', x.value); put('watch card', ord(x.rank) + ' of ' + x.of); }); }); }));
 }
 BENCH.flat().forEach(x => { NR_NAMES.add(x); NR_NAMES.add(x.split(' ').slice(1).join(' ')); });

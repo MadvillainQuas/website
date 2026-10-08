@@ -58,6 +58,9 @@ export function load(url) {
   try { g('EpinoiaClutch', 'clutch.js'); } catch (_) { /* no clutch time: the recaps go without it */ }
   g('EpinoiaLanguage', path.join('game', 'language.js')); g('EpinoiaStory', path.join('game', 'story.js'));
   g('EpinoiaReport', path.join('game', 'report.js')); g('EpinoiaContext', path.join('game', 'context.js'));
+  /* the house voice (its grammar, jsRealB, from tools/vendor) and the editor every piece passes before it is posted */
+  try { g('EpinoiaVoice', 'voice.js'); } catch (_) { /* no voice: the storylines' angles go without their stakes */ }
+  try { g('EpinoiaScrutiny', 'scrutiny.js'); } catch (_) { /* no editor: pieces go out as written */ }
   const N = g('EpinoiaNarrative', 'narrative.js');
   try { g('EpinoiaFeedRank', 'feedrank.js'); } catch (_) { /* no click-through model: the newsroom writes in its own order */ }
   try { g('EpinoiaNewsroom', 'newsroom.js'); } catch (_) { /* no newsroom: the storylines go out alone */ }
@@ -473,8 +476,14 @@ export async function buildLeague(api, lg, o) {
   /* THE NEWSROOM (newsroom.js): the articles the storylines earn, written once and kept, in the same file */
   const NR = globalThis.EpinoiaNewsroom;
   if (NR) {
+    const qa = {};
     try { out.articles = NR.publish(input, out, { style: o.style || null, previous: previous && Array.isArray(previous.articles) ? previous.articles : [], nowMs: o.nowMs, all: !!o.allArticles,
-      model: o.ctrModel || null, ctr: o.ctr || null, kindW: o.kindW || null }); }
+      model: o.ctrModel || null, ctr: o.ctr || null, kindW: o.kindW || null, qa });
+      /* THE EDITOR'S REPORT (scrutiny.js): each piece carries its own (qa); what it held back is kept here, not posted */
+      out.qaHeld = (qa.held || []).slice(0, 5).map(h => ({ id: h.id, kind: h.kind, head: h.head, held: (h.report && h.report.held) || [], fixes: ((h.report && h.report.fixes) || []).slice(0, 6) }));
+      const fresh = (out.articles || []).filter(a => a.qa && a.qa.checked === new Date(o.nowMs || Date.now()).toISOString());
+      if (o.log && (fresh.length || out.qaHeld.length)) o.log('    editor: ' + (fresh.length ? '' : 'nothing new passed') + fresh.map(a => a.kind + ' ' + (a.qa.score != null ? a.qa.score : '') + ' (quality ' + a.qa.quality + ', ' + a.qa.fixes.length + ' fix' + (a.qa.fixes.length === 1 ? '' : 'es') + ')').join('; ') +
+        (out.qaHeld.length ? '; held back: ' + out.qaHeld.map(h => h.kind + ' (' + h.held.map(x => (x.rule === 'salience' ? x.note : x.rule)).join(', ') + ')').join('; ') : '')); }
     catch (e) { o.log && o.log('    newsroom: ' + String(e.message || e).slice(0, 160)); out.articles = previous && Array.isArray(previous.articles) ? previous.articles : []; }
     /* a local run that asked for every article also lists every candidate, with its salience, and keeps what the
        newsroom was given (--input-out), so the writing can be worked on without reading the league again */
@@ -483,6 +492,8 @@ export async function buildLeague(api, lg, o) {
   }
   /* the week's game to watch, as the front page's card draws it */
   if (NR) { try { out.watchCard = NR.gameCard(input, out, { nowMs: o.nowMs }); } catch (_) { out.watchCard = null; } }
+  if (out.watchCard && out.watchCard.qa && o.log) o.log('    the game to watch: score ' + out.watchCard.score + ' (stakes ' + out.watchCard.stakes + ', substance ' + out.watchCard.qa.substance + ', quality ' + out.watchCard.qa.quality + ')' +
+    (out.watchCard.qa.fixes.length ? '; editor: ' + out.watchCard.qa.fixes.map(f => f.at + ' ' + f.rule).join(', ') : ''));
   out.token = D.games.length + '@' + D.games.reduce((m, g) => (g.finalised_at && g.finalised_at > m ? g.finalised_at : m), '');
   o.log && o.log('    ' + out.stories.length + ' storylines, ' + replayed + ' games replayed, top: ' + (out.stories[0] ? out.stories[0].head : '(none)') +
     (out.articles ? '; ' + out.articles.length + ' articles' + (out.articles.length ? ', newest: ' + out.articles[0].head : '') : ''));

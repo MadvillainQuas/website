@@ -1838,6 +1838,7 @@ jobs:
         # article's phrasing and never a name or a figure; feedrank.js's click-through model (features, fit,
         # prediction, salience held in its bounds, a new story given room) and the newsdesk's storylines
         run: |
+          node supabase/tests/voice.test.mjs
           node supabase/tests/newsroom.test.mjs
           node supabase/tests/narrative.test.mjs
 
