@@ -378,6 +378,11 @@ console.log('\n9. a table\'s own rows, columns and categories');
     g.stats.every(s => heat.has(s.key))));
   ok('between them the categories reach far more than the eight on screen',
      new Set(groups.flatMap(g => g.stats.map(s => s.key))).size > 60);
+  ok('every line of a category brings what the chart draws for it: the short header and the formatter',
+     groups.every(g => g.stats.every(s => s.stat && s.stat.key === s.key && typeof s.stat.fmt === 'function' &&
+       s.stat.label === cols.find(c => c.k === s.key).l)));
+  ok('a caller\'s bare category line is still drawable (plain figures)',
+     C.statIndex({ stats: [], statGroups: [{ key: 'x', label: 'X', stats: [{ key: 'zz', label: 'Zed' }] }] }).get('zz').label === 'Zed');
   ok('a locked column is dropped from the categories too',
      !C.tableGroups(presets, cols, k => k === 'ppg').some(g => g.stats.some(s => s.key === 'ppg')));
 
@@ -419,7 +424,7 @@ console.log('\n9. a table\'s own rows, columns and categories');
     };
     return { host, chart };
   };
-  const { host } = mkHost();
+  const { host, chart } = mkHost();
   const seen = [];
   const api = C.render(host, Object.assign({}, o, { onChange: c => seen.push(c) }));
   ok('a select per category, each with a placeholder and its stats',
@@ -445,6 +450,16 @@ console.log('\n9. a table\'s own rows, columns and categories');
   const chosen = groups.find(g => g.key === 'advanced').stats.map(s => s.key).find(k => !off.includes(k));
   const sel = host.pick(chosen);
   ok('choosing a line adds that stat', api.state.keys.includes(chosen) && seen.length === 1 && seen[0].stats.includes(chosen));
+  /* 2026-10-08: a stat chosen from a dropdown was ticked and counted, and never drawn -- the chart only knew the chips */
+  ok('...and the chart draws it, under its short header', new RegExp('<g class="cmp-block" data-stat="' + chosen + '"').test(chart.innerHTML) &&
+     api.current().stats.some(s => s.key === chosen && s.label === cols.find(c => c.k === chosen).l));
+  ok('...with every pick\'s figure, never a NaN', !/NaN|Infinity/.test(chart.innerHTML));
+  ok('...and it gets a chip of its own, pressed', new RegExp('data-cmp-stat="' + chosen + '" aria-pressed="true"').test(host.innerHTML));
+  const four = groups.find(g => g.key === 'shooting').stats.map(s => s.key).filter(k => !api.state.keys.includes(k)).slice(0, 4);
+  four.forEach(k => host.pick(k));
+  ok('four stats chosen from one category: all four drawn', four.length === 4 &&
+     four.every(k => new RegExp('<g class="cmp-block" data-stat="' + k + '"').test(chart.innerHTML)));
+  four.forEach(k => host.pick(k));
   ok('the dropdown is an action, not a setting — it goes back to its placeholder', sel.selectedIndex === 0);
   ok('it is now ticked in its category', new RegExp('<option value="' + chosen + '">✓ ').test(host.innerHTML));
   host.pick(chosen);

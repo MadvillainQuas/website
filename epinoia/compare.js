@@ -112,6 +112,20 @@ const cell = (table, id, key) => {
 const players = o => (Array.isArray(o && o.players) ? o.players : []).filter(p => p && p.id != null).slice(0, MAX_PLAYERS);
 const stats = o => (Array.isArray(o && o.stats) ? o.stats : []).filter(s => s && s.key != null);
 const modeOf = o => (o && o.mode === 'value' ? 'value' : 'pct');
+/* EVERY STAT THE CHART CAN BE ASKED TO DRAW, by key: the ones it opened on, the chips, and every line of the category
+   dropdowns. A key with no entry here is not drawn, so a stat chosen from a dropdown brings its own (`stat`, from
+   tableGroups; a bare { key, label } from any other caller is drawn with plain figures). Until 2026-10-08 only the
+   opening stats and the chips were here, and a stat chosen from a dropdown was ticked but never drawn. */
+function statIndex(o) {
+  const out = new Map();
+  const put = s => { if (s && s.key != null && !out.has(s.key)) out.set(s.key, s); };
+  stats(o).forEach(put);
+  (Array.isArray(o && o.allStats) ? o.allStats : []).forEach(put);
+  ((o && o.statGroups) || []).forEach(g => ((g && g.stats) || []).forEach(s => {
+    if (s && s.key != null) put(s.stat && s.stat.key === s.key ? s.stat : { key: s.key, label: s.label });
+  }));
+  return out;
+}
 
 /* every chart on a page needs its own hatch pattern id */
 let seq = 0;
@@ -294,7 +308,11 @@ function groupsHtml(o, st, fold) {
 }
 
 function statsHtml(o, st, fold) {
-  const pool = Array.isArray(o.allStats) && o.allStats.length ? o.allStats : o.stats || [];
+  const base = Array.isArray(o.allStats) && o.allStats.length ? o.allStats : o.stats || [];
+  /* a stat chosen from a category dropdown gets a chip of its own after the others, so what is drawn is always
+     on show, and a press on its chip takes it out again */
+  const known = statIndex(o), inBase = new Set(base.map(s => s.key));
+  const pool = base.concat(st.keys.filter(k => !inBase.has(k) && known.has(k)).map(k => known.get(k)));
   const more = groupsHtml(o, st, fold);
   if (pool.length < 2 && !more) return '';
   const on = new Set(st.keys);
@@ -376,9 +394,11 @@ function tableGroups(groups, cols, locked) {
     const key = Array.isArray(g) ? g[0] : g.key;
     const label = Array.isArray(g) ? g[1] : g.label;
     if (key === '*' || !key) return null;                  /* "everything" is every other list again */
+    /* the line in the dropdown reads the column's description; `stat` is what the chart draws when it is chosen (its
+       short header and its formatter) -- without it a stat chosen here was ticked and never drawn */
     const stats = (cols || [])
       .filter(c => Array.isArray(c.g) && c.g.indexOf(key) >= 0 && S.usable(c.k))
-      .map(c => ({ key: c.k, label: c.t || c.l || c.k }));
+      .map(c => ({ key: c.k, label: c.t || c.l || c.k, stat: statFrom(c) }));
     if (!stats.length) return null;
     stats.forEach(s => seen.add(s.key));
     return { key, label, stats };
@@ -432,7 +452,7 @@ function render(host, o) {
   const st = { mode: modeOf(o), keys: stats(o).map(s => s.key), statsOpen: false, moreOpen: false };
 
   const current = () => {
-    const byKey = new Map(pool.concat(stats(o)).map(s => [s.key, s]));
+    const byKey = statIndex(o);
     return Object.assign({}, o, { mode: st.mode, stats: st.keys.map(k => byKey.get(k)).filter(Boolean) });
   };
 
@@ -704,6 +724,6 @@ function open(o) {
   return { dialog: dlg, chart, close };
 }
 
-return { html, legendHtml, render, open, fromTable, exportModel, exportName, exportPng, tableStats, tableGroups, statFrom,
+return { html, legendHtml, render, open, fromTable, exportModel, exportName, exportPng, tableStats, tableGroups, statFrom, statIndex,
          isSigned, ord, SERIES, NARROW, MAX_PLAYERS, CORE_STATS, MAX_STATS, DEMOTED };
 }));
