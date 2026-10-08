@@ -9,9 +9,10 @@
 // visitor's browser, so each visit cost more as leagues and games were added.
 // This builds the biggest results once, for everybody:
 //
-//   'stars_global'          HOME's podiums: EpinoiaStars.global(), the very
-//                           function HOME runs, rebuilt when its anchor (the
-//                           latest final) moves, or after an hour;
+//   ('stars_global', HOME's podiums, was built here first in every call until
+//    2026-10-08: over every league it took 3.5 s of CPU and ~300 MB, past the
+//    worker's budget, and every call died there from 3 October. It is built by
+//    tools/build-stars.mjs in big-seasons.yml now, hourly.)
 //   'season:<competition>'  a competition's season lines: EpinoiaData.season(),
 //                           the very function the league pages and scouting run,
 //                           rebuilt when the competition's token (finished games
@@ -43,16 +44,13 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import '../_shared/bpm.js';        // globalThis.EpinoiaBPM
 import '../_shared/season.js';     // globalThis.EpinoiaSeason
 import '../_shared/data.js';       // globalThis.EpinoiaData — the page's own reads and sums
-import '../_shared/stars.js';      // globalThis.EpinoiaStars
 import '../_shared/depth.js';      // globalThis.EpinoiaDepth — the depth chart's positions (posFile)
 
 const PUBLISHABLE = 'sb_publishable_iYjQNoDcYluFNbdbGGxMHw_kvL4dTZO';   // epinoia/config.js publishes it
-/* CPU, measured under node on 2026-09-24: the podiums about 0.6 s (a month of box scores
-   across every league), a season 0.15-0.3 s. The runtime allows about two seconds a call. */
-const MAX_SEASONS = 6;             // competitions rebuilt per call...
-const MAX_SEASONS_AFTER_STARS = 3; // ...or this many when the podiums were rebuilt in the same call
+/* CPU, measured under node on 2026-09-24: a season 0.15-0.3 s. The runtime allows about two seconds a call.
+   (The podiums were 0.6 s then and 3.5 s with ~300 MB on 2026-10-08: they left for tools/build-stars.mjs.) */
+const MAX_SEASONS = 6;             // competitions rebuilt per call
 const WALL_MS = 60_000;            // and none started after this
-const STARS_MAX_AGE_MS = 60 * 60 * 1000;
 /* a season rebuilt once a day even when its token has not moved: a box score corrected
    without a new finalised_at would otherwise stay as it was (the page's own cache has the
    same backstop, six hours, in data.js) */
@@ -94,27 +92,6 @@ async function removeFiles(admin: any, unit: string, keep: string | null) {
   const { data: list } = await admin.storage.from(BUCKET).list(dir, { limit: 100 });
   const old = (list || []).map((o: any) => o.name).filter((n: string) => n && n !== keep).map((n: string) => dir + '/' + n);
   if (old.length) await admin.storage.from(BUCKET).remove(old);
-}
-
-/* stars.js hands back its windows revived (w = the WINDOWS entry); stored, w is the key */
-const unrevive = (row: any) => (row ? { ...row, w: row.w && row.w.key ? row.w.key : row.w } : null);
-
-async function buildStars(admin: any, D: any, ST: any) {
-  const anchorRows = await D.get('games?select=tipoff_at&status=eq.final&competition_id=not.is.null' +
-    '&tipoff_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=tipoff_at.desc&limit=1');
-  const anchor = anchorRows[0] && anchorRows[0].tipoff_at;
-  if (!anchor) return 'no finals';
-  const { data: held } = await admin.from('snapshots').select('token,built_at').eq('key', 'stars_global').maybeSingle();
-  if (held && held.token === anchor && Date.now() - Date.parse(held.built_at) < STARS_MAX_AGE_MS) return 'current';
-
-  const res = await ST.global({ now: new Date(), snapshot: false });
-  if (!res || res.anchor !== anchor) return 'anchor moved while building';   // the next tick builds it
-  const data = { week: unrevive(res.week), month: unrevive(res.month), anchor };
-  const { error } = await admin.from('snapshots').upsert(
-    { key: 'stars_global', competition_id: null, token: anchor, data, built_at: new Date().toISOString() },
-    { onConflict: 'key' });
-  if (error) throw new Error('stars_global: ' + error.message);
-  return 'built';
 }
 
 async function buildSeasons(admin: any, D: any, started: number, maxBuilds: number) {
@@ -456,14 +433,14 @@ Deno.serve(async (req) => {
   const started = Date.now();
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
                              { auth: { persistSession: false } });
-  const D = (globalThis as any).EpinoiaData, ST = (globalThis as any).EpinoiaStars, X = (globalThis as any).EpinoiaDepth;
+  const D = (globalThis as any).EpinoiaData, X = (globalThis as any).EpinoiaDepth;
   try {
     /* what the tick last saw: marking THAT done means a game finalised while this runs
        leaves the two different, and the next tick calls again */
     const { data: tick } = await admin.from('snapshot_ticks').select('fingerprint').eq('id', 1).maybeSingle();
-    const stars = await buildStars(admin, D, ST);
-    const seasons = await buildSeasons(admin, D, started,
-      stars === 'built' ? MAX_SEASONS_AFTER_STARS : MAX_SEASONS);
+    /* HOME's podiums are built in GitHub Actions (tools/build-stars.mjs): past this worker's budget */
+    const stars = 'tools/build-stars.mjs';
+    const seasons = await buildSeasons(admin, D, started, MAX_SEASONS);
     /* the event files take what is left of the call: fewer when seasons were rebuilt in it */
     const finals = await publicFinals(D);
     const events = await buildEventFiles(admin, D, finals, started,

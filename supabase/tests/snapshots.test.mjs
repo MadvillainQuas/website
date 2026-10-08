@@ -358,6 +358,14 @@ console.log('\nseason.js version(): which code summed a season, in every name it
   ok('...each five by the latest season line of its competition (data.js latestSeason, never a season summed here)',
      /D\.latestSeason\(\[b\.comp\]\)/.test(pos) && !/D\.season\(/.test(pos));
   ok('...and the call is not complete while a file is left to write', /pos\.left === 0/.test(fnSrc) && /json\(\{ stars, seasons, events, pos, crests, complete/.test(fnSrc));
+  /* HOME'S PODIUMS LEFT THE FUNCTION (2026-10-08): over every league they took 3.5 s of CPU and ~300 MB, past the worker's
+     budget, and every call died on them before its event logs and position files. GitHub Actions builds them. */
+  const bs2 = readFileSync(path.join(ROOT, 'tools', 'build-stars.mjs'), 'utf8');
+  const wf = readFileSync(path.join(ROOT, '.github', 'workflows', 'big-seasons.yml'), 'utf8');
+  ok('the function no longer builds HOME\'s podiums (nor loads stars.js)', !/ST\.global\(/.test(fnSrc) && !/_shared\/stars\.js/.test(fnSrc) && !/buildStars\(/.test(fnSrc));
+  ok('...tools/build-stars.mjs does, into the same stars_global row (token = the anchor, data = week, month, anchor), hourly in big-seasons.yml',
+     /ST\.global\(\{ now: new Date\(now\(\)\), snapshot: false \}\)/.test(bs2) && /key: 'stars_global', competition_id: null, token: anchor, data/.test(bs2)
+     && /const data = \{ week: unrevive\(res\.week\), month: unrevive\(res\.month\), anchor \};/.test(bs2) && /node tools\/build-stars\.mjs/.test(wf));
   const sh = readFileSync(path.join(ROOT, 'supabase', 'tests', 'extract-shared.mjs'), 'utf8');
   ok('depth.js is one of the generated shared files, with posFile and positionOf', /join\(repo, 'epinoia', 't', 'depth\.js'\)/.test(sh) && /'posFile'/.test(sh) && /'positionOf'/.test(sh) &&
      existsSync(path.join(ROOT, 'supabase', 'functions', '_shared', 'depth.js')));

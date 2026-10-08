@@ -1,4 +1,4 @@
-name: Big seasons (the competitions too big for the snapshots function)
+name: Big seasons (the competitions too big for the snapshots function) and HOME's podiums
 
 # Every competition with more than epinoia/data.js BIG_GAMES finished games (800: an NCAA or a
 # Tercera FEB season, not any league on the platform in 2026) is summed here, a batch of forty
@@ -57,3 +57,14 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
           if [ -n "$UNIT" ]; then args+=(--unit "$UNIT"); fi
           node tools/build-seasons.mjs "${args[@]}"
+      # HOME's podiums ('stars_global'): past the snapshots function's budget since October 2026 (3.5 s of CPU and
+      # ~300 MB over every league), which killed every call before its event logs and position files. Rebuilt when the
+      # anchor (the latest final) moves or after an hour; HOME works them out itself in between. tools/build-stars.mjs
+      - name: Build HOME's podiums
+        if: ${{ !github.event.inputs.unit }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then node tools/build-stars.mjs --dry-run; else node tools/build-stars.mjs; fi
