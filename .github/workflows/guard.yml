@@ -405,6 +405,14 @@ jobs:
         # the games a fan can stamp, asked for with no location at all
         run: node supabase/tests/stamps.test.mjs
 
+      - name: A stamp from up to 1,000 m of the arena (EPINOIA GO, migration 0257)
+        # the default and the arenas on the old 300 m moved, one set by hand kept; and on a real Postgres
+        # (PGlite) stamp_venue end to end: 950 m stamps, 1,250 m too far with the radius said, the phone's
+        # doubt allowed for up to 200 m, a stamp never twice; the GO page reading the same
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/go-range.test.mjs
+
       - name: The EPINOIA GO page (epinoia/go/)
         # what a game is to a fan standing somewhere, the order games are listed in; every refusal the
         # check can give has words, in ja and es too; the location leaves the phone in the stamp call only

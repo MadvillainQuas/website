@@ -103,6 +103,12 @@ needs Louie says so.
       `go_games_now()` lists the games a fan can stamp now or in the next day with their pins, and takes no
       location: the phone measures, so the location leaves it only at the moment of stamping. A merge moves
       stamps. PGlite: 40 checks; `stamps.test.mjs`: 30. **Live once Louie runs `db push`.**
+- [x] **3.2a A stamp from up to 1,000 m** (Louie, 2026-10-08) — migration `0257_go_range_1000.sql`: `venues.radius_m` defaults
+      to 1000 and every arena on the old 300 m default moved to it (all 828 were); one set by hand keeps its own (the
+      arena editor, 50 - 3000 m). The 200 m allowance for the phone's doubt, the window and the limits are unchanged.
+      `supabase/tests/go-range.test.mjs` runs `stamp_venue` end to end on PGlite (the first test to). Readiness that
+      day, the next 7 days: 217 of 577 games stampable; 141 at 127 arenas not yet looked up (`pin_arenas.py`), 214 in
+      leagues whose feeds name no arena and whose clubs have none (`pin_arenas.py --clubs`), 5 at pins waiting for a person.
 - [x] **3.3 Location in the apps** — Android (a Trusted Web Activity: Chrome delegates the site's location
       question to the app): `locationdelegation` 1.1.2 registered in `EpinoiaDelegationService`, the two
       location permissions in the manifest. iPhone (WKWebView): `NSLocationWhenInUseUsageDescription` in

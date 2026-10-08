@@ -78,7 +78,7 @@ function factsOf(r, locale) {
   switch (r && r.reason) {
     case 'too_early': return [['Stamping opens', time(r.opens_at)]];
     case 'too_late': return [['Stamping closed', time(r.closed_at)]];
-    case 'too_far': return [['Distance', distanceText(r.distance_m, locale)], ['A stamp needs you within', (r.radius_m || 300) + ' m']];
+    case 'too_far': return [['Distance', distanceText(r.distance_m, locale)], ['A stamp needs you within', (r.radius_m || 1000) + ' m']];
     case 'imprecise': return [['Your phone’s accuracy', '±' + distanceText(r.accuracy_m, locale)]];
     case 'too_fast': return [['Last stamp', r.last_venue || '—'], ['Minutes ago', String(r.minutes_ago == null ? '—' : r.minutes_ago)]];
     case 'arena_unchecked': return [['Arena', r.venue || '—']];

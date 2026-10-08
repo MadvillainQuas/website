@@ -43,7 +43,7 @@ function placeOf(g, pos, now) {
   const opens = Date.parse(g.opens_at), closes = Date.parse(g.closes_at);
   const open = now >= opens && now <= closes;
   const d = pos && g.lat != null && g.lng != null ? metres(pos, { lat: g.lat, lng: g.lng }) : null;
-  const inside = d != null && d <= (g.radius_m || 300) + Math.min(Math.max(pos.accuracy || 0, 0), ALLOW_M);
+  const inside = d != null && d <= (g.radius_m || 1000) + Math.min(Math.max(pos.accuracy || 0, 0), ALLOW_M);
   let state;
   if (!g.trusted) state = 'checking';
   else if (!open) state = now < opens ? 'later' : 'over';
@@ -225,7 +225,7 @@ function factsOf(r) {
   switch (r && r.reason) {
     case 'too_early': return [['Stamping opens', timeText(r.opens_at)]];
     case 'too_late': return [['Stamping closed', timeText(r.closed_at)]];
-    case 'too_far': return [['Distance', distanceText(r.distance_m)], ['A stamp needs you within', (r.radius_m || 300) + ' m']];
+    case 'too_far': return [['Distance', distanceText(r.distance_m)], ['A stamp needs you within', (r.radius_m || 1000) + ' m']];
     case 'imprecise': return [['Your phone’s accuracy', '±' + distanceText(r.accuracy_m)]];
     case 'too_fast': return [['Last stamp', r.last_venue || '—'], ['Minutes ago', String(r.minutes_ago == null ? '—' : r.minutes_ago)]];
     case 'arena_unchecked': return [['Arena', r.venue || '—']];

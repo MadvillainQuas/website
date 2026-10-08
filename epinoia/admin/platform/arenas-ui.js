@@ -355,7 +355,7 @@ function drawDetail(v) {
   fact(dl, 'Google place', v.place_id);
   fact(dl, 'Pinned by', v.pin_source === 'google' ? 'Google Maps' : v.pin_source === 'manual' ? 'hand' : null)
     .querySelector('span').removeAttribute('translate');
-  fact(dl, 'A stamp must be within', (v.radius_m || 300) + ' m');
+  fact(dl, 'A stamp must be within', (v.radius_m || 1000) + ' m');
   const chk = fact(dl, 'Checked', v.checked_at ? new Date(v.checked_at).toLocaleDateString() : null);
   if (v.checked_at && !v.checked_by) chk.appendChild(el('span', 'mt', ' (in the review of every pin, 24 Sep 2026)'));
 
@@ -435,10 +435,10 @@ function drawDetail(v) {
   /* how near */
   const rs = card.appendChild(el('div', 'org-sec'));
   rs.appendChild(el('h3', null, 'How near the pin a stamp must be'));
-  rs.appendChild(el('p', 'lead', 'In metres, 50 to 3000. 300 covers an arena and its car park; a big campus or a park needs more.'));
+  rs.appendChild(el('p', 'lead', 'In metres, 50 to 3000. 1000, the default, covers an arena, its car park and the queue round the block; a big campus or a park can need more.'));
   const rrow = rs.appendChild(el('div', 'row'));
   const rad = rrow.appendChild(el('input', 'ep-input'));
-  rad.type = 'number'; rad.min = '50'; rad.max = '3000'; rad.step = '10'; rad.value = String(v.radius_m || 300);
+  rad.type = 'number'; rad.min = '50'; rad.max = '3000'; rad.step = '10'; rad.value = String(v.radius_m || 1000);
   rad.style.flex = '0 0 120px';
   const rsave = rrow.appendChild(el('button', 'ep-btn', 'save'));
   rsave.type = 'button';

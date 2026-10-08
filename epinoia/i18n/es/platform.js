@@ -1182,7 +1182,7 @@
         'The map’s centre (zoom in on the arena first, or click it)': 'El centro del mapa (acerca primero el pabellón o haz clic en él)',
         'Distance from the pin now': 'Distancia al marcador actual',
         'How near the pin a stamp must be': 'A qué distancia del marcador se puede sellar',
-        'In metres, 50 to 3000. 300 covers an arena and its car park; a big campus or a park needs more.': 'En metros, de 50 a 3000. Con 300 entran el pabellón y su aparcamiento; un campus grande o un parque necesita más.',
+        'In metres, 50 to 3000. 1000, the default, covers an arena, its car park and the queue round the block; a big campus or a park can need more.': 'En metros, de 50 a 3000. 1000, el valor por defecto, cubre el pabellón, su aparcamiento y la cola que da la vuelta a la manzana; un gran campus o un parque puede necesitar más.',
         'save': 'guardar',
         'Name': 'Nombre',
         'The name EPINOIA GO shows. The spellings the feeds use stay as they are, so every game still finds the arena.': 'El nombre que muestra EPINOIA GO. Las grafías de los feeds se quedan como están, así que todos los partidos siguen encontrando el pabellón.',

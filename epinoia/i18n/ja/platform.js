@@ -1178,7 +1178,7 @@
         'The map’s centre (zoom in on the arena first, or click it)': '地図の中心（先にアリーナを拡大するか、クリックしてください）',
         'Distance from the pin now': '現在のピンからの距離',
         'How near the pin a stamp must be': 'スタンプできるピンからの距離',
-        'In metres, 50 to 3000. 300 covers an arena and its car park; a big campus or a park needs more.': 'メートル単位で50〜3000。300でアリーナと駐車場をカバーできます。大きなキャンパスや公園にはもっと必要です。',
+        'In metres, 50 to 3000. 1000, the default, covers an arena, its car park and the queue round the block; a big campus or a park can need more.': 'メートル単位、50〜3000。初期値の1000でアリーナと駐車場、周りの行列までカバーします。大きなキャンパスや公園ではさらに必要な場合があります。',
         'save': '保存',
         'Name': '名称',
         'The name EPINOIA GO shows. The spellings the feeds use stay as they are, so every game still finds the arena.': 'EPINOIA GOに表示される名称です。フィードでの表記はそのまま残るので、どの試合もこのアリーナに結び付いたままです。',
