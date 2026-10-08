@@ -109,6 +109,14 @@ function countArgs(s) {
   return n;
 }
 
+/* the placeholders in a format string. plpgsql reads it left to right: each %% is one literal percent, every other %
+   takes the next argument. A lookahead, /%(?!%)/, skipped the first % of a pair and counted the second, so 0238's
+   'career free-throw %%' read as a placeholder with no argument and failed this test on valid SQL */
+const holesOf = fmt => (fmt.replace(/%%/g, '').match(/%/g) || []).length;
+for (const [f, n] of [['100%%', 0], ['%%%%', 0], ['%%%', 1], ['% of %', 2], ['%% of %', 1]]) {
+  if (holesOf(f) !== n) { console.log(`placeholder count of '${f}' is ${holesOf(f)}, should be ${n}`); process.exit(1); }
+}
+
 const LITERAL = /'((?:''|[^'])*)'/g;
 const RAISE = /\braise\s+(?:exception|notice|warning|info|debug|log)\b([\s\S]*?);/gi;
 
@@ -127,7 +135,7 @@ for (const file of readdirSync(DIR).filter(f => f.endsWith('.sql')).sort()) {
     const fmt = [...fmtPart.matchAll(LITERAL)].map(x => x[1]).join('');
     if (!fmt) continue;
     statements++;
-    const holes = (fmt.match(/%(?!%)/g) || []).length;
+    const holes = holesOf(fmt);
     if (!holes) continue;
     const args = countArgs(argsPart);
     if (args < holes) {
