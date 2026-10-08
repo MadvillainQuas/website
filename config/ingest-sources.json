@@ -1044,6 +1044,7 @@
       "league_country": "GR",
       "adapter_config": {
         "code": "GREL",
+        "rotation_gate": true,
         "stage": "regular",
         "archive_raw": true,
         "store_pbp": false,
@@ -1073,6 +1074,7 @@
       "competition_kind": "playoff",
       "adapter_config": {
         "code": "GREL",
+        "rotation_gate": true,
         "stage": "playoffs",
         "archive_raw": true,
         "store_pbp": false,

@@ -563,6 +563,11 @@ jobs:
           pip install requests
           python scripts/ingest/run_ingest_test.py
 
+      - name: A league whose source records no minutes or substitutions is dropped after one more game
+        # rotationgate.py (Louie, 2026-10-08): the Greek Elite League's 2026-27 games came with the action
+        # alone, and the replay guessed 40:00 starters and 0:00 benches
+        run: python scripts/ingest/rotationgate_test.py
+
       - name: A big league's payloads stay out of git (repo_feed false)
         # run_ingest.repo_feed_of: a source that says "repo_feed": false (top level or adapter_config)
         # writes no payloads or index to data/feed; every other source writes it as before

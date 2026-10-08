@@ -85,6 +85,7 @@ from fetchwindow import seconds_until_tip, worth_fetching  # noqa: E402
 import feedstamp  # noqa: E402
 import console_kick  # noqa: E402
 import stuck as stuckmod  # noqa: E402
+import rotationgate  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = REPO_ROOT / "config" / "ingest-sources.json"
@@ -1780,6 +1781,15 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
 
 
 # ─────────────────────────────────────────────────────────── main loop
+def gate_json(url: str) -> dict | None:
+    """An archived raw payload, for rotationgate.judge (None when it cannot be read)."""
+    try:
+        r = requests.get(url, timeout=60)
+        return r.json() if r.status_code == 200 else None
+    except (requests.RequestException, ValueError):
+        return None
+
+
 def load_sources(sb: Supabase | None, use_config: bool, only: str | None) -> list[dict]:
     """Config sources (config/ingest-sources.json, edited from the website admin) UNION the
     database's due sources (schedule_sources, connected from the Epinoia console). Same
@@ -2950,6 +2960,15 @@ def main() -> int:
         print("Supabase: off" + ("" if args.no_supabase or args.dry_run else " (SUPABASE_URL / SUPABASE_SERVICE_KEY missing)") + " - repo feed only")
 
     sources = load_sources(sb, args.config and sb is None, args.source)
+    # A LEAGUE DROPPED FOR RECORDING NO ROTATION (rotationgate.py: no minutes, no substitutions) is read no more
+    if sb:
+        kept = []
+        for s_ in sources:
+            if rotationgate.dropped(sb, s_):
+                print(f"-- {s_.get('label')}: skipped - its league was dropped, its source records no minutes (rotationgate.py)")
+            else:
+                kept.append(s_)
+        sources = kept
     # THE BACKFILL NARROWS THE SOURCE LIST BEFORE ANYTHING ELSE TOUCHES IT — the same load_sources,
     # then one league's rows with the season pinned. It has to happen here, ahead of
     # expand_competition_sources, because that is what turns a Genius client's page into one source
@@ -3327,6 +3346,14 @@ def main() -> int:
                         write_supabase_competition(sb, src, len([v for v in entries.values() if v.get("hash")]))
                     except Exception as exc:
                         print(f"    (feed_competitions upsert failed: {exc})")
+                # a gated league is judged on its finished games: none with minutes or a substitution -> dropped
+                if sb and rotationgate.gated(src):
+                    try:
+                        said = rotationgate.judge(sb, src, gate_json)
+                        if said:
+                            print("   " + said)
+                    except Exception as exc:
+                        print(f"    (rotation gate: {exc})")
         except Exception as exc:                                             # keep polling other sources
             err = f"{type(exc).__name__}: {exc}"[:500]; exit_code = 1
             print(f"   !! {err}")
