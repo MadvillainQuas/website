@@ -637,7 +637,7 @@ function build(input) {
           shift ? { label: FACET[shift.k] + ', a game', value: signed(shift.run) + ' in the run, ' + signed(shift.before) + ' before' } : null],
         counter: above === 0 && s.n >= 3 && pos ? 'Yes, but none of the ' + spell(s.n) + ' came against a side above them in the table.' : easyCounter(id),
         next: whenNext(id) ? 'It goes on the line ' + whenNext(id) + '.' : null,
-        questions: [shift ? Q(coachOf(id), 'Your ' + FACET[shift.k] + ' has been worth ' + signed(shift.run) + ' points a game in the run, against ' + signed(shift.before) + ' before it: what changed?')
+        questions: [shift ? Q(coachOf(id), 'In the run, ' + FACET[shift.k] + ' has been worth ' + signed(shift.run) + ' points a game to you, against ' + signed(shift.before) + ' before it: what changed?')
             : Q(coachOf(id), 'What has changed in the last ' + spell(s.n) + ' games?'),
           above === 0 && pos ? Q(coachOf(id), 'None of the ' + spell(s.n) + ' wins came against a side above you in the table: what will the run tell you about this team?') : null],
         body: [record ? 'It is already their longest run of the season.' : null,
@@ -662,7 +662,7 @@ function build(input) {
         counter: c.close.l >= 2 && s.n >= 4 ? 'Yes, but ' + spell(c.close.l) + ' of their defeats this season were by five or fewer: the margins are small.' : null,
         next: nextText(id) ? 'The next chance: ' + nextText(id) + '.' : null,
         body: [shift ? 'What changed: ' + FACET[shift.k] + ', worth ' + signed(shift.run) + ' points a game to them in the run against ' + signed(shift.before) + ' before it.' : null],
-        questions: [shift ? Q(coachOf(id), 'Your ' + FACET[shift.k] + ' has gone from ' + signed(shift.before) + ' points a game to ' + signed(shift.run) + ' in the run: is that the first thing to fix?')
+        questions: [shift ? Q(coachOf(id), 'In the run, ' + FACET[shift.k] + ' has been worth ' + signed(shift.run) + ' points a game to you, against ' + signed(shift.before) + ' before it: is that the first thing to fix?')
           : Q(coachOf(id), 'What has to change to end the run?')],
         teams: [id], games: s.games, tracks: { metric: 'skid', value: s.n }, importance: 5 + Math.min(2, s.n / 3), magnitude: Math.min(1, s.n / 8), stakes: 0.5, lastAt: c.lastAt,
         angles: [shift ? 'what has gone wrong: ' + FACET[shift.k] + ', in the numbers' : 'what has gone wrong, in the numbers', 'the one fixture that could end it'], links: [teamLink(id)].filter(Boolean)
@@ -811,7 +811,7 @@ function build(input) {
     const next = Math.floor(p.pts / 100) * 100 + 100, need = next - p.pts;
     const firstTo = ![...PL.values()].some(q => q !== p && q.pts >= next);
     if (p.pts >= 180 && (next >= 500 || firstTo) && need <= Math.max(8, Math.round(p.ppg * 0.9)) && p.team && nextOf(p.team)) {
-      story({ id: 'milestone:' + pid + ':' + next, kind: 'milestone', kicker: 'Milestone watch', head: nm + ' is ' + spell(need) + ' points from ' + next + ' this season',
+      story({ id: 'milestone:' + pid + ':' + next, kind: 'milestone', kicker: 'Milestone watch', head: nm + ' is ' + plural(need, 'point') + ' from ' + next + ' this season',
         dek: (firstTo ? 'Nobody in the league has reached ' + next + ' yet. ' : '') + one(p.ppg) + ' a game' + cl + '; ' + plural(p.gp, 'game') + ' so far.',
         next: 'It could come ' + whenNext(p.team) + '.',
         teams: [p.team], players: [pid], tracks: { metric: 'need', value: need }, importance: firstTo ? 4 : 3.5, magnitude: Math.min(1, next / 1000), stakes: 0.3, lastAt: p.lastAt,
@@ -861,7 +861,7 @@ function build(input) {
     const top = byBpm[0], club = PL.get(top.id) ? PL.get(top.id).team : null;
     story({ id: 'bpm:' + top.id, kind: 'bpm', kicker: 'The best player, by the numbers', head: pname(top.id) + ' leads the league in box plus-minus',
       dek: signed(top.bpm) + ' BPM on ' + one(top.ppg) + ' points, ' + one(top.rpg) + ' rebounds and ' + one(top.apg) + ' assists a game' + (club ? ' for ' + name(club) : '') + '.',
-      why: 'Box plus-minus counts everything in the box score against what a player’s minutes are worth; it is the closest thing the box has to a player’s value.',
+      why: (byBpm[1] ? one(top.bpm - byBpm[1].bpm) + ' clear of ' + pname(byBpm[1].id) + ', the next best. ' : '') + 'Box plus-minus counts everything in the box score against what a player’s minutes are worth.',
       numbers: [{ label: 'BPM', value: signed(top.bpm) }, { label: 'points', value: one(top.ppg) }, { label: 'minutes', value: one(top.mpg) },
         byBpm[1] ? { label: 'next best', value: pname(byBpm[1].id) + ' ' + signed(byBpm[1].bpm) } : null],
       questions: [Q(pname(top.id), 'You lead the league in box plus-minus on ' + one(top.ppg) + ' points a game: what part of your game do people miss?')],
@@ -874,7 +874,8 @@ function build(input) {
       const qc = PL.get(quiet.id) ? PL.get(quiet.id).team : null;
       story({ id: 'quiet:' + quiet.id, kind: 'quiet', kicker: 'Under the radar', head: pname(quiet.id) + ' is one of the league’s best players on ' + one(quiet.ppg) + ' points a game',
         dek: signed(quiet.bpm) + ' BPM, ' + ordShort(byBpm.indexOf(quiet) + 1) + ' in the league, ' + ordShort(byPts.indexOf(quiet) + 1) + ' in scoring' + (qc ? ', for ' + name(qc) : '') + '.',
-        why: 'Points get noticed; the rest of a good night rarely does.',
+        why: (() => { const k1 = byBpm.indexOf(quiet), k2 = byPts.indexOf(quiet);
+          return 'Only ' + plural(k1, 'player') + ' in the league ' + (k1 === 1 ? 'has' : 'have') + ' a better box plus-minus; ' + spell(k2) + ' score more.'; })(),
         numbers: [{ label: 'BPM', value: signed(quiet.bpm) }, { label: 'points', value: one(quiet.ppg) }, { label: 'rebounds', value: one(quiet.rpg) }, { label: 'assists', value: one(quiet.apg) }],
         questions: [qc ? Q(coachOf(qc), pname(quiet.id) + ' ranks ' + ordShort(byBpm.indexOf(quiet) + 1) + ' in the league by box plus-minus on ' + one(quiet.ppg) + ' points a game: what does the box score miss?') : null],
         teams: qc ? [qc] : [], players: [quiet.id], tracks: { metric: 'quiet', value: quiet.id }, importance: 4.5, magnitude: 0.6, stakes: 0.4,
@@ -911,7 +912,10 @@ function build(input) {
     const v = x[lead.k];
     story({ id: 'bests', kind: 'best', kicker: 'Season bests', head: nm + '’s ' + spell(v) + ' ' + lead.w + (lead.shared > 1 ? ' equal the most in a game this season' : ' are the most in a game this season'),
       dek: x.team ? 'For ' + name(x.team) + ', ' + dayWords(new Date(x.at).toISOString(), tz) + '.' : null,
-      why: 'Every other night this season is measured against these now.',
+      why: (() => { /* the next best night of the lead category, by somebody else */
+        let nx = null;
+        PL.forEach((p, pid) => { if (pid === lead.best.pid) return; (p.games || []).forEach(gm => { if (!nx || gm[lead.k] > nx.v) nx = { v: gm[lead.k], pid }; }); });
+        return nx && nx.v > 0 && pname(nx.pid) ? 'The next best is ' + nx.v + ', by ' + pname(nx.pid) + '.' : 'Every other night this season is measured against these now.'; })(),
       numbers: fresh.map(h => ({ label: h.w, value: h.best.x[h.k] + ' — ' + pname(h.best.pid) + (h.shared > 1 ? ' (shared)' : '') })),
       teams: [...new Set(fresh.map(h => h.best.x.team).filter(Boolean))], players: fresh.map(h => h.best.pid), games: fresh.map(h => h.best.x.game),
       tracks: { metric: 'bests', value: fresh.map(h => h.k + h.best.x[h.k]).join(',') }, importance: 5, magnitude: 0.5 + 0.1 * fresh.length, stakes: 0.35,
@@ -959,8 +963,8 @@ function build(input) {
         /* "the closing minutes": the last four of a close game, and overtime when there was one */
         dek: n === 1
           ? 'That is ' + top.pts + ' of ' + possOf(name(top.team)) + ' ' + top.teamPts + ' points in the closing minutes of a close game they ' + (top.won ? 'won' : 'lost') + '.'
-          : 'That is ' + top.pts + ' of ' + possOf(name(top.team)) + ' ' + top.teamPts + ' points in the closing minutes of ' + spell(n) + ' close games; they won ' +
-            (top.won === n ? (n === 2 ? 'both' : 'all ' + spell(n)) : spell(top.won)) + '.',
+          : 'That is ' + top.pts + ' of ' + possOf(name(top.team)) + ' ' + top.teamPts + ' points in the closing minutes of ' + spell(n) + ' close games; ' +
+            (top.won === n ? 'they won ' + (n === 2 ? 'both' : 'all ' + spell(n)) : top.won === 0 ? 'they lost ' + (n === 2 ? 'both' : 'all ' + spell(n)) : 'they won ' + spell(top.won)) + '.',
         why: share != null && share >= 0.5 ? 'When the game is on the line, the ball goes to ' + nm + '.' : 'Points at the end of close games are the ones a season turns on.',
         numbers: [{ label: 'points in clutch time', value: String(top.pts) }, { label: 'close finishes', value: String(n) }, share != null ? { label: 'share of the club’s', value: Math.round(100 * share) + '%' } : null],
         questions: [Q(coachOf(top.team), nm + ' scored ' + top.pts + ' of your ' + top.teamPts + ' points in the closing minutes: does the ball always go to ' + nm + ' at the end?')],
@@ -1084,7 +1088,7 @@ function build(input) {
       const n = s.games.length, last = n ? s.games[n - 1] : null;
       const label = (tie && tie.label) || (comp && compName.get(comp)) || null;
       const winner = tie && tie.winner_team_id ? tie.winner_team_id : n >= legs ? (agg[a] > agg[b] ? a : agg[b] > agg[a] ? b : null) : null;
-      const legWord = i => (legs === 2 ? (i === 0 ? 'first leg' : 'second leg') : 'leg ' + (i + 1));
+      const legWord = i => (ORDW[i + 1] || String(i + 1) + 'th') + ' leg';
       const legLine = s.games.map((g, i) => (i ? legWord(i) : cap(legWord(i))) + ': ' + name(g.home_team_id) + ' ' + g.home_score + '–' + g.away_score + ' ' + name(g.away_team_id)).join('; ');
       let head, why, next = null;
       s.hi = a; s.lo = b; s.n = n; s.agg = agg; s.through = null; s.label = label;
@@ -1231,7 +1235,12 @@ function build(input) {
       const lead = recs[0];
       story({ id: 'teambest', kind: 'teambest', kicker: 'Team records', head: lead.fmt(lead) + ' ' + (lead.label === 'the biggest win' ? 'is the biggest of the season' : 'are ' + lead.label + ' in a game this season'),
         dek: dayWords(lead.g.tipoff_at, tz) ? cap(dayWords(lead.g.tipoff_at, tz)) + '.' : null,
-        why: 'Every other night this season is measured against it now.',
+        why: (() => { /* the next best of the lead record, in another game */
+          let nx = null;
+          regular.forEach(g => { if (g.id === lead.g.id) return; [0, 1].forEach(s0 => { const v = lead.label === 'the biggest win' ? (s0 === 0 ? +g.home_score - +g.away_score : +g.away_score - +g.home_score)
+            : lead.label === 'the most points' ? (s0 === 0 ? +g.home_score : +g.away_score) : (tl3.has(g.id + '|' + s0) ? tl3.get(g.id + '|' + s0) : null);
+            if (v != null && v > 0 && (!nx || v > nx.v)) nx = { v, g, s: s0 }; }); });
+          return nx ? 'The next best this season is ' + nx.v + ', ' + name(side(nx.g, nx.s)) + ' against ' + name(side(nx.g, 1 - nx.s)) + '.' : 'Every other night this season is measured against it now.'; })(),
         numbers: recs.map(b => ({ label: b.label, value: b.fmt(b) })), teams: [...new Set(recs.map(b => side(b.g, b.s)))], games: recs.map(b => b.g.id),
         tracks: { metric: 'teambest', value: recs.map(b => b.label + b.v).join(',') }, importance: 4.5, magnitude: 0.5, stakes: 0.35, lastAt: time(lead.g.tipoff_at),
         angles: ['the night, in the numbers'], links: [gameLink(lead.g.id)] });
@@ -1274,7 +1283,10 @@ function build(input) {
     const a = LENS.rows[0], b = LENS.rows[1];
     story({ id: 'lens', kind: 'lens', kicker: 'What wins here', head: cap(a.label) + ' decides more games in this league than anything else',
       dek: 'One standard step better than the average club at ' + a.label + ' is worth about ' + one(a.pts) + ' points a game here; at ' + b.label + ', ' + one(b.pts) + '.',
-      why: 'It is the lens to read every result and every preview through.',
+      why: (() => { /* how often it has been the facet that decided a game here */
+        let n0 = 0, nA = 0;
+        F.forEach(f => { if (f.decisive && f.decisive.pts >= 2) { nA++; if (f.decisive.k === a.k) n0++; } });
+        return nA >= 10 ? 'Game by game, it has been the facet that decided ' + Math.round(100 * n0 / nA) + '% of the results here.' : 'It is the lens to read every result and every preview through.'; })(),
       numbers: LENS.rows.map(r => ({ label: r.label, value: one(r.pts) + ' pts', note: 'a game, for one standard step' })).concat(LENS.home != null ? [{ label: 'home court', value: one(LENS.home) + ' pts' }] : []),
       tracks: { metric: 'lens', value: a.k }, importance: 4, magnitude: 0.5, stakes: 0.3, lastAt: nowMs - 2 * DAY, evergreen: true,
       angles: ['an explainer for new readers', 'a recurring "the number that matters" box'] });
@@ -1447,7 +1459,7 @@ function changeNote(s, p) {
     case 'race': return 'The gap at the top is now ' + gamesWord(b) + '.';
     case 'line': return 'The gap at the line is now ' + gamesWord(b) + '.';
     case 'perfect': return 'Now ' + rec(b, 0) + '.';
-    case 'milestone': return 'Now ' + spell(b) + ' points away.';
+    case 'milestone': return 'Now ' + plural(b, 'point') + ' away.';
     case 'series': return (s.tracks && s.tracks.metric === 'tie' ? 'On aggregate, now ' : 'The series is now ') + String(b).replace('-', '–') + '.';
     default: return 'Updated with the latest games.';
   }
@@ -1514,7 +1526,7 @@ function threadsOf(X, g) {
       case 'perfect': line = club(t) + ' put their unbeaten record on the line'; break;
       case 'winless': line = club(t) + ' go looking for a first win again'; break;
       case 'scoring': line = pn ? possOf(pn) + ' run of ' + spell(v) + ' straight 20-point games is on the line' : null; break;
-      case 'milestone': line = pn && v != null ? pn + ' needs ' + spell(v) + ' points for ' + String(s.id).split(':').pop() + ' this season' : null; break;
+      case 'milestone': line = pn && v != null ? pn + ' needs ' + plural(v, 'point') + ' for ' + String(s.id).split(':').pop() + ' this season' : null; break;
       case 'absence': line = pn ? pn + ' has missed ' + possOf(club(t)) + ' last ' + spell(v) + ' games' : null; break;
       case 'race': line = (s.teams || []).filter(x => both.indexOf(x) >= 0).length === 2 ? 'Two of the clubs at the top meet' : null; break;
       case 'line': line = (s.teams || []).filter(x => both.indexOf(x) >= 0).length === 2 ? 'Two of the clubs fighting for the line meet' : null; break;

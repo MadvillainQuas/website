@@ -82,8 +82,11 @@ function ago(iso) {
 
 /* a date as "2 Oct" (the page's language wraps toLocaleDateString, so a Japanese reader sees 10月2日) */
 const dayShort = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
-/* a score or a record never breaks at its dash ("5–" at the end of one line, "0" at the start of the next) */
-const nb = html => String(html).replace(/(\d+)–(\d+)/g, '<span class="nd-nb">$1–$2</span>');
+/* a score or a record never breaks at its dash ("5–" at the end of one line, "0" at the start of the next). On an English
+   page only: the wrapper splits a sentence into separate text nodes, and a translated page translates each sentence whole
+   (the newsdesk pack's patterns), so there it is left in one piece */
+const nb = html => (root.EpinoiaI18n && root.EpinoiaI18n.lang && root.EpinoiaI18n.lang !== 'en'
+  ? String(html) : String(html).replace(/(\d+)–(\d+)/g, '<span class="nd-nb">$1–$2</span>'));
 
 /* ------------------------------------------------------------- a storyline --- */
 const PIECE = { report: 'Match report', creator: 'From a creator', news: 'In the news' };
