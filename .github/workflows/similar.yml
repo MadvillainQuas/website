@@ -1,0 +1,54 @@
+name: Similar players (every player's twelve nearest, as small files)
+
+# Each player-season with four games or fifty minutes is compared with every other across every competition on the
+# platform (epinoia/similar.js), and its twelve nearest are written as one file of about 4 KB to the public
+# 'snapshots' bucket (similar/v1/<competition>/<player>.json), which the player profile's "find similar players"
+# button reads. No page does this sum: it needs every competition's season at once. See tools/build-similar.mjs and
+# docs/similar-players.md.
+#
+# Daily: a profile's matches move slowly (a game changes a line a little), and a player whose line is newer than the
+# last build is told so on the page rather than shown a stale list.
+on:
+  schedule:
+    - cron: "40 4 * * *"
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Only these competitions' players get a file: competition ids, comma-joined (optional; the pool is whole)"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: similar
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ${{ vars.RUNS_ON && fromJSON(vars.RUNS_ON) || 'ubuntu-latest' }}
+    timeout-minutes: 45
+    steps:
+      # the page's own modules and the builder, not the repository's archived feeds
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            epinoia
+            tools
+      - uses: actions/setup-node@v4
+        with: { node-version: '24' }
+      # a finished game's lineups never change: kept between runs (public data), so only new games are read
+      - uses: actions/cache@v4
+        with:
+          path: .cache/similar-stints
+          key: similar-stints-${{ github.run_id }}
+          restore-keys: similar-stints-
+      - name: Build and upload
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ONLY: ${{ github.event.inputs.only }}
+        run: |
+          args=(--upload --report)
+          if [ -n "$ONLY" ]; then args+=(--only "$ONLY"); fi
+          node tools/build-similar.mjs "${args[@]}"

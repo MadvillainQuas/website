@@ -606,6 +606,9 @@ let barsView = 'scout', barsVs = 'all';
 try { barsView = localStorage.getItem('epinoia_bars_view') === 'simple' ? 'simple' : 'scout'; } catch (_) { /* default */ }
 try { const v = localStorage.getItem('epinoia_bars_vs'); if (v === 'start' || v === 'bench') barsVs = v; } catch (_) { /* default */ }
 const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (_) { /* fine */ } };
+/* SIMILAR PLAYERS (similar.js, p/similar-ui.js): the panel that takes the bars' place. SIM_CTX is the line it is asked about
+   (the competition and the profile he played it under; null where there is none), SIM_CTL the panel drawn from its file */
+let simOpen = false, SIM_CTX = null, SIM_CTL = null;
 
 /* ONE BAR, IN ITS OWN CARD: label and value across the top with his percentile under the value, the fill,
    and under it how far the value sits above or below the league average (the field the bar is ranked in) */
@@ -1102,7 +1105,7 @@ function paintBars(mine, field) {
   sw.appendChild(segs('against', [['all', 'all'], ['start', 'vs. starters'], ['bench', 'vs. bench']], barsVs, v => {
     barsVs = v; keep('epinoia_bars_vs', v); paintBars(mine, field);
   }));
-  const btn = el('button', 'ep-btn' + (barsByPos ? ' pri' : ''), 'adjust for position');
+  const btn = el('button', 'ep-btn bsw-pos' + (barsByPos ? ' pri' : ''), 'adjust for position');
   btn.type = 'button';
   btn.title = group || !barsByPos
     ? 'rank him against players of his own position rather than the whole competition'
@@ -1114,13 +1117,36 @@ function paintBars(mine, field) {
   });
   sw.appendChild(btn);
   if (barsByPos && !group) sw.appendChild(el('span', 'barswitch-note', 'no position for this player'));
+  /* FIND SIMILAR PLAYERS, left of expand all: four games or fifty minutes in the line shown (similar.js eligible), and a
+     competition to look him up in. Pressed, the bars slide off to the left and the matches come in from the right. */
+  const SU = window.EpinoiaSimilarUI, SS = window.EpinoiaSimilar;
+  const simOk = !!(SU && SS && SIM_CTX && SS.eligible(mine));
+  const sb = el('button', 'ep-btn sim-btn', 'find similar players');
+  sb.type = 'button';
+  if (SS && SU) {
+    if (!simOk) {
+      sb.disabled = true;
+      sb.title = 'Similar players need four games or fifty minutes in the season shown';
+    } else {
+      sb.title = simSigninFirst() ? 'Sign in to find the players across every competition whose style and rates are closest to this one'
+        : 'The players across every competition whose style and rates are closest to this one';
+      /* nothing is fetched for a reader who has to sign in first */
+      const warm = () => { if (!simSigninFirst()) SU.prefetch(SIM_CTX.cid, SIM_CTX.pid); };
+      sb.addEventListener('pointerenter', warm); sb.addEventListener('focus', warm);
+    }
+  }
   const all = el('span', 'xc-all');
   const open = el('button', 'ep-btn', 'expand all'), shut = el('button', 'ep-btn', 'collapse all');
   open.type = shut.type = 'button';
   all.append(open, shut);
+  if (SS && SU) sw.appendChild(sb);
   sw.appendChild(all);
   host.appendChild(sw);
-  if (barsVs !== 'all') host.appendChild(vsNote(V, barsVs));
+  /* the stage holds the bars and the matches on one spot, so one can slide out as the other slides in */
+  const stage = el('div', 'bars-stage');
+  host.appendChild(stage);
+  const vsn = barsVs !== 'all' ? vsNote(V, barsVs) : null;
+  if (vsn) stage.appendChild(vsn);
 
   const wrap = el('div', 'bars');
   /* against the starters or the bench, each bar is that part (the consistency card is the whole season's, so it waits) */
@@ -1165,9 +1191,95 @@ function paintBars(mine, field) {
     wrap.appendChild(C.collapsible({ key: 'p_' + s.key, title: s.title,
       summary: summary(s.blocks.flatMap(b => b.rows)), body }));
   });
-  host.appendChild(wrap);
-  open.addEventListener('click', () => C.setAll(wrap, true));
-  shut.addEventListener('click', () => C.setAll(wrap, false));
+  stage.appendChild(wrap);
+  open.addEventListener('click', () => { if (simOpen && SIM_CTL) SIM_CTL.setAll(true); else C.setAll(wrap, true); });
+  shut.addEventListener('click', () => { if (simOpen && SIM_CTL) SIM_CTL.setAll(false); else C.setAll(wrap, false); });
+
+  /* ---- the swap ---- */
+  const showSim = on => {
+    simOpen = on;
+    sw.classList.toggle('sim-on', on); sb.classList.toggle('on', on);
+    sb.textContent = on ? '\u2190 league percentile' : 'find similar players';
+  };
+  /* once the slide is over, whatever left takes no room (a transition that never fires is not waited for) */
+  const afterSlide = (node, fn) => {
+    let done = false;
+    const go = () => { if (!done) { done = true; fn(); } };
+    node.addEventListener('transitionend', go, { once: true });
+    setTimeout(go, 560);
+  };
+  const bars = [vsn, wrap].filter(Boolean);
+  if (simOpen && SIM_CTL && simOk) {
+    /* drawn again while the matches are showing: as they were, no slide */
+    stage.classList.add('sim-on');
+    stage.appendChild(SIM_CTL.node);
+    SIM_CTL.node.classList.remove('gone');
+    bars.forEach(n => n.classList.add('gone'));
+    showSim(true);
+  } else simOpen = false;
+  sb.addEventListener('click', async () => {
+    if (sb.disabled) return;
+    if (simOpen) {
+      bars.forEach(n => n.classList.remove('gone'));
+      void stage.offsetWidth;
+      showSim(false); stage.classList.remove('sim-on');
+      const node = SIM_CTL && SIM_CTL.node;
+      if (node) afterSlide(node, () => { if (!simOpen) node.classList.add('gone'); });
+      return;
+    }
+    sb.disabled = true; sb.textContent = 'finding\u2026';
+    let ctl = null;
+    try { ctl = simSigninFirst() ? simSigninPanel() : await simPanel(); } catch (e) { console.warn('[similar]', e); }
+    sb.disabled = false;
+    if (!stage.isConnected) return;        // drawn again while the file was on its way: that draw has its own button
+    if (!ctl) { sb.textContent = 'find similar players'; return; }
+    SIM_CTL = ctl;
+    if (ctl.node.parentNode !== stage) stage.appendChild(ctl.node);
+    ctl.node.classList.remove('gone');
+    void stage.offsetWidth;                // the panel is in place, off to the right, before it is let in
+    showSim(true); stage.classList.add('sim-on');
+    afterSlide(wrap, () => { if (simOpen) bars.forEach(n => n.classList.add('gone')); });
+  });
+}
+
+/* SIGNED IN FIRST. Similar players are for readers with an EPINOIA account (any account: no membership is asked for).
+   A signed-out reader is shown the site's sign-in card where the matches would be, and nothing is fetched for them
+   (access.js signinFirst: true only in a browser, with no session and no refresh token to trade for one). */
+function simSigninFirst() {
+  const A = window.EpinoiaAccess;
+  return !(A && typeof A.signinFirst === 'function') || !!A.signinFirst();
+}
+function simSigninPanel() {
+  const A = window.EpinoiaAccess;
+  const node = el('div', 'sim');
+  const gate = el('div', 'sim-gate');
+  gate.innerHTML = A && typeof A.signinHTML === 'function'
+    ? A.signinHTML({ what: 'Similar players', plural: true,
+        lines: ['The players across every competition whose style and rates are closest to this one, and what they have in common.'] })
+    : '<a class="ep-btn pri" href="../signin/?next=' + encodeURIComponent(location.pathname + location.search) + '">Sign in</a>';
+  node.appendChild(gate);
+  return { node, setAll() {}, key: null };
+}
+
+/* THE MATCHES' PANEL for the line on show: drawn from the player's file once, and kept while the scope stays (a redraw of the bars
+   moves it, it does not ask again). A line with no file yet (a game since the last build) gets a plain sentence. */
+async function simPanel() {
+  const X = SIM_CTX, UI = window.EpinoiaSimilarUI;
+  if (!X || !UI) return null;
+  const locked = pLocked('events');
+  const key = X.cid + '|' + X.pid + '|' + (locked ? 1 : 0);
+  if (SIM_CTL && SIM_CTL.key === key) return SIM_CTL;
+  const file = await UI.load(X.cid, X.pid);
+  if (!file) {
+    const node = el('div', 'sim');
+    node.appendChild(el('div', 'empty', 'No similar players for this season yet. They are worked out once a day from every competition, so a player with a new line shows up the next day.'));
+    return { node, setAll() {}, key: null };
+  }
+  const ctl = UI.render({ file, name: X.name, locked, basis: X.basis,
+    teaser: locked ? accessTeaser({ compact: true, title: 'Assisted and half-court / transition shares',
+      lines: ['How much of the scoring came off a pass, and how much of it came in transition, are part of Epinoia analytics.'] }) : '' });
+  ctl.key = key;
+  return ctl;
 }
 
 
@@ -1759,6 +1871,7 @@ async function seasonLog(ids, sn) {
       /* the profile he played these under: his own, or the linked one the season line knows him by there */
       const pids = new Set(comps.filter(c => ids.indexOf(c.id) >= 0).map(c => c.pid));
       mine = null; field = []; SCOPE_IDS = ids; let sosGames = null;
+      simOpen = false; SIM_CTX = null; SIM_CTL = null;
       try {
         if (ids.length) {
           const S = await D.season(ids, { rows: false, trim: true });
@@ -1770,6 +1883,14 @@ async function seasonLog(ids, sn) {
           mine = field.find(r => pids.has(r.id)) || field.find(r => r.id === pl.id) || null;
         }
       } catch (e) { console.warn('[season]', e); }
+      /* the line the similar-players file is for: the one competition shown, or (all competitions) the league's own */
+      if (mine) {
+        const simC = kind === 'all'
+          ? (comps.find(c => ids.indexOf(c.id) >= 0 && c.kind === 'league') || comps.find(c => ids.indexOf(c.id) >= 0))
+          : comps.find(c => c.id === kind);
+        if (simC) SIM_CTX = { cid: simC.id, pid: simC.pid || pl.id, name: fullName,
+          basis: kind === 'all' && ids.length > 1 ? compName(simC) + ' line' : '' };
+      }
       paintTiles(mine, field);
       paintBars(mine, field);
       clutchWhenNear(ids, pl.id, team);
