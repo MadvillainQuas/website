@@ -1015,10 +1015,14 @@ function orderHeads(heads, model, league) {
 }
 /* A FORMAT'S WRITER, by version: a piece out already, written by an older writer of its format, is written again from its
    candidate under the same id - its link, its date and the headlines it is being tested with kept, the rest from the
-   writer as it is now - and dropped if it no longer has one. How a correction reaches what readers can already open.
-     five 2 (2026-10-08): the club's rate per 40 and the five's share of its minutes had been divided by five twice */
-const WRITER = { five: 2 };
-const writerOf = kind => WRITER[kind] || 1;
+   writer as it is now. Only while the candidate still carries the piece's headlines: never a new body under an old
+   headline. One that cannot be written again (no candidate, or its subject has moved on: the week's top game played)
+   is dropped when the old writer got a figure wrong (drop), and otherwise kept as it was written, marked so it is not
+   tried again. How a correction reaches what readers can already open.
+     five 2 (2026-10-08, drop): the club's rate per 40 and the five's share of its minutes had been divided by five twice
+     watch 2 (2026-10-08): "outscored opponents by −0.8" of a side outscored with the player on; "give up N% of theirs" */
+const WRITER = { five: { v: 2, drop: true }, watch: { v: 2 } };
+const writerOf = kind => (WRITER[kind] && WRITER[kind].v) || 1;
 function publish(o, b, opts) {
   const op = opts || {};
   const nowMs = op.nowMs || (o && o.now instanceof Date ? o.now.getTime() : Date.now());
@@ -1031,9 +1035,11 @@ function publish(o, b, opts) {
       const c = cands.find(x => x.id === a.id);
       let w = null;
       try { w = c ? c.write() : null; } catch (_) { w = null; }
-      if (!w || (w.body || []).filter(x => typeof x === 'string').length < 3) return null;
-      return Object.assign({}, a, { kicker: w.kicker, dek: w.dek, body: w.body, facts: w.facts, links: w.links, teams: w.teams, players: w.players,
-                                    wv: writerOf(a.kind), corrected: new Date(nowMs).toISOString() });
+      const hs = w ? [].concat(w.head || []) : [];
+      if (w && (w.body || []).filter(x => typeof x === 'string').length >= 3 && (Array.isArray(a.heads) ? a.heads : [a.head]).every(h => hs.indexOf(h) >= 0))
+        return Object.assign({}, a, { kicker: w.kicker, dek: w.dek, body: w.body, facts: w.facts, links: w.links, teams: w.teams, players: w.players,
+                                      wv: writerOf(a.kind), corrected: new Date(nowMs).toISOString() });
+      return WRITER[a.kind] && WRITER[a.kind].drop ? null : Object.assign({}, a, { wv: writerOf(a.kind) });
     }).filter(Boolean)
     .map(a => decide(a, op.ctr ? op.ctr[a.id] : null));
   const have = new Set(prev.map(a => a.id));
