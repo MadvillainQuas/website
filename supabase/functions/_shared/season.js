@@ -438,7 +438,7 @@ function finishPlayer(A, m) {
     /* per game: the points he assisted, everything he had a hand in, and the miscellany */
     ptsAst_pg: r1(A.ptsAst / g), contrib_pg: r1((A.pts + A.ptsAst) / g),
     paint_pg: r1(A.paint / g), fast_pg: r1(A.fast / g), sc_pg: r1(A.sc / g), pot_pg: r1(A.pot / g),
-    /* RealGM's advanced trio: the three percentages summed, Hollinger's pure point rating
+    /* The advanced trio: the three percentages summed, Hollinger's pure point rating
        (without the league-pace factor, which a single league has no use for), points per shot */
     total_s: r1((pct(fgm, fga) || 0) + (pct(A.p3m, A.p3a) || 0) + (pct(A.ftm, A.fta) || 0)),
     ppr: r1(A.min > 0 ? 100 * ((2 / 3) * A.ast - A.tov) / A.min : null),

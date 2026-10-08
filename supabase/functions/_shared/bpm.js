@@ -4,7 +4,7 @@
    BOX PLUS/MINUS 2.0
 
    Ported from the BPMCalculator in the scraper pipeline
-   (scraper files/bcb_scraper.py), which implements Basketball-Reference's
+   (scraper files/bcb_scraper.py), which implements the published
    BPM 2.0 specification. Same coefficients, same structure, same order of
    operations — so a number here and a number there mean the same thing.
 
@@ -326,18 +326,17 @@ function gameFromBox(lines) {
   return game({ lines });
 }
 
-/* ====================================================== one game, as BBRef ===
-   A GAME'S BPM AS BASKETBALL-REFERENCE ADAPTS BPM 2.0 TO ONE GAME (2026-10-04; basketball-reference.com/about/bpm2.html,
-   "game-level BPM"): the regression and its adjustments run on the game's box score, but
+/* ====================================================== one game, as the published adaptation ===
+   A GAME'S BPM AS BPM 2.0'S PUBLISHED METHOD ADAPTS IT TO ONE GAME (2026-10-04; its "game-level BPM" section): the regression and its adjustments run on the game's box score, but
      - POSITION AND OFFENSIVE ROLE ARE THE SEASON'S, not one game's (a game is too few minutes to estimate them from);
      - THE TEAM'S RATING FOR THE GAME is not its margin alone. Each side's quality is first estimated from the players who
        actually played - each one's season BPM, regressed to the mean for few minutes, weighted by his share of the game's
        possessions - and the two estimates averaged; then each side gets half the game's efficiency margin either way,
        with the leading side credited 0.35 points per 100 possessions for every point of average lead (a side in the lead
-       plays about that much worse). BBRef's example: both sides' players at +10, a +12 margin with a +5 average lead:
+       plays about that much worse). The method's worked example: both sides' players at +10, a +12 margin with a +5 average lead:
        +10 + 12/2 + 0.35/2 x 5 = +16.9 and +10 - 6 - 0.875 = +3.1;
      - A SEASON BPM FROM FEW MINUTES IS REGRESSED to -4.75 + 0.175 x minutes / (games + 4), weighted (450 - minutes) / 3
-       (none past 450 minutes), against the season BPM weighted by its minutes. That estimate is BBRef's for a whole NBA
+       (none past 450 minutes), against the season BPM weighted by its minutes. That estimate is the method's for a whole NBA
        season; for a season a few games old, or a league of fewer games, its LEVEL is set by the competition itself (calib:
        moved so the minute-weighted mean of every player's estimate is the competition's minute-weighted mean season BPM).
        Unmoved, two games into a season it put every player near -3, both sides' ratings 13 points low and every BPM 3 low;

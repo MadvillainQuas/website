@@ -93,7 +93,7 @@ async function boxScores(gameIds) {
 }
 
 /* THE STARS ARE RANKED BY SINGLE-GAME BPM (2026-10-06), not by a season-style BPM worked over the window. Every game of the window is
-   put through bpm.js game() - the figure on each player's circle in the box score, Basketball-Reference's game-level BPM - and a
+   put through bpm.js game() - the figure on each player's circle in the box score, the game-level adaptation of BPM - and a
    player's number is the mean of his games' BPMs weighted by the minutes he played in each. The season-style figure the window's
    totals give (attachBPM) stays on the row as `seasonBpm`: it is also what each game's position, role and regression are read from,
    as the window's rows are the only "season" this module has. A player with no game BPM (a game with one side's lines only) keeps

@@ -221,7 +221,7 @@ function deriveGame(game) {
     poss: (game.tipWinner != null ? game.tipWinner : null),
     onCourt: [[...game.starters[0]], [...game.starters[1]]],
     lineups: [[], []], format: F,
-    /* THE AVERAGE LEAD (bpm.js game: Basketball-Reference's game BPM credits the leading side 0.35 per 100 possessions for
+    /* THE AVERAGE LEAD (bpm.js game: the game-level adaptation of BPM credits the leading side 0.35 per 100 possessions for
        every point of it): the home side's margin, summed over the game time it stood (leadInt, in point-ms), over the time */
     leadInt: 0, leadMs: 0
   };
