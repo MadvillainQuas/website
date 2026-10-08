@@ -188,7 +188,7 @@
         } catch (_) { /* positions stay listed */ }
       });
     }
-    /* THE BPM PRINTED is the game page's one figure (game.js gameBPM: Basketball-Reference's game BPM); the estimate above,
+    /* THE BPM PRINTED is the game page's one figure (game.js gameBPM: the game-level adaptation of BPM); the estimate above,
        with the club's listed position as its prior, only says where each player stands */
     try { if (window.EpinoiaGameBPM) bpmByPid = window.EpinoiaGameBPM(d) || {}; } catch (_) { /* none */ }
     /* THE SEASON'S ESTIMATE, where it exists. bpm.js regresses its estimate towards a listed

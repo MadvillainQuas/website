@@ -65,7 +65,7 @@ function rangeLabel(a, b) {
 }
 
 /* ---------------------------------------------------------------- reading --- */
-/* EACH COMPETITION'S SEASON, for a game's BPM (bpm.js game, Basketball-Reference's game BPM: each player's season position,
+/* EACH COMPETITION'S SEASON, for a game's BPM (bpm.js game, the game-level adaptation of BPM: each player's season position,
    offensive role and season BPM), read as the game page reads it (data.js EpinoiaData.season of the game's competition), once
    a competition for the console's visit. Without data.js on the page a game's BPM is the box score's own estimate. */
 const SEASONS = new Map();

@@ -211,7 +211,7 @@ const n0 = v => (v == null || isNaN(v) ? 0 : +v);
 const BPM_OF = new WeakMap();
 /* THE CLUBS' LINES for the game: the stored `adv` of team_game_stats, [home, away], or null unless both have a pace to work from */
 const clubLines = a => (a && a[0] && a[1] && n0(a[0].pace) > 0 && n0(a[1].pace) > 0 ? a : null);
-/* THE GAME'S BPM, AS THE GAME PAGE WORKS IT (bpm.js game: Basketball-Reference's game BPM, the figure on each player's circle,
+/* THE GAME'S BPM, AS THE GAME PAGE WORKS IT (bpm.js game: the game-level adaptation of BPM, the figure on each player's circle,
    so a graphic says what the page says): both sides' lines, the clubs' own lines for the game (`teamAdv`: pace, ratings and
    average lead) and, where the caller has it, the competition's season (`season`: id -> season.js row, for each player's
    season position, role and BPM). players: one game's player_game_stats rows ({ team_idx, player_uuid | player_id, stats }).

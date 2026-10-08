@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================================
-   SCRAPER KEYS — the automatic feed to RealGM, Eurobasket and anyone else who
+   SCRAPER KEYS — the automatic feed to the stats sites and anyone else who
    republishes results.
 
    An API key (the section above) is a pull: somebody has to come and ask. A

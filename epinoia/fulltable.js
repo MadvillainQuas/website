@@ -320,7 +320,7 @@ const T = [
    without that shows dashes. The key list is duplicated from shotchart.js on purpose: this
    file must not depend on that one being loaded first. */
 /* THE USUAL RETURN FROM EACH AREA, as eFG%, from the published league-wide shooting splits
-   (NBA seasons 2021-22 to 2023-24, per NBA.com's shot dashboard and Cleaning the Glass's
+   (NBA seasons 2021-22 to 2023-24, per the league's own shot dashboard and the public
    accuracy-by-zone tables; the same bands appear in FIBA-level analyses): restricted area
    about 66% (a two, so eFG = FG%), the rest of the paint about 43%, mid-range about 41%,
    corner threes about 39% made (58.5% eFG), threes above the break about 36% made (54% eFG).

@@ -180,7 +180,7 @@ function modules(ctx) {
 
   /* HOW POSITIONS ARE WORKED OUT (depth.js, bpm.js): said in the depth chart and the most-used five, which are built from it */
   const POS_KEY = [
-    ['THE ESTIMATE', 'Each player gets a position from 1 (point guard) to 5 (centre) from how they play in the box score: their rebounds, assists, steals, blocks and threes, the way Basketball-Reference’s BPM does it. It is blended with the position their club lists for them and their height until they have played enough.'],
+    ['THE ESTIMATE', 'Each player gets a position from 1 (point guard) to 5 (centre) from how they play in the box score: their rebounds, assists, steals, blocks and threes, the way the published BPM method does it. It is blended with the position their club lists for them and their height until they have played enough.'],
     ['THE FIVE ON THE FLOOR', 'Every group of five is lined up from the smallest to the biggest, and its players are credited PG, SG, SF, PF and C in that order for the time they play together. A player’s minutes at each position are what those credits add up to.'],
     ['SO A PLAYER CAN HAVE SEVERAL', 'Someone who plays big in one lineup and small in another is credited in each. A chart like this one is the record of who has actually filled each spot.'],
     ['IT CAN BE OFF', 'It is an estimate from numbers, not a coach’s label: a small centre or a big guard can be put a spot away from where the club thinks of them.']];

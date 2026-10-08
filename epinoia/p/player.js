@@ -1538,7 +1538,7 @@ function paintScopeLabel(sn, kind) {
   if (c.textContent) host.appendChild(c);
   host.hidden = false;
 }
-/* EACH GAME'S BPM, as the game page works it (bpm.js game: Basketball-Reference's game BPM): every line of his games, both
+/* EACH GAME'S BPM, as the game page works it (bpm.js game: the game-level adaptation of BPM): every line of his games, both
    sides, read lean - the numbers BPM needs out of each stats blob (aliases, since "or" and "to" are words PostgREST keeps) -
    with the clubs' own lines for the game (pace, ratings, average lead) and each game's competition's season (positions,
    offensive roles and season BPMs), twenty games to a request, so a request stays under the thousand rows the API returns.

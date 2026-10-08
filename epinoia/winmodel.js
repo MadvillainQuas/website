@@ -2349,7 +2349,7 @@ function posStats(X, feats) {
   };
   const byTeam = new Map();
   P.rows.forEach(p => { if (p.min > 0) { if (!byTeam.has(p.team)) byTeam.set(p.team, []); byTeam.get(p.team).push(p); } });
-  /* VORP, Basketball-Reference's: (BPM + 2) × his share of the club's minutes × the club's games against the league's
+  /* VORP, in its published form: (BPM + 2) × his share of the club's minutes × the club's games against the league's
      season (its median games a club, X.G or the clubs' own), so a club season of any length is on one scale */
   const Gs = isNum(X.G) && X.G > 0 ? X.G : median(X.teamIds.map(t => X.teams.get(t).gl.length));
   P.rows.forEach(p => {

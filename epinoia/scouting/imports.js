@@ -21,7 +21,7 @@
 
    AS THE EXTENSION WRITES THEM, TIDIED:
      a position with the birth year run into it ("G2000", Australia's rosters): a guard born 2000
-     a height only on the Eurobasket profile (eb_height_cm): the height
+     a height only on the player's profile page (eb_height_cm): the height
      seasons written "25-26" and "2026": their end year (2026) says which is the latest
      two lines in the latest season (a player who moved): the one with the most games is his
        line in the table, and every line opens under his row; a season only just begun (under

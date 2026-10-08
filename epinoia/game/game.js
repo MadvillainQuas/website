@@ -497,7 +497,7 @@ const BODIES = {
    always, then the bench -- each a face where the league has passed a photograph and the
    player's name where it has not, with minutes largest, the game's BPM, then the line. On a
    phone each row scrolls sideways; on a desktop the bench wraps inside its section. */
-/* THE GAME'S BPM, ONE FIGURE FOR THE WHOLE PAGE: Basketball-Reference's game BPM (bpm.js game) - the game's box lines, the
+/* THE GAME'S BPM, ONE FIGURE FOR THE WHOLE PAGE: the game-level adaptation of BPM (bpm.js game) - the game's box lines, the
    clubs' own lines (the engine's teamAdv: pace, ratings and the average lead) and the competition's season (positions,
    offensive roles and season BPMs, EpinoiaModernBox.loadSeason; until it arrives each figure is the box score's own estimate,
    and the page is drawn again once it has). The squads' circles here and the modern box score (modern.js) both read it. */
