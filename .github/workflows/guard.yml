@@ -1636,6 +1636,9 @@ jobs:
           # predicates (unknowns kept or left out), the gender filter on leagues, the size
           # estimate, and players() reading only the chosen leagues and seasons, a few at a time
           node supabase/tests/scouting-setup.test.mjs
+          # the profile's compare player: each line ranked in its own competition, the chart opened as the
+          # statistics table opens it, the season shown first, and the button beside find similar players
+          node supabase/tests/profile-compare.test.mjs
 
       - name: Pages read a snapshot only when it is current (0152)
         # data.js season() takes a competition's season lines from the snapshots table when the

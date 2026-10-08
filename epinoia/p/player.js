@@ -609,6 +609,9 @@ const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (_) { /* fine
 /* SIMILAR PLAYERS (similar.js, p/similar-ui.js): the panel that takes the bars' place. SIM_CTX is the line it is asked about
    (the competition and the profile he played it under; null where there is none), SIM_CTL the panel drawn from its file */
 let simOpen = false, SIM_CTX = null, SIM_CTL = null;
+/* COMPARE PLAYER (p/compare-ui.js): CMP_CTX is the line the picker sets against another -- this one, its field and what the
+   chart calls it (null where there is no line); cmpOpen keeps the picker open through a redraw of the bars */
+let CMP_CTX = null, cmpOpen = false;
 
 /* ONE BAR, IN ITS OWN CARD: label and value across the top with his percentile under the value, the fill,
    and under it how far the value sits above or below the league average (the field the bar is ranked in) */
@@ -1140,8 +1143,30 @@ function paintBars(mine, field) {
   open.type = shut.type = 'button';
   all.append(open, shut);
   if (SS && SU) sw.appendChild(sb);
+  /* COMPARE PLAYER, beside it: this line against any player of any league, in the statistics page's compare chart.
+     Pressed, the dropdowns open under the switches (p/compare-ui.js) */
+  const PC = window.EpinoiaProfileCompare, cmpCtx = CMP_CTX;
+  const cb = PC && window.EpinoiaCompare && cmpCtx && cmpCtx.mine === mine ? el('button', 'ep-btn cmp-btn', 'compare player') : null;
+  if (cb) {
+    cb.type = 'button';
+    cb.title = 'Set this season against any player of any league, stat by stat';
+    sw.appendChild(cb);
+  }
   sw.appendChild(all);
   host.appendChild(sw);
+  if (cb) {
+    const cmpHost = el('div', 'pcmp-host');
+    host.appendChild(cmpHost);
+    const show = (on, focus) => {
+      cmpOpen = on;
+      cb.classList.toggle('on', on);
+      cb.setAttribute('aria-expanded', on ? 'true' : 'false');
+      cmpHost.textContent = '';
+      if (on) PC.open(cmpHost, Object.assign({}, cmpCtx, { focus, onClose: () => { show(false); cb.focus(); } }));
+    };
+    cb.addEventListener('click', () => show(!cmpOpen, true));
+    show(cmpOpen, false);
+  }
   /* the stage holds the bars and the matches on one spot, so one can slide out as the other slides in */
   const stage = el('div', 'bars-stage');
   host.appendChild(stage);
@@ -1870,8 +1895,8 @@ async function seasonLog(ids, sn) {
       const ids = comps.filter(c => kind === 'all' || c.id === kind).map(c => c.id);
       /* the profile he played these under: his own, or the linked one the season line knows him by there */
       const pids = new Set(comps.filter(c => ids.indexOf(c.id) >= 0).map(c => c.pid));
-      mine = null; field = []; SCOPE_IDS = ids; let sosGames = null;
-      simOpen = false; SIM_CTX = null; SIM_CTL = null;
+      mine = null; field = []; SCOPE_IDS = ids; let sosGames = null, teamOf = null;
+      simOpen = false; SIM_CTX = null; SIM_CTL = null; CMP_CTX = null;
       try {
         if (ids.length) {
           const S = await D.season(ids, { rows: false, trim: true });
@@ -1881,6 +1906,7 @@ async function seasonLog(ids, sn) {
           RP_FIELD = null;                                                   // another scope: its own games' logs
           field = S.players;
           mine = field.find(r => pids.has(r.id)) || field.find(r => r.id === pl.id) || null;
+          teamOf = S.teamOfPlayer || null;
         }
       } catch (e) { console.warn('[season]', e); }
       /* the line the similar-players file is for: the one competition shown, or (all competitions) the league's own */
@@ -1890,6 +1916,18 @@ async function seasonLog(ids, sn) {
           : comps.find(c => c.id === kind);
         if (simC) SIM_CTX = { cid: simC.id, pid: simC.pid || pl.id, name: fullName,
           basis: kind === 'all' && ids.length > 1 ? compName(simC) + ' line' : '' };
+        /* what the compare chart calls this line: the competition shown (all of a season: its league, SLB) and the season,
+           SLB 25-26 -- the other player is named the same way -- and the club he played it for */
+        const GL = window.EpinoiaGlobal;
+        const inScope = comps.filter(c => ids.indexOf(c.id) >= 0);
+        const leaguesIn = [...new Set(inScope.map(c => (c.leagueRow && GL ? GL.leagueShort(c.leagueRow) : c.league)).filter(Boolean))];
+        const what = kind === 'all' ? (leaguesIn.join(' + ') || compName(inScope[0] || {})) : compName(inScope[0] || {});
+        const sname = (SEASON && SEASON.name) || '';
+        const teamId = teamOf && teamOf.get ? teamOf.get(mine.id) : null;
+        CMP_CTX = { mine, field, name: fullName, label: (what + ' ' + (GL ? GL.shortSeason(sname) : sname)).trim(),
+          team: team && teamId === team.id ? { name: team.name, short: team.short_name, colour: team.colour, logo: team.logo_path } : null,
+          teamId, photo: (pl.__photoPath && window.EpinoiaUpload ? window.EpinoiaUpload.publicUrl(CFG, pl.__photoPath) : null) || pl.photo_url || null,
+          leagueId: lgRow ? lgRow.id : null, leagueRow: lgRow, seasonName: sname };
       }
       paintTiles(mine, field);
       paintBars(mine, field);

@@ -1930,7 +1930,16 @@
       'The season’s awards as they stand, by the site’s own measures': '現時点のシーズン個人賞（当サイト独自の基準）',
       'Best defender': '最優秀守備選手',
       'chosen by the league': 'リーグ選出',
-      'Storylines': 'ストーリーライン'
+      'Storylines': 'ストーリーライン',
+      'compare player': '選手を比較',
+      'Compare with another player': '他の選手と比較',
+      'Set this season against any player of any league, stat by stat': 'このシーズンを、どのリーグのどの選手とも項目ごとに比較します',
+      'No statistics for this season yet.': 'このシーズンの成績はまだありません。',
+      'Could not load that season.': 'そのシーズンを読み込めませんでした。',
+      'Could not load the leagues.': 'リーグを読み込めませんでした。',
+      'The comparison could not be loaded.': '比較を読み込めませんでした。',
+      'This competition’s statistics are built on the server, hourly — the first build is on its way.': 'この大会の成績はサーバーで1時間ごとに集計されます。最初の集計は準備中です。',
+      'Percentiles: each player among the players of their own competition that season.': 'パーセンタイル：各選手を、そのシーズンの自分の大会の選手の中で順位付けしています。'
     },
 
     ctx: {

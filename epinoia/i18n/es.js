@@ -1932,7 +1932,16 @@
       'The season’s awards as they stand, by the site’s own measures': 'Los premios de la temporada tal como van, según los criterios del sitio',
       'Best defender': 'Mejor defensor',
       'chosen by the league': 'elegido por la liga',
-      'Storylines': 'Historias'
+      'Storylines': 'Historias',
+      'compare player': 'Comparar jugador',
+      'Compare with another player': 'Comparar con otro jugador',
+      'Set this season against any player of any league, stat by stat': 'Compara esta temporada con cualquier jugador de cualquier liga, estadística por estadística',
+      'No statistics for this season yet.': 'Todavía no hay estadísticas de esta temporada.',
+      'Could not load that season.': 'No se pudo cargar esa temporada.',
+      'Could not load the leagues.': 'No se pudieron cargar las ligas.',
+      'The comparison could not be loaded.': 'No se pudo cargar la comparación.',
+      'This competition’s statistics are built on the server, hourly — the first build is on its way.': 'Las estadísticas de esta competición se calculan en el servidor cada hora; la primera ya está en camino.',
+      'Percentiles: each player among the players of their own competition that season.': 'Percentiles: cada jugador entre los jugadores de su propia competición esa temporada.'
     },
 
     ctx: {
