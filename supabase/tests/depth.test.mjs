@@ -174,6 +174,18 @@ console.log('\nthe depth chart by the floor');
   const h = X.chartHTML(cs);
   ok('drawn with share bars, five columns, and its source said', /dc-share/.test(h) && (h.match(/class="dc-col"/g) || []).length === 5 && /every five on the floor ranked point guard to centre/.test(h) && /30\.8 min a game · 77%/.test(h) && /40\.0 \/ 40 min/.test(h));
   ok('...positionOf, projectedMinutes and chart are unchanged (the builder relies on positionOf)', X.positionOf({}, null) === 3 && X.projectedMinutes({ mpg: 20 }, { mpg: 30 }, false) === 26);
+  /* THE PROFILE'S FOLD (Louie, 2026-10-08: "too many players shown"): under 5% of a position's minutes goes into 'others' */
+  const pos2 = { w: 1, games: 10, min: 400, players: pos.players.concat([{ id: 'g', pos: 1.5, min: [6, 0, 0, 0, 0] }]) };
+  const cf = X.slotChart(Object.assign({ pos: pos2 }, base)), ca = X.slotChart(Object.assign({ pos: pos2, all: true }, base));
+  const pg = cf.slots[0], pgAll = ca.slots[0];
+  ok('a player with under 5% of a position\'s minutes is folded into its others line (6 of 266 at the 1)',
+     !pg.players.some(p => p.id === 'g') && pg.others && pg.others.n === 1 && pg.others.names[0] === 'Player g' && cf.hidden === 1 && cf.minShare === 0.05, [pg.players.map(p => p.id), pg.others]);
+  ok('...the column still adds up to the game, the others\' minutes in it', Math.abs(pg.players.reduce((a, p) => a + p.perGame, 0) + pg.others.perGame - 40) < 1e-9);
+  ok('...and he is placed, never a reserve', !cf.reserves.some(p => p.id === 'g'));
+  ok('...all: true shows every player, nothing folded', pgAll.players.some(p => p.id === 'g') && !pgAll.others && ca.hidden === 0);
+  const hf = X.chartHTML(cf);
+  ok('...drawn as one line, its minutes and share, and the note says so', /<span class="dc-n">1 other<\/span><span class="dc-m">0\.9 min a game · 2%<\/span>/.test(hf) &&
+     /a share under 5% is folded into others/.test(hf) && !/a share under 5%/.test(X.chartHTML(ca)), hf.slice(0, 400));
 }
 
 

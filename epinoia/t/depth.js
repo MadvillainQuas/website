@@ -299,6 +299,7 @@ function slotChart(o) {
   if (!(totals.reduce((a, b) => a + b, 0) > 0)) return null;
   const base = chart(o);
   const games = num(pos.games) || 0, len = num(o.gameMin) > 0 ? +o.gameMin : 40;
+  const floor = o.all ? 0 : num(o.minShare) != null ? +o.minShare : MIN_SHARE;
   const able = [];
   base.slots.forEach(s => s.players.forEach(p => able.push(p)));
   base.reserves.forEach(p => able.push(p));
@@ -317,11 +318,18 @@ function slotChart(o) {
     const shown = roundTo(here.map(p => p.share * len), here.length ? len : 0);
     const players = here.map((p, n) => Object.assign(p, { perGame: shown[n] })).filter(p => p.perGame > 0);
     players.forEach(p => placed.add(p.id));
-    return { key: k, label, players, total: shown.reduce((a, b) => a + b, 0) };
+    /* THE PROFILE'S FOLD (Louie, 2026-10-08: the Front office's chart listed everyone who had stood at a position, down to
+       0.1 minutes a game): a share under MIN_SHARE (5%) of the position's minutes goes into one 'others' line, as the
+       profile's chart does, unless o.all; the column still adds up to the game. The first choice is never folded */
+    const keep = players.filter((p, n) => n === 0 || p.share >= floor), rest = players.filter((p, n) => n > 0 && p.share < floor);
+    const others = rest.length ? { n: rest.length, perGame: rest.reduce((a, p) => a + p.perGame, 0), share: rest.reduce((a, p) => a + p.share, 0),
+      names: rest.map(p => p.name).filter(Boolean) } : null;
+    return { key: k, label, players: keep, others, total: shown.reduce((a, b) => a + b, 0) };
   });
   const reserves = able.filter(p => !placed.has(p.id)).map(p => Object.assign({}, p, { role: p.out ? 'out' : 'reserve' }))
     .sort((a, b) => ((a.out ? 1 : 0) - (b.out ? 1 : 0)) || (b.proj - a.proj) || String(a.name).localeCompare(String(b.name)));
-  return Object.assign({}, base, { slots, reserves, source: 'stints', games: base.games, posGames: games, posMin: totals, gameMin: len });
+  return Object.assign({}, base, { slots, reserves, source: 'stints', games: base.games, posGames: games, posMin: totals, gameMin: len,
+    minShare: floor, hidden: slots.reduce((a, s) => a + (s.others ? s.others.n : 0), 0) });
 }
 
 /* ONE ROW A PLAYER, OF THE SEASON SHOWN. A player has a roster row for every season he is on a club's books (the ingest
@@ -611,8 +619,14 @@ function chartHTML(c, o) {
     : '<button type="button" class="dc-h" data-slot="' + s.key + '" aria-label="' + esc(s.label) +
       's against the league"><b>' + s.key + '</b><span>' + esc(s.label) + '</span><i class="dc-go" aria-hidden="true">↗</i></button>';
   const hint = opt.static ? '' : '<div class="dc-hint">press a position for its league view: every club\'s group at it, charted</div>';
+  /* the players folded at a position (slotChart's 5% fold): one line, their minutes a game and share together */
+  /* their names said under it (a phone has no hover for a title), never translated */
+  const others = s => (bySlot && s.others ? '<div class="dc-p dc-others">' +
+    '<span class="dc-n">' + s.others.n + (s.others.n === 1 ? ' other' : ' others') + '</span>' +
+    '<span class="dc-m">' + s.others.perGame.toFixed(1) + ' min a game · ' + Math.round(s.others.share * 100) + '%</span>' +
+    (s.others.names.length ? '<span class="dc-who" translate="no">' + esc(s.others.names.join(', ')) + '</span>' : '') + '</div>' : '');
   const cols = c.slots.map(s => '<div class="dc-col">' + head(s) +
-    (s.players.length ? s.players.map(cell).join('') : '<div class="dc-p dc-empty">—</div>') +
+    (s.players.length ? s.players.map(cell).join('') + others(s) : '<div class="dc-p dc-empty">—</div>') +
     (typeof s.total === 'number' && s.players.length ? '<div class="dc-sum"><span>' + s.key + '</span><b>' + s.total.toFixed(1) + ' / ' + L + ' min</b></div>' : '') +
     '</div>').join('');
   const res = c.reserves.length ? '<div class="dc-res"><span class="dc-rk">also on the roster</span>' + c.reserves.map(p =>
@@ -621,6 +635,7 @@ function chartHTML(c, o) {
   if (bySlot) return hint + '<div class="dc">' + cols + '</div>' + res +
     '<div class="dc-note">each position filled from the minutes played at it this season, a ' + L + '-minute game at each' + (c.posGames ? ' (' + c.posGames + (c.posGames === 1 ? ' game' : ' games') + ')' : '') +
     ': every five on the floor ranked point guard to centre by box-score position' +
+    (c.hidden ? ' · a share under ' + Math.round(c.minShare * 100) + '% is folded into others' : '') +
     (c.out.length ? ' · out: ' + c.out.map(p => esc(p.name)).join(', ') + ' (no minutes in the club\'s latest games)' : '') + '</div>';
   if (split) return hint + '<div class="dc">' + cols + '</div>' + res +
     '<div class="dc-note">each position adds up to the ' + L + '-minute game: every player\'s projected minutes (the last ' + Math.min(5, c.games || 0) +

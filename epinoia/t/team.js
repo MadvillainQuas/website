@@ -973,15 +973,33 @@ async function frontOffice(team) {
     };
     if (PV) { hostD.addEventListener('click', onSlot); if (hostM) hostM.addEventListener('click', onSlot); }
 
+    /* SHOW ALL, as the profile's chart has it: a share under 5% of a position's minutes is folded into its 'others' line
+       (depth.js slotChart) until the reader asks for every player */
+    let foAll = false, foPos = null;
+    const drawSlots = () => {
+      const cs = foPos && X.slotChart(Object.assign({ pos: foPos, gameMin, all: foAll }, chartIn));
+      if (!cs) return null;
+      hostD.innerHTML = X.chartHTML(cs, { link });
+      if (foAll || cs.hidden) {
+        const bar = el('div', 'dcbar'), more = document.createElement('button');
+        more.type = 'button'; more.className = 'ep-btn dcall'; more.setAttribute('aria-pressed', String(foAll));
+        more.textContent = foAll ? 'Show fewer' : 'Show all';
+        more.onclick = () => { foAll = !foAll; drawSlots(); };
+        bar.appendChild(more);
+        hostD.insertBefore(bar, hostD.firstChild);
+      }
+      return cs;
+    };
+
     /* THE CLUB'S OWN LINEUPS fill the depth chart, whether or not the win model is built (the profile's copy reads the
        same, once for the page) */
     let byFloor = false;
     try {
       const fp = X.floorPos ? await floorMinutes(team) : null;
-      const cs = fp && X.slotChart(Object.assign({ pos: fp, gameMin }, chartIn));
+      foPos = fp;
+      const cs = fp && drawSlots();
       if (cs) {
         c = cs; byFloor = true;
-        hostD.innerHTML = X.chartHTML(c, { link });
         const note = $('#depthNote');
         if (note) note.textContent = 'from the club\'s own lineups: the minutes each player has played at each position';
       }
@@ -993,10 +1011,12 @@ async function frontOffice(team) {
     const fo = M && M.fo && M.fo.ok ? M.fo.data : null, club = M && M.club && M.club.ok ? M.club.data : null;
     const pos = (club && club.pos) || (fo && fo.pos && fo.pos[team.id]) || null;
     if (!byFloor && pos && X.slotChart) {
-      const cs = X.slotChart(Object.assign({ pos, gameMin }, chartIn));
+      const was = foPos;
+      foPos = pos;
+      const cs = drawSlots();
+      if (!cs) foPos = was;
       if (cs) {
         c = cs;
-        hostD.innerHTML = X.chartHTML(c, { link });
         const note = $('#depthNote');
         if (note) note.textContent = 'filled from the minutes each player has played at each position';
       }

@@ -241,7 +241,7 @@ const TEAMJS = read(EP, 't/team.js'), HTML = read(EP, 't/index.html');
      /status=in\.\(scheduled,live\)` \+\s*`&select=id,home_team_id,away_team_id,tipoff_at` \+ inSeason\(\)/.test(TEAMJS));
   ok('F3 mounted with the Worker, RECALCULATE refreshing the fo file', /FM\.mount\(host, FM\.view\(input\), \{ input, worker: FM\.makeWorker\(\)/.test(TEAMJS) && /WF\.refresh\(Object\.assign\(\{ scope: 'fo' \}, unit\)/.test(TEAMJS));
   ok('the [data-slot] handler is wired on #wmodel too', /hostM\.addEventListener\('click', onSlot\)/.test(TEAMJS) && /hostD\.addEventListener\('click', onSlot\)/.test(TEAMJS));
-  ok('depth.gm gets gmModel; the depth chart is filled from the pos file where it arrives', /model: fo && FM \? Object\.assign\(FM\.gmModel\(fo, team\.id\), \{ pos: FM\.posGaps \? FM\.posGaps\(fo, club\) : null \}\)/.test(TEAMJS) && /X\.slotChart\(Object\.assign\(\{ pos, gameMin \}, chartIn\)\)/.test(TEAMJS));
+  ok('depth.gm gets gmModel; the depth chart is filled from the pos file where it arrives', /model: fo && FM \? Object\.assign\(FM\.gmModel\(fo, team\.id\), \{ pos: FM\.posGaps \? FM\.posGaps\(fo, club\) : null \}\)/.test(TEAMJS) && /X\.slotChart\(Object\.assign\(\{ pos: foPos, gameMin, all: foAll \}, chartIn\)\)/.test(TEAMJS));
   ok('team.js names none of I1\'s tables beside what it read before (no game_features, lineup_stints from the Front office)', !/game_features/.test(TEAMJS));
   const fosec = HTML.slice(HTML.indexOf('id="fosec"'), HTML.indexOf('id="foshare"'));
   ok('t/index.html: F3 in #fosec after the GM\'s view, its header and note as §12', fosec.indexOf('id="gmview"') < fosec.indexOf('<span class="idx">F3</span>') &&
