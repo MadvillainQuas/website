@@ -1898,7 +1898,8 @@
       'The fans’ vote': 'La votación de la afición',
       'The closer': 'Decisivo al final',
       'Serving a suspension': 'Sancionado',
-      'Questions to ask': 'Preguntas que hacer'
+      'Questions to ask': 'Preguntas que hacer',
+      'How it has developed': 'Cómo ha evolucionado'
     },
 
     ctx: {

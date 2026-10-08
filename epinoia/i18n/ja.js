@@ -1896,7 +1896,8 @@
       'The fans’ vote': 'ファン投票',
       'The closer': '勝負強さ',
       'Serving a suspension': '出場停止中',
-      'Questions to ask': '質問の案'
+      'Questions to ask': '質問の案',
+      'How it has developed': 'これまでの経緯'
     },
 
     ctx: {

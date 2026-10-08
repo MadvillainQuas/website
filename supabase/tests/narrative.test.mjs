@@ -98,6 +98,7 @@ console.log('\nthreading, from one build to the next');
   const b2 = N.build(Object.assign({}, base, { now: new Date(NOW + 2 * 3600000), games: g2, previous: b1 }));
   const r = b2.stories.find(s => s.id === 'run:t1');
   ok('a run that grew is the same storyline, developing', r && r.status === 'developing' && r.version === 2 && r.tracks.value === 6, r);
+  ok('...with its timeline: when it opened, and the change', r && Array.isArray(r.history) && r.history.length === 2 && /^Opened: Ash City have won five in a row\.$/.test(r.history[0].what) && r.history[1].what === 'Now six straight (was five).', r && r.history);
   ok('...with a note of what changed', r && /six straight \(was five\)/.test(r.change || ''), r && r.change);
   ok('...and keeps the time it first opened', r && r.first === byId('run:t1').first);
   /* and then it ends */
@@ -106,6 +107,7 @@ console.log('\nthreading, from one build to the next');
   const e = b3.stories.find(s => s.id === 'run:t1');
   ok('a run that ended is resolved, not dropped', e && e.status === 'resolved', e);
   ok('...and says how it ended', e && /Ended at six by Birch City, 81–79/.test(e.change || ''), e && e.change);
+  ok('...and the timeline ends with how it ended', e && e.history && /^Ended at six by Birch City, 81–79/.test(e.history[e.history.length - 1].what), e && e.history);
   ok('...ranked below what is still running', e && b3.stories.indexOf(e) > b3.stories.findIndex(s => s.status !== 'resolved'));
   const b4 = N.build(Object.assign({}, base, { now: new Date(NOW + 6 * 3600000 + 4 * 86400000), games: g3, previous: b3 }));
   ok('a resolved storyline is dropped after three days', !b4.stories.some(s => s.id === 'run:t1'));

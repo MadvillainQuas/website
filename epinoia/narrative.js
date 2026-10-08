@@ -1287,12 +1287,18 @@ function build(input) {
   out.forEach(s => {
     const p = prev.get(s.id);
     seen.add(s.id);
-    if (!p || p.status === 'expired') { s.status = 'new'; s.version = 1; s.first = builtIso; s.updated = builtIso; s.change = null; return; }
+    /* THE STORYLINE'S TIMELINE (the developing-story thread): when it opened, and each change since, dated by the game that
+       made it - kept to the last six */
+    const at0 = s.lastAt ? new Date(s.lastAt).toISOString() : builtIso;
+    if (!p || p.status === 'expired') { s.status = 'new'; s.version = 1; s.first = builtIso; s.updated = builtIso; s.change = null;
+      s.history = [{ at: at0, what: 'Opened: ' + s.head + '.' }]; return; }
     const changed = JSON.stringify(p.tracks) !== JSON.stringify(s.tracks);
     s.first = p.first || builtIso;
     s.version = (p.version || 1) + (changed ? 1 : 0);
     s.updated = changed ? builtIso : (p.updated || builtIso);
     s.change = changed ? changeNote(s, p) : p.change || null;
+    s.history = (Array.isArray(p.history) ? p.history : [{ at: p.first || builtIso, what: 'Opened: ' + p.head + '.' }]).slice(-5)
+      .concat(changed && s.change ? [{ at: at0, what: s.change }] : []);
     s.status = changed ? 'developing' : (p.status === 'new' && nowMs - time(s.first) > 2 * DAY ? 'developing' : (p.status === 'resolved' ? 'developing' : p.status));
   });
   /* what was running and is not any more: resolved, said how, kept three days. Not across a change of engine: a storyline an
@@ -1304,7 +1310,10 @@ function build(input) {
     const since = p.status === 'resolved' ? time(p.resolved) || nowMs : nowMs;
     if (nowMs - since > 3 * DAY) return;
     const r = Object.assign({}, p, { status: 'resolved', resolved: p.status === 'resolved' ? p.resolved : builtIso, updated: p.status === 'resolved' ? p.updated : builtIso });
-    if (p.status !== 'resolved') r.change = endNote(p, C, name, tz) || 'No longer running.';
+    if (p.status !== 'resolved') {
+      r.change = endNote(p, C, name, tz) || 'No longer running.';
+      r.history = (Array.isArray(p.history) ? p.history : []).slice(-5).concat([{ at: builtIso, what: r.change }]);
+    }
     out.push(r);
   });
 
@@ -1710,6 +1719,6 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 7;
+const VERSION = 8;
 return { build, VERSION, __x: { clubs, standings, facets, identities, lens, playerSeason, profiles, expect, slate, briefing, coverage, changeNote, endNote } };
 }));

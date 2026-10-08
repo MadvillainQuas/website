@@ -97,3 +97,7 @@
 /* questions to ask: who each is for, above it */
 .nd-qs li{margin-bottom:4px}
 .nd-qto{display:block;font:700 8px/1.5 var(--f-micro);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+/* a storyline's timeline, and the storylines a game in the week ahead touches */
+.nd-hist ol{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.nd-hat{display:inline-block;min-width:4.5em;font:700 8px/1.5 var(--f-micro);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.nd-sl-threads{margin:4px 0 0;padding-left:16px;font:400 13px/1.45 var(--f-ui);color:var(--ink-2)}

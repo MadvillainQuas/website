@@ -80,6 +80,8 @@ function ago(iso) {
   return 'updated ' + d + (d === 1 ? ' day ago' : ' days ago');
 }
 
+/* a date as "2 Oct" (the page's language wraps toLocaleDateString, so a Japanese reader sees 10月2日) */
+const dayShort = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
 /* a score or a record never breaks at its dash ("5–" at the end of one line, "0" at the start of the next) */
 const nb = html => String(html).replace(/(\d+)–(\d+)/g, '<span class="nd-nb">$1–$2</span>');
 
@@ -106,6 +108,9 @@ function storyHTML(s, o) {
     line('nd-but', 'Yes, but', s.counter) +
     line('nd-next', 'What’s next', s.next) +
     (opts.full && (s.angles || []).length ? '<div class="nd-angles"><b>Ways to cover it</b><ul>' + s.angles.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul></div>' : '') +
+    /* how it has developed: the storyline's timeline, once it has moved at least once */
+    (opts.full && (s.history || []).length >= 2 ? '<div class="nd-angles nd-hist"><b>How it has developed</b><ol>' + s.history.map(h =>
+      '<li><span class="nd-hat">' + esc(dayShort(h.at)) + '</span> <span>' + nb(esc(h.what)) + '</span></li>').join('') + '</ol></div>' : '') +
     /* the questions a desk would take to the press conference, each to a club's coach or a player */
     (opts.full && (s.questions || []).length ? '<div class="nd-angles nd-qs"><b>Questions to ask</b><ul>' + s.questions.map(x =>
       '<li><span class="nd-qto">' + esc(x.to) + '</span> <span>' + nb(esc(x.q)) + '</span></li>').join('') + '</ul></div>' : '') +
@@ -167,6 +172,8 @@ function slateHTML(b, o) {
       '<div class="nd-sl-when"><span>' + esc(x.day || '') + '</span><span class="nd-meter" title="what is at stake"><i style="width:' + meter + '%"></i></span></div>' +
       '<div class="nd-sl-teams">' + side(x.home, true) + '<span class="nd-v">v</span>' + side(x.away, false) + '</div>' +
       (x.angle ? '<p class="nd-sl-angle">' + nb(esc(x.angle)) + '</p>' : '') +
+      /* the running storylines it touches (narrative.js threadsOf) */
+      ((x.threads || []).length ? '<ul class="nd-sl-threads">' + x.threads.map(t => '<li>' + nb(esc(t.line)) + '</li>').join('') + '</ul>' : '') +
       '<div class="nd-sl-facts">' + [ex, met, fans].filter(Boolean).join('') + '</div>' +
       '<div class="nd-sl-plan"><b>Cover it with</b> <span>' + esc((x.plan || []).join(' · ')) + '</span>' + (h ? ' <a href="' + esc(h) + '">the game ↗</a>' : '') + '</div>' +
     '</div>';
