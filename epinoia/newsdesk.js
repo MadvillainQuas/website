@@ -10,8 +10,9 @@
    only, nothing sent anywhere): one it has never shown is NEW, one that has moved on since is UPDATED with its note of
    what changed, one that has finished is RESOLVED with how it ended.
 
-   Every string from the file is escaped. The generated sentences are English and marked translate="no": half a
-   machine-translated sentence reads worse than a whole English one. The labels around them translate.
+   Every string from the file is escaped. The generated sentences are English, written from templates, and translated
+   whole in the 'newsdesk' sentence context (i18n/<code>/newsdesk.js: one anchored pattern per template, so a sentence
+   is either translated whole or left whole in English, never half). Names and other sites' titles keep translate="no".
 
      EpinoiaNewsdesk.load(leagueId)                    -> Promise<build | null>
      EpinoiaNewsdesk.storiesHTML(build, {base, max, seen})   cards
@@ -84,24 +85,27 @@ const nb = html => String(html).replace(/(\d+)–(\d+)/g, '<span class="nd-nb">$
 
 /* ------------------------------------------------------------- a storyline --- */
 const PIECE = { report: 'Match report', creator: 'From a creator', news: 'In the news' };
+/* the links that are the newsdesk's own words, not names */
+const OWN_LINK = new Set(['the game', 'the highlights', 'the player']);
 function storyHTML(s, o) {
   const opts = o || {};
   const b = badgeOf(s, (opts.seen || {})[s.id]);
   const nums = (s.numbers || []).slice(0, opts.full ? 8 : 4).map(n =>
     '<div><dt>' + esc(n.label) + '</dt><dd translate="no">' + esc(n.value) + '</dd></div>').join('');
-  const links = (s.links || []).map(l => { const h = safeHref(opts.base, l.href); return h ? '<a href="' + esc(h) + '" translate="no">' + esc(l.label) + '</a>' : ''; }).filter(Boolean).join('');
-  const line = (cls, label, text) => (text ? '<p class="' + cls + '"><b>' + label + '</b> <span translate="no">' + nb(esc(text)) + '</span></p>' : '');
-  return '<article class="nd-story" data-kind="' + esc(s.kind) + '" data-status="' + esc(s.status) + '">' +
+  /* a link is a name (a club, a player: never translated) or one of the newsdesk's own words (translated) */
+  const links = (s.links || []).map(l => { const h = safeHref(opts.base, l.href); return h ? '<a href="' + esc(h) + '"' + (OWN_LINK.has(l.label) ? '' : ' translate="no"') + '>' + esc(l.label) + '</a>' : ''; }).filter(Boolean).join('');
+  const line = (cls, label, text) => (text ? '<p class="' + cls + '"><b>' + label + '</b> <span>' + nb(esc(text)) + '</span></p>' : '');
+  return '<article class="nd-story" data-i18n-ctx="newsdesk" data-kind="' + esc(s.kind) + '" data-status="' + esc(s.status) + '">' +
     '<div class="nd-top"><span class="nd-kick">' + esc(s.kicker) + '</span>' + (b ? '<span class="nd-badge ' + b[0] + '">' + b[1] + '</span>' : '') + '</div>' +
-    '<h3 class="nd-h" translate="no">' + nb(esc(s.head)) + '</h3>' +
-    (s.dek ? '<p class="nd-dek" translate="no">' + nb(esc(s.dek)) + '</p>' : '') +
-    (b && b[0] !== 'new' && s.change ? '<p class="nd-change" translate="no">' + esc(s.change) + '</p>' : '') +
+    '<h3 class="nd-h">' + nb(esc(s.head)) + '</h3>' +
+    (s.dek ? '<p class="nd-dek">' + nb(esc(s.dek)) + '</p>' : '') +
+    (b && b[0] !== 'new' && s.change ? '<p class="nd-change">' + esc(s.change) + '</p>' : '') +
     (nums ? '<dl class="nd-nums">' + nums + '</dl>' : '') +
     line('nd-why', 'Why it matters', s.why) +
-    (opts.full ? (s.body || []).map(x => '<p class="nd-body" translate="no">' + esc(x) + '</p>').join('') : '') +
+    (opts.full ? (s.body || []).map(x => '<p class="nd-body">' + esc(x) + '</p>').join('') : '') +
     line('nd-but', 'Yes, but', s.counter) +
     line('nd-next', 'What’s next', s.next) +
-    (opts.full && (s.angles || []).length ? '<div class="nd-angles"><b>Ways to cover it</b><ul>' + s.angles.map(a => '<li translate="no">' + esc(a) + '</li>').join('') + '</ul></div>' : '') +
+    (opts.full && (s.angles || []).length ? '<div class="nd-angles"><b>Ways to cover it</b><ul>' + s.angles.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul></div>' : '') +
     /* what the site has already published about it: a creator's piece, the news, the match report */
     (opts.full && (s.pieces || []).length ? '<div class="nd-angles nd-pieces"><b>Already written</b><ul>' + s.pieces.map(x => {
       const h = safeHref(opts.base, x.href);
@@ -128,16 +132,16 @@ function briefingHTML(build, o) {
   const lead = build.stories.find(s => s.id === B.lead);
   const row = (x, cls) => {
     const h = x.game ? safeHref(opts.base, 'game/?g=' + x.game) : null;
-    return '<li class="' + cls + '">' + (h ? '<a href="' + esc(h) + '" translate="no">' + esc(x.line) + '</a>' : '<span translate="no">' + esc(x.line) + '</span>') +
-      (x.sub ? '<small translate="no">' + esc(x.sub) + '</small>' : '') + '</li>';
+    return '<li class="' + cls + '">' + (h ? '<a href="' + esc(h) + '">' + nb(esc(x.line)) + '</a>' : '<span>' + nb(esc(x.line)) + '</span>') +
+      (x.sub ? '<small>' + nb(esc(x.sub)) + '</small>' : '') + '</li>';
   };
   const parts = [];
-  if (lead) parts.push('<p class="nd-b-lead"><b>The story</b> <span translate="no">' + esc(lead.head) + '</span></p>');
+  if (lead) parts.push('<p class="nd-b-lead"><b>The story</b> <span>' + nb(esc(lead.head)) + '</span></p>');
   if (B.results && B.results.length) parts.push('<div class="nd-b-part"><b>Results</b><ul>' + B.results.slice(0, 5).map(x => row(x, 'nd-b-res')).join('') + '</ul></div>');
   if (B.watch && B.watch.length) parts.push('<div class="nd-b-part"><b>To watch</b><ul>' + B.watch.map(x => row(x, 'nd-b-watch')).join('') + '</ul></div>');
   if (B.milestones && B.milestones.length) parts.push('<div class="nd-b-part"><b>Milestones</b><ul>' + B.milestones.map(x => row(x, 'nd-b-ms')).join('') + '</ul></div>');
   if (!parts.length) return '';
-  return '<div class="nd-brief">' + parts.join('') + '<p class="nd-b-end">That is the day in the league.</p></div>';
+  return '<div class="nd-brief" data-i18n-ctx="newsdesk">' + parts.join('') + '<p class="nd-b-end">That is the day in the league.</p></div>';
 }
 
 /* ------------------------------------------------------------ the coverage plan --- */
@@ -145,11 +149,11 @@ const club = (b, id) => (b.clubs && b.clubs[id] && b.clubs[id].name) || 'A club'
 function slateHTML(b, o) {
   const s = (b.coverage && b.coverage.slate) || [];
   if (!s.length) return '';
-  return '<div class="nd-slate">' + s.map(x => {
+  return '<div class="nd-slate" data-i18n-ctx="newsdesk">' + s.map(x => {
     const h = safeHref(o.base, 'game/?g=' + x.game);
     const meter = Math.max(4, Math.min(100, Math.round(x.stakes / 1.6 * 100)));
     const side = (t, home) => '<div class="nd-sl-side"><b translate="no">' + esc(club(b, t.id)) + '</b>' +
-      '<span translate="no">' + esc([t.rank ? ordShort(t.rank) : null, t.rec, t.streak].filter(Boolean).join(' · ')) + '</span>' +
+      '<span>' + esc([t.rank ? ordShort(t.rank) : null, t.rec, t.streak].filter(Boolean).join(' · ')) + '</span>' +
       (t.form ? '<span class="nd-form" translate="no">' + esc(t.form.split('').join(' ')) + '</span>' : '') +
       (t.watch ? '<span class="nd-watch">watch: <i translate="no">' + esc(t.watch.name) + '</i>, ' + esc(t.watch.line) + '</span>' : '') + '</div>';
     const ex = x.expect ? '<span>the season’s numbers: <i translate="no">' + esc(club(b, x.expect.favourite)) + '</i> by about ' + esc(Math.abs(x.expect.margin).toFixed(1)) + '</span>' : '';
@@ -157,13 +161,18 @@ function slateHTML(b, o) {
     const met = x.meetings ? '<span>meetings this season: ' + esc(x.meetings.winsHome + '–' + x.meetings.winsAway) + '</span>' : '';
     const fans = x.fans ? '<span>fans: ' + esc(x.fans.home + '% ' + club(b, x.home.id)) + ' (' + esc(x.fans.n) + ' picks)</span>' : '';
     return '<div class="nd-sl">' +
-      '<div class="nd-sl-when"><span translate="no">' + esc(x.day || '') + '</span><span class="nd-meter" title="what is at stake"><i style="width:' + meter + '%"></i></span></div>' +
+      '<div class="nd-sl-when"><span>' + esc(x.day || '') + '</span><span class="nd-meter" title="what is at stake"><i style="width:' + meter + '%"></i></span></div>' +
       '<div class="nd-sl-teams">' + side(x.home, true) + '<span class="nd-v">v</span>' + side(x.away, false) + '</div>' +
-      (x.angle ? '<p class="nd-sl-angle" translate="no">' + esc(x.angle) + '</p>' : '') +
+      (x.angle ? '<p class="nd-sl-angle">' + nb(esc(x.angle)) + '</p>' : '') +
       '<div class="nd-sl-facts">' + [ex, met, fans].filter(Boolean).join('') + '</div>' +
-      '<div class="nd-sl-plan"><b>Cover it with</b> <span translate="no">' + esc((x.plan || []).join(' · ')) + '</span>' + (h ? ' <a href="' + esc(h) + '">the game ↗</a>' : '') + '</div>' +
+      '<div class="nd-sl-plan"><b>Cover it with</b> <span>' + esc((x.plan || []).join(' · ')) + '</span>' + (h ? ' <a href="' + esc(h) + '">the game ↗</a>' : '') + '</div>' +
     '</div>';
   }).join('') + '</div>';
+}
+/* a club's record against its points, said as a sentence: "1.2 wins more than their points say", "one win fewer" */
+function luckLine(v) {
+  const a = Math.abs(v), w = a === 1 ? 'one win' : (Number.isInteger(a) ? a : a.toFixed(1)) + ' wins';
+  return w + (v > 0 ? ' more' : ' fewer') + ' than their points say';
 }
 function ordShort(n) { const v = Math.round(+n), t = v % 100; return v + (t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th')); }
 
@@ -173,14 +182,14 @@ function coverageHTML(build, o) {
   if (!C) return '';
   const sec = (id, title, note, inner) => (inner ? '<div class="nd-cov" id="' + id + '"><div class="nd-cov-h"><h3>' + title + '</h3>' + (note ? '<p>' + note + '</p>' : '') + '</div>' + inner + '</div>' : '');
   const byId = new Map(build.stories.map(s => [s.id, s]));
-  const big = (C.bigPicture || []).length ? '<div class="nd-big">' + C.bigPicture.map(p => '<p translate="no">' + esc(p) + '</p>').join('') + '</div>' : '';
+  const big = (C.bigPicture || []).length ? '<div class="nd-big">' + C.bigPicture.map(p => '<p>' + nb(esc(p)) + '</p>').join('') + '</div>' : '';
   const lines = (C.storylines || []).map(id => byId.get(id)).filter(Boolean);
   const radar = (C.underRadar || []).map(id => byId.get(id)).filter(Boolean);
   const recaps = (C.recaps || []).length ? '<ol class="nd-recaps">' + C.recaps.map(r => {
     const h = safeHref(opts.base, 'game/?g=' + r.game);
-    return '<li><a href="' + esc(h || '#') + '" translate="no">' + esc(r.headline) + '</a>' + (r.standfirst ? '<small translate="no">' + esc(r.standfirst) + '</small>' : '') +
-      (r.angle ? '<span class="nd-angle" translate="no">' + esc(r.angle) + '</span>' : '') +
-      (r.reasons && r.reasons.length ? '<span class="nd-angle" translate="no">' + esc(r.reasons.join(' · ')) + '</span>' : '') +
+    return '<li><a href="' + esc(h || '#') + '">' + nb(esc(r.headline)) + '</a>' + (r.standfirst ? '<small>' + esc(r.standfirst) + '</small>' : '') +
+      (r.angle ? '<span class="nd-angle">' + esc(r.angle) + '</span>' : '') +
+      (r.reasons && r.reasons.length ? '<span class="nd-angle">' + esc(r.reasons.join(' · ')) + '</span>' : '') +
       ((r.video || r.report) ? '<span class="nd-links">' + (r.report ? '<a href="' + esc(safeHref(opts.base, r.report) || '#') + '">the match report</a>' : '') +
         (r.video ? '<a href="' + esc(safeHref(opts.base, 'watch/?g=' + r.game) || '#') + '">the highlights</a>' : '') + '</span>' : '') + '</li>';
   }).join('') + '</ol>' : '';
@@ -190,22 +199,23 @@ function coverageHTML(build, o) {
     const h = safeHref(opts.base, w.href);
     const about = (w.stories || []).map(id => byId.get(id)).filter(Boolean).map(s => s.head);
     return '<li>' + (h ? '<a href="' + esc(h) + '" translate="no">' + esc(w.title) + '</a>' : '<span translate="no">' + esc(w.title) + '</span>') +
-      ' <small>' + esc(PIECE[w.kind] || PIECE.news) + '</small>' + (about.length ? '<span class="nd-angle" translate="no">' + esc(about.join(' · ')) + '</span>' : '') + '</li>';
+      ' <small>' + esc(PIECE[w.kind] || PIECE.news) + '</small>' + (about.length ? '<span class="nd-angle">' + esc(about.join(' · ')) + '</span>' : '') + '</li>';
   }).join('') + '</ul>' : '';
   const gaps = (C.gaps || []).map(id => byId.get(id)).filter(Boolean);
-  const gapList = gaps.length ? '<ul class="nd-people">' + gaps.map(s => '<li><b translate="no">' + esc(s.head) + '</b>' + (s.dek ? '<small translate="no">' + esc(s.dek) + '</small>' : '') +
-    ((s.angles || [])[0] ? '<span class="nd-angle" translate="no">' + esc(s.angles[0]) + '</span>' : '') + '</li>').join('') + '</ul>' : '';
-  const people = (C.players || []).length ? '<ul class="nd-people">' + C.players.map(p => '<li><b translate="no">' + esc(p.head) + '</b>' + (p.dek ? '<small translate="no">' + esc(p.dek) + '</small>' : '') +
-    (p.angle ? '<span class="nd-angle" translate="no">' + esc(p.angle) + '</span>' : '') + '</li>').join('') + '</ul>' : '';
+  const gapList = gaps.length ? '<ul class="nd-people">' + gaps.map(s => '<li><b>' + nb(esc(s.head)) + '</b>' + (s.dek ? '<small>' + nb(esc(s.dek)) + '</small>' : '') +
+    ((s.angles || [])[0] ? '<span class="nd-angle">' + esc(s.angles[0]) + '</span>' : '') + '</li>').join('') + '</ul>' : '';
+  const people = (C.players || []).length ? '<ul class="nd-people">' + C.players.map(p => '<li><b>' + nb(esc(p.head)) + '</b>' + (p.dek ? '<small>' + nb(esc(p.dek)) + '</small>' : '') +
+    (p.angle ? '<span class="nd-angle">' + esc(p.angle) + '</span>' : '') + '</li>').join('') + '</ul>' : '';
   const clubs = (C.teams || []).length ? '<div class="nd-clubs">' + C.teams.map(t => '<div class="nd-club"><b translate="no">' + esc(t.name) + '</b>' +
-    '<span translate="no">' + esc([t.rank ? ordShort(t.rank) : null, t.rec, t.form ? t.form.split('').join(' ') : null].filter(Boolean).join(' · ')) + '</span>' +
-    (t.identity ? '<span translate="no">' + esc(t.identity) + '</span>' : '') +
-    (t.luck != null && Math.abs(t.luck) >= 1 ? '<span translate="no">' + esc((t.luck > 0 ? '+' : '') + t.luck + ' wins against what their points say') + '</span>' : '') +
-    '<span translate="no">' + esc('close games ' + t.close) + '</span>' + (t.next ? '<span translate="no">' + esc('next: ' + t.next) + '</span>' : '') + '</div>').join('') + '</div>' : '';
-  const notes = (C.notes || []).length ? '<dl class="nd-notes">' + C.notes.map(n => '<div><dt>' + esc(n.head) + '</dt><dd translate="no">' + esc(n.line) + '</dd></div>').join('') + '</dl>' : '';
-  const cal = (C.calendar || []).length ? '<div class="nd-cal">' + C.calendar.map(d => '<div class="nd-day"><b translate="no">' + esc(d.day) + '</b><ul>' +
-    d.items.map(i => '<li data-kind="' + esc(i.kind) + '" translate="no">' + esc(i.what) + '</li>').join('') + '</ul></div>').join('') + '</div>' : '';
-  return '<div class="nd-plan">' +
+    '<span>' + esc([t.rank ? ordShort(t.rank) : null, t.rec].filter(Boolean).join(' · ')) + '</span>' +
+    (t.form ? '<span class="nd-form" translate="no">' + esc(t.form.split('').join(' ')) + '</span>' : '') +
+    (t.identity ? '<span>' + esc(t.identity) + '</span>' : '') +
+    (t.luck != null && Math.abs(t.luck) >= 1 ? '<span>' + esc(luckLine(t.luck)) + '</span>' : '') +
+    '<span>' + esc('close games ' + t.close) + '</span>' + (t.next ? '<span>' + esc('next: ' + t.next) + '</span>' : '') + '</div>').join('') + '</div>' : '';
+  const notes = (C.notes || []).length ? '<dl class="nd-notes">' + C.notes.map(n => '<div><dt>' + esc(n.head) + '</dt><dd>' + nb(esc(n.line)) + '</dd></div>').join('') + '</dl>' : '';
+  const cal = (C.calendar || []).length ? '<div class="nd-cal">' + C.calendar.map(d => '<div class="nd-day"><b>' + esc(d.day) + '</b><ul>' +
+    d.items.map(i => '<li data-kind="' + esc(i.kind) + '">' + esc(i.what) + '</li>').join('') + '</ul></div>').join('') + '</div>' : '';
+  return '<div class="nd-plan" data-i18n-ctx="newsdesk">' +
     sec('ndBig', 'The big picture', 'The state of the league, and what wins in it', big) +
     sec('ndBrief', 'Today', 'The day in the league, to read in a minute', briefingHTML(build, opts)) +
     sec('ndLines', 'The storylines to run', 'Ranked by how much each matters now; each with its evidence, the counterpoint and ways to cover it',

@@ -59,6 +59,8 @@ const ORDW = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seven
 const place = n => { const v = Math.round(+n); if (v >= 1 && v <= 10) return ORDW[v]; const t = v % 100; return v + (t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th')); };
 const ordShort = n => { const v = Math.round(+n), t = v % 100; return v + (t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[v % 10] || 'th')); };
 const plural = (n, a, b) => spell(n) + ' ' + (Math.round(+n) === 1 ? a : (b || a + 's'));
+/* the article before a number said aloud: an 8-game season, an 11-game run, an 80-game season */
+const anNum = n => { const v = Math.round(+n); return v === 8 || v === 11 || v === 18 || (v >= 80 && v <= 89) || (v >= 800 && v <= 899) ? 'an' : 'a'; };
 const one = v => (Math.round(v * 10) / 10).toFixed(1);
 const signed = v => (v > 0 ? '+' : v < 0 ? '−' : '') + one(Math.abs(v));
 const half = x => { const w = Math.floor(x), h = x - w >= 0.5; return (w ? String(w) : h ? '' : '0') + (h ? '½' : ''); };
@@ -225,7 +227,7 @@ function lens(model, teamRows) {
     const xs = rows.map(t => (num(t[KEYS[k][0]]) != null && num(t[KEYS[k][1]]) != null ? t[KEYS[k][0]] - t[KEYS[k][1]] : null)).filter(v => v != null);
     if (xs.length < 4) return;
     const b = B && num(B[k]) != null ? Math.abs(+B[k]) : Math.abs(FIX[k]) * poss / 100;
-    out.push({ k, label: FACET[k], sd: sd(xs), pts: b * sd(xs) });
+    if (b * sd(xs) >= 0.05) out.push({ k, label: FACET[k], sd: sd(xs), pts: b * sd(xs) });
   });
   out.sort((a, b) => b.pts - a.pts);
   return { rows: out, model: !!B, n: model && model.n ? model.n : null, home: model && num(model.home) != null ? +model.home : null };
@@ -502,7 +504,8 @@ function build(input) {
           (gb(lead, bunch[bunch.length - 1]) <= 1 ? 'a game' : 'a game and a half') + (bunch.length > 12 ? ' of first' : ' of the top' + where)
       : gap === 0 ? name(lead.team_id) + ' and ' + name(second.team_id) + ' level at the top' + where
       : name(lead.team_id) + ' ' + (gap >= 3 ? 'pull clear' : 'lead') + where + ', ' + gamesWord(gap) + ' ahead';
-    const stage = shape && shape.trusted && shape.total >= 6 ? cap(spell(maxGp)) + ' games into a ' + shape.total + '-game season' : null;
+    /* how far in, by the clubs' average (the most anyone has played says "eight games into an 8-game season" with one left) */
+    const stage = shape && shape.trusted && shape.total >= 6 ? cap(plural(shape.total - shape.left, 'game')) + ' into ' + anNum(shape.total) + ' ' + shape.total + '-game season' : null;
     const why = clinched ? 'Nobody else can reach their ' + spell(lead.w) + ' wins now, with ' + plural(shape.left, 'game') + ' left.'
       : runIn && chasers ? 'With ' + plural(shape.left, 'game') + ' left, ' + (chasers.length === 1 ? 'only ' + name(chasers[0].team_id) + ' can still catch them.' : spell(chasers.length) + ' clubs can still catch them.')
       : early ? (stage || 'It is early: ' + plural(maxGp, 'game') + ' in') + ', the table is a first draft' +
@@ -1078,6 +1081,7 @@ function build(input) {
       const why = brink ? name(leader) + ' are one win from going through, in a best of ' + spell(+tie.legs) + '.'
         : lowLeads ? 'The lower seed has the lead: ' + name(hi) + ' finished ' + spell(pl0.pos - ph.pos) + ' places above them.'
         : lastM != null && lastM <= 3 ? 'Game ' + n + ' was decided by ' + plural(lastM, 'point') + '.'
+        : met.length === 1 ? name(metHi ? hi : lo) + ' won their only regular-season meeting.'
         : met.length ? (metHi === met.length ? name(hi) + ' won ' + (met.length === 2 ? 'both' : 'all ' + spell(met.length)) + ' of their regular-season meetings.'
           : metHi === 0 ? name(lo) + ' won ' + (met.length === 2 ? 'both' : 'all ' + spell(met.length)) + ' of their regular-season meetings.'
           : 'They split their regular-season meetings ' + Math.max(metHi, met.length - metHi) + '–' + Math.min(metHi, met.length - metHi) + '.')
@@ -1424,7 +1428,7 @@ function slate(X, horizon) {
     const bits = [];
     /* a play-off game is a game in a series: its number and the series first, and it outranks the regular season */
     const ser = X.isPost && X.isPost(g) && X.SERIES ? X.SERIES.get(X.pairKey(g)) : null;
-    if (ser) bits.push('Game ' + (ser.n + 1) + (ser.n ? ': ' + ser.status : ' of the series'));
+    if (ser) bits.push(ser.agg ? (ser.n ? 'Second leg: ' + ser.status : 'First leg') : 'Game ' + (ser.n + 1) + (ser.n ? ': ' + ser.status : ' of the series'));
     if (pa && pb && Math.min(pa.gp || 0, pb.gp || 0) >= 3) bits.push(ordShort(pa.pos) + ' against ' + ordShort(pb.pos));
     if (turn) bits.push('the numbers say it turns on ' + turn.label);
     if (met.length && !ser) bits.push(met.length === 1 ? 'a rematch' : 'meeting ' + spell(met.length + 1) + ' this season');
@@ -1461,7 +1465,7 @@ function coverage(stories, X) {
   const groups = [...X.S.entries()];
   const sh = X.shape;
   if (groups.length && X.maxGp >= 3) {
-    if (sh && sh.trusted && !sh.over && sh.total >= 6) big.push(cap(spell(X.maxGp)) + ' games into a ' + sh.total + '-game regular season, with ' + plural(sh.left, 'game') + ' left for most clubs.');
+    if (sh && sh.trusted && !sh.over && sh.total >= 6) big.push(cap(plural(sh.total - sh.left, 'game')) + ' into ' + anNum(sh.total) + ' ' + sh.total + '-game regular season, with ' + plural(sh.left, 'game') + ' left for most clubs.');
     groups.slice(0, 3).forEach(([g, rows]) => {
       const pl = rows.filter(r => r.gp > 0);
       if (pl.length < 3) return;
@@ -1555,7 +1559,9 @@ function coverage(stories, X) {
   const put = (iso, item) => { const k = keyOf(iso); if (!days.has(k)) days.set(k, { day: k, at: iso, items: [] }); days.get(k).items.push(item); };
   sl.filter(s => s.stakes >= 0.8).slice(0, 6).forEach(s => {
     const before = new Date(time(s.at) - DAY).toISOString();
-    if (time(before) > X.nowMs) put(before, { kind: 'preview', what: 'Preview: ' + s.title + (s.angle ? ' — ' + s.angle.charAt(0).toLowerCase() + s.angle.slice(1) : ''), game: s.game });
+    /* the angle after a dash starts small, unless it starts with a name ("Game 2", a club) */
+    const ang = s.angle ? (/^(Game \d|First leg|Second leg)/.test(s.angle) ? s.angle : s.angle.charAt(0).toLowerCase() + s.angle.slice(1)) : '';
+    if (time(before) > X.nowMs) put(before, { kind: 'preview', what: 'Preview: ' + s.title + (ang ? ' — ' + ang : ''), game: s.game });
     put(s.at, { kind: 'recap', what: 'Recap after the game: ' + s.title + '.', game: s.game });
   });
   const firstDay = new Date(X.nowMs + DAY).toISOString();

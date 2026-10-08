@@ -175,8 +175,8 @@ console.log('\nthe season’s shape: how far through it, who can still catch who
   /* a 40-game season eight games in */
   const early = N.build(Object.assign({}, base, { remaining: { t1: 34, t2: 34, t3: 32, t4: 33, t5: 34, t6: 33 }, lastRegularAt: at(-150) }));
   const race = early.stories.find(s => s.kind === 'race');
-  ok('early on, the race says how far through the season it is', race && /^Eight games into a 40-game season, the table is a first draft/.test(race.why), race && race.why);
-  ok('...and the big picture says it too', early.coverage.bigPicture.some(p => /^Eight games into a 40-game regular season/.test(p)), early.coverage.bigPicture);
+  ok('early on, the race says how far through the season it is', race && /^Seven games into a 40-game season, the table is a first draft/.test(race.why), race && race.why);
+  ok('...and the big picture says it too', early.coverage.bigPicture.some(p => /^Seven games into a 40-game regular season/.test(p)), early.coverage.bigPicture);
   /* the run-in: one game each left, the top three go through */
   const late = N.build(Object.assign({}, base, { comp: { id: 'c1', name: 'The League', qualifiers: 3 }, remaining: { t1: 1, t2: 1, t3: 0, t4: 1, t5: 1, t6: 1 },
     lastRegularAt: at(-7), lastTotal: 8 }));
