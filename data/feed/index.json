@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-08T13:56:49.746512+00:00",
+ "updated": "2026-10-08T15:03:48.030119+00:00",
  "competitions": [
   {
    "code": "ABA",
@@ -54,8 +54,8 @@
    "code": "BGNBL",
    "label": "NBL Bulgaria",
    "adapter": "bgnbl",
-   "games": 0,
-   "updated": "2026-09-24T09:24:46.024801+00:00"
+   "games": 15,
+   "updated": "2026-10-08T15:03:48.014379+00:00"
   },
   {
    "code": "BLJ",
