@@ -164,6 +164,16 @@ console.log('-- the profile page');
   const names = /basketball-?reference|bbref|kenpom|torvik|cleaning ?the ?glass|nba\.com|realgm|eurobasket|sports-reference/i;
   const files = [['epinoia', 'similar.js'], ['epinoia', 'p', 'similar-ui.js'], ['epinoia', 'kit', 'similar.css'], ['tools', 'build-similar.mjs']];
   ok('no new file names another stats site', files.every(f => !names.test(rd(...f))), files.filter(f => names.test(rd(...f))));
+  /* 2026-10-08: the panel's title is a centred subtitle with the section title's mark, and an opened match says whose is whose */
+  const ui = rd('epinoia', 'p', 'similar-ui.js'), css = rd('epinoia', 'kit', 'similar.css');
+  ok('the panel\'s title is a centred subtitle (sectitle.css .sec-sub), not a small label at the left',
+     /el\('h3', 'sec-sub sim-title', 'similar players'\)/.test(ui) && /\.sim-head\{[^}]*justify-items:center/.test(css) &&
+     /body \.sec-sub\{/.test(rd('epinoia', 'kit', 'sectitle.css')) && /body \.sec-sub::after\{/.test(rd('epinoia', 'kit', 'teletext.css').replace(/body \.sec-h h2::after, body \.ep-hdr h2::after, /, '')));
+  ok('an opened match starts with a key: both names and marks, each surname over its own column',
+     /wrap\.appendChild\(key\(names\)\)/.test(ui) && /'sm-kc ' \+ c, shortName\(names\[i\]\)/.test(ui));
+  ok('the two players never share a colour: the match is not drawn in the club\'s second colour, and is a ring',
+     /--sm-them:var\(--aqua\)/.test(css) && !/\.sm-(dot|mv)\.them\{[^}]*team-b-ink/.test(css) &&
+     /\.sm-dot\.them\{[^}]*border:2\.5px solid var\(--sm-them\)/.test(css));
   ok('the visible text says nothing of the player\'s gender', !/\b(his|him|her|she|he)\b/i.test(rd('epinoia', 'p', 'similar-ui.js').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')));
 }
 

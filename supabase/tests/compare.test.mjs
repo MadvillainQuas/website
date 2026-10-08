@@ -495,12 +495,15 @@ console.log('\n10. the comparison on every league\'s table');
   ok('the tray falls back to the shared comparison when a page gives no onCompare',
      /if \(typeof opts\.onCompare === 'function'\)[\s\S]{0,80}openCompare\(\);/.test(ft));
   ok('openCompare hands over the picks, the stats on screen, the ranks and the categories',
-     /C\.open\(C\.fromTable\(\{[\s\S]{0,200}picks: getSelected\(\), statKeys: keys, cols: CAT, ranks, groups: presets/.test(ft));
+     /C\.open\(C\.fromTable\(\{[\s\S]{0,200}picks: getSelected\(\), statKeys: keys, cols: CAT, ranks, ranksPos, positionOf, byPos, groups: presets/.test(ft));
+  ok('...ranked as a whole and within the position groups, the chart opening as the table is set',
+     /getRanksFor\(rankable, false\)/.test(ft) && /getRanksFor\(rankable, true\)/.test(ft) &&
+     /const rankGroup = \(\) => rankGroupFor\(byPos\);/.test(ft) && /const grp = pos == null \? rankGroup\(\) : rankGroupFor\(!!pos\);/.test(ft));
   ok('every comparable column is ranked, so a stat chosen from a dropdown has its percentile',
      /const rankable = CAT\.filter\(c => c\.heat && !absent\(c\.k\)\)\.map\(c => c\.k\);/.test(ft) &&
-     /getRanksFor\(rankable\)/.test(ft));
+     /getRanksFor\(rankable, (false|true)\)/.test(ft));
   ok('getRanksFor is a function the table can call, not only an API method',
-     /function getRanksFor\(keys\) \{/.test(ft) && /getRanks: getRanksFor,/.test(ft));
+     /function getRanksFor\(keys, pos\) \{/.test(ft) && /getRanks: getRanksFor,/.test(ft) && /positionOf,\s+getByPos: \(\) => byPos,/.test(ft));
   ok('a team table never opens the player comparison', /typeof C\.open !== 'function' \|\| isTeam\) return;/.test(ft));
   ok('the compare script is reached through the global it is loaded as',
      /const api = factory\(root\);/.test(ft) && /const C = root\.EpinoiaCompare;/.test(ft));
@@ -521,6 +524,129 @@ console.log('\n10. the comparison on every league\'s table');
   const lg = rd('epinoia', 'l', 'league.js');
   ok('the team table is left alone', (lg.match(/selectable: \{ max: 5 \}/g) || []).length === 1 &&
      lg.indexOf('selectable') < lg.indexOf("kind: 'team'"));
+}
+
+/* ------------------------------------------ 11. the reader's own order --- */
+console.log('\n11. moving a stat up or down (2026-10-08)');
+{
+  const s = C.html(base({ width: 900, reorder: true }));
+  ok('every stat\'s label is a handle, focusable, named for what it moves',
+     count(s, /<g class="cmp-grabg" data-cmp-grab="[^"]+" tabindex="0" role="button"/g) === stats.length &&
+     /aria-label="Move PPG up or down"/.test(s));
+  ok('six dots before each label, and the label moved past them', count(s, /<circle class="cmp-dot"/g) === 6 * stats.length &&
+     /<text class="cmp-label" x="13"/.test(s));
+  ok('every block says where it is (a drag reads it)', count(s, /<g class="cmp-block" data-stat="[^"]+" data-y="[\d.]+" data-h="[\d.]+">/g) === stats.length);
+  const plain = C.html(base({ width: 900 }));
+  ok('without the ask, the chart is as it was: no handles, labels at the edge',
+     !/cmp-grab/.test(plain) && /<text class="cmp-label" x="0"/.test(plain));
+  ok('one stat has nowhere to go: no handle', !/cmp-grab/.test(C.html(base({ width: 900, reorder: true, stats: stats.slice(0, 1) }))));
+  ok('on a phone too, and no text under 11px', count(C.html(base({ width: 375, reorder: true })), /data-cmp-grab=/g) === stats.length);
+
+  const B = [{ key: 'a', y: 0, h: 34 }, { key: 'b', y: 48, h: 34 }, { key: 'c', y: 96, h: 34 }];
+  ok('a small drag lands where it started', C.dropAt(B, 'a', 10).index === 0 && C.dropAt(B, 'b', -10).index === 1);
+  ok('dragged past the next one\'s middle, it lands after it', C.dropAt(B, 'a', 50).index === 1 && C.dropAt(B, 'a', 46).index === 0);
+  ok('dragged to the bottom, it lands last, the line under the last block', C.dropAt(B, 'a', 300).index === 2 && C.dropAt(B, 'a', 300).y === 132);
+  ok('dragged to the top, it lands first, the line inside the chart', C.dropAt(B, 'c', -300).index === 0 && C.dropAt(B, 'c', -300).y === 1);
+  ok('the line sits in the gap before the block it lands ahead of', C.dropAt(B, 'c', -60).index === 1 && C.dropAt(B, 'c', -60).y === 41);
+
+  /* the keys, through a host as small as the others in this file */
+  const chart = { clientWidth: 900, innerHTML: '' };
+  const host = { clientWidth: 900, _html: '', listeners: {},
+    set innerHTML(v) { this._html = v; }, get innerHTML() { return this._html; },
+    querySelector: sel => (sel === '.cmp-chart' ? chart : null), contains: () => true,
+    addEventListener(t, fn) { (this.listeners[t] = this.listeners[t] || []).push(fn); },
+    removeEventListener(t, fn) { this.listeners[t] = (this.listeners[t] || []).filter(f => f !== fn); } };
+  const seen = [];
+  const api = C.render(host, base({ allStats: stats, onChange: c => seen.push(c) }));
+  const key = (k, which) => {
+    let stopped = false;
+    const g = { getAttribute: a => (a === 'data-cmp-grab' ? k : null) };
+    g.closest = sel => (sel === '[data-cmp-grab]' ? g : null);
+    (host.listeners.keydown || []).forEach(fn => fn({ key: which, target: g, preventDefault() { stopped = true; } }));
+    return stopped;
+  };
+  ok('the chart in the host is drawn with its handles', /data-cmp-grab="ppg"/.test(chart.innerHTML));
+  const start = api.state.keys.slice();
+  const click = (attrName, value) => {
+    const b = { getAttribute: k => (k === attrName ? value : null) };
+    b.closest = sel => (sel === '[' + attrName + ']' ? b : null);
+    (host.listeners.click || []).forEach(fn => fn({ target: b }));
+  };
+  click('data-cmp-stat', 'ts');
+  click('data-cmp-stat', 'ts');
+  ok('before any move, a stat put back returns to its place', api.state.keys.join() === start.join());
+  seen.length = 0;
+  ok('the down arrow moves a stat one place down, and the page does not scroll', key('ppg', 'ArrowDown') &&
+     api.state.keys[0] === start[1] && api.state.keys[1] === 'ppg' && seen.length === 1 && seen[0].stats[1] === 'ppg');
+  ok('the chart is drawn in the new order', chart.innerHTML.indexOf('data-stat="' + start[1] + '"') < chart.innerHTML.indexOf('data-stat="ppg"'));
+  key('ppg', 'ArrowUp');
+  ok('the up arrow moves it back', api.state.keys.join() === start.join());
+  key(start[0], 'ArrowUp');
+  ok('the first cannot go higher', api.state.keys.join() === start.join() && seen.length === 2);
+  key(start[start.length - 1], 'ArrowDown');
+  ok('the last cannot go lower', api.state.keys.join() === start.join());
+  ok('other keys are left to the page', key('ppg', 'Enter') === false);
+  key('ppg', 'ArrowDown');
+  click('data-cmp-stat', 'bpm');
+  click('data-cmp-stat', 'bpm');
+  ok('after a move, a stat put back goes on the end: the reader\'s order is kept',
+     api.state.keys[api.state.keys.length - 1] === 'bpm' && api.state.keys[0] === 'ts' && api.state.keys[1] === 'ppg');
+  ok('the picture draws the reader\'s order', C.exportModel(api.current()).stats.map(x => x.key).join() === api.state.keys.join());
+  api.destroy();
+}
+
+/* --------------------------------------------- 12. adjust for position --- */
+console.log('\n12. adjust for position (2026-10-08)');
+{
+  const T = require(path.join(ROOT, 'epinoia', 'fulltable.js'));
+  const cols = T.PLAYER_COLS;
+  const picks = [{ id: 'p1', name: 'Ada', ppg: 20, gp: 10 }, { id: 'p2', name: 'Bea', ppg: 10, gp: 10 }];
+  const ranks = new Map([['ppg', new Map([['p1', 90], ['p2', 40]])]]);
+  const ranksPos = new Map([['ppg', new Map([['p1', 60], ['p2', 80]])]]);
+  const plain = C.fromTable({ picks, statKeys: ['ppg'], cols, ranks });
+  ok('without position ranks, no position percentiles and no switch', plain.pctsPos === null && plain.byPos === false);
+  const o = C.fromTable({ picks, statKeys: ['ppg'], cols, ranks, ranksPos, positionOf: r => (r.id === 'p1' ? 'guards' : 'bigs') });
+  ok('with them, each player has both, and the group each was ranked in',
+     o.pcts.p1.ppg === 90 && o.pctsPos.p1.ppg === 60 && o.pctsPos.p2.ppg === 80 && o.players[0].pos === 'guards' && o.byPos === false);
+  ok('the chart can open adjusted, as the table is', C.fromTable({ picks, statKeys: ['ppg'], cols, ranks, ranksPos, byPos: true }).byPos === true);
+
+  const chart = { clientWidth: 900, innerHTML: '' };
+  const host = { clientWidth: 900, _html: '', listeners: {},
+    set innerHTML(v) { this._html = v; }, get innerHTML() { return this._html; },
+    querySelector: sel => (sel === '.cmp-chart' ? chart : null), contains: () => true,
+    addEventListener(t, fn) { (this.listeners[t] = this.listeners[t] || []).push(fn); },
+    removeEventListener(t, fn) { this.listeners[t] = (this.listeners[t] || []).filter(f => f !== fn); } };
+  const click = (attrName, value) => {
+    const b = { getAttribute: k => (k === attrName ? value : null) };
+    b.closest = sel => (sel === '[' + attrName + ']' ? b : null);
+    (host.listeners.click || []).forEach(fn => fn({ target: b }));
+  };
+  const seen = [];
+  const api = C.render(host, Object.assign({}, o, { stats: o.stats.filter(s => s.key === 'ppg'), onChange: c => seen.push(c) }));
+  ok('the switch is beside the scale, in the table\'s words, off', /data-cmp-pos="1" aria-pressed="false"[^>]*>adjust for position</.test(host.innerHTML));
+  ok('off, the league percentiles are drawn', />90th</.test(chart.innerHTML) && />40th</.test(chart.innerHTML) && !/cmp-chip-pos/.test(host.innerHTML));
+  click('data-cmp-pos', '1');
+  ok('on, the position percentiles are drawn instead', />60th</.test(chart.innerHTML) && />80th</.test(chart.innerHTML) &&
+     /aria-pressed="true"[^>]*>adjust for position</.test(host.innerHTML) && seen[0].byPos === true);
+  ok('...and each player\'s chip says the group', /<span class="cmp-chip-pos">guards<\/span>/.test(host.innerHTML) && /<span class="cmp-chip-pos">bigs<\/span>/.test(host.innerHTML));
+  ok('...and the picture says so', /by position/.test(C.exportModel(api.current()).sub) && C.exportModel(api.current()).stats[0].cells[0].pct === 60);
+  click('data-cmp-mode', 'value');
+  ok('on the value scale there is nothing to adjust: no switch', !/data-cmp-pos/.test(host.innerHTML) && />20\.0</.test(chart.innerHTML));
+  click('data-cmp-mode', 'pct');
+  ok('back on percentiles, it is as it was left', /aria-pressed="true"[^>]*>adjust for position</.test(host.innerHTML) && />60th</.test(chart.innerHTML));
+  api.destroy();
+  const none = { clientWidth: 900, innerHTML: '' };
+  const h2 = Object.assign({}, host, { listeners: {}, _html: '', querySelector: sel => (sel === '.cmp-chart' ? none : null) });
+  C.render(h2, plain);
+  ok('a caller with no position ranks gets no switch', !/data-cmp-pos/.test(h2._html));
+
+  const sc = rd('epinoia', 'scouting', 'scouting.js'), ft = rd('epinoia', 'fulltable.js');
+  ok('global scouting hands over both, opening as its table is set',
+     /ranksPos: pos \? tbl\.getRanks\(S\.every, true\) : null/.test(sc) && /tbl\.getByPos\(\)/.test(sc) && /pctsPos, byPos:/.test(sc));
+  ok('a league\'s statistics table does too', /getRanksFor\(rankable, true\)/.test(ft) && /ranks, ranksPos, positionOf, byPos,/.test(ft));
+  const css = rd('epinoia', 'kit', 'compare.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok('compare.css styles the handles, the drop line and the group on a chip',
+     /\.cmp-grabg\{[^}]*touch-action:none/.test(css) && /\.cmp-drop\{/.test(css) && /\.cmp-chip-pos\{/.test(css));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

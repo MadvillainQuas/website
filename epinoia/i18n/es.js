@@ -1941,7 +1941,10 @@
       'Could not load the leagues.': 'No se pudieron cargar las ligas.',
       'The comparison could not be loaded.': 'No se pudo cargar la comparación.',
       'This competition’s statistics are built on the server, hourly — the first build is on its way.': 'Las estadísticas de esta competición se calculan en el servidor cada hora; la primera ya está en camino.',
-      'Percentiles: each player among the players of their own competition that season.': 'Percentiles: cada jugador entre los jugadores de su propia competición esa temporada.'
+      'Percentiles: each player among the players of their own competition that season.': 'Percentiles: cada jugador entre los jugadores de su propia competición esa temporada.',
+      'Drag up or down to reorder, or use the arrow keys': 'Arrastra arriba o abajo para reordenar, o usa las flechas del teclado',
+      'rank each player against their own position group rather than the whole competition': 'compara a cada jugador con su propio grupo de posición en lugar de con toda la competición',
+      'similar players': 'Jugadores similares'
     },
 
     ctx: {
@@ -2994,6 +2997,8 @@
       [/^take (.+) out of the comparison$/, 'Quitar a $1 de la comparación'],
       [/^take (.+) out$/, 'Quitar a $1'],
       [/^Compare (\d+) players$/, 'Comparar $1 jugadores'],
+      /* the compare chart's handle on a stat's label (compare.js html, o.reorder) */
+      [/^Move (.+) up or down$/, (m, T) => 'Mover ' + T(m[1]) + ' arriba o abajo'],
       [/^(\d+) members-only leagues? not included$/, m => m[1] === '1' ? '1 liga solo para socios no incluida' : m[1] + ' ligas solo para socios no incluidas'],
       /* a club's page and a player's page */
       [/^last 1 game$/i, 'Último partido'],

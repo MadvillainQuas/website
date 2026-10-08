@@ -1162,7 +1162,8 @@ function paintBars(mine, field) {
       cb.classList.toggle('on', on);
       cb.setAttribute('aria-expanded', on ? 'true' : 'false');
       cmpHost.textContent = '';
-      if (on) PC.open(cmpHost, Object.assign({}, cmpCtx, { focus, onClose: () => { show(false); cb.focus(); } }));
+      /* byPos: the chart opens adjusted for position where the bars are */
+      if (on) PC.open(cmpHost, Object.assign({}, cmpCtx, { focus, byPos: barsByPos, onClose: () => { show(false); cb.focus(); } }));
     };
     cb.addEventListener('click', () => show(!cmpOpen, true));
     show(cmpOpen, false);

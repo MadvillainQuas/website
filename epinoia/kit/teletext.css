@@ -218,7 +218,7 @@ html.tt-on .sec[tabindex="-1"]:focus, html.tt-on section[tabindex="-1"]:focus{ o
    .ep-hdr) becomes a small mosaic: a stepped heap of separated blocks in the
    page's three colours.
    ============================================================================ */
-body .sec-h h2::after, body .ep-hdr h2::after{
+body .sec-h h2::after, body .ep-hdr h2::after, body .sec-sub::after{
   width:66px; height:12px; margin:12px auto 0; border-radius:0;
   background:linear-gradient(90deg,var(--tt-m1) 0 36%,var(--tt-m2) 36% 68%,var(--tt-m3) 68%);
   -webkit-mask:var(--tt-mosaic) center/66px 12px no-repeat; mask:var(--tt-mosaic) center/66px 12px no-repeat }

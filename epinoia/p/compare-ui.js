@@ -54,18 +54,28 @@ function model(o) {
   const locked = typeof o.locked === 'function' ? o.locked : () => false;
   const heat = cols.filter(c => c && c.heat && !locked(c.k));
   const keys = heat.map(c => c.k), low = heat.filter(c => c.low).map(c => c.k);
+  /* each field ranked twice: as a whole, and within its position groups (season.js positionGroups, cut over that field
+     -- a third of a league's players are its guards whatever the other league looks like) */
+  const groupsOf = typeof o.positionGroups === 'function' ? o.positionGroups : null;
   const rank = (field, id) => {
     const pool = (field || []).filter(r => r && (r.gp || 0) >= 1).map(prep);
     const m = o.percentiles(pool, keys, low, null);
-    return k => { const t = m.get(k); const p = t ? t.get(id) : null; return fin(p) ? p : null; };
+    const g = groupsOf ? groupsOf(pool) : null;
+    const mp = g ? o.percentiles(pool, keys, low, r => g.get(r.id) || null) : null;
+    const at = (map, k) => { const t = map && map.get(k); const p = t ? t.get(id) : null; return fin(p) ? p : null; };
+    return { all: k => at(m, k), pos: k => at(mp, k), group: g ? g.get(id) || null : null };
   };
   const otherId = o.other.playerId != null ? o.other.playerId : o.other.id;
   const pa = rank(o.mineField, o.mine.id), pb = rank(o.otherField, otherId);
-  const ranks = new Map(keys.map(k => [k, new Map([['a', pa(k)], ['b', pb(k)]])]));
+  const ranks = new Map(keys.map(k => [k, new Map([['a', pa.all(k)], ['b', pb.all(k)]])]));
+  const ranksPos = groupsOf ? new Map(keys.map(k => [k, new Map([['a', pa.pos(k)], ['b', pb.pos(k)]])])) : null;
+  const label = g => (g && typeof o.positionLabel === 'function' ? o.positionLabel(g) : '') || '';
   return {
     picks: [Object.assign(prep(o.mine), o.mineAs || {}, { id: 'a' }), Object.assign(prep(o.other), o.otherAs || {}, { id: 'b' })],
     statKeys: cols.filter(c => Array.isArray(c.g) && c.g.indexOf('basic') >= 0).map(c => c.k),
-    cols, ranks, groups: o.groups || [], locked, max: 2,
+    cols, ranks, ranksPos, byPos: !!(o.byPos && ranksPos),
+    positionOf: r => label(r && r.id === 'a' ? pa.group : r && r.id === 'b' ? pb.group : null),
+    groups: o.groups || [], locked, max: 2,
     league: o.league || null, range: o.range || '', title: o.title || '', note: o.note || ''
   };
 }
@@ -127,6 +137,8 @@ function open(host, ctx) {
   const box = el('form', 'pcmp');
   box.setAttribute('aria-label', 'Compare with another player');
   box.noValidate = true;
+  /* its own subtitle, centred with the section title's mark (sectitle.css .sec-sub), as similar players has */
+  box.appendChild(el('h3', 'sec-sub pcmp-title', 'compare players'));
   const field = (label, cls) => {
     const w = el('label', 'pcmp-f ' + cls);
     w.appendChild(el('span', 'pcmp-l', label));
@@ -219,6 +231,8 @@ function open(host, ctx) {
     C.open(C.fromTable(model({
       mine: ctx.mine, mineField: ctx.field, other, otherField: data.field,
       cols: T.PLAYER_COLS, groups: T.PRESETS && T.PRESETS.player, locked, percentiles: SE.percentiles,
+      /* adjust for position: offered in the chart, and on from the start where the bars above are adjusted */
+      positionGroups: SE.positionGroups, positionLabel: SE.positionLabel, byPos: !!ctx.byPos,
       mineAs: { name: ctx.name, leagueShort: ctx.label, teamFull: t.name || '', teamName: t.short || t.name || '',
                 teamShort: t.short || '', colour: t.colour || null, teamLogo: t.logo || null, photo_url: ctx.photo || null },
       otherAs: { leagueShort: (L.short + ' ' + G.shortSeason(S.name)).trim() },

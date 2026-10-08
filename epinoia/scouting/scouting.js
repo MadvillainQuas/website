@@ -217,26 +217,31 @@ function compareInput(picks, statKeys, cols, ranks, opt) {
   const o = opt || {};
   const S = compareStats(statKeys, cols, o.locked);
   const rows = (picks || []).slice(0, 5);
-  const values = {}, pcts = {};
+  /* o.ranksPos: the same, within each player's position group -- the chart's "adjust for position" switch */
+  const ranksPos = o.ranksPos && o.ranksPos.get ? o.ranksPos : null;
+  const values = {}, pcts = {}, pctsPos = ranksPos ? {} : null;
+  const pctOf = (m, r, id) => { const p = m && m.get ? (m.has(r.id) ? m.get(r.id) : m.get(id)) : null; return fin(p) ? p : null; };
   rows.forEach(r => {
     const id = String(r.id);
     values[id] = {}; pcts[id] = {};
+    if (pctsPos) pctsPos[id] = {};
     S.every.forEach(k => {
       values[id][k] = fin(r[k]) ? r[k] : null;
-      const m = ranks && ranks.get ? ranks.get(k) : null;
-      const p = m && m.get ? (m.has(r.id) ? m.get(r.id) : m.get(id)) : null;
-      pcts[id][k] = fin(p) ? p : null;
+      pcts[id][k] = pctOf(ranks && ranks.get ? ranks.get(k) : null, r, id);
+      if (pctsPos) pctsPos[id][k] = pctOf(ranksPos.get(k), r, id);
     });
   });
+  const posOf = r => { try { return typeof o.positionOf === 'function' ? String(o.positionOf(r) || '') : ''; } catch (_) { return ''; } };
   return {
     title: 'Compare ' + rows.length + ' players',
-    players: rows.map(r => ({ id: String(r.id), name: r.name || 'Player', league: r.leagueShort || r.leagueName || '' })),
+    players: rows.map(r => Object.assign({ id: String(r.id), name: r.name || 'Player', league: r.leagueShort || r.leagueName || '' },
+      ranksPos ? { pos: posOf(r) } : {})),
     stats: S.keys.map(k => statOf(S.byKey.get(k))),
     allStats: S.pool.map(k => statOf(S.byKey.get(k))),
     /* the table's categories, each a dropdown of its own stats — built by the caller from
        EpinoiaCompare.tableGroups, because that is the same list a league's own table offers */
     statGroups: o.statGroups || [],
-    values, pcts,
+    values, pcts, pctsPos, byPos: !!(o.byPos && pctsPos),
     mode: 'pct',
     note: o.withinLeague === false
       ? 'Percentiles across every league on this page, among the players the table covers before stat filters and search.'
@@ -544,8 +549,12 @@ function boot() {
     /* every comparable column, not only the chips': the category dropdowns can choose any of
        them, and a stat without its percentile draws as "no data" */
     const groups = typeof C.tableGroups === 'function' ? C.tableGroups(T.PRESETS.player, T.PLAYER_COLS, locked) : [];
-    const o = compareInput(picks, statKeys, T.PLAYER_COLS, tbl.getRanks(S.every),
-      { locked, withinLeague: within, statGroups: groups });
+    /* the percentiles without and within the position groups, the chart opening on the one the table shows */
+    const pos = typeof tbl.positionOf === 'function';
+    const o = compareInput(picks, statKeys, T.PLAYER_COLS, pos ? tbl.getRanks(S.every, false) : tbl.getRanks(S.every),
+      { locked, withinLeague: within, statGroups: groups,
+        ranksPos: pos ? tbl.getRanks(S.every, true) : null, positionOf: pos ? tbl.positionOf : null,
+        byPos: pos && typeof tbl.getByPos === 'function' ? tbl.getByPos() : false });
     if (phone() || !panel) { closePanel(); C.open(o); return; }
     closePanel();
     panel.hidden = false;

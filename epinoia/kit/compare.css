@@ -55,6 +55,8 @@
 .cmp-stats{ display:flex; flex-wrap:wrap; gap:4px; min-width:0 }
 .cmp-stat{ padding:0 8px; min-height:28px; border-radius:2px; border:1px solid var(--rule) }
 .cmp-stat:hover, .cmp-mode-btn:hover{ color:var(--ink) }
+/* a pressed button keeps its own text colour under the pointer (the hover above came later and won) */
+.cmp-mode-btn[aria-pressed="true"]:hover{ color:var(--on-accent) }
 .cmp-stat.on{ color:var(--on-accent); background:var(--lume); border-color:var(--lume) }
 .cmp-stats[hidden]{ display:none }
 /* on a phone the chips sit under the chart, behind this button (compare.js statsHtml) */
@@ -92,6 +94,18 @@
 .cmp-chart{ min-width:0; width:100%; overflow:hidden }
 .cmp-svg{ display:block; max-width:100%; height:auto; overflow:visible }
 .cmp-label{ fill:var(--ink-2); font-family:var(--f-micro); letter-spacing:.04em }
+/* a stat's label is its handle (compare.js html() o.reorder): six dots, the label's column or line to take hold of,
+   the block lifted while it is dragged and a line where it will land; the arrow keys move it once focused */
+.cmp-grabg{ cursor:grab; touch-action:none; outline:none }
+.cmp-grab{ fill:transparent }
+.cmp-dot{ fill:var(--ink-3) }
+.cmp-grabg:hover .cmp-dot{ fill:var(--ink) }
+.cmp-grabg:hover .cmp-label{ fill:var(--ink) }
+.cmp-grabg:focus-visible .cmp-grab{ stroke:var(--aqua); stroke-width:2 }
+.cmp-block.cmp-dragging{ opacity:.85; cursor:grabbing }
+.cmp-drop{ stroke:var(--lume); stroke-width:2 }
+.cmp-mode-btn.cmp-pos{ border:1px solid var(--rule-2); border-radius:3px }
+.cmp-chip-pos{ flex:none; font-family:var(--f-micro); font-size:11px; letter-spacing:.04em; color:var(--ink-2); text-transform:uppercase }
 .cmp-track{ fill:var(--panel-2) }
 .cmp-mid{ stroke:var(--rule-2); stroke-width:1; stroke-dasharray:2 3 }
 .cmp-zero{ stroke:var(--ink-2); stroke-width:1 }

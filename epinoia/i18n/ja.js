@@ -1939,7 +1939,10 @@
       'Could not load the leagues.': 'リーグを読み込めませんでした。',
       'The comparison could not be loaded.': '比較を読み込めませんでした。',
       'This competition’s statistics are built on the server, hourly — the first build is on its way.': 'この大会の成績はサーバーで1時間ごとに集計されます。最初の集計は準備中です。',
-      'Percentiles: each player among the players of their own competition that season.': 'パーセンタイル：各選手を、そのシーズンの自分の大会の選手の中で順位付けしています。'
+      'Percentiles: each player among the players of their own competition that season.': 'パーセンタイル：各選手を、そのシーズンの自分の大会の選手の中で順位付けしています。',
+      'Drag up or down to reorder, or use the arrow keys': '上下にドラッグして並べ替え（矢印キーでも移動できます）',
+      'rank each player against their own position group rather than the whole competition': '大会全体ではなく、各選手を同じポジショングループの選手と比べて順位付けします',
+      'similar players': '類似選手'
     },
 
     ctx: {
@@ -2994,6 +2997,8 @@
       [/^take (.+) out of the comparison$/, '$1を比較から外す'],
       [/^take (.+) out$/, '$1を外す'],
       [/^Compare (\d+) players$/, '$1人の選手を比較'],
+      /* the compare chart's handle on a stat's label (compare.js html, o.reorder) */
+      [/^Move (.+) up or down$/, (m, T) => T(m[1]) + 'を上下に移動'],
       [/^(\d+) members-only leagues? not included$/, '会員限定リーグ$1件は含まれていません'],
       /* a club's page and a player's page */
       [/^last 1 game$/i, '直近1試合'],

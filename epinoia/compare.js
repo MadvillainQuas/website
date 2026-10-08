@@ -82,6 +82,7 @@ const FONT = 11;             /* every piece of text; never smaller              
 const CHAR = 9;              /* a generous character width for Silkscreen at 11px,
                                 used only to cut a label before it overruns        */
 const MIN_WIDTH = 240;
+const GRIP = 13;             /* the six dots before a label that can be dragged    */
 
 /* signed stats: those whose zero means "no better or worse than average", or even */
 const isSigned = (key, stat) => !!(stat && stat.signed) ||
@@ -150,6 +151,8 @@ function html(o) {
       esc(P.length ? 'Pick a stat to compare' : 'Pick two to five players to compare') + '</text></svg>';
   }
 
+  /* o.reorder: render() asks for the handles; one stat has nowhere to go */
+  const grab = !!o.reorder && S.length > 1;
   const trackX = (narrow ? 0 : LABEL_COL) + NUM_GUTTER;
   const trackW = Math.max(40, W - trackX - VAL_GUTTER);
   const valX = W;                                     /* the figure is right-aligned to the edge */
@@ -171,20 +174,37 @@ function html(o) {
     const xAt = v => trackX + ((v - lo) / span) * trackW;
     const x0 = mode === 'value' ? xAt(0) : trackX;
 
-    parts.push('<g class="cmp-block" data-stat="' + esc(key) + '">');
+    /* the block's own place (data-y, data-h) is written once its rows are drawn: a drag reads it */
+    const blockAt = parts.length, blockTop = y;
+    parts.push('');
     let rowsTop;
+    const rowsH = P.length * ROW;
+    /* THE LABEL IS THE HANDLE when the chart can be reordered (o.reorder, render()): six dots before it, and the
+       label's line (a phone) or its column (wider) to take hold of; arrow keys move it once it has the focus */
+    const tx = grab ? GRIP : 0;
+    let labelY, gx, gy, gw, gh;
     if (narrow) {
       /* a label never runs off a phone */
-      parts.push('<text class="cmp-label" x="0" y="' + px(y + 13) + '" font-size="' + FONT + '" data-i18n-ctx="col">' +
-        '<title>' + esc(label) + '</title>' + esc(clip(label, Math.floor(W / CHAR))) + '</text>');
+      labelY = y + 13;
       rowsTop = y + LABEL_LINE;
+      const shown = clip(label, Math.floor((W - tx) / CHAR));
+      gx = 0; gy = y; gw = Math.min(W, tx + shown.length * CHAR + 6); gh = LABEL_LINE;
     } else {
       rowsTop = y;
-      const midY = y + (P.length * ROW) / 2 + 4;
-      parts.push('<text class="cmp-label" x="0" y="' + px(midY) + '" font-size="' + FONT + '" data-i18n-ctx="col">' +
-        '<title>' + esc(label) + '</title>' + esc(clip(label, Math.floor((LABEL_COL - 8) / CHAR))) + '</text>');
+      labelY = y + rowsH / 2 + 4;
+      gx = 0; gy = rowsTop; gw = LABEL_COL - 8; gh = rowsH;
     }
-    const rowsH = P.length * ROW;
+    const text = '<text class="cmp-label" x="' + tx + '" y="' + px(labelY) + '" font-size="' + FONT + '" data-i18n-ctx="col">' +
+      '<title>' + esc(label) + '</title>' + esc(clip(label, Math.floor((narrow ? W - tx : LABEL_COL - 8 - tx) / CHAR))) + '</text>';
+    if (grab) {
+      const cy = labelY - 4, dots = [];
+      [-3.5, 0, 3.5].forEach(dy => [2.5, 6.5].forEach(dx =>
+        dots.push('<circle class="cmp-dot" cx="' + px(dx) + '" cy="' + px(cy + dy) + '" r="1.2"/>')));
+      parts.push('<g class="cmp-grabg" data-cmp-grab="' + esc(key) + '" tabindex="0" role="button" aria-label="' +
+        esc('Move ' + label + ' up or down') + '"><title>Drag up or down to reorder, or use the arrow keys</title>' +
+        '<rect class="cmp-grab" x="' + px(gx) + '" y="' + px(gy) + '" width="' + px(gw) + '" height="' + px(gh) + '"/>' +
+        dots.join('') + text + '</g>');
+    } else parts.push(text);
 
     /* the track behind all of this stat's rows, then its guide line: the median in
        percentile mode, zero for a signed stat in value mode */
@@ -248,6 +268,8 @@ function html(o) {
     });
 
     parts.push('</g>');
+    parts[blockAt] = '<g class="cmp-block" data-stat="' + esc(key) + '" data-y="' + px(blockTop) + '" data-h="' +
+      px(rowsTop + rowsH - blockTop) + '">';
     y = rowsTop + rowsH;
   });
 
@@ -265,15 +287,39 @@ function legendHtml(o) {
   return '<ul class="cmp-legend">' + P.map((p, i) =>
     '<li class="cmp-chip cmp-s' + i + '"><b class="cmp-chip-n" aria-hidden="true">' + (i + 1) + '</b>' +
     '<span class="cmp-chip-name">' + esc(p.name || 'Player') + '</span>' +
-    (p.league ? '<span class="cmp-chip-lg">' + esc(p.league) + '</span>' : '') + '</li>').join('') + '</ul>';
+    (p.league ? '<span class="cmp-chip-lg">' + esc(p.league) + '</span>' : '') +
+    /* adjusted for position, each chip says which group its player was ranked in */
+    (o.byPos && p.pos ? '<span class="cmp-chip-pos">' + esc(p.pos) + '</span>' : '') + '</li>').join('') + '</ul>';
+}
+
+/* WHERE A DRAGGED STAT LANDS. blocks: { key, y, h } in the order drawn; dy: how far it has been dragged. Its middle is
+   set against the others' middles; the line is drawn halfway into the gap before the block it lands ahead of, or just
+   under the last. Pure, for the tests. */
+function dropAt(blocks, key, dy) {
+  const list = blocks || [];
+  const me = list.find(b => b.key === key);
+  if (!me) return { index: 0, y: 0 };
+  const others = list.filter(b => b !== me);
+  const mid = me.y + me.h / 2 + (fin(dy) ? dy : 0);
+  const index = others.filter(b => b.y + b.h / 2 < mid).length;
+  const ahead = others[index], last = others[others.length - 1];
+  const y = ahead ? Math.max(1, ahead.y - BLOCK_GAP / 2) : (last ? last.y + last.h + 2 : 0);
+  return { index, y };
 }
 
 /* the controls: the mode toggle, and a chip per stat that can be shown — on means drawn */
-function modeHtml(st) {
+/* ADJUST FOR POSITION, beside the scale (the statistics table's own switch, the same words): offered where the caller
+   ranked the players within their position groups too (o.pctsPos), and only on the percentile scale -- a value is the
+   same number whoever it is set against */
+function modeHtml(st, o) {
+  const pos = o && o.pctsPos && st.mode === 'pct'
+    ? '<button type="button" class="cmp-mode-btn cmp-pos" data-cmp-pos="1" aria-pressed="' + !!st.byPos + '"' +
+      ' title="rank each player against their own position group rather than the whole competition">adjust for position</button>'
+    : '';
   return '<div class="cmp-mode" role="group" aria-label="Scale">' +
     '<button type="button" class="cmp-mode-btn" data-cmp-mode="pct" aria-pressed="' + (st.mode === 'pct') + '">Percentile</button>' +
     '<button type="button" class="cmp-mode-btn" data-cmp-mode="value" aria-pressed="' + (st.mode === 'value') + '">Value</button>' +
-    '</div>';
+    '</div>' + pos;
 }
 /* the stat chips; `fold` puts them behind a closed "stats · N" button (a phone, below the chart) */
 /* EVERY OTHER STAT, BY CATEGORY. The chips are the stats this table was already showing —
@@ -327,7 +373,7 @@ function statsHtml(o, st, fold) {
     '" aria-expanded="' + !!st.statsOpen + '">Stats · ' + st.keys.length + '</button>' + chips + '</div>';
 }
 function controlsHtml(o, st) {
-  return '<div class="cmp-controls">' + modeHtml(st) + statsHtml(o, st, false) + '</div>';
+  return '<div class="cmp-controls">' + modeHtml(st, o) + statsHtml(o, st, false) + '</div>';
 }
 
 /* ==================================================== from a table's own rows ===
@@ -411,30 +457,36 @@ function fromTable(o) {
   const S = tableStats(opt.statKeys, cols, opt.locked);
   const rows = (opt.picks || []).slice(0, Math.max(2, Math.floor(opt.max) || 5));
   const ranks = opt.ranks;
-  const values = {}, pcts = {};
+  /* ranksPos: the same percentiles taken within each player's position group (the table's "adjust for position"),
+     which turns on the chart's own switch; positionOf(row) names the group a player was ranked in ('guards') */
+  const ranksPos = opt.ranksPos && opt.ranksPos.get ? opt.ranksPos : null;
+  const values = {}, pcts = {}, pctsPos = ranksPos ? {} : null;
+  const pctOf = (m, r, id) => { const p = m && m.get ? (m.has(r.id) ? m.get(r.id) : m.get(id)) : null; return finite(p) ? p : null; };
   /* the chart may be given any stat the dropdowns offer, so every usable column is valued,
      not only the ones on screen */
   const every = (cols || []).filter(c => S.usable(c.k)).map(c => c.k);
   rows.forEach(r => {
     const id = String(r.id);
     values[id] = {}; pcts[id] = {};
+    if (pctsPos) pctsPos[id] = {};
     every.forEach(k => {
       values[id][k] = finite(r[k]) ? r[k] : null;
-      const m = ranks && ranks.get ? ranks.get(k) : null;
-      const p = m && m.get ? (m.has(r.id) ? m.get(r.id) : m.get(id)) : null;
-      pcts[id][k] = finite(p) ? p : null;
+      pcts[id][k] = pctOf(ranks && ranks.get ? ranks.get(k) : null, r, id);
+      if (pctsPos) pctsPos[id][k] = pctOf(ranksPos.get(k), r, id);
     });
   });
+  const posOf = r => { try { return typeof opt.positionOf === 'function' ? String(opt.positionOf(r) || '') : ''; } catch (_) { return ''; } };
   return {
     title: opt.title || ('Compare ' + rows.length + ' players'),
     players: rows.map(r => ({ id: String(r.id), name: r.name || 'Player', league: r.leagueShort || r.leagueName || '',
+      pos: ranksPos ? posOf(r) : '',
       /* the club, for the exported picture's circles (the table's own name, colour and crest) */
       team: { name: r.teamFull || r.teamName || '', short_name: r.teamShort || '', colour: r.colour || r.teamColour || null, logo: r.teamLogo || r.logo || null },
       photo: r.photo_url || r.photoUrl || null })),
     stats: S.keys.map(k => statFrom(S.byKey.get(k))).filter(Boolean),
     allStats: S.pool.map(k => statFrom(S.byKey.get(k))).filter(Boolean),
     statGroups: tableGroups(opt.groups, cols, opt.locked),
-    values, pcts,
+    values, pcts, pctsPos, byPos: !!(opt.byPos && pctsPos),
     mode: 'pct',
     note: opt.note || '',
     league: opt.league || null, range: opt.range || ''
@@ -449,11 +501,16 @@ function render(host, o) {
   if (prev) prev.destroy();
   o = Object.assign({}, o || {});
   const pool = Array.isArray(o.allStats) && o.allStats.length ? o.allStats : stats(o);
-  const st = { mode: modeOf(o), keys: stats(o).map(s => s.key), statsOpen: false, moreOpen: false };
+  /* ordered: the reader has moved a stat, so one added after that goes on the end rather than back into the chips'
+     order; byPos: the percentiles are the ones taken within each player's position group (o.pctsPos) */
+  const st = { mode: modeOf(o), keys: stats(o).map(s => s.key), statsOpen: false, moreOpen: false,
+               ordered: false, byPos: !!(o.byPos && o.pctsPos) };
 
   const current = () => {
     const byKey = statIndex(o);
-    return Object.assign({}, o, { mode: st.mode, stats: st.keys.map(k => byKey.get(k)).filter(Boolean) });
+    const pos = !!(st.byPos && o.pctsPos);
+    return Object.assign({}, o, { mode: st.mode, byPos: pos, pcts: pos ? o.pctsPos : o.pcts,
+      stats: st.keys.map(k => byKey.get(k)).filter(Boolean) });
   };
 
   let chart = null, lastW = -1, layoutNarrow = null;
@@ -465,7 +522,7 @@ function render(host, o) {
     const w = Math.round(chart.clientWidth || (host.clientWidth || 360));
     if (!force && w === lastW) return;
     lastW = w;
-    chart.innerHTML = html(Object.assign(current(), { width: w }));
+    chart.innerHTML = html(Object.assign(current(), { width: w, reorder: true }));
   };
   /* ON A PHONE THE CHART COMES FIRST. Legend, controls and note above it put the chart's top
      494px down a 740px sheet (18 stat chips wrap to five rows), so a reader saw two of eight
@@ -478,7 +535,7 @@ function render(host, o) {
     const note = o.note ? '<p class="cmp-note">' + esc(o.note) + '</p>' : '';
     host.innerHTML = '<div class="cmp' + (layoutNarrow ? ' cmp-narrow' : '') + '">' + title + legendHtml(c) +
       (layoutNarrow
-        ? '<div class="cmp-controls">' + modeHtml(st) + '</div><div class="cmp-chart"></div>' + note + statsHtml(o, st, true)
+        ? '<div class="cmp-controls">' + modeHtml(st, o) + '</div><div class="cmp-chart"></div>' + note + statsHtml(o, st, true)
         : controlsHtml(o, st) + note + '<div class="cmp-chart"></div>') +
       '</div>';
     chart = host.querySelector('.cmp-chart');
@@ -486,7 +543,7 @@ function render(host, o) {
   };
   const changed = () => {
     draw();
-    if (typeof o.onChange === 'function') o.onChange({ mode: st.mode, stats: st.keys.slice() });
+    if (typeof o.onChange === 'function') o.onChange({ mode: st.mode, stats: st.keys.slice(), byPos: st.byPos });
   };
 
   /* the same toggle a chip does, so a stat added from a dropdown can be taken out by its chip */
@@ -496,6 +553,8 @@ function render(host, o) {
     if (at >= 0) {
       if (st.keys.length > 1) st.keys.splice(at, 1);        /* the last stat stays */
       else return;
+    } else if (st.ordered) {
+      st.keys.push(k);                                       /* the reader's own order: the new one on the end */
     } else {
       /* keep the pool's order, so a stat put back returns to its place; anything from a
          category dropdown that the pool has never heard of goes on the end */
@@ -531,10 +590,103 @@ function render(host, o) {
       if (m !== st.mode) { st.mode = m; changed(); }
       return;
     }
+    const pb = t.closest('[data-cmp-pos]');
+    if (pb && host.contains(pb)) { st.byPos = !st.byPos; changed(); return; }
     const sb = t.closest('[data-cmp-stat]');
     if (sb && host.contains(sb)) toggle(sb.getAttribute('data-cmp-stat'));
   };
   host.addEventListener('click', onClick);
+
+  /* ---- MOVING A STAT: its label is a handle (html() o.reorder) ----
+     Dragged, the block follows the pointer and a line shows where it will land; let go, the stats are put in that
+     order. With the focus on a label, the up and down arrow keys move it one place. Either way the order is the
+     reader's from then on (st.ordered), and the exported picture draws it. */
+  const grabOf = key => {
+    const all = host.querySelectorAll ? host.querySelectorAll('[data-cmp-grab]') : [];
+    for (let i = 0; i < all.length; i++) if (all[i].getAttribute('data-cmp-grab') === key) return all[i];
+    return null;
+  };
+  /* the keys in a new order: the drawn ones as given, and any not drawn (none, today) kept after them */
+  const reorder = drawn => {
+    const rest = st.keys.filter(k => drawn.indexOf(k) < 0);
+    const next = drawn.concat(rest);
+    if (next.join('\u0001') === st.keys.join('\u0001')) return false;
+    st.keys = next; st.ordered = true;
+    return true;
+  };
+  const onKey = e => {
+    const g = e.target && e.target.closest ? e.target.closest('[data-cmp-grab]') : null;
+    if (!g || !host.contains(g) || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault();                                      /* the arrow moves the stat, not the page */
+    const key = g.getAttribute('data-cmp-grab');
+    const drawn = current().stats.map(s => s.key), at = drawn.indexOf(key), to = at + (e.key === 'ArrowUp' ? -1 : 1);
+    if (at < 0 || to < 0 || to >= drawn.length) return;
+    drawn.splice(at, 1); drawn.splice(to, 0, key);
+    if (reorder(drawn)) { changed(); const n = grabOf(key); if (n && n.focus) n.focus(); }
+  };
+  host.addEventListener('keydown', onKey);
+
+  let drag = null;
+  const endDrag = () => {
+    if (typeof root.removeEventListener !== 'function') return;     /* node, in the tests */
+    root.removeEventListener('pointermove', onMove);
+    root.removeEventListener('pointerup', onUp);
+    root.removeEventListener('pointercancel', onUp);
+  };
+  const onDown = e => {
+    const g = e.target && e.target.closest ? e.target.closest('[data-cmp-grab]') : null;
+    if (!g || !host.contains(g) || (e.button != null && e.button !== 0)) return;
+    const svg = g.closest('svg');
+    if (!svg) return;
+    const blocks = [...svg.querySelectorAll('.cmp-block')].map(b => ({ el: b, key: b.getAttribute('data-stat'),
+      y: parseFloat(b.getAttribute('data-y')) || 0, h: parseFloat(b.getAttribute('data-h')) || 0 }));
+    const me = blocks.find(b => b.key === g.getAttribute('data-cmp-grab'));
+    if (!me || blocks.length < 2) return;
+    e.preventDefault();                                      /* no text selected under the drag */
+    drag = { me, blocks, svg, y0: e.clientY, id: e.pointerId, live: false, to: blocks.indexOf(me), line: null };
+    root.addEventListener('pointermove', onMove);
+    root.addEventListener('pointerup', onUp);
+    root.addEventListener('pointercancel', onUp);
+  };
+  const onMove = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dy = e.clientY - drag.y0;
+    if (!drag.live && Math.abs(dy) < 4) return;              /* a press is not a drag until it moves */
+    drag.live = true;
+    e.preventDefault();
+    drag.me.el.setAttribute('transform', 'translate(0,' + px(dy) + ')');
+    drag.me.el.classList.add('cmp-dragging');
+    const r = dropAt(drag.blocks, drag.me.key, dy);
+    drag.to = r.index;
+    if (!drag.line) {
+      drag.line = root.document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      drag.line.setAttribute('class', 'cmp-drop');
+      drag.svg.appendChild(drag.line);
+    }
+    const W = parseFloat(drag.svg.getAttribute('width')) || 0;
+    [['x1', 0], ['x2', W], ['y1', r.y], ['y2', r.y]].forEach(([k, v]) => drag.line.setAttribute(k, px(v)));
+  };
+  const onUp = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag;
+    drag = null;
+    endDrag();
+    if (d.line && d.line.parentNode) d.line.parentNode.removeChild(d.line);
+    if (!d.live) return;
+    const order = d.blocks.map(b => b.key).filter(k => k !== d.me.key);
+    order.splice(d.to, 0, d.me.key);
+    if (e.type === 'pointerup' && reorder(order)) { changed(); return; }
+    d.me.el.removeAttribute('transform');
+    d.me.el.classList.remove('cmp-dragging');
+  };
+  host.addEventListener('pointerdown', onDown);
+  /* A FINGER ON A HANDLE IS A DRAG, NOT A SCROLL. touch-action:none on an element inside an <svg> is not honoured
+     (Chrome, 2026-10-08: the drag ended in pointercancel and nothing moved), so the touch's own default is refused here */
+  const onTouch = e => {
+    const g = e.target && e.target.closest ? e.target.closest('[data-cmp-grab]') : null;
+    if (g && host.contains(g) && e.cancelable) e.preventDefault();
+  };
+  host.addEventListener('touchstart', onTouch, { passive: false });
 
   /* redraw on a width change only, and not more than once per burst of resizes */
   let timer = null, ro = null;
@@ -554,15 +706,21 @@ function render(host, o) {
     redraw: () => drawChart(true),
     update(next) {
       o = Object.assign({}, o, next || {});
-      if (next && next.stats) st.keys = stats(o).map(s => s.key);
+      if (next && next.stats) { st.keys = stats(o).map(s => s.key); st.ordered = false; }
       if (next && next.mode) st.mode = modeOf(o);
+      if (next && 'byPos' in next) st.byPos = !!(o.byPos && o.pctsPos);
       draw();
     },
     destroy() {
       clearTimeout(timer);
       if (ro) ro.disconnect();
+      drag = null;
+      endDrag();
       host.removeEventListener('click', onClick);
       host.removeEventListener('change', onChangeSel);
+      host.removeEventListener('keydown', onKey);
+      host.removeEventListener('pointerdown', onDown);
+      host.removeEventListener('touchstart', onTouch, { passive: false });
       if (hosts) hosts.delete(host);
     }
   };
@@ -611,7 +769,9 @@ function exportModel(o, extra) {
               timezone: L.timezone || null, country: L.country || null, logoUrl: L.logo_path ? crestOf(L.logo_path) : null },
     comp: L.name || '', range: o.range || '',
     title: 'Head to head',
-    sub: mode === 'pct' ? (P.some(p => p.league) ? 'Percentiles, each against his own league' : 'Percentiles among the league’s players')
+    sub: mode === 'pct'
+      ? (o.byPos ? (P.some(p => p.league) ? 'Percentiles by position, each within their own league' : 'Percentiles by position among the league’s players')
+        : (P.some(p => p.league) ? 'Percentiles, each against his own league' : 'Percentiles among the league’s players'))
       : 'Values, each stat on its own scale',
     mode,
     players: P.map((p, i) => {
@@ -724,6 +884,6 @@ function open(o) {
   return { dialog: dlg, chart, close };
 }
 
-return { html, legendHtml, render, open, fromTable, exportModel, exportName, exportPng, tableStats, tableGroups, statFrom, statIndex,
+return { html, legendHtml, render, open, fromTable, exportModel, exportName, exportPng, tableStats, tableGroups, statFrom, statIndex, dropAt,
          isSigned, ord, SERIES, NARROW, MAX_PLAYERS, CORE_STATS, MAX_STATS, DEMOTED };
 }));

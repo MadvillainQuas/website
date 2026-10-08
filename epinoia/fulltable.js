@@ -906,11 +906,16 @@ function render(opts) {
   };
   const groupOf = r => { const m = posGroups(); return m ? (m.get(r.id) || null) : null; };
   /* the pools a percentile is taken over: the whole table, a position, a league, or both */
-  const rankGroup = () => {
-    if (withinLeague && byPos) return r => { const p = groupOf(r); return p == null ? null : String(r.leagueId) + ':' + p; };
+  /* (rankGroupFor: the pools with or without the position switch, whichever the table shows -- the comparison asks
+     for both, so its own switch can turn between them) */
+  const rankGroupFor = pos => {
+    if (withinLeague && pos) return r => { const p = groupOf(r); return p == null ? null : String(r.leagueId) + ':' + p; };
     if (withinLeague) return r => String(r.leagueId == null ? '' : r.leagueId);
-    return byPos ? groupOf : null;
+    return pos ? groupOf : null;
   };
+  const rankGroup = () => rankGroupFor(byPos);
+  /* the group a player is ranked in when adjusted for position, as a reader names it ('guards'); '' with none */
+  const positionOf = r => { const g = groupOf(r), S = SE(); return g && S && S.positionLabel ? S.positionLabel(g) : ''; };
 
   /* THE LEAGUE COLUMN sits after GP in every preset, and is not in the column drawer:
      on a table over several leagues a row without its league is not readable */
@@ -1604,19 +1609,20 @@ function render(opts) {
      his own league's group (under three players, no rank, every bar 'no data'), or ranked
      against a league he never played in. A player being compared always has a rank.
      A FUNCTION, NOT ONLY AN API METHOD: the table's own comparison (openCompare) needs it too. */
-  function getRanksFor(keys) {
+  /* pos: true or false ranks within the position groups or not, whatever the table shows; left out, as the table shows */
+  function getRanksFor(keys, pos) {
     const ks = (Array.isArray(keys) ? keys : statKeys()).filter(k => !absent(k));
     const floors = FILTERS && liveLines().length ? (view(), lastFloors) : null;
     const keep = new Set(picked.keys());
     const pop = population();
     const ids = new Set(pop.map(r => String(r.id)));
-    const out = ranksOver(pop, ks, floors, keep);
+    const out = ranksOver(pop, ks, floors, keep, pos);
     const outside = [...picked.values()].filter(r => !ids.has(String(r.id)));
     if (!outside.length) return out;
     const base = basePopulation();
     const bids = new Set(base.map(r => String(r.id)));
     outside.forEach(r => { if (!bids.has(String(r.id))) base.push(r); });
-    ranksOver(base, ks, floors, keep).forEach((m, k) => {
+    ranksOver(base, ks, floors, keep, pos).forEach((m, k) => {
       let into = out.get(k);
       if (!into) { into = new Map(); out.set(k, into); }
       outside.forEach(r => { if (m.has(r.id)) into.set(r.id, m.get(r.id)); });
@@ -1637,9 +1643,12 @@ function render(opts) {
     const keys = statKeys();
     const rankable = CAT.filter(c => c.heat && !absent(c.k)).map(c => c.k);
     let ranks = null;
-    try { ranks = getRanksFor(rankable); } catch (_) { ranks = null; }
+    try { ranks = getRanksFor(rankable, false); } catch (_) { ranks = null; }
+    /* and within each player's position group, for the chart's own "adjust for position" (opening as the table is set) */
+    let ranksPos = null;
+    try { ranksPos = getRanksFor(rankable, true); } catch (_) { ranksPos = null; }
     C.open(C.fromTable({
-      picks: getSelected(), statKeys: keys, cols: CAT, ranks, groups: presets,
+      picks: getSelected(), statKeys: keys, cols: CAT, ranks, ranksPos, positionOf, byPos, groups: presets,
       locked: k => absent(k), max: PICK_MAX,
       /* the league's row and the season's name, when the page gives them: the exported picture's colours and words */
       league: opts.leagueRow || null, range: typeof opts.seasonName === 'function' ? opts.seasonName() : (opts.seasonName || ''),
@@ -1669,11 +1678,11 @@ function render(opts) {
   /* percentiles over the population for the given keys; a rate with a volume floor is ranked
      only among the players who clear it. `keep` (ids) stay in a floored pool whatever their
      volume: a player being compared is ranked, not dropped, under a floor he misses */
-  function ranksOver(pop, keys, floors, keep) {
+  function ranksOver(pop, keys, floors, keep, pos) {
     const S = SE();
     const out = new Map();
     if (!S || !keys.length) return out;
-    const grp = rankGroup();
+    const grp = pos == null ? rankGroup() : rankGroupFor(!!pos);
     keys.forEach(k => {
       const c = fcol(k) || colOf(k);
       const fl = floors && RATE_VOL[k] ? floors.find(x => x.vol === RATE_VOL[k]) : null;
@@ -2250,6 +2259,9 @@ function render(opts) {
     getPool: () => population(),
     /* percentiles for the given stats, over the table's own population (see getRanksFor) */
     getRanks: getRanksFor,
+    /* the position group a row is ranked in when adjusted for position ('guards'), and whether the table is */
+    positionOf,
+    getByPos: () => byPos,
     getSelected,
     getState
   };

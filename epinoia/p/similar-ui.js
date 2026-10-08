@@ -90,9 +90,30 @@ function stripe(vals, who, cls) {
 
 const band = p => (p == null ? '' : p >= 82 ? 'hi' : p >= 68 ? 'mid' : 'lo');
 
+/* a surname for a narrow column (the full name rides in its title) */
+const shortName = s => { const p = String(s || '').trim().split(/\s+/); return p.length > 1 ? p[p.length - 1] : String(s || ''); };
+
+/* WHOSE IS WHOSE (2026-10-08): over the measures, a key in the measures' own columns -- both names with their marks over the
+   track, each surname over its own column of figures. This profile's player is a filled dot in the club's colour, the match a
+   ring in a colour of its own (kit/similar.css --sm-me / --sm-them): two dark club colours used to make them one grey. */
+function key(names) {
+  const row = el('div', 'sm-key');
+  row.appendChild(el('span', 'sm-k0'));
+  const both = el('span', 'sm-kl');
+  ['me', 'them'].forEach((c, i) => { const s = el('span', 'sm-kn ' + c, names[i]); s.setAttribute('translate', 'no'); both.appendChild(s); });
+  row.appendChild(both);
+  ['me', 'them'].forEach((c, i) => {
+    const s = el('span', 'sm-kc ' + c, shortName(names[i]));
+    s.title = names[i]; s.setAttribute('translate', 'no');
+    row.appendChild(s);
+  });
+  return row;
+}
+
 function body(file, n, o) {
   const S = SIM(), wrap = el('div', 'sm-b');
   const names = [o.name || 'This player', n.nm];
+  wrap.appendChild(key(names));
   S.GROUPS.forEach((g, gi) => {
     const sec = el('div', 'sm-g');
     const head = el('div', 'sm-gh');
@@ -176,7 +197,8 @@ function render(o) {
   const file = o.file, S = SIM();
   const node = el('div', 'sim');
   const head = el('div', 'sim-head');
-  head.appendChild(el('div', 'sim-title', 'similar players'));
+  /* the panel's own subtitle, centred with the section title's mark (sectitle.css .sec-sub), not a small label at the left */
+  head.appendChild(el('h3', 'sec-sub sim-title', 'similar players'));
   const k = S.FEATURES.filter(f => !(f.premium && o.locked)).length;
   head.appendChild(el('div', 'sim-note', 'closest in style and rates among ' + Number(file.pool).toLocaleString('en-GB') +
     ' player-seasons across every competition here · ' + k + ' measures' + (o.basis ? ' · ' + o.basis : '')));

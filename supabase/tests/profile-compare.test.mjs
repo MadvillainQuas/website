@@ -58,6 +58,12 @@ ok('a locked column is neither ranked nor drawn', !m.ranks.has('ev_x') && m.lock
 ok('the chart opens on the table\'s per-game preset', m.statKeys.join() === 'gp,ppg,topg');
 ok('the profile\'s names ride on the picks, over the season line\'s', m.picks[0].name === 'Wes Weak' && m.picks[0].leagueShort === 'WL 25-26' && m.picks[1].name === 'Sam Strong' && m.picks[1].leagueShort === 'SL 25-26');
 ok('the lines themselves are not changed', weak[0].id === 'w1' && weak[0].poss_pg === undefined && other.id === 'L2:s3');
+const mp = PC.model({ mine: weak[0], mineField: weak, other, otherField: strong, cols, percentiles: SE.percentiles,
+  positionGroups: rows => new Map(rows.map(r => [r.id, r.id === 's5' ? null : 'G'])), positionLabel: g => (g === 'G' ? 'guards' : ''), byPos: true });
+ok('adjusted for position: each line ranked within its own field\'s groups, named for the chart, opening adjusted',
+   mp.ranksPos.get('ppg').get('a') === 100 && mp.ranksPos.get('ppg').get('b') === 100 / 3 && mp.byPos === true &&
+   mp.positionOf({ id: 'a' }) === 'guards' && mp.positionOf({ id: 'b' }) === 'guards');
+ok('without groups, no position ranks and nothing to switch', m.ranksPos === null && m.byPos === false);
 const same = PC.model({ mine: weak[1], mineField: weak, other: Object.assign({ playerId: 'w1' }, weak[0]), otherField: weak, cols, percentiles: SE.percentiles });
 ok('one person in one season can be compared with himself: two ids all the same', same.picks.map(p => p.id).join() === 'a,b' && same.ranks.get('ppg').get('b') === 100 && same.ranks.get('ppg').get('a') === 200 / 3);
 
@@ -99,6 +105,10 @@ console.log('-- the profile page');
   const code = ui.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
   ok('Enter on a dropdown compares; Escape closes', /e\.key === 'Enter' && e\.target && e\.target\.tagName === 'SELECT'/.test(code) && /e\.key === 'Escape'/.test(code));
   ok('names are never translated', /setAttribute\('translate', 'no'\)/.test(code));
+  ok('the picker has its own centred subtitle, as similar players has', /el\('h3', 'sec-sub pcmp-title', 'compare players'\)/.test(code) &&
+     /\.pcmp \.pcmp-title\{flex:0 0 100%/.test(html));
+  ok('the chart opens adjusted for position where the bars are, with each field cut into its own position groups',
+     /byPos: barsByPos/.test(js) && /positionGroups: SE\.positionGroups, positionLabel: SE\.positionLabel, byPos: !!ctx\.byPos/.test(code));
   ok('the other player comes the scouting page\'s way (named rows, the leagues this reader may see)', /G\.catalogue\(\)/.test(code) && /G\.mergeLeague\(/.test(code));
   ok('a premium column is locked when either league locks it', /featureLocked\('statColumns'/.test(code) && /shut\(ctx\.leagueId\) \|\| shut\(L\.id\)/.test(code));
   ok('the visible text says nothing of anybody\'s gender', !/\b(his|him|her|she|he)\b/i.test(code));
