@@ -54,7 +54,7 @@ function home(host) {
     const opp = nx.h === 0 ? nx.a : nx.h, homeGame = nx.h === 0;
     const meter = h('div.mg-meter', h('i', { style: { width: '50%' } })), chance = h('b', '…');
     left.appendChild(h('div.mg-panel.glow', h('div.mg-h', h('h2', 'Next game'), h('span.mg-sub', 'Round ' + nx.r + ' · ' + when(nx.d, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }))),
-      h('p.mg-sub', { style: { margin: '-4px 0 12px' } }, '⏱ Played in real time: the game tips off at this moment and is simulated then, live, whether or not you are here. Your players’ real games in the days before it move their form, so what they do on court in real life changes how they play here.'),
+      h('p.mg-sub', { style: { margin: '-4px 0 12px' } }, '⏱ This game is played in real time, at the date and time above. Real-life form counts: how your players perform in their real games before it affects how they play in this one.'),
       h('div.mg-next', h('div.side', A.crest(homeGame ? 0 : opp, 64), homeGame ? A.nm(A.club.name, 'b') : A.clubLink(opp)), h('div.vs', h('span.mg-cap', homeGame ? 'Home' : 'Away'), h('span.big', 'v')),
         h('div.side', A.crest(homeGame ? opp : 0, 64), homeGame ? A.clubLink(opp) : A.nm(A.club.name, 'b'))),
       meter, h('div.mg-row.between', { style: { marginTop: '8px' } }, h('span.mg-sub', 'Your chance, simulated with your lineups and tactics: ', chance), h('a.mg-btn', { href: '#/tactics' }, 'Tactics')), countdown(nx)));
