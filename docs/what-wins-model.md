@@ -534,49 +534,73 @@ total; block-bootstrap intervals (B = 200).
 ### 7.8.1 EPINOIA's model (epinoia/winodds.js; the run tools/build-odds.mjs; picks in model_picks, 0253)
 One online model for every game in every league, beside §7.8's per-unit forecast: what the preview card, the game's
 preview and the board's EPINOIA competitor show (signed in now; `gate_open('model', league)` once memberships are on).
-- Inputs a fixture, 21 — every input of §7.8's forecast, on the same feature lines, and more: home (0 at a neutral venue: away from the home club's modal venue, ≥ 3 home games); §7.8's
-  expected differentials of the four factors (shrink 5 games); the same factors schedule-adjusted (`y_ig = μ + o_i +
-  d_j`, logit, every club of a league-season solved together, Gauss-Seidel × 10, shrink 20 games); Elo (K 20, margin
-  multiplier, ⅓ back to 1500 a season, home term from the model's own edge); the margin rating (competitive margin a game
-  `= r_i − r_j`, solved with the factors, shrink 8); rest and back-to-back; positions (bpm.js position estimate → guard
-  < 2.5 ≤ wing < 3.75 ≤ big; each club's game score a 36 at each position against the league's, and its defence's pull on
-  opposing players at each against their own season rate, shrink 200 minutes); form (EW residual of the model's own
-  margin, α 0.05, × n/(n + 10)); who is playing (last game's minutes-weighted player rating against the season roster's);
-  style, points a game each side can expect, each attack against the defence it meets against the league (a share on
-  the logit scale, a rate a chance added; shrink 120 chances or shots): half-court (share of chances × points a
-  half-court chance), transition (share × points a transition chance), second chances (share × points), the shot diet
-  (rim / mid / three shares × make rates × 2, 2, 3) - only where the feed has situations and zones (`need` bits);
-  travel (§7.8's km term: from each club's last venue, where both are placed).
-- §7.8's three refinements, built and OFF until the weekly tuning finds they gain in both halves (2026-10-08 it tried
-  each on and none did): `ebk` the shrinkage by each factor's own spread (k = σ²_within/τ²_between, [2, 30]) - gains on
-  full seasons (0.1868 v 0.1882 on the older half), loses on the recent games (0.2153 v 0.2140, t 2.5); `km` travel -
-  243 of 517 venues placed, under §7.8's own 70% bar; `lgw` each league its own weights (offsets on the four factors,
-  Elo and the margin, normalised steps) - quick, they fit a small league's noise (0.2040 v 0.2011), slow, level.
+- Inputs a fixture, 13 (`epinoia-5`, state layout 6, 2026-10-09):
+  - home (0 at a neutral venue: away from the home club's modal venue, ≥ 3 home games);
+  - THE MATCHUP, every factor at both ends in one expected margin (`matchup()`): §7.8's four factors, competitive
+    (garbage time out) - the shots by zone where the feed has them (rim / mid / three shares, as log-ratios against the
+    three: winsim.js blendEnd's log5 of the mix; the make rate at each), eFG% where it has not; turnovers a play;
+    offensive rebounds of the misses; free throws a shot (log scale); the attack's free-throw % (made = points − 2 ×
+    eFG makes) - each a club's attack and defence lean from the league's, shrunk by the attempts that rate takes to
+    settle (STAB, measured on every club-season of ≥ 8 games: binomial noise over the between-club variance left - the
+    defence's rim % 262 attempts, the attack's 725; three-point % 861 / 986; shot shares 122-309), ADJUSTED FOR THE
+    SCHEDULE (each lean less `adjW` × its own held share × the mean lean of the defences / attacks it met, every club
+    of a league-season solved together, Gauss-Seidel × 10), blended attack + defence on the rate's scale, put together
+    by Oliver's identity `PPP = (points a shot + FTr·FT%) / ((1 + 0.44 FTr)/(1 − TOV%) − ORB%·(1 − FG%))`, calibrated
+    to the league's own points a possession, × the game's possessions. One number: no factor can fight another (with
+    each factor its own input, raw and adjusted, the weights fought - the free-throw weight learned −0.18, crediting a
+    club for fouling). Its parts (each area and end with it alone on and alone off, averaged, the rest shared by size)
+    add up to it exactly and are WHY's reasons: diet / rim / mid / three / shoot / ball / boards / line / ft, each
+    with its defence (…D);
+  - Elo (K 20, margin multiplier, ⅓ back to 1500 a season, home term from the model's own edge); the margin rating
+    (competitive margin a game `= r_i − r_j`, shrink 8);
+  - rest and back-to-back; positions (bpm.js position estimate → guard < 2.5 ≤ wing < 3.75 ≤ big; each club's game score
+    a 36 at each position against the league's, and its defence's pull on opposing players at each against their own
+    season rate, shrink 200 minutes); form (EW residual of the model's own margin, α 0.05, × n/(n + 10)); who is playing
+    (last game's minutes-weighted player rating against the season roster's);
+  - the flow, points a game each side can expect, each attack against the defence it meets against the league (a share
+    on the logit scale, a rate a chance added; shrink 120 chances): half-court, transition, second chances - where the
+    feed has situations. Folded into the matchup as a second arithmetic of points a possession it measured worse (Brier
+    0.2018-0.2027 against 0.2006), so it stays its own inputs;
+  - travel (§7.8's km term: from each club's last venue, where both are placed).
+- The matchup, Elo, the margin rating and positions all see strength: on the walk the Brier is the same to the fourth
+  place however the weight is shared between them, so the priors decide - the matchup starts at 0.5 a point and free
+  (p0 1), positions at 0 and held (p0 0.01). The data then gives the matchup the most weight of the four (3.3 a ten).
+- The spread early in a season: σ × √(1 + 4 / the fewer games of the two clubs) - on the walk the favourites of clubs
+  3-6 games in won 54% where it said 67%, 78% where it said 89% (log loss 0.5812 → 0.5806).
+- §7.8's refinements: `km` travel and `lgw` each league its own weights (offsets on the matchup, Elo and the margin) -
+  built, OFF until the weekly tuning finds they gain in both halves (243 of 517 venues placed, under §7.8's 70% bar;
+  quick league weights fit a small league's noise, slow ones are level). The third, `ebk` (each factor shrunk by its own
+  spread in the league's season so far), is the matchup's STAB now: measured once on the whole database, per rate and
+  end, rather than on a few weeks of one league.
+- From the manager side (winsim.js, 2026-10-09): its blend of an attack with the defence it meets (log5, the shot mix by
+  log-ratios) is the matchup's. Its own profile and `markov()` expected points a possession were tried as the matchup:
+  level (Brier 0.2008 v 0.2006) with 12 more numbers a line read, all-game rather than competitive counts - not taken.
 - Learning, after each game: RLS on the margin (forgetting 0.9995, each weight's variance capped at 4 × its prior);
-  each league's home edge (SGD, near the shared one); σ (EW, α 0.02); a calibration `P = expit(a + b · 1.702 z)` by
-  SGD on its own wins and losses. Silent until both clubs have played 3 games this season.
+  each league's home edge (SGD, near the shared one); σ (EW, α 0.02, on the early-scaled spread); a calibration
+  `P = expit(a + b · 1.702 z)` by SGD on its own wins and losses. Silent until both clubs have played 3 games this season.
 - Tuning itself, weekly (`tune()`, `--tune` to force, ≤ 4 minutes): every finished game walked again under each candidate
-  setting (shrinks, form, σ and home-edge rates, Elo K and carry, each family's prior freedom, each family on or off);
-  coordinate descent, a change kept only if log loss falls ≥ 0.001 overall and ≥ 0.0003 in each half of the games.
-  Checked out of sample: tuned on the older half, tried on the newer, it is level with the defaults (Brier 0.2139 v
-  0.2140) - looser rules gained 0.006 where they were tuned and nothing elsewhere. Kept in the state (`tuned`).
-- Data: each run reads only lines finalised after the watermark — 22 numbers of each game_features line (`f->i`:
-  competitive eFG makes, FGA, FTA, turnovers, offensive / defensive rebounds, points, possessions − garbage time's;
-  chances all / transition / half-court / second and their points; rim, mid and three attempts and makes) and
-  the named stats of each player line. State: `pack()` (ids interned, one array a club / league / player, the
-  covariance's upper triangle, numbers to their precision), gzipped, `analytics/odds/state.v4.json.gz` (≈ 0.6 MB;
-  a pick moves < 1e-4 through a pack); put back only when a run learned something.
+  setting (shrinks, the schedule adjustment, the settling scale, the early spread, form, σ and home-edge rates, Elo K and
+  carry, each family's prior freedom, each family on or off); coordinate descent, a change kept only if log loss falls
+  ≥ 0.001 overall and ≥ 0.0003 in each half of the games. Checked out of sample: tuned on the older half, tried on the
+  newer, it is level with the defaults (Brier 0.2139 v 0.2140) - looser rules gained 0.006 where they were tuned and
+  nothing elsewhere. Kept in the state (`tuned`).
+- Data: each run reads the keys of the lines finalised after the watermark (game_id, team_idx, finalised_at, in order),
+  then 22 numbers of each by game (`f->i`, the primary key: asked for sorted, the database picked every line's numbers
+  out before cutting the page - 6 of the 8 seconds' statement timeout at 22): competitive eFG makes, FGA, FTA, turnovers,
+  offensive / defensive rebounds, points, possessions − garbage time's; chances all / transition / half-court / second
+  and their points; rim, mid and three attempts and makes; and the named stats of each player line. State: `pack()` (ids
+  in one string - a uuid as 22 characters of base64url, any other id between ~ -, one array a club / league, the players
+  by column, the covariance's upper triangle, numbers to their precision), gzipped, `analytics/odds/state.v6.json.gz`
+  (0.55 MB, against 0.70 MB for v5; a pick moves < 1e-4 through a pack); put back only when a run learned something; a
+  state started again removes the old layouts'.
 - Picks: a fixture's pick rewritten each run until tip-off, then frozen (trigger); a game first met after it was played
-  gets a record pick made from earlier games only, never replacing a fixture pick; `pick` is generated from `p_home`.
-- Walk (2026-10-08, every finished game, 1,540 judged): Brier 0.2007, 67.8% right, log loss 0.5819 tuned (0.2011 /
-  68.0% / 0.5830 on the defaults); the four factors,
-  Elo, the margin and the home court alone 0.2026 / 67.3% / 0.5873; Elo with home 0.2046 / 66.4%; home always 0.2456 /
-  57.5%. Form is the gain that holds (paired Brier −0.003, t −2.6 over the older half, full seasons; level early in a
-  season, where every version is within the noise); the schedule-adjusted factors, positions, who is playing and the
-  style are level within the noise (the style is alive - the shot diet alone correlates 0.46 with the result, the model
-  0.55 - but 0.81 with the model's margin and −0.05 with what it misses), so they start at weight 0 with a small prior variance and earn weight as the
-  evidence grows. Pace scaling (factors and σ) measured worse: off. Each family switches off in `C.use` for the next
-  walk (`node tools/build-odds.mjs --worker-config --dry-run --full --eval`).
+  gets a record pick made from earlier games only, never replacing a fixture pick; `pick` is generated from `p_home`;
+  `why`, its six largest reasons.
+- Walk (2026-10-09, every finished game, 1,558 judged): Brier 0.2006, log loss 0.5806, 67.1% right - against 0.2017 /
+  0.5843 for `epinoia-4` (each factor its own input; paired Brier −0.0011, t −1.0: level on the older half, −0.0019 on
+  the newer, t −1.5); Elo with home 0.2050; home always 0.2453. Without the player inputs (positions, who is playing)
+  0.2007 / 0.5812: kept. Each family switches off in `C.use` for the next walk
+  (`node tools/build-odds.mjs --worker-config --dry-run --full --eval`).
 
 ### 7.9 Curves and hard numbers
 Per diff factor: 10 equal-count bins of Δx merged to n ≥ 30 (`[lo, hi, x̄, n, wins, p, Wilson lo, hi, mean margin]`);

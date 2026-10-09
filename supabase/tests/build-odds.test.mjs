@@ -2,7 +2,8 @@
    EPINOIΛ'S MODEL, THE RUN (tools/build-odds.mjs), against a stand-in database:
      * a first run learns every finished game, writes a record pick for each it could judge and a fixture pick for each
        game to come, and keeps its state packed and gzipped;
-     * it reads 22 numbers of each feature line, never the line, and the named stats of each player line;
+     * it reads the lines' keys first, then 22 numbers of each feature line by game, never the line, and the named
+       stats of each player line;
      * a week after it last tuned itself it tunes again: every line read, the settings kept in the state, record picks
        only for the games new since the last run, and not again the next hour;
      * a run with nothing new learns nothing and leaves the state be, but still brings the fixtures' picks up to date;
@@ -14,8 +15,10 @@
 import zlib from 'node:zlib';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 const B = await import(pathToFileURL(path.join(ROOT, 'tools', 'build-odds.mjs')).href);
+const Odds = createRequire(import.meta.url)(path.join(ROOT, 'epinoia', 'winodds.js'));
 let pass = 0, fail = 0;
 const ok = (n, c, d) => { if (c) { pass++; console.log('  PASS  ' + n); } else { fail++; console.log('  FAIL  ' + n + (d != null ? '\n          ' + String(typeof d === 'string' ? d : JSON.stringify(d)).slice(0, 600) : '')); } };
 
@@ -39,11 +42,13 @@ async function fakeFetch(url, init) {
   db.urls.push(p);
   if (u.pathname.startsWith('/storage/v1/object/analytics/')) {
     if ((init && init.method) === 'POST') { db.state = Buffer.from(init.body); db.uploads++; return res(200, '{}'); }
+    /* an old layout's state lying there (v5) */
+    if ((init && init.method) === 'DELETE') { (db.removed = db.removed || []).push(u.pathname); return /state\.v5\./.test(u.pathname) ? res(200, '{}') : res(404, 'not found'); }
     return db.state ? res(200, new Uint8Array(db.state)) : res(404, 'not found');
   }
   if (p.startsWith('/rest/v1/game_features')) {
-    const m = /finalised_at\.gt\."([^"]+)"/.exec(p);
-    return res(200, db.lines.filter(r => !m || r.finalised_at > m[1]));
+    const m = /finalised_at\.gt\."([^"]+)"/.exec(p), gi = /game_id=in\.\(([^)]*)\)/.exec(p);
+    return res(200, db.lines.filter(r => (!m || r.finalised_at > m[1]) && (!gi || gi[1].split(',').includes(r.game_id))));
   }
   if (p.startsWith('/rest/v1/games?id=in.')) { const ids = /id=in\.\(([^)]*)\)/.exec(p)[1].split(','); return res(200, games.filter(g => ids.includes(g.id))); }
   if (p.startsWith('/rest/v1/player_game_stats')) return res(200, []);
@@ -70,11 +75,15 @@ ok('a record pick for each it could judge (both clubs three games in)', recs.len
 ok('a fixture pick for each game to come', fx.length === 12 && fx.every(x => x.kind === 'fixture' && x.p_home > 0 && x.p_home < 1), fx.length);
 ok('the pick\'s side is never sent (the table generates it from p_home)', [...recs, ...fx].every(x => !('pick' in x)));
 const W = new Set(['home', 'shoot', 'ball', 'boards', 'line', 'rating', 'rest', 'squad', 'form', 'flow']);
-ok('each pick carries its reasons: at most five, a family and a margin each', fx.every(x => Array.isArray(x.why) && x.why.length <= 5 && x.why.every(r => W.has(r[0]) && Number.isFinite(r[1]))) && fx.some(x => x.why.length > 0), fx[0] && fx[0].why);
+ok('each pick carries its reasons: at most six, a family and a margin each', fx.every(x => Array.isArray(x.why) && x.why.length <= 6 && x.why.every(r => W.has(r[0]) && Number.isFinite(r[1]))) && fx.some(x => x.why.length > 0), fx[0] && fx[0].why);
 ok('the strongest club at home to the weakest is favoured', (() => { const f = fixtures.find(g => g.home_team_id === 'h0' && g.away_team_id === 'h3'); const row = fx.find(x => x.game_id === f.id); return row && row.p_home > 0.6; })());
 ok('the state kept gzipped (1f 8b)', db.uploads === 1 && db.state[0] === 0x1f && db.state[1] === 0x8b);
-ok('...and packed: every id once', (() => { const j = JSON.parse(zlib.gunzipSync(db.state)); return j.v === 5 && Array.isArray(j.id) && new Set(j.id).size === j.id.length && j.wm && j.wm.id === 'g' + '019'.padStart(3, '0'); })());
-const fq = db.urls.find(u => u.startsWith('/rest/v1/game_features'));
+ok('...and, started again, the old layouts\' states removed (never the one it keeps)', (db.removed || []).some(p => /state\.v5\.json\.gz$/.test(p)) && !(db.removed || []).some(p => /state\.v6\./.test(p)), db.removed);
+const removedAfterFirst = (db.removed || []).length;
+ok('...and packed: every id once', (() => { const j = JSON.parse(zlib.gunzipSync(db.state)), ids = Odds.idsIn(j.id); return j.v === 6 && typeof j.id === 'string' && new Set(ids).size === ids.length && j.wm && j.wm.id === 'g' + '019'.padStart(3, '0'); })());
+const fk = db.urls.find(u => u.startsWith('/rest/v1/game_features')), fq = db.urls.find(u => u.startsWith('/rest/v1/game_features') && /q0:f->/.test(u));
+ok('the lines\' keys read first, in order, without their numbers', /select=game_id,team_idx,finalised_at&/.test(fk) && /order=finalised_at,game_id,team_idx/.test(fk) && !/f->/.test(fk), fk);
+ok('...then their numbers by game (the primary key), never sorted', /game_id=in\.\(/.test(fq) && !/order=/.test(fq), fq);
 ok('22 numbers of each feature line, never the whole line', /q0:f->\d+/.test(fq) && /q21:f->\d+/.test(fq) && !/q22:/.test(fq) && !/select=[^&]*(^|,)f(,|&)/.test(fq), fq);
 const pq = db.urls.find(u => u.startsWith('/rest/v1/player_game_stats'));
 ok('the named stats of each player line, never the blob', /min:stats->min/.test(pq) && !/select=[^&]*(^|,)stats(,|&)/.test(pq) && !/player_uuid/.test(pq), pq);
@@ -83,6 +92,7 @@ console.log('\nnothing new');
 db.picks = []; db.urls = [];
 const r2 = await B.run(api, { now: NOW, days: 30, log: quiet });
 ok('learns nothing and leaves the state be', r2.learned === 0 && db.uploads === 1, [r2.learned, db.uploads]);
+ok('...and removes nothing', (db.removed || []).length === removedAfterFirst);
 ok('...but brings the fixtures\' picks up to date', db.picks.flatMap(x => x.rows).length === 12);
 ok('...and no venue it has met is read again (placed or not)', !db.urls.some(u => u.startsWith('/rest/v1/venues')), db.urls.filter(u => u.startsWith('/rest/v1/venues')));
 ok('...reading from the watermark', db.urls.some(u => u.startsWith('/rest/v1/game_features') && /finalised_at\.gt\."/.test(u)));

@@ -38,7 +38,7 @@ const BUCKET = 'analytics', STATE_PATH = 'odds/state.v' + Odds.V + '.json.gz';
 const DAY = 86400000, LATE_MS = 2 * DAY, KEEP_MS = 420 * DAY;
 /* it tunes its own settings once a week, in at most four minutes (Odds.tune) */
 const TUNE_EVERY = 7 * DAY, TUNE_BUDGET_MS = 240000;
-/* nine numbers of each feature line (f->i), not the line's hundred and more */
+/* 22 numbers of each feature line (f->i), not the line's hundred and more */
 const FEATURE_SELECT = 'game_id,team_idx,league_id,season_id,finalised_at,' + Odds.lineSelect(Features.INDEX);
 const GAME_SELECT = 'id,status,home_team_id,away_team_id,home_score,away_score,tipoff_at,venue_id';
 /* a player line: the club side, the player (player_id: the player's uuid once resolved, the feed's id before) and the
@@ -73,22 +73,38 @@ export function client(url, key, f) {
       headers: Object.assign({ 'Content-Type': 'application/json', 'x-upsert': 'true', 'cache-control': 'private, no-store' }, hdr) });
     if (!r.ok) throw new Error('upload ' + p + ': ' + r.status + ' ' + String(await r.text()).slice(0, 200));
   };
-  return { rest, download, upload };
+  /* an object gone: true when it was there */
+  const remove = async (bucket, p) => {
+    const r = await fetchFn(base + '/storage/v1/object/' + bucket + '/' + enc(p), { method: 'DELETE', headers: hdr });
+    return r.ok;
+  };
+  return { rest, download, upload, remove };
 }
 
-/* the feature lines after a watermark, every league, 1000 a page */
+/* the feature lines after a watermark, every league. IN TWO STEPS (2026-10-09): the lines' keys first, in order, a
+   thousand a page (cheap: no numbers), then their numbers by game, a hundred games a request (the primary key). Asked
+   for in one, the database sorts the whole table with every line's numbers picked out before the page is cut: its 22
+   numbers a line took 6 of its 8 seconds' statement timeout, and the table only grows */
+const KEY_SELECT = 'game_id,team_idx,finalised_at';
 export async function readLines(api, wm) {
-  const out = [];
+  const keys = [];
   let at = wm && wm.at, id = wm && wm.id, ti = wm && wm.ti != null ? wm.ti : null;
   for (;;) {
     const after = !at ? '' : '&or=' + encodeURIComponent('(finalised_at.gt.' + qv(at) + ',and(finalised_at.eq.' + qv(at) + ',game_id.gt.' + id + ')' +
       (ti != null ? ',and(finalised_at.eq.' + qv(at) + ',game_id.eq.' + id + ',team_idx.gt.' + ti + ')' : '') + ')');
-    const rows = await api.rest('game_features?fv=eq.' + Features.FV + '&select=' + FEATURE_SELECT + after + '&order=finalised_at,game_id,team_idx&limit=1000');
-    out.push(...(rows || []));
-    if (!rows || rows.length < 1000) return out;
+    const rows = await api.rest('game_features?fv=eq.' + Features.FV + '&select=' + KEY_SELECT + after + '&order=finalised_at,game_id,team_idx&limit=1000');
+    keys.push(...(rows || []));
+    if (!rows || rows.length < 1000) break;
     const last = rows[rows.length - 1];
     at = last.finalised_at; id = last.game_id; ti = last.team_idx;
   }
+  const want = new Set(keys.map(k => k.game_id + '|' + k.team_idx)), got = new Map();
+  for (const c of chunks(Array.from(new Set(keys.map(k => k.game_id))), 100)) {
+    const rows = (await api.rest('game_features?fv=eq.' + Features.FV + '&game_id=in.(' + c.join(',') + ')&select=' + FEATURE_SELECT)) || [];
+    rows.forEach(r => { const k = r.game_id + '|' + r.team_idx; if (want.has(k)) got.set(k, r); });
+  }
+  /* in the keys' order (the watermark's), each line once */
+  return keys.map(k => got.get(k.game_id + '|' + k.team_idx)).filter(Boolean);
 }
 /* the games of those lines, each with both sides' counts: the model's input */
 export async function readGames(api, lines) {
@@ -147,7 +163,7 @@ export async function readFixtures(api, now, days) {
 export const packed = (S, now) => zlib.gzipSync(JSON.stringify(Odds.pack(S, { keepAfter: now - KEEP_MS })), { level: 9 });
 /* a pick as written (its side, `pick`, is the table's own, generated from p_home) */
 /* why: the pick's reasons (Odds' families, points of margin, home side +), the five largest, compact */
-const whyOf = pre => (pre.why || []).filter(r => Math.abs(r[1]) >= 0.1).slice(0, 5).map(([k, v]) => [k, Math.round(v * 10) / 10]);
+const whyOf = pre => (pre.why || []).filter(r => Math.abs(r[1]) >= 0.1).slice(0, 6).map(([k, v]) => [k, Math.round(v * 10) / 10]);
 const pickRow = (g, pre, kind) => ({ game_id: g.id, league_id: g.lg, p_home: r4(pre.p), kind,
   n_home: pre.n[0], n_away: pre.n[1], margin: Math.round(pre.margin * 10) / 10, sigma: Math.round(pre.sigma * 10) / 10, model: Odds.MODEL, why: whyOf(pre) });
 
@@ -217,10 +233,18 @@ export async function run(api, o) {
   }
   /* the state only goes back when the run learned something */
   if (recs.length || fresh || out.tune) await api.upload(BUCKET, STATE_PATH, packed(S, now));
+  /* a state of a new layout started again: the old layouts' states are of no more use, and go */
+  if (fresh && api.remove) {
+    for (let v = 1; v < Odds.V; v++) {
+      const gone = await api.remove(BUCKET, 'odds/state.v' + v + '.json.gz').catch(() => false);
+      if (gone) log('removed the old state odds/state.v' + v + '.json.gz');
+    }
+  }
   return out;
 }
 
 /* how its record picks did, against home-only (the running home win share) and Elo (its own ratings, 60 points home) */
+const ELO = Odds.X_KEYS.indexOf('elo');
 export function evaluate(recs) {
   const ok = recs.filter(r => r.pre.ok && r.game.hs !== r.game.as);
   let hw = 0, hn = 0;
@@ -230,7 +254,7 @@ export function evaluate(recs) {
     const won = r.game.hs > r.game.as ? 1 : 0;
     add('model', r.pre.p, won);
     add('home', hn ? hw / hn : 0.6, won);
-    add('elo', 1 / (1 + Math.pow(10, -(r.pre.x[5] * 100 + 60 * r.pre.home) / 400)), won);
+    add('elo', 1 / (1 + Math.pow(10, -(r.pre.x[ELO] * 100 + 60 * r.pre.home) / 400)), won);
     if (r.pre.home) { hn++; hw += won; }
   });
   const n = ok.length, f = k => ({ brier: n ? r4(acc[k][0] / n) : null, right: n ? r4(acc[k][1] / n) : null });

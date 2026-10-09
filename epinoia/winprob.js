@@ -72,9 +72,15 @@
   /* WHY IT LEANS (the ⓘ, Louie 2026-10-08): the pick's reasons (model_picks.why, 0254: winodds.js reasons()) as the side
      each favours and how strongly - one, two or three pips - never the model's numbers or weights; what the probability
      means; early in a season, that the numbers are still held close to the league's; and how it decides, in a line */
-  const LABEL = { home: 'Playing at home', shoot: 'Shooting', ball: 'Ball security', boards: 'Rebounding', line: 'Free throws',
-                  rating: 'Strength this season', form: 'Recent form', rest: 'Rest and travel', squad: 'Line-ups and positions',
-                  flow: 'Half court and transition' };
+  /* the matchup's reasons by area and end (2026-10-09, winodds.js matchup()): a side's attack (diet ... ft) and its
+     defence (the same with D) - so a club that gives a lot up at the rim shows as the other side's edge at guarding it */
+  const LABEL = { home: 'Playing at home', rating: 'Strength this season', form: 'Recent form', rest: 'Rest and travel',
+                  squad: 'Line-ups and positions', flow: 'Half court and transition',
+                  diet: 'Getting good shots', dietD: 'Taking good shots away', rim: 'Scoring at the rim', rimD: 'Guarding the rim',
+                  mid: 'Mid-range shooting', midD: 'Mid-range defence', three: 'Shooting threes', threeD: 'Defending the three',
+                  shoot: 'Shooting', shootD: 'Shooting defence', ball: 'Ball security', ballD: 'Taking the ball away',
+                  boards: 'Offensive boards', boardsD: 'Defensive boards', line: 'Drawing fouls', lineD: 'Defending without fouling',
+                  ft: 'Free throws' };
   const LEVEL = ['a slight edge', 'a clear edge', 'a strong edge'];
   let uid = 0;
   function whyPanel(d, o, ph) {
@@ -89,7 +95,7 @@
     const list = el('ul', 'wp-why-l');
     (Array.isArray(d.why) ? d.why : []).forEach(r => {
       const k = r && r[0], v = r ? +r[1] : NaN;
-      if (!LABEL[k] || !isFinite(v) || Math.abs(v) < 0.2 || list.childNodes.length >= 4) return;
+      if (!LABEL[k] || !isFinite(v) || Math.abs(v) < 0.2 || list.childNodes.length >= 5) return;
       const forH = v > 0, lvl = Math.abs(v) >= 3 ? 3 : Math.abs(v) >= 1 ? 2 : 1;
       const li = el('li', forH ? 'h' : 'a');
       li.appendChild(el('span', 'wp-why-k', LABEL[k]));
@@ -110,7 +116,7 @@
     if (Array.isArray(d.n) && Math.min(+d.n[0], +d.n[1]) < 8) {
       p.appendChild(el('p', 'wp-why-t', 'Early in the season: each club’s numbers are still held close to the league’s until more games are in.'));
     }
-    p.appendChild(el('p', 'wp-why-f', 'How it decides: each club’s season so far at both ends of the floor, its strength and form, rest and the home court, weighed by what has won games across every league.'));
+    p.appendChild(el('p', 'wp-why-f', 'How it decides: how each club scores and defends against the league — where its shots come from and go in, the rim, turnovers, the glass, the free-throw line — adjusted for whom it has played, then its strength and form, line-ups, rest and the home court, weighed by what has won games across every league.'));
     return p;
   }
   /* the ⓘ: hovered with a mouse it opens and closes with the pointer; tapped or clicked it stays until tapped again */

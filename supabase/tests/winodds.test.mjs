@@ -2,7 +2,11 @@
    EPINOIΛ'S MODEL OF WHO WINS (epinoia/winodds.js), on games invented to have a known answer:
      * silent until both clubs have played three games this season; the better club favoured, by more the bigger the gap;
      * a league's home edge learned from equal clubs, and none at a neutral site;
-     * the schedule: two clubs shooting the same, one against the league's best defences - the adjusted rating sees it;
+     * the schedule: two clubs shooting the same, one against the league's best defences - the matchup's adjusted
+       four factors see it;
+     * every factor at both ends in one calculation: a defence that fouls a lot hands the other side the edge at the
+       line (the free-throw weight once learned the wrong sign); a defence that gives up the rim loses it to an attack
+       that lives there; the parts add up to the margin;
      * form: a club that turns better mid-season is rated up before its season's numbers catch up;
      * positions: a rebounder and shot-blocker is a big, a passer a guard; a defence that shuts guards down shows it;
      * who is playing: the game after a club's best player sits, its line-up rates below its roster;
@@ -54,7 +58,9 @@ function league(lg, s, rounds, noise, o) {
 }
 
 console.log('the shape of it');
-ok('21 inputs, every one named', O.X_KEYS.length === 21 && O.C.w0.length === 21 && O.C.p0.length === 21 && O.X_KEYS.slice(16).join() === 'hc,tr,sc,shot,km');
+ok('13 inputs, every one named, the matchup one of them', O.X_KEYS.length === 13 && O.C.w0.length === 13 && O.C.p0.length === 13 && O.X_KEYS[1] === 'match' && O.X_KEYS.slice(9).join() === 'hc,tr,sc,km');
+ok('each rate\'s settling attempts measured at both ends: a defence\'s rim percentage settles sooner than an attack\'s, three-point percentage slowest',
+   O.STAB.rim[1] < O.STAB.rim[0] && O.STAB.f3[0] > O.STAB.rim[1] && O.STAB.f3[1] > O.STAB.rim[1] && O.STAB.ft[1] === 0);
 ok('a player line from the engine\'s named stats: minutes from ms, makes and attempts of both kinds',
    (() => { const l = O.lineOf('p', 0, { min: 1800000, pts: 20, p2m: 5, p2a: 9, p3m: 2, p3a: 6, fta: 5, ftm: 4, or: 1, dr: 5, ast: 3, stl: 1, blk: 0, to: 2, pf: 3 });
             return l[2] === 30 && l[4] === 7 && l[5] === 15 && l[8] === 1 && l[9] === 5; })());
@@ -73,6 +79,10 @@ console.log('\nthe better club');
   ok('...by more than against the second best', top.p > near.p && near.p > 0.5, [top.p, near.p]);
   ok('...and the weakest at home to it: well under even', rev.p < 0.35, rev.p);
   ok('a margin and a spread for each', top.margin > 8 && top.sigma > 3, [top.margin, top.sigma]);
+  const keepN = O.C.sigN; O.C.sigN = 0;
+  const flat = O.predict(S, fx(0, 4)).sigma;
+  O.C.sigN = keepN;
+  ok('...the spread wider for clubs few games in: × √(1 + sigN / the fewer games)', Math.abs(top.sigma / flat - Math.sqrt(1 + O.C.sigN / Math.min(top.n[0], top.n[1]))) < 1e-9, [top.sigma, flat, top.n]);
   const sum = top.why.reduce((a, r) => a + r[1], 0);
   ok('its reasons add up to its margin exactly, each one of the families the page names', Math.abs(sum - top.margin) < 1e-9 && top.why.every(r => r[0] in O.WHY), [sum, top.margin, top.why]);
   ok('...largest first, and its largest on the favourite\'s side', top.why.every((r, i) => i === 0 || Math.abs(top.why[i - 1][1]) >= Math.abs(r[1])) && top.why[0][1] > 0, top.why);
@@ -93,9 +103,9 @@ console.log('\nthe schedule');
   /* clubs A and B both shoot 52%; A has played only the league's best defences (they hold everyone else to 44%), B only
      its worst (they let everyone else shoot 56%): A's shooting is the better, adjusted for whom it met. And the margin:
      A only scrapes past the clubs that beat everyone else by fifteen, B only scrapes past the ones that lose by fifteen.
-     Light shrinkage (four games) here, so the known answer shows whatever the tuned value is */
-  const keepK = [O.C.adjK, O.C.srsK];
-  O.C.adjK = 4; O.C.srsK = 4;
+     Light shrinkage of the margin (four games) here, so the known answer shows whatever the tuned value is */
+  const keepK = O.C.srsK;
+  O.C.srsK = 4;
   const S = O.create();
   const games = [];
   let t = T0, k = 0;
@@ -109,13 +119,45 @@ console.log('\nthe schedule');
   }
   O.walk(S, games);
   const R = O.ratings(S, 's', 's-26');
-  O.C.adjK = keepK[0]; O.C.srsK = keepK[1];
   ok('the margin rating: the same two-point wins, A\'s against the strong rated far above B\'s against the weak', R.A.r > R.B.r + 5, [R.A.r, R.B.r]);
   ok('the same raw eFG% for both', Math.abs(O.factors(S.teams.A.o).efg - O.factors(S.teams.B.o).efg) < 1e-9);
-  ok('adjusted for the schedule, A\'s shooting rated well above B\'s', R.A.o[0] > R.B.o[0] + 0.12, [R.A.o[0], R.B.o[0]]);
-  ok('...and the hard defences rated hard, the soft ones soft', R.D1.d[0] < -0.1 && R.W1.d[0] > 0.1, [R.D1.d[0], R.W1.d[0]]);
+  ok('the matchup\'s four factors adjusted for the schedule: A\'s shooting rated well above B\'s', R.A.a.efg > R.B.a.efg + 0.1, [R.A.a.efg, R.B.a.efg]);
+  ok('...and the hard defences rated hard, the soft ones soft', R.D1.d.efg < -0.05 && R.W1.d.efg > 0.05, [R.D1.d.efg, R.W1.d.efg]);
+  ok('...turnovers, the glass and free throws there too, at both ends', ['tov', 'orb', 'ftr'].every(k => Number.isFinite(R.A.a[k]) && Number.isFinite(R.A.d[k])), R.A);
+  O.apply({ adjW: 0 });
+  const R0 = O.ratings(S, 's', 's-26');
+  ok('...not adjusted (adjW 0): the same raw shooting, the same rating', Math.abs(R0.A.a.efg - R0.B.a.efg) < 1e-9, [R0.A.a.efg, R0.B.a.efg]);
+  O.apply({});
+  O.C.srsK = 4;
   const fx = { h: 'A', a: 'B', lg: 's', s: 's-26', t: t + DAY, v: 'vA' };
-  ok('...so A meets B with the better adjusted shooting (aefg > 0)', O.predict(S, fx).x[O.X_KEYS.indexOf('aefg')] > 0);
+  const pr = O.predict(S, fx);
+  ok('...so A meets B with the better matchup (match > 0), its shooting the reason', pr.x[O.X_KEYS.indexOf('match')] > 0 && pr.parts.shoot > 0, [pr.x[1], pr.parts]);
+  O.C.srsK = keepK;
+}
+
+console.log('\nevery factor at both ends, in one calculation');
+{
+  /* six clubs alike but at the line: F's defence fouls (its opponents shoot 45 free throws a hundred shots, everyone
+     else 25), G's attack gets there (45). The bug of 2026-10-09: with each factor its own input the free-throw weight
+     learned the wrong sign, and a club that fouls a lot was credited for it */
+  const clubs = ['F', 'G', 'N1', 'N2', 'N3', 'N4'];
+  const games = [];
+  let t = T0, k = 0;
+  for (let r = 0; r < 4; r++) for (const h of clubs) for (const a of clubs) {
+    if (h === a) continue;
+    const fr = x => (x.att === 'G' || x.def === 'F' ? 0.45 : 0.25);
+    games.push({ id: 'l' + (k++), h, a, lg: 'l', s: 'l-26', t: (t += DAY / 3), v: 'v' + h, hs: 80, as: 78,
+                 c: [side(0.5, 0.14, 0.28, fr({ att: h, def: a })), side(0.5, 0.14, 0.28, fr({ att: a, def: h }))], pl: [] });
+  }
+  const S = O.create();
+  O.walk(S, games);
+  const pre = (h, a) => O.predict(S, { h, a, lg: 'l', s: 'l-26', t: t + DAY, v: 'v' + h });
+  const vF = pre('N1', 'F'), atF = pre('F', 'N1'), gF = pre('G', 'N1');
+  ok('a defence that fouls a lot: the other side\'s edge at the line (lineD), at home or away', vF.parts.lineD > 0 && atF.parts.lineD < 0, [vF.parts.lineD, atF.parts.lineD]);
+  ok('...worth points to it: the matchup favours whoever meets the fouling defence', vF.x[1] > 0 && atF.x[1] < 0, [vF.x[1], atF.x[1]]);
+  ok('an attack that gets to the line: its own edge (line)', gF.parts.line > 0, gF.parts);
+  ok('the matchup\'s parts add up to its margin exactly', Math.abs(Object.values(vF.parts).reduce((a, v) => a + v, 0) - 10 * vF.x[1]) < 1e-9);
+  ok('...and the reasons to the whole margin, the matchup\'s by area and end', Math.abs(vF.why.reduce((a, r) => a + r[1], 0) - vF.margin) < 1e-9 && vF.why.some(r => r[0] === 'lineD'), vF.why);
 }
 
 console.log('\nform');
@@ -170,18 +212,18 @@ console.log('\npositions and who is playing');
   ok('a position edge is worked out for every matchup', Number.isFinite(pe));
 }
 
-console.log('\nthe style');
+console.log('\nthe shots by zone, and the flow');
 {
   /* five clubs level at the four factors; A's attack lives at the rim and scores well in the half court, P's defence
-     protects the rim and the half court, W's gives up both. The style lines: chances (all, transition, half-court,
-     second) and points, then the shots by zone */
-  const att = { A: { rim: 0.12, hc: 0.15 } }, def = { P: { rim: -0.12, hc: -0.15 }, W: { rim: 0.12, hc: 0.15 } };
+     protects the rim (fewer shots there, fewer of them in) and the half court, W's gives up both. The lines: chances
+     (all, transition, half-court, second) and points, then the shots by zone */
+  const att = { A: { rim: 0.12, hc: 0.15 } }, def = { P: { rim: -0.12, rimp: -0.12, hc: -0.15 }, W: { rim: 0.12, rimp: 0.12, hc: 0.15 } };
   const clubs = ['A', 'P', 'W', 'N1', 'N2'];
   const line = (x, y) => {
     const a = att[x] || {}, d = def[y] || {}, fga = 70;
     const rimA = Math.round(fga * (0.33 + (a.rim || 0) + (d.rim || 0))), f3a = Math.round(fga * 0.36), midA = fga - rimA - f3a;
     const hcp = Math.round(60 * (0.9 + (a.hc || 0) + (d.hc || 0)));
-    return side(0.5, 0.14, 0.28, 0.25).concat([90, 15, 18, 60, hcp, 12, 13, rimA, Math.round(rimA * 0.6), midA, Math.round(midA * 0.4), f3a, Math.round(f3a * 0.34)]);
+    return side(0.5, 0.14, 0.28, 0.25).concat([90, 15, 18, 60, hcp, 12, 13, rimA, Math.round(rimA * (0.6 + (d.rimp || 0))), midA, Math.round(midA * 0.4), f3a, Math.round(f3a * 0.34)]);
   };
   const games = [];
   let t = T0, k = 0;
@@ -192,22 +234,26 @@ console.log('\nthe style');
   const S = O.create();
   O.walk(S, games);
   const ix = key => O.X_KEYS.indexOf(key);
-  const x = opp => O.predict(S, { h: 'A', a: opp, lg: 'y', s: 'y-26', t: t + DAY, v: 'vA' }).x;
-  const xw = x('W'), xp = x('P'), xn = x('N1');
-  ok('the rim-heavy attack gains more on the shot diet against the defence that gives up the rim than the one that protects it',
-     xw[ix('shot')] > xp[ix('shot')] + 0.5, [xw[ix('shot')], xp[ix('shot')]]);
+  const pr = opp => O.predict(S, { h: 'A', a: opp, lg: 'y', s: 'y-26', t: t + DAY, v: 'vA' });
+  const pw = pr('W'), pp = pr('P'), pn = pr('N1'), xw = pw.x, xp = pp.x, xn = pn.x;
+  ok('the rim-heavy attack gains more against the defence that gives up the rim than the one that protects it',
+     xw[ix('match')] > xp[ix('match')] + 0.1, [xw[ix('match')], xp[ix('match')]]);
+  ok('...the defence that guards the rim takes it away (rimD: the other side\'s edge when the rim is given up)',
+     pw.parts.rimD > 0 && pp.parts.rimD < 0 && pw.parts.dietD > pp.parts.dietD, [pw.parts, pp.parts]);
+  ok('...and its own attack\'s edge at the rim against an average defence (diet)', pn.parts.diet > 0, pn.parts);
   ok('...and in half-court points a chance the same way', xw[ix('hc')] > xp[ix('hc')] + 0.5, [xw[ix('hc')], xp[ix('hc')]]);
-  ok('...against an average defence the better attack still has the edge at both', xn[ix('shot')] > 0 && xn[ix('hc')] > 0, [xn[ix('shot')], xn[ix('hc')]]);
+  ok('...against an average defence the better attack still has the edge', xn[ix('match')] > 0 && xn[ix('hc')] > 0, [xn[ix('match')], xn[ix('hc')]]);
   ok('...and where both sides are alike at something (transition), no edge', Math.abs(xn[ix('tr')]) < 0.5, xn[ix('tr')]);
   const S2 = O.create();
   O.walk(S2, league('q', [3, 0, -3], 3, 3));
-  const x2 = O.predict(S2, { h: 'cq0', a: 'cq1', lg: 'q', s: 'q-26', t: T0 + 40 * DAY, v: 'vq0' }).x;
-  ok('a feed with neither situations nor zones: the four style inputs are nothing', ['hc', 'tr', 'sc', 'shot'].every(key => x2[ix(key)] === 0), x2.slice(16));
+  const p2 = O.predict(S2, { h: 'cq0', a: 'cq1', lg: 'q', s: 'q-26', t: T0 + 40 * DAY, v: 'vq0' }), x2 = p2.x;
+  ok('a feed with neither situations nor zones: the flow is nothing', ['hc', 'tr', 'sc'].every(key => x2[ix(key)] === 0), x2.slice(9));
+  ok('...and the matchup falls back on eFG% for the shooting (no zones)', 'shoot' in p2.parts && !('rim' in p2.parts), p2.parts);
 }
 
 console.log('\nWhat wins\' own refinements (built, off until they earn it)');
 {
-  ok('travel, the shrinkage by each factor\'s spread and each league\'s own weights are off by default', !O.C.use.km && !O.C.use.ebk && !O.C.use.lgw);
+  ok('travel and each league\'s own weights are off by default', !O.C.use.km && !O.C.use.lgw);
   /* travel: the away club's last game was in Bristol, this one is in Leicester (about 150 km); the home club was at home */
   O.apply({ 'use.km': true });
   const LEI = [52.63, -1.13], BRI = [51.45, -2.59];
@@ -221,28 +267,12 @@ console.log('\nWhat wins\' own refinements (built, off until they earn it)');
   ok('...a venue nobody has placed: no travel either way', O.predict(S, { h: 'cm0', a: 'cm1', lg: 'm', s: 'm-26', t: T0 + 60 * DAY, v: 'vX' }).x[ix] === 0);
   O.apply({});
   ok('...and off by default: nothing', O.predict(S, { h: 'cm0', a: 'cm1', lg: 'm', s: 'm-26', t: T0 + 60 * DAY, v: 'vLEI', vc: LEI }).x[ix] === 0);
-  /* the shrinkage by the spread: the clubs' turnovers differ for good (a club always loses the ball 10%, another 20%),
-     their shooting is game-to-game noise - so turnovers are believed sooner (smaller k) than shooting */
-  O.apply({ 'use.ebk': true, ebN: 0.001 });
-  seed = 5;
-  const tv = [0.10, 0.13, 0.16, 0.19, 0.22], ng = [];
-  let t = T0, k = 0;
-  for (let r = 0; r < 4; r++) for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) {
-    if (i === j) continue;
-    ng.push({ id: 'k' + (k++), h: 'e' + i, a: 'e' + j, lg: 'e', s: 'e-26', t: (t += DAY / 3), v: 've' + i, hs: 80, as: 77,
-              c: [side(0.40 + 0.2 * rnd(), tv[i], 0.28, 0.25), side(0.40 + 0.2 * rnd(), tv[j], 0.28, 0.25)], pl: [] });
-  }
-  const SE = O.create();
-  O.walk(SE, ng);
-  const K = O.shrinkOf(SE, 'e', 'e-26');
-  ok('...a factor that differs between clubs for good is believed sooner than one that is noise (k turnovers < k shooting)', K && K.o[1] < K.o[0], K && K.o);
-  O.apply({});
-  /* each league's own weights: learned, small, kept through a pack */
+  /* each league's own weights (on the matchup, Elo and the margin rating): learned, small, kept through a pack */
   O.apply({ 'use.lgw': true, lwEta: 0.05 });
   const SL = O.create();
   O.walk(SL, league('w', [5, 1, -1, -5], 4, 4));
   const d = SL.lw.w;
-  ok('...each league its own weights, learned from what the shared ones miss there, and finite', Array.isArray(d) && d.length === 6 && d.every(Number.isFinite) && d.some(v => v !== 0), d);
+  ok('...each league its own weights, learned from what the shared ones miss there, and finite', Array.isArray(d) && d.length === 3 && d.every(Number.isFinite) && d.some(v => v !== 0), d);
   ok('...kept through a pack', JSON.stringify(O.unpack(JSON.parse(JSON.stringify(O.pack(SL)))).lw.w) === JSON.stringify(d.map(v => +v.toPrecision(6))));
   O.apply({});
 }
@@ -282,13 +312,17 @@ console.log('\nthe state');
   const fx = { h: 'ck0', a: 'ck3', lg: 'k', s: 'k-26', t: T0 + 50 * DAY, v: 'vk0' };
   const kept = JSON.stringify(O.pack(S)), S2 = O.unpack(JSON.parse(kept));
   ok('packed and unpacked, it predicts the same (to 4 places)', Math.abs(O.predict(S, fx).p - O.predict(S2, fx).p) < 1e-4, [O.predict(S, fx).p, O.predict(S2, fx).p]);
-  ok('...every id written once', (() => { const j = JSON.parse(kept); return new Set(j.id).size === j.id.length && j.id.includes('ck0') && j.id.includes('kck0a'); })());
-  ok('...the covariance by its upper triangle', JSON.parse(kept).P.length === 21 * 22 / 2);
+  ok('...every id written once, in one string', (() => { const j = JSON.parse(kept), ids = O.idsIn(j.id); return typeof j.id === 'string' && new Set(ids).size === ids.length && ids.includes('ck0') && ids.includes('kck0a'); })());
+  ok('...a uuid in 22 characters, back exactly; any other id as it was',
+     (() => { const u = ['59a35bf5-0dc3-4a09-9622-9e8c4f0e6f8a', '00000000-0000-0000-0000-000000000000', 'ffffffff-ffff-ffff-ffff-ffffffffffff'], ids = u.concat(['feed-12', '7']);
+              const s = O.idsOut(ids); return s.length === 3 * 22 + 9 + 3 && JSON.stringify(O.idsIn(s)) === JSON.stringify(ids); })());
+  ok('...an id with a ~ in it keeps the list a plain array', Array.isArray(O.idsOut(['a~b', 'c'])) && O.idsIn(O.idsOut(['a~b', 'c']))[0] === 'a~b');
+  ok('...the covariance by its upper triangle', JSON.parse(kept).P.length === 13 * 14 / 2);
   ok('...and it goes on learning from where it was', (() => { const a = O.learn(S2, Object.assign({}, g[0], { id: 'more', t: T0 + 51 * DAY })); return a && S2.n === S.n + 1; })());
   ok('...its clubs, leagues and players all back', Object.keys(S2.teams).length === 4 && Object.keys(S2.pl).length === 4 && !!S2.lg['k|k-26']);
   ok('a state of another layout is started again', O.unpack({ v: 1, w: [1, 2, 3], P: [] }).n === 0);
   ok('clubs, leagues and players of seasons long gone are left out of the kept state',
-     (() => { const j = O.pack(S, { keepAfter: T0 + 1000 * DAY }); return j.tm.length === 0 && j.lg.length === 0 && j.pl.length === 0; })());
+     (() => { const j = O.pack(S, { keepAfter: T0 + 1000 * DAY }); return j.tm.length === 0 && j.lg.length === 0 && j.pl.every(c => c.length === 0); })());
 }
 
 console.log('\nthe reads');
@@ -309,9 +343,9 @@ console.log('\nthe reads');
 console.log('\nit tunes itself');
 {
   O.apply({ formA: 0.2, 'use.style': false, 'p0.style': 3 });
-  ok('settings over the defaults: a number, a family switched off, a family\'s freedom', O.C.formA === 0.2 && O.C.use.style === false && Math.abs(O.C.p0[16] - O.DEFAULTS.p0[16] * 3) < 1e-12);
+  ok('settings over the defaults: a number, a family switched off, a family\'s freedom', O.C.formA === 0.2 && O.C.use.style === false && Math.abs(O.C.p0[9] - O.DEFAULTS.p0[9] * 3) < 1e-12);
   O.apply({});
-  ok('...and back to the defaults', O.C.formA === O.DEFAULTS.formA && O.C.use.style === true && O.C.p0[16] === O.DEFAULTS.p0[16]);
+  ok('...and back to the defaults', O.C.formA === O.DEFAULTS.formA && O.C.use.style === true && O.C.p0[9] === O.DEFAULTS.p0[9]);
   seed = 99;
   const g = league('u', [8, 4, 1, -1, -4, -8], 6, 9);
   const few = O.tune(g.slice(0, 40), { budgetMs: 5000 });
