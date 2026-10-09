@@ -180,6 +180,11 @@ async function openClub(club) {
   A.loading('Reading ' + L.name + '…');
   A.lg = await site().league(L);
   await loadMine();
+  /* a season not started yet takes in every club of the league (a club missing from it before is added) */
+  if (club.status === 'active' && club.state && !club.state.fixtures.some(f => f.res != null)) {
+    const want = ['me'].concat(A.realClubs());
+    if (want.join() !== club.state.clubs.join()) { club.state = Mgr.season.create({ clubs: want, start: new Date().toISOString().slice(0, 10), perWeek: club.per_week || 2, meetings: 3 }); try { await site().save(club.id, { state: club.state, summary: Mgr.season.summary(club.state, 0) }); } catch (_) { /* again next visit */ } }
+  }
   if (club.status === 'active' && club.state) await catchUp();
 }
 /* THE SQUAD'S MEN: each with his own league (a man from abroad brings his league's file) and the card he plays with here */
@@ -212,7 +217,8 @@ A.reloadMine = loadMine;
    one of them) */
 A.realClubs = () => {
   const T = (A.lg && A.lg.teams) || [], top = T.reduce((a, t) => Math.max(a, +t.gp || 0), 0);
-  return T.filter(t => (+t.gp || 0) >= Math.max(1, 0.34 * top)).map(t => String(t.id));
+  /* every club that has played (Louie: all of the league's clubs in the table); a cup's guest is cut only once the season is well under way */
+  return T.filter(t => (+t.gp || 0) >= (top >= 10 ? 0.34 * top : 1)).map(t => String(t.id));
 };
 
 /* ------------------------------------------------------------------ the teams that play --- */
@@ -243,7 +249,9 @@ function realTeam(tid, form) {
   const all = lg.S.players.filter(r => String(lg.teamOf(r.id)) === tid && r.min > 0);
   const men = p => ({ id: String(p.id), mpg: p.min / gp, share: lg.share.get(String(p.id)) || Mgr.cards.shareOf(p) });
   const cards = new Map(lg.cards);
-  let list = all.filter(r => !drafted.has(String(r.id))).map(men);
+  /* the reader's signings are copies: the real clubs keep their own men (Louie: "duplicated rather than ripped from teams") */
+  void drafted;
+  let list = all.map(men);
   /* nobody at a position, or fewer than five: replacement-level men in the gaps */
   const fill = k => { const id = 'fill:' + tid + ':' + k; cards.set(id, Mgr.cards.fillerCard(lg.ref, k, id)); return { id, mpg: 8, share: [0, 1, 2, 3, 4].map(j => (j === k ? 1 : 0)) }; };
   for (let k = 0; list.length < 8 && k < 5; k++) list.push(fill(k));

@@ -156,7 +156,7 @@ function render(host) {
       try {
         const lg = await Mgr.site.league(L);
         if (st.league !== L) return;
-        const clubs = (lg.teams || []).filter(t => (+t.gp || 0) >= Math.max(1, 0.34 * Math.max(...lg.teams.map(x => +x.gp || 0))));
+        const top = Math.max(...lg.teams.map(x => +x.gp || 0)), clubs = (lg.teams || []).filter(t => (+t.gp || 0) >= (top >= 10 ? 0.34 * top : 1));
         const enough = lg.rows && lg.rows.length >= 50 && clubs.length >= 4;
         info.textContent = '';
         info.appendChild(h('div.mg-row', { style: { justifyContent: 'center', gap: '18px', color: 'rgba(220,230,255,.85)', fontSize: '14px' } },
@@ -183,6 +183,26 @@ function render(host) {
       st.perWeek = n; pw.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === e.currentTarget)));
     } }, label)));
     stage.appendChild(h('div', pw));
+    /* THE PLAYER POOL (Louie: "preset by the user ... whether they want to use from one league or select multiple") */
+    st.pool = st.pool || [];
+    const poolBox = h('div.mg-poolpick', { style: { marginTop: '22px', textAlign: 'left' } });
+    const list = h('div', { style: { maxHeight: '28vh', overflowY: 'auto', marginTop: '10px', display: 'none', border: '1px solid rgba(160,190,255,.22)', borderRadius: '12px', padding: '8px 12px' } });
+    const one = h('button', { type: 'button', 'aria-pressed': String(!st.pool.length) }, 'Draft from ' + st.league.name + ' only');
+    const many = h('button', { type: 'button', 'aria-pressed': String(!!st.pool.length) }, 'Add other leagues');
+    const tabs = h('div.mg-tabs', { role: 'group', 'aria-label': 'Player pool' }, one, many);
+    const pick = on => { one.setAttribute('aria-pressed', String(!on)); many.setAttribute('aria-pressed', String(on)); list.style.display = on ? 'block' : 'none'; if (!on) { st.pool = []; list.querySelectorAll('input').forEach(i => { i.checked = false; }); } };
+    one.addEventListener('click', () => pick(false)); many.addEventListener('click', () => pick(true));
+    Mgr.site.leagues().then(all => {
+      const C = root.EpinoiaCountry, groups = C ? C.group(all) : [{ name: '', leagues: all }];
+      groups.forEach(g => { const ls = g.leagues.filter(L => L.id !== st.league.id); if (!ls.length) return;
+        list.appendChild(h('div.mg-cap', { style: { margin: '8px 0 4px' } }, g.name));
+        ls.forEach(L => { const cb = h('input', { type: 'checkbox', checked: st.pool.includes(L.id) ? true : null });
+          cb.addEventListener('change', () => { st.pool = cb.checked ? st.pool.concat([L.id]) : st.pool.filter(x => x !== L.id); });
+          list.appendChild(h('label', { style: { display: 'flex', gap: '8px', alignItems: 'center', padding: '4px 0', fontSize: '14px' } }, cb, A.nm(L.name))); }); });
+      if (st.pool.length) pick(true);
+    }).catch(() => {});
+    poolBox.appendChild(h('div.mg-cap', 'Players to draft from')); poolBox.appendChild(tabs); poolBox.appendChild(list);
+    stage.appendChild(poolBox);
     stage.appendChild(h('p.hint', 'Your games are played on the real calendar: Saturdays, and Wednesdays too at two a week, from the first match day after you confirm your squad. The players’ real form in the days before each round moves them.'));
     const err = h('p.hint.bad', { 'aria-live': 'polite' });
     /* NOTHING IS MADE YET (Louie: "teams to not be confirmed/saved until confirm squad has been clicked"): the club waits in
@@ -194,6 +214,7 @@ function render(host) {
         if (A.clubs.length >= 3) throw new Error('three clubs at most');
         const L = st.league;
         const club = A.newPending({ league: L.id, competition: L.competitionIds[0], name: st.name, manager: st.manager, badge: Mgr.badge.sanitise(st.badge), perWeek: st.perWeek, budget: st.loaded.budget });
+        A.store('mgr_net_pending', JSON.stringify(st.pool || []));
         A.keepPending(club);
         close();
         A.lg = null; A.identity = new Map(); A.news = [];
