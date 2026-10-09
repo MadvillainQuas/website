@@ -332,6 +332,52 @@
   .gq-txt .mt{font-family:var(--f-micro);font-size:8.5px;color:var(--ink-3)}
   .gq-cap{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2)}
   .gq-card .row{padding:0 10px 10px;margin:0}
+
+  /* MANAGER VALUES (manager-ui.js): every league by country, ticked; the bar that sets one range or boost for them */
+  .mgv-tools{gap:10px;align-items:center;flex-wrap:wrap}
+  .mgv-seg{display:inline-flex;border:1px solid var(--rule-2)}
+  .mgv-segb{background:none;border:0;color:var(--ink-2);font-family:var(--f-micro);font-size:10px;letter-spacing:0.06em;
+    text-transform:uppercase;padding:7px 10px;cursor:pointer}
+  .mgv-segb.on{background:var(--lume);color:#04100b}
+  .mgv-sum{margin:10px 0;font-size:12.5px;color:var(--ink-3)}
+  .mgv-sum b{color:var(--ink)}
+  .mgv-warn{color:var(--flare)}
+  .mgv-list{display:flex;flex-direction:column;gap:12px}
+  .mgv-country{border:1px solid var(--rule)}
+  .mgv-ch{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;
+    background:color-mix(in oklch,var(--ink-3) 10%,transparent);font-family:var(--f-micro);font-size:11px;letter-spacing:0.08em;text-transform:uppercase}
+  .mgv-ch small{margin-left:auto;color:var(--ink-3);text-transform:none;letter-spacing:0}
+  .mgv-row{display:grid;grid-template-columns:34px minmax(0,1fr) 170px 70px 70px;align-items:center;gap:8px;padding:7px 12px;
+    border-top:1px solid var(--rule)}
+  .mgv-row.on{background:color-mix(in oklch,var(--lume) 11%,transparent)}
+  .mgv-row.unset .mgv-nm b{color:var(--ink-2);font-weight:500}
+  .mgv-tick{display:flex;align-items:center;justify-content:center;user-select:none;cursor:pointer}
+  .mgv-tick input{width:16px;height:16px;cursor:pointer}
+  .mgv-nm{display:flex;align-items:baseline;gap:8px;min-width:0}
+  .mgv-nm b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mgv-nm small{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3)}
+  .mgv-rg{display:flex;flex-direction:column;align-items:flex-end;font-variant-numeric:tabular-nums}
+  .mgv-rg small{font-size:11px;color:var(--ink-3)}
+  .mgv-none{font-size:12px;color:var(--ink-3);font-style:italic}
+  .mgv-bo,.mgv-up{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-3);font-size:12px}
+  .mgv-bo.up{color:var(--amber);font-weight:700}
+  .mgv-bar{position:sticky;bottom:0;z-index:5;display:flex;flex-direction:column;gap:8px;padding:12px 14px;margin-top:12px;
+    background:var(--ground);border:1px solid var(--lume);box-shadow:0 -8px 24px rgba(0,0,0,.35)}
+  .mgv-bar.hide{display:none}
+  .mgv-brow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .mgv-blab{font-family:var(--f-micro);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink-3);min-width:64px}
+  .mgv-n{color:var(--lume);font-family:var(--f-micro);font-size:11px;letter-spacing:0.06em}
+  .mgv-money{width:120px} .mgv-pct{width:80px}
+  .mgv-dash{color:var(--ink-3)}
+  .mgv-prev{font-size:12px;color:var(--ink-3)}
+  .mgv-prev b{color:var(--ink)}
+  .mgv-presets{display:flex;gap:6px;flex-wrap:wrap}
+  .mgv-chip{display:inline-flex;align-items:baseline;gap:6px;padding:5px 9px;background:none;border:1px solid var(--rule-2);
+    color:var(--ink-2);font-size:12px;cursor:pointer}
+  .mgv-chip:hover{border-color:var(--lume);color:var(--ink)}
+  .mgv-chip small{color:var(--ink-3);font-size:11px}
+  .mgv-gap{flex:1}
+  @media (max-width:820px){.mgv-row{grid-template-columns:30px minmax(0,1fr) 120px 56px}.mgv-up{display:none}}
 </style>
 <link rel="stylesheet" href="../../kit/suggest.css?v=780">
 <link rel="stylesheet" href="../../kit/newsrefresh.css?v=780">
@@ -376,6 +422,7 @@
         <button class="ep-tab" data-p="clubs" role="tab">Clubs</button>
         <button class="ep-tab" data-p="arenas" role="tab">Arenas</button>
         <button class="ep-tab" data-p="links" role="tab" data-i18n="off">Links</button>
+        <button class="ep-tab" data-p="manager" role="tab">Manager</button>
         <button class="ep-tab" data-p="newsroom" role="tab" data-i18n="off">Newsroom</button>
         <button class="ep-tab" data-p="news" role="tab">News</button>
         <button class="ep-tab" data-p="mod"  role="tab">Moderation</button>
@@ -699,6 +746,8 @@
 
     <!-- clubs and players linked across competitions, leagues and seasons (0178), built by links-ui.js -->
     <div class="pane" id="pane-links"><div id="linksHost"></div></div>
+    <!-- EPINOIA Manager's league values and continental boosts (0259): manager-ui.js -->
+    <div class="pane" id="pane-manager"><div id="managerHost"></div></div>
 
     <!-- what the league newsdesks' writer learns: the style library and the click-through model (0252), newsroom-ui.js -->
     <div class="pane" id="pane-newsroom"><div id="newsroomHost"></div></div>
@@ -891,6 +940,7 @@
 <script src="../../upload.js?v=780" defer></script>
 <script src="../../synergy.js?v=780" defer></script>
 <script src="reports-manager.js?v=780" defer></script>
+<script src="manager-ui.js?v=780" defer></script>
 <script src="platform.js?v=780" defer></script>
 <script src="../../go/logo.js?v=780" defer></script>
 <script src="../../nav.js?v=780" defer></script>

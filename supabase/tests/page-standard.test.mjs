@@ -30,6 +30,11 @@ const PREDATE = new Set(`admin/index.html admin/platform/index.html android/inde
   score/index.html signin/index.html stats/index.html t/index.html
   video/index.html votes/index.html`.split(/\s+/).filter(Boolean));
 
+/* THE GAMES, which are not reader pages: a screen of their own, drawn by their own code in their own skin, with their own
+   rail - the Manager (manager/, Louie 2026-10-09: "completely visually overhaul the screen ... completely wiping the
+   sidebar for the new manager pages"). Nothing else goes here: a page a reader reads is built to the standard. */
+const APPS = new Set(['manager/index.html']);
+
 function pages(dir, rel = '') {
   let out = [];
   for (const name of readdirSync(dir)) {
@@ -44,9 +49,10 @@ const all = pages(SITE);
 const std = all.filter(p => /<div class="ep-frame[^"]*"[^>]*\sdata-std[\s>]/.test(readFileSync(path.join(SITE, p), 'utf8')));
 
 console.log('every page from now on');
-const late = all.filter(p => !PREDATE.has(p) && !std.includes(p));
+const late = all.filter(p => !PREDATE.has(p) && !APPS.has(p) && !std.includes(p));
 ok('every page not on the list of those that came before the standard is built to it (data-std)', late.length === 0, late);
 ok('...and the list names only pages that exist (a page removed comes off it)', [...PREDATE].every(p => all.includes(p)), [...PREDATE].filter(p => !all.includes(p)));
+ok('...and so does the list of the games (an app that draws its own screen, not a reader page)', [...APPS].every(p => all.includes(p)), [...APPS].filter(p => !all.includes(p)));
 ok('...the Community page is built to it', std.includes('community/index.html'), std);
 
 const sheetOrder = html => [...html.matchAll(/<link rel="stylesheet" href="([^"?]+)/g)].map(m => m[1].replace(/^(\.\.\/)+/, ''));

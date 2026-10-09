@@ -18,6 +18,7 @@
 (function () {
   const $ = s => document.querySelector(s);
   const qp = new URLSearchParams(location.search);
+  if (qp.get('mgr') === '1') return;   // a Manager game (game.js ?mgr=1) has no PDFs
   const ver = (() => { const s = [...document.scripts].find(x => /game\/analysis\.js/.test(x.src) || /\/analysis\.js/.test(x.src)); const m = s && /v=(\d+)/.exec(s.src); return m ? m[1] : ''; })();
   const NEED = [['EpinoiaLineupsCore', '../lineups.js'], ['EpinoiaMemLock', '../memlock.js'], ['EpinoiaStatInfo', '../statinfo.js'], ['EpinoiaLineupEvents', '../lineupevents.js'],
     ['EpinoiaSeasonLine', '../t/seasonline.js'], ['EpinoiaRaster', '../raster.js'], ['EpinoiaTeamViz', '../teamviz.js'],

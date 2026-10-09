@@ -128,14 +128,35 @@
     try { if (to === 'video') T.view(); else T.action('main'); } catch (_) { /* a count is never in the way */ }
   }
 
-  tabs.forEach(t => t.addEventListener('click', () => set(t.dataset.mode)));
-  /* the arrow keys move between the two tabs, as a tab list's do */
+  /* MANAGER IS A DOOR, not a view: the block slides to it, a royal blue wipe opens from it (EPINOIΛ, MANAGER), and the
+     game's own page takes over (../manager/). Straight there for a reader who asked for less motion */
+  function toManager(t) {
+    strip.dataset.mode = 'manager';
+    tabs.forEach(x => x.setAttribute('aria-selected', String(x === t)));
+    if (bar) { bar.style.width = t.offsetWidth + 'px'; bar.style.transform = 'translateX(' + t.offsetLeft + 'px)'; }
+    const go = () => { location.href = '../manager/'; };
+    if (reduced()) { go(); return; }
+    const r = t.getBoundingClientRect(), w = document.createElement('div');
+    w.className = 'mg-warp';
+    w.style.setProperty('--x', Math.round(r.left + r.width / 2) + 'px'); w.style.setProperty('--y', Math.round(r.top + r.height / 2) + 'px');
+    const inner = document.createElement('div'); inner.className = 'w';
+    const ep = document.createElement('span'); ep.className = 'ep'; ep.setAttribute('translate', 'no'); ep.textContent = 'EPINOIΛ';
+    const mg = document.createElement('span'); mg.className = 'mgw'; mg.setAttribute('translate', 'no'); mg.textContent = 'Manager';
+    inner.appendChild(ep); inner.appendChild(mg); w.appendChild(inner);
+    document.body.appendChild(w);
+    setTimeout(go, 900);
+  }
+  tabs.forEach(t => t.addEventListener('click', () => (t.dataset.mode === 'manager' ? toManager(t) : set(t.dataset.mode))));
+  /* the arrow keys move between the tabs, as a tab list's do (MANAGER takes the focus there; Enter opens it) */
   strip.addEventListener('keydown', e => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    const i = tabs.findIndex(t => t.dataset.mode === mode), n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+    const cur = tabs.indexOf(document.activeElement), i = cur >= 0 ? cur : tabs.findIndex(t => t.dataset.mode === mode);
+    const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
     n.focus();
-    set(n.dataset.mode);
+    if (n.dataset.mode !== 'manager') set(n.dataset.mode);
   });
+  /* back from the game with the browser's Back: the strip as the address says, not on MANAGER */
+  window.addEventListener('pageshow', e => { if (e.persisted) { document.querySelectorAll('.mg-warp').forEach(w => w.remove()); mark(); } });
   window.addEventListener('popstate', () => {
     const want = new URLSearchParams(location.search).get('view') === 'video' ? 'video' : 'main';
     set(want, { push: false });

@@ -240,8 +240,10 @@ function gaussian(rand) { const u1 = rand(), u2 = rand(); return Mth.sqrt(-2 * M
 const RES = new Float64Array(5);   // pts A, pts B, poss A, poss B, overtimes
 const GP = new Float64Array(18);   // per game: per side [tov, rim, mid, 3, 2, rim T, mid T, 3 T, 2 T]
 const GL = new Float64Array(18);   // ...the same on the logit scale (for the score effect)
-/* the engine: P from prep, zones, Lc the core league numbers, two uniform sources, tl = tallies (2 x NT) or null */
-function core(P, zones, home, Lc, rand, randFt, fouling, tl) {
+/* the engine: P from prep, zones, Lc the core league numbers, two uniform sources, tl = tallies (2 x NT) or null,
+   tr = the trace or null (game's o.trace: every possession and what happened in it, in order, for a play-by-play - it
+   only watches: it draws nothing, so a traced game is the same game) */
+function core(P, zones, home, Lc, rand, randFt, fouling, tl, tr) {
   const base = (rand() * 4294967296) | 0, baseFt = (randFt() * 4294967296) | 0;
   const tau = Lc.tau || 0, e0 = tau * gaussian(rand), e1 = tau * gaussian(rand), eta = (Lc.sigmaN || 0) * gaussian(rand);
   const coinN = rand(), coinOT = rand(), dTr = Lc.dTr || 0, lead = Lc.lead || 0, ft3 = Lc.ft3 != null ? Lc.ft3 : FT3;
@@ -255,7 +257,7 @@ function core(P, zones, home, Lc, rand, randFt, fouling, tl) {
     }
   }
   const score = [0, 0], np = [0, 0];
-  let k = 0, cs = 0, fs = 0, lastMiss = false, frac = 0;
+  let k = 0, cs = 0, fs = 0, lastMiss = false, frac = 0, pT = 0;
   const u = () => {
     cs = (cs + 0x6D2B79F5) | 0;
     let t = Mth.imul(cs ^ (cs >>> 15), 1 | cs);
@@ -281,6 +283,7 @@ function core(P, zones, home, Lc, rand, randFt, fouling, tl) {
     cs = fmix(base ^ Mth.imul(k + 1, 0x9E3779B9)); fs = fmix(baseFt ^ Mth.imul(k + 1, 0x85EBCA6B)); k++; np[off]++;
     if (tl) { tl[tb + T_POSS]++; tl[tb + T_TS] += dur; tl[tb + T_TN]++; if (st === 1) tl[tb + T_GD]++; }
     let pts = 0, next = 0, ended = false;
+    if (tr) tr('P', off, st, pT, dur, fouled ? 1 : 0);
     /* the score effect: a side running ahead of the game's expected path (the pre-game expected margin x the share of
        regulation played) makes a little less, a side behind it a little more: lead per 10 points of the gap, capped
        at 20. Real margins spread less than independent possessions would let them (CEBL and ORLEN 2026: a margin SD
@@ -299,16 +302,21 @@ function core(P, zones, home, Lc, rand, randFt, fouling, tl) {
       if (fouled && c === 0) {                                     // end-game foul: two free throws
         if (tl) tl[tb + T_TRB]++;
         cpts = trip(off, 2);
+        if (tr) tr('F', off, 3, 2, cpts);
         if (lastMiss) { if (u7 < P[o + 14]) { cont = true; if (tl) { tl[tb + T_OREB]++; tl[tb + T_RBO]++; } } else { next = 1; if (tl) { tl[td + T_DREB]++; tl[tb + T_RBD]++; } } }
+        if (tr && lastMiss) tr(cont ? 'O' : 'D', cont ? off : def);
       } else if (u2 < GP[g]) {                                     // turnover
         if (tl) tl[tb + T_TOV]++;
         if (u3 < P[o + 1]) { next = 2; if (tl) tl[tb + T_LIVE]++; } else next = 0;
+        if (tr) tr('T', off, next === 2 ? 1 : 0);
       } else if (u4 < P[o + 3]) {                                  // a trip: bonus, or a shooting foul (3 on a three)
         const bonus = u4 < P[o + 2], nft = bonus ? 2 : (u5 < ft3 ? 3 : 2);
         if (tl) tl[tb + (bonus ? T_TRB : T_TRS)]++;
         cpts = trip(off, nft);
+        if (tr) tr('F', off, bonus ? 0 : 1, nft, cpts);
         if (lastMiss) { if (u7 < P[o + 14]) { cont = true; if (tl) { tl[tb + T_OREB]++; tl[tb + T_RBO]++; } } else { next = 1; if (tl) { tl[td + T_DREB]++; tl[tb + T_RBD]++; } } }
         else next = 0;
+        if (tr && lastMiss) tr(cont ? 'O' : 'D', cont ? off : def);
       } else {                                                     // a shot
         let z;
         if (u5 < P[o + 4]) z = zones ? 0 : 3; else if (u5 < P[o + 5]) z = 1; else z = 2;
@@ -317,14 +325,22 @@ function core(P, zones, home, Lc, rand, randFt, fouling, tl) {
         if (u6 < pm) {
           cpts = val;
           if (tl) { tl[tb + T_FGM]++; if (three) tl[tb + T_FG3M]++; else if (z === 0) tl[tb + T_RIMM]++; else if (z === 1) tl[tb + T_MIDM]++; }
+          if (tr) tr('S', off, z, 1, trans ? 1 : 0);
           next = 0;
           if (u8 < P[o + 11]) {
             if (tl) tl[tb + T_AND1]++;
-            cpts += trip(off, 1);
+            const a1 = trip(off, 1);
+            cpts += a1;
+            if (tr) tr('F', off, 2, 1, a1);
             if (lastMiss) { if (u7 < P[o + 14]) { cont = true; if (tl) { tl[tb + T_OREB]++; tl[tb + T_RBO]++; } } else { next = 1; if (tl) { tl[td + T_DREB]++; tl[tb + T_RBD]++; } } }
+            if (tr && lastMiss) tr(cont ? 'O' : 'D', cont ? off : def);
           }
-        } else if (u7 < P[o + 13]) { cont = true; if (tl) { tl[tb + T_OREB]++; tl[tb + T_RBO]++; } }
-        else { next = 1; if (tl) { tl[td + T_DREB]++; tl[tb + T_RBD]++; } }
+        } else {
+          if (tr) tr('S', off, z, 0, trans ? 1 : 0);
+          if (u7 < P[o + 13]) { cont = true; if (tl) { tl[tb + T_OREB]++; tl[tb + T_RBO]++; } }
+          else { next = 1; if (tl) { tl[td + T_DREB]++; tl[tb + T_RBD]++; } }
+          if (tr) tr(cont ? 'O' : 'D', cont ? off : def);
+        }
       }
       if (trans && tl) { tl[tb + T_TRCH]++; tl[tb + T_TRPTS] += cpts; }
       pts += cpts;
@@ -343,6 +359,7 @@ function core(P, zones, home, Lc, rand, randFt, fouling, tl) {
       const lead = score[off] - score[off ^ 1];
       const fouled = fouling && left <= 120 && lead >= 3 && lead <= 8;
       const dur = fouled ? 3 : P[off * NP + 16] * s;
+      pT = Tsec - left;
       st = possession(off, st, dur, fouled);
       left -= dur; off ^= 1;
     }
@@ -352,20 +369,29 @@ function core(P, zones, home, Lc, rand, randFt, fouling, tl) {
   /* the home side has the first possession (the away side gets N or N - 1); at a neutral venue a coin decides */
   const first = home === 1 ? 0 : home === -1 ? 1 : ((coinN * 4096) % 1 < 0.5 ? 0 : 1), nn = [N, N];
   nn[first ^ 1] = Mth.max(0, N - (coinN < 0.5 ? 1 : 0));
+  if (tr) tr('Q', -1, 0, Lc.T);
   period(Lc.T, nn[0], nn[1], first, true);
   let ot = 0;
   while (score[0] === score[1] && ot < 6) {
     ot++;
     const No = Mth.max(1, Mth.round(Lc.kappaN * Lc.Tot / (d0 + d1)));
+    if (tr) tr('Q', -1, ot, Lc.Tot);
     period(Lc.Tot, No, No, (coinOT < 0.5 ? 0 : 1) ^ (ot & 1), false);
   }
-  if (score[0] === score[1]) score[((coinOT * 1024) % 1) < 0.5 ? 0 : 1] += 1;
+  if (score[0] === score[1]) { const w = ((coinOT * 1024) % 1) < 0.5 ? 0 : 1; score[w] += 1; if (tr) tr('X', w); }
   RES[0] = score[0]; RES[1] = score[1]; RES[2] = np[0]; RES[3] = np[1]; RES[4] = ot;
   return RES;
 }
+/* one game. o: {fouling, trace}. o.trace(type, side, a, b, c, d), in the game's order (a play-by-play; the Manager's box
+   scores are made from it): 'Q' a period starts (a: 0 regulation, 1.. overtime; b: its seconds), 'P' a possession (a: how
+   it started - 0 dead ball, 1 defensive board, 2 steal; b: the period's seconds gone; c: its seconds; d: 1 an end-game
+   foul), 'T' a turnover (a: 1 live), 'F' free throws (a: 0 bonus, 1 shooting, 2 and-one, 3 end-game foul; b: taken;
+   c: made), 'S' a shot (a: 0 rim, 1 mid-range, 2 three, 3 a two without zones; b: 1 made; c: 1 in transition), 'O' an
+   offensive board, 'D' a defensive board (side: the side that took it), 'X' the point a seventh overtime would have
+   decided */
 function game(M, rand, randFt, o) {
   const tl = new Float64Array(2 * NT), fouling = o && o.fouling != null ? !!o.fouling : M.L.fouling !== false;
-  core(prep(M), M.zones, M.home, M.L, rand, randFt, fouling, tl);
+  core(prep(M), M.zones, M.home, M.L, rand, randFt, fouling, tl, o && typeof o.trace === 'function' ? o.trace : null);
   const tally = [{}, {}];
   for (let s = 0; s < 2; s++) TALLY.forEach((key, i) => { tally[s][key] = tl[s * NT + i]; });
   return { pts: [RES[0], RES[1]], poss: [tally[0].poss, tally[1].poss], ot: RES[4], tally };

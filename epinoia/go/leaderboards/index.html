@@ -9,12 +9,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EPINOIΛ">
-<!-- PUBLIC. EPINOIA GO's leaderboards (go/leaderboards/[?lg=<slug>]): every fan who has picked a winner, ranked across
-     all of EPINOIA (predictions, 0239), or within one league. A league's own page has the same board: leaderboards/?l=. -->
+<!-- PUBLIC. EPINOIA GO's leaderboards (go/leaderboards/[?lg=<slug>][&mlg=<slug>]): every fan who has picked a winner,
+     ranked across all of EPINOIA (predictions, 0239), or within one league - a league's own page has the same board:
+     leaderboards/?l=. And the Manager's (0259, #manager): its clubs, every league or one, under the marks that show
+     how closely its seasons follow the real ones (leaderboards/managerboard.js). -->
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
 <title>Leaderboards · EPINOIA GO</title>
-<meta name="description" content="EPINOIA GO's leaderboards: the fans who called the most winners, across every league on Epinoia.">
+<meta name="description" content="EPINOIA GO's leaderboards: the fans who called the most winners, and the best clubs in EPINOIA Manager, across every league on Epinoia.">
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
 <script src="../../appmode.js?v=780"></script>
@@ -29,6 +31,7 @@
 <link rel="stylesheet" href="../../kit/page.css?v=780">
 <link rel="stylesheet" href="../../kit/boards.css?v=780">
 <link rel="stylesheet" href="../../kit/face.css?v=780">
+<link rel="stylesheet" href="../../kit/mgboard.css?v=780">
 <link rel="stylesheet" href="../../kit/sectitle.css?v=780">
 <link rel="stylesheet" href="../../kit/teletext.css?v=780">
 <link rel="stylesheet" href="../../kit/legibility.css?v=780">
@@ -45,7 +48,7 @@
   <header class="hero pg-head" id="lbHead">
     <p class="pg-kick" id="lbKick"><a href="../" translate="no">EPINOIA GO</a></p>
     <h1>Leaderboards</h1>
-    <p class="pg-sub" id="lbSub">Every fan who has picked a winner, ranked across every league on EPINOIΛ, or within the league you choose.</p>
+    <p class="pg-sub" id="lbSub">The fans who called the most winners, and the best clubs in EPINOIΛ Manager: across every league, or within the one you choose.</p>
   </header>
 
   <!-- PREDICTIONS: prediction_board (0239), every league or one (prediction_leagues for the buttons) -->
@@ -61,12 +64,24 @@
       <div class="lb-board" id="lbBoard" aria-busy="true"></div>
     </div>
   </section>
+
+  <!-- MANAGER (0259): leaderboards/managerboard.js draws the promise, the marks (manager/validation.json), the reader's
+       clubs and the board -->
+  <section class="sec" id="manager" aria-labelledby="mgrH">
+    <div class="sec-h"><h2 id="mgrH">Manager</h2>
+      <p class="note">Clubs built from real players, ranked across every league</p></div>
+    <div class="sec-b">
+      <div data-mgr-board="full"></div>
+    </div>
+  </section>
 </div>
 <script src="../../config.js?v=780" defer></script>
 <script src="../../access.js?v=780" defer></script>
 <script src="../../teamcolour.js?v=780" defer></script>
 <script src="../../facecircle.js?v=780" defer></script>
 <script src="../../leaderboards/boards.js?v=780" defer></script>
+<script src="../../manager/core/badge.js?v=780" defer></script>
+<script src="../../leaderboards/managerboard.js?v=780" defer></script>
 <script src="../../nav.js?v=780" defer></script>
 </body>
 </html>

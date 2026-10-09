@@ -25,6 +25,17 @@ const qp = new URLSearchParams(location.search);
    /epinoia/game/<id>.html that tools/build-seo.py writes carry it there, so a search result opens the same page */
 const ENTITY_META = document.querySelector('meta[name="epinoia-entity"]');
 const gameId = qp.get('g') || (ENTITY_META && ENTITY_META.content) || '';
+/* A MANAGER GAME (?mgr=1; Louie, 2026-10-09: the Manager's box scores "same functionality as the epinoia equivalents"):
+   a game the Manager simulated, handed over in this tab's sessionStorage ('mgr_game': the scorer's own state - teams,
+   starters, the event log - from epinoia/manager/core/scorer.js) and drawn by exactly the code that draws a real game.
+   Nothing about it is asked of the database (no game id: every feature that needs one stands down), the match report
+   and the league's dynamic table are left out, and inside the Manager's page (&embed=1) the site's rail is not drawn */
+const MGR = qp.get('mgr') === '1';
+if (MGR && qp.get('embed') === '1') document.documentElement.classList.add('mg-embed');
+function loadManagerGame() {
+  try { const j = JSON.parse(sessionStorage.getItem('mgr_game') || 'null'); return j && Array.isArray(j.events) && Array.isArray(j.teams) ? j : null; }
+  catch (_) { return null; }
+}
 const mode = qp.get('mode') === 'supabase' ? 'supabase'
            : qp.get('mode') === 'local' ? 'local'
            : (window.epinoiaMode ? epinoiaMode() : 'local');
@@ -777,10 +788,10 @@ function tabStripHTML(tabs) {
 function tabsFor(status) {
   const S = window.S;
   /* HALF-TIME HAS ITS OWN REPORT, and it leads while the break lasts (see atHalf) */
-  const base = status === 'final'
-    ? [['report', 'match report']].concat(TABS)
+  const base = (status === 'final'
+    ? (MGR ? TABS : [['report', 'match report']].concat(TABS))
     : atHalf(S) ? [['halftime', 'half-time report']].concat(TABS)
-    : TABS;
+    : TABS).filter(t => !MGR || t[0] !== 'dyn');
   const v = S && S.video;
   return ((v && (v.url || v.live_src)) || (S && S.clips && S.clips.length)) ? base.concat([['video', 'video']]) : base;
 }
@@ -2464,7 +2475,9 @@ function dressHead(el, d) {
       const a = +d.score[0], b = +d.score[1];
       if (a > b) sc[0].classList.add('w'); else if (b > a) sc[1].classList.add('w');
     }
-    if (S.status === 'final' && !mid.querySelector('#csSheet')) {
+    /* no scoresheet for a Manager game (Louie, 2026-10-09: "It doesn't need the pdf files for the manager mode"); the
+       game analysis's button (analysis.js) hangs off this one, so it goes too */
+    if (S.status === 'final' && !MGR && !mid.querySelector('#csSheet')) {
       const b = document.createElement('button');
       b.type = 'button'; b.id = 'csSheet'; b.className = 'bt-sheet'; b.textContent = 'Scoresheet · PDF';
       mid.appendChild(b);
@@ -2986,8 +2999,9 @@ function decorateTeams(scope) {
     const label = node.textContent;
     node.textContent = '';
 
-    /* the crest, when the club actually has one */
-    const crestUrl = window.epinoiaLogoUrl ? window.epinoiaLogoUrl(club.logo_path) : null;
+    /* the crest, when the club actually has one (a Manager club's badge comes drawn, an image in the game itself) */
+    const crestUrl = MGR && /^data:image\//.test(club.logo_url || '') ? club.logo_url
+      : window.epinoiaLogoUrl ? window.epinoiaLogoUrl(club.logo_path) : null;
     const onBoard = !!node.closest('.bx-scorehead');
     if (onBoard) {
       /* on the scoreboard: the club's colours on the side, the crest large in a ringed disc */
@@ -3834,11 +3848,14 @@ async function renderPreview() {
 
 /* ------------------------------------------------------------------- boot --- */
 (async function boot() {
-  if (!gameId) return fail('No game specified.');
-  txt($('#foot'), 'transport: ' + mode);
+  if (!gameId && !MGR) return fail('No game specified.');
+  txt($('#foot'), 'transport: ' + (MGR ? 'manager' : mode));
 
   let stored = null;
-  if (mode === 'supabase') {
+  if (MGR) {
+    stored = loadManagerGame();
+    if (!stored) return fail('This Manager game is not here: open it from the Manager.');
+  } else if (mode === 'supabase') {
     try { stored = await loadStored(); }
     catch (e) { return fail('Could not load this game: ' + e.message); }
     /* refused: perhaps a members-only league (loadBehindWall); never for an open one */
@@ -3862,7 +3879,7 @@ async function renderPreview() {
      A live or final game waits for it only when it could be the difference
      between the game and a paywall card, which is never true of an open league
      (see accessMayWall). Everything else draws at once and follows the answer. */
-  const accessReady = mode === 'supabase' ? watchAccess() : Promise.resolve(null);
+  const accessReady = mode === 'supabase' && !MGR ? watchAccess() : Promise.resolve(null);
   if (stored.status !== 'scheduled' && accessMayWall()) {
     await accessReady;
     if (leagueWalled() && showWall()) return;
@@ -3883,7 +3900,7 @@ async function renderPreview() {
        numbers are still one tap away, and "what happened" is the question
        most people arrive with. A live game keeps opening on the box score,
        where the numbers ARE the story as it happens. */
-    if (window.EpinoiaReport) fTab = 'report';
+    if (window.EpinoiaReport && !MGR) fTab = 'report';
     /* a link that names its tab (a result notification's "Box score" button) gets it */
     if (qp.get('tab') && TABS.some(t => t[0] === qp.get('tab'))) fTab = qp.get('tab');
     /* a link from a profile to one play opens straight on the video */

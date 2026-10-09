@@ -176,7 +176,8 @@ function wire() {
       const load = { acct: loadAccounts, clubs: loadClubs, mod: loadModeration,
                      keys: loadKeys, audit: loadAudit, set: loadSettings,
                      plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas,
-                     analytics: loadAnalytics, links: loadLinks, maint: loadReset, news: loadNewsSources, newsroom: loadNewsroom };
+                     analytics: loadAnalytics, links: loadLinks, maint: loadReset, news: loadNewsSources, newsroom: loadNewsroom,
+                     manager: loadManager };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -1576,6 +1577,15 @@ function loadLinks() {
   const L = window.EpinoiaLinksUI;
   if (!L) return say('links-ui.js did not load, so links cannot be edited. Reload the page.', 'err');
   L.mount({ host: '#linksHost', sb, say, oops });
+}
+
+/* --------------------------------------------------------------- manager --- */
+/* EPINOIA Manager's league values and continental boosts (migration 0259): manager-ui.js draws the whole tab - every
+   league by country, ticked one by one, a country, a run or a drag at a time, and one range or boost set for them */
+function loadManager() {
+  const M = window.EpinoiaManagerUI;
+  if (!M) return say('manager-ui.js did not load, so the Manager values cannot be edited. Reload the page.', 'err');
+  M.mount({ host: '#managerHost', sb, say });
 }
 
 /* ------------------------------------------------------------------ news --- */

@@ -1,0 +1,181 @@
+/* ============================================================================
+   THE MANAGER ON EPINOIA GO (leaderboards/managerboard.js): the Manager's own skin - royal blue, soft glass, a fine
+   pale-blue edge and a royal glow (manager/manager.css) - as a block inside GO's pages: GO's leaderboards (#manager,
+   the promise, the marks it rests on, the boards) and GO's home (the teaser). Dark is navy; light is the same glass on
+   a pale sky-blue ground. No backdrop blur: a mid-range phone stays smooth.
+   ============================================================================ */
+.mgb{
+  --mgb-g1:#040a22; --mgb-g2:#0a1f6e; --mgb-g3:#1236b0;
+  --mgb-bloom-1:rgba(64,110,255,.38); --mgb-bloom-2:rgba(120,90,255,.2);
+  --mgb-glass:rgba(140,170,255,.08); --mgb-glass-2:rgba(140,170,255,.14); --mgb-glass-3:rgba(170,195,255,.2);
+  --mgb-edge:rgba(160,190,255,.24); --mgb-edge-2:rgba(160,190,255,.42);
+  --mgb-royal:#3d6bff; --mgb-royal-3:#8fb0ff; --mgb-glow:rgba(70,115,255,.5);
+  --mgb-ink:#eef3ff; --mgb-ink-2:rgba(230,238,255,.82); --mgb-ink-3:rgba(210,222,255,.6);
+  --mgb-good:#3ee6a8; --mgb-bad:#ff6b7d; --mgb-gold:#ffd66b; --mgb-silver:#d6def0; --mgb-bronze:#e3a46b;
+  position:relative; overflow:hidden; border-radius:18px; padding:22px; color:var(--mgb-ink);
+  font-family:'Archivo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:
+    radial-gradient(640px 320px at 8% -25%, var(--mgb-bloom-1), transparent 62%),
+    radial-gradient(520px 320px at 108% 6%, var(--mgb-bloom-2), transparent 62%),
+    linear-gradient(160deg, var(--mgb-g1) 0%, var(--mgb-g2) 68%, var(--mgb-g3) 150%);
+  border:1px solid var(--mgb-edge);
+  box-shadow:0 12px 40px rgba(2,8,40,.32), 0 0 34px rgba(61,107,255,.18);
+}
+:root[data-theme="light"] .mgb{
+  --mgb-g1:#f1f5ff; --mgb-g2:#dbe5ff; --mgb-g3:#b4c8ff;
+  --mgb-bloom-1:rgba(80,120,255,.26); --mgb-bloom-2:rgba(150,120,255,.14);
+  --mgb-glass:rgba(255,255,255,.6); --mgb-glass-2:rgba(255,255,255,.75); --mgb-glass-3:rgba(255,255,255,.9);
+  --mgb-edge:rgba(40,80,220,.18); --mgb-edge-2:rgba(40,80,220,.36);
+  --mgb-royal:#2747e8; --mgb-royal-3:#2747e8; --mgb-glow:rgba(39,71,232,.32);
+  --mgb-ink:#0b1846; --mgb-ink-2:rgba(11,24,70,.82); --mgb-ink-3:rgba(11,24,70,.6);
+  --mgb-good:#0f9e68; --mgb-bad:#d83a52; --mgb-gold:#b98400; --mgb-silver:#6b7591; --mgb-bronze:#a8622a;
+  box-shadow:0 10px 32px rgba(30,60,160,.14), 0 0 26px rgba(39,71,232,.12);
+}
+/* the court's arc, faint, behind the head */
+.mgb::before{ content:""; position:absolute; right:-120px; top:-170px; width:360px; height:360px; border-radius:50%;
+  border:2px solid var(--mgb-royal-3); opacity:.12; pointer-events:none }
+.mgb > *{ position:relative }
+
+/* ------------------------------------------------------------------ the head --- */
+.mgb-hero{ display:flex; flex-wrap:wrap; align-items:center; gap:14px 22px }
+.mgb-mark{ display:flex; flex-direction:column; line-height:1 }
+.mgb-ep{ font-size:22px; letter-spacing:.06em; color:var(--mgb-ink) }
+.mgb-mg{ margin-top:4px; font-size:12px; font-weight:800; letter-spacing:.42em; color:var(--mgb-royal-3);
+  text-shadow:0 0 14px var(--mgb-glow) }
+.mgb-pitch{ flex:1 1 260px; margin:0; font-size:17px; font-weight:700; line-height:1.35; color:var(--mgb-ink) }
+.mgb-acts{ display:flex; flex-wrap:wrap; gap:8px }
+.mgb-btn{ display:inline-flex; align-items:center; justify-content:center; min-height:38px; padding:0 16px; border-radius:999px;
+  font:800 12px/1 'Archivo',system-ui,sans-serif; letter-spacing:.08em; text-transform:uppercase; text-decoration:none;
+  color:var(--mgb-ink); background:var(--mgb-glass-2); border:1px solid var(--mgb-edge-2); cursor:pointer;
+  transition:background .16s, box-shadow .16s, transform .16s }
+.mgb-btn:hover{ background:var(--mgb-glass-3); box-shadow:0 0 18px var(--mgb-glow) }
+.mgb-btn:active{ transform:translateY(1px) }
+.mgb-btn.pri{ color:#fff; background:linear-gradient(180deg, #4f7bff, var(--mgb-royal)); border-color:rgba(190,210,255,.55);
+  box-shadow:0 0 0 1px rgba(61,107,255,.35), 0 6px 22px var(--mgb-glow) }
+.mgb-btn.pri:hover{ box-shadow:0 0 0 1px rgba(61,107,255,.45), 0 8px 28px var(--mgb-glow) }
+.mgb a:focus-visible, .mgb button:focus-visible{ outline:2px solid var(--mgb-royal-3); outline-offset:2px }
+
+/* ------------------------------------------------------------- the marks --- */
+.mgb-real{ margin-top:18px; padding:16px; border-radius:14px; background:var(--mgb-glass); border:1px solid var(--mgb-edge) }
+.mgb-real h3{ margin:0 0 6px; font-size:12px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--mgb-royal-3) }
+.mgb-how{ margin:0 0 14px; font-size:14px; line-height:1.5; color:var(--mgb-ink-2) }
+.mgb-marks{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px }
+.mgb-m{ display:flex; flex-direction:column; gap:6px; padding:12px 14px; border-radius:12px; background:var(--mgb-glass-2); border:1px solid var(--mgb-edge) }
+.mgb-m b{ font-size:34px; font-weight:900; line-height:1; letter-spacing:-.02em; color:var(--mgb-ink); font-variant-numeric:tabular-nums;
+  text-shadow:0 0 22px var(--mgb-glow) }
+.mgb-m span{ font-size:12.5px; line-height:1.4; color:var(--mgb-ink-2) }
+.mgb-leg{ margin:14px 0 0; font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--mgb-ink-3) }
+.mgb-tw{ margin-top:6px; overflow-x:auto; -webkit-overflow-scrolling:touch }
+.mgb-t{ width:100%; min-width:440px; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums }
+.mgb-t th{ padding:6px 8px; font-size:10.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; text-align:right; color:var(--mgb-ink-3);
+  border-bottom:1px solid var(--mgb-edge) }
+.mgb-t td{ padding:8px; text-align:right; white-space:nowrap; color:var(--mgb-ink-2); border-bottom:1px solid var(--mgb-edge) }
+.mgb-t td:first-child{ white-space:normal }
+.mgb-t th:first-child, .mgb-t td:first-child{ text-align:left }
+.mgb-t td:first-child b{ color:var(--mgb-ink); font-weight:800 }
+.mgb-t td:first-child small{ display:block; color:var(--mgb-ink-3) }
+.mgb-t td.hi{ color:var(--mgb-ink); font-weight:800 }
+.mgb-t tr:last-child td{ border-bottom:0 }
+.mgb-t .k{ display:none }
+.mgb-t .sr{ color:var(--mgb-ink-3); font-weight:500 }
+.mgb-when{ margin:10px 0 0; font-size:11.5px; color:var(--mgb-ink-3) }
+.mgb-real-1{ margin:12px 0 0; font-size:13.5px; line-height:1.45; color:var(--mgb-ink-2) }
+.mgb-real-1 b{ color:var(--mgb-ink) }
+
+/* -------------------------------------------------------------- the board --- */
+.mgb-board{ margin-top:18px }
+.mgb-bh{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 12px; margin-bottom:10px }
+.mgb-bh h3{ margin:0; font-size:12px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--mgb-royal-3) }
+.mgb-bh small{ font-size:12px; color:var(--mgb-ink-3) }
+.mgb-chips{ display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:10px; scrollbar-width:thin }
+.mgb-chip{ flex:none; display:inline-flex; align-items:center; gap:6px; min-height:32px; padding:0 12px; border-radius:999px; cursor:pointer;
+  font:700 12px/1 'Archivo',system-ui,sans-serif; color:var(--mgb-ink-2); background:var(--mgb-glass); border:1px solid var(--mgb-edge) }
+.mgb-chip small{ font-weight:600; color:var(--mgb-ink-3) }
+.mgb-chip.on{ color:#fff; background:var(--mgb-royal); border-color:rgba(190,210,255,.6); box-shadow:0 0 16px var(--mgb-glow) }
+.mgb-chip.on small{ color:rgba(255,255,255,.8) }
+.mgb-badge{ display:inline-flex; flex:none; line-height:0 }
+.mgb-badge svg{ display:block; filter:drop-shadow(0 2px 6px rgba(2,8,40,.35)) }
+
+/* the reader's own clubs */
+.mgb-mine{ display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; padding:12px 14px; margin-bottom:12px; border-radius:14px;
+  background:var(--mgb-glass); border:1px dashed var(--mgb-edge-2) }
+.mgb-mine-t{ flex:1 1 240px; font-size:13.5px; line-height:1.45; color:var(--mgb-ink-2) }
+.mgb-mine.has{ border-style:solid; border-color:var(--mgb-royal); box-shadow:inset 0 0 0 1px rgba(61,107,255,.25), 0 0 18px rgba(61,107,255,.2) }
+.mgb-mc{ display:flex; align-items:center; gap:10px; min-width:0; flex:1 1 260px; text-decoration:none; color:inherit }
+.mgb-mc .t{ display:flex; flex-direction:column; min-width:0 }
+.mgb-mc .t b{ font-size:15px; font-weight:800; color:var(--mgb-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.mgb-mc .t span{ font-size:12px; color:var(--mgb-ink-3) }
+.mgb-mc .rk{ margin-left:auto; text-align:right; font-variant-numeric:tabular-nums }
+.mgb-mc .rk b{ display:block; font-size:20px; font-weight:900; color:var(--mgb-ink) }
+.mgb-mc .rk small{ font-size:11px; color:var(--mgb-ink-3) }
+
+/* the first three */
+.mgb-pod{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin:0 0 12px; padding:0; list-style:none }
+.mgb-pod li{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:16px 10px 14px; border-radius:16px; text-align:center;
+  background:var(--mgb-glass-2); border:1px solid var(--mgb-edge); min-width:0 }
+.mgb-pod li.r1{ order:2; border-color:var(--mgb-gold); box-shadow:0 0 24px rgba(255,214,107,.22); transform:translateY(-6px) }
+.mgb-pod li.r2{ order:1 } .mgb-pod li.r3{ order:3 }
+.mgb-pod li.me{ outline:2px solid var(--mgb-royal); outline-offset:2px }
+.mgb-pod .md{ font-size:11px; font-weight:900; letter-spacing:.14em; text-transform:uppercase }
+.mgb-pod li.r1 .md{ color:var(--mgb-gold) } .mgb-pod li.r2 .md{ color:var(--mgb-silver) } .mgb-pod li.r3 .md{ color:var(--mgb-bronze) }
+.mgb-pod .nm{ max-width:100%; font-size:15px; font-weight:800; color:var(--mgb-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.mgb-pod .mn{ max-width:100%; font-size:12px; color:var(--mgb-ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.mgb-pod .wl{ font-size:22px; font-weight:900; color:var(--mgb-ink); font-variant-numeric:tabular-nums }
+.mgb-pod .sub{ font-size:12px; color:var(--mgb-ink-2); font-variant-numeric:tabular-nums }
+.mgb-lg{ display:inline-block; max-width:100%; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; color:var(--mgb-ink-2);
+  background:var(--mgb-glass); border:1px solid var(--mgb-edge); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-decoration:none }
+
+/* everybody else */
+.mgb-list{ margin:0; padding:0; list-style:none; border-radius:14px; overflow:hidden; border:1px solid var(--mgb-edge) }
+.mgb-row{ display:grid; grid-template-columns:38px minmax(0, 1fr) 72px 78px 84px; align-items:center; gap:8px; padding:9px 12px;
+  background:var(--mgb-glass); border-bottom:1px solid var(--mgb-edge); font-variant-numeric:tabular-nums }
+.mgb-row:last-child{ border-bottom:0 }
+.mgb-row:nth-child(even):not(.hd){ background:var(--mgb-glass-2) }
+.mgb-row.hd{ padding:7px 12px; background:transparent; font-size:10.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--mgb-ink-3) }
+.mgb-row.me{ background:linear-gradient(90deg, rgba(61,107,255,.3), var(--mgb-glass) 70%); box-shadow:inset 3px 0 0 var(--mgb-royal) }
+.mgb-row > :nth-child(n+3){ text-align:right }
+.mgb-row .rk{ font-weight:900; color:var(--mgb-ink-2) }
+.mgb-row .who{ display:flex; align-items:center; gap:10px; min-width:0 }
+.mgb-row .who .t{ display:flex; flex-direction:column; min-width:0 }
+.mgb-row .who b{ font-size:14px; font-weight:800; color:var(--mgb-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.mgb-row .who span{ font-size:12px; color:var(--mgb-ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.mgb-row .wl{ font-weight:800; color:var(--mgb-ink) }
+.mgb-row .df.up{ color:var(--mgb-good) } .mgb-row .df.dn{ color:var(--mgb-bad) }
+.mgb-row .pl{ font-size:12px; color:var(--mgb-ink-2) }
+.mgb-row .pl small{ display:block; color:var(--mgb-ink-3) }
+.mgb-more{ display:block; margin:12px auto 0 }
+.mgb-empty{ margin:0; padding:16px; border-radius:14px; text-align:center; font-size:14px; line-height:1.5; color:var(--mgb-ink-2);
+  background:var(--mgb-glass); border:1px dashed var(--mgb-edge-2) }
+
+/* ------------------------------------------------------------ the teaser --- */
+.mgb.teaser{ padding:18px }
+.mgb-top3{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin:14px 0 0; padding:0; list-style:none }
+.mgb-top3 li{ display:flex; align-items:center; gap:8px; min-width:0; padding:8px 10px; border-radius:12px; background:var(--mgb-glass-2); border:1px solid var(--mgb-edge) }
+.mgb-top3 .n{ font-size:12px; font-weight:900; color:var(--mgb-gold) }
+.mgb-top3 .t{ display:flex; flex-direction:column; min-width:0 }
+.mgb-top3 .t b{ font-size:13px; font-weight:800; color:var(--mgb-ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.mgb-top3 .t span{ font-size:11.5px; color:var(--mgb-ink-3); font-variant-numeric:tabular-nums }
+
+@media (max-width:720px){
+  .mgb{ padding:16px; border-radius:16px }
+  .mgb-pitch{ font-size:15.5px }
+  .mgb-marks{ grid-template-columns:1fr }
+  .mgb-m{ flex-direction:row; align-items:center; gap:12px }
+  .mgb-m b{ font-size:28px; min-width:72px }
+  .mgb-pod{ gap:6px }
+  .mgb-pod li{ padding:12px 6px 10px }
+  .mgb-pod .wl{ font-size:18px }
+  /* the table becomes a card a league: its name across the top, its four pairs under it, each with its name */
+  .mgb-t{ min-width:0 }
+  .mgb-t thead{ display:none }
+  .mgb-t, .mgb-t tbody{ display:block }
+  .mgb-t tr{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px 12px; padding:12px 0; border-bottom:1px solid var(--mgb-edge) }
+  .mgb-t tr:last-child{ border-bottom:0 }
+  .mgb-t td{ display:block; padding:0; border:0; text-align:left }
+  .mgb-t td:first-child{ grid-column:1 / -1 }
+  .mgb-t .k{ display:block; margin-bottom:2px; font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--mgb-ink-3) }
+  .mgb-row{ grid-template-columns:30px minmax(0, 1fr) 58px 64px; padding:9px 10px }
+  .mgb-row > :nth-child(5){ display:none }
+  .mgb-top3{ grid-template-columns:1fr }
+}
+@media (prefers-reduced-motion:reduce){ .mgb-btn{ transition:none } }

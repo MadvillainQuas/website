@@ -55,6 +55,7 @@
 <link rel="stylesheet" href="arenas.css?v=780">
 <link rel="stylesheet" href="go.css?v=780">
 <link rel="stylesheet" href="stampfx.css?v=780">
+<link rel="stylesheet" href="../kit/mgboard.css?v=780">
 <link rel="stylesheet" href="../kit/legibility.css?v=780">
 <!-- seo:ld -->
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"EPINOIA GO: Stamp the Arenas You Visit | Epinoia","description":"EPINOIA GO stamps the arenas you go to, at the game, with your phone: your travels on a map, the distance between them and the fans' photographs of each game.","url":"https://prophesyscouting.co.uk/epinoia/go/","inLanguage":"en","isPartOf":{"@id":"https://prophesyscouting.co.uk/epinoia/#website"},"primaryImageOfPage":{"@type":"ImageObject","url":"https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png","width":1200,"height":630}}</script>
@@ -126,9 +127,19 @@
       <div id="goPublic" data-go-public="card"></div>
     </section>
 
+    <!-- MANAGER (0259): its promise, the line from its marks and its top three (leaderboards/managerboard.js), the
+         boards themselves on GO's leaderboards page -->
+    <section class="gb" id="goMgrSec" aria-labelledby="goMgrH">
+      <div class="gb-hdr">
+        <span class="gb-idx">03</span><h2 class="gb-title" id="goMgrH">Manager</h2>
+        <div class="gb-side"><a class="go-small" href="leaderboards/#manager">the leaderboards</a></div>
+      </div>
+      <div data-mgr-board="teaser"></div>
+    </section>
+
     <section class="gb" id="goFeedSec" aria-labelledby="goFeedH">
       <div class="gb-hdr">
-        <span class="gb-idx">03</span><h2 class="gb-title" id="goFeedH" data-i18n-ctx="gofeed">The feed</h2>
+        <span class="gb-idx">04</span><h2 class="gb-title" id="goFeedH" data-i18n-ctx="gofeed">The feed</h2>
         <div class="gb-side"><a class="go-small fill" href="stamps/#goListH">add yours</a><a class="go-small" href="photos/">see the full feed</a></div>
       </div>
       <div class="feed empty" id="goFeed"></div>
@@ -137,7 +148,7 @@
 
     <section class="gb" id="goMineSec" aria-labelledby="goMineH">
       <div class="gb-hdr">
-        <span class="gb-idx">04</span><h2 class="gb-title" id="goMineH">Your stamps</h2>
+        <span class="gb-idx">05</span><h2 class="gb-title" id="goMineH">Your stamps</h2>
         <div class="gb-side" id="goMineSide"></div>
       </div>
       <div id="goMine"></div>
@@ -159,6 +170,8 @@
 <script src="public.js?v=780" defer></script>
 <script src="stampcard.js?v=780" defer></script>
 <script src="go.js?v=780" defer></script>
+<script src="../manager/core/badge.js?v=780" defer></script>
+<script src="../leaderboards/managerboard.js?v=780" defer></script>
 <script src="../nav.js?v=780" defer></script>
 </body>
 </html>

@@ -1,0 +1,73 @@
+{
+ "built": "2026-10-09",
+ "reps": 6,
+ "leagues": [
+  {
+   "league": "ORLEN Basket Liga",
+   "season": "2025-26",
+   "clubs": 16,
+   "realGames": 240,
+   "simGames": 1440,
+   "r": 0.97,
+   "rPlayers": 0.718,
+   "ppgSim": 85.9,
+   "ppgReal": 85.5,
+   "homeSim": 0.61,
+   "homeReal": 0.604,
+   "p3rSim": 40.7,
+   "p3rReal": 41.2
+  },
+  {
+   "league": "Primera FEB",
+   "season": "2025-26",
+   "clubs": 17,
+   "realGames": 272,
+   "simGames": 1632,
+   "r": 0.991,
+   "rPlayers": 0.93,
+   "ppgSim": 81.8,
+   "ppgReal": 80.9,
+   "homeSim": 0.602,
+   "homeReal": 0.607,
+   "p3rSim": 42.6,
+   "p3rReal": 43.5
+  },
+  {
+   "league": "NBL Division One",
+   "season": "2025-26",
+   "clubs": 22,
+   "realGames": 222,
+   "simGames": 2772,
+   "r": 0.951,
+   "rPlayers": 0.764,
+   "ppgSim": 74.8,
+   "ppgReal": 75.9,
+   "homeSim": 0.582,
+   "homeReal": 0.581,
+   "p3rSim": 36.7,
+   "p3rReal": 37.3
+  },
+  {
+   "league": "CEBL",
+   "season": "2026",
+   "clubs": 10,
+   "realGames": 120,
+   "simGames": 540,
+   "r": 0.923,
+   "rPlayers": 0.614,
+   "ppgSim": 93.7,
+   "ppgReal": 92.7,
+   "homeSim": 0.644,
+   "homeReal": 0.608,
+   "p3rSim": 40,
+   "p3rReal": 39.8
+  }
+ ],
+ "summary": {
+  "leagues": 4,
+  "games": 6384,
+  "r": 0.959,
+  "rPlayers": 0.756,
+  "ppgGap": 0.9
+ }
+}
