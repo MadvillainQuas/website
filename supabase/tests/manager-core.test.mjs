@@ -77,12 +77,12 @@ for (let t = 0; t < 10; t++) {
   ok('values: a big (and an athletic big) is worth more for the same line', V.indexOf(big, ctx) > V.indexOf(wing, ctx));
   ok('values: minutes are valued', V.indexOf(Object.assign({}, a, { min: 200 }), ctx) < V.indexOf(a, ctx));
   const priced = V.priceLeague(rows, { min: 20000, max: 400000 }, r => (teamOf.get(r.id) === 'T0' ? 0.25 : 0));
-  const vals = rows.filter(r => r.min >= 40).map(r => priced.get(r.id).value);
-  ok('values: everybody inside the range, give or take the outliers (12%) and the boost (25%)', vals.every(v => v >= 20000 * 0.88 * 0.99 && v <= 400000 * 1.12 * 1.25 * 1.01), [Math.min(...vals), Math.max(...vals)]);
+  const vals = rows.filter(r => r.min >= 40).map(r => priced.get(r.id).wage);   // the range is the wages (2026-10-09)
+  ok('values: every wage inside the range, give or take the outliers (12%) and the boost (25%)', vals.every(v => v >= 20000 * 0.88 * 0.99 && v <= 400000 * 1.12 * 1.25 * 1.01), [Math.min(...vals), Math.max(...vals)]);
   const t0 = rows.filter(r => teamOf.get(r.id) === 'T0'), x = t0[0];
   ok('values: a club in a continental competition carries its boost', priced.get(x.id).boost === 0.25);
   const bud = V.budgetOf(priced, rows);
-  ok('values: the budget is twelve average wages', near(bud, 12 * vals.reduce((s, v) => s + v * V.WAGE_RATE, 0) / vals.length, bud * 0.1), bud);
+  ok('values: the budget is twelve average wages', near(bud, 12 * vals.reduce((s, v) => s + v, 0) / vals.length, bud * 0.1), bud);
   ok('values: money prints as a market does', V.money(1234567) === '€1.2M' && V.money(450000) === '€450K' && V.roundMoney(123456) === 120000);
 }
 /* ---------------------------------------------------------------- the 1-20 attributes --- */

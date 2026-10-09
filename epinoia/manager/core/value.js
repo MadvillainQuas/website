@@ -34,7 +34,9 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 function quant(a, q) { const x = a.filter(isNum).sort((p, r) => p - r); if (!x.length) return null; const i = (x.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return x[lo] + (x[hi] - x[lo]) * (i - lo); }
 
 /* a league with no range of its own yet: a modest professional league's */
-const DEFAULT_RANGE = { min: 25000, max: 450000 };
+/* A LEAGUE'S RANGE IS ITS WAGES (Louie, 2026-10-09: "I thought ranges were actually for wages"): its fringe player's wage
+   to its best's; a value is the wage over WAGE_RATE */
+const DEFAULT_RANGE = { min: 4000, max: 72000 };
 const WAGE_RATE = 0.16;
 const ROSTER = 12;
 const MIN_POP = 40;          // minutes for a player to count in his league's percentiles
@@ -78,7 +80,7 @@ function priceLeague(rows, range, boostOf) {
   const out = new Map();
   all.forEach(({ r, idx }) => {
     const p = pctOf(idx);
-    let value = R.min + (R.max - R.min) * Math.pow(p, CURVE);
+    let value = (R.min + (R.max - R.min) * Math.pow(p, CURVE)) / WAGE_RATE;
     /* the outliers: over the top, under the bottom */
     if (isNum(p95) && idx > p95 && hi > p95) value *= 1 + OVER * clamp((idx - p95) / (hi - p95), 0, 1);
     if (isNum(p5) && idx < p5 && p5 > lo) value *= 1 - OVER * clamp((p5 - idx) / (p5 - lo), 0, 1);

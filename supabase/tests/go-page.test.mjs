@@ -287,7 +287,7 @@ const navCss2 = rd('epinoia', 'kit', 'nav.css');
 ok('a seventh panel on the deck, GO\'s, sized and slid like the others',
    /const goPanel = el\('div', 'panel gopanel'\);/.test(nav) && /view === 'go'      \? goPanel/.test(nav)
    && /goPanel\.setAttribute\('aria-hidden', String\(v !== 'go'\)\)/.test(nav)
-   && /data-view="go"\] \.deck\{ transform:translateX\(-85\.7143%\)/.test(navCss2));
+   && /data-view="go"\] \.deck\{ transform:translateX\(-75%\)/.test(navCss2));
 ok('"EPINOIA GO ›" opens it and goes nowhere (a modified click is still the link); the sheet stays open',
    /goRow\.append\(el\('span', 'ic', '◎'\), goWord, el\('span', 'lgo', '›'\)\);/.test(nav)
    && /goRow\.dataset\.railMove = '1';/.test(nav) && /e\.preventDefault\(\);\s*setView\('go', true\);/.test(nav));
@@ -298,7 +298,7 @@ ok('...its three places: home (the GO page), feed (the wall), your stamps, each 
    && /platformRow\('▦', 'feed', 'go\/photos\/', \/\\\/epinoia\\\/go\\\/photos\\\/\//.test(nav)
    && /platformRow\('▣', 'your stamps', 'go\/stamps\/', \/\\\/epinoia\\\/go\\\/stamps\\\/\//.test(nav));
 ok('GO\'s pages open the rail on it, and are nobody\'s league (the wall\'s ?l= is its own filter)',
-   /nav\.dataset\.view = onGo \? 'go' : 'root';/.test(nav) && /setView\(onGo \? 'go' : country === null \? 'home' : 'root', false\)/.test(nav)
+   /nav\.dataset\.view = onGo \? 'go' : 'root';/.test(nav) && /setView\(onGo \? 'go' : .*country === null \? 'home' : 'root', false\)/.test(nav)
    && /const PLATFORM_PAGE = \/\\\/epinoia\\\/\(home\|games\|scouting\|go\)\\\/\/;/.test(nav));
 ok('the phone\'s bar on GO\'s pages: home (GO\'s), feed, stamps, profile',
    /const GO_TABS = \[/.test(nav) && /\(onGo \? GO_TABS : PLATFORM_TABS\)\.forEach/.test(nav)

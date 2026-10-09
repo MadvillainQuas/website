@@ -526,7 +526,9 @@
      from the GO row the way a league's pages are one step in from the league. A leaf off the platform
      layer, like the follows panel, riding the same deck. GO's pages open on it. */
   const goPanel = el('div', 'panel gopanel');
-  deck.append(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel);
+  /* SCOUTING'S OWN LAYER (Louie, 2026-10-09): scouting, the injury report and what wins, one step in from "scouting ›" */
+  const scoutPanel = el('div', 'panel scoutpanel');
+  deck.append(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel, scoutPanel);
   navdeck.appendChild(deck);
   navScroll.appendChild(navdeck);
 
@@ -592,13 +594,13 @@
     if (a.classList.contains('on')) a.setAttribute('aria-current', 'page');
     return a;
   };
-  hlist.append(
-    platformRow('⌂', 'home', 'home/', /\/epinoia\/home\/$/,
-                'HOME — every league, today’s fixtures, the best players'),
-    platformRow('▥', 'fixtures', 'games/', /\/epinoia\/games\//,
-                'global fixtures: every league’s games on one page'),
-    platformRow('⌕', 'scouting', 'scouting/', /\/epinoia\/scouting\//,
-                'global scouting: every league in one table'));
+  const fixturesRow = platformRow('▥', 'fixtures', 'games/', /\/epinoia\/games\//,
+                'global fixtures: every league’s games on one page');
+  const scoutingRow = platformRow('⌕', 'scouting', 'scouting/', /\/epinoia\/scouting\//,
+                'global scouting: every league in one table');
+  const homeLink = platformRow('⌂', 'home', 'home/', /\/epinoia\/home\/$/,
+                'HOME — every league, today’s fixtures, the best players');
+  hlist.append(homeLink, fixturesRow, scoutingRow);
   const injuriesRow = platformRow('✚', 'injury report', 'injuries/', /\/epinoia\/injuries\/$/,
                                   'the waiver wire: who is missing, in every league, by club');
   hlist.append(injuriesRow);
@@ -696,9 +698,32 @@
   hlist.insertBefore(goRow, injuriesRow);
   /* MANAGER (Louie, 2026-10-09: "Underneath EPINOIA GO on the home rail ... a Manager button that directs to the manager
      game"): the game itself, a page of its own */
-  hlist.insertBefore(platformRow('⛉', 'manager', 'manager/', /\/epinoia\/manager\//,
-                                 'EPINOIA Manager: build a club from real players and play a real league’s season'), injuriesRow);
-  hlist.appendChild(winsRow);
+  const managerRow = platformRow('⛉', 'manager', 'manager/', /\/epinoia\/manager\//,
+                                 'EPINOIA Manager: build a club from real players and play a real league’s season');
+  /* THE HOME RAIL IN SECTIONS (Louie, 2026-10-09): home; MAIN - fixtures, leagues ›, scouting › (its own layer: scouting,
+     the injury report, what wins); VIDEO & FEED - news, videos; EPINOIA GO - GO ›, the Manager */
+  const onScout = /\/epinoia\/(scouting|injuries|winning)\//.test(here);
+  const scoutMove = el('a', 'item' + (onScout ? ' on' : ''));
+  scoutMove.href = root + 'scouting/';
+  scoutMove.append(el('span', 'ic', '⌕'), el('span', 'tx', 'scouting'), el('span', 'lgo', '›'));
+  scoutMove.title = 'scouting, the injury report and what wins';
+  scoutMove.dataset.railMove = '1';
+  scoutMove.addEventListener('click', e => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    setView('scout', true);
+  });
+  const sec = t => { const d = el('div', 'rsec', t); d.setAttribute('aria-hidden', 'true'); return d; };
+  hlist.textContent = '';
+  hlist.append(homeLink, sec('Main'), fixturesRow, leaguesRow, scoutMove, sec('Video & feed'), newsRow, videosRow, sec('EPINOIA GO'), goRow, managerRow);
+  const scouthead = el('div', 'phead');
+  const scoutback = el('button', 'back', '‹');
+  scoutback.type = 'button'; scoutback.title = 'Back'; scoutback.setAttribute('aria-label', 'Back to the Epinoia menu');
+  scoutback.addEventListener('click', () => setView('home', true));
+  scouthead.append(scoutback, el('span', 'lname', 'Scouting'));
+  const scoutlist = el('div', 'pages');
+  scoutlist.append(scoutingRow, injuriesRow, winsRow);
+  scoutPanel.append(scouthead, scoutlist);
   /* BACK TO PROPHE(S)Y (2026-10-06): a small chevron beside the logotype, in the place every other panel keeps its back
      chevron, that leaves Epinoia for the site's front door (prophesyscouting.co.uk/). A link, not a rail move: it goes. */
   const sitehome = el('a', 'back sitehome', '‹');
@@ -1883,6 +1908,7 @@
          : view === 'country' ? countryPanel
          : view === 'follows' ? followsPanel
          : view === 'go'      ? goPanel
+         : view === 'scout'   ? scoutPanel
          : homePanel;
   }
 
@@ -1927,6 +1953,7 @@
       teamsPanel.setAttribute('aria-hidden', 'false');
       followsPanel.setAttribute('aria-hidden', 'false');
       goPanel.setAttribute('aria-hidden', 'false');
+      scoutPanel.setAttribute('aria-hidden', 'false');
       setTimeout(() => {
         navdeck.classList.remove('animating');
         applyHidden();
@@ -1945,6 +1972,7 @@
     teamsPanel.setAttribute('aria-hidden', String(v !== 'teams'));
     followsPanel.setAttribute('aria-hidden', String(v !== 'follows'));
     goPanel.setAttribute('aria-hidden', String(v !== 'go'));
+    scoutPanel.setAttribute('aria-hidden', String(v !== 'scout'));
   }
 
   function fillHeader(l) {
@@ -2378,7 +2406,7 @@
        top, which is now the countries rather than a flat list of every league
        on the platform. */
     if (l) { fillHeader(l); applyNav(l); setView('league', false); }
-    else { setView(onGo ? 'go' : country === null ? 'home' : 'root', false); }
+    else { setView(onGo ? 'go' : /\/epinoia\/(scouting|injuries|winning)\//.test(location.pathname) ? 'scout' : country === null ? 'home' : 'root', false); }
     /* one more measure after the marquee pass has run, and only then is the
        rail allowed to animate — everything up to here is the page's opening
        position, not a change somebody made */

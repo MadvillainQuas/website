@@ -178,15 +178,18 @@ body.nav-drawer-open{ overflow:hidden }
    before your profile, quarters before the platform layer, thirds before the
    clubs. */
 .ep-nav .deck{
-  display:flex; width:700%; align-items:flex-start;
+  display:flex; width:800%; align-items:flex-start;
   transform:translateX(0); transition:transform .34s cubic-bezier(.4,0,.2,1);
 }
-.ep-nav[data-view="country"] .deck{ transform:translateX(-14.2857%) }
-.ep-nav[data-view="root"] .deck{ transform:translateX(-28.5714%) }
-.ep-nav[data-view="league"] .deck{ transform:translateX(-42.8571%) }
-.ep-nav[data-view="teams"] .deck{ transform:translateX(-57.1429%) }
-.ep-nav[data-view="follows"] .deck{ transform:translateX(-71.4286%) }
-.ep-nav[data-view="go"] .deck{ transform:translateX(-85.7143%) }
+.ep-nav[data-view="country"] .deck{ transform:translateX(-12.5%) }
+.ep-nav[data-view="root"] .deck{ transform:translateX(-25%) }
+.ep-nav[data-view="league"] .deck{ transform:translateX(-37.5%) }
+.ep-nav[data-view="teams"] .deck{ transform:translateX(-50%) }
+.ep-nav[data-view="follows"] .deck{ transform:translateX(-62.5%) }
+.ep-nav[data-view="go"] .deck{ transform:translateX(-75%) }
+.ep-nav[data-view="scout"] .deck{ transform:translateX(-87.5%) }
+/* the home rail's sections (Louie, 2026-10-09) */
+.ep-nav .rsec{ font-family:var(--f-micro); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); padding:12px 14px 4px; margin-top:4px; border-top:1px dashed var(--rule) }
 /* the clubs: a crest (or a monogram in the club's colour) beside each name */
 .ep-nav .teams .trow .ep-crest{ width:22px; height:22px; border-radius:50%; display:inline-grid; place-items:center; overflow:hidden;
   font-family:var(--f-micro); font-size:7px; letter-spacing:.04em; color:#04100b; flex:none; margin-right:8px }
@@ -198,7 +201,7 @@ body.nav-drawer-open{ overflow:hidden }
    or tab that is not compositing at the time. The class comes off after the
    first paint, so every LATER change animates. */
 .ep-nav.noanim .deck, .ep-nav.noanim .navdeck{ transition:none }
-.ep-nav .panel{ width:14.2857%; flex:0 0 14.2857%; min-width:0 }
+.ep-nav .panel{ width:12.5%; flex:0 0 12.5%; min-width:0 }
 /* the country panel's heading sits in a head beside its back chevron, so the
    chevron is in the same place at every level; the heading keeps its own type
    rather than the head's smaller link style. */

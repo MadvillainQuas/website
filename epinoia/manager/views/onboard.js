@@ -161,7 +161,7 @@ function render(host) {
         info.textContent = '';
         info.appendChild(h('div.mg-row', { style: { justifyContent: 'center', gap: '18px', color: 'rgba(220,230,255,.85)', fontSize: '14px' } },
           h('span', h('b', String(clubs.length)), ' clubs'), h('span', h('b', String((lg.S.games || []).length)), ' games played'),
-          h('span', 'Values ', h('b', Mgr.value.money(lg.range.min)), '–', h('b', Mgr.value.money(lg.range.max))),
+          h('span', 'Wages ', h('b', Mgr.value.money(lg.range.min)), '–', h('b', Mgr.value.money(lg.range.max))),
           h('span', 'Squad budget ', h('b', Mgr.value.money(lg.budget)))));
         if (!enough) info.appendChild(h('p.hint.bad', 'Too few games have been played in this league yet for a manager league: pick another, or come back when its season is under way.'));
         st.loaded = enough ? lg : null;

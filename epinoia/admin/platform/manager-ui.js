@@ -32,11 +32,12 @@ const btn = (text, cls, fn) => { const b = el('button', 'ep-btn ' + (cls || 'min
 
 /* ---------------------------------------------------------------- pure --- */
 const CURVE = 3;                                   // manager/core/value.js
-const DEFAULT_RANGE = { min: 25000, max: 450000 }; // ...and its range for a league nobody has set
+const DEFAULT_RANGE = { min: 4000, max: 72000 }; // ...and its range for a league nobody has set
 /* the presets: a ladder of markets, from a development league to a continental one */
+/* THE RANGES ARE WAGES (Louie, 2026-10-09): a league's fringe player's wage to its best's (core/value.js) */
 const PRESETS = [
-  ['Development', 2000, 40000], ['Second tier', 8000, 150000], ['Mid league', 25000, 450000],
-  ['Strong league', 60000, 1200000], ['Top league', 150000, 3000000], ['Continental', 400000, 8000000]
+  ['Development', 1000, 8000], ['Second tier', 2000, 25000], ['Mid league', 4000, 72000],
+  ['Strong league', 10000, 200000], ['Top league', 25000, 500000], ['Continental', 60000, 1300000]
 ];
 const BOOSTS = [0, 5, 10, 15, 25, 40];
 /* money as the Manager prints it (value.js money) */
@@ -99,7 +100,7 @@ function mount(o) {
 
   host.textContent = '';
   const lead = el('p', 'lead');
-  lead.appendChild(el('span', null, 'What a player is worth in each league in EPINOIA Manager. A range runs from a league’s fringe player to its best; '
+  lead.appendChild(el('span', null, 'What a player is paid in each league in EPINOIA Manager. A wage range runs from a league’s fringe player to its best (his value is his wage over 16%); '
     + 'a player’s place in it comes from his index. A boost adds to the value of every player at a club that also plays in that league (the clubs linked in Links): for the continental competitions. '
     + 'Tick leagues (shift for a run, or drag down the ticks), then set one range or one boost for all of them.'));
   host.appendChild(lead);
@@ -165,7 +166,7 @@ function mount(o) {
 
   function readRange() {
     const a = parseMoney(minIn.value), b = parseMoney(maxIn.value);
-    const bad = a == null || b == null ? 'Type a range as 25k – 450k, or pick a preset.' : rangeOk(a, b);
+    const bad = a == null || b == null ? 'Type a wage range as 4k – 72k, or pick a preset.' : rangeOk(a, b);
     if (bad) { say(bad, 'err'); return null; }
     return { min: a, max: b };
   }
