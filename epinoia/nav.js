@@ -694,6 +694,10 @@
     setView('go', true);
   });
   hlist.insertBefore(goRow, injuriesRow);
+  /* MANAGER (Louie, 2026-10-09: "Underneath EPINOIA GO on the home rail ... a Manager button that directs to the manager
+     game"): the game itself, a page of its own */
+  hlist.insertBefore(platformRow('⛉', 'manager', 'manager/', /\/epinoia\/manager\//,
+                                 'EPINOIA Manager: build a club from real players and play a real league’s season'), injuriesRow);
   hlist.appendChild(winsRow);
   /* BACK TO PROPHE(S)Y (2026-10-06): a small chevron beside the logotype, in the place every other panel keeps its back
      chevron, that leaves Epinoia for the site's front door (prophesyscouting.co.uk/). A link, not a rail move: it goes. */
