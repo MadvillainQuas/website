@@ -598,11 +598,12 @@
     platformRow('▥', 'fixtures', 'games/', /\/epinoia\/games\//,
                 'global fixtures: every league’s games on one page'),
     platformRow('⌕', 'scouting', 'scouting/', /\/epinoia\/scouting\//,
-                'global scouting: every league in one table'),
-    platformRow('✚', 'injury report', 'injuries/', /\/epinoia\/injuries\/$/,
-                'the waiver wire: who is missing, in every league, by club'));
-  /* EPINOIA GO sits between the injury report and the news, and WHAT WINS last (Louie, 2026-10-07:
-     the two swapped) - both placed below, once the GO row exists */
+                'global scouting: every league in one table'));
+  const injuriesRow = platformRow('✚', 'injury report', 'injuries/', /\/epinoia\/injuries\/$/,
+                                  'the waiver wire: who is missing, in every league, by club');
+  hlist.append(injuriesRow);
+  /* EPINOIA GO sits between scouting and the injury report (Louie, 2026-10-09: the two swapped; before, it came after
+     the injury report), and WHAT WINS last (2026-10-07) - both placed below, once the GO row exists */
   const newsRow = platformRow('❑', 'news', 'news/', /\/epinoia\/news\/$/,
                               'news: every league, the publishers that cover them and the leagues’ creators, newest first');
   const winsRow = platformRow('∿', 'what wins', 'winning/', /\/epinoia\/winning\//,
@@ -692,7 +693,7 @@
     e.preventDefault();
     setView('go', true);
   });
-  hlist.insertBefore(goRow, newsRow);
+  hlist.insertBefore(goRow, injuriesRow);
   hlist.appendChild(winsRow);
   /* BACK TO PROPHE(S)Y (2026-10-06): a small chevron beside the logotype, in the place every other panel keeps its back
      chevron, that leaves Epinoia for the site's front door (prophesyscouting.co.uk/). A link, not a rail move: it goes. */

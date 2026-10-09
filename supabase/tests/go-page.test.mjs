@@ -237,9 +237,12 @@ ok('...and the translations keep the name as it is, so it is found in Japanese a
 console.log('\nin the rail (6.3)');
 const nav = rd('epinoia', 'nav.js'), navCss = rd('epinoia', 'kit', 'nav.css'), kit = rd('epinoia', 'kit', 'epinoia-kit.css');
 ok('EPINOIA GO is the row under "leagues" in the first rail, lit on its own pages',
-   nav.indexOf('hlist.appendChild(leaguesRow);') < nav.indexOf('hlist.insertBefore(goRow, newsRow);')
-   && nav.indexOf('hlist.insertBefore(goRow, newsRow);') < nav.indexOf('homePanel.append(hphead, hlist);')
+   nav.indexOf('hlist.appendChild(leaguesRow);') < nav.indexOf('hlist.insertBefore(goRow, injuriesRow);')
+   && nav.indexOf('hlist.insertBefore(goRow, injuriesRow);') < nav.indexOf('homePanel.append(hphead, hlist);')
    && /goRow\.href = root \+ 'go\/';/.test(nav) && /\/\\\/epinoia\\\/go\\\/\/\.test\(here\)/.test(nav));
+ok('...between scouting and the injury report (Louie, 2026-10-09: GO and the injury report swapped)',
+   /const injuriesRow = platformRow\('✚', 'injury report', 'injuries\/'/.test(nav) && nav.indexOf("platformRow('⌕', 'scouting'") < nav.indexOf('const injuriesRow')
+   && nav.indexOf('hlist.append(injuriesRow);') < nav.indexOf('hlist.insertBefore(goRow, injuriesRow);'));
 ok('...EPINOIΛ in the logotype and GO in its own face, as a name (never translated)',
    /goWord\.append\(el\('span', 'epinoia-mark', 'EPINOIΛ'\), el\('span', 'go-go', 'GO'\)\)/.test(nav)
    && /goWord\.setAttribute\('translate', 'no'\)/.test(nav));
@@ -439,7 +442,7 @@ ok('GO\'s layer of the rail has it, after "your stamps", worded "find a game"',
    /platformRow\('⌖', 'find a game', 'go\/nearby\/', \/\\\/epinoia\\\/go\\\/nearby\\\/\//.test(navSrc)
    && navSrc.indexOf("'find a game', 'go/nearby/'") > navSrc.indexOf("'your stamps', 'go/stamps/'"));
 ok('...and it is not a row of the root rail under EPINOIA GO itself (Louie: after EPINOIA GO has been clicked)',
-   !/find a game|nearby/.test(navSrc.slice(navSrc.indexOf('const goRow'), navSrc.indexOf('hlist.insertBefore(goRow, newsRow)'))));
+   !/find a game|nearby/.test(navSrc.slice(navSrc.indexOf('const goRow'), navSrc.indexOf('hlist.insertBefore(goRow, injuriesRow)'))));
 ok('GO\'s phone bar has it: home, feed, stamps, find, profile',
    (t => ['go/', 'go/photos/', 'go/stamps/', 'go/nearby/', 'me/'].every((h, i, a) => t.includes("href: '" + h + "'") && (!i || t.indexOf("href: '" + h + "'") > t.indexOf("href: '" + a[i - 1] + "'"))))(
      navSrc.slice(navSrc.indexOf('const GO_TABS'), navSrc.indexOf('function paintPlatformTabs'))));
