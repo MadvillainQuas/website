@@ -234,8 +234,9 @@ function team(host, args) {
   host.appendChild(body);
   function members() {
     if (c.me) return (A.club.roster || []).map(e => String(e.id));
+    /* the real club keeps every man: one the reader signed plays for both, his copy here marked * (Louie, 2026-10-09) */
     const drafted = new Set((A.club.roster || []).map(e => String(e.id)));
-    return A.lg.S.players.filter(r => String(A.lg.teamOf(r.id)) === String(c.id) && r.min > 0 && !drafted.has(String(r.id))).sort((a, b) => b.min - a.min).map(r => String(r.id));
+    return A.lg.S.players.filter(r => String(A.lg.teamOf(r.id)) === String(c.id) && r.min > 0).sort((a, b) => b.min - a.min).map(r => (drafted.has(String(r.id)) ? 'dup:' : '') + String(r.id));
   }
   function roster() {
     const t = h('table.mg-table', h('thead', h('tr', h('th.l', 'Player'), h('th', 'Pos'), h('th', 'GP'), h('th', 'MIN'), h('th', 'PTS'), h('th', 'REB'), h('th', 'AST'), h('th', 'STL'), h('th', 'BLK'),
@@ -248,7 +249,7 @@ function team(host, args) {
         h('td', g && Ls.fga ? A.fmt(100 * Ls.fgm / Ls.fga) : '–'), h('td', g && Ls.p3a ? A.fmt(100 * Ls.p3m / Ls.p3a) : '–'), h('td', A.money(p.value))));
     });
     t.appendChild(tb);
-    return h('div.mg-panel', h('div.mg-h', h('h3', 'Roster in this league'), h('span.mg-sub', c.me ? 'Your squad' : 'Its own players, less any you drafted · simulated stats')), h('div.mg-tablewrap', t));
+    return h('div.mg-panel', h('div.mg-h', h('h3', 'Roster in this league'), h('span.mg-sub', c.me ? 'Your squad' : 'Its own players (* also in your squad, a copy) · simulated stats')), h('div.mg-tablewrap', t));
   }
   function results() {
     const fs = S.fixtures.filter(f => f.h === i || f.a === i).sort((a, b) => a.r - b.r);

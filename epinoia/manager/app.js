@@ -123,22 +123,24 @@ A.crest = (i, size) => {
 };
 A.clubLink = (i, cls) => { const c = A.clubAt(i); return h('a' + (cls ? '.' + cls : ''), { href: '#/team/' + i, translate: 'no' }, c.name); };
 /* a player: his season row and his league's loaded data (the home league's, or his own league's for a man from abroad) */
-A.rowOf = id => { id = String(id); return A.mine.rows.get(id) || (A.lg && A.lg.byId.get(id)) || null; };
+A.rowOf = id => { id = String(id).replace(/^dup:/, ''); return A.mine.rows.get(id) || (A.lg && A.lg.byId.get(id)) || null; };
 A.namedOf = id => {
   id = String(id);
+  /* a real club's copy of a man the reader signed: the same man, marked * */
+  if (id.startsWith('dup:')) { const r = A.namedOf(id.slice(4)); return r ? Object.assign({}, r, { name: r.name + ' *' }) : null; }
   const lid = A.mine.league.get(id), L = lid && A.ext.get(lid);
   return (L && L.named.get(id)) || (A.lg && A.lg.named.get(id)) || null;
 };
 A.nameOf = id => { const r = A.namedOf(id); return (r && r.name) || 'Player'; };
-A.playerLink = (id, cls) => h('a' + (cls ? '.' + cls : ''), { href: '#/player/' + encodeURIComponent(id), translate: 'no' }, A.nameOf(id));
-A.cardOf = id => { id = String(id); return A.mine.cards.get(id) || (A.lg && A.lg.cards.get(id)) || null; };
+A.playerLink = (id, cls) => h('a' + (cls ? '.' + cls : ''), { href: '#/player/' + encodeURIComponent(String(id).replace(/^dup:/, '')), translate: 'no' }, A.nameOf(id));
+A.cardOf = id => { id = String(id).replace(/^dup:/, ''); return A.mine.cards.get(id) || (A.lg && A.lg.cards.get(id)) || null; };
 /* his position: the one the site lists him at, where it names one (adapter: cards.listedSlot), else his minutes' */
 A.slotIn = (L, id, share) => { const s = L && L.slot && L.slot.get(String(id)); return s != null ? s : slotOf(share); };
 A.slotOfId = id => { const c = A.cardOf(id); return A.slotIn(A.leagueDataOf(id), id, c ? c.share : null); };
 A.posOf = id => (A.cardOf(id) || A.rowOf(id) ? SLOTS[A.slotOfId(id)] : '–');
-A.leagueDataOf = id => { const lid = A.mine.league.get(String(id)); return (lid && A.ext.get(lid)) || A.lg; };
-A.attrs = id => { const L = A.leagueDataOf(id); return (L && L.attrs.get(String(id))) || null; };
-A.priceOf = id => { const L = A.leagueDataOf(id); return (L && L.priced.get(String(id))) || null; };
+A.leagueDataOf = id => { const lid = A.mine.league.get(String(id).replace(/^dup:/, '')); return (lid && A.ext.get(lid)) || A.lg; };
+A.attrs = id => { const L = A.leagueDataOf(id); return (L && L.attrs.get(String(id).replace(/^dup:/, ''))) || null; };
+A.priceOf = id => { const L = A.leagueDataOf(id); return (L && L.priced.get(String(id).replace(/^dup:/, ''))) || null; };
 A.attrChip = v => h('span.mg-attr.' + (Mgr.ratings.band(v) || 'a0'), isNum(v) ? String(v) : '–');
 A.toast = (msg, bad) => {
   const t = doc.getElementById('mgToast'); if (!t) return;
@@ -250,8 +252,8 @@ function realTeam(tid, form) {
   const men = p => ({ id: String(p.id), mpg: p.min / gp, share: lg.share.get(String(p.id)) || Mgr.cards.shareOf(p) });
   const cards = new Map(lg.cards);
   /* the reader's signings are copies: the real clubs keep their own men (Louie: "duplicated rather than ripped from teams") */
-  void drafted;
-  let list = all.map(men);
+  /* a man the reader signed plays here too, as a copy with his own id (so his two seasons never add together) */
+  let list = all.map(men).map(m => { if (!drafted.has(m.id)) return m; const id = 'dup:' + m.id; if (lg.cards.get(m.id)) cards.set(id, Object.assign({}, lg.cards.get(m.id), { id })); return Object.assign({}, m, { id }); });
   /* nobody at a position, or fewer than five: replacement-level men in the gaps */
   const fill = k => { const id = 'fill:' + tid + ':' + k; cards.set(id, Mgr.cards.fillerCard(lg.ref, k, id)); return { id, mpg: 8, share: [0, 1, 2, 3, 4].map(j => (j === k ? 1 : 0)) }; };
   for (let k = 0; list.length < 8 && k < 5; k++) list.push(fill(k));
