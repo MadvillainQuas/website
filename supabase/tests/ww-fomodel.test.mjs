@@ -438,6 +438,38 @@ const SQV = main.v.sq;
   WHATIF_HTML.push(sh, F.squadSimHTML(main.v, SQ.simulate(SQV, { remove: [SQV.players[0].id] })), F.squadSimHTML(main.v, SQ.simulate(SQV, { mpg: { [SQV.players[1].id]: 5 } })),
     F.squadSimHTML(main.v, null));
 }
+/* THE FEATURE KIT (2026-10-09): the dashboard, the KPI strips, the widgets, needs / has / covers, VORP's leaderboard, two
+   bars a man in the usage, roles from the squad model, the position sheet's card, stamina in the what-if */
+{
+  const H = main.html, v = main.v;
+  const goes = [...H.matchAll(/<button type="button" class="fm-tile [a-z]+" data-go="([a-zA-Z]+)">/g)].map(m => m[1]);
+  ok('the dashboard: a tile per block that has something to say, each opening its block', goes.length >= 7 && goes.every(b => F.BLOCKS.includes(b)) && new Set(goes).size === goes.length &&
+    H.indexOf('class="fm-dash"') < H.indexOf('<details class="fm-b"'), goes.join(','));
+  ok('...a KPI strip opens the verdict, where the wins are, by position, squad shape and why we lose', ['verdict', 'ledger', 'slots', 'squad', 'losses'].every(b => {
+    const i = H.indexOf('data-b="' + b + '"'), j = H.indexOf('<details class="fm-b"', i + 1);
+    return i > 0 && H.slice(i, j > 0 ? j : undefined).includes('class="fm-kpis"');
+  }));
+  ok('...the sections inside the blocks are widgets with a header strip', (H.match(/<section class="fm-wd"><header class="fm-wdh"><h4>/g) || []).length >= 6);
+  ok('position cards: what each needs, has and covers', /class="fm-pl dn"/.test(H) && /class="fm-pl up"/.test(H) &&
+    v.sq.slots.every(s => F.hasList(s).every(n => n.z >= 0.5 && ['vorp', 'bpm', 'usg', 'p3_rate', 'rim_rate'].indexOf(n.st) < 0)));
+  ok('...AST/USG among every position\'s key numbers', v.sq.slots.every(s => s.key5.includes('au')) && /AST\/USG/.test(H));
+  ok('VORP: the positions as tiles, the players as a leaderboard', /<ol class="fm-board">/.test(H) && (H.match(/<span class="fm-bn" translate="no">/g) || []).length === v.sq.players.filter(p => Number.isFinite(p.vorp) && p.mpg >= 3).length);
+  ok('who uses the plays: two bars a man, his share of the plays and his points a play against the league\'s', (H.match(/class="fm-ueb"/g) || []).length === Math.min(9, v.sq.usage.length));
+  ok('roles in the squad from the squad model, with how many the rotation has against the league\'s clubs', /Roles in the squad/.test(H) && v.sq.roles && v.sq.roles.club.length === 9);
+  ok('the position sheet\'s card: one per position, nothing without the squad model', ['PG', 'SG', 'SF', 'PF', 'C'].every(k => /^<div class="fm fm-inpv"><article class="fm-pc">/.test(F.positionHTML(v, k))) &&
+    F.positionHTML(noFx.v, 'PG') === '' && !wellFormed(F.positionHTML(v, 'C')));
+  const tsim = SQ.simulate(v.sq, { mpg: { [v.sq.players[0].id]: 39 } }), th = F.squadSimHTML(v, tsim);
+  ok('the what-if says who is pushed deep into the game (tired legs) and who faces more starters or bench, each priced',
+    tsim && tsim.tired.length && /tired legs/.test(th) && !wellFormed(th), tsim && tsim.tired);
+  WHATIF_HTML.push(th, F.squadSimHTML(v, SQ.simulate(v.sq, { mpg: { [v.sq.players[v.sq.players.length - 1].id]: 30 } })));
+}
+{
+  const fn = (src, name) => { const i = src.indexOf('function ' + name + '('); if (i < 0) return ''; let d = 0, j = src.indexOf('{', i); for (; j < src.length; j++) { if (src[j] === '{') d++; else if (src[j] === '}' && --d === 0) break; } return src.slice(i, j + 1); };
+  const share = fn(TEAMJS, 'frontOfficeShare');
+  ok('share the front office: drawn for a platform admin alone (the database still decides each grant)', /rpc\('is_platform_admin', \{\}\)/.test(share) && /plat !== true/.test(share) && !/rpc\('is_team_manager'/.test(share));
+  ok('the position sheet carries the win model\'s card for the position (team.js onSlot, position.js html extra)', /FMx\.positionHTML\(fv, key\)/.test(TEAMJS) && /PV\.html\(rep, \{ close: true, link, extra/.test(TEAMJS) &&
+    /fmHandle = winModel\(/.test(TEAMJS) && /o\.extra \? '<div class="pv-sec">'/.test(read(EP, 't/position.js')));
+}
 /* THE POOLED MODEL: a league without a file of its own reads the four factors' values from every league's games */
 const pooledV = F.view({ reason: 'none', pooled: WINS, season: SEASON, team: { id: TID, name: 'Zastal' }, fixtures: FIXTURES, names, record: { w: 12, l: 9 }, gameMin: 40 });
 const pooledH = F.panel(pooledV);

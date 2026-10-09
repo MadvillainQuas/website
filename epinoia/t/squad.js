@@ -66,15 +66,15 @@ const BLK_EFG = 0.27;
 /* what each position is judged on first (Louie: "the specific positions' key stats - rebounding for bigs"), the rest after;
    the ball handlers' self-created points beside their AST% */
 const KEY = {
-  PG: ['ast_pct', 'un40', 'tov_pct', 'ppp', 'usg', 'p3_pct', 'p3_rate', 'stl_pct'],
-  SG: ['ts', 'ppp', 'un40', 'usg', 'p3_pct', 'p3_rate', 'ast_pct', 'stl_pct'],
-  SF: ['ts', 'p3_pct', 'p3_rate', 'dreb_pct', 'stl_pct', 'rim_rate', 'ppp'],
-  PF: ['dreb_pct', 'oreb_pct', 'ts', 'p3_rate', 'blk_pct', 'ppp'],
-  C: ['dreb_pct', 'oreb_pct', 'blk_pct', 'ts', 'rim_pct', 'tov_pct', 'ppp']
+  PG: ['ast_pct', 'au', 'un40', 'tov_pct', 'ppp', 'usg', 'p3_pct', 'p3_rate', 'stl_pct'],
+  SG: ['ts', 'ppp', 'un40', 'usg', 'au', 'p3_pct', 'p3_rate', 'ast_pct', 'stl_pct'],
+  SF: ['ts', 'p3_pct', 'p3_rate', 'dreb_pct', 'stl_pct', 'au', 'rim_rate', 'ppp'],
+  PF: ['dreb_pct', 'oreb_pct', 'ts', 'p3_rate', 'blk_pct', 'rim_save', 'au', 'ppp'],
+  C: ['dreb_pct', 'oreb_pct', 'blk_pct', 'rim_save', 'ts', 'rim_pct', 'tov_pct', 'au', 'ppp']
 };
 const STAT_LABEL = { ast_pct: 'AST%', tov_pct: 'TOV%', ppp: 'points per play', usg: 'usage', p3_pct: '3P%', p3_rate: '3PA rate', stl_pct: 'STL%', ts: 'TS%',
   efg: 'eFG%', dreb_pct: 'DRB%', oreb_pct: 'ORB%', blk_pct: 'BLK%', rim_rate: 'rim rate', rim_pct: 'rim FG%', ftr: 'FT attempt rate', ft_pct: 'FT%', vorp: 'VORP',
-  un40: 'self-created points per 40' };
+  un40: 'self-created points per 40', au: 'AST/USG', rim_save: 'rim points saved per 100' };
 /* lower is better */
 const LOWER = { tov_pct: true };
 /* the priced parts: key, what it is called, the factor whose b prices it, how */
@@ -118,9 +118,15 @@ function evOf(r) {
   if (!(gp > 0) || eg < EV_MIN_GP || eg / gp < EV_MIN_SHARE || !(min > 0)) return null;
   const evMin = min * Math.min(1, eg / gp);
   const hf = num(r.ev_half_fga) || 0, ht = num(r.ev_half_fta) || 0, hv = num(r.ev_half_tov) || 0;
-  return { gp: eg, min: evMin, unPts: num(r.ev_unast_pts) || 0, astM: num(r.ev_ast_fgm) || 0, unM: num(r.ev_unast_fgm) || 0,
+  return { gp: eg, min: evMin, hcUsg: num(r.ev_half_usg), unPts: num(r.ev_unast_pts) || 0, astM: num(r.ev_ast_fgm) || 0, unM: num(r.ev_unast_fgm) || 0,
     astRim: num(r.ev_ast_rimM) || 0, unRim: num(r.ev_unast_rimM) || 0,
     hc: { pts: num(r.ev_half_pts) || 0, fga: hf, fta: ht, tov: hv, plays: hf + 0.44 * ht + hv } };
+}
+
+/* the rim points per 100 opponent possessions he saves when on (off − on): null without both sides' rim counts */
+function rimSave(r) {
+  const von = num(r.def_rim_vol_on), voff = num(r.def_rim_vol_off), fon = num(r.def_rim_fg_on), foff = num(r.def_rim_fg_off);
+  return [von, voff, fon, foff].every(isNum) ? 2 * (voff * foff - von * fon) / 100 : null;
 }
 
 /* a player's season line as the squad uses it: his per-minute volumes and his rates */
@@ -141,7 +147,14 @@ function lineOf(r) {
             rim_rate: num(r.rim_rate), rim_pct: num(r.rim_pct), ftr: num(r.ftr), ft_pct: num(r.ft_pct), ppp: num(r.ppp),
             /* BALL HANDLING IS SELF-CREATION TOO (Louie, 2026-10-08: "ball handling is also captured by unassisted points"):
                the points he scores off no pass, per 40 minutes, beside his AST% */
-            un40: ev ? 40 * ev.unPts / ev.min : null },
+            un40: ev ? 40 * ev.unPts / ev.min : null,
+            /* AST/USG (2026-10-09): how much he makes for others for the plays he uses (season.js au) */
+            au: num(r.au) != null ? num(r.au) : (num(r.ast_pct) != null && num(r.usg) > 0 ? num(r.ast_pct) / num(r.usg) : null),
+            /* THE RIM WITH HIM ON THE FLOOR (Louie, 2026-10-09: "protector needs blk% and also rim vol/% on-off data"): the
+               opponents' rim points per 100 possessions with him off minus with him on - their rim attempts per 100 times
+               their rim FG%, twice - so fewer shots there and fewer made both count; season.js leaves it null under 15
+               opponent rim attempts either side */
+            rim_save: rimSave(r) },
     vorp: num(r.vorp), bpm: num(r.bpm),
     /* who creates and who is created for (the events splits, where they cover his games): the unassisted share of his
        points, the assisted share of his makes, and of his makes at the rim */
@@ -189,6 +202,8 @@ function sumSquad(who) {
     out.rate.p3_rate = v.fga > 0 ? 100 * v.p3a / v.fga : out.rate.p3_rate;
     out.rate.p3_pct = v.p3a >= 0.05 ? 100 * v.p3m / v.p3a : out.rate.p3_pct;
     out.rate.ts = v.fga + v.fta > 0 ? 100 * v.pts / (2 * (v.fga + 0.44 * v.fta)) : out.rate.ts;
+    /* AST/USG at a position: its AST% over its usage, not the mean of the men's ratios */
+    out.rate.au = isNum(out.rate.ast_pct) && out.rate.usg > 0 ? out.rate.ast_pct / out.rate.usg : out.rate.au;
     /* per 40 at the position (its production): what a full game there produces */
     out.p40 = tot > 0 ? { pts: 40 * v.pts / tot, reb: 40 * v.reb / tot, ast: 40 * v.ast / tot, stl: 40 * v.stl / tot, blk: 40 * v.blk / tot, plays: 40 * v.plays / tot } : null;
     return out;
@@ -445,7 +460,8 @@ function build(o) {
         const l = w.line, e = l.ev;
         if (!e || !(e.hc.plays > 0) || e.min < HC_MIN || l.min / Math.max(1, l.gp) < 10) return null;
         const x = hcLine(e.hc.pts, e.hc.fga, e.hc.fta, e.hc.tov);
-        return { id: l.id, name: names.get(l.id) || '', mpg: l.min / Math.max(1, l.gp), usg: 100 * (e.hc.plays / e.min) / perMin, share: 100 * e.hc.plays / T.plays,
+        /* season.js's own half-court usage where it has it (his plays over his team's half-court chances while he was on) */
+        return { id: l.id, name: names.get(l.id) || '', mpg: l.min / Math.max(1, l.gp), usg: isNum(e.hcUsg) ? e.hcUsg : 100 * (e.hc.plays / e.min) / perMin, share: 100 * e.hc.plays / T.plays,
           playsPg: e.hc.plays / e.gp, ts: x.ts, tov: x.tov_pct, ppp: x.ppp,
           rts: isNum(x.ts) && isNum(L.ts) ? x.ts - L.ts : null, rtov: x.tov_pct - L.tov_pct, rppp: x.ppp - L.ppp, value: (e.hc.plays / e.gp) * (x.ppp - L.ppp) };
       }).filter(p => p && p.share >= HC_SHARE).sort((a, b) => b.usg - a.usg);
@@ -471,6 +487,13 @@ function build(o) {
     }
   }
 
+  /* THE ROLES, every player of the league the same way (Louie, 2026-10-09: "roles in the squad be better attributed"):
+     the What wins rules (§7.13 / 7.15) on the season line, each percentile among the league's players with enough
+     minutes; his main position from the minutes at each position the squads above give him */
+  const mainOf = new Map();
+  all.forEach(S => S.who.forEach(w => { const t = w.at.reduce((a, v) => a + v, 0); if (t > 0) mainOf.set(w.line.id, SLOTS[w.at.indexOf(Math.max(...w.at))]); }));
+  const roles = rolesOf(rows, lines, mainOf, o.roleCuts || null);
+
   /* THE SQUAD'S SHAPE, every club's the same way (Louie: "the team's average vs. league avg plus what it means in terms of
      winning"): the rotation (players at 10 minutes a game or more), the top five's share of the minutes, the leading
      scorer's share of the points, how concentrated the plays are (Σ share² × 100), against the league's clubs and its
@@ -480,9 +503,12 @@ function build(o) {
     const ls = ids.map(id => lines.get(id)).filter(Boolean);
     const M = ls.reduce((a, l) => a + l.min, 0), P = ls.reduce((a, l) => a + l.pm.pts * l.min, 0), Y = ls.reduce((a, l) => a + l.pm.plays * l.min, 0);
     if (!(M > 0) || ls.length < 5) return null;
-    const mins = ls.map(l => l.min).sort((a, b) => b - a);
-    return { rot_n: ls.filter(l => l.gp > 0 && l.min / l.gp >= 10).length, top5_share: mins.slice(0, 5).reduce((a, v) => a + v, 0) / M,
+    const mins = ls.map(l => l.min).sort((a, b) => b - a), rot = ls.filter(l => l.gp > 0 && l.min / l.gp >= 10);
+    const out = { rot_n: rot.length, top5_share: mins.slice(0, 5).reduce((a, v) => a + v, 0) / M,
       star_pts_share: P > 0 ? Math.max(...ls.map(l => l.pm.pts * l.min)) / P : null, usg_hhi: Y > 0 ? 100 * ls.reduce((a, l) => a + Math.pow(l.pm.plays * l.min / Y, 2), 0) : null };
+    /* the roles in the rotation, as the builder counts them (players at 10 minutes a game or more) */
+    ROLE_SHAPE.forEach(([k, r]) => { out[k] = rot.filter(l => (roles.byPlayer.get(l.id) || []).indexOf(r) >= 0).length; });
+    return out;
   };
   let shape = null;
   {
@@ -505,6 +531,9 @@ function build(o) {
   return {
     club, gameMin, sigma, G: isNum(o.G) ? o.G : 30, mus: o.mus || null, values, source: me.source, games, n: all.size,
     slots, players: playersOut, whole, usage, groups, cover, halfCourt, moves, shape,
+    /* the club's players by role (its own players, by minutes), the league's cuts, how many it has against the league */
+    roles: { byPlayer: roles.byPlayer, cuts: roles.cuts, club: ROLES.map(r => ({ k: r, ids: (clubs.get(club) || []).filter(id => (roles.byPlayer.get(id) || []).indexOf(r) >= 0)
+      .map(id => lines.get(id)).filter(l => l && l.gp > 0 && l.min / l.gp >= 5).sort((a, b) => b.min - a.min).map(l => l.id) })) },
     team: { mine, lg: lgTeam, parts: teamParts, pts: teamParts.total, wins30: wins30(teamParts.total, sigma) },
     _lines: lines, _all: all, _lg: lg, _lgAgg: lgAgg, _names: names
   };
@@ -519,7 +548,66 @@ const COVER_LABEL = { dreb_pct: 'defensive rebounding', oreb_pct: 'offensive reb
 const HC_TOP = 6, HC_MIN = 150, HC_SHARE = 4;
 const MOVES = [{ k: 'ast', f: 'ev_ast_sh', label: 'Baskets off a pass' }, { k: 'rim', f: 'ev_rim_astp', label: 'Rim makes off a pass' },
   { k: 'self', f: 'ev_unast_pts_sh', label: 'Points created alone' }];
-const SHAPE = ['rot_n', 'top5_share', 'star_pts_share', 'usg_hhi'];
+/* the roles' shape keys (the builder's names) and the roles themselves */
+const ROLE_SHAPE = [['shooters', 'shooter'], ['handlers', 'handler'], ['passers', 'passer'], ['slashers', 'slasher'], ['crashers', 'crasher'], ['glass', 'glass'],
+  ['protectors', 'protector'], ['disruptors', 'disruptor']];
+const SHAPE = ['rot_n', 'top5_share', 'star_pts_share', 'usg_hhi'].concat(ROLE_SHAPE.map(x => x[0]));
+const ROLES = ['handler', 'passer', 'shooter', 'slasher', 'crasher', 'glass', 'protector', 'disruptor', 'big'];
+/* the population each percentile is taken over: the league's players with 200 minutes, or a sixth of the most anyone has
+   played when the season is young */
+const ROLE_MIN = 200;
+/* ROLES (What wins §7.13 / 7.15, on the season line):
+     handler    AST%, usage and the unassisted share of his points, percentiles weighted 35 / 25 / 40 (the league file's
+                weights where it has them), 0.70 or more; without the play-by-play split, AST% and usage alone
+     passer     AST/USG in the top quarter and AST% at least the median
+     shooter    40 threes (fewer early in a season: 1.6 a game played, at least 8), 3PA rate in the top 40%, 3P% shrunk
+                toward the league's by 50 attempts at least the median
+     slasher    rim rate and FT attempt rate percentiles averaging 0.75 or more
+     crasher    ORB% in the top quarter          glass   DRB% in the top quarter     disruptor   STL% in the top quarter
+     protector  BLK% in the top quarter, and the rim better with him on (rim points saved per 100 above nought: fewer
+                attempts there, or fewer made); without the rim on/off, a four or a centre
+     big        most of his minutes at centre */
+function rolesOf(rows, lines, mainOf, cutsIn) {
+  const maxMin = rows.reduce((a, r) => Math.max(a, num(r.min) || 0), 0), floor = Math.min(ROLE_MIN, maxMin / 6);
+  const pop = rows.filter(r => (num(r.min) || 0) >= floor && lines.has(String(r.id)));
+  const col = f => pop.map(r => (typeof f === 'function' ? f(r) : num(r[f]))).filter(isNum).sort((a, b) => a - b);
+  const pctOf = sorted => v => { if (!isNum(v) || !sorted.length) return null; let lo = 0, eq = 0; sorted.forEach(x => { if (x < v) lo++; else if (x === v) eq++; }); return (lo + 0.5 * eq) / sorted.length; };
+  const lg3 = (() => { const a = pop.reduce((s, r) => s + (num(r.p3a) || 0), 0), m = pop.reduce((s, r) => s + (num(r.p3m) || 0), 0); return a > 0 ? m / a : 0.33; })();
+  const shrunk3 = r => { const a = num(r.p3a) || 0; return a > 0 ? 100 * ((num(r.p3m) || 0) + 50 * lg3) / (a + 50) : null; };
+  const ups = r => (evOf(r) ? num(r.ev_unast_pts_sh) : null);
+  const auOf = r => (num(r.au) != null ? num(r.au) : (num(r.usg) > 0 && num(r.ast_pct) != null ? num(r.ast_pct) / num(r.usg) : null));
+  const C = { ast: col('ast_pct'), usg: col('usg'), ups: col(ups), au: col(auOf), p3r: col('p3_rate'), p3s: col(shrunk3), rimr: col('rim_rate'), ftr: col('ftr'),
+    orb: col('oreb_pct'), drb: col('dreb_pct'), stl: col('stl_pct'), blk: col('blk_pct') };
+  const P = Object.fromEntries(Object.keys(C).map(k => [k, pctOf(C[k])]));
+  const w0 = cutsIn && cutsIn.handler && cutsIn.handler.w ? cutsIn.handler.w : { ast_pct: 0.35, usg: 0.25, ups: 0.40 };
+  const cuts = { n: pop.length, minutes: floor, passer: { au: quant(C.au, 0.75), ast: quant(C.ast, 0.5) }, shooter: { p3r: quant(C.p3r, 0.6), p3p: quant(C.p3s, 0.5) },
+    crasher: { orb: quant(C.orb, 0.75) }, glass: { drb: quant(C.drb, 0.75) }, disruptor: { stl: quant(C.stl, 0.75) }, protector: { blk: quant(C.blk, 0.75) },
+    handler: { cut: 0.7, w: w0 } };
+  const byPlayer = new Map();
+  rows.forEach(r => {
+    const id = String(r.id), l = lines.get(id);
+    if (!l) return;
+    const out = [], main = mainOf.get(id);
+    /* handler: the weighted percentiles, the weights of the parts he has */
+    const parts = [['ast_pct', P.ast(num(r.ast_pct))], ['usg', P.usg(num(r.usg))], ['ups', P.ups(ups(r))]].filter(x => isNum(x[1]));
+    const W = parts.reduce((a, x) => a + (w0[x[0]] || 0), 0);
+    if (W > 0 && parts.some(x => x[0] === 'ast_pct') && parts.reduce((a, x) => a + (w0[x[0]] || 0) * x[1], 0) / W >= 0.7) out.push('handler');
+    const au = auOf(r);
+    if (isNum(au) && isNum(cuts.passer.au) && au >= cuts.passer.au && num(r.ast_pct) >= cuts.passer.ast) out.push('passer');
+    const need3 = Math.max(8, Math.min(40, 1.6 * (num(r.gp) || 0)));
+    if ((num(r.p3a) || 0) >= need3 && num(r.p3_rate) >= cuts.shooter.p3r && shrunk3(r) >= cuts.shooter.p3p) out.push('shooter');
+    const sl = [P.rimr(num(r.rim_rate)), P.ftr(num(r.ftr))];
+    if (sl.every(isNum) && (sl[0] + sl[1]) / 2 >= 0.75) out.push('slasher');
+    if (num(r.oreb_pct) >= cuts.crasher.orb) out.push('crasher');
+    if (num(r.dreb_pct) >= cuts.glass.drb) out.push('glass');
+    const rs = rimSave(r);
+    if (num(r.blk_pct) >= cuts.protector.blk && (isNum(rs) ? rs > 0 : main === 'PF' || main === 'C')) out.push('protector');
+    if (num(r.stl_pct) >= cuts.disruptor.stl) out.push('disruptor');
+    if (main === 'C') out.push('big');
+    byPlayer.set(id, out);
+  });
+  return { byPlayer, cuts };
+}
 
 /* ------------------------------------------------------------------ the usage sim --- */
 /* THE PLAYS ADD UP (Louie, 2026-10-08: "usage% has to add up to 100% - dropping in a 26% usage, high unassisted point
@@ -565,6 +653,10 @@ function usageSim(who, target, gameMin) {
 }
 
 /* ------------------------------------------------------------------ the what-if --- */
+/* what a player handed minutes can carry: a heavy starter's night (90% of the game), or his own minutes and 40% of the
+   game more (half as much again for a regular), whichever is less - never less than he plays already. A backup centre at
+   6 minutes can step up to 22 when the starter goes; nobody reaches 54 */
+const capOf = (mpg, L) => Math.max(mpg, Math.min(0.9 * L, Math.max(mpg + 0.4 * L, 1.5 * mpg)));
 /* moves on the club's minutes a game at each position; the squad summed again; the difference priced */
 function simulate(m, moves) {
   if (!m || !m._all) return null;
@@ -575,14 +667,44 @@ function simulate(m, moves) {
   /* id -> [minutes a game at PG..C] */
   const at = new Map(me.who.map(w => [w.line.id, w.at.slice()]));
   const total = id => (at.get(id) || [0, 0, 0, 0, 0]).reduce((a, v) => a + v, 0);
-  /* hand `mins` at position k to the others there, in proportion; nobody there: the positions beside it */
-  const give = (k, mins, except) => {
-    if (!(mins > 0)) return;
-    for (const ks of [[k], [k - 1, k + 1], [0, 1, 2, 3, 4]]) {
-      const take = [...at].filter(([id, a]) => !except.has(id) && ks.some(j => j >= 0 && j <= 4 && a[j] > 0));
-      const base = take.reduce((s, [, a]) => s + ks.reduce((q, j) => q + (j >= 0 && j <= 4 ? a[j] : 0), 0), 0);
-      if (base > 0) { take.forEach(([, a]) => { const mine = ks.reduce((q, j) => q + (j >= 0 && j <= 4 ? a[j] : 0), 0); a[k] += mins * mine / base; }); return; }
+  /* THE MINUTES A MAN CAN PLAY (Louie, 2026-10-09: "minutes a game need to fit within 40mpg for a player ... needs to be
+     smarter"): handed minutes, nobody goes past capOf (a heavy starter's night, or his own minutes and 40% of the
+     game more); a man added, or whose minutes are set, no more than he was given; and never past the game */
+  const capFor = new Map(me.who.map(w => [w.line.id, capOf(w.at.reduce((a, v) => a + v, 0), L)]));
+  const room = id => Math.max(0, (capFor.has(id) ? capFor.get(id) : L) - total(id));
+  const ok = j => j >= 0 && j <= 4;
+  /* hand `mins` at position k to the others there in proportion to their minutes there, each up to what he can carry,
+     what is left to those at the positions beside it, then anyone; everyone at his limit: the game is the last cap */
+  const share = (k, left, take, wt, lim) => {
+    for (let pass = 0; pass < 8 && left > 1e-9; pass++) {
+      const live = take.map((x, i) => [x, wt[i]]).filter(([x]) => lim(x[0]) > 1e-9), W = live.reduce((a, [, w]) => a + w, 0);
+      if (!(W > 0)) break;
+      let used = 0;
+      live.forEach(([[id, a], w]) => { const got = Math.min(left * w / W, lim(id)); a[k] += got; used += got; });
+      left -= used;
+      if (used < 1e-9) break;
     }
+    return left;
+  };
+  /* STAMINA (Louie, 2026-10-09: "once minutes really slide up to the upper 30s and the player is high usage that's when
+     it'll take effect"): the stamina line is the game's (FATIGUE.start of it, 32 of 40); minutes go to fresh legs at the
+     position and beside it first, then to tired ones there, then fresh and tired anywhere, the game the last cap */
+  const baseMin = new Map(me.who.map(w => [w.line.id, w.at.reduce((a, v) => a + v, 0)]));
+  const ownMpg = id => (baseMin.has(id) ? baseMin.get(id) : (l => (l ? l.min / Math.max(1, l.gp) : 0))(m._lines.get(id)));
+  const lineAt = () => FATIGUE.start * L;
+  const fresh = id => Math.max(0, Math.min(lineAt(id), capFor.has(id) ? capFor.get(id) : L) - total(id));
+  const give = (k, mins, except) => {
+    let left = mins;
+    if (!(left > 0)) return;
+    for (const [lim, sets] of [[fresh, [[k], [k - 1, k + 1]]], [room, [[k], [k - 1, k + 1]]], [fresh, [[0, 1, 2, 3, 4]]], [room, [[0, 1, 2, 3, 4]]]]) {
+      for (const ks of sets) {
+        const take = [...at].filter(([id, a]) => !except.has(id) && ks.some(j => ok(j) && a[j] > 0));
+        left = share(k, left, take, take.map(([, a]) => ks.reduce((q, j) => q + (ok(j) ? a[j] : 0), 0)), lim);
+        if (left <= 1e-9) return;
+      }
+    }
+    const all = [...at].filter(([id]) => !except.has(id));
+    share(k, left, all, all.map(([id]) => Math.max(0, L - total(id))), id => Math.max(0, L - total(id)));
   };
   const removed = new Set((moves.remove || []).map(String));
   removed.forEach(id => {
@@ -611,6 +733,7 @@ function simulate(m, moves) {
       if (tot > 0) at.forEach(v => { v[k] *= keep / tot; });
     });
     at.set(id, mineAt);
+    capFor.set(id, mpg);
     added.push({ id, mpg, share: sh });
   });
   /* a player's minutes set: scaled at the positions he plays, the others there giving way or taking up the rest */
@@ -618,6 +741,7 @@ function simulate(m, moves) {
     const a = at.get(String(id)), cur = total(String(id));
     if (!a || !isNum(+want) || !(cur > 0)) return;
     const target = Math.max(0, Math.min(L, +want)), f = target / cur;
+    capFor.set(String(id), target);
     [0, 1, 2, 3, 4].forEach(k => {
       const before = a[k], after = before * f, delta = before - after;
       a[k] = after;
@@ -628,29 +752,72 @@ function simulate(m, moves) {
       }
     });
   });
-  const who = [...at].filter(([, a]) => a.some(v => v > 1e-9)).map(([id, a]) => ({ line: m._lines.get(id), at: a })).filter(w => w.line);
-  if (who.length < 5) return null;
-  const Q = sumSquad(who);
-  const before = aggOf(me.Q), after = aggOf(Q);
-  const d = diff(after, before);
+  const fit = [...at].filter(([, a]) => a.some(v => v > 1e-9)).map(([id, a]) => ({ line: m._lines.get(id), at: a })).filter(w => w.line);
+  if (fit.length < 5) return null;
+  /* TIRED LEGS AND WHO HE FACES. His season's rates already carry his own minutes - their load and the opponents those
+     minutes met - so only the CHANGE is priced: the fatigue load (fatigueLoad: nothing below the line, then growing with
+     the square of the minutes past it, heavier the more of the offence he carries) and the share of his minutes against
+     opposing starters (startersShare: a bench man handed starter's minutes faces better players and gives a little back;
+     a starter sent to the bench gains a little). Each priced like everything else, and what each costs said apart */
+  const tired = [], faces = [];
+  const adjust = (w, useFat, useOpp) => {
+    const id = w.line.id, mins = w.at.reduce((a, v) => a + v, 0), own = ownMpg(id), u = isNum(w.line.rate.usg) ? w.line.rate.usg : 20;
+    const dLoad = useFat ? fatigueLoad(mins, u, L) - fatigueLoad(own, u, L) : 0, dE = useOpp ? startersShare(mins, L) - startersShare(own, L) : 0;
+    return Math.abs(dLoad) > 1e-9 || Math.abs(dE) > 1e-9 ? { line: tiredLine(w.line, dLoad, dE), at: w.at, dLoad, dE, mins, own, u } : w;
+  };
+  const who = fit.map(w => adjust(w, true, true));
+  who.forEach(w => {
+    if (!w.dLoad && !w.dE) return;
+    const name = m._names.get(w.line.id) || '';
+    if (w.dLoad > 0.05) tired.push({ id: w.line.id, name, min: w.mins, own: w.own, usg: w.u, line: FATIGUE.start * L, load: w.dLoad, ppp: -FATIGUE.ppp * w.dLoad, rate: -FATIGUE.rate * w.dLoad });
+    if (Math.abs(w.dE) >= 0.05) faces.push({ id: w.line.id, name, min: w.mins, own: w.own, dE: w.dE, ppp: -OPPOSITION.ppp * w.dE });
+  });
+  const before = aggOf(me.Q);
+  const U0 = usageSim(me.who, null, L), plays = me.Q.team.vol.plays;
   /* THE OFFENCE BY THE USAGE SIM (the plays add up, the creators squeeze each other, the skill curve), the team's plays a
      game as they stand; THE GLASS AND THE DEFENCE BY THE SUMS (rebounds, steals, blocks are shared out by the floor) */
-  const U0 = usageSim(me.who, null, L), U1 = usageSim(who, U0.T, L);
-  const plays = me.Q.team.vol.plays;
-  const glass = priceTeam({ oreb_pct: d.oreb_pct, dreb_pct: d.dreb_pct, stl_pct: d.stl_pct, blk_pct: d.blk_pct }, m.values);
-  const parts = { offence: isNum(U0.ppp) && isNum(U1.ppp) && isNum(plays) ? (U1.ppp - U0.ppp) * plays : null,
-    oreb: glass.oreb, dreb: glass.dreb, stl: glass.stl, blk: glass.blk };
-  parts.total = ['offence', 'oreb', 'dreb', 'stl', 'blk'].reduce((a, k) => a + (isNum(parts[k]) ? parts[k] : 0), 0);
+  const priceOf = squad => {
+    const Qx = sumSquad(squad), dx = diff(aggOf(Qx), before), Ux = usageSim(squad, U0.T, L);
+    const g = priceTeam({ oreb_pct: dx.oreb_pct, dreb_pct: dx.dreb_pct, stl_pct: dx.stl_pct, blk_pct: dx.blk_pct }, m.values);
+    const px = { offence: isNum(U0.ppp) && isNum(Ux.ppp) && isNum(plays) ? (Ux.ppp - U0.ppp) * plays : null, oreb: g.oreb, dreb: g.dreb, stl: g.stl, blk: g.blk };
+    px.total = ['offence', 'oreb', 'dreb', 'stl', 'blk'].reduce((a, k) => a + (isNum(px[k]) ? px[k] : 0), 0);
+    return { Q: Qx, d: dx, U: Ux, parts: px };
+  };
+  const P1 = priceOf(who), Q = P1.Q, d = P1.d, U1 = P1.U, parts = P1.parts, after = aggOf(Q);
   const pts = parts.total;
+  /* what tired legs cost, and what facing more (or fewer) starters does: each against the move without it */
+  const fatigue = tired.length ? pts - priceOf(fit.map(w => adjust(w, false, true))).parts.total : 0;
+  const opposition = faces.length ? pts - priceOf(fit.map(w => adjust(w, true, false))).parts.total : 0;
   const was = new Map(U0.rows.map(r => [r.id, r]));
   const usage = U1.rows.map(r => ({ id: r.id, name: m._names.get(r.id) || '', f: r.f, u: r.u, u2: r.u2, ppp: r.ppp, ppp2: r.ppp2,
     before: was.has(r.id) ? { f: was.get(r.id).f, u: was.get(r.id).u2, ppp: was.get(r.id).ppp2 } : null })).sort((a, b) => (b.f * b.u2) - (a.f * a.u2));
   const depth = SLOTS.map((key, k) => ({ key, players: who.filter(w => w.at[k] > 0.05).map(w => ({ id: w.line.id, name: m._names.get(w.line.id) || '', min: w.at[k],
     was: (me.who.find(x => x.line.id === w.line.id) || { at: [0, 0, 0, 0, 0] }).at[k] })).sort((a, b) => b.min - a.min) }));
   return { before, after, d, parts, pts, wins30: wins30(pts, m.sigma), winsLeft: m.mus && m.mus.length ? winsFrom(pts, m.mus, m.sigma, m.G) : null,
-    left: m.mus ? m.mus.length : 0, added, removed: [...removed], depth, usage, plays, ppp: { before: U0.ppp, after: U1.ppp }, squeeze: U1.lam };
+    left: m.mus ? m.mus.length : 0, added, removed: [...removed], depth, usage, plays, ppp: { before: U0.ppp, after: U1.ppp }, squeeze: U1.lam,
+    tired: tired.sort((a, b) => b.load - a.load), fatigue, faces: faces.sort((a, b) => Math.abs(b.dE) - Math.abs(a.dE)), opposition };
+}
+/* STAMINA (Louie, 2026-10-09: "going from 6-16 minutes won't do much nor will 20-24, but once minutes really slide up to
+   the upper 30s and the player is high usage that's when it'll take effect"): the fatigue load is nothing below the
+   line (FATIGUE.start of the game: 32 of 40, 38 of 48), then the square of the minutes past it in tenths of the game,
+   times his usage against an even share (20%) - 36 minutes at 20% is a load of 1, 38 at 26% is 2.9. Each unit of load
+   costs FATIGUE.ppp points a play and FATIGUE.rate of his glass, steals and blocks */
+const FATIGUE = { start: 0.8, ppp: 0.012, rate: 0.02 };
+const fatigueLoad = (mins, usg, L) => { const over = Math.max(0, mins - FATIGUE.start * L) / (0.1 * L); return over * over * Math.max(0.5, Math.min(2, (isNum(usg) ? usg : 20) / 20)); };
+/* WHO HE FACES ("some sort of vs. starters and vs. bench slight regression"): the share of a man's minutes against the
+   other side's starters grows with his minutes (a tenth at the end of the bench, three quarters for a 34-minute starter);
+   facing starters instead of a bench costs OPPOSITION.ppp points a play and OPPOSITION.rate of his glass, steals and
+   blocks for the whole share - a 15-minute man handed 30 gives back about 0.014 points a play */
+const OPPOSITION = { ppp: 0.05, rate: 0.05 };
+const startersShare = (mins, L) => 0.1 + 0.65 * Math.min(1, Math.max(0, mins) / (0.85 * L));
+const fatigueLineOf = (mpg, L) => FATIGUE.start * L;
+function tiredLine(l, dLoad, dE) {
+  const k = Math.max(0, (1 - FATIGUE.rate * (dLoad || 0)) * (1 - OPPOSITION.rate * (dE || 0))), r = Object.assign({}, l.rate);
+  ['oreb_pct', 'dreb_pct', 'stl_pct', 'blk_pct'].forEach(x => { if (isNum(r[x])) r[x] *= k; });
+  if (isNum(r.ppp)) r.ppp -= FATIGUE.ppp * (dLoad || 0) + OPPOSITION.ppp * (dE || 0);
+  return Object.assign({}, l, { rate: r });
 }
 
 return { build, simulate, sumSquad, priceTeam, usageSim, lineOf, evOf, shareOfPos, shareOfRow, wins30, winsFrom, SLOTS, SLOT_NAME, KEY, STAT_LABEL, PARTS, LOWER, BLK_EFG,
-  USG_FLOOR, SKILL, GROUPS, COVER, COVER_LABEL, MOVES, SHAPE, EV_MIN_SHARE, EV_MIN_GP };
+  USG_FLOOR, SKILL, GROUPS, COVER, COVER_LABEL, MOVES, SHAPE, EV_MIN_SHARE, EV_MIN_GP, ROLES, ROLE_SHAPE, rolesOf, rimSave, capOf, FATIGUE, fatigueLineOf, fatigueLoad, OPPOSITION, startersShare };
 }));

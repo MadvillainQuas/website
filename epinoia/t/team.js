@@ -574,8 +574,10 @@ async function frontOfficeShare(team) {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
-    const { data: mine } = await sb.rpc('is_team_manager', { p_team: team.id });
-    if (!mine) return;
+    /* the platform's own tool for now (Louie, 2026-10-09: "share the front office to only show for me as platform
+       admin"): drawn for a platform admin alone; the database still decides each grant (is_team_manager, 0193) */
+    const { data: plat } = await sb.rpc('is_platform_admin', {});
+    if (plat !== true) return;
   } catch (_) { return; }
   host.textContent = '';
   const card = el('div', 'ep-card fo-share');
@@ -959,15 +961,20 @@ async function frontOffice(team) {
       ]);
       return PV.context({ season: S, rosters, meta, own: { teamId: team.id, chart: cLeague } });
     })().catch(e => { ctxP = null; throw e; }));
-    /* the depth chart's positions and the win model's slot buttons (F3) open the same view */
+    /* the depth chart's positions and the win model's slot buttons (F3) open the same view; once the win model is drawn,
+       the sheet carries its card for the position (Louie, 2026-10-09: "the new positional analysis ... in the positions
+       pop ups") */
+    let fmHandle = null;
     const onSlot = async e => {
       const b = e.target.closest && e.target.closest('[data-slot]');
       if (!b) return;
       b.classList.add('dc-busy');
       try {
-        const rep = PV.report(await leagueCtx(), team.id, b.getAttribute('data-slot'));
+        const key = b.getAttribute('data-slot'), rep = PV.report(await leagueCtx(), team.id, key);
         if (rep) { rep.club.name = team.name; rep.club.colour = readableColour(team); }
-        PV.open(PV.html(rep, { close: true, link }), b);
+        const FMx = window.EpinoiaFoModel, fv = fmHandle && fmHandle.vm;
+        const extra = FMx && FMx.positionHTML && fv ? FMx.positionHTML(fv, key) : '';
+        PV.open(PV.html(rep, { close: true, link, extra, extraTitle: 'what the position is worth, from the win model' }), b);
       } catch (_) { PV.open('<div class="pv"><div class="empty">The league view could not be read just now.</div><button type="button" class="pv-x" data-pv-close aria-label="close">×</button></div>', b); }
       b.classList.remove('dc-busy');
     };
@@ -1027,7 +1034,7 @@ async function frontOffice(team) {
        what-if asks for them; the pooled model's record and club names where the league has no file of its own */
     const extra = M && M.pooled ? await pooledExtras(team, S).catch(() => ({})) : {};
     const lookupNames = ids => (D.playerMeta ? D.playerMeta(ids).then(m => new Map(Object.keys(m || {}).map(k => [k, (m[k] && m[k].name) || '']))) : Promise.resolve(new Map()));
-    winModel(hostM, team, M, Object.assign({ names, link, season: S, clubPos: foPos, gameMin, lookupNames }, extra));
+    fmHandle = winModel(hostM, team, M, Object.assign({ names, link, season: S, clubPos: foPos, gameMin, lookupNames }, extra));
     if (!hostG) return;
     const ages = window.EpinoiaAges ? await window.EpinoiaAges.load(CFG, mine.map(p => p.id)).catch(() => ({})) : {};
     const FM = window.EpinoiaFoModel;
@@ -1158,7 +1165,7 @@ function winModel(host, team, M, o) {
     const c = await WF.get(Object.assign({ scope: 'club', team: team.id }, unit), { force: true, signal });
     return Object.assign({}, a, { ans: a, fo: a.data, club: c.ok ? c.data : input.club });
   };
-  FM.mount(host, FM.view(input), { input, worker: FM.makeWorker(), link: o.link, ans: fo.ok ? fo : null, refresh, signin,
+  return FM.mount(host, FM.view(input), { input, worker: FM.makeWorker(), link: o.link, ans: fo.ok ? fo : null, refresh, signin,
                                    leagueSlug: ((team && team.leagues) || {}).slug, lookupNames: o.lookupNames });
 }
 

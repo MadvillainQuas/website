@@ -14,6 +14,10 @@
      * the play-by-play's splits where they cover half a player's games: self-created points per 40 (ball handling beside
        AST%), each top user's half-court usage, share, TS%, TOV% and points a play against the league's half court, the
        ball moving; who covers for whom; the groups; the shape; nobody at a position filled from the one beside it;
+     * 2026-10-09: handed minutes capped (90% of the game, his own and 40% more) with fresh legs first; stamina (only the
+       change in the fatigue load from his own minutes: nothing below 80% of the game, more for high usage) and who he
+       faces (starters or bench), each priced apart; AST/USG and rim points saved per 100 at the positions; the roles
+       (a protector needs BLK% and the rim better with him on) and their counts in the shape;
      * fewer than four clubs: no model.
      node supabase/tests/squad.test.mjs
    ============================================================================ */
@@ -110,8 +114,15 @@ console.log('\nthe what-if');
 {
   const m = Q.build(Object.assign({ club: 'T0' }, base));
   const r = Q.simulate(m, { remove: ['T0-s5'] });
-  const C = r.depth[4];
-  ok('a centre removed: his minutes go to the others at centre (the backup who plays it)', C.players.length === 1 && C.players[0].id === 'T0-b5' && near(C.players[0].min, 40, 1e-9), C);
+  const C = r.depth[4], tot = id => r.depth.reduce((a, s) => a + ((s.players.find(p => p.id === id) || {}).min || 0), 0);
+  const b5 = tot('T0-b5'), was5 = 40 * 50 / 350;
+  ok('a centre removed: the backup centre takes the most of his minutes, up to what he can carry (his own and 40% of the game more)',
+     C.players[0].id === 'T0-b5' && near(b5, Q.capOf(was5, 40), 1e-6) && near(Q.capOf(was5, 40), was5 + 16, 1e-9), { b5, C });
+  ok('...nobody past 90% of the game (no 54-minute centre), the rest to the forwards beside him and then the bench',
+     r.depth.every(s => s.players.every(p => tot(p.id) <= 36 + 1e-6)) && C.players.length > 2, r.depth.map(s => s.players.map(p => p.id + ' ' + p.min.toFixed(1))));
+  ok('...fresh legs first: the starting four is pushed into the upper 30s only once the backups at centre and four have taken all they can carry',
+     r.tired.every(t => t.load > 0) && (!r.tired.length || ['T0-b5', 'T0-b3'].every(id => near(tot(id), Q.capOf(id === 'T0-b5' ? was5 : 2 * was5, 40), 1e-6))),
+     { tired: r.tired, b5: tot('T0-b5'), b3: tot('T0-b3') });
   ok('...every position still one game long', r.depth.every(s => near(s.players.reduce((a, p) => a + p.min, 0), 40, 1e-6)), r.depth.map(s => s.players.reduce((a, p) => a + p.min, 0)));
   ok('...the defensive glass falls (the backup\'s DRB% is lower) and is priced', r.d.dreb_pct < 0 && r.parts.dreb < 0 && typeof r.wins30 === 'number', { d: r.d.dreb_pct, p: r.parts.dreb });
   const a = Q.simulate(m, { add: [{ id: 'T5-s5', mpg: 30 }] });
@@ -122,7 +133,24 @@ console.log('\nthe what-if');
   const g = Q.simulate(m, { mpg: { 'T0-s1': 20 } });
   ok('a player\'s minutes cut to 20: the others at his position take up the rest, still 40 there', near(g.depth[0].players.reduce((x, p) => x + p.min, 0), 40, 1e-6) &&
      near(g.depth[0].players.find(p => p.id === 'T0-s1').min, 20, 1e-6), g.depth[0]);
-  ok('nothing moved: no change', near(Q.simulate(m, {}).pts, 0, 1e-12));
+  ok('nothing moved: no change', near(Q.simulate(m, {}).pts, 0, 1e-12) && Q.simulate(m, {}).tired.length === 0);
+  /* STAMINA: a starter's minutes set to 39 of 40 - deep into the upper 30s - he tires: the change in his load from his own
+     34.3, priced, and what it costs said apart */
+  const t = Q.simulate(m, { mpg: { 'T0-s3': 39 } }), ts = t.tired.find(x => x.id === 'T0-s3');
+  const dl = Q.fatigueLoad(39, 20, 40) - Q.fatigueLoad(40 * 300 / 350, 20, 40);
+  ok('stamina: a starter pushed to 39 of 40 tires - only the change in his fatigue load from his own minutes, priced apart',
+     ts && near(ts.load, dl, 1e-9) && near(ts.ppp, -Q.FATIGUE.ppp * dl, 1e-12) && t.fatigue < 0, { ts, f: t.fatigue });
+  ok('...6 to 16 minutes or 20 to 24 cost nothing; the upper 30s do, and more for a high-usage man', Q.fatigueLoad(16, 20, 40) === 0 && Q.fatigueLoad(24, 20, 40) === 0 &&
+     near(Q.fatigueLoad(36, 20, 40), 1, 1e-12) && Q.fatigueLoad(38, 28, 40) > Q.fatigueLoad(38, 14, 40) && near(Q.fatigueLineOf(0, 40), 32, 1e-12));
+  /* WHO HE FACES: a bench man handed starter's minutes meets more starters and gives a little back; a starter sent to
+     the bench meets more of the other bench and gains a little */
+  const up = Q.simulate(m, { mpg: { 'T0-b1': 30 } }), fu = up.faces.find(x => x.id === 'T0-b1');
+  const dn = Q.simulate(m, { mpg: { 'T0-s1': 14 } }), fd = dn.faces.find(x => x.id === 'T0-s1');
+  ok('who he faces: a bench man handed 30 minutes faces more starters (a slight regression), a starter cut to 14 faces more bench (a slight gain)',
+     fu && fu.dE > 0 && fu.ppp < 0 && up.opposition < 0 && fd && fd.dE < 0 && fd.ppp > 0 && near(fu.dE, Q.startersShare(30, 40) - Q.startersShare(40 * 100 / 350 / 2, 40), 0.2),
+     { fu, fd, o: up.opposition });
+  ok('...the game is the hard cap: minutes set past it are held to it', Q.simulate(m, { mpg: { 'T0-s3': 55 } }).depth.every(s => s.players.every(p => p.min <= 40 + 1e-9)) &&
+     near(Q.simulate(m, { mpg: { 'T0-s3': 55 } }).depth.reduce((a, s) => a + ((s.players.find(p => p.id === 'T0-s3') || {}).min || 0), 0), 40, 1e-6));
 }
 
 console.log('\nthe usage sim (the plays add up)');
@@ -208,6 +236,37 @@ console.log('\nthe play-by-play splits: self-creation, the half court, the ball 
   const mp = Q.build(Object.assign({}, base, { club: 'T0', players: nopg, pos: new Map() }));
   ok('nobody at a position: the players at the one beside it cover it, and it is still a game long', mp && near(mp.slots[0].players.reduce((a, p) => a + p.min, 0), 40, 1e-9) &&
      mp.slots[0].players.every(p => ['T0-s1', 'T0-b1', 'T0-s2'].includes(p.id)), mp && mp.slots[0].players);
+}
+
+console.log('\nAST/USG, the rim on/off and the roles (2026-10-09)');
+{
+  const m = Q.build(Object.assign({ club: 'T0' }, base));
+  const pg = m.slots[0];
+  ok('AST/USG at a position: its AST% over its usage, among every position\'s key numbers', pg.stats.au && near(pg.stats.au.v, pg.stats.ast_pct.v / pg.stats.usg.v, 1e-9) &&
+     ['PG', 'SG', 'SF', 'PF', 'C'].every(k => Q.KEY[k].includes('au')));
+  const r0 = { def_rim_vol_on: 20, def_rim_vol_off: 25, def_rim_fg_on: 55, def_rim_fg_off: 60 };
+  ok('rim points saved per 100 with him on: 2 x (attempts x FG% off - on) / 100 - fewer shots there and fewer made both count',
+     near(Q.rimSave(r0), 2 * (25 * 60 - 20 * 55) / 100, 1e-12) && Q.rimSave({ def_rim_vol_on: 20 }) === null && Q.KEY.C.includes('rim_save'));
+  /* the roles on a made-up league: T0's centre blocks shots but the rim is worse with him on; T1's both blocks and protects */
+  const rr = players.map(p => {
+    if (p.id === 'T0-s5') return Object.assign({}, p, { blk_pct: 9, def_rim_vol_on: 30, def_rim_vol_off: 25, def_rim_fg_on: 66, def_rim_fg_off: 60 });
+    if (p.id === 'T1-s5') return Object.assign({}, p, { blk_pct: 9, def_rim_vol_on: 20, def_rim_vol_off: 25, def_rim_fg_on: 55, def_rim_fg_off: 60 });
+    if (p.id === 'T2-s5') return Object.assign({}, p, { blk_pct: 9 });
+    if (p.id === 'T0-s1') return Object.assign({}, p, { ast_pct: 40, usg: 28, p3a: 80, p3m: 34, p3_rate: 55, ev_gp: 10, ev_unast_pts_sh: 70 });
+    return p;
+  });
+  const mr = Q.build(Object.assign({}, base, { club: 'T0', players: rr }));
+  const R = id => mr.roles.byPlayer.get(id) || [];
+  ok('a protector blocks shots (top-quarter BLK%) AND the rim is better with him on: a shot-blocker who lets the rim get worse is not one',
+     R('T1-s5').includes('protector') && !R('T0-s5').includes('protector'), { T0: R('T0-s5'), T1: R('T1-s5') });
+  ok('...without the rim on/off, a top-quarter shot-blocker at four or centre', R('T2-s5').includes('protector'));
+  ok('a handler: AST%, usage and the unassisted share of his points; a shooter: volume, rate and a shrunk 3P%; a big: most minutes at centre',
+     R('T0-s1').includes('handler') && R('T0-s1').includes('shooter') && R('T0-s5').includes('big') && !R('T0-s1').includes('big'), R('T0-s1'));
+  const sh = mr.shape.find(x => x.k === 'protectors');
+  const rotT0 = rr.filter(p => teamOf.get(p.id) === 'T0' && p.min / p.gp >= 10);
+  ok('the shape counts the roles in each club\'s rotation (10 minutes a game or more), against the league\'s clubs',
+     sh && sh.v === rotT0.filter(p => R(p.id).includes('protector')).length && typeof sh.avg === 'number' && mr.shape.some(x => x.k === 'handlers'), sh);
+  ok('the club\'s players by role, its own and by minutes', mr.roles.club.find(x => x.k === 'big').ids[0] === 'T0-s5');
 }
 
 console.log('\nwhen it says nothing');

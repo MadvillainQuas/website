@@ -267,7 +267,9 @@ function html(rep, opts) {
     '<div class="pv-top"><div class="pv-chart">' + radar(rep.metrics, colour) + '</div>' +
     '<div class="pv-verdict">' + rep.verdict.map(t => '<p>' + esc(t) + '</p>').join('') + '</div></div>' +
     '<div class="pv-sec">the field</div>' + strips(rep.metrics, rep.club.id, colour) +
-    '<div class="pv-sec">the men</div>' + men(rep.men, rep.plural, o.link) + '</div>';
+    '<div class="pv-sec">the men</div>' + men(rep.men, rep.plural, o.link) +
+    /* o.extra: a section the page adds (team.js: the win model's card for the position), already escaped HTML */
+    (o.extra ? '<div class="pv-sec">' + esc(o.extraTitle || '') + '</div>' + o.extra : '') + '</div>';
 }
 
 /* ------------------------------------------------------------ the panel --- */

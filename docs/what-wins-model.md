@@ -984,6 +984,19 @@ not enough league data it can pool ... from what wins".
   sign-in, league, rate) are never pooled.
 - Tests: `supabase/tests/squad.test.mjs` (guard.yml, its own step) and `ww-fomodel.test.mjs` (a synthetic season over
   the fixture's pos file, the pooled sample, every new line in es and ja).
+- **2026-10-09.** *Minutes*: handed minutes stop at `capOf` (90% of the game, or his own and 40% of the game more),
+  never past the game; fresh legs first (under the stamina line, 80% of the game) at the position and beside it, then
+  tired ones, then anyone. *Stamina*: `fatigueLoad` = (minutes past the line in tenths of the game)² × usage / 20; only
+  the change from his own minutes is priced (−0.012 points a play and −2% of glass, steals, blocks per unit). *Who he
+  faces*: `startersShare` (0.1 → 0.75 with minutes); the change costs 0.05 points a play and 5% of those rates for the
+  whole share. Both shown apart in the result. *Positions*: AST/USG among every position's key numbers; rim points saved
+  per 100 (2 × (rim attempts × FG% off − on) / 100, season.js `def_rim_*`) for fours and centres; cards say what each
+  position NEEDS, HAS and COVERS. *Roles* (`rolesOf`, every league player on the season line, percentiles among players
+  with 200 minutes): a protector needs top-quarter BLK% and the rim better with him on; role counts in the rotation join
+  the shape. *Half court*: season.js `ev_half_usg` where present. *Kit*: a dashboard tile per block, KPI strips, widget
+  panels, VORP as a leaderboard, two bars per player in the usage. *Position sheet*: `positionHTML` in team.js's
+  `onSlot` via `position.js html({extra})`. *Share the front office*: drawn for platform admins alone (`is_platform_admin`).
+  Manager mode, the direction it all feeds: `docs/manager-mode.md`.
 
 ## 13. Chart kit (epinoia/vizkit.js, epinoia/kit/vizkit.css)
 UMD, pure SVG-string builders plus one DOM binder; no library. Builders `(data, o) → {svg, table: {head, rows}, hits:
