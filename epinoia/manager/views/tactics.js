@@ -179,7 +179,7 @@ async function render(host) {
     const tb = h('tbody');
     rows.forEach(([id, m]) => {
       const c = A.cardOf(id), load = c ? E().fatigueLoad(m, c.usg, G) - E().fatigueLoad(c.mpg, c.usg, G) : 0;
-      tb.appendChild(h('tr', h('td.l', A.nm(A.nameOf(id))), h('td', A.fmt(m)), h('td', load > 1 ? h('span.mg-chip.bad', 'Tired') : load > 0.2 ? h('span.mg-chip', { style: { color: 'var(--mg-warn)' } }, 'Heavy') : h('span.mg-chip.good', 'Fresh'))));
+      tb.appendChild(h('tr', h('td.l', h('a', { href: '#/player/' + encodeURIComponent(id), title: 'Full profile', translate: 'no' }, A.nameOf(id))), h('td', A.fmt(m)), h('td', load > 1 ? h('span.mg-chip.bad', 'Tired') : load > 0.2 ? h('span.mg-chip', { style: { color: 'var(--mg-warn)' } }, 'Heavy') : h('span.mg-chip.good', 'Fresh'))));
     });
     t.appendChild(tb);
     minsPanel.appendChild(h('div.mg-tablewrap', t));
@@ -233,7 +233,7 @@ async function render(host) {
     const at = k == null ? A.slotOfId(id) : k, P = ref.byPos[at];
     const rows = [['USG%', r.usg, P.usg], ['AST%', r.ast_pct, P.ast_pct], ['ORB%', r.oreb_pct, P.oreb_pct], ['DRB%', r.dreb_pct, P.dreb_pct], ['STL%', r.stl_pct, P.stl_pct], ['BLK%', r.blk_pct, P.blk_pct],
       ['3P%', r.p3_pct, 100 * ref.p3], ['Rim FG%', r.rim_pct, 100 * ref.rim], ['TS%', r.ts, null]];
-    tip = h('div.mg-hint', h('b', A.nm(A.nameOf(id))), h('div.mg-sub', 'Against the league’s average ' + E().SLOTS[at]),
+    tip = h('div.mg-hint', h('a', { href: '#/player/' + encodeURIComponent(id), translate: 'no' }, h('b', A.nameOf(id)), ' · FULL PROFILE →'), h('div.mg-sub', 'Against the league’s average ' + E().SLOTS[at]),
       h('table', h('tbody', rows.map(([k2, v, lg]) => h('tr', h('td', k2), h('td.n', h('b', A.fmt(+v))), h('td.n.mg-sub', lg == null ? '' : A.fmt(+lg)))))));
     root.document.body.appendChild(tip);
     A.place(tip, anchor, { dy: 0 });

@@ -487,3 +487,5 @@ html[data-theme="light"] .mg-spot .who{ background:rgba(255,255,255,.75); border
   .mg-warp, .mg-warp .w, .mg-enter .mg-rail, .mg-enter .mg-main, .mg-view-in, .mg-ob.in, .mg-ob .stage, .mg-results-in{ animation:none !important; clip-path:none; opacity:1 }
   .mg-spin{ animation-duration:2.4s }
 }
+
+.mg-go{ font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--mg-royal-3); text-decoration:none; white-space:nowrap } .mg-go:hover{ text-decoration:underline }

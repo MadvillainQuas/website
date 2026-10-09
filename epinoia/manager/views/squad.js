@@ -65,7 +65,7 @@ function card(e, anchor) {
     h('div.sec', h('span.mg-cap', 'Attributes'), attrs),
     h('div.sec', h('span.mg-cap', 'Minutes at each position'), posm),
     h('div.sec', h('div.mg-row.between', h('span.mg-cap', 'Season'), tabs), body),
-    h('div.mg-row', h('a.mg-profile', { href: '#/player/' + encodeURIComponent(e.id) + '?l=' + encodeURIComponent(e.lid), onclick: () => c.remove() }, 'Manager profile →'),
+    h('div.mg-row', h('a.mg-profile', { href: '#/player/' + encodeURIComponent(e.id) + '?l=' + encodeURIComponent(e.lid), onclick: () => c.remove() }, 'FULL PROFILE →'),
       h('a.mg-profile', { href: '../p/?p=' + encodeURIComponent(e.id), target: '_blank', rel: 'noopener' }, 'EPINOIA profile ↗')));
   put('simple');
   root.document.body.appendChild(c);
@@ -188,7 +188,7 @@ async function draft(host) {
       if (!e) { ul.appendChild(h('li.empty', i < MIN ? 'A squad needs at least ' + MIN : 'Open')); continue; }
       const L = pool.leagues.get(e.league) || A.lg, named = L.named.get(String(e.id)) || {};
       ul.appendChild(h('li', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.SLOTS[e.slot || 0]), h('button.rowbtn.nm', { type: 'button', onclick: ev => A.playerCard(e.id, e.league, ev.currentTarget) }, A.nm(named.name || 'Player')),
-        h('span.mg-sub', A.money(e.wage)), h('button.x', { type: 'button', 'aria-label': 'Release', onclick: () => { roster = roster.filter(x => x !== e); keep(); draw(); } }, '×')));
+        h('span.mg-sub', A.money(e.wage)), h('a.mg-go', { href: '#/player/' + encodeURIComponent(e.id) + '?l=' + encodeURIComponent(e.league || ''), title: 'Full profile', 'aria-label': 'Full profile' }, '→'), h('button.x', { type: 'button', 'aria-label': 'Release', onclick: () => { roster = roster.filter(x => x !== e); keep(); draw(); } }, '×')));
     }
     right.appendChild(ul);
     const counts = A.SLOTS.map((_, k) => roster.filter(e => e.slot === k).length);
@@ -265,7 +265,7 @@ function squadView(host) {
   const tb = h('tbody');
   roster.slice().sort((a, b) => (a.slot || 0) - (b.slot || 0)).forEach(e => {
     const at = A.attrs(e.id) || {}, line = S ? Mgr.season.lineOf(S, e.id) : null, g = line ? Math.max(1, line.gp) : 1;
-    tb.appendChild(h('tr', h('td.l', h('button.rowbtn', { type: 'button', onclick: ev => A.playerCard(e.id, e.league, ev.currentTarget) }, A.nm(A.nameOf(e.id), 'b'))),
+    tb.appendChild(h('tr', h('td.l', h('button.rowbtn', { type: 'button', onclick: ev => A.playerCard(e.id, e.league, ev.currentTarget) }, A.nm(A.nameOf(e.id), 'b')), ' ', h('a.mg-go', { href: '#/player/' + encodeURIComponent(e.id) + '?l=' + encodeURIComponent(e.league || ''), title: 'Full profile' }, 'FULL PROFILE →')),
       h('td', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.posOf(e.id))), Mgr.ratings.ATTRS.map(a => h('td', A.attrChip(at[a.k]))),
       h('td', line ? String(line.gp) : '0'), h('td', line ? A.fmt(line.min / g) : '–'), h('td', line ? A.fmt(line.pts / g) : '–'),
       h('td', line ? A.fmt((line.oreb + line.dreb) / g) : '–'), h('td', line ? A.fmt(line.ast / g) : '–'), h('td', A.money(e.wage))));
