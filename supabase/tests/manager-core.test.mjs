@@ -50,6 +50,24 @@ for (let t = 0; t < 10; t++) {
   teams.push({ id, men });
 }
 
+/* ---------------------------------------------------------------- positions --- */
+/* THE POSITION THE SITE LISTS HIM AT (Louie, 2026-10-09: "some of the positions are off from what they're listed as on the
+   main site"): a listing that names a position is his, whatever his season line suggests; a broad one is narrowed */
+{
+  ok('positions: a man listed PF is a PF, though his line plays like a wing', C.listedSlot('PF', C.listedShare({ bpm_pos: 3.0 }, 'PF')) === 3);
+  ok('positions: ...and most of his minutes are at PF', (() => { const s = C.listedShare({ bpm_pos: 3.0 }, 'PF'); return s[3] > 0.5 && Math.abs(s.reduce((a, v) => a + v, 0) - 1) < 1e-9; })());
+  ok('positions: a man listed C is a C', C.listedSlot('C', C.listedShare({ bpm_pos: 3.6 }, 'C')) === 4 && C.listedSlot('Center', null) === 4);
+  ok('positions: a forward (F) is narrowed by his line: a big one is a PF, never a guard', C.listedSlot('F', C.listedShare({ bpm_pos: 4.6 }, 'F')) === 3 && C.listedSlot('F', C.listedShare({ bpm_pos: 1.2 }, 'F')) === 2);
+  ok('positions: a guard (G) is a PG or an SG', [1, 1.8, 2.6, 4].every(b => C.listedSlot('G', C.listedShare({ bpm_pos: b }, 'G')) <= 1));
+  ok('positions: no listing, his line decides; nothing at all, no share', C.listedSlot('', C.listedShare({ bpm_pos: 2.2 }, '')) === 1 && C.listedShare({}, '') === null);
+  ok('positions: the position files (minutes at each position) narrow a broad listing too', C.listedSlot('G/F', [0.1, 0.2, 0.6, 0.1, 0]) === 2 && C.listedSlot('G/F', [0.5, 0.3, 0.2, 0, 0]) === 1);
+  ok('positions: two listed together, either way round: F/G is an SG or an SF, C/F a PF or a C, PG/SG a guard',
+    [1.2, 2.8, 4.5].every(b => [1, 2].includes(C.listedSlot('F/G', C.listedShare({ bpm_pos: b }, 'F/G'))))
+    && [2.5, 3.8, 4.9].every(b => [3, 4].includes(C.listedSlot('C/F', C.listedShare({ bpm_pos: b }, 'C/F'))))
+    && [1, 2.5, 4].every(b => [0, 1].includes(C.listedSlot('PG/SG', C.listedShare({ bpm_pos: b }, 'PG/SG')))));
+  ok('positions: a listing it cannot read is no listing (his line decides)', C.listedSlot('Utility', [0, 0, 0, 1, 0]) === 3);
+}
+
 /* ---------------------------------------------------------------- values --- */
 {
   const ctx = V.leagueContext(rows);
@@ -77,6 +95,16 @@ for (let t = 0; t < 10; t++) {
   const strong = R.rateLeague(rows, { min: 200000, max: 4000000 }, { min: 20000, max: 400000 }), id = rows[0].id;
   ok('attributes: the same line in a stronger league reads higher (skills), usage unchanged', strong.get(id).three >= rated.get(id).three && strong.get(id).usg === rated.get(id).usg);
   ok('attributes: a colour band for each value', R.band(3) === 'a1' && R.band(18) === 'a4' && R.band(null) === '');
+  /* EARLY IN A SEASON (Louie, 2026-10-09: "There are no attributes coming up"): three games in, nobody has 150 minutes, and
+     the league is still rated - the bar and the shrinkage scale with what its regulars have played; a season under way is
+     rated as before */
+  const early = rows.map(r => Object.assign({}, r, { min: r.min * 3 / 28, gp: 3 }));
+  const ratedEarly = R.rateLeague(early, { min: 20000, max: 400000 }, { min: 20000, max: 400000 });
+  const filled = [...ratedEarly.values()].filter(a => a.three != null && a.usg != null).length;
+  ok('attributes: three games into a season the league is rated all the same', filled >= early.length * 0.8, [filled, early.length]);
+  ok('attributes: ...its best shooter still above its worst', ratedEarly.get(shooters[0].id).three > ratedEarly.get(shooters[shooters.length - 1].id).three);
+  const popFull = R.population(rows);
+  ok('attributes: a season under way keeps the 150-minute bar', popFull.bar === R.POP_MIN, popFull.bar);
 }
 /* ---------------------------------------------------------------- the schedule --- */
 {

@@ -300,5 +300,42 @@ function formOf(r, games) {
   return clamp((g / m - season) / (FORM_SD * Math.sqrt(30 / m)) * m / (m + FORM_K), -2, 2);
 }
 
-return { refOf, cardOf, shiftOf, posOf, shareOf, atPos, startersShare, evOk, formOf, fillerCard, averageCard, K, SHIFT, OPP_LOGIT, ONOFF_MAX, ONOFF_K, POP_MIN, PRIOR_DROP, FORM_SD, FORM_K };
+/* ------------------------------------------------------------------ the listed position --- */
+/* THE POSITION THE SITE LISTS HIM AT (Louie, 2026-10-09: "some of the positions are off from what they're listed as on
+   the main site"). A listing that names one position (PG, SG, SF, PF, C) is his position. A broader one (G, F, G/F, F/C)
+   is narrowed by the minutes he plays at each position (the position files), or by his season line's estimate. Without
+   a listing, those alone decide.
+     listedSlot(listed, share)  his position, 0 (PG) .. 4 (C)
+     listedShare(line, listed)  his minutes at each position when there are no position files: the listing and the
+                                season line's estimate, as the site places him (season.js positionValue: three parts the
+                                estimate, one the listing); a listing that names a position keeps him within half a
+                                position of it, so most of his minutes are there */
+/* the positions a listing allows, [first, last] of PG..C: one position, a broad one (G, F), or two together - "G/F" (or
+   "F/G") is where a guard and a forward meet (SG-SF), "C/F" a big forward or a centre (PF-C), "PG/SG" both */
+const PART = { pg: [0, 0], 'point guard': [0, 0], sg: [1, 1], 'shooting guard': [1, 1], sf: [2, 2], 'small forward': [2, 2], pf: [3, 3], 'power forward': [3, 3],
+  c: [4, 4], centre: [4, 4], center: [4, 4], g: [0, 1], guard: [0, 1], f: [2, 3], forward: [2, 3], wing: [1, 2], big: [3, 4], gf: [1, 2], fc: [3, 4] };
+function spanOf(listed) {
+  const parts = String(listed || '').trim().toLowerCase().split(/\s*(?:\/|-|,|&|\band\b)\s*/).filter(Boolean);
+  if (!parts.length || parts.some(p => !PART[p])) return null;
+  const spans = parts.map(p => PART[p]).sort((a, b) => a[0] - b[0]);
+  if (spans.length === 2 && spans[0][1] + 1 === spans[1][0]) return [spans[0][1], spans[1][0]];
+  return [Math.min(...spans.map(s => s[0])), Math.max(...spans.map(s => s[1]))];
+}
+function listedSlot(listed, share) {
+  const sp = spanOf(listed), s = Array.isArray(share) ? share : [0, 0, 1, 0, 0];
+  const ks = sp ? Array.from({ length: sp[1] - sp[0] + 1 }, (_, i) => sp[0] + i) : [0, 1, 2, 3, 4];
+  return ks.reduce((b, j) => (n0(s[j]) > n0(s[b]) ? j : b), ks[0]);
+}
+function listedShare(r, listed) {
+  const sp = spanOf(listed), l = sp ? (sp[0] + sp[1]) / 2 + 1 : null, calc = num(r && r.bpm_pos);
+  let v = calc != null ? (l != null ? 0.75 * calc + 0.25 * l : calc) : l;
+  if (v == null) return null;
+  if (sp) v = sp[0] === sp[1] ? clamp(v, sp[0] + 0.55, sp[0] + 1.45) : clamp(v, sp[0] + 1, sp[1] + 1);
+  const x = clamp(v - 1, 0, 4), lo = Math.floor(x), hi = Math.min(4, lo + 1), f = x - lo, s = [0, 0, 0, 0, 0];
+  s[lo] += 1 - f; if (hi !== lo) s[hi] += f;
+  return s;
+}
+
+return { refOf, cardOf, shiftOf, posOf, shareOf, atPos, startersShare, evOk, formOf, fillerCard, averageCard, listedSlot, listedShare,
+  K, SHIFT, OPP_LOGIT, ONOFF_MAX, ONOFF_K, POP_MIN, PRIOR_DROP, FORM_SD, FORM_K };
 }));

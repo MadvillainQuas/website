@@ -69,6 +69,8 @@ async function rest(path) {
   return r.json();
 }
 async function signedIn() { if (LOCAL) return true; const s = await sess(); return !!(s && s.token); }
+/* the reader's account id (a club not made yet is kept in this browser under it) */
+async function userId() { if (LOCAL) return 'local'; const s = await sess(); return (s && s.userId) || null; }
 const signinHref = () => { const a = A(); return a && a.signinHref ? a.signinHref() : '../signin/'; };
 
 /* ------------------------------------------------------------------ the leagues --- */
@@ -123,9 +125,13 @@ async function load(L) {
   const players = S.players || [];
   const ref = core.cards.refOf(players);
   const sim = core.engine.leagueOf(ref, fo, 40, { teams: S.teams || [], games: S.games || [] });
-  /* each player's minutes at PG..C: the fo file's position files where they are there */
+  /* each player's minutes at PG..C: the fo file's position files where they are there, else his listing and his season
+     line's estimate (cards.listedShare); and his position is the one the site lists him at (cards.listedSlot) */
   const share = new Map();
   if (fo && fo.pos) Object.values(fo.pos).forEach(P => (P && P.players || []).forEach(p => { if (p && p.id != null && Array.isArray(p.min)) share.set(String(p.id), p.min); }));
+  const listed = new Map(rows.map(r => [String(r.playerId), r.position || '']));
+  players.forEach(r => { const id = String(r.id); if (!share.has(id)) { const s = core.cards.listedShare(r, listed.get(id)); if (s) share.set(id, s); } });
+  const slot = new Map(players.map(r => { const id = String(r.id); return [id, core.cards.listedSlot(listed.get(id), share.get(id) || core.cards.shareOf(r))]; }));
   /* the continental boosts, a club at a time */
   let boosts = new Map();
   try { boosts = new Map(((await rpc('manager_boosts', { p_league: L.id })) || []).map(b => [String(b.team_id), +b.boost || 0])); } catch (_) { boosts = new Map(); }
@@ -137,7 +143,7 @@ async function load(L) {
   players.forEach(r => { const c = core.cards.cardOf(r, ref, { share: share.get(String(r.id)) }); if (c) cards.set(String(r.id), c); });
   const named = new Map(rows.map(r => [String(r.playerId), r]));
   const teams = (S.teams || []).map(t => Object.assign({}, t, { meta: teamMeta[t.id] || {} }));
-  return { L, S, rows, named, byId, teamOf, ref, sim, fo, share, range: range || core.value.DEFAULT_RANGE, hasRange: !!range, boosts, priced, attrs, cards, teams,
+  return { L, S, rows, named, byId, teamOf, ref, sim, fo, share, slot, range: range || core.value.DEFAULT_RANGE, hasRange: !!range, boosts, priced, attrs, cards, teams,
     budget: core.value.budgetOf(priced, players) };
 }
 /* a player's card for another league: his own league's reference, the strength shift between the two leagues' ranges */
@@ -221,5 +227,5 @@ async function boardLeagues() { if (LOCAL) return local.boardLeagues(); return (
 async function badges(ids) { if (LOCAL) return local.badges(ids || []); return ids && ids.length ? ((await rpc('manager_badges', { p_ids: ids.slice(0, 60) })) || []) : []; }
 async function isAdmin() { try { return (await rpc('is_platform_admin', {})) === true; } catch (_) { return false; } }
 
-return { leagues, league, card, formFor, values, setValues, medianRange, clubs, create, save, remove, board, boardLeagues, badges, isAdmin, signedIn, signinHref, rpc, rest, FORM_KEYS, LOCAL };
+return { leagues, league, card, formFor, values, setValues, medianRange, clubs, create, save, remove, board, boardLeagues, badges, isAdmin, signedIn, userId, signinHref, rpc, rest, FORM_KEYS, LOCAL };
 }));

@@ -4,8 +4,9 @@
    players, not the actual underlying mechanisms"): the simulator never reads them, it runs the What wins model on the
    players' own rates (engine.js).
 
-   Each attribute is a weighted blend of percentiles among a population (his league's players with 150 minutes or more),
-   shrunk toward the middle for a small sample (minutes / (minutes + 250)), set on 1-20, and - for the skills, never for
+   Each attribute is a weighted blend of percentiles among a population (his league's players with 150 minutes or more;
+   fewer early in a season, population()), shrunk toward the middle for a small sample (minutes / (minutes + 250); less
+   early in a season), set on 1-20, and - for the skills, never for
    usage, which is a role - moved by the league's level (its value range against the platform's median league: up to 3
    points either way), so 15 in a strong league is more than 15 in a weak one. A part a line does not have (no
    play-by-play splits) is left out and the rest re-weighted.
@@ -39,30 +40,36 @@ function rimSave(r) {
   return [von, voff, fon, foff].every(isNum) ? 2 * (voff * foff - von * fon) / 100 : null;
 }
 const ATTRS = [
-  { k: 'usg', label: 'USG%', skill: false, parts: [['usg', 1]] },
-  { k: 'rim', label: 'Rim attack', skill: true, parts: [['rim_a100', 0.4], [un('ev_rim_astp'), 0.2], ['rim_pct', 0.4]] },
-  { k: 'mid', label: 'Mid attack', skill: true, parts: [['mid_a100', 0.4], [un('ev_mid_astp'), 0.2], ['mid_pct', 0.4]] },
-  { k: 'three', label: '3PT shooting', skill: true, parts: [['p3_a100', 0.35], [un('ev_p3_astp'), 0.15], ['p3_pct', 0.5]] },
-  { k: 'pass', label: 'Passing', skill: true, parts: [['au', 0.8], ['tov_pct', -0.2]] },
-  { k: 'handle', label: 'Handling pressure', skill: true, parts: [[ratio('ast_pct', 'tov_pct'), 0.8], ['ev_unast_pts_sh', 0.2]] },
-  { k: 'motor', label: 'Motor', skill: true, parts: [['stl_pct', 0.5], ['oreb_pct', 0.5]] },
-  { k: 'rimp', label: 'Rim protection', skill: true, parts: [['blk_pct', 0.6], [rimSave, 0.4]] },
-  { k: 'hands', label: 'Hands', skill: true, parts: [['stl_pct', 1]] },
-  { k: 'oreb', label: 'Off. boards', skill: true, parts: [['oreb_pct', 1]] },
-  { k: 'dreb', label: 'Def. boards', skill: true, parts: [['dreb_pct', 0.75], ['diff_vs_oreb', -0.25]] }
+  { k: 'usg', label: 'USG%', short: 'USG%', skill: false, parts: [['usg', 1]] },
+  { k: 'rim', label: 'Rim attack', short: 'Rim', skill: true, parts: [['rim_a100', 0.4], [un('ev_rim_astp'), 0.2], ['rim_pct', 0.4]] },
+  { k: 'mid', label: 'Mid attack', short: 'Mid', skill: true, parts: [['mid_a100', 0.4], [un('ev_mid_astp'), 0.2], ['mid_pct', 0.4]] },
+  { k: 'three', label: '3PT shooting', short: '3PT', skill: true, parts: [['p3_a100', 0.35], [un('ev_p3_astp'), 0.15], ['p3_pct', 0.5]] },
+  { k: 'pass', label: 'Passing', short: 'Pass', skill: true, parts: [['au', 0.8], ['tov_pct', -0.2]] },
+  { k: 'handle', label: 'Handling pressure', short: 'Handle', skill: true, parts: [[ratio('ast_pct', 'tov_pct'), 0.8], ['ev_unast_pts_sh', 0.2]] },
+  { k: 'motor', label: 'Motor', short: 'Motor', skill: true, parts: [['stl_pct', 0.5], ['oreb_pct', 0.5]] },
+  { k: 'rimp', label: 'Rim protection', short: 'Rim D', skill: true, parts: [['blk_pct', 0.6], [rimSave, 0.4]] },
+  { k: 'hands', label: 'Hands', short: 'Hands', skill: true, parts: [['stl_pct', 1]] },
+  { k: 'oreb', label: 'Off. boards', short: 'OReb', skill: true, parts: [['oreb_pct', 1]] },
+  { k: 'dreb', label: 'Def. boards', short: 'DReb', skill: true, parts: [['dreb_pct', 0.75], ['diff_vs_oreb', -0.25]] }
 ];
 const POP_MIN = 150, SHRINK = 250, TIER_MAX = 3;
 const valOf = (r, f) => (typeof f === 'function' ? f(r) : num(r[f]));
 
-/* a population's sorted values for each part (its players with POP_MIN minutes), made once per league */
+/* a population's sorted values for each part, made once per league. EARLY IN A SEASON (Louie, 2026-10-09: "There are no
+   attributes coming up" - a league three games in, where nobody has 150 minutes yet) the bar and the shrinkage scale
+   with what the league's regulars have played (its upper-quartile minutes): 40% of it to count, 60% of it as the
+   shrinkage's prior - never more than POP_MIN and SHRINK, so a season under way is rated exactly as before */
 function population(rows) {
-  const pop = rows.filter(r => (num(r.min) || 0) >= POP_MIN);
+  const mins = rows.map(r => num(r.min) || 0).filter(m => m > 0).sort((a, b) => a - b);
+  const q75 = mins.length ? mins[Math.floor(0.75 * (mins.length - 1))] : 0;
+  const bar = Math.min(POP_MIN, Math.max(20, 0.4 * q75)), shrink = Math.min(SHRINK, Math.max(40, 0.6 * q75));
+  const pop = rows.filter(r => (num(r.min) || 0) >= bar);
   const cols = new Map();
   ATTRS.forEach(a => a.parts.forEach(([f]) => {
     if (cols.has(f)) return;
     cols.set(f, pop.map(r => valOf(r, f)).filter(isNum).sort((x, y) => x - y));
   }));
-  return { cols, n: pop.length };
+  return { cols, n: pop.length, bar, shrink };
 }
 function pctIn(sorted, v) {
   if (!sorted || sorted.length < 5 || !isNum(v)) return null;
@@ -79,7 +86,7 @@ function tierOf(range, median) {
 }
 /* one player's attributes: {usg: 14, rim: 9, ...} (null where nothing could be read) */
 function rate(r, pop, tier) {
-  const out = {}, min = num(r.min) || 0, w = min / (min + SHRINK);
+  const out = {}, min = num(r.min) || 0, w = min / (min + (pop.shrink || SHRINK));
   ATTRS.forEach(a => {
     let s = 0, W = 0;
     a.parts.forEach(([f, wt]) => {

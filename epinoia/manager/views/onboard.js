@@ -185,17 +185,16 @@ function render(host) {
     stage.appendChild(h('div', pw));
     stage.appendChild(h('p.hint', 'Your games are played on the real calendar: Saturdays, and Wednesdays too at two a week, from the first match day after you confirm your squad. The players’ real form in the days before each round moves them.'));
     const err = h('p.hint.bad', { 'aria-live': 'polite' });
-    const btn = h('button.mg-btn.primary.big', { type: 'button' }, 'Create my club');
+    /* NOTHING IS MADE YET (Louie: "teams to not be confirmed/saved until confirm squad has been clicked"): the club waits in
+       this browser while its squad is drafted, and is made when the squad is confirmed (app.js confirmSquad) */
+    const btn = h('button.mg-btn.primary.big', { type: 'button' }, 'Build my squad');
     btn.addEventListener('click', async () => {
       btn.disabled = true; err.textContent = '';
       try {
+        if (A.clubs.length >= 3) throw new Error('three clubs at most');
         const L = st.league;
-        const id = await Mgr.site.create({ league: L.id, competition: L.competitionIds[0], name: st.name, manager: st.manager, badge: Mgr.badge.sanitise(st.badge), perWeek: st.perWeek });
-        A.clubs = await Mgr.site.clubs();
-        const club = A.clubs.find(c => c.id === id);
-        if (!club) throw new Error('the club was made but could not be read back');
-        club.budget = st.loaded.budget;
-        try { await Mgr.site.save(club.id, { budget: club.budget }); } catch (_) { /* set again on the squad page */ }
+        const club = A.newPending({ league: L.id, competition: L.competitionIds[0], name: st.name, manager: st.manager, badge: Mgr.badge.sanitise(st.badge), perWeek: st.perWeek, budget: st.loaded.budget });
+        A.keepPending(club);
         close();
         A.lg = null; A.identity = new Map(); A.news = [];
         await A.openClub(club);
@@ -203,7 +202,7 @@ function render(host) {
       } catch (e) {
         btn.disabled = false;
         const m = String(e && e.message || e);
-        err.textContent = /three clubs/.test(m) ? 'You already have three clubs: delete one in its settings first.' : /club name|manager name/.test(m) ? 'One of the names is not allowed.' : 'The club could not be made: ' + m;
+        err.textContent = /three clubs/.test(m) ? 'You already have three clubs: delete one in its settings first.' : 'The club could not be set up: ' + m;
       }
     });
     stage.appendChild(h('div.go', btn));

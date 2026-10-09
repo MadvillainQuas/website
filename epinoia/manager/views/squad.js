@@ -35,7 +35,7 @@ function entries() {
     const id = String(r.playerId), row = L.byId.get(id), price = L.priced.get(id);
     if (!row || !price || !(row.min > 0)) return;
     const share = L.share.get(id) || Mgr.cards.shareOf(row);
-    out.push({ id, lid, L, row, named: r, price, attrs: L.attrs.get(id) || {}, slot: A.slotOf(share), share,
+    out.push({ id, lid, L, row, named: r, price, attrs: L.attrs.get(id) || {}, slot: A.slotIn(L, id, share), share,
       mpg: row.gp ? row.min / row.gp : 0, ppg: row.gp ? row.pts / row.gp : 0 });
   }));
   return out;
@@ -55,11 +55,11 @@ function card(e, anchor) {
   const put = k => { body.textContent = ''; body.appendChild(k === 'scout' ? scout() : simple()); tabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === k))); };
   [['simple', 'Simple'], ['scout', 'Scouting']].forEach(([k, l]) => tabs.appendChild(h('button', { type: 'button', 'data-k': k, onclick: () => put(k) }, l)));
   const tot = e.share.reduce((a, v) => a + v, 0) || 1;
-  const posm = h('div.mg-posmins', A.SLOTS.map((s, k) => h('div.c', h('i', { style: { height: Math.max(3, Math.round(56 * e.share[k] / tot)) + 'px' } }), h('b', s), h('span', Math.round(100 * e.share[k] / tot) + '%'))));
+  const posm = h('div.mg-posmins', { 'data-i18n-ctx': 'pos' }, A.SLOTS.map((s, k) => h('div.c', h('i', { style: { height: Math.max(3, Math.round(56 * e.share[k] / tot)) + 'px' } }), h('b', s), h('span', Math.round(100 * e.share[k] / tot) + '%'))));
   const attrs = h('div.mg-attrs', Mgr.ratings.ATTRS.map(a => h('div.row', h('span', a.label), A.attrChip(at[a.k]))));
   const c = h('div.mg-card', { role: 'dialog', 'aria-label': e.named.name || 'Player' },
     h('button.close', { type: 'button', 'aria-label': 'Close', onclick: () => c.remove() }, '×'),
-    h('div.hd', h('span.mg-pos', A.SLOTS[e.slot]), h('div.t', A.nm(e.named.name, 'b'), h('span', A.nm(e.named.teamName || ''), ' · ', A.nm(e.L.L.name)))),
+    h('div.hd', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.SLOTS[e.slot]), h('div.t', A.nm(e.named.name, 'b'), h('span', A.nm(e.named.teamName || ''), ' · ', A.nm(e.L.L.name)))),
     h('div.money', h('span', 'Value ', h('b', A.money(e.price.value))), h('span', 'Wage ', h('b', A.money(e.price.wage))),
       e.price.boost > 0 ? h('span.mg-chip.royal', 'Continental +' + Math.round(100 * e.price.boost) + '%') : null),
     h('div.sec', h('span.mg-cap', 'Attributes'), attrs),
@@ -69,9 +69,7 @@ function card(e, anchor) {
       h('a.mg-profile', { href: '../p/?p=' + encodeURIComponent(e.id), target: '_blank', rel: 'noopener' }, 'EPINOIA profile ↗')));
   put('simple');
   root.document.body.appendChild(c);
-  const b = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null;
-  if (b && root.innerWidth > 860) { c.style.left = Math.min(root.innerWidth - c.offsetWidth - 12, b.right + 12) + 'px'; c.style.top = Math.max(12, Math.min(root.innerHeight - c.offsetHeight - 12, b.top - 40)) + 'px'; }
-  else { c.style.left = '12px'; c.style.bottom = '12px'; }
+  A.place(c, anchor);
   const off = ev => { if (!c.contains(ev.target) && ev.target !== anchor) { c.remove(); root.document.removeEventListener('pointerdown', off, true); } };
   setTimeout(() => root.document.addEventListener('pointerdown', off, true), 0);
   const esc = ev => { if (ev.key === 'Escape') { c.remove(); root.document.removeEventListener('keydown', esc); } };
@@ -82,7 +80,7 @@ A.playerCard = (id, lid, anchor) => {
   const row = L && L.byId.get(String(id)), named = L && L.named.get(String(id)), price = L && L.priced.get(String(id));
   if (!row || !named || !price) return;
   const share = L.share.get(String(id)) || Mgr.cards.shareOf(row);
-  card({ id: String(id), lid: L.L.id, L, row, named, price, attrs: L.attrs.get(String(id)) || {}, slot: A.slotOf(share), share }, anchor);
+  card({ id: String(id), lid: L.L.id, L, row, named, price, attrs: L.attrs.get(String(id)) || {}, slot: A.slotIn(L, id, share), share }, anchor);
 };
 
 /* ------------------------------------------------------------------ the draft --- */
@@ -91,6 +89,9 @@ async function draft(host) {
   await network();
   const budget = A.club.budget || A.lg.budget;
   let roster = (A.club.roster || []).slice();
+  /* every signing and release kept at once (another screen, or a reload, loses nothing): in this browser until the
+     squad is confirmed (app.js A.save) */
+  const keep = () => { A.save({ roster: roster.slice() }).catch(() => {}); A.reloadMine().catch(() => {}); };
   const st = { q: '', pos: -1, lid: 'all', sort: 'value', dir: -1, afford: false, shortOnly: false, shown: PAGE };
   let list = entries();
   host.textContent = '';
@@ -98,8 +99,9 @@ async function draft(host) {
   const has = id => roster.some(e => String(e.id) === String(id));
 
   /* the head */
+  const tacBtn = h('a.mg-btn', { href: '#/tactics' }, 'Lineups and tactics →');
   host.appendChild(h('div.mg-top', A.badge(A.club.badge, 56), h('div.who', h('h1', 'Build your squad'),
-    h('div.meta', h('span', 'Budget ', h('b', A.money(budget))), h('span', 'The league’s average wage × 12'), h('span', MIN + '–' + MAX + ' players')))));
+    h('div.meta', h('span', 'Budget ', h('b', A.money(budget))), h('span', 'The league’s average wage × 12'), h('span', MIN + '–' + MAX + ' players'))), h('div.grow'), tacBtn));
   const wrap = h('div.mg-builder'), left = h('div.mg-panel.pool'), right = h('div.mg-panel.glow.squad');
   wrap.appendChild(left); wrap.appendChild(right); host.appendChild(wrap);
 
@@ -148,7 +150,7 @@ async function draft(host) {
       const inS = has(e.id), afford = e.price.wage <= room;
       const add = h('button.mg-add' + (inS ? '.on' : ''), { type: 'button', disabled: !inS && (!afford || roster.length >= MAX) ? true : null,
         title: inS ? 'In your squad' : !afford ? 'Over your budget' : roster.length >= MAX ? 'Your squad is full' : 'Sign', onclick: () => toggle(e) }, inS ? '✓' : '+ Sign');
-      tb.appendChild(h('tr', h('td', star), h('td.l', nameBtn), h('td', h('span.mg-pos', A.SLOTS[e.slot])), h('td', A.fmt(e.mpg)), h('td', A.fmt(e.ppg)),
+      tb.appendChild(h('tr', h('td', star), h('td.l', nameBtn), h('td', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.SLOTS[e.slot])), h('td', A.fmt(e.mpg)), h('td', A.fmt(e.ppg)),
         KEY_ATTRS.map(([k]) => h('td', A.attrChip(e.attrs[k]))), h('td', A.money(e.price.value)), h('td', A.money(e.price.wage)), h('td', add)));
     });
     t.appendChild(tb);
@@ -165,6 +167,7 @@ async function draft(host) {
       if (used() + e.price.wage > budget) return A.toast('Over your budget.', true);
       roster.push({ id: e.id, league: e.lid, value: e.price.value, wage: e.price.wage, slot: e.slot });
     }
+    keep();
     draw();
   }
 
@@ -184,13 +187,15 @@ async function draft(host) {
       const e = bySlot[i];
       if (!e) { ul.appendChild(h('li.empty', i < MIN ? 'A squad needs at least ' + MIN : 'Open')); continue; }
       const L = pool.leagues.get(e.league) || A.lg, named = L.named.get(String(e.id)) || {};
-      ul.appendChild(h('li', h('span.mg-pos', A.SLOTS[e.slot || 0]), h('button.rowbtn.nm', { type: 'button', onclick: ev => A.playerCard(e.id, e.league, ev.currentTarget) }, A.nm(named.name || 'Player')),
-        h('span.mg-sub', A.money(e.wage)), h('button.x', { type: 'button', 'aria-label': 'Release', onclick: () => { roster = roster.filter(x => x !== e); draw(); } }, '×')));
+      ul.appendChild(h('li', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.SLOTS[e.slot || 0]), h('button.rowbtn.nm', { type: 'button', onclick: ev => A.playerCard(e.id, e.league, ev.currentTarget) }, A.nm(named.name || 'Player')),
+        h('span.mg-sub', A.money(e.wage)), h('button.x', { type: 'button', 'aria-label': 'Release', onclick: () => { roster = roster.filter(x => x !== e); keep(); draw(); } }, '×')));
     }
     right.appendChild(ul);
     const counts = A.SLOTS.map((_, k) => roster.filter(e => e.slot === k).length);
     right.appendChild(h('div.mg-row', { style: { marginTop: '12px' } }, A.SLOTS.map((s, k) => h('span.mg-chip' + (counts[k] ? '' : '.bad'), s + ' ' + counts[k]))));
     const ok = roster.length >= MIN && roster.length <= MAX && !over;
+    tacBtn.classList.toggle('off', roster.length < 5);
+    tacBtn.title = roster.length < 5 ? 'Sign five players to set your lineups' : '';
     confirm.disabled = !ok;
     confirm.title = ok ? '' : roster.length < MIN ? 'At least ' + MIN + ' players' : 'Over your budget';
   }
@@ -198,18 +203,16 @@ async function draft(host) {
     if (confirm.disabled) return;
     confirm.disabled = true;
     try {
-      const clubs = ['me'].concat(A.realClubs());
-      const today = new Date().toISOString().slice(0, 10);
-      const state = Mgr.season.create({ clubs, start: today, perWeek: A.club.per_week || 2, meetings: 3 });
-      A.club.roster = roster; A.club.state = state; A.club.budget = budget;
-      await A.reloadMine();
-      const lineups = A.autoLineups();
-      await A.save({ roster, budget, state, lineups, status: 'active', summary: Mgr.season.summary(state, 0) });
-      A.club.status = 'active';
+      const state = await A.confirmSquad({ roster: roster.slice(), budget });
       confirm.remove();
       A.toast('Squad confirmed. Your first game: ' + new Date(state.fixtures[0].d + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + '.');
       A.go('/tactics');
-    } catch (e) { confirm.disabled = false; A.toast('The squad could not be saved: ' + (e && e.message || e), true); }
+    } catch (e) {
+      confirm.disabled = false;
+      const m = String(e && e.message || e);
+      A.toast(/three clubs/.test(m) ? 'You already have three clubs: delete one in its settings first.'
+        : /club name|manager name/.test(m) ? 'One of the names is not allowed: change it in Club settings.' : 'The squad could not be saved: ' + m, true);
+    }
   });
 
   /* the scouting network: another league into the pool */
@@ -258,12 +261,12 @@ function squadView(host) {
     h('span', 'Wages ', h('b', A.money(roster.reduce((a, e) => a + (e.wage || 0), 0))), ' of ', A.money(A.club.budget || 0)))), h('div.grow'),
     h('a.mg-btn.primary', { href: '#/trade' }, 'Trade a player')));
   const t = h('table.mg-table');
-  t.appendChild(h('thead', h('tr', h('th.l', 'Player'), h('th', 'Pos'), Mgr.ratings.ATTRS.map(a => h('th', { title: a.label }, a.label.split(' ')[0].slice(0, 5))), h('th', 'GP'), h('th', 'MIN'), h('th', 'PTS'), h('th', 'REB'), h('th', 'AST'), h('th', 'Wage'))));
+  t.appendChild(h('thead', h('tr', h('th.l', 'Player'), h('th', 'Pos'), Mgr.ratings.ATTRS.map(a => h('th', { title: a.label }, a.short || a.label)), h('th', 'GP'), h('th', 'MIN'), h('th', 'PTS'), h('th', 'REB'), h('th', 'AST'), h('th', 'Wage'))));
   const tb = h('tbody');
   roster.slice().sort((a, b) => (a.slot || 0) - (b.slot || 0)).forEach(e => {
     const at = A.attrs(e.id) || {}, line = S ? Mgr.season.lineOf(S, e.id) : null, g = line ? Math.max(1, line.gp) : 1;
     tb.appendChild(h('tr', h('td.l', h('button.rowbtn', { type: 'button', onclick: ev => A.playerCard(e.id, e.league, ev.currentTarget) }, A.nm(A.nameOf(e.id), 'b'))),
-      h('td', h('span.mg-pos', A.posOf(e.id))), Mgr.ratings.ATTRS.map(a => h('td', A.attrChip(at[a.k]))),
+      h('td', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.posOf(e.id))), Mgr.ratings.ATTRS.map(a => h('td', A.attrChip(at[a.k]))),
       h('td', line ? String(line.gp) : '0'), h('td', line ? A.fmt(line.min / g) : '–'), h('td', line ? A.fmt(line.pts / g) : '–'),
       h('td', line ? A.fmt((line.oreb + line.dreb) / g) : '–'), h('td', line ? A.fmt(line.ast / g) : '–'), h('td', A.money(e.wage))));
   });

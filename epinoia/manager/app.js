@@ -76,10 +76,13 @@ const icon = k => { const s = doc.createElementNS('http://www.w3.org/2000/svg', 
   const p = doc.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', ICON[k] || ICON.home); p.setAttribute('fill', 'none'); p.setAttribute('stroke', 'currentColor');
   p.setAttribute('stroke-width', '1.8'); p.setAttribute('stroke-linejoin', 'round'); p.setAttribute('stroke-linecap', 'round'); s.appendChild(p); return s; };
 const NAV = [['home', 'Club'], ['squad', 'Squad'], ['tactics', 'Tactics'], ['fixtures', 'Fixtures'], ['table', 'Table'], ['stats', 'Statistics'], ['trade', 'Trade'], ['boards', 'Leaderboards'], ['settings', 'Club settings']];
+const DRAFT_NAV = ['squad', 'tactics', 'boards', 'settings'];
 function drawRail() {
   const nav = doc.getElementById('mgNav'), bar = doc.getElementById('mgTabbar'), chip = doc.getElementById('mgClubChip');
   if (!nav) return;
-  const active = !!(A.club && A.club.status !== 'draft'), list = A.club ? NAV.filter(([k]) => active || ['home', 'squad', 'boards', 'settings'].includes(k)) : [['home', 'Club'], ['boards', 'Leaderboards']];
+  /* while the squad is being drafted: the squad, its tactics beside it (Louie: "also viewable while constructing the
+     squad to aid it"), the boards and the settings */
+  const active = !!(A.club && A.club.status !== 'draft'), list = A.club ? NAV.filter(([k]) => active || DRAFT_NAV.includes(k)) : [['home', 'Club'], ['boards', 'Leaderboards']];
   nav.textContent = ''; bar.textContent = '';
   list.forEach(([k, label], i) => {
     if (k === 'boards') nav.appendChild(h('li.sep', { 'aria-hidden': 'true' }));
@@ -91,9 +94,10 @@ function drawRail() {
   if (A.club) {
     const box = h('div.mg-clubchip', A.badge(A.club.badge, 38), h('div.t', nm(A.club.name, 'b'), h('span', nm(A.lg ? A.lg.L.name : ''), A.club.gp ? ' · ' + A.club.w + '–' + A.club.l : '')));
     if (A.clubs.length > 1 || A.clubs.length < 3) {
-      const sel = h('select', { 'aria-label': 'Switch club' });
+      const sel = h('select', { 'aria-label': 'Switch club' }), pend = A.pendingClub();
       A.clubs.forEach(c => sel.appendChild(h('option', { value: c.id, selected: c.id === A.club.id ? true : null, translate: 'no' }, c.name)));
-      if (A.clubs.length < 3) sel.appendChild(h('option', { value: '+' }, '+ A new club'));
+      if (pend) sel.appendChild(h('option', { value: 'pending', selected: A.club.pending ? true : null, translate: 'no' }, pend.name + ' ✎'));
+      if (A.clubs.length + (pend ? 1 : 0) < 3) sel.appendChild(h('option', { value: '+' }, '+ A new club'));
       sel.addEventListener('change', () => { if (sel.value === '+') location.hash = '#/new'; else switchClub(sel.value); });
       box.querySelector('.t').appendChild(sel);
     }
@@ -102,7 +106,7 @@ function drawRail() {
 }
 
 /* ------------------------------------------------------------------ small shared things --- */
-A.badge = (b, size) => { const s = h('span.mg-badge'); s.innerHTML = Mgr.badge.svg(b, size || 40); return s; };   // badge.svg escapes every field it writes
+A.badge = (b, size) => { const s = h('span.mg-badge', { translate: 'no' }); s.innerHTML = Mgr.badge.svg(b, size || 40); return s; };   // badge.svg escapes every field it writes
 /* a club of the manager league by its index: the reader's (0) or a real club's crest */
 A.clubAt = i => {
   const S = A.club && A.club.state, id = S ? S.clubs[i] : null;
@@ -128,7 +132,10 @@ A.namedOf = id => {
 A.nameOf = id => { const r = A.namedOf(id); return (r && r.name) || 'Player'; };
 A.playerLink = (id, cls) => h('a' + (cls ? '.' + cls : ''), { href: '#/player/' + encodeURIComponent(id), translate: 'no' }, A.nameOf(id));
 A.cardOf = id => { id = String(id); return A.mine.cards.get(id) || (A.lg && A.lg.cards.get(id)) || null; };
-A.posOf = id => { const c = A.cardOf(id); return c ? SLOTS[slotOf(c.share)] : '–'; };
+/* his position: the one the site lists him at, where it names one (adapter: cards.listedSlot), else his minutes' */
+A.slotIn = (L, id, share) => { const s = L && L.slot && L.slot.get(String(id)); return s != null ? s : slotOf(share); };
+A.slotOfId = id => { const c = A.cardOf(id); return A.slotIn(A.leagueDataOf(id), id, c ? c.share : null); };
+A.posOf = id => (A.cardOf(id) || A.rowOf(id) ? SLOTS[A.slotOfId(id)] : '–');
 A.leagueDataOf = id => { const lid = A.mine.league.get(String(id)); return (lid && A.ext.get(lid)) || A.lg; };
 A.attrs = id => { const L = A.leagueDataOf(id); return (L && L.attrs.get(String(id))) || null; };
 A.priceOf = id => { const L = A.leagueDataOf(id); return (L && L.priced.get(String(id))) || null; };
@@ -138,12 +145,26 @@ A.toast = (msg, bad) => {
   t.textContent = msg; t.classList.toggle('bad', !!bad); t.classList.add('on');
   clearTimeout(A._toastT); A._toastT = setTimeout(() => t.classList.remove('on'), 4200);
 };
+/* A POP-UP (a player's card, a hint) beside what opened it, inside the window and never taller than it (Louie: "Some of
+   the pop up is cut off"); a page zoom, where there is one, taken out of the measures. A phone: the sheet at the foot
+   (manager.css) */
+A.place = (el, anchor, o) => {
+  const z = parseFloat(root.getComputedStyle(doc.body).zoom) || 1, vw = root.innerWidth / z, vh = root.innerHeight / z, gap = 12, dy = o && o.dy != null ? o.dy : -40;
+  el.scrollTop = 0;
+  const b = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null;
+  if (!b || vw <= 860) { el.style.left = gap + 'px'; el.style.bottom = gap + 'px'; return; }
+  el.style.maxHeight = Math.max(200, vh - 2 * gap) + 'px';
+  const W = el.offsetWidth, H = Math.min(el.offsetHeight, vh - 2 * gap), right = b.right / z + gap, left = b.left / z - gap - W;
+  el.style.left = (right + W <= vw - gap ? right : Math.max(gap, left)) + 'px';
+  el.style.top = Math.max(gap, Math.min(vh - H - gap, b.top / z + dy)) + 'px';
+  el.style.bottom = 'auto';
+};
 A.loading = (msg, host) => { const m = host || doc.getElementById('mgMain'); m.textContent = ''; m.appendChild(h('div.mg-loading', h('div', h('div.mg-spin', { 'aria-hidden': 'true' }), h('p', msg || 'Loading…')))); };
 A.go = path => { if (location.hash === '#' + path) route(); else location.hash = '#' + path; };
 
 /* ------------------------------------------------------------------ the club --- */
 async function switchClub(id) {
-  const c = A.clubs.find(x => x.id === id);
+  const c = id === 'pending' ? A.pendingClub() : A.clubs.find(x => x.id === id);
   if (!c) return;
   A.lg = null; A.mine = { cards: new Map(), rows: new Map(), league: new Map() }; A.identity = new Map(); A.news = [];
   A.loading('Opening ' + c.name + '…');
@@ -151,7 +172,8 @@ async function switchClub(id) {
   A.go('/');
 }
 async function openClub(club) {
-  A.club = club; store('mgr_club', club.id);
+  A.club = club; store('mgr_club', club.pending ? 'pending' : club.id);
+  restoreDraft(club);
   const leagues = await site().leagues();
   const L = leagues.find(l => l.id === club.league_id);
   if (!L) { A.lgError = 'This club’s league cannot be read just now.'; return; }
@@ -207,7 +229,7 @@ A.lineups = () => {
 function autoLineups() {
   const men = [...A.mine.cards.values()].sort((a, b) => ((A.priceOf(b.id) || {}).value || 0) - ((A.priceOf(a.id) || {}).value || 0));
   if (men.length < 5) return [];
-  const order = five => five.slice().sort((a, b) => a.pos - b.pos).map(c => c.id);
+  const order = five => five.slice().sort((a, b) => (A.slotOfId(a.id) - A.slotOfId(b.id)) || (a.pos - b.pos)).map(c => c.id);
   const first = men.slice(0, 5), rest = men.slice(5);
   if (!rest.length) return [{ ids: order(first), min: 40 }];
   const second = rest.slice(0, 5).concat(first.slice().reverse()).slice(0, 5);
@@ -310,7 +332,69 @@ async function saveSeason() {
 }
 A.saveSeason = saveSeason;
 A.catchUp = catchUp;
-A.save = async patch => { const at = await site().save(A.club.id, patch); Object.assign(A.club, patch); return at; };
+
+/* ------------------------------------------------------------------ a club not made yet --- */
+/* NOTHING IS SAVED BEFORE THE SQUAD IS CONFIRMED (Louie, 2026-10-09: "I need for teams to not be confirmed/saved until
+   confirm squad has been clicked"). A new club - its names, badge, league and the squad being drafted - is kept in this
+   browser (under the reader's account) until Confirm squad makes it (manager_create) and saves it whole; a club made
+   before this, still drafting, keeps its draft (squad, lineups) here too. Another screen of the Manager, or leaving the
+   page, loses nothing (Louie: "If I click club/squad it removes who I've added"). */
+const PKEY = () => 'mgr_pending_' + (A.uid || 'me');
+const DKEY = id => 'mgr_draft_' + id;
+A.pendingClub = () => { try { const p = JSON.parse(stored(PKEY()) || 'null'); return p && p.pending && p.league_id ? p : null; } catch (_) { return null; } };
+A.keepPending = p => store(PKEY(), p ? JSON.stringify(p) : null);
+A.newPending = o => ({ id: 'pending', pending: true, status: 'draft', mode: 'solo', league_id: o.league, competition_id: o.competition, name: o.name, manager: o.manager,
+  badge: o.badge || {}, per_week: o.perWeek || 2, budget: o.budget || null, roster: [], lineups: [], state: null, w: 0, l: 0, pf: 0, pa: 0, gp: 0, played: 0 });
+A.isDraft = () => !!(A.club && A.club.status === 'draft');
+/* the draft as it stands, kept */
+function keepDraft() {
+  if (!A.isDraft()) return;
+  if (A.club.pending) A.keepPending(A.club);
+  else store(DKEY(A.club.id), JSON.stringify({ roster: A.club.roster || [], lineups: A.club.lineups || [] }));
+}
+A.keepDraft = keepDraft;
+function restoreDraft(club) {
+  if (club.pending || club.status !== 'draft') return;
+  try { const d = JSON.parse(stored(DKEY(club.id)) || 'null'); if (d) { if (Array.isArray(d.roster)) club.roster = d.roster; if (Array.isArray(d.lineups)) club.lineups = d.lineups; } } catch (_) { /* none kept */ }
+}
+A.save = async patch => {
+  /* a club not made yet: everything stays here. A club still drafting: its squad and lineups stay here, its names and
+     badge go to the database as before */
+  if (A.club.pending) { Object.assign(A.club, patch); A.keepPending(A.club); return new Date().toISOString(); }
+  if (A.isDraft()) {
+    const here = {}, there = {};
+    Object.keys(patch).forEach(k => { (k === 'roster' || k === 'lineups' ? here : there)[k] = patch[k]; });
+    Object.assign(A.club, here); keepDraft();
+    if (!Object.keys(there).length) return new Date().toISOString();
+    const at = await site().save(A.club.id, there); Object.assign(A.club, there); return at;
+  }
+  const at = await site().save(A.club.id, patch); Object.assign(A.club, patch); return at;
+};
+/* CONFIRM SQUAD: the club made now (a new one), its squad, budget and lineups saved with the season drawn from today, and
+   the draft kept here forgotten. Made but not saved (a dropped connection): a second press saves the club made, never a
+   second club. -> the season's state */
+A.confirmSquad = async ({ roster, budget }) => {
+  const c = A.club;
+  c.roster = roster; c.budget = budget;
+  await loadMine();
+  const lineups = A.lineups();
+  const state = Mgr.season.create({ clubs: ['me'].concat(A.realClubs()), start: new Date().toISOString().slice(0, 10), perWeek: c.per_week || 2, meetings: 3 });
+  let id = c.id;
+  if (c.pending) {
+    id = c.createdId || await site().create({ league: c.league_id, competition: c.competition_id, name: c.name, manager: c.manager, badge: Mgr.badge.sanitise(c.badge), perWeek: c.per_week });
+    c.createdId = id; A.keepPending(c);
+  }
+  await site().save(id, { roster, budget, state, lineups, status: 'active', summary: Mgr.season.summary(state, 0) });
+  if (c.pending) A.keepPending(null); else store(DKEY(id), null);
+  try { A.clubs = await site().clubs(); } catch (_) { /* read again on the next visit */ }
+  const made = A.clubs.find(x => x.id === id) || Object.assign({}, c, { id, pending: false, createdId: undefined });
+  Object.assign(made, { roster, budget, state, lineups, status: 'active' });
+  A.club = made; store('mgr_club', id);
+  await loadMine();
+  return state;
+};
+/* the club not made yet, let go */
+A.discardPending = () => { A.keepPending(null); if (A.club && A.club.pending) { A.club = null; A.lg = null; store('mgr_club', null); } };
 
 /* ------------------------------------------------------------------ the routes --- */
 function parse() {
@@ -328,7 +412,7 @@ async function route() {
   if (!A.signedIn && !open.includes(name)) return door(main);
   if (A.lgError && A.club && name !== 'settings' && name !== 'new') { main.textContent = ''; main.appendChild(h('div.mg-panel', A.lgError)); return; }
   if (!A.club && name !== 'new' && !open.includes(name)) { A.go('/new'); return; }
-  if (A.club && A.club.status === 'draft' && !['squad', 'new', 'settings', 'boards', 'player'].includes(name)) { A.go('/squad'); return; }
+  if (A.club && A.club.status === 'draft' && !['squad', 'tactics', 'new', 'settings', 'boards', 'player'].includes(name)) { A.go('/squad'); return; }
   const v = A.views[name === 'home' ? 'home' : name];
   main.textContent = '';
   const host = h('div.mg-view-in');
@@ -356,9 +440,13 @@ async function start() {
   root.addEventListener('hashchange', () => route());
   try { A.signedIn = await site().signedIn(); } catch (_) { A.signedIn = false; }
   if (A.signedIn) {
+    try { A.uid = await site().userId(); } catch (_) { A.uid = null; }
     try { A.clubs = await site().clubs(); } catch (e) { A.clubs = []; if (e && e.status === 404) A.missing = true; }
-    const want = stored('mgr_club');
-    const c = A.clubs.find(x => x.id === want) || A.clubs[A.clubs.length - 1] || null;
+    const want = stored('mgr_club'), pend = A.pendingClub();
+    /* a club not made yet that the server has since made (confirmed, then the page closed before it was forgotten) */
+    if (pend && pend.createdId && A.clubs.some(x => x.id === pend.createdId && x.status !== 'draft')) A.keepPending(null);
+    const p2 = A.pendingClub();
+    const c = (want === 'pending' && p2) || A.clubs.find(x => x.id === want) || p2 || A.clubs[A.clubs.length - 1] || null;
     if (c) { try { await openClub(c); } catch (e) { A.lgError = 'This club’s league could not be read just now: ' + (e && e.message || e); } }
   }
   await route();

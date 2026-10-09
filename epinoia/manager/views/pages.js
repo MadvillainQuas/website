@@ -20,7 +20,7 @@ const tabsOf = (list, put) => {
   list.forEach(([k, l]) => t.appendChild(h('button', { type: 'button', 'data-k': k, onclick: () => { t.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.k === k))); put(k); } }, l)));
   return t;
 };
-const statGrid = list => h('div.mg-statgrid', list.map(([k, v, d]) => h('div.s', h('b', A.fmt(+v, d)), h('span', k))));
+const statGrid = list => h('div.mg-statgrid', { 'data-i18n-ctx': 'col' }, list.map(([k, v, d]) => h('div.s', h('b', A.fmt(+v, d)), h('span', k))));
 
 /* ------------------------------------------------------------------ the profile's bars --- */
 /* the player profile's sections (p/player.js BAR_SECTIONS and SIMPLE_SECTIONS), their rows and the ones read low-is-better */
@@ -132,10 +132,10 @@ async function player(host, args) {
   if (lid && lid !== (L && L.L.id)) { try { L = await A.loadLeagueFor(lid); } catch (_) { /* his league as best we have it */ } }
   const row = L && L.byId.get(id), named = L && L.named.get(id);
   if (!row || !named) { host.appendChild(h('div.mg-panel', 'This player could not be found in the leagues loaded here.')); return; }
-  const price = L.priced.get(id) || {}, at = L.attrs.get(id) || {}, share = L.share.get(id) || Mgr.cards.shareOf(row), slot = A.slotOf(share);
+  const price = L.priced.get(id) || {}, at = L.attrs.get(id) || {}, share = L.share.get(id) || Mgr.cards.shareOf(row), slot = A.slotIn(L, id, share);
   const mine = (A.club && A.club.roster || []).some(e => String(e.id) === id);
   const S = A.club && A.view();
-  host.appendChild(h('div.mg-top', h('span.mg-pos', { style: { fontSize: '16px', height: '34px', minWidth: '46px' } }, A.SLOTS[slot]),
+  host.appendChild(h('div.mg-top', h('span.mg-pos', { 'data-i18n-ctx': 'pos', style: { fontSize: '16px', height: '34px', minWidth: '46px' } }, A.SLOTS[slot]),
     h('div.who', A.nm(named.name, 'h1'), h('div.meta', mine ? h('span.mg-chip.royal', 'Your squad') : h('span', A.nm(named.teamName || '')), h('span', A.nm(L.L.name)),
       h('span', 'Value ', h('b', A.money(price.value))), h('span', 'Wage ', h('b', A.money(price.wage))))), h('div.grow'),
     A.club && A.club.status !== 'draft' ? h('a.mg-btn.primary', { href: mine ? '#/trade?out=' + encodeURIComponent(id) : '#/trade?in=' + encodeURIComponent(id) + '&l=' + encodeURIComponent(L.L.id) }, mine ? 'Trade him' : 'Trade for him') : null,
@@ -172,7 +172,7 @@ async function player(host, args) {
     right.appendChild(h('div.mg-panel.glow', h('div.mg-h', h('h3', 'Attributes'), h('span.mg-sub', 'for reading him; the games use his numbers')),
       h('div.mg-attrs', { style: { gridTemplateColumns: '1fr' } }, Mgr.ratings.ATTRS.map(a => h('div.row', h('span', a.label), A.attrChip(at[a.k]))))));
     right.appendChild(h('div.mg-panel', h('div.mg-h', h('h3', 'Minutes at each position')),
-      h('div.mg-posmins', A.SLOTS.map((s2, k) => h('div.c', h('i', { style: { height: Math.max(3, Math.round(56 * share[k] / tot)) + 'px' } }), h('b', s2), h('span', Math.round(100 * share[k] / tot) + '%'))))));
+      h('div.mg-posmins', { 'data-i18n-ctx': 'pos' }, A.SLOTS.map((s2, k) => h('div.c', h('i', { style: { height: Math.max(3, Math.round(56 * share[k] / tot)) + 'px' } }), h('b', s2), h('span', Math.round(100 * share[k] / tot) + '%'))))));
     wrap.appendChild(left); wrap.appendChild(right);
     return wrap;
   }
@@ -243,7 +243,7 @@ function team(host, args) {
     const tb = h('tbody');
     members().forEach(id => {
       const Ls = SE().lineOf(S, id), g = Ls && Ls.gp ? Ls.gp : 0, p = A.priceOf(id) || {};
-      tb.appendChild(h('tr', h('td.l', A.playerLink(id)), h('td', h('span.mg-pos', A.posOf(id))), h('td', String(g)), h('td', g ? A.fmt(Ls.min / g) : '–'), h('td', g ? A.fmt(Ls.pts / g) : '–'),
+      tb.appendChild(h('tr', h('td.l', A.playerLink(id)), h('td', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.posOf(id))), h('td', String(g)), h('td', g ? A.fmt(Ls.min / g) : '–'), h('td', g ? A.fmt(Ls.pts / g) : '–'),
         h('td', g ? A.fmt((Ls.oreb + Ls.dreb) / g) : '–'), h('td', g ? A.fmt(Ls.ast / g) : '–'), h('td', g ? A.fmt(Ls.stl / g) : '–'), h('td', g ? A.fmt(Ls.blk / g) : '–'),
         h('td', g && Ls.fga ? A.fmt(100 * Ls.fgm / Ls.fga) : '–'), h('td', g && Ls.p3a ? A.fmt(100 * Ls.p3m / Ls.p3a) : '–'), h('td', A.money(p.value))));
     });
@@ -259,7 +259,7 @@ function team(host, args) {
     if (!me) return h('div.mg-panel', 'No games yet.');
     const cols = [['ppg', 'Points', -1], ['opp', 'Allowed', 1], ['ortg', 'Offensive rating', -1], ['drtg', 'Defensive rating', 1], ['pace', 'Possessions', -1], ['efg', 'eFG%', -1], ['p3', '3P%', -1],
       ['tov', 'TOV%', 1], ['orb', 'Off. rebounds', -1], ['drb', 'Def. rebounds', -1], ['ast', 'Assists', -1], ['stl', 'Steals', -1], ['blk', 'Blocks', -1]];
-    const t = h('table.mg-table', h('thead', h('tr', h('th.l', 'Stat'), h('th', 'Value'), h('th', 'League'), h('th', 'Rank'))));
+    const t = h('table.mg-table', h('thead', h('tr', h('th.l', 'Stat'), h('th', 'Club'), h('th', 'League'), h('th', 'Rank'))));
     const tb = h('tbody');
     cols.forEach(([k, l, dir]) => {
       const avg = all.reduce((a, x) => a + x[k], 0) / all.length, rank = 1 + all.filter(x => (dir < 0 ? x[k] > me[k] : x[k] < me[k])).length;

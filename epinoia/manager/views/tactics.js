@@ -16,9 +16,16 @@ const E = () => Mgr.engine;
 const SPOT = [[50, 17], [84, 36], [16, 36], [70, 66], [33, 72]];
 const MAXL = 4, G = 40;
 
-function render(host) {
+async function render(host) {
+  /* while the squad is being drafted (Louie: the tactics "also viewable while constructing the squad to aid it"): the men
+     signed so far, their lineups kept with the draft until it is confirmed */
+  if (A.isDraft()) await A.reloadMine();
   let lineups = JSON.parse(JSON.stringify(A.lineups())).map(l => Object.assign({ tac: {} }, l));
-  if (!lineups.length) { host.appendChild(h('div.mg-panel', 'Your squad needs at least five players.')); return; }
+  if (!lineups.length) {
+    host.appendChild(h('div.mg-panel', h('h2', 'Tactics'), h('p', A.isDraft() ? 'Sign at least five players and your lineups and tactics can be set here, while you build the squad.' : 'Your squad needs at least five players.'),
+      A.isDraft() ? h('a.mg-btn.primary', { href: '#/squad' }, '← Back to the squad') : null));
+    return;
+  }
   let cur = 0, sel = null, dirty = false, pvT = null, pvRun = 0;
   const roster = [...A.mine.cards.keys()];
   host.appendChild(h('div.mg-top', A.badge(A.club.badge, 56), h('div.who', h('h1', 'Tactics'), h('div.meta', h('span', 'Up to four lineups, each with its own tactics; every change is simulated'))),
@@ -78,7 +85,7 @@ function render(host) {
       const usage = (l.tac.usage || {})[id] || 0;
       const dial = h('div.dial', h('button', { type: 'button', 'aria-label': 'Less of the plays', onclick: () => setUsage(id, usage - 0.5) }, '−'),
         h('span', usage > 0 ? 'usage +' + usage : usage < 0 ? 'usage ' + usage : 'usage'), h('button', { type: 'button', 'aria-label': 'More of the plays', onclick: () => setUsage(id, usage + 0.5) }, '+'));
-      const spot = h('div.mg-spot', { style: { left: SPOT[k][0] + '%', top: SPOT[k][1] + '%' } }, h('span.tag', E().SLOTS[k]), who, dial);
+      const spot = h('div.mg-spot', { style: { left: SPOT[k][0] + '%', top: SPOT[k][1] + '%' } }, h('span.tag', { 'data-i18n-ctx': 'pos' }, E().SLOTS[k]), who, dial);
       spot.addEventListener('dragover', ev => { ev.preventDefault(); spot.classList.add('over'); });
       spot.addEventListener('dragleave', () => spot.classList.remove('over'));
       spot.addEventListener('drop', ev => { ev.preventDefault(); spot.classList.remove('over'); try { place(JSON.parse(ev.dataTransfer.getData('text/plain')), k); } catch (_) { /* not ours */ } });
@@ -113,7 +120,7 @@ function render(host) {
     const inL = new Set(L().ids), mins = E().minutesOf(E().rotation(lineups, G));
     roster.filter(id => !inL.has(id)).sort((a, b) => ((A.priceOf(b) || {}).value || 0) - ((A.priceOf(a) || {}).value || 0)).forEach(id => {
       const li = h('li' + (sel && sel.from === 'bench' && sel.id === id ? '.sel' : ''), { draggable: 'true', tabindex: '0', role: 'button', 'aria-label': A.nameOf(id) },
-        h('span.mg-pos', A.posOf(id)), A.nm(A.nameOf(id), 'span.nm'), h('span.m', Math.round(mins.get(id) || 0) + ' min'));
+        h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.posOf(id)), A.nm(A.nameOf(id), 'span.nm'), h('span.m', Math.round(mins.get(id) || 0) + ' min'));
       li.addEventListener('dragstart', ev => ev.dataTransfer.setData('text/plain', JSON.stringify({ from: 'bench', id })));
       li.addEventListener('click', () => pick({ from: 'bench', id }));
       li.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); pick({ from: 'bench', id }); } });
@@ -223,15 +230,13 @@ function render(host) {
     unhint();
     const r = A.rowOf(id), ref = A.lg.ref, c = A.cardOf(id);
     if (!r || !c) return;
-    const at = k == null ? A.slotOf(c.share) : k, P = ref.byPos[at];
+    const at = k == null ? A.slotOfId(id) : k, P = ref.byPos[at];
     const rows = [['USG%', r.usg, P.usg], ['AST%', r.ast_pct, P.ast_pct], ['ORB%', r.oreb_pct, P.oreb_pct], ['DRB%', r.dreb_pct, P.dreb_pct], ['STL%', r.stl_pct, P.stl_pct], ['BLK%', r.blk_pct, P.blk_pct],
       ['3P%', r.p3_pct, 100 * ref.p3], ['Rim FG%', r.rim_pct, 100 * ref.rim], ['TS%', r.ts, null]];
     tip = h('div.mg-hint', h('b', A.nm(A.nameOf(id))), h('div.mg-sub', 'Against the league’s average ' + E().SLOTS[at]),
       h('table', h('tbody', rows.map(([k2, v, lg]) => h('tr', h('td', k2), h('td.n', h('b', A.fmt(+v))), h('td.n.mg-sub', lg == null ? '' : A.fmt(+lg)))))));
     root.document.body.appendChild(tip);
-    const b = anchor.getBoundingClientRect();
-    tip.style.left = Math.min(root.innerWidth - 262, b.right + 10) + 'px';
-    tip.style.top = Math.max(8, Math.min(root.innerHeight - tip.offsetHeight - 8, b.top)) + 'px';
+    A.place(tip, anchor, { dy: 0 });
   }
   function unhint() { if (tip) { tip.remove(); tip = null; } }
 

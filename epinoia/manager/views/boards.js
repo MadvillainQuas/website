@@ -91,6 +91,14 @@ function settings(host) {
   draw();
   /* the end of the club */
   const del = h('button.mg-btn.danger', { type: 'button', onclick: async () => {
+    /* a club not made yet: nothing on the server, only the draft in this browser */
+    if (c.pending) {
+      if (!root.confirm('Start again without ' + c.name + '? Its draft goes; nothing else was saved.')) return;
+      A.discardPending();
+      if (A.clubs.length) await A.openClub(A.clubs[A.clubs.length - 1]);
+      A.go(A.clubs.length ? '/' : '/new');
+      return;
+    }
     if (!root.confirm('Delete ' + c.name + ' for good? Its squad, its season and its place on the leaderboards go with it.')) return;
     try {
       await Mgr.site.remove(c.id);
@@ -99,7 +107,7 @@ function settings(host) {
       if (A.clubs.length) await A.openClub(A.clubs[A.clubs.length - 1]);
       A.go(A.clubs.length ? '/' : '/new');
     } catch (e) { A.toast('Could not delete it: ' + (e && e.message || e), true); }
-  } }, 'Delete this club');
+  } }, c.pending ? 'Start again' : 'Delete this club');
   host.appendChild(h('div.mg-panel', { style: { marginTop: '16px' } }, h('div.mg-h', h('h3', 'The club')), h('p.mg-sub', 'You can keep up to three clubs.'), h('div.mg-row', del,
     A.clubs.length < 3 ? h('a.mg-btn', { href: '#/new' }, 'Start another club') : null)));
 }

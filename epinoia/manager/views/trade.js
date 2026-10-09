@@ -80,7 +80,7 @@ async function render(host) {
     const row = LL && LL.byId.get(String(id)), named = LL && LL.named.get(String(id)), price = LL && LL.priced.get(String(id));
     if (!row || !named || !price) return h('p.mg-sub', isOut ? 'An open spot: the squad has room for him without anybody leaving.' : 'Pick a player.');
     const share = LL.share.get(String(id)) || Mgr.cards.shareOf(row);
-    return h('div.mg-tcard', h('div.hd', h('span.mg-pos', A.SLOTS[A.slotOf(share)]), h('div', A.nm(named.name, 'b'), h('span', A.nm(named.teamName || ''), ' · ', A.nm(LL.L.name)))),
+    return h('div.mg-tcard', h('div.hd', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.SLOTS[A.slotIn(LL, id, share)]), h('div', A.nm(named.name, 'b'), h('span', A.nm(named.teamName || ''), ' · ', A.nm(LL.L.name)))),
       h('div.mg-row', h('span.mg-chip', 'Value ', h('b', A.money(price.value))), h('span.mg-chip.royal', 'Wage ', h('b', A.money(price.wage))), h('a', { href: '#/player/' + encodeURIComponent(id) + '?l=' + encodeURIComponent(LL.L.id) }, 'profile →')));
   };
   const outLeague = () => A.leagueDataOf(st.out);
@@ -122,7 +122,7 @@ async function render(host) {
       btn.disabled = true;
       try {
         const share = L.share.get(String(st.inId)) || Mgr.cards.shareOf(L.byId.get(String(st.inId)));
-        const entry = { id: String(st.inId), league: L.L.id, value: inP.value, wage: inP.wage, slot: A.slotOf(share), signed: new Date().toISOString().slice(0, 10) };
+        const entry = { id: String(st.inId), league: L.L.id, value: inP.value, wage: inP.wage, slot: A.slotIn(L, st.inId, share), signed: new Date().toISOString().slice(0, 10) };
         const next = st.out === OPEN ? roster.concat([entry]) : roster.map(e => (String(e.id) === st.out ? entry : e));
         const lineups = (A.club.lineups || []).map(l => Object.assign({}, l, { ids: l.ids.map(x => (String(x) === st.out ? entry.id : x)),
           tac: l.tac && l.tac.usage && l.tac.usage[st.out] != null ? Object.assign({}, l.tac, { usage: Object.assign({}, l.tac.usage, { [entry.id]: l.tac.usage[st.out] }) }) : l.tac }));
