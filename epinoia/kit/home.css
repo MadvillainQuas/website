@@ -747,3 +747,19 @@ html.vh-on .ft-panel{display:none !important}
 .hm .fav-anchor .fav-rule:hover .fav-rule-tab{border-color:#ff5a4d}
 @media (max-width:720px){.hm .fav-anchor{margin:0 6px}}
 @media (prefers-reduced-motion:reduce){.ft-panel,.ft-grid{transition:none}}
+
+/* room under the FEATURES tag for the group buttons (Louie, 2026-10-10) */
+.hg-nav{margin-top:38px}
+/* WHO'S YOUR FAVOURITE, the panel itself in the modern style: a rounded dark card inside the Games card, soft cards and
+   pill buttons in place of hard blocks */
+.hm .fav{margin:0 12px;padding:0 12px;border-left:1px solid var(--rule-2);border-right:1px solid var(--rule-2);background:color-mix(in oklch,#ff5a4d 4%,var(--panel))}
+.hm .fav .fav-body{border-radius:20px;margin:6px 0 14px;background:linear-gradient(160deg,#0b1210,#101a17 60%,#0d1f1a);box-shadow:0 14px 36px rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.08)}
+.hm .fav .fav-body::before,.hm .fav .fav-body::after{opacity:.03}
+.hm .fav .fav-card{border-radius:14px;border:1px solid rgba(255,255,255,.12);overflow:hidden;transition:transform .16s,box-shadow .16s,border-color .16s}
+.hm .fav .fav-card:hover{transform:translateY(-3px);border-color:#93f2bf;box-shadow:0 12px 26px rgba(0,0,0,.45)}
+.hm .fav .fav-tile,.hm .fav .fav-crest{border-radius:12px}
+.hm .fav .fav-go,.hm .fav .fav-skip,.hm .fav .fav-alt,.hm .fav .fav-later,.hm .fav .fav-never,.hm .fav .fav-back,.hm .fav .fav-retry{border-radius:999px}
+.hm .fav .fav-go{background:linear-gradient(100deg,#93f2bf,#8ff5ff);color:#050706;box-shadow:0 6px 18px rgba(147,242,191,.3)}
+.hm .fav .fav-nav,.hm .fav .fav-x{border-radius:50%}
+.hm .fav .fav-title{letter-spacing:.04em}
+@media (max-width:720px){.hm .fav{margin:0 6px;padding:0 6px}.hg-nav{margin-top:34px}}
