@@ -765,3 +765,8 @@ html.vh-on .ft-panel{display:none !important}
 @media (max-width:720px){.hm .fav{margin:0 6px;padding:0 6px}.hg-nav{margin-top:34px}}
 
 .ft-go{display:inline-block;margin-right:14px}
+
+/* the pills' lists open over the arena strip and the stamps under them, never behind (Louie, 2026-10-10) */
+.hm-go .sec-h{position:relative;z-index:30}
+.hm-go-today{z-index:30}
+.hm-go .sec-h ~ *{position:relative;z-index:1}
