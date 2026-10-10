@@ -281,6 +281,31 @@
     return rec;
   }
 
+  /* ---------------------------------------------------- the continent layer --- */
+  /* CONTINENT > COUNTRY > LEAGUE > GAMES, each a tile that opens across the row (Louie, 2026-10-10: "start with continents
+     then filter down to countries ... tile for continents, tile for countries, then tile for leagues") */
+  const CONT = { EU: 'Europe', NA: 'North America', SA: 'South America', AS: 'Asia', OC: 'Oceania', AF: 'Africa', XX: 'International' };
+  const CONT_ICON = { EU: '🌍', NA: '🌎', SA: '🌎', AS: '🌏', OC: '🌏', AF: '🌍', XX: '🌐' };
+  const IN = { NA: 'US CA MX PR DO CU', SA: 'BR AR UY CL CO VE PY PE EC BO', AS: 'JP CN KR PH TW IL TR LB IR QA SA AE KZ IN ID TH MY SG HK MN JO BH KW',
+    OC: 'AU NZ', AF: 'EG TN MA NG SN AO ZA RW CM CI ML DZ' };
+  const contOf = code => { const c = String(code || '').toUpperCase(); if (!c) return 'XX'; for (const k in IN) if ((' ' + IN[k] + ' ').includes(' ' + c + ' ')) return k; return 'EU'; };
+  const contEls = new Map();
+  function continentEl(k) {
+    if (contEls.has(k)) return contEls.get(k);
+    const det = el('details', 'ep-acc gm-cont');
+    det.setAttribute('data-continent', k);
+    const sum = el('summary'), t = el('span', 't');
+    const f = el('span', 'flag', CONT_ICON[k]); f.setAttribute('aria-hidden', 'true');
+    t.append(f, el('span', 'gm-cname', CONT[k]));
+    const n = el('span', 'n');
+    sum.append(t, n);
+    const body = el('div', 'gm-kbody');
+    det.append(sum, body);
+    const rec = { k, det, body, n };
+    contEls.set(k, rec);
+    return rec;
+  }
+
   function section(title, list, now) {
     const frag = document.createDocumentFragment();
     if (!list.length) return frag;
@@ -354,13 +379,22 @@
        open state (a country's, a league's) is the element's own and survives a redraw. */
     const byCountry = new Map();
     order.forEach(rec => { const k = countryKey(rec); if (!byCountry.has(k)) byCountry.set(k, []); byCountry.get(k).push(rec); });
-    let ci = 0;
+    const byCont = new Map();
     byCountry.forEach((recs, k) => {
       const c = countryEl(k);
       recs.forEach((r, i) => { ensureAt(c.body, r.det, i); r.cty = c; });
       const games = recs.reduce((s, r) => s + (r.weekN || r.shown || 0), 0);
       c.n.textContent = recs.length + (recs.length === 1 ? ' league' : ' leagues') + (games ? ' · ' + games + (games === 1 ? ' game' : ' games') : '');
-      ensureAt(host, c.det, ci++);
+      const ck = contOf(k);
+      if (!byCont.has(ck)) byCont.set(ck, { list: [], leagues: 0, games: 0 });
+      const b = byCont.get(ck); b.list.push(c); b.leagues += recs.length; b.games += games;
+    });
+    let ki = 0;
+    byCont.forEach((b, ck) => {
+      const K = continentEl(ck);
+      b.list.forEach((c, i) => ensureAt(K.body, c.det, i));
+      K.n.textContent = b.list.length + (b.list.length === 1 ? ' country' : ' countries') + ' · ' + b.leagues + (b.leagues === 1 ? ' league' : ' leagues') + (b.games ? ' · ' + b.games + (b.games === 1 ? ' game' : ' games') : '');
+      ensureAt(host, K.det, ki++);
     });
     /* the league at the top is open (and read, if the page has nothing of it yet), inside its country, which is open too */
     const first = host.querySelector('details.gm-acc');
@@ -369,6 +403,8 @@
       first.open = true;
       const parent = first.closest && first.closest('details.gm-cty');
       if (parent) parent.open = true;
+      const gp = first.closest && first.closest('details.gm-cont');
+      if (gp) gp.open = true;
       const rec = groupEls.get(first.getAttribute('data-league'));
       if (rec) { rec.opened = true; if (!leagueRows(rec.id).length && !pageDone) readBoth(rec); }
     }

@@ -38,21 +38,21 @@
 <!-- /seo:head -->
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=794"></script>
-<script src="../i18n.js?v=794"></script>
-<script src="../glyphs.js?v=794" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=794">
-<link rel="stylesheet" href="../kit/nav.css?v=794">
-<link rel="stylesheet" href="../kit/labeltype.css?v=794">
-<link rel="stylesheet" href="../kit/numtype.css?v=794">
-<link rel="stylesheet" href="../kit/motion.css?v=794">
-<script src="../motion.js?v=794" defer></script>
-<link rel="stylesheet" href="../kit/sectitle.css?v=794">
-<link rel="stylesheet" href="../kit/fxc.css?v=794">
-<link rel="stylesheet" href="../kit/watch.css?v=794">
-<link rel="stylesheet" href="../kit/predict.css?v=794">
-<link rel="stylesheet" href="../kit/gamepeek.css?v=794">
-<link rel="stylesheet" href="../kit/winprob.css?v=794">
+<script src="../appmode.js?v=795"></script>
+<script src="../i18n.js?v=795"></script>
+<script src="../glyphs.js?v=795" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=795">
+<link rel="stylesheet" href="../kit/nav.css?v=795">
+<link rel="stylesheet" href="../kit/labeltype.css?v=795">
+<link rel="stylesheet" href="../kit/numtype.css?v=795">
+<link rel="stylesheet" href="../kit/motion.css?v=795">
+<script src="../motion.js?v=795" defer></script>
+<link rel="stylesheet" href="../kit/sectitle.css?v=795">
+<link rel="stylesheet" href="../kit/fxc.css?v=795">
+<link rel="stylesheet" href="../kit/watch.css?v=795">
+<link rel="stylesheet" href="../kit/predict.css?v=795">
+<link rel="stylesheet" href="../kit/gamepeek.css?v=795">
+<link rel="stylesheet" href="../kit/winprob.css?v=795">
 <style>
   a.plain{color:inherit;text-decoration:none}
   .gm{overflow-x:clip}
@@ -103,6 +103,25 @@
   .gm-cname{font-family:var(--f-score);font-size:20px;letter-spacing:.03em;text-transform:uppercase;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .gm-cty>summary .n{flex:none;white-space:nowrap;font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
   .gm-cbody{margin-left:calc(var(--u)*3);border-left:2px solid var(--rule-2,var(--rule))}
+  /* THE TILES (games.js, 2026-10-10): continents, then countries, then leagues - each a tile in a grid; the open one runs
+     across the row with the next layer's tiles inside it */
+  #gmGroups, .gm-kbody, .gm-cbody{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;align-items:start}
+  .gm-kbody, .gm-cbody{margin:0;border-left:0;padding:12px}
+  #gmGroups > .empty{grid-column:1 / -1}
+  details.gm-cont, details.gm-cty, .gm-cbody > details.gm-acc{border:1px solid var(--rule-2,var(--rule));border-radius:16px;background:var(--panel);overflow:hidden;
+    box-shadow:0 4px 16px rgba(0,0,0,.06);transition:transform .15s,border-color .15s,box-shadow .15s}
+  details.gm-cont:not([open]):hover, details.gm-cty:not([open]):hover, .gm-cbody > details.gm-acc:not([open]):hover{transform:translateY(-2px);border-color:var(--lume);box-shadow:0 10px 24px rgba(0,0,0,.12)}
+  details.gm-cont[open], details.gm-cty[open], .gm-cbody > details.gm-acc[open]{grid-column:1 / -1}
+  details.gm-cont > summary, details.gm-cty > summary, .gm-cbody > details.gm-acc > summary{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;min-height:86px;cursor:pointer;list-style:none}
+  details.gm-cont[open] > summary, details.gm-cty[open] > summary, .gm-cbody > details.gm-acc[open] > summary{flex-direction:row;align-items:center;justify-content:space-between;min-height:0;
+    background:color-mix(in oklch,var(--lume) 8%,var(--panel));border-bottom:1px solid var(--rule-2,var(--rule))}
+  details.gm-cont > summary::-webkit-details-marker, details.gm-cty > summary::-webkit-details-marker, .gm-cbody > details.gm-acc > summary::-webkit-details-marker{display:none}
+  details.gm-cont > summary .flag{font-size:28px}
+  details.gm-cont > summary .t{display:flex;align-items:center;gap:10px}
+  details.gm-cont > summary .n{font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  details.gm-cont[open]{background:color-mix(in oklch,var(--ink-3) 4%,var(--panel))}
+  .gm-cbody > details.gm-acc[open] > :not(summary){padding:0 12px 12px}
+  @media (max-width:640px){ #gmGroups, .gm-kbody, .gm-cbody{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px} .gm-kbody, .gm-cbody{padding:8px} }
   .gm-cbody .gm-acc>summary .flag{display:none}          /* the country is the dropdown around it: its flag is not said again on every league */
   @media (max-width:820px){ .gm-cbody{margin-left:calc(var(--u)*1.5)} .gm-cname{font-size:17px} }
 
@@ -157,8 +176,8 @@
   }
   :root[data-theme="light"] .gm-live{background:color-mix(in oklch,var(--flare) 4%,#f3faf6)}
 </style>
-<link rel="stylesheet" href="../kit/teletext.css?v=794">
-<link rel="stylesheet" href="../kit/legibility.css?v=794">
+<link rel="stylesheet" href="../kit/teletext.css?v=795">
+<link rel="stylesheet" href="../kit/legibility.css?v=795">
 <!-- seo:ld -->
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Basketball Fixtures & Results, All Leagues | Epinoia","description":"Every basketball fixture and result across all leagues on Epinoia, nearest to now first: live scores, tip-off times and a full box score for each game.","url":"https://prophesyscouting.co.uk/epinoia/games/","inLanguage":"en","isPartOf":{"@id":"https://prophesyscouting.co.uk/epinoia/#website"},"primaryImageOfPage":{"@type":"ImageObject","url":"https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png","width":1200,"height":630}}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Epinoia","item":"https://prophesyscouting.co.uk/epinoia/home/"},{"@type":"ListItem","position":2,"name":"Fixtures & results"}]}</script>
@@ -195,21 +214,21 @@
 
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3)">Epinoia Network</footer>
 </div>
-<script src="../config.js?v=794" defer></script>
+<script src="../config.js?v=795" defer></script>
 <!-- the season's numbers for the game-at-a-glance card (gamepeek.js reads data.js season(), which sums with season.js and bpm.js) -->
-<script src="../season.js?v=794" defer></script>
-<script src="../bpm.js?v=794" defer></script>
-<script src="../data.js?v=794" defer></script>
-<script src="../rt.js?v=794" defer></script>
-<script src="../country.js?v=794" defer></script>
-<script src="../initials.js?v=794" defer></script>
-<script src="../watch.js?v=794" defer></script>
-<script src="../winprob.js?v=794" defer></script>
-<script src="../gamepeek.js?v=794" defer></script>
-<script src="../predict.js?v=794" defer></script>
-<script src="../globalgames.js?v=794" defer></script>
-<script src="games.js?v=794" defer></script>
-<script src="../nav.js?v=794" defer></script>
-<script src="../xscroll.js?v=794" defer></script>
+<script src="../season.js?v=795" defer></script>
+<script src="../bpm.js?v=795" defer></script>
+<script src="../data.js?v=795" defer></script>
+<script src="../rt.js?v=795" defer></script>
+<script src="../country.js?v=795" defer></script>
+<script src="../initials.js?v=795" defer></script>
+<script src="../watch.js?v=795" defer></script>
+<script src="../winprob.js?v=795" defer></script>
+<script src="../gamepeek.js?v=795" defer></script>
+<script src="../predict.js?v=795" defer></script>
+<script src="../globalgames.js?v=795" defer></script>
+<script src="games.js?v=795" defer></script>
+<script src="../nav.js?v=795" defer></script>
+<script src="../xscroll.js?v=795" defer></script>
 </body>
 </html>
