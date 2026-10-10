@@ -724,3 +724,26 @@ html.vh-on .hg-head, html.vh-on .hg-nav{display:none}
 .ft-go{font:600 10px/1 var(--f-micro);letter-spacing:.1em;text-transform:uppercase;color:#93f2bf;text-decoration:none}
 html.vh-on .ft-panel{display:none}
 @media (prefers-reduced-motion:reduce){.ft-panel{animation:none}.ft-rule::before{transition:none}}
+
+/* THE TWO LINES, CLEANED UP (Louie, 2026-10-10). FEATURES: the strip's own line is the line (no second one over it); the
+   tag is a pill hanging from it; the panel opens and closes by its height (no flash on closing). WHO'S YOUR FAVOURITE:
+   inside the Games card - a thin line within the card's edges and a pill on it, not a bar cutting through the card. */
+.ft-rule{height:0;margin:0;overflow:visible}
+.ft-rule::before{display:none}
+.ft-tab{top:-2px;border-radius:0 0 12px 12px;padding:7px 16px 7px;font-size:10px;letter-spacing:.12em;box-shadow:0 8px 18px rgba(0,0,0,.25)}
+.ft-rule:hover .ft-tab,.ft-rule:focus-visible .ft-tab{color:#fff}
+.ft-panel,.ft-panel[hidden]{display:grid !important;grid-template-rows:0fr;padding:0;animation:none;transition:grid-template-rows .26s ease;overflow:hidden}
+.ft.on .ft-panel{grid-template-rows:1fr}
+.ft-grid{min-height:0;overflow:hidden;padding:0 18px;width:100%;box-sizing:border-box;transition:padding .26s ease}
+.ft.on .ft-grid{padding:40px 18px 22px}
+html.vh-on .ft-panel{display:none !important}
+.hm .fav-anchor{margin:0 12px;border-left:1px solid var(--rule-2);border-right:1px solid var(--rule-2);background:color-mix(in oklch,#ff5a4d 4%,var(--panel))}
+.hm .fav-anchor .fav-rule{top:-14px;height:28px}
+.hm .fav-anchor .fav-rule::before{left:18px;right:18px;bottom:13px;height:1px;background:var(--rule-2);-webkit-mask:none;mask:none;transform:none}
+.hm .fav-anchor .fav-rule:hover::before,.hm .fav-anchor .fav-rule:focus-visible::before{background:#ff5a4d;transform:none}
+.hm .fav-anchor .fav-rule-tab{bottom:2px;opacity:1;transform:translate(-50%,0);border-radius:999px;padding:7px 16px;background:var(--panel);color:var(--ink);
+  border:1px solid var(--rule-2);box-shadow:0 2px 10px rgba(0,0,0,.08);font:600 10px/1.2 var(--f-micro);letter-spacing:.12em}
+.hm .fav-anchor .fav-rule-tab::before{width:9px;height:9px;border-radius:2px;background:#ff5a4d}
+.hm .fav-anchor .fav-rule:hover .fav-rule-tab{border-color:#ff5a4d}
+@media (max-width:720px){.hm .fav-anchor{margin:0 6px}}
+@media (prefers-reduced-motion:reduce){.ft-panel,.ft-grid{transition:none}}

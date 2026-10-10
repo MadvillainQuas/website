@@ -24,7 +24,8 @@
   rule.setAttribute('aria-label', 'Features: what EPINOIA does');
   rule.appendChild(el('span', 'ft-tab', 'Features'));
   const panel = el('div', 'ft-panel');
-  panel.hidden = true;
+  panel.setAttribute('aria-hidden', 'true');
+  panel.inert = true;
   const grid = el('div', 'ft-grid');
   F.forEach(([ic, name, text, href]) => {
     const card = el('div', 'ft-card');
@@ -52,8 +53,9 @@
   });
   panel.appendChild(grid);
   rule.addEventListener('click', () => {
-    const open = panel.hidden;
-    panel.hidden = !open;
+    const open = !wrap.classList.contains('on');
+    panel.setAttribute('aria-hidden', String(!open));
+    panel.inert = !open;
     wrap.classList.toggle('on', open);
     rule.setAttribute('aria-expanded', String(open));
   });
