@@ -9,11 +9,11 @@
   if (!strip) return;
   const F = [
     ['◉', 'Live games', 'Live games with granular play-by-play stats in real time.', '../games/'],
-    ['▤', 'Profiles', 'Player and team profiles with auto-updated stats and a vast array of game-altering detail, including events, lineup and shot zone stats.', '../scouting/'],
-    ['❑', 'News & video', 'Auto-fed news and video from each league, including content creator articles and highlights video available on release.', '../news/'],
+    ['▤', 'Profiles', 'Player and team profiles with auto-updated stats and a vast array of game-altering detail, including events, lineup and shot zone stats.', [['see an example: London Lions →', '../t/?t=london-lions']]],
+    ['❑', 'News & video', 'Auto-fed news and video from each league, including content creator articles and highlights video available on release.', [['news →', '../news/'], ['video →', '../home/?view=video']]],
     ['▶', 'Watch live', 'Live games with attached box score and storylines pop-up.', '../home/?view=video'],
     ['◎', 'EPINOIA GO', 'A geo-tagging game: gather stamps from the games you attend and compare distances covered worldwide, plus a prediction game with global leaderboards.', '../go/'],
-    ['✚', 'Scouting reports', 'Professional-grade automated scouting reports with PDF download and auto-email straight to coaches’ inboxes, and a front office advanced roster analysis model based on thousands of games.', '../scouting/'],
+    ['✚', 'Scouting reports', 'Professional-grade automated scouting reports with PDF download and auto-email straight to coaches’ inboxes, and a front office advanced roster analysis model based on thousands of games.', [['see an example: London Lions →', '../t/?t=london-lions']]],
     ['⛉', 'EPINOIA Manager', 'A quasi-fantasy manager game: create your team, set up your tactics and play against the teams in your favourite league, all based on a real analytics model.', '../manager/']
   ];
   const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
@@ -38,9 +38,8 @@
     head.append(icon, el('span', 'ft-name', name), chev);
     const body = el('div', 'ft-body');
     body.hidden = true;
-    const go = el('a', 'ft-go', 'open →');
-    go.href = href;
-    body.append(el('p', null, text), go);
+    body.append(el('p', null, text));
+    (Array.isArray(href) ? href : [['open →', href]]).forEach(([label, to]) => { const go = el('a', 'ft-go', label); go.href = to; body.appendChild(go); });
     head.addEventListener('click', () => {
       const open = body.hidden;
       body.hidden = !open;

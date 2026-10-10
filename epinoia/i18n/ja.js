@@ -2697,6 +2697,7 @@
       },
       favourites: {
         'Who’s your favourite?': 'お気に入りは？',
+        'Who are your favourite leagues and teams?': 'お気に入りのリーグとチームは？',
         'Who’s your favourite? Pick the leagues you watch and the clubs you back': 'お気に入りは？ 観るリーグと応援するクラブを選ぶ',
         'Which Leagues Do You Prefer to Watch?': 'どのリーグを観るのが好きですか？',
         'Who Do You Back?': '応援しているクラブは？',

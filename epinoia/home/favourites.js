@@ -487,8 +487,8 @@ async function mount(o) {
 
   /* ---- the rule: the handle, always there ---- */
   const rule = btn('fav-rule', '', 'Who’s your favourite? Pick the leagues you watch and the clubs you back');
-  rule.title = 'Who’s your favourite?';
-  rule.appendChild(el('span', 'fav-rule-tab', 'Who’s your favourite?'));
+  rule.title = 'Who are your favourite leagues and teams?';
+  rule.appendChild(el('span', 'fav-rule-tab', 'Who are your favourite leagues and teams?'));
   anchor.appendChild(rule);
   ctx.rule = rule;
   rule.addEventListener('click', () => {

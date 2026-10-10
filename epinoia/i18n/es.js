@@ -2698,6 +2698,7 @@
       },
       favourites: {
         'Who’s your favourite?': '¿Cuál es tu favorito?',
+        'Who are your favourite leagues and teams?': '¿Cuáles son tus ligas y equipos favoritos?',
         'Who’s your favourite? Pick the leagues you watch and the clubs you back': '¿Cuál es tu favorito? Elige las ligas que ves y los clubes que apoyas',
         'Which Leagues Do You Prefer to Watch?': '¿Qué ligas prefieres ver?',
         'Who Do You Back?': '¿A quién apoyas?',
