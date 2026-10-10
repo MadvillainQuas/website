@@ -405,7 +405,8 @@
     });
     /* the league at the top is open (and read, if the page has nothing of it yet), inside its country, which is open too */
     const first = host.querySelector('details.gm-acc');
-    if (first && !host.dataset.opened) {
+    /* everything starts closed (Louie, 2026-10-10): the reader opens a continent, a country, a league */
+    if (false && first && !host.dataset.opened) {
       host.dataset.opened = '1';
       first.open = true;
       const parent = first.closest && first.closest('details.gm-cty');
