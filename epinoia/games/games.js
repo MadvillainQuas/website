@@ -268,7 +268,14 @@
     const sum = el('summary');
     const t = el('span', 't');
     const name = code ? countryName(code) : 'Other leagues';
-    if (code) { const f = el('span', 'flag', flagOf(code)); f.setAttribute('aria-hidden', 'true'); t.appendChild(f); }
+    if (code) {
+      /* the drawn flag the rail uses (country.js flagSrc), the emoji only where there is none */
+      const C = window.EpinoiaCountry, list = C && C.flags ? C.flags(code) : null, srcs = (list || []).map(x => x.src).filter(Boolean);
+      const one = C && C.flagSrc ? C.flagSrc(code) : null;
+      const use = srcs.length ? srcs : (one ? [one] : []);
+      if (use.length) { const w = el('span', 'gm-flags'); use.forEach(src => { const i = el('img', 'gm-flagimg'); i.src = '../' + src; i.alt = ''; w.appendChild(i); }); t.appendChild(w); }
+      else { const f = el('span', 'flag', flagOf(code)); f.setAttribute('aria-hidden', 'true'); t.appendChild(f); }
+    }
     t.appendChild(el('span', 'gm-cname', name));
     sum.appendChild(t);
     const n = el('span', 'n');
