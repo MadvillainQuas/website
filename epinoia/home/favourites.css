@@ -293,3 +293,6 @@
 
 /* CENTRED, to match the page's centred titles: the rail of cards sits in the middle when there are too few to fill it */
 .fav-rail.fits .fav-strip{justify-content:center}
+
+/* the tag is always there, not only on hover (Louie, 2026-10-10); the line still grows under the pointer */
+.fav-rule-tab{opacity:1;transform:translate(-50%,0)}
