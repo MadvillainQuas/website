@@ -120,6 +120,8 @@ function toScorer(S, r, o) {
         break;
       }
       case 'T':
+        /* an offensive foul: his foul, then the turnover it is */
+        if (e.of) push(t, { t: 'foul', team: e.s, pid: pidOf(e.p), kind: 'offensive' });
         push(t, { t: 'to', team: e.s, pid: pidOf(e.p) });
         if (e.live && e.st) push(t, { t: 'stl', team: 1 - e.s, pid: pidOf(e.st) });
         break;

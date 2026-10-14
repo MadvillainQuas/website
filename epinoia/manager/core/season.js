@@ -5,15 +5,22 @@
    ONE MANAGER LEAGUE, PLAYED ON THE REAL CALENDAR (Louie, 2026-10-09: "it's probably better to use an IRL schedule for
    now rather than a 'continue' mechanic"; "Just make it 1/2 games per week as a simple baseline"): the user's club and
    the real league's clubs play each other `meetings` times (three), a round on each of the week's match days (one a
-   week: Saturday; two: Wednesday and Saturday), from the first match day after the squad is confirmed. A round is
-   played once its day's tip-off (TIP_UTC) has passed - by the reader's own browser, only this league, when the page is
-   opened (Louie: "it has to be processed only client-side with only that player's chosen league being simmed"). The
-   same round played twice gives the same games (each game's seed is the league's seed, the round and the two clubs).
-   Keeping a "continue" for later: play() takes any round, so a standalone game can play them on a button.
+   week: Saturday; two: Wednesday and Saturday), from the first match day after the squad is confirmed - by the reader's
+   own browser, only this league (Louie: "it has to be processed only client-side with only that player's chosen league
+   being simmed"). The same round played twice gives the same games (each game's seed is the league's seed, the round
+   and the two clubs).
+   ANY TIME ON ITS DAY (Louie, 2026-10-14: "can the user choose to play the game anytime on that day (i.e. scheduled for
+   a wednesday, but the user can choose to play any time on that wednesday instead of being specifically at Xpm"): a
+   match day is the reader's own day (its local midnight to midnight). On it the reader plays their game when they
+   like - live (core/match.js, views/match.js), or straight to the result; the round's other games are played with it.
+   A day over with the game not played, the assistant plays it (the whole round at once); a round without the reader's
+   club is played when its day begins.
 
      create(o)            {clubs: ['me', ...], start: 'YYYY-MM-DD', perWeek, meetings, seed} -> a state
-     due(S, now)          the rounds whose tip-off has passed and that are not played yet
-     play(S, round, ctx)  play every game of a round: ctx.team(i) -> the engine's team, ctx.X -> {L, ref, G}
+     due(S, now, me)      the rounds to play now, nobody choosing: their day over (or, without the reader's club, begun)
+     matchday(S, now, me) the reader's game today, still to play: {r, f, opens, closes} or null
+     play(S, round, ctx)  play a round's games (ctx.skip(f): one left for the reader): ctx.team(i) -> the engine's team
+     record(S, f, g, me)  a game's result into the season (play does it; a live game's end does it)
      table(S)             the standings;  leaders(S, k)  the league's leaders;  next(S, i)  a club's next game
    The state is plain JSON (it is what the database keeps): clubs by index, players by index in S.people, a game's
    result [hs, as, ot] on its fixture, every player's season totals in S.stats, the user's games' box scores in S.box.
@@ -60,20 +67,40 @@ function create(o) {
     fixtures: rr.map(f => ({ r: f.round, d: dates[f.round - 1], h: f.home, a: f.away })), played: 0
   };
 }
-/* a round is due from TIP_UTC on its day */
-function dueAt(dateStr) { const d = dayOf(dateStr); d.setUTCHours(TIP_UTC); return d; }
-/* MAY THE SEASON STILL BE DRAWN AGAIN (a club of the real league added or dropped)? Only before its first tip-off: no
-   result yet AND no round due. It was redrawn whenever nothing had been played, from the day it was redrawn, so a
-   round whose tip-off had passed but which this browser had not played yet (the page opened after it) vanished from
-   the season (reported 2026-10-14: a Saturday game skipped). Redrawn, it keeps its own start date. */
+/* A MATCH DAY: the reader's own day (their browser's midnight to midnight) */
+function dayStart(dateStr) { const [y, m, d] = String(dateStr).split('-').map(Number); return new Date(y, m - 1, d, 0, 0, 0, 0); }
+function dayEnd(dateStr) { const x = dayStart(dateStr); x.setDate(x.getDate() + 1); return x; }
+/* when a round is played with nobody choosing: its day over (the assistant plays the reader's game) */
+function dueAt(dateStr) { return dayEnd(dateStr); }
+const tOf = now => (now != null ? new Date(now) : new Date()).getTime();
+const mineIn = (S, r, me) => S.fixtures.find(f => f.r === r && (f.h === me || f.a === me)) || null;
+/* MAY THE SEASON STILL BE DRAWN AGAIN (a club of the real league added or dropped)? Only before its first match day: no
+   result yet and the first day not begun. It was redrawn whenever nothing had been played, from the day it was
+   redrawn, so a round whose time had come but which this browser had not played yet (the page opened after it)
+   vanished from the season (reported 2026-10-14: a Saturday game skipped). Redrawn, it keeps its own start date. */
 function redrawable(S, now) {
   if (!S || !Array.isArray(S.fixtures) || S.fixtures.some(f => f.res != null)) return false;
-  return due(S, now).length === 0;
+  const first = S.fixtures.reduce((a, f) => (a == null || f.d < a ? f.d : a), null);
+  return first == null || tOf(now) < dayStart(first).getTime();
 }
-function due(S, now) {
-  const t = (now ? new Date(now) : new Date()).getTime(), out = new Set();
-  S.fixtures.forEach(f => { if (f.res == null && dueAt(f.d).getTime() <= t) out.add(f.r); });
+/* THE ROUNDS TO PLAY NOW, nobody choosing: any game unplayed in a round whose day is over; a round without the
+   reader's club (me; null: none) once its day has begun */
+function due(S, now, me) {
+  const t = tOf(now), out = new Set(), m = me == null ? 0 : me;
+  S.fixtures.forEach(f => {
+    if (f.res != null) return;
+    if (dayEnd(f.d).getTime() <= t) out.add(f.r);
+    else if (dayStart(f.d).getTime() <= t && !mineIn(S, f.r, m)) out.add(f.r);
+  });
   return [...out].sort((a, b) => a - b);
+}
+/* THE READER'S GAME TODAY: the match day under way with their game unplayed */
+function matchday(S, now, me) {
+  const t = tOf(now), m = me == null ? 0 : me;
+  const f = S.fixtures.filter(x => x.res == null && (x.h === m || x.a === m)).sort((a, b) => a.r - b.r)[0];
+  if (!f) return null;
+  const opens = dayStart(f.d).getTime(), closes = dayEnd(f.d).getTime();
+  return opens <= t && t < closes ? { r: f.r, f, opens, closes } : null;
 }
 function roundOf(S, r) { return S.fixtures.filter(f => f.r === r); }
 /* a person's index in S.people (the state keeps ids once) */
@@ -89,11 +116,20 @@ function addLine(into, b) {
   L[1] = Math.round(L[1] * 10) / 10;
   return L;
 }
-/* PLAY A ROUND. ctx: {X: {L, ref, G}, team(i) -> {id, segs, cards, identity?, form?}, me: the user's club index} */
+/* PLAY A ROUND. ctx: {X: {L, ref, G}, team(i) -> {id, segs, cards, identity?, form?, ins?}, me: the user's club index,
+   skip(f): a game left out (the reader's, to be played live), engine: 'stretch' for engine.play (the possession engine,
+   core/match.js, otherwise - the one the live game plays)} */
+const MATCH = () => (M().match) || (typeof require === 'function' ? require('./match.js') : null);
+function playOne(E, H, A, X, seed, how) {
+  const MT = how === 'stretch' ? null : MATCH();
+  return MT ? MT.play(H, A, X, { seed, home: 1 }) : E.play(H, A, Object.assign({}, X, { seed, home: 1 }));
+}
+function gameSeed(S, r, f) { return SCH().hashOf(S.seed + ':' + r + ':' + f.h + ':' + f.a); }
 function play(S, r, ctx) {
   const E = ENG(), out = [];
   roundOf(S, r).forEach(f => {
     if (f.res != null) return;
+    if (ctx.skip && ctx.skip(f)) return;
     /* EVERY GAME OF A ROUND ON ITS OWN (2026-10-14: "make sure all games on the fixture list today can be played"): a club
        that cannot be put together, or a game the engine stops on, leaves that one game to the next visit and never the
        round's others */
@@ -101,9 +137,19 @@ function play(S, r, ctx) {
     try {
       H = ctx.team(f.h); A = ctx.team(f.a);
       if (!H || !A || !H.segs || !H.segs.length || !A.segs || !A.segs.length) { f.res = null; out.push({ f, error: 'no team' }); return; }
-      const seed = SCH().hashOf(S.seed + ':' + r + ':' + f.h + ':' + f.a);
-      g = E.play(H, A, Object.assign({}, ctx.X, { seed, home: 1 }));
+      g = playOne(E, H, A, ctx.X, gameSeed(S, r, f), ctx.engine);
     } catch (e) { f.res = null; out.push({ f, error: String(e && e.message || e) }); return; }
+    record(S, f, g, ctx.me);
+    out.push({ f, g });
+  });
+  S.played = S.fixtures.filter(f => f.res != null).reduce((a, f) => Math.max(a, f.r), 0);
+  return out;
+}
+/* A GAME'S RESULT INTO THE SEASON: its score on its fixture, every man's line into his season, the clubs' totals with the
+   opponents' side, and the reader's games kept whole (the box with plus-minus, the play-by-play, the lineups) */
+function record(S, f, g, me) {
+  const r = f.r;
+  {
     f.res = [g.pts[0], g.pts[1], g.ot || 0];
     /* every man's line into his season; the clubs' totals; the user's games kept whole */
     [0, 1].forEach(s => {
@@ -120,25 +166,26 @@ function play(S, r, ctx) {
       S.tstats[club] = T;
     });
     /* the user's games kept whole: the box (with plus-minus, last), the play-by-play and the lineups on the clock */
-    if (ctx.me != null && (f.h === ctx.me || f.a === ctx.me)) {
+    if (me != null && (f.h === me || f.a === me)) {
       S.box[r] = [0, 1].map(s => g.box[s].map(b => [pid(S, b.id)].concat(LINE.slice(1).map(k => (k === 'min' ? b.min : +(b[k] || 0))), [+(b.pm || 0)])));
       if (g.events) {
         S.pbp = S.pbp || {};
         S.pbp[r] = { e: encodeEvents(S, g.events), l: (g.lineups || []).map(x => [Math.round(x.t0 * 100) / 100, Math.round(x.t1 * 100) / 100, x.h.map(id => pid(S, id)), x.a.map(id => pid(S, id))]) };
       }
     }
-    out.push({ f, g });
-  });
-  S.played = S.fixtures.filter(f => f.res != null).reduce((a, f) => Math.max(a, f.r), 0);
-  return out;
+  }
+  S.played = S.fixtures.filter(x => x.res != null).reduce((a, x) => Math.max(a, x.r), 0);
+  return f;
 }
 /* THE PLAY-BY-PLAY, KEPT SMALL: an event a token - its second (base 36), its kind, then its numbers, a man by his place
    in S.people - about four kilobytes a game */
-const EVK = ['Q', 'P', 'S', 'F', 'T', 'O', 'D', 'X', 'f'];
-const FIELDS = { Q: ['p'], P: ['s', 'st', 'f', 'l'], S: ['s', 'z', 'm', 'tr', '@p', '@a', '@b'], F: ['s', 'kind', 'n', 'm', '@p', '@f'], T: ['s', 'live', '@p', '@st'],
-  O: ['s', '@p'], D: ['s', '@p'], X: ['s'], f: ['s', '@p'] };
+/* (core/match.js, 2026-10-14, added at the end so the games kept before read as they did: U a substitution - out, in;
+   Y a timeout; q a quarter's start after the first; a turnover's `of`, an offensive foul) */
+const EVK = ['Q', 'P', 'S', 'F', 'T', 'O', 'D', 'X', 'f', 'U', 'Y', 'q'];
+const FIELDS = { Q: ['p'], P: ['s', 'st', 'f', 'l'], S: ['s', 'z', 'm', 'tr', '@p', '@a', '@b'], F: ['s', 'kind', 'n', 'm', '@p', '@f'], T: ['s', 'live', '@p', '@st', 'of'],
+  O: ['s', '@p'], D: ['s', '@p'], X: ['s'], f: ['s', '@p'], U: ['s', '@out', '@in'], Y: ['s'], q: ['p'] };
 function encodeEvents(S, events) {
-  return events.map(e => {
+  return events.filter(e => EVK.includes(e.k)).map(e => {
     const f = FIELDS[e.k] || [];
     return [Math.max(0, Math.round(e.t || 0)).toString(36), EVK.indexOf(e.k)].concat(f.map(k => {
       if (k[0] === '@') { const id = e[k.slice(1)]; return id == null ? '' : pid(S, id).toString(36); }
@@ -188,5 +235,5 @@ function summary(S, me) {
     : { w: 0, l: 0, pf: 0, pa: 0, pos: null, gp: 0, of: S.clubs.length, rounds: S.fixtures.reduce((a, f) => Math.max(a, f.r), 0), played: S.played };
 }
 
-return { create, due, dueAt, redrawable, play, table, next, results, lineOf, leaders, summary, matchDays, roundOf, encodeEvents, decodeEvents, LINE, TIP_UTC, DAYS, V };
+return { create, due, dueAt, dayStart, dayEnd, matchday, redrawable, play, record, gameSeed, table, next, results, lineOf, leaders, summary, matchDays, roundOf, encodeEvents, decodeEvents, LINE, TIP_UTC, DAYS, V };
 }));

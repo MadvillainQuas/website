@@ -9,9 +9,9 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..',
 globalThis.EpinoiaWinStats = require(path.join(ROOT, 'winstats.js'));
 const Sim = require(path.join(ROOT, 'winsim.js'));
 const Mgr = {};
-['value', 'ratings', 'schedule', 'names', 'badge', 'cards', 'engine', 'season'].forEach(n => { Mgr[n] = require(path.join(ROOT, 'manager', 'core', n + '.js')); });
+['value', 'ratings', 'schedule', 'names', 'badge', 'cards', 'engine', 'season', 'instruct', 'match'].forEach(n => { Mgr[n] = require(path.join(ROOT, 'manager', 'core', n + '.js')); });
 globalThis.Mgr = Mgr;
-const { value: V, ratings: R, schedule: SC, names: N, badge: B, cards: C, engine: E, season: SE } = Mgr;
+const { value: V, ratings: R, schedule: SC, names: N, badge: B, cards: C, engine: E, season: SE, instruct: IN, match: MT } = Mgr;
 E.use(Sim);
 
 let pass = 0, fail = 0;
@@ -117,6 +117,11 @@ for (let t = 0; t < 10; t++) {
   ok('schedule: nobody plays twice in a round (an odd league: one bye a round)', [...byRound.values()].every(g => new Set(g.flatMap(f => [f.home, f.away])).size === 2 * g.length) && byRound.size === 15);
   const homes = ids.map(id => fx.filter(f => f.home === id).length);
   ok('schedule: the homes spread (each club 5-7 of its 12)', homes.every(h => h >= 5 && h <= 7), homes);
+  /* and no long runs at home or away (by round + place a club kept one end all along its side of the circle: sixteen away
+     games in a row in a 17-club league, 2026-10-14) */
+  const runOf = (fx, ids) => Math.max(...ids.map(t => { let run = 0, last = null, best = 0; fx.filter(f => f.home === t || f.away === t).sort((a, b) => a.round - b.round).forEach(f => { const hm = f.home === t; run = hm === last ? run + 1 : 1; last = hm; best = Math.max(best, run); }); return best; }));
+  const runs = [6, 9, 10, 13, 16, 17].map(n => { const ids = Array.from({ length: n }, (_, i) => i); return runOf(SC.roundRobin(ids, 3, 7), ids); });
+  ok('schedule: never more than four in a row at home or away', runs.every(x => x <= 4), runs);
   ok('schedule: the same league, the same schedule', JSON.stringify(SC.roundRobin(ids, 3, 7)) === JSON.stringify(fx));
   const T = SC.table([{ round: 1, home: 'a', away: 'b', hs: 80, as: 70 }, { round: 2, home: 'b', away: 'a', hs: 90, as: 70 }, { round: 3, home: 'c', away: 'a', hs: 60, as: 61 }], ['a', 'b', 'c']);
   ok('table: wins first, then the head-to-head, then the difference', T.rows[0].id === 'a' && T.rows[0].w === 2 && T.rows[1].id === 'b', T.rows.map(r => r.id + r.w));
@@ -185,6 +190,59 @@ const cards = new Map(rows.map(r => [r.id, C.cardOf(r, ref, {})]));
   ok('engine: a five run into the ground is a five on tired legs', tired.off.pRim < base.off.pRim && tired.men[0].dLoad > 0);
   const oop = E.sideOf([real[4], real[3], real[2], real[1], real[0]].map((x, k) => ({ card: x.card, k })), { mu: L.rates, ref, tac: null, G: 40, dTr: L.dTr });
   ok('engine: a centre at the point and a point at centre cost both ends', oop.off.tov > base.off.tov && oop.def.pRim > base.def.pRim);
+
+  /* ---- THE BALL HANDLERS' SLIDER (Louie, 2026-10-14: "obvious that get downhill/punish from deep are for the ball handlers
+     (and increase the 3PT volume for the ball handlers not elsewhere) ... a single sliding scale") ---- */
+  const sideWith = (tac, ins, five) => E.sideOf(five || real, { mu: L.rates, ref, tac, G: 40, dTr: L.dTr, ins });
+  const hd = sideWith({ handlers: 1 }), hdn = sideWith({ handlers: -1 });
+  const hIdx = base.men.map((m, i) => [m.hw, i]).sort((a, b) => b[0] - a[0])[0][1];
+  const others = base.men.map((_, i) => i).filter(i => base.men[i].hw === 0);
+  ok('handlers: one slider, from downhill to deep; old saved tactics read onto it', E.TACTICS.some(t => t.k === 'handlers' && t.lo === -1 && t.hi === 1)
+    && !E.TACTICS.some(t => t.k === 'deep' || t.k === 'downhill') && E.normTac({ deep: 0.7 }).handlers === 0.7 && E.normTac({ downhill: 0.9 }).handlers === -0.9);
+  ok('handlers: deep gives the ball handler more threes, and nobody else', hd.men[hIdx].m.three > base.men[hIdx].m.three + 0.08
+    && others.every(i => Math.abs(hd.men[i].m.three - base.men[i].m.three) < 1e-9), [base.men[hIdx].m.three, hd.men[hIdx].m.three]);
+  ok('handlers: downhill gives the ball handler the rim and its fouls', hdn.men[hIdx].m.rim > base.men[hIdx].m.rim + 0.06 && hdn.men[hIdx].trip > base.men[hIdx].trip);
+
+  /* ---- PLAYER INSTRUCTIONS: what he tries moves; his own numbers decide (Louie: "can't just give a low transition player
+     the transition based instructions and it work optimally, or ask a poor shooter to shoot more") ---- */
+  const ins1 = (id, keys, u) => new Map([[String(id), { u: u || 0, k: new Set(keys) }]]);
+  const pps = s => s.off.mixRim * s.off.pRim * 2 + s.off.mixMid * s.off.pMid * 2 + s.off.mix3 * s.off.p3 * 3;
+  const withCard = (k, patch) => real.map((x, j) => (j === k ? { card: Object.assign({}, x.card, patch(x.card)), k: j } : x));
+  const good = withCard(2, c => ({ p3Rel: 1.18, mixRel: Object.assign({}, c.mixRel, { three: 1.2 }), off: Object.assign({}, c.off, { d3: 0.35 }) }));
+  const poor = withCard(2, c => ({ p3Rel: 0.78, mixRel: Object.assign({}, c.mixRel, { three: 0.5 }), off: Object.assign({}, c.off, { d3: -0.45 }), un: Object.assign({}, c.un, { three: 0.02 }) }));
+  const wing = real[2].card.id;
+  const gG = pps(sideWith(null, ins1(wing, ['green']), good)) - pps(sideWith(null, null, good)), gP = pps(sideWith(null, ins1(wing, ['green']), poor)) - pps(sideWith(null, null, poor));
+  ok('instructions: a green light pays for a shooter and costs for a poor shooter', gG > gP && gP < 0, [gG, gP]);
+  const run = withCard(0, c => ({ off: Object.assign({}, c.off, { tr: { ppp: ref.trPpp + 0.25, hcPpp: ref.hcPpp, share: ref.trShare * 1.8, ev: true } }) }));
+  const walk = withCard(0, c => ({ off: Object.assign({}, c.off, { tr: { ppp: ref.trPpp - 0.15, hcPpp: ref.hcPpp, share: ref.trShare * 0.25, ev: true } }) }));
+  const pg = real[0].card.id, pr = sideWith(null, ins1(pg, ['push']), run), pw = sideWith(null, ins1(pg, ['push']), walk);
+  const r0 = sideWith(null, null, run), w0 = sideWith(null, null, walk);
+  ok('instructions: pushing in transition runs more for anybody, and pays only for a runner', pr.off.tr > r0.off.tr && pw.off.tr > w0.off.tr
+    && pr.men[0].p.rim > r0.men[0].p.rim && pw.men[0].p.rim < w0.men[0].p.rim && pw.men[0].tov > w0.men[0].tov, [pr.men[0].p.rim - r0.men[0].p.rim, pw.men[0].p.rim - w0.men[0].p.rim]);
+  const quick = withCard(0, c => ({ def: Object.assign({}, c.def, { stl: c.def.stl * 2.2 }) })), slow = withCard(0, c => ({ def: Object.assign({}, c.def, { stl: c.def.stl * 0.4 }) }));
+  const gq = sideWith(null, ins1(pg, ['gam']), quick), gs = sideWith(null, ins1(pg, ['gam']), slow), q0 = sideWith(null, null, quick), s0 = sideWith(null, null, slow);
+  ok('instructions: gambling turns quick hands into steals, and slow hands into open shots', (gq.def.tov - q0.def.tov) > 2 * (gs.def.tov - s0.def.tov) && (gs.def.p3 - s0.def.p3) > (gq.def.p3 - q0.def.p3),
+    [gq.def.tov - q0.def.tov, gs.def.tov - s0.def.tov]);
+  const c5 = real[4].card.id;
+  const mobile = withCard(4, c => ({ def: Object.assign({}, c.def, { stl: c.def.stl * 2 }) })), statue = withCard(4, c => ({ def: Object.assign({}, c.def, { stl: c.def.stl * 0.35 }) }));
+  const hm = sideWith(null, ins1(c5, ['hedge']), mobile), hs = sideWith(null, ins1(c5, ['hedge']), statue), m0 = sideWith(null, null, mobile), st0 = sideWith(null, null, statue);
+  ok('instructions: a hedging big forces turnovers with the feet for it, and leaks without them', (hm.def.tov - m0.def.tov) > (hs.def.tov - st0.def.tov) && (hs.def.pRim - st0.def.pRim) > (hm.def.pRim - m0.def.pRim));
+  const prot = withCard(4, c => ({ def: Object.assign({}, c.def, { blk: c.def.blk * 2.2, rimSave: 3 }) })), soft = withCard(4, c => ({ def: Object.assign({}, c.def, { blk: c.def.blk * 0.3, rimSave: -1 }) }));
+  const dp = sideWith(null, ins1(c5, ['drop']), prot), ds = sideWith(null, ins1(c5, ['drop']), soft), p0 = sideWith(null, null, prot), so0 = sideWith(null, null, soft);
+  ok('instructions: dropping gives up the mid-range, and protects the rim only with a rim protector', dp.def.mixMid > p0.def.mixMid && (dp.def.pRim - p0.def.pRim) < (ds.def.pRim - so0.def.pRim));
+  const up2 = sideWith(null, ins1(pg, [], 2)), dn2 = sideWith(null, ins1(pg, [], -2));
+  ok('instructions: his touches, two steps either way', up2.men[0].u2 > base.men[0].u2 + 3 && dn2.men[0].u2 < base.men[0].u2 - 3, [dn2.men[0].u2, base.men[0].u2, up2.men[0].u2]);
+  const fin = sideWith(null, ins1(c5, ['fin', 'roll', 'dive']));
+  ok('instructions: a finisher only takes fewer of the plays, and his shots come off passes', fin.men[4].u2 < base.men[4].u2 - 2 && fin.men[4].un.rim < base.men[4].un.rim);
+  /* the instructions' own rules */
+  ok('instructions: one of each choice (the later wins); what needs another goes without it', JSON.stringify(IN.norm({ ins: ['pas', 'agg'] }, 'g').keys) === '["agg"]'
+    && JSON.stringify(IN.norm({ ins: ['short'] }, 'b').keys) === '[]' && IN.toggle({ ins: [] }, 'b', 'short', true).keys.includes('roll')
+    && !IN.toggle({ ins: ['roll', 'short'] }, 'b', 'roll', false).keys.includes('short') && IN.norm({ ins: ['pas'], u: 7 }, 'g').u === 2);
+  ok('instructions: a guard, a wing and a big each have their own', IN.list('g').some(d => d.k === 'pas') && !IN.list('g').some(d => d.k === 'roll')
+    && IN.list('b').some(d => d.k === 'drop') && IN.list('w').some(d => d.k === 'rip') && IN.roleOf({ pos: 1.2 }) === 'g' && IN.roleOf(null, 4) === 'b');
+  const shooters = rows.filter(r => r.min > 300).map(r => cards.get(r.id)).filter(Boolean).sort((a, b) => b.p3Rel - a.p3Rel);
+  ok('instructions: how well he suits it is his own line (the best shooter suits a green light better than the worst)',
+    IN.fit('green', shooters[0], ref).s > IN.fit('green', shooters[shooters.length - 1], ref).s && !!IN.fit('green', shooters[0], ref).word);
 }
 {
   const lu = [{ ids: ['a1', 'a2', 'a3', 'a4', 'a5'], min: 24 }, { ids: ['b1', 'b2', 'b3', 'b4', 'b5'], min: 16 }];
@@ -220,6 +278,80 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   const strong = E.preview(Hid, A, X, 300).margin, plain = E.preview(H, A, X, 300).margin;
   ok('identity: and plays better for it', strong > plain + 3, [plain, strong]);
 }
+/* ---------------------------------------------------------------- the match, possession by possession --- */
+/* core/match.js (Louie, 2026-10-14: live games "where the user can change team instructions, make subs etc. to change the
+   game"): every game is played by the men on the floor at that moment, and every change is the game's from then on */
+{
+  const H = teamObj(teams[0]), A = teamObj(teams[1]), X = { L, ref, G: 40 };
+  const g1 = MT.play(H, A, X, { seed: 21, home: 1 }), g2 = MT.play(H, A, X, { seed: 21, home: 1 });
+  ok('match: the same seed, the same game', JSON.stringify(g1.pts) === JSON.stringify(g2.pts) && JSON.stringify(g1.events) === JSON.stringify(g2.events));
+  const sum = (b, k) => b.reduce((a, x) => a + x[k], 0);
+  ok('match: the box scores add up to the game', [0, 1].every(s => sum(g1.box[s], 'pts') === g1.pts[s] && sum(g1.box[s], 'fga') === g1.tally[s].fga && sum(g1.box[s], 'fta') === g1.tally[s].fta
+    && sum(g1.box[s], 'tov') === g1.tally[s].tov && sum(g1.box[s], 'oreb') === g1.tally[s].oreb), [0, 1].map(s => [sum(g1.box[s], 'pts'), g1.pts[s]]));
+  ok('match: 200 minutes a side, nobody past the foul limit, the score never tied at the end', [0, 1].every(s => near(sum(g1.box[s], 'min'), 200 + 25 * g1.ot, 0.6))
+    && g1.box.flat().every(b => b.pf <= 5 && b.fgm <= b.fga) && g1.pts[0] !== g1.pts[1], [sum(g1.box[0], 'min'), sum(g1.box[1], 'min'), g1.ot]);
+  const subs = g1.events.filter(e => e.k === 'U'), quarters = g1.events.filter(e => e.k === 'q').length;
+  ok('match: the coaches sub at dead balls, and every quarter starts', subs.length > 10 && quarters === 3 && g1.lineups.length > 5);
+  /* a game in hand: run to half-time, a change, and the second half is another game; the first half is the same */
+  const M1 = MT.create(H, A, X, { seed: 33, home: 1 }); MT.runTo(M1, 1200);
+  const half = JSON.stringify(M1.events), k = M1.g.k;
+  const M2 = MT.create(H, A, X, { seed: 33, home: 1 }); MT.runTo(M2, 1200);
+  const star = M2.sides[0].floor[0], bench = M2.sides[0].roster.find(id => !M2.sides[0].floor.includes(id));
+  MT.act(M2, 0, { type: 'tac', tac: { handlers: 1, gamble: 1, leak: 1 } });
+  MT.act(M2, 0, { type: 'auto', on: false });
+  MT.act(M2, 0, { type: 'sub', out: star, in: bench });
+  MT.finish(M1); MT.finish(M2);
+  ok('match: the first half the same, the change the game\'s from then on', JSON.stringify(M2.events.slice(0, JSON.parse(half).length)) === half && M2.log.length === 3 && M2.log[0].at === k
+    && JSON.stringify(M1.g.score) !== JSON.stringify(M2.g.score), [M1.g.score, M2.g.score]);
+  ok('match: the reader\'s sub at the next dead ball, and with the assistant off his five stands', M2.events.some(e => e.k === 'U' && e.s === 0 && e.out === star && e.in === bench));
+  /* kept and taken up again: a game snapshot mid-way plays on to the very same end */
+  const M3 = MT.create(H, A, X, { seed: 44, home: 1 }); MT.runTo(M3, 1700);
+  const snap = JSON.parse(JSON.stringify(MT.snapshot(M3)));
+  const M4 = MT.restore(snap, H, A, X);
+  MT.finish(M3); MT.finish(M4);
+  ok('match: a game kept mid-way and taken up again ends the same', JSON.stringify(M3.g.score) === JSON.stringify(M4.g.score) && M3.events.length === M4.events.length, [M3.g.score, M4.g.score]);
+  /* condition: a man never subbed is spent by the fourth quarter */
+  const iron = MT.create(H, A, X, { seed: 55, home: 1 });
+  MT.act(iron, 0, { type: 'auto', on: false });
+  MT.finish(iron);
+  const ironMan = iron.sides[0].floor[0];
+  ok('match: legs run down with the minutes (a man left out all game is tired by the end), and the bench\'s come back',
+    iron.sides[0].en[ironMan] < 60 && Math.max(...iron.sides[0].roster.filter(id => !iron.sides[0].floor.includes(id)).map(id => iron.sides[0].en[id])) > 90, [iron.sides[0].en[ironMan]]);
+  /* fouls: five and he is out, and his coach takes him off */
+  const fo = MT.create(H, A, X, { seed: 66, home: 1 }); MT.runTo(fo, 300);
+  const victim = fo.sides[1].floor[2]; fo.sides[1].pf[victim] = 5;
+  MT.step(fo);
+  ok('match: five fouls and he is out', !fo.sides[1].floor.includes(victim) && fo.events.some(e => e.k === 'U' && e.out === victim));
+  /* the season plays with it, and keeps its play-by-play */
+  ok('match: the result is engine.play\'s shape (season.js keeps it)', ['pts', 'ot', 'poss', 'tally', 'box', 'events', 'lineups'].every(k2 => k2 in g1) && g1.lineups.every(x => x.h.length === 5 && x.a.length === 5));
+  /* THE READER'S TIMEOUT STOPS THE GAME BEFORE THE NEXT POSSESSION (views/match.js: what they change in it is in that one):
+     the step that calls it plays nothing, the next plays the possession with the change in it */
+  const T1 = MT.create(H, A, X, { seed: 77, home: 1 }); MT.runTo(T1, 900);
+  let guard = 0;
+  while (T1.g.start !== 0 && guard++ < 50) MT.step(T1);       // to a dead ball
+  const k0 = T1.g.k, t0 = T1.g.t, to0 = T1.sides[0].to, n0 = T1.events.length;
+  MT.act(T1, 0, { type: 'timeout' });
+  MT.step(T1);
+  const added = T1.events.slice(n0);
+  ok('match: the reader\'s timeout stops the game there (no possession played with it)', T1.g.k === k0 && T1.g.t === t0 && added.some(e => e.k === 'Y' && e.s === 0) && !added.some(e => e.k === 'P')
+    && T1.sides[0].to === to0 - 1, [T1.g.k, k0, added.map(e => e.k)]);
+  const outM = T1.sides[0].floor[1], inM = T1.sides[0].roster.find(id => !T1.sides[0].floor.includes(id) && T1.sides[0].pf[id] < 5);
+  MT.act(T1, 0, { type: 'sub', out: outM, in: inM });
+  MT.step(T1);
+  ok('match: and the change made in it is in the very next possession', T1.g.k === k0 + 1 && T1.sides[0].floor.includes(inM) && !T1.sides[0].floor.includes(outM));
+  /* a substitution waiting for a dead ball can be called off */
+  const C1 = MT.create(H, A, X, { seed: 88, home: 1 }); MT.runTo(C1, 400);
+  const o1 = C1.sides[0].floor[0], i1 = C1.sides[0].roster.find(id => !C1.sides[0].floor.includes(id));
+  MT.act(C1, 0, { type: 'sub', out: o1, in: i1 });
+  MT.act(C1, 0, { type: 'unsub', out: o1, in: i1 });
+  ok('match: a waiting substitution called off', C1.sides[0].pend.length === 0 && C1.log.length === 2);
+  /* the instructions are kept with a game in hand, whatever the squad's are when it is taken up again */
+  const Hi = Object.assign({}, H, { ins: new Map([[H.segs[0].ids[0], { u: 2, k: new Set(['agg']) }]]) });
+  const K1 = MT.create(Hi, A, X, { seed: 99, home: 1 }); MT.runTo(K1, 600);
+  MT.act(K1, 0, { type: 'ins', ins: {} });                     // all of them cleared, live
+  const K2 = MT.restore(JSON.parse(JSON.stringify(MT.snapshot(K1))), Hi, A, X);
+  ok('match: a game kept with its instructions cleared comes back cleared (not the squad\'s)', K2.sides[0].T.ins instanceof Map && K2.sides[0].T.ins.size === 0);
+}
 /* ---------------------------------------------------------------- the season --- */
 {
   const clubs = ['me'].concat(teams.slice(0, 5).map(t => t.id));
@@ -229,11 +361,22 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   const S1 = SE.create({ clubs, start: '2026-10-07', perWeek: 1, meetings: 3, seed: 5 });
   ok('season: one a week is Saturdays', S1.fixtures.every(f => new Date(f.d + 'T00:00:00Z').getUTCDay() === 6));
   const first = S.fixtures[0].d;
-  ok('season: nothing is due before the first tip-off, the first round after it', SE.due(S, first + 'T18:59:00Z').length === 0 && SE.due(S, first + 'T19:00:00Z')[0] === 1);
+  /* ANY TIME ON ITS DAY (Louie, 2026-10-14): the reader's own day; theirs to play during it, the assistant's after it */
+  const at = (d, h) => { const x = SE.dayStart(d); x.setHours(h); return x; };
+  ok('season: a match day is the reader\'s game to play all day, and played for them once it is over',
+    SE.due(S, at(first, 0)).length === 0 && SE.matchday(S, at(first, 0), 0).r === 1 && SE.matchday(S, at(first, 23), 0).r === 1 && SE.due(S, at(first, 23)).length === 0
+      && SE.matchday(S, SE.dayEnd(first), 0) === null && SE.due(S, SE.dayEnd(first))[0] === 1 && SE.matchday(S, at(dayAfter(first, -1), 23), 0) === null);
+  /* a round without the reader's club is played when its day begins */
+  {
+    const odd = SE.create({ clubs: ['me'].concat(teams.slice(0, 4).map(t => t.id)), start: '2026-10-07', perWeek: 2, meetings: 1, seed: 3 });
+    const bye = [...new Set(odd.fixtures.map(f => f.r))].find(r => !odd.fixtures.some(f => f.r === r && (f.h === 0 || f.a === 0)));
+    const bd = odd.fixtures.find(f => f.r === bye).d;
+    ok('season: a round without the reader\'s club is played when its day begins', bye != null && SE.due(odd, at(bd, 1)).includes(bye) && !SE.due(odd, at(dayAfter(bd, -1), 23)).includes(bye));
+  }
   /* a Saturday game skipped (2026-10-14): the season was drawn again from the day the page opened whenever nothing had
-     been played, even after the first round's tip-off had passed - so that round was gone */
-  ok('season: it may be drawn again (a club of the league added) only before its first tip-off',
-    SE.redrawable(S, first + 'T18:59:00Z') && !SE.redrawable(S, first + 'T19:00:00Z') && !SE.redrawable(S, dayAfter(first, 3) + 'T12:00:00Z'));
+     been played, even after the first round's time had come - so that round was gone */
+  ok('season: it may be drawn again (a club of the league added) only before its first match day',
+    SE.redrawable(S, at(dayAfter(first, -1), 23)) && !SE.redrawable(S, at(first, 0)) && !SE.redrawable(S, at(dayAfter(first, 3), 12)));
   const mine = { id: 'me', segs: E.rotation([{ ids: teams[9].men.slice(0, 5).map(r => r.id), min: 28 }, { ids: teams[9].men.slice(5, 10).map(r => r.id), min: 12 }], 40), cards };
   const objs = clubs.map((c, i) => (i === 0 ? mine : teamObj(teams[i - 1])));
   const ctx = { X: { L, ref, G: 40 }, team: i => objs[i], me: 0 };
@@ -286,6 +429,10 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
     return x && x.pts === l[idx('pts')] && x.or + x.dr === l[idx('oreb')] + l[idx('dreb')] && x.ast === l[idx('ast')] && x.stl === l[idx('stl')] && x.blk === l[idx('blk')]
       && x.to === l[idx('tov')] && x.p3a === l[idx('p3a')] && x.fta === l[idx('fta')] && x.pm === l[LN.length];
   }));
+  /* and his fouls, the offensive ones among them (a turnover's `of`: his foul, no free throws) */
+  const ofs = Object.keys(S.pbp).reduce((a, k) => a + SE.decodeEvents(S, S.pbp[k].e).filter(e => e.k === 'T' && e.of).length, 0);
+  const samePf = S.box[r1].every(side => side.every(l => { const id = S.people[l[0]], x = d.stats[id]; return /^fill:/.test(id) || (x && x.pf === l[idx('pf')]); }));
+  ok('scorer: and every man\'s fouls, offensive fouls among them (and the season has some)', samePf && ofs > 0, [ofs]);
   ok('scorer: and every man\'s points, boards, assists, steals, blocks, turnovers, threes, free throws and plus-minus', same,
     S.box[r1][0].slice(0, 3).map(l => { const x = d.stats[S.people[l[0]]] || {}; return [l[idx('pts')], x.pts, l[LN.length], x.pm]; }));
   const mins = S.box[r1].every(side => side.every(l => { const x = d.stats[S.people[l[0]]]; return /^fill:/.test(S.people[l[0]]) || (x && Math.abs(x.min / 60000 - l[idx('min')]) < 0.6); }));
@@ -301,7 +448,9 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
     const e2 = SE.decodeEvents(S, S.pbp[r].e), st2 = SC2.toScorer(S, +r, {}), d2 = Eng.deriveGame(st2);
     e2.forEach((e, i) => { if (i && e.t < e2[i - 1].t) forward = false; });
     const QL = 600, starts = e2.filter(e => e.k === 'P');
-    starts.forEach(p => { const i = e2.indexOf(p); for (let j = i + 1; j < e2.length && e2[j].k !== 'P' && e2[j].k !== 'Q'; j++) if (e2[j].t < 2400 && Math.floor(e2[j].t / QL) !== Math.floor(p.t / QL)) inQ = false; });
+    /* a possession's own plays (a substitution, a timeout or the next quarter's start comes between possessions) */
+    const PLAY = new Set(['S', 'F', 'T', 'O', 'D', 'f', 'X']);
+    starts.forEach(p => { const i = e2.indexOf(p); for (let j = i + 1; j < e2.length && e2[j].k !== 'P' && e2[j].k !== 'Q' && e2[j].k !== 'q'; j++) if (PLAY.has(e2[j].k) && e2[j].t < 2400 && Math.floor(e2[j].t / QL) !== Math.floor(p.t / QL)) inQ = false; });
     trPts += e2.reduce((a, e) => a + (e.k === 'S' && e.m && e.tr ? (e.z === 2 ? 3 : 2) : 0), 0);
     fast += d2.team[0].fast + d2.team[1].fast;
     starts.forEach(p => {

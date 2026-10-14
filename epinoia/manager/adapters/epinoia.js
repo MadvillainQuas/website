@@ -132,6 +132,22 @@ async function load(L) {
   const listed = new Map(rows.map(r => [String(r.playerId), r.position || '']));
   players.forEach(r => { const id = String(r.id); if (!share.has(id)) { const s = core.cards.listedShare(r, listed.get(id)); if (s) share.set(id, s); } });
   const slot = new Map(players.map(r => { const id = String(r.id); return [id, core.cards.listedSlot(listed.get(id), share.get(id) || core.cards.shareOf(r))]; }));
+  /* EACH CLUB'S STARTERS (Louie, 2026-10-14: real clubs play their real rotations): its games' starting fives, the recent
+     ones counting most (0.85 a game back) - one read of the league's games, their starters only */
+  const starts = new Map();
+  try {
+    const gs = await Dd.all(`games?competition_id=in.(${L.competitionIds.join(',')})&status=eq.final&select=home_team_id,away_team_id,starters,tipoff_at&order=tipoff_at.desc`);
+    const seen = new Map();
+    (gs || []).forEach(g => [g.home_team_id, g.away_team_id].forEach((tid, s) => {
+      const five = Array.isArray(g.starters) && Array.isArray(g.starters[s]) ? g.starters[s] : null;
+      if (!five || !tid) return;
+      const key = String(tid), n = seen.get(key) || 0;
+      seen.set(key, n + 1);
+      if (!starts.has(key)) starts.set(key, new Map());
+      const m = starts.get(key), w = Math.pow(0.85, n);
+      five.forEach(id => { if (id != null) m.set(String(id), (m.get(String(id)) || 0) + w); });
+    }));
+  } catch (_) { starts.clear(); }
   /* the continental boosts, a club at a time */
   let boosts = new Map();
   try { boosts = new Map(((await rpc('manager_boosts', { p_league: L.id })) || []).map(b => [String(b.team_id), +b.boost || 0])); } catch (_) { boosts = new Map(); }
@@ -143,7 +159,7 @@ async function load(L) {
   players.forEach(r => { const c = core.cards.cardOf(r, ref, { share: share.get(String(r.id)) }); if (c) cards.set(String(r.id), c); });
   const named = new Map(rows.map(r => [String(r.playerId), r]));
   const teams = (S.teams || []).map(t => Object.assign({}, t, { meta: teamMeta[t.id] || {} }));
-  return { L, S, rows, named, byId, teamOf, ref, sim, fo, share, slot, range: range || core.value.DEFAULT_RANGE, hasRange: !!range, boosts, priced, attrs, cards, teams,
+  return { L, S, rows, named, byId, teamOf, ref, sim, fo, share, slot, range: range || core.value.DEFAULT_RANGE, hasRange: !!range, boosts, priced, attrs, cards, teams, starts,
     budget: core.value.budgetOf(priced, players) };
 }
 /* a player's card for another league: his own league's reference, the strength shift between the two leagues' ranges */

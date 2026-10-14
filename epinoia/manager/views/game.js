@@ -27,17 +27,27 @@ function scorerState(r) {
     }
     return { name: c.name, short: c.short, colour: c.colour, logo_path: c.logo };
   };
+  /* its tip-off: when the reader played it (live or to the result), else the evening of its day */
+  const tip = f.at || new Date(Mgr.season.dayStart(f.d).getTime() + 19 * 3600 * 1000).toISOString();
   return Mgr.scorer.toScorer(S, r, { names, clubs: [club(f.h), club(f.a)], G: Math.round((A.lg.sim.T || 2400) / 60),
-    competition: A.lg.L.name + ' · Manager · round ' + r, tipoff: Mgr.season.dueAt(f.d).toISOString() });
+    competition: A.lg.L.name + ' · Manager · round ' + r, tipoff: tip });
 }
 A.scorerState = scorerState;
 
 function render(host, args) {
   const S = A.club.state, r = +args[0], f = S.fixtures.find(x => x.r === r && (x.h === 0 || x.a === 0));
-  if (!f || !f.res) { host.appendChild(h('div.mg-panel', 'That game has not been played yet.')); return; }
+  /* the game in hand: its box score when it ends */
   if (A.hiddenRound() === r) {
-    host.appendChild(h('div.mg-panel.glow', h('h2', 'This game is on now'), h('p.mg-sub', 'Its box score opens when it ends, or when you choose to see the result.'),
-      h('div.mg-row', h('a.mg-btn.primary', { href: '#/live/' + r }, 'Watch it live'), h('button.mg-btn', { type: 'button', onclick: () => { A.reveal(r); A.route_(); } }, 'Show me the result'))));
+    host.appendChild(h('div.mg-panel.glow', h('h2', 'This game is on now'), h('p.mg-sub', 'Its box score opens when it ends: carry on with it, or let your assistant play it out.'),
+      h('div.mg-row', h('a.mg-btn.primary', { href: '#/match' }, '▶ Carry on'), h('button.mg-btn', { type: 'button', onclick: async ev => {
+        ev.currentTarget.disabled = true;
+        try { await A.finishLive(); A.route_(); } catch (e) { A.toast('It could not be finished just now: ' + (e && e.message || e), true); }
+      } }, 'Let your assistant finish it'))));
+    return;
+  }
+  if (!f || !f.res) {
+    const md = A.matchday();
+    host.appendChild(h('div.mg-panel', h('p', 'That game has not been played yet.'), md && md.r === r ? h('a.mg-btn.primary', { href: '#/match' }, '▶ Play it') : null));
     return;
   }
   host.appendChild(h('div.mg-panel.glow', h('div.mg-next', h('div.side', A.crest(f.h, 64), A.clubLink(f.h)), h('div.vs', h('span.mg-cap', 'Round ' + r + ' · ' + new Date(f.d + 'T12:00:00Z').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })),

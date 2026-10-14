@@ -203,7 +203,7 @@ function render(host) {
     }).catch(() => {});
     poolBox.appendChild(h('div.mg-cap', 'Players to draft from')); poolBox.appendChild(tabs); poolBox.appendChild(list);
     stage.appendChild(poolBox);
-    stage.appendChild(h('p.hint', 'Your games are played on the real calendar: Saturdays, and Wednesdays too at two a week, from the first match day after you confirm your squad. The players’ real form in the days before each round moves them.'));
+    stage.appendChild(h('p.hint', 'Your games are on the real calendar: Saturdays, and Wednesdays too at two a week, from the first match day after you confirm your squad. Play each one when you like on its day, live or straight to the result. The players’ real form in the days before each round moves them.'));
     const err = h('p.hint.bad', { 'aria-live': 'polite' });
     /* NOTHING IS MADE YET (Louie: "teams to not be confirmed/saved until confirm squad has been clicked"): the club waits in
        this browser while its squad is drafted, and is made when the squad is confirmed (app.js confirmSquad) */

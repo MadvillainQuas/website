@@ -65,6 +65,8 @@ let SIMc = null;
 /* the simulator: the site's (window.EpinoiaWinSim), node's require, or one handed in (the standalone game: use(sim)) */
 const SIM = () => SIMc || (SIMc = root.EpinoiaWinSim || (typeof require === 'function' ? require('../../winsim.js') : null));
 const use = sim => { SIMc = sim; };
+/* the cards' module (a position's averages, for the instructions' fit to a man): the site's, or node's require */
+const CARDS = () => (root.Mgr && root.Mgr.cards) || (typeof require === 'function' ? require('./cards.js') : null);
 
 const isNum = v => typeof v === 'number' && isFinite(v);
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -97,34 +99,45 @@ const OOP = { make: 0.06, tov: 0.08, rim: 0.10, three: 0.06 };
    A defence that packs the paint (scheme > 0) leans on it: PACK on the rim make logit for each unit of spacing short of
    the league's five, and the same back when the five can shoot (paint packers pay against real shooters). */
 const SYN = { space: 0.16, spaceMix: 0.12, pass: 0.08, pack: 0.14 };
-/* how far a tactic at full moves the five's shot mix (share of its shots) */
+/* how far a tactic at full moves the five's shot mix (share of its shots); downhill and deep are a ball handler's own
+   (his share of his shots, through his handler weight - handlerWeights) */
 const SHIFT = { downhill: 0.10, deep: 0.12, cut: 0.06, space: 0.08, feed: 0.05 };
 const DR = 0.8;                   // summed rates over the five: a little less than the whole sum (diminishing returns)
 const BLK_LOGIT = 0.0375;         // one point of the five's BLK% on the rim make logit
 /* when the league has no fitted simulator (no fo file): the parameters a calibrated league typically lands near */
 const FALLBACK_L = { kappaN: 1, sigmaN: 1.5, hca: 0.04, tau: 0, muOff: 0, dTr: 0.2, lead: 0.10, tripOff: -0.06, ft3: 0.05, fouling: true };
 
-/* THE TACTICS, per lineup. lo..hi; a two-sided one runs from `left` (lo) to `right` (hi), 0 is neither */
+/* THE TEAM INSTRUCTIONS, per lineup, in Football Manager's three phases (Louie, 2026-10-14: "Use football manager engine
+   design/philosophy"). lo..hi; a two-sided one runs from `left` (lo) to `right` (hi), 0 is neither.
+   THE BALL HANDLERS' SLIDER (Louie: "make it so that it's obvious that get downhill/punish from deep are for the ball
+   handlers (and increase the 3PT volume for the ball handlers not elsewhere), and also make it so that it's a single
+   sliding scale"): one scale, from attacking the rim to pull-up threes, and only for the five's ball handlers - its one
+   or two main creators (handlerWeights) - at their own finishing and their own pull-up shooting. A club's saved Get
+   downhill / Punish from deep are read onto it (normTac). */
 const TACTICS = [
-  { k: 'guards', lo: 0, hi: 1, label: 'Guard play', group: 'Focus', how: 'More of the plays to the point and shooting guards (through their own usage: creators take it on best)' },
-  { k: 'wings', lo: 0, hi: 1, label: 'Wing play', group: 'Focus', how: 'More of the plays to the small forward' },
-  { k: 'bigs', lo: 0, hi: 1, label: 'Big play', group: 'Focus', how: 'More of the plays to the power forward and centre' },
-  { k: 'downhill', lo: 0, hi: 1, label: 'Get downhill', group: 'Attack', how: 'More rim attempts for the men who get there, and the fouls they draw; turnovers for loose handles' },
-  { k: 'deep', lo: 0, hi: 1, label: 'Punish from deep', group: 'Attack', how: 'More threes, taken by the men who make them; every extra attempt costs a little accuracy' },
-  { k: 'motion', lo: -1, hi: 1, left: 'Off-ball cutting', right: 'Space the floor', group: 'Attack', how: 'Cutting: finishers who score off passes get rim looks (it needs passers). Spacing: catch-and-shoot threes, and driving lanes for the creators (it needs shooters)' },
-  { k: 'feed', lo: -1, hi: 1, left: 'Hit the big', right: 'Hit the shooters', group: 'Attack', how: 'Plays to the bigs inside, or to the best shooters' },
-  { k: 'scheme', lo: -1, hi: 1, left: 'Funnel to rim protection', right: 'No paint touches', group: 'Defence', how: 'Funnel: give up rim shots into your protector (a gift without one). No paint touches: pack the paint, give up threes (your perimeter defenders decide how open)' },
-  { k: 'gamble', lo: 0, hi: 1, label: 'Gamble for steals', group: 'Defence', how: 'More steals for quick hands; open shots and fouls when the gambles miss' },
-  { k: 'leak', lo: 0, hi: 1, label: 'Leak out', group: 'Transition', how: 'Runners leave early: more transition chances, fewer defensive rebounds. A five that does not run gives the extra chances away' },
-  { k: 'crash', lo: 0, hi: 1, label: 'Attack the offensive boards', group: 'Transition', how: 'Second chances for the crashers; the opponents run out against you more' }
+  { k: 'guards', lo: 0, hi: 1, label: 'Guard play', group: 'In possession', how: 'More of the plays to the point and shooting guards (through their own usage: creators take it on best)' },
+  { k: 'wings', lo: 0, hi: 1, label: 'Wing play', group: 'In possession', how: 'More of the plays to the small forward' },
+  { k: 'bigs', lo: 0, hi: 1, label: 'Big play', group: 'In possession', how: 'More of the plays to the power forward and centre' },
+  { k: 'handlers', lo: -1, hi: 1, left: 'Get downhill', right: 'Punish from deep', group: 'In possession', label: 'Ball handlers',
+    how: 'For your ball handlers only (the one or two who run the offence). Downhill: they attack the rim and draw fouls, at their own finishing (loose handles turn it over). Deep: they take more pull-up threes, at their own three-point rate, and every extra one costs more the less they shoot off the dribble' },
+  { k: 'motion', lo: -1, hi: 1, left: 'Off-ball cutting', right: 'Space the floor', group: 'In possession', how: 'Cutting: finishers who score off passes get rim looks (it needs passers). Spacing: catch-and-shoot threes, and driving lanes for the creators (it needs shooters)' },
+  { k: 'feed', lo: -1, hi: 1, left: 'Hit the big', right: 'Hit the shooters', group: 'In possession', how: 'Plays to the bigs inside, or to the best shooters' },
+  { k: 'leak', lo: 0, hi: 1, label: 'Leak out', group: 'In transition', how: 'Runners leave early: more transition chances, fewer defensive rebounds. A five that does not run gives the extra chances away' },
+  { k: 'crash', lo: 0, hi: 1, label: 'Attack the offensive boards', group: 'In transition', how: 'Second chances for the crashers; the opponents run out against you more' },
+  { k: 'scheme', lo: -1, hi: 1, left: 'Funnel to rim protection', right: 'No paint touches', group: 'Out of possession', how: 'Funnel: give up rim shots into your protector (a gift without one). No paint touches: pack the paint, give up threes (your perimeter defenders decide how open)' },
+  { k: 'gamble', lo: 0, hi: 1, label: 'Gamble for steals', group: 'Out of possession', how: 'More steals for quick hands; open shots and fouls when the gambles miss' }
 ];
 const TK = TACTICS.map(t => t.k);
 function normTac(t) {
   const o = { usage: {} };
   TACTICS.forEach(d => { const v = t && isNum(+t[d.k]) ? +t[d.k] : 0; o[d.k] = clamp(v, d.lo, d.hi); });
+  /* the two sliders this one replaced: deep to the right, downhill to the left */
+  if (t && !isNum(+t.handlers) && (isNum(+t.deep) || isNum(+t.downhill))) o.handlers = clamp((isNum(+t.deep) ? +t.deep : 0) - (isNum(+t.downhill) ? +t.downhill : 0), -1, 1);
   if (t && t.usage && typeof t.usage === 'object') Object.keys(t.usage).forEach(id => { const v = +t.usage[id]; if (isNum(v) && v) o.usage[id] = clamp(v, -1, 1); });
   return o;
 }
+/* a team's player instructions as a cache key (Map id -> {u, k: Set}) */
+const insKey = ins => (ins && ins.size ? [...ins.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([id, x]) => id + ':' + (x.u || 0) + ':' + [...x.k].sort().join('.')).join('|') : '');
 const tacKey = t => TK.map(k => Math.round(100 * (t[k] || 0))).join(',') + '|' + Object.keys(t.usage || {}).sort().map(id => id + ':' + Math.round(100 * t.usage[id])).join(',');
 
 /* ------------------------------------------------------------------ the league --- */
@@ -134,12 +147,21 @@ const tacKey = t => TK.map(k => Math.round(100 * (t[k] || 0))).join(',') + '|' +
    court (the home win share, through HCA_PER: 0.01 of hca is about 0.0255 of home wins at the score effect below); the
    parameters calibrate() fits otherwise from FALLBACK_L. G: minutes in a game. */
 const HCA_PER = 2.55;
+/* the league's own averages a club's style is read against (identityOf): its clubs' pace and how often they run, and
+   how often their opponents run, over the clubs that have played */
+function styleOf(teams) {
+  const T = Array.isArray(teams) ? teams.filter(t => (+t.gp || 0) > 0) : [];
+  const avg = (k, ok) => { const xs = T.filter(t => (!ok || ok(t)) && isFinite(+t[k]) && t[k] != null && t[k] !== '').map(t => +t[k]); return xs.length ? xs.reduce((a, v) => a + v, 0) / xs.length : null; };
+  return { pace: avg('pace', t => +t.pace > 30), trFreq: avg('ev_transition_freq', t => (+t.ev_gp || 0) >= 5), dTrFreq: avg('evd_transition_freq', t => (+t.evd_gp || 0) >= 5) };
+}
 function leagueOf(ref, fo, G, o) {
   const S = SIM(), LG = S.LG;
+  const style = styleOf(o && o.teams);
   if (fo && fo.lg && fo.lg.rates) {
     const L = Object.assign({}, fo.lg);
     L.rates = Object.assign({}, LG, fo.lg.rates);
     if (fo.sim && fo.sim.calibrated && fo.sim.platt) L.platt = fo.sim.platt;
+    L.style = style;
     return L;
   }
   o = o || {};
@@ -183,29 +205,91 @@ function leagueOf(ref, fo, G, o) {
     const hw = games.filter(g => +g.home_score > +g.away_score).length / games.length, w = games.length / (games.length + 150);
     L.hca = clamp(w * (hw - 0.5) / HCA_PER + (1 - w) * 0.04, 0, 0.09);
   } else L.hca = 0.04;
+  L.style = style;
   return L;
 }
 
 /* A REAL CLUB PLAYS LIKE ITSELF. The players' lines build most of a club, never all of it - its scheme, its coaching,
    how its men fit are in its results and in no box score. So a real club carries its IDENTITY: the gap between its own
-   four factors at both ends (season.js team rows: ff_* and dff_*) and what its own players build over its own
-   rotation, shrunk by its games (IDENTITY_K), put on every five it plays as edits in natural units (winsim.applyEdits).
-   Worked out once, from the club as it really is; a man drafted away still takes his own part with him. The user's
-   club has none: it is new, and what it is is its players. */
+   numbers and what its own players build over its own rotation, shrunk by its games (IDENTITY_K), put on every five it
+   plays as edits in natural units (winsim.applyEdits, and two of the Manager's own below). Worked out once, from the club
+   as it really is; a man drafted away still takes his own part with him. The user's club has none: it is new, and what
+   it is is its players.
+   ITS STYLE FIRST (Louie, 2026-10-14: "Can IRL teams also use their real life styles (i.e. shot frequencies, how much they
+   play in transition etc.)"): its three-point rate and its rim-to-mid-range split, how often it runs and its pace, at
+   both ends (season.js team rows: p3_share, rim_share, mid_share, pace, and the play-by-play's ev_/evd_ splits); then
+   its four factors, against the build with its style on - so its shooting is its own whatever its mix. */
 const IDENTITY_K = 15;
+/* the Manager's own edits (winsim knows the rest): the rim-to-mid-range split (a log-ratio) and the transition rate (a
+   factor) */
+const OWN_EDITS = { rimmid: true, trx: true };
+function ownEdit(r, key, delta) {
+  const out = Object.assign({}, r);
+  if (key === 'rimmid') {
+    const two = r.mixRim + r.mixMid;
+    if (two > 0) {
+      const a = r.mixRim * Math.exp(delta / 2), b = r.mixMid * Math.exp(-delta / 2);
+      out.mixRim = two * a / (a + b); out.mixMid = two * b / (a + b);
+    }
+  } else if (key === 'trx') out.tr = clamp(r.tr * delta, 0.01, 0.9);
+  return out;
+}
+/* a side's identity on its rates, edit by edit in its order (style, then the four factors) */
+function applyIdentity(side, edits, L) {
+  let off = side.off, def = side.def;
+  (edits || []).forEach(e => {
+    if (OWN_EDITS[e.key]) { if (e.end === 'def') def = ownEdit(def, e.key, e.delta); else off = ownEdit(off, e.key, e.delta); return; }
+    const P = SIM().applyEdits({ off, def, n: 0 }, [e], L);
+    off = P.off; def = P.def;
+  });
+  return { off, def };
+}
 function identityOf(team, row, X) {
   if (!row || !(+row.gp > 0)) return null;
-  const S = SIM(), G = X.G || 40, zones = !!X.L.zones;
+  const S = SIM(), G = X.G || 40, zones = !!X.L.zones, mu = X.L.rates;
   const h = prepareSides(Object.assign({}, team, { identity: null }), X, G);
   const segs = team.segs, tot = segs.reduce((a, x) => a + (x.t1 - x.t0), 0);
-  const nat = { off: { efg: 0, tovp: 0, orebp: 0, ftr: 0 }, def: { efg: 0, tovp: 0, orebp: 0, ftr: 0 } };
-  segs.forEach(x => {
-    const side = h.sideFor(x), w = (x.t1 - x.t0) / tot;
-    ['off', 'def'].forEach(end => { const n = S.natural(side[end], zones); Object.keys(nat[end]).forEach(k => { nat[end][k] += w * (isNum(n[k]) ? n[k] : 0); }); });
-  });
+  const sides = segs.map(x => ({ side: h.sideFor(x), w: (x.t1 - x.t0) / tot }));
   const w = +row.gp / (+row.gp + IDENTITY_K);
-  const real = { off: { efg: row.ff_efg, tovp: row.ff_tov, orebp: row.ff_oreb, ftr: row.ff_ftr }, def: { efg: row.dff_efg, tovp: row.dff_tov, orebp: row.dff_oreb, ftr: row.dff_ftr } };
+  const evGp = +row.ev_gp || 0, evdGp = +row.evd_gp || 0, wEvd = evdGp / (evdGp + IDENTITY_K);
+  const num = v => (v == null || v === '' || !isFinite(+v) ? null : +v);
+  const avg = f => sides.reduce((a, x) => a + x.w * f(x.side), 0);
   const edits = [];
+  /* ---- its style ---- */
+  const mixOf = r => { const t = r.mixRim + r.mixMid + r.mix3; return { rim: r.mixRim / t, mid: r.mixMid / t, three: r.mix3 / t }; };
+  const style = (end, p3, rim, mid, tr, wt) => {
+    if (!(wt > 0)) return;
+    const m = { rim: avg(x => mixOf(x[end]).rim), mid: avg(x => mixOf(x[end]).mid), three: avg(x => mixOf(x[end]).three) };
+    if (isNum(p3)) { const d = clamp(wt * (p3 - 100 * m.three), -15, 15); if (Math.abs(d) > 0.2) edits.push({ end, key: 'p3r', delta: d }); }
+    if (zones && isNum(rim) && isNum(mid) && rim > 0 && mid > 0 && m.rim > 0 && m.mid > 0) {
+      const d = clamp(wt * (Math.log(rim / mid) - Math.log(m.rim / m.mid)), -1.2, 1.2);
+      if (Math.abs(d) > 0.02) edits.push({ end, key: 'rimmid', delta: d });
+    }
+    /* how often it runs, against its league's clubs (the play-by-play's transition frequency), on the build's own
+       running against the league's (its transition rate against the league's) */
+    const lgTr = X.L.style ? (end === 'off' ? X.L.style.trFreq : X.L.style.dTrFreq) : null;
+    if (isNum(tr) && tr > 0 && isNum(lgTr) && lgTr > 0) {
+      const natRel = avg(x => x[end].tr) / Math.max(0.01, mu.tr), f = clamp(Math.pow((tr / lgTr) / Math.max(0.2, natRel), wt), 0.5, 2);
+      if (Math.abs(f - 1) > 0.02) edits.push({ end, key: 'trx', delta: f });
+    }
+  };
+  style('off', num(row.p3_share), num(row.rim_share), num(row.mid_share), evGp >= 5 ? num(row.ev_transition_freq) : null, w);
+  if (evdGp >= 5) style('def', num(row.evd_all_p3_sh), num(row.evd_all_rim_sh), num(row.evd_all_mid_sh), num(row.evd_transition_freq), wEvd);
+  /* its pace against its league's clubs': both ends' seconds a possession toward the league's own seconds a possession
+     times the league's pace over its pace (a faster club, shorter possessions) */
+  const pace = num(row.pace), lgPace = X.L.style ? X.L.style.pace : null;
+  if (isNum(pace) && pace > 30 && isNum(lgPace) && lgPace > 30) {
+    const target = mu.d * lgPace / pace, nat = avg(x => (x.off.d + x.def.d) / 2);
+    const d = clamp(w * (target - nat), -4, 4);
+    if (Math.abs(d) > 0.05) { edits.push({ end: 'off', key: 'secs', delta: d }); edits.push({ end: 'def', key: 'secs', delta: d }); }
+  }
+  /* ---- its four factors, against the build with its style on ---- */
+  const nat = { off: { efg: 0, tovp: 0, orebp: 0, ftr: 0 }, def: { efg: 0, tovp: 0, orebp: 0, ftr: 0 } };
+  sides.forEach(x => {
+    const st = applyIdentity(x.side, edits, X.L);
+    ['off', 'def'].forEach(end => { const n = S.natural(st[end], zones); Object.keys(nat[end]).forEach(k => { nat[end][k] += x.w * (isNum(n[k]) ? n[k] : 0); }); });
+  });
+  const real = { off: { efg: row.ff_efg, tovp: row.ff_tov, orebp: row.ff_oreb, ftr: row.ff_ftr }, def: { efg: row.dff_efg, tovp: row.dff_tov, orebp: row.dff_oreb, ftr: row.dff_ftr } };
   ['off', 'def'].forEach(end => ['efg', 'tovp', 'orebp', 'ftr'].forEach(k => {
     const v = +real[end][k];
     if (!isNum(v)) return;
@@ -217,9 +301,78 @@ function identityOf(team, row, X) {
 
 /* ------------------------------------------------------------------ a five --- */
 /* five: [{card, k}]; X: {mu (league rates), ref (this league's reference), tac, mins: Map id -> his minutes this game,
-   form: Map id -> z, G: minutes in a game, dTr: the league's transition make bonus} */
+   form: Map id -> z, G: minutes in a game, dTr: the league's transition make bonus, ins: Map id -> {u, k: Set} - his
+   instructions (core/instruct.js)} */
+
+/* WHAT EACH PLAYER INSTRUCTION ASKS OF HIM (Louie, 2026-10-14; core/instruct.js has the words and the fit). FM's way:
+   it moves what he TRIES, and his own numbers decide how that goes. tilt: his share of the plays, on the usage dial's
+   scale; un: his share of his own (unassisted) makes at each zone, multiplied - more of the ball, more of his own; ast:
+   his passing, multiplied; astQ: more passing the better a passer he is (his AST% against his position's); tov: loose
+   handles, for a man who does not create (times 1 - creator). Where each acts on the shot mix, the transition, the glass
+   and the defence is in sideOf below. */
+const INS = {
+  pas: { tilt: -0.6, un: { rim: 0.7, mid: 0.7, three: 0.85 }, ast: 1.25 },
+  agg: { tilt: 0.6, un: { rim: 1.25, mid: 1.25, three: 1.25 }, ast: 0.8, tov: 0.06 },
+  hm: { tilt: 0.5, un: { rim: 1.15, mid: 1.15, three: 1.15 }, ast: 1.1, tov: 0.05 },
+  hl: { tilt: -0.5, un: { rim: 0.85, mid: 0.85, three: 0.85 }, ast: 0.85 },
+  spot: { tilt: -1.0, un: { rim: 0.3, mid: 0.3, three: 0.3 }, ast: 0.6 },
+  fin: { tilt: -1.2, un: { rim: 0.25, mid: 0.25, three: 0.25 }, ast: 0.5 },
+  push: { tilt: 0.15 },
+  arc: { un: { three: 1.6 } },
+  dh: { un: { rim: 1.3, mid: 1.3 } },
+  kick: { tilt: -0.2, astQ: 0.3 },
+  dump: { astQ: 0.2 },
+  cut: { un: { rim: 0.7 } },
+  space: { un: { three: 0.7 } },
+  green: { un: { three: 1.15 } },
+  roll: { un: { rim: 0.75 } },
+  pop: { un: { three: 0.6 } },
+  short: { astQ: 0.4 },
+  dive: { un: { rim: 0.85 }, ast: 0.8 },
+  pm: { tilt: 0.35, un: { rim: 1.25, mid: 1.25 }, astQ: 0.15 },
+  pl: { tilt: -0.2, un: { rim: 0.85, mid: 0.85 } },
+  nop: { tilt: -0.35, un: { rim: 0.7, mid: 0.7 } }
+};
+/* how far an instruction moves HIS OWN shot mix (a share of his shots), and from where */
+const INS_MIX = {
+  arc: [['three', 0.12, [['mid', 0.6], ['rim', 0.4]]]],
+  dh: [['rim', 0.08, [['three', 0.7], ['mid', 0.3]]], ['mid', 0.03, [['three', 1]]]],
+  green: [['three', 0.12, [['mid', 0.6], ['rim', 0.4]]]],
+  cut: [['rim', 0.08, [['three', 0.6], ['mid', 0.4]]]],
+  space: [['three', 0.08, [['rim', 0.5], ['mid', 0.5]]]],
+  roll: [['rim', 0.08, [['mid', 0.6], ['three', 0.4]]]],
+  dive: [['rim', 0.05, [['mid', 0.6], ['three', 0.4]]]],
+  short: [['rim', 0.03, [['three', 1]]], ['mid', 0.02, [['three', 1]]]],
+  pop: [['three', 0.10, [['rim', 0.5], ['mid', 0.5]]]],
+  pm: [['rim', 0.05, [['three', 1]]], ['mid', 0.04, [['three', 1]]]],
+  pl: [['three', 0.03, [['mid', 0.7], ['rim', 0.3]]]],
+  nop: [['three', 0.05, [['mid', 0.6], ['rim', 0.4]]]],
+  kick: [['three', 0.02, [['rim', 0.5], ['mid', 0.5]]]]
+};
+/* the ball handlers' slider at full: a share of the handler's own shots */
+const HANDLER = { down: 0.16, deep: 0.18 };
+/* a shot he does not usually make his own way costs more than his usual one: a pull-up three for a catch-and-shoot man,
+   a drive or a post-up for a man who scores off passes - on the make logit, for the whole of the extra share, falling
+   to nothing for a man who already takes them his way (un: his unassisted share there, at UN_FULL and above) */
+const DIFF = { pull: 0.25, drive: 0.20, post: 0.20 };
+const UN_FULL = { three: 0.40, rim: 0.50, mid: 0.70 };
+
+/* THE BALL HANDLERS of a five (the team slider's men): its main creator - the most of the plays, weighed by how much of
+   his own he makes, and his passing - in full, and a second where there is a second creator near him */
+function handlerWeights(P) {
+  const sc = P.map(p => p.s * (0.5 + p.c.creator) + 0.002 * p.c.off.ast);
+  const order = sc.map((v, i) => [v, i]).sort((a, b) => b[0] - a[0]);
+  const w = P.map(() => 0);
+  if (order.length) w[order[0][1]] = 1;
+  if (order.length > 1 && order[1][0] > 0) w[order[1][1]] = order[1][0] >= 0.6 * order[0][0] ? 0.6 : 0.3;
+  return w;
+}
+
 function sideOf(five, X) {
   const mu = X.mu, ref = X.ref, tac = normTac(X.tac), G = X.G || 40;
+  const INSm = X.ins instanceof Map ? X.ins : null;
+  const C = CARDS();
+  const posAvg = (c, st, d) => { const v = C && C.atPos ? C.atPos(ref, c.pos, st) : null; return isNum(v) && v > 0 ? v : d; };
   let ms = mu.mixRim + mu.mixMid + mu.mix3;
   const mixMu = { rim: mu.mixRim / ms, mid: mu.mixMid / ms, three: mu.mix3 / ms };
   const lg = { tov: logit(mu.tov), rim: logit(mu.pRim), mid: logit(mu.pMid), three: logit(mu.p3), p2: logit(mu.p2), ft: logit(mu.ft) };
@@ -231,8 +384,13 @@ function sideOf(five, X) {
     const dLoad = fatigueLoad(mins, c.usg, G) - fatigueLoad(c.mpg, c.usg, G);
     const work = clamp((1 - FATIGUE.rate * dLoad) * (1 + FORM.rate * z), 0.6, 1.4);
     const threeApt = clamp(c.mixRel.three * c.p3Rel * c.p3Rel, 0.05, 3), rimApt = clamp(c.mixRel.rim * (1 + 2 * (c.rimRel - 1)), 0.1, 3);
-    return { c, k, e, z, mins, dLoad, work, threeApt, rimApt, u: clamp(c.usg + FORM.usg * z, 5, 45) };
+    /* his instructions, and the few things they lean on: his passing, quick hands, shot blocking and glass against his position's */
+    const I = INSm ? INSm.get(String(c.id)) : null, has = key => !!(I && I.k && I.k.has(key));
+    const passQ = clamp(c.off.ast / posAvg(c, 'ast_pct', 14), 0.2, 3), stlQ = clamp(c.def.stl / posAvg(c, 'stl_pct', 1.6), 0.2, 3);
+    const blkQ = clamp(c.def.blk / posAvg(c, 'blk_pct', 1.5), 0.1, 4), orbQ = clamp(c.off.orb / posAvg(c, 'oreb_pct', 6), 0.1, 4);
+    return { c, k, e, z, mins, dLoad, work, threeApt, rimApt, u: clamp(c.usg + FORM.usg * z, 5, 45), I, has, passQ, stlQ, blkQ, orbQ };
   });
+  const ON = key => P.some(p => p.has(key));
 
   /* ---- WHO TAKES THE PLAYS: the tilts, then the five's plays made to add up (squad.js usageSim) ---- */
   P.forEach(p => {
@@ -240,6 +398,12 @@ function sideOf(five, X) {
     if (tac.feed < 0 && isBig(p.k)) t += -tac.feed;
     if (tac.feed > 0) t += tac.feed * clamp(p.threeApt - 0.6, 0, 1.5);
     if (tac.usage[p.c.id]) t += tac.usage[p.c.id];
+    /* his own instructions: his touches (two steps either way, Louie: "up to 2 either way (to prioritise/lessen the
+       touches of a player)") and what each asks of the ball */
+    if (p.I) {
+      t += 0.5 * clamp(+p.I.u || 0, -2, 2);
+      p.I.k.forEach(key => { const d = INS[key]; if (d && d.tilt) t += d.tilt; });
+    }
     p.tilt = t;
     p.d = Math.max(0, p.u - USG_FLOOR) * (1 + p.c.creator) + 2;
     /* a tilt hands him 60% of his discretionary usage more at full, and three points besides (a role player near the
@@ -254,22 +418,39 @@ function sideOf(five, X) {
     /* the skill curve: more plays than he is used to cost him (the more so the less he creates); fewer give a little back */
     p.skill = du > 0 ? -SKILL_L * du * (1 + 0.8 * (1 - p.c.creator)) : -SKILL_L * du * 0.6;
     p.tovSkill = du > 0 ? 0.01 * du * (1 - p.c.creator) : 0;
+    /* HIS OWN SHOTS AND HIS PASSING under his instructions: the unassisted share at each zone, the assist rate */
+    p.un = { rim: p.c.un.rim, mid: p.c.un.mid, three: p.c.un.three };
+    let astM = 1, tovI = 0;
+    if (p.I) p.I.k.forEach(key => {
+      const d = INS[key]; if (!d) return;
+      if (d.un) ZONES.forEach(zn => { if (d.un[zn]) p.un[zn] = clamp(p.un[zn] * d.un[zn], 0.01, 0.97); });
+      if (d.ast) astM *= d.ast;
+      if (d.astQ) astM *= 1 + d.astQ * clamp(p.passQ - 0.6, 0, 1.4);
+      if (d.tov) tovI += d.tov * 2 * (1 - p.c.creator);
+    });
+    /* the short roll's decisions in traffic: a big who cannot pass turns it over */
+    if (p.has('short')) tovI += 0.08 * clamp(1.2 - p.passQ, 0, 1);
+    p.astM = astM; p.tovI = tovI;
   });
+  /* the ball handlers, for the team's slider */
+  const hw = handlerWeights(P);
+  P.forEach((p, i) => { p.hw = hw[i]; p.down = Math.max(0, -tac.handlers) * hw[i]; p.deep = Math.max(0, tac.handlers) * hw[i]; });
 
-  /* ---- THE FIVE TOGETHER (first, the tactics lean on it): its passing ---- */
-  const A5 = clamp(P.reduce((a, p) => a + p.c.off.ast * p.work, 0) / Math.max(1, ref.five.ast_pct), 0.3, 2.5);
+  /* ---- THE FIVE TOGETHER (first, the tactics lean on it): its passing, with each man's instructions ---- */
+  const A5 = clamp(P.reduce((a, p) => a + p.c.off.ast * p.astM * p.work, 0) / Math.max(1, ref.five.ast_pct), 0.3, 2.5);
 
-  /* ---- WHERE THEY SHOOT FROM: his mix in this league, moved by the tactics, and what the move costs him ----
-     A tactic moves the FIVE's shot mix by a few points of its shots (SHIFT, at full), and each man's part of the move by
-     his aptitude for it - and every man takes part (a coach's instruction is for the five): a five of non-shooters told
-     to punish from deep takes more threes too, and misses them. The new shots come out of the mid-range first (the shot
-     every plan gives up first), then the other zone. */
+  /* ---- WHERE THEY SHOOT FROM: his mix in this league, moved by the tactics and his instructions, and what the move costs ----
+     A team tactic moves the FIVE's shot mix by a few points of its shots (SHIFT, at full), and each man's part of the move
+     by his aptitude for it - and every man takes part (a coach's instruction is for the five). The ball handlers' slider
+     and a player's own instructions move HIS mix only. The new shots come out of the mid-range first (the shot every plan
+     gives up first), then the other zone. */
   P.forEach(p => {
     const c = p.c;
     let m0 = { rim: mixMu.rim * c.mixRel.rim, mid: mixMu.mid * c.mixRel.mid, three: mixMu.three * c.mixRel.three };
     ms = m0.rim + m0.mid + m0.three; m0 = { rim: m0.rim / ms, mid: m0.mid / ms, three: m0.three / ms };
     p.m0 = m0; p.m = Object.assign({}, m0);
-    p.catchApt = (1 - c.un.three) * p.threeApt; p.cutApt = (1 - c.un.rim) * p.rimApt;
+    p.catchApt = (1 - p.un.three) * p.threeApt; p.cutApt = (1 - p.un.rim) * p.rimApt;
+    p.extra = { pull: 0, drive: 0, post: 0 };
   });
   const moveAdd = (m, z, add, from) => {
     const out = Object.assign({}, m);
@@ -286,29 +467,68 @@ function sideOf(five, X) {
     P.forEach((p, i) => { p.m = moveAdd(p.m, z, Math.min(0.6, total * P.length * ws[i] / W), from); });
   };
   const aptOf = k => p => 0.4 + 0.6 * clamp(p[k], 0, 2);
-  shiftZone('rim', SHIFT.downhill * tac.downhill, aptOf('rimApt'), [['mid', 0.7], ['three', 0.3]]);
-  shiftZone('three', SHIFT.deep * tac.deep, aptOf('threeApt'), [['mid', 0.7], ['rim', 0.3]]);
+  /* his own: the ball handlers' slider, then his instructions */
+  P.forEach(p => {
+    if (p.deep > 0) { const before = p.m.three; p.m = moveAdd(p.m, 'three', HANDLER.deep * p.deep, [['mid', 0.7], ['rim', 0.3]]); p.extra.pull += p.m.three - before; }
+    if (p.down > 0) { const before = p.m.rim; p.m = moveAdd(p.m, 'rim', HANDLER.down * p.down, [['mid', 0.7], ['three', 0.3]]); p.extra.drive += p.m.rim - before; }
+    if (!p.I) return;
+    p.I.k.forEach(key => (INS_MIX[key] || []).forEach(([z, add, from]) => {
+      const before = p.m[z];
+      p.m = moveAdd(p.m, z, add, from);
+      if (key === 'arc') p.extra.pull += p.m[z] - before;
+      if (key === 'dh') p.extra.drive += p.m[z] - before;
+      if (key === 'pm') p.extra.post += p.m[z] - before;
+    }));
+    /* rip through: threes turned down for the rim or the mid-range, whichever he scores better at */
+    if (p.has('rip')) {
+      const take = Math.min(p.m.three * 0.9, 0.10), midApt = Math.exp(clamp(p.c.off.dMid || 0, -1, 1)) * clamp(p.c.mixRel.mid, 0.2, 3), toRim = p.rimApt / (p.rimApt + midApt);
+      p.m = { rim: p.m.rim + take * toRim, mid: p.m.mid + take * (1 - toRim), three: p.m.three - take };
+      p.extra.drive += take * toRim;
+    }
+    /* spot-ups and cuts only, a finisher only: the mid-range (the shot of his own) goes to catch-and-shoot threes and cuts */
+    if (p.has('spot')) { const take = p.m.mid * 0.5, r3 = clamp(p.catchApt / (p.catchApt + p.cutApt + 1e-6), 0.2, 0.8); p.m = { rim: p.m.rim + take * (1 - r3), mid: p.m.mid - take, three: p.m.three + take * r3 }; }
+    if (p.has('fin')) { const tm = p.m.mid * 0.7, t3 = p.m.three * 0.6; p.m = { rim: p.m.rim + tm + t3, mid: p.m.mid - tm, three: p.m.three - t3 }; }
+    /* a pick-and-pop big who can put it on the floor attacks the close-out */
+    if (p.has('pop') && p.rimApt > 1) p.m = moveAdd(p.m, 'rim', 0.02, [['mid', 1]]);
+  });
+  /* the five's: the team's tactics */
   /* cutting needs somebody to find the cutter: the five's passing scales how many of the cuts become shots */
   if (tac.motion < 0) shiftZone('rim', SHIFT.cut * -tac.motion * clamp(A5, 0.3, 1.5), p => 0.3 + 0.7 * clamp(p.cutApt, 0, 2), [['three', 0.5], ['mid', 0.5]]);
   if (tac.motion > 0) shiftZone('three', SHIFT.space * tac.motion, aptOf('catchApt'), [['mid', 0.8], ['rim', 0.2]]);
   if (tac.feed < 0) shiftZone('rim', SHIFT.feed * -tac.feed, p => (isBig(p.k) ? 1 : 0.1), [['three', 0.6], ['mid', 0.4]]);
   if (tac.feed > 0) shiftZone('three', SHIFT.feed * tac.feed, p => clamp(p.threeApt - 0.6, 0, 1.5) + 0.05, [['mid', 0.7], ['rim', 0.3]]);
+  /* kick-outs and dump-offs: the passer's looks go to the men he finds - the shooters' catch-and-shoot threes, the bigs'
+     shots at the rim - as many as his passing finds (his share of the plays, his passing) */
+  const kick = P.reduce((a, p) => a + (p.has('kick') ? p.s * clamp(p.passQ, 0.4, 2) : 0), 0);
+  const dump = P.reduce((a, p) => a + (p.has('dump') ? p.s * clamp(p.passQ, 0.4, 2) : 0), 0);
+  if (kick > 0) shiftZone('three', 0.05 * kick, p => (p.has('kick') ? 0 : clamp(p.catchApt, 0, 2)), [['mid', 0.6], ['rim', 0.4]]);
+  if (dump > 0) shiftZone('rim', 0.05 * dump, p => (p.has('dump') ? 0 : isBig(p.k) ? 0.4 + clamp(p.cutApt, 0, 2) : 0.05), [['mid', 0.6], ['three', 0.4]]);
   P.forEach(p => {
     const c = p.c, m0 = p.m0, m = p.m;
     p.vol = {};
     ZONES.forEach(zn => {
       const r = m0[zn] > 1e-6 ? m[zn] / m0[zn] : 1;
+      /* the volume cost reads his HABIT (his own unassisted share), never what the instruction asks of him */
       p.vol[zn] = r > 1 ? -KAPPA[zn] * Math.log(r) * (1 - 0.6 * c.un[zn]) : KAPPA[zn] * 0.5 * Math.log(1 / Math.max(r, 1e-6));
     });
+    /* the shots he does not usually make his own way: pull-up threes, drives and post-ups, for the share added */
+    const diff = (key, zn, share) => { if (!(share > 0) || !(m[zn] > 0)) return 0; return -DIFF[key] * (1 - clamp(c.un[zn] / UN_FULL[zn], 0, 1)) * Math.min(1, share / m[zn]); };
+    p.vol.three += diff('pull', 'three', p.extra.pull);
+    p.vol.rim += diff('drive', 'rim', p.extra.drive);
+    if (p.extra.post > 0) { const pp = -DIFF.post * (1 - c.creator) * Math.min(1, p.extra.post / Math.max(0.05, m.rim + m.mid)); p.vol.rim += pp; p.vol.mid += pp; }
     /* the rim brings the fouls: his trips move with the square root of his rim share's change */
     p.rFta = c.off.rFta * Math.sqrt(m.rim / Math.max(0.02, m0.rim));
   });
 
   /* ---- THE FIVE TOGETHER: spacing, passing, the running habit ---- */
   /* a man's threat: his share of threes against the league's, times how well he shoots them - nothing under three
-     quarters of the league's 3P% (nobody guards a non-shooter out there), the league's 1, a fifth better 1.8 */
-  const threat = p => clamp(p.m.three / Math.max(0.01, mixMu.three), 0, 2.5) * clamp((p.c.p3Rel - 0.75) * 4, 0, 2);
-  const spacing = clamp(mean(P.map(threat)), 0.1, 2.5);
+     quarters of the league's 3P% (nobody guards a non-shooter out there), the league's 1, a fifth better 1.8; a cutter and a
+     crasher stand in the paint, a spacer and a popping big stand out there */
+  const threatMul = p => (p.has('cut') ? 0.6 : 1) * (p.has('crash') ? 0.85 : 1) * (p.has('space') || p.has('pop') ? 1.15 : 1);
+  const threat = p => clamp(p.m.three / Math.max(0.01, mixMu.three), 0, 2.5) * clamp((p.c.p3Rel - 0.75) * 4, 0, 2) * threatMul(p);
+  /* a rolling big who finishes is room of its own: the defence has to sink to him */
+  const vertical = P.reduce((a, p) => a + (p.has('roll') ? 0.06 * clamp(p.c.rimRel - 0.95, 0, 0.5) * 10 : 0), 0);
+  const spacing = clamp(mean(P.map(threat)) + vertical, 0.1, 2.5);
   /* a packed paint: fewer rim attempts for everybody (they go to the mid-range), more with real spacing */
   P.forEach(p => {
     const f = clamp(1 + SYN.spaceMix * (spacing - 1), 0.7, 1.25), rim = clamp(p.m.rim * f, 0.01, 0.9), d = p.m.rim - rim;
@@ -327,21 +547,46 @@ function sideOf(five, X) {
      five's own transition against its half court, less what an unfamiliar five gives away */
   const leakMake = dTrShare * ((X.dTr || 0) + ((trEff - hcEff) - 0.25 * unfam) / PPP_LOGIT);
   const leakTov = 0.15 * tac.leak * unfam;
+  /* PUSH IN TRANSITION and SLOW IT DOWN, a man at a time (Louie: "can't just give a low transition player the transition
+     based instructions and it work optimally"): the possessions he has the ball in run more (or less) - his share of the
+     plays - and the extra chances go at HIS transition rate against his half court, less what he gives away for being
+     unused to running (his own unfamiliarity, and his turnovers for it); slowing it down plays his chances at his half
+     court rate */
+  const pushW = P.reduce((a, p) => a + (p.has('push') ? p.s : 0), 0), slowW = P.reduce((a, p) => a + (p.has('slow') ? p.s : 0), 0);
+  const trPush = clamp(1 + 0.8 * pushW - 0.6 * slowW, 0.4, 1.8);
+  P.forEach(p => {
+    p.trMake = 0; p.trTov = 0;
+    const own = p.c.off.tr, uf = Math.max(0, 1 - own.share / Math.max(0.01, ref.trShare));
+    if (p.has('push')) {
+      const moved = trShare0 * 0.8;
+      p.trMake = moved * ((X.dTr || 0) + ((own.ppp - own.hcPpp) - 0.30 * uf) / PPP_LOGIT);
+      p.trTov = 0.30 * uf;
+    }
+    /* the chances he walks up: from his transition rate (and the league's transition bonus) to his half court rate */
+    if (p.has('slow')) { const moved = trShare0 * 0.6; p.trMake += moved * ((own.hcPpp - own.ppp) / PPP_LOGIT - (X.dTr || 0)); }
+  });
   /* the on/off of the offence, half weight over the five */
   const onEfg = 0.5 * 0.04 * P.reduce((a, p) => a + p.c.onoff.efg, 0), onTov = 0.5 * 0.04 * P.reduce((a, p) => a + p.c.onoff.tov, 0);
+  /* CREATION, A FIVE'S OWN (the What wins model's creation efficacy): a five with nobody to make a shot out of nothing
+     ends more possessions late in the clock - turnovers and forced shots; around the league's five, nothing */
+  const create5 = P.reduce((a, p) => a + p.s * (p.c.creator * Math.sqrt(p.un.rim / Math.max(0.05, p.c.un.rim + 1e-6))), 0);
+  const createGap = clamp(0.22 - create5, 0, 0.22);
 
   /* ---- EACH MAN'S PLAYS ---- */
   P.forEach(p => {
     const c = p.c, o = c.off;
-    const common = p.skill - FAT_LOGIT * p.dLoad + FORM.make * p.z - OOP.make * p.e * p.e + onEfg + leakMake;
-    const pass = zn => SYN.pass * (A5 - 1) * (1 - c.un[zn]);
+    const common = p.skill - FAT_LOGIT * p.dLoad + FORM.make * p.z - OOP.make * p.e * p.e + onEfg + leakMake + p.trMake - 0.3 * createGap;
+    const pass = zn => SYN.pass * (A5 - 1) * (1 - p.un[zn]);
     /* driving into a packed paint: the downhill game finishes better with shooters around it */
-    const lane = 0.10 * tac.downhill * clamp(spacing - 1, -0.8, 0.8);
+    const lane = 0.10 * p.down * clamp(spacing - 1, -0.8, 0.8) + (p.has('dh') ? 0.06 * clamp(spacing - 1, -0.8, 0.8) : 0);
     /* cutting finishes on passes (the five's passing decides it); spacing opens the lane for the men who drive (its
        shooting decides it): both centred on the league's five, so a five without passers or shooters loses by it */
     let motion = 0;
-    if (tac.motion < 0) motion = 0.30 * -tac.motion * (A5 - 1) * (1 - c.un.rim);
-    if (tac.motion > 0) motion = 0.15 * tac.motion * (spacing - 1) * c.un.rim;
+    if (tac.motion < 0) motion = 0.30 * -tac.motion * (A5 - 1) * (1 - p.un.rim);
+    if (tac.motion > 0) motion = 0.15 * tac.motion * (spacing - 1) * p.un.rim;
+    if (p.has('cut')) motion += 0.20 * (A5 - 1) * (1 - p.un.rim);
+    /* a roller's finishes come off the handler's pass: the five's passing again */
+    if (p.has('roll')) motion += 0.15 * (A5 - 1);
     const dRim = isNum(o.dRim) ? o.dRim : o.d2, dMid = isNum(o.dMid) ? o.dMid : o.d2;
     p.p = {
       rim: expit(lg.rim + dRim + common + p.vol.rim + pass('rim') + SYN.space * clamp(spacing - 1, -0.8, 0.8) + motion + lane),
@@ -350,7 +595,8 @@ function sideOf(five, X) {
     };
     p.ft = expit(lg.ft + o.dFt);
     /* driving into traffic: the men who do not get to the rim, and the loose handles, give it away */
-    let tovAdj = p.tovSkill + OOP.tov * p.e * p.e + onTov + leakTov + tac.downhill * (0.14 * (1.5 - clamp(p.rimApt, 0, 1.5)) + 0.05 * clamp(o.dTov, -1, 1));
+    const downTov = (p.down + (p.has('dh') ? 0.6 : 0)) * (0.14 * (1.5 - clamp(p.rimApt, 0, 1.5)) + 0.05 * clamp(o.dTov, -1, 1));
+    let tovAdj = p.tovSkill + OOP.tov * p.e * p.e + onTov + leakTov + downTov + p.tovI + p.trTov + 0.4 * createGap;
     if (tac.motion < 0) tovAdj += 0.03 * -tac.motion + 0.10 * -tac.motion * clamp(1.2 - A5, 0, 1);
     p.tov = expit(lg.tov + o.dTov + tovAdj);
     let sf = mu.sfoul * p.rFta, bo = mu.bonus * (0.5 + 0.5 * p.rFta);
@@ -376,26 +622,47 @@ function sideOf(five, X) {
   off.ft = TR > 0 ? P.reduce((a, p, i) => a + trips[i] * p.ft, 0) / TR : mu.ft;
   off.live = mu.live;
   const sumRate = (f, w) => P.reduce((a, p) => a + f(p) * (w ? p.work : 1), 0);
-  const orb5 = sumRate(p => p.c.off.orb, true);
+  /* the glass: a crasher attacks it as well as he rebounds (his ORB% against his position's) */
+  P.forEach(p => { p.orb = p.c.off.orb * (p.has('crash') ? 1 + 0.45 * clamp(p.orbQ, 0.3, 2.2) : 1) * (p.has('spot') || p.has('pop') ? 0.85 : 1); });
+  const orb5 = sumRate(p => p.orb, true);
   off.orb = clamp(mu.orb + DR * (orb5 - ref.five.oreb_pct) / 100 + 0.5 * P.reduce((a, p) => a + p.c.onoff.oreb, 0) / 100
     + 0.05 * tac.crash * (clamp(orb5 / Math.max(1, ref.five.oreb_pct), 0.3, 2) - 0.5), 0.04, 0.65);
   const pace5 = clamp(mean(P.map(p => p.c.off.pace)), 0.8, 1.25);
-  off.d = mu.d / Math.sqrt(pace5) * (1 - 0.05 * tac.leak) * (1 - 0.02 * tac.downhill) * (1 + 0.03 * Math.max(0, -tac.feed));
-  off.tr = clamp(mu.tr * Math.sqrt(trRel) * trMult, 0.01, 0.9);
+  const downAll = Math.max(...P.map(p => p.down)), postW = P.reduce((a, p) => a + (p.has('pm') ? p.s : 0), 0);
+  off.d = mu.d / Math.sqrt(pace5) * (1 - 0.05 * tac.leak) * (1 - 0.02 * downAll) * (1 + 0.03 * Math.max(0, -tac.feed))
+    * (1 - 0.06 * pushW + 0.07 * slowW) * (1 + 0.04 * postW);
+  off.tr = clamp(mu.tr * Math.sqrt(trRel) * trMult * trPush, 0.01, 0.9);
 
   /* ---- THE FIVE'S DEFENCE: what an average offence gets against it ---- */
   const def = {};
-  const stl5 = sumRate(p => p.c.def.stl, true), blk5 = sumRate(p => p.c.def.blk, true);
+  /* each man's part, under his instructions: gambling (steals for quick hands), staying solid (fewer), rim protection
+     asked for (blocks for a shot blocker, fouls for anybody), the big's coverage */
+  P.forEach(p => {
+    let stl = p.c.def.stl, blk = p.c.def.blk, pf = p.c.def.pf40, save = p.c.def.rimSave;
+    if (p.has('gam')) { stl *= 1 + 0.6 * clamp(p.stlQ, 0.3, 2); pf *= 1.15; }
+    if (p.has('sol')) { stl *= 0.75; pf *= 0.9; }
+    if (p.has('rimp') || p.has('rima')) { blk *= 1 + 0.5 * clamp(p.blkQ, 0.2, 2.5); pf *= p.has('rima') ? 1.25 : 1.2; }
+    if (p.has('cons')) { blk *= 0.7; save *= 0.8; pf *= 0.75; }
+    if (p.has('hedge')) { blk *= 0.7; save *= 0.5; stl *= 1 + 0.25 * clamp(p.stlQ, 0.3, 2); }
+    if (p.has('drop')) { blk *= 1 + 0.15 * clamp(p.blkQ, 0.2, 2.5); save = save > 0 ? save * 1.3 : save; }
+    p.dstl = stl; p.dblk = blk; p.dpf = pf; p.dsave = save;
+  });
+  const stl5 = sumRate(p => p.dstl, true), blk5 = sumRate(p => p.dblk, true);
   let drb5 = sumRate(p => p.c.def.drb, true);
   /* the leakers leave the glass: the two (of the guards and the wing) most used to running, their boards partly lost */
   if (tac.leak > 0) {
     const leakers = P.filter(p => p.k <= 2).sort((a, b) => b.c.off.tr.share - a.c.off.tr.share).slice(0, 2);
     drb5 -= 0.15 * tac.leak * leakers.reduce((a, p) => a + p.c.def.drb * p.work, 0);
   }
-  const pf5 = sumRate(p => p.c.def.pf40, false);
-  const rimSave5 = P.reduce((a, p) => a + p.c.def.rimSave, 0), deter5 = P.reduce((a, p) => a + p.c.def.rimDeter, 0);
+  /* a pusher leaks a little too */
+  drb5 -= 0.08 * P.reduce((a, p) => a + (p.has('push') ? p.c.def.drb * p.work : 0), 0);
+  const pf5 = sumRate(p => p.dpf, false);
+  const rimSave5 = P.reduce((a, p) => a + p.dsave, 0), deter5 = P.reduce((a, p) => a + p.c.def.rimDeter, 0);
   const stlRel = stl5 / Math.max(0.5, ref.five.stl_pct);
-  def.tov = clamp(mu.tov + DR * (stl5 - ref.five.stl_pct) / 100 + 0.5 * 0.01 * P.reduce((a, p) => a + p.c.onoff.vsTov, 0) + 0.02 * tac.gamble * stlRel, 0.04, 0.4);
+  /* the hedging big forces turnovers - with the feet for it (his steal rate against his position's: a stand-in for how
+     well he moves) - and leaves the rim to the others */
+  const hedge = P.filter(p => p.has('hedge')), hedgeTov = hedge.reduce((a, p) => a + 0.010 * clamp(p.stlQ, 0.3, 2), 0);
+  def.tov = clamp(mu.tov + DR * (stl5 - ref.five.stl_pct) / 100 + 0.5 * 0.01 * P.reduce((a, p) => a + p.c.onoff.vsTov, 0) + 0.02 * tac.gamble * stlRel + hedgeTov, 0.04, 0.4);
   def.live = clamp(mu.live + 0.8 * ((stl5 - ref.five.stl_pct) / 100 + 0.02 * tac.gamble * stlRel) / def.tov, 0.2, 0.92);
   /* rim protection: the five's blocks, and the rim on/off at half weight (the five's men share one floor) */
   const prot = clamp((blk5 / Math.max(0.5, ref.five.blk_pct) - 1) + 0.5 * rimSave5 / 4, -1, 2);
@@ -410,10 +677,20 @@ function sideOf(five, X) {
     if (p.k >= 3 && p.c.pos < p.k + 1) dRim += OOP.rim * p.e * p.e;
     if (p.k <= 1 && p.c.pos > p.k + 1) d3 += OOP.three * p.e * p.e;
   });
-  /* gambling: steals for quick hands, open shots when it misses (the fewer the hands, the more it misses) */
-  const gambleCost = 0.10 * tac.gamble * clamp(1.4 - stlRel, 0, 1.4);
+  /* gambling: steals for quick hands, open shots when it misses (the fewer the hands, the more it misses) - the team's
+     tactic for the five, and each gambler's own */
+  const gambleCost = 0.10 * tac.gamble * clamp(1.4 - stlRel, 0, 1.4) + P.reduce((a, p) => a + (p.has('gam') ? 0.03 * clamp(1.4 - p.stlQ, 0, 1.4) + 0.006 : 0), 0);
   dRim += gambleCost; dMid += gambleCost; d3 += gambleCost;
-  let mixRim = mu.mixRim * Math.exp(-0.5 * deter5 / Math.max(5, ref.rimVol)), mixMid = mu.mixMid, mix3 = mu.mix3;
+  /* staying solid: better contests */
+  const solid = P.reduce((a, p) => a + (p.has('sol') ? 0.012 : 0), 0);
+  dMid -= solid; d3 -= solid;
+  /* asked to go for blocks: a shot blocker turns them away, anybody gives up and-ones */
+  P.forEach(p => { if (p.has('rimp') || p.has('rima')) dRim -= 0.02 * clamp(p.blkQ - 0.6, -0.4, 1.5); if (p.has('cons')) dRim += 0.012; });
+  /* a hedging big who cannot move gives up the drive and the pop; a dropping big gives up the mid-range */
+  let mixRimF = 1, mixMidF = 1;
+  hedge.forEach(p => { dRim += 0.03 * clamp(0.9 - p.stlQ, 0, 0.9); dMid += 0.02 * clamp(0.9 - p.stlQ, 0, 0.9); mixRimF *= 1.04; });
+  P.forEach(p => { if (p.has('drop')) { mixMidF *= 1.12; mixRimF *= 0.95; dMid += 0.05; } });
+  let mixRim = mu.mixRim * Math.exp(-0.5 * deter5 / Math.max(5, ref.rimVol)) * mixRimF, mixMid = mu.mixMid * mixMidF, mix3 = mu.mix3;
   if (tac.scheme < 0) {
     const a = -tac.scheme;
     mixRim *= 1 + 0.25 * a; mix3 *= 1 - 0.2 * a;
@@ -423,8 +700,10 @@ function sideOf(five, X) {
     mixRim *= 1 - 0.25 * a; mix3 *= 1 + 0.2 * a;
     d3 += a * (0.18 - 0.2 * perim); dRim -= 0.06 * a;
   }
-  /* crashing the offensive glass gives the opponents more transition: the league's transition bonus on the share */
-  if (tac.crash > 0) { const up = 0.5 * tac.crash * ref.trShare * (X.dTr || 0); dRim += up; dMid += up; d3 += up; }
+  /* crashing the offensive glass gives the opponents more transition: the league's transition bonus on the share - the
+     team's tactic, and each crasher's own */
+  const crashers = P.filter(p => p.has('crash')).length;
+  if (tac.crash > 0 || crashers) { const up = (0.5 * tac.crash + 0.15 * crashers) * ref.trShare * (X.dTr || 0); dRim += up; dMid += up; d3 += up; }
   ms = mixRim + mixMid + mix3;
   def.mixRim = mixRim / ms; def.mixMid = mixMid / ms; def.mix3 = mix3 / ms;
   def.pRim = expit(lg.rim + dRim); def.pMid = expit(lg.mid + dMid); def.p3 = expit(lg.three + d3);
@@ -433,17 +712,17 @@ function sideOf(five, X) {
     - 0.02 * Math.max(0, tac.scheme), 0.04, 0.65);
   const foul = Math.pow(clamp(pf5 / Math.max(1, ref.five.pf40), 0.5, 2), 0.7) * (1 + 0.12 * tac.gamble) * (1 + 0.005 * P.reduce((a, p) => a + p.c.onoff.vsFtr, 0));
   def.sfoul = clamp(mu.sfoul * foul, 0.01, 0.25); def.bonus = clamp(mu.bonus * foul, 0.005, 0.2);
-  def.and1 = mu.and1; def.ft = mu.ft;
-  def.tr = clamp(mu.tr * (1 + 0.5 * tac.crash), 0.01, 0.9);
+  def.and1 = mu.and1 * (1 + 0.06 * P.filter(p => p.has('rimp') || p.has('rima')).length); def.ft = mu.ft;
+  def.tr = clamp(mu.tr * (1 + 0.5 * tac.crash + 0.12 * crashers), 0.01, 0.9);
   def.d = mu.d / Math.sqrt(pace5) * (1 - 0.03 * tac.gamble) * (1 + 0.02 * Math.max(0, tac.scheme)) * (1 - 0.03 * tac.crash);
 
   return {
     off, def, n: 0,
-    /* what each man does here, for the box score and the screens */
-    men: P.map(p => ({ id: p.c.id, k: p.k, s: p.s, u: p.u, u2: p.u2, tov: p.tov, trip: p.sfoul + p.bonus, m: p.m, p: p.p, ft: p.ft,
-      orb: p.c.off.orb * p.work, drb: p.c.def.drb * p.work, stl: p.c.def.stl * p.work, blk: p.c.def.blk * p.work, pf: p.c.def.pf40, ast: p.c.off.ast * p.work,
-      un: p.c.un, e: p.e, dLoad: p.dLoad, z: p.z })),
-    five: { spacing, passing: A5, run: trRel, prot, perim, stl: stl5, blk: blk5, drb: drb5, orb: orb5 },
+    /* what each man does here, for the box score, the play-by-play and the screens */
+    men: P.map(p => ({ id: p.c.id, k: p.k, s: p.s, u: p.u, u2: p.u2, tov: p.tov, trip: p.sfoul + p.bonus, sfoul: p.sfoul, bonus: p.bonus, m: p.m, p: p.p, ft: p.ft, and1: p.and1,
+      orb: p.orb * p.work, drb: p.c.def.drb * p.work, stl: p.dstl * p.work, blk: p.dblk * p.work, pf: p.dpf, ast: p.c.off.ast * p.astM * p.work,
+      un: p.un, e: p.e, dLoad: p.dLoad, z: p.z, hw: p.hw, tr: p.c.off.tr.share * (p.has('push') ? 1.8 : p.has('slow') ? 0.6 : 1), ins: p.I ? [...p.I.k] : [] })),
+    five: { spacing, passing: A5, run: trRel, prot, perim, stl: stl5, blk: blk5, drb: drb5, orb: orb5, create: create5 },
     tac
   };
 }
@@ -484,7 +763,26 @@ function autoRotation(players, G, o) {
      share of his minutes at) with the most of its game still to fill, weighed by how much of his time he spends there -
      so a club with five small forwards and one centre plays a forward at the four, and nobody runs forty minutes */
   const need = [G, G, G, G, G];
+  /* ITS REAL STARTERS FIRST (Louie, 2026-10-14: "Can IRL teams also use their real ... rotations?"): the five it starts
+     (o.starters, from its games' starting fives, the recent ones counting most) each to the open position he plays most,
+     the most-used first; they open and close every quarter, and nobody moves them */
+  const starters = o && o.starters ? new Set([...o.starters].map(String)) : null;
+  if (starters) {
+    /* a starter is one of the season's regulars (its eight most-used men): the minutes here are the season's, so a late
+       signing or a man who lost his place, starting of late, is not made to open every quarter (a club built that way
+       played nothing like its season: CEBL 2026's clubs, whose rosters turn over in the summer, 2026-10-14) */
+    const st = men.slice(0, 8).filter(p => starters.has(p.id));
+    if (st.length >= 3) {
+      const open = new Set([0, 1, 2, 3, 4]);
+      st.forEach(p => {
+        let best = -1, sc = -Infinity;
+        open.forEach(k => { const v = p.share[k] - 0.25 * Math.abs(k - slotOf(p)); if (v > sc) { sc = v; best = k; } });
+        if (best >= 0) { p.slot = best; p.starter = true; depth[best].push(p); need[best] -= p.mpg; open.delete(best); }
+      });
+    }
+  }
   men.forEach(p => {
+    if (p.starter) return;
     const own = slotOf(p);
     let best = own, score = -Infinity;
     [0, 1, 2, 3, 4].forEach(k => {
@@ -507,7 +805,7 @@ function autoRotation(players, G, o) {
     const thin = [0, 1, 2, 3, 4].filter(thinAt).sort((a, b) => tot(a) - tot(b));
     if (!thin.length) break;
     const k = thin[0];
-    const cands = men.filter(p => p.slot !== k && !moved.has(p.id) && depth[p.slot].length >= 3 - (tot(p.slot) - p.mpg >= 0.9 * G ? 1 : 0)
+    const cands = men.filter(p => p.slot !== k && !p.starter && !moved.has(p.id) && depth[p.slot].length >= 3 - (tot(p.slot) - p.mpg >= 0.9 * G ? 1 : 0)
       && p.mpg < top(p.slot) && tot(p.slot) - p.mpg >= 0.7 * G)
       .sort((a, b) => (Math.abs(a.slot - k) - Math.abs(b.slot - k)) || (b.share[k] - a.share[k]) || (a.mpg - b.mpg));
     const c = cands[0];
@@ -523,7 +821,7 @@ function autoRotation(players, G, o) {
     let left = G - mins.reduce((a, v) => a + v, 0);
     for (let i = 0; i < mins.length && left > 1e-9; i++) { const add = Math.min(left, 0.9 * G - mins[i]); if (add > 0) { mins[i] += add; left -= add; } }
     if (left > 1e-9) mins[0] += left;
-    return d.map((p, i) => ({ id: p.id, min: mins[i] })).sort((a, b) => b.min - a.min);
+    return d.map((p, i) => ({ id: p.id, min: mins[i], st: !!p.starter })).sort((a, b) => (b.st - a.st) || (b.min - a.min));
   });
   /* the clock, a position at a time: per quarter the starter opens (60% of his quarter) and closes (40%) */
   const q = G / 4, cuts = new Set([0, G]), lanes = plan.map(list => {
@@ -618,13 +916,15 @@ function interact(r, o, d) {
 function prepareSides(T, X, G) {
   const mins = minutesOf(T.segs), cache = new Map();
   const sideFor = s => {
-    const tac = normTac(s.tac || T.tac), key = s.ids.join('|') + '#' + tacKey(tac);
+    const tac = normTac(s.tac || T.tac), key = s.ids.join('|') + '#' + tacKey(tac) + '#' + insKey(T.ins);
     if (cache.has(key)) return cache.get(key);
     const five = s.ids.map((id, k) => ({ card: T.cards.get(String(id)), k })).filter(x => x.card);
     if (five.length !== 5) throw new Error('a five is missing a player: ' + s.ids.join(','));
-    const side = sideOf(five, { mu: X.L.rates, ref: X.ref, tac, mins, form: T.form || X.form, G, zones: X.L.zones, dTr: X.L.dTr || 0 });
+    const side = sideOf(five, { mu: X.L.rates, ref: X.ref, tac, mins, form: T.form || X.form, G, zones: X.L.zones, dTr: X.L.dTr || 0, ins: T.ins || null });
+    /* the five's own rates before its club's identity: each man's rates are read against them (core/match.js) */
+    side.off0 = side.off; side.def0 = side.def;
     if (T.identity && T.identity.length) {
-      const P = SIM().applyEdits({ off: side.off, def: side.def, n: 0 }, T.identity, X.L);
+      const P = applyIdentity(side, T.identity, X.L);
       side.off = P.off; side.def = P.def;
     }
     cache.set(key, side);
@@ -856,6 +1156,6 @@ function pbp(stretches, trace, X, G, R, RT) {
   return { box: out, events, poss };
 }
 
-return { use, sideOf, rotation, autoRotation, overlay, minutesOf, mixRates, interact, play, preview, pbp, leagueOf, identityOf, normTac, tacKey, rng, hashOf, fatigueLoad,
+return { use, sim: () => SIM(), styleOf, sideOf, handlerWeights, applyIdentity, insKey, INS, INS_MIX, HANDLER, rotation, autoRotation, overlay, minutesOf, mixRates, interact, play, preview, pbp, leagueOf, identityOf, normTac, tacKey, rng, hashOf, fatigueLoad,
   TACTICS, SLOTS, KAPPA, FATIGUE, FORM, OOP, SYN, SHIFT, DR, USG_FLOOR, SKILL_L, PPP_LOGIT, FALLBACK_L, IDENTITY_K, HCA_PER };
 }));

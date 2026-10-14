@@ -19,7 +19,6 @@ const Mgr = root.Mgr = root.Mgr || {};
 const site = () => Mgr.site;
 const doc = root.document;
 const isNum = v => typeof v === 'number' && isFinite(v);
-const TIP = 'T' + String((Mgr.season && Mgr.season.TIP_UTC) || 19).padStart(2, '0') + ':00:00Z';
 
 /* ------------------------------------------------------------------ elements --- */
 /* h('div.mg-panel.glow', {attrs}, ...children): text is always text (never HTML), names carry translate="no" */
@@ -248,7 +247,10 @@ function autoLineups() {
   return [{ ids: order(first), min: 28 }, { ids: order(second), min: 12 }];
 }
 A.autoLineups = autoLineups;
-/* a real club: its own men at their own minutes, less the reader's draft; fewer than five, replacement-level fillers */
+/* A REAL CLUB: its own men at their own minutes, less the reader's draft; fewer than five, replacement-level fillers. It
+   opens with ITS REAL STARTERS (Louie, 2026-10-14: "Can IRL teams also use their real life styles ... and rotations?"):
+   the five its games have started most, the recent ones counting most (adapters/epinoia.js starts), and plays its real
+   style (engine.identityOf: its shot mix, its running, its pace, then its four factors) */
 function realTeam(tid, form) {
   const lg = A.lg, drafted = new Set([...A.mine.league.entries()].filter(([, l]) => l === lg.L.id).map(([id]) => id));
   const T = lg.teams.find(t => String(t.id) === tid) || {}, gp = Math.max(1, +T.gp || 1);
@@ -257,48 +259,68 @@ function realTeam(tid, form) {
   const cards = new Map(lg.cards);
   /* the reader's signings are copies: the real clubs keep their own men (Louie: "duplicated rather than ripped from teams") */
   /* a man the reader signed plays here too, as a copy with his own id (so his two seasons never add together) */
+  const idOf = id => (drafted.has(id) ? 'dup:' + id : id);
   let list = all.map(men).map(m => { if (!drafted.has(m.id)) return m; const id = 'dup:' + m.id; if (lg.cards.get(m.id)) cards.set(id, Object.assign({}, lg.cards.get(m.id), { id })); return Object.assign({}, m, { id }); });
   /* nobody at a position, or fewer than five: replacement-level men in the gaps */
   const fill = k => { const id = 'fill:' + tid + ':' + k; cards.set(id, Mgr.cards.fillerCard(lg.ref, k, id)); return { id, mpg: 8, share: [0, 1, 2, 3, 4].map(j => (j === k ? 1 : 0)) }; };
   for (let k = 0; list.length < 8 && k < 5; k++) list.push(fill(k));
-  let segs = Mgr.engine.autoRotation(list, 40);
-  if (!segs.length) { list = list.concat([0, 1, 2, 3, 4].map(fill)); segs = Mgr.engine.autoRotation(list, 40); }
+  const st = lg.starts && lg.starts.get(tid), have = new Set(list.map(m => m.id));
+  const starters = st ? [...st.entries()].map(([id, w]) => [idOf(String(id)), w]).filter(([id]) => have.has(id)).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id) : null;
+  let segs = Mgr.engine.autoRotation(list, 40, { starters });
+  if (!segs.length) { list = list.concat([0, 1, 2, 3, 4].map(fill)); segs = Mgr.engine.autoRotation(list, 40, { starters }); }
   if (!A.identity.has(tid)) {
     let id = null;
-    try { const full = Mgr.engine.autoRotation(all.map(men), 40); if (full.length) id = Mgr.engine.identityOf({ id: tid, segs: full, cards: lg.cards }, T, X()); } catch (_) { id = null; }
+    try { const full = Mgr.engine.autoRotation(all.map(men), 40, { starters: st ? [...st.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([x]) => String(x)) : null }); if (full.length) id = Mgr.engine.identityOf({ id: tid, segs: full, cards: lg.cards }, T, X()); } catch (_) { id = null; }
     A.identity.set(tid, id);
   }
-  return { id: tid, segs, cards, identity: A.identity.get(tid), form };
+  return { id: tid, segs, cards, identity: A.identity.get(tid), form, bench: list.map(m => m.id) };
 }
+/* THE READER'S CLUB: its lineups on the clock, every man of the squad on the bench (a live game may play any of them),
+   and each man's instructions (core/instruct.js, kept on his roster entry) */
+A.insMap = () => Mgr.instruct ? Mgr.instruct.forEngine(A.club.roster || [], A.cardOf, A.slotOfId) : null;
 function myTeam(form) {
   const segs = Mgr.engine.rotation(A.lineups(), 40);
-  return { id: 'me', segs, cards: A.mine.cards, form };
+  return { id: 'me', segs, cards: A.mine.cards, form, ins: A.insMap(), bench: [...A.mine.cards.keys()] };
 }
 A.teamObj = (i, form) => { const id = A.club.state.clubs[i]; return id === 'me' ? myTeam(form) : realTeam(String(id), form); };
 A.X = X;
 
 /* ------------------------------------------------------------------ the season on this visit --- */
 const dateOfRound = (S, r) => (S.fixtures.find(f => f.r === r) || {}).d;
+/* THE FORM BEFORE A ROUND (the fantasy part: real games move the players): his real games from the end of the round
+   before (a week before the first) to the moment the round is played - never past its own day */
+const formLo = (S, r) => (r > 1 ? Mgr.season.dayEnd(dateOfRound(S, r - 1)) : new Date(Mgr.season.dayStart(dateOfRound(S, r)).getTime() - 7 * 86400000));
+const formHi = (S, r, now) => new Date(Math.min(now, Mgr.season.dayEnd(dateOfRound(S, r)).getTime()));
+async function formLines(S, rounds, now) {
+  const from = formLo(S, rounds[0]).toISOString(), to = formHi(S, rounds[rounds.length - 1], now).toISOString();
+  const abroad = [...A.mine.league.entries()].filter(([, l]) => l !== A.lg.L.id).map(([id]) => id);
+  try { return await site().formFor(A.lg.L, from, to, abroad); } catch (_) { return new Map(); }
+}
+function formOfRound(S, r, lines, now) {
+  const lo = formLo(S, r).toISOString(), hi = formHi(S, r, now).toISOString(), form = new Map();
+  lines.forEach((games, id) => {
+    const g = games.filter(x => x.t > lo && x.t <= hi), row = A.rowOf(id);
+    if (g.length && row) { const z = Mgr.cards.formOf(row, g); if (z) form.set(id, z); }
+  });
+  return form;
+}
+const ctxOf = (form, skip) => { const teams = new Map(); return { X: X(), me: 0, skip, team: i => { if (!teams.has(i)) teams.set(i, A.teamObj(i, form)); return teams.get(i); } }; };
 async function catchUp() {
-  const S = A.club.state, SE = Mgr.season, due = SE.due(S, Date.now());
+  const S = A.club.state, SE = Mgr.season, now = Date.now();
+  /* a live game whose day is over: the assistant plays it out. One that cannot be taken up again (a man of either side no
+     longer to hand) is let go, and played from the start below with the clubs as they are - never left unplayed */
+  if (S.live && SE.dayEnd(dateOfRound(S, S.live.r)).getTime() <= now) {
+    try { await finishLive(); }
+    catch (e) { if (root.console) console.warn('Manager: the live game could not be finished; playing it again', e); delete S.live; A._live = null; A.store(LKEY(), null); }
+  }
+  const due = SE.due(S, now, 0);
   if (!due.length) return;
   A.loading(due.length === 1 ? 'Playing round ' + due[0] + '…' : 'Playing rounds ' + due[0] + '–' + due[due.length - 1] + '…');
   /* the real games of the days before each round: one read for every round to play */
-  const back = d => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() - 7); return x.toISOString().slice(0, 10); };
-  const first = due[0], before = first > 1 ? dateOfRound(S, first - 1) : back(dateOfRound(S, first));
-  const from = before + TIP, to = dateOfRound(S, due[due.length - 1]) + TIP;
-  const abroad = [...A.mine.league.entries()].filter(([, l]) => l !== A.lg.L.id).map(([id]) => id);
-  let lines = new Map();
-  try { lines = await site().formFor(A.lg.L, from, to, abroad); } catch (_) { lines = new Map(); }
+  const lines = await formLines(S, due, now);
   for (const r of due) {
-    const lo = (r > 1 ? dateOfRound(S, r - 1) : back(dateOfRound(S, r))) + TIP, hi = dateOfRound(S, r) + TIP, form = new Map();
-    lines.forEach((games, id) => {
-      const g = games.filter(x => x.t > lo && x.t <= hi), row = A.rowOf(id);
-      if (g.length && row) { const z = Mgr.cards.formOf(row, g); if (z) form.set(id, z); }
-    });
-    const teams = new Map();
-    const ctx = { X: X(), me: 0, team: i => { if (!teams.has(i)) teams.set(i, A.teamObj(i, form)); return teams.get(i); } };
-    const played = SE.play(S, r, ctx);
+    const form = formOfRound(S, r, lines, now);
+    const played = SE.play(S, r, ctxOf(form, f => !!(S.live && S.live.r === r && (f.h === 0 || f.a === 0))));
     played.forEach(({ f, g, error }) => {
       if (g && (f.h === 0 || f.a === 0)) A.news.push(newsOf(r, f, g, form));
       if (error && root.console) console.warn('Manager: round ' + r + ', ' + f.h + ' v ' + f.a + ' not played:', error);
@@ -306,7 +328,7 @@ async function catchUp() {
     /* the reader's own game left unplayed (the squad's men could not all be read just now: a league file that did not
        load): said so, and played on the next visit - never silently missing */
     const mine = S.fixtures.find(f => f.r === r && (f.h === 0 || f.a === 0));
-    if (mine && mine.res == null) A.toast('Your round ' + r + ' game could not be played just now (your squad could not be read in full). It will be played on your next visit.', true);
+    if (mine && mine.res == null && !(S.live && S.live.r === r)) A.toast('Your round ' + r + ' game could not be played just now (your squad could not be read in full). It will be played on your next visit.', true);
     await new Promise(res => setTimeout(res, 0));     // a breath for the page between rounds
   }
   await saveSeason();
@@ -314,32 +336,106 @@ async function catchUp() {
 function newsOf(r, f, g, form) {
   const home = f.h === 0, us = home ? g.pts[0] : g.pts[1], them = home ? g.pts[1] : g.pts[0], opp = home ? f.a : f.h;
   const box = g.box[home ? 0 : 1].slice().sort((a, b) => b.pts - a.pts)[0];
-  const hot = box && form.get(box.id) > 0.8;
+  const hot = box && form && form.get && form.get(box.id) > 0.8;
   return { r, d: f.d, won: us > them, us, them, opp, home, ot: g.ot, top: box ? { id: box.id, pts: box.pts, reb: box.reb, ast: box.ast, hot } : null };
 }
-/* THE SEASON AS THE READER MAY SEE IT: a round whose game they are watching (or are still to choose about) is left out
-   - its results, its games' lines in the players' totals and the clubs' totals - until it ends (views/live.js) */
-A.hiddenRound = () => { const lv = A.liveRound ? A.liveRound() : null; return lv ? lv.r : null; };
+
+/* ------------------------------------------------------------------ the reader's game: live, or to the result --- */
+/* MATCH DAY (Louie, 2026-10-14): the reader plays their game when they like on its day - live, managing it (views/match.js),
+   or straight to the result. Started, the round's other games are played with it (their results come out with the
+   game's), and the game in hand is kept (S.live: the match's snapshot, each side's plan and form as they were at
+   tip-off) so it can be left and taken up again that day; the day over, the assistant plays it out. */
+const LKEY = () => 'mgr_live_' + (A.club && A.club.id);
+A.matchday = () => { const S = A.club && A.club.state; return S && A.club.status === 'active' ? Mgr.season.matchday(S, Date.now(), 0) : null; };
+A.liveGame = () => { const S = A.club && A.club.state; return S && S.live && !S.live.done ? S.live : null; };
+/* the plan a side carries into the game (kept, so a game taken up again plays the same men the same way) */
+const planOf = T => ({ id: T.id, segs: T.segs.map(x => ({ t0: x.t0, t1: x.t1, ids: x.ids.slice(), tac: x.tac || null })), identity: T.identity || null, bench: T.bench || null });
+function liveTeams(S) {
+  const lv = S.live, f = S.fixtures.find(x => x.r === lv.r && (x.h === 0 || x.a === 0)), form = new Map(lv.form || []);
+  const build = (i, plan) => {
+    const base = A.teamObj(i, form);
+    return Object.assign({}, base, { segs: plan.segs, identity: plan.identity, bench: (plan.bench || base.bench || []).filter(id => base.cards.has(id)) });
+  };
+  return { f, H: build(f.h, lv.plan.h), A: build(f.a, lv.plan.a), form };
+}
+/* the game in hand as it was last kept: the newer of this browser's copy and the saved one */
+A.liveSnap = () => {
+  const lv = A.liveGame();
+  if (!lv) return null;
+  let snap = lv.snap;
+  try { const loc = JSON.parse(A.stored(LKEY()) || 'null'); if (loc && loc.r === lv.r && loc.snap && (!snap || loc.snap.g.k > snap.g.k || (loc.snap.g.k === snap.g.k && loc.snap.log.length > snap.log.length))) snap = loc.snap; } catch (_) { /* the saved one */ }
+  return snap || null;
+};
+/* the game in hand, from its snapshot */
+A.liveMatch = () => {
+  const S = A.club.state, lv = A.liveGame();
+  if (!lv) return null;
+  if (A._live && A._live.r === lv.r && A._live.club === A.club.id) return A._live.M;
+  const snap = A.liveSnap();
+  const t = liveTeams(S);
+  const M = snap ? Mgr.match.restore(snap, t.H, t.A, X()) : Mgr.match.create(t.H, t.A, X(), { seed: Mgr.season.gameSeed(S, lv.r, t.f), home: 1 });
+  A._live = { r: lv.r, club: A.club.id, M, f: t.f, form: t.form };
+  return M;
+};
+/* kept: in this browser every time it is asked, in the season (the database) when `hard` */
+A.keepLive = async hard => {
+  const S = A.club.state, lv = A.liveGame();
+  if (!lv || !A._live) return;
+  const snap = Mgr.match.snapshot(A._live.M);
+  A.store(LKEY(), JSON.stringify({ r: lv.r, snap }));
+  if (hard) { lv.snap = snap; try { await site().save(A.club.id, { state: S, summary: Mgr.season.summary(A.view(), 0) }); } catch (_) { /* kept here; saved next time */ } }
+};
+/* START THE GAME: 'live' (the match screen) or 'quick' (to the result now) */
+A.startMatch = async mode => {
+  const S = A.club.state, SE = Mgr.season, md = A.matchday();
+  if (!md || S.live) return null;
+  const r = md.r, f = md.f, now = Date.now();
+  A.loading(mode === 'live' ? 'Getting the game ready…' : 'Playing the game…');
+  const form = formOfRound(S, r, await formLines(S, [r], now), now);
+  /* the round's other games, now */
+  const ctx = ctxOf(form, x => x === f);
+  SE.play(S, r, ctx);
+  const H = ctx.team(f.h), Aw = ctx.team(f.a);
+  S.live = { r, started: now, mode, plan: { h: planOf(H), a: planOf(Aw) }, form: [...form.entries()], snap: null };
+  A._live = null;
+  const M = A.liveMatch();
+  if (mode !== 'live') { Mgr.match.finish(M); await A.endLive(); return 'done'; }
+  await A.keepLive(true);
+  return 'live';
+};
+/* THE GAME OVER: into the season, the round's results out, the snapshot let go */
+A.endLive = async () => {
+  const S = A.club.state, lv = A.liveGame();
+  if (!lv || !A._live) return;
+  const M = A._live.M;
+  if (!M.g.over) Mgr.match.finish(M);
+  const g = Mgr.match.result(M), f = A._live.f;
+  /* when it was played (its box score's tip-off) */
+  f.at = new Date(lv.started || Date.now()).toISOString();
+  Mgr.season.record(S, f, g, 0);
+  A.news.push(newsOf(lv.r, f, g, A._live.form));
+  delete S.live;
+  A._live = null;
+  A.store(LKEY(), null);
+  await saveSeason();
+};
+/* the day over with the game still going: the assistant takes both benches and plays it out */
+async function finishLive() {
+  const M = A.liveMatch();
+  if (!M) return;
+  M.sides.forEach(sd => { sd.auto = true; sd.hold = -1; sd.pend = []; });
+  Mgr.match.finish(M);
+  await A.endLive();
+}
+A.finishLive = finishLive;
+/* THE SEASON AS THE READER MAY SEE IT: the round of a game in hand is left out - its results, until it ends (the round's
+   other games are played when it starts; the game's own lines are not in the totals until it is over) */
+A.hiddenRound = () => { const lv = A.liveGame(); return lv ? lv.r : null; };
 A.view = () => {
   const S = A.club && A.club.state, r = S ? A.hiddenRound() : null;
   if (!S || r == null) return S;
   const out = Object.assign({}, S, { fixtures: S.fixtures.map(f => (f.r === r ? Object.assign({}, f, { res: null, live: true }) : f)) });
   out.played = out.fixtures.filter(f => f.res != null).reduce((a, f) => Math.max(a, f.r), 0);
-  /* the watched game's lines out of the totals (the other games of the round are not the reader's: their lines stay) */
-  const B = S.box[r], LN = Mgr.season.LINE;
-  if (B) {
-    out.stats = Object.assign({}, S.stats);
-    B.forEach(side => side.forEach(l => { const cur = out.stats[l[0]]; if (cur) out.stats[l[0]] = cur.map((v, j) => (j === 0 ? v - 1 : v - (l[j] || 0))); }));
-    const f = S.fixtures.find(x => x.r === r && (x.h === 0 || x.a === 0));
-    out.tstats = S.tstats.slice();
-    [f.h, f.a].forEach((club, s2) => {
-      const T = S.tstats[club]; if (!T) return;
-      const sum = k => B[s2].reduce((a, l) => a + (l[LN.indexOf(k)] || 0), 0), opp = k => B[1 - s2].reduce((a, l) => a + (l[LN.indexOf(k)] || 0), 0);
-      out.tstats[club] = Object.assign({}, T, { gp: T.gp - 1, pts: T.pts - sum('pts'), opp: T.opp - opp('pts'), fga: T.fga - sum('fga'), fgm: T.fgm - sum('fgm'), p3a: T.p3a - sum('p3a'),
-        p3m: T.p3m - sum('p3m'), fta: T.fta - sum('fta'), ftm: T.ftm - sum('ftm'), oreb: T.oreb - sum('oreb'), dreb: T.dreb - sum('dreb'), tov: T.tov - sum('tov'), ast: T.ast - sum('ast'),
-        stl: T.stl - sum('stl'), blk: T.blk - sum('blk'), poss: T.poss * (T.gp - 1) / Math.max(1, T.gp) });
-    });
-  }
   return out;
 };
 async function saveSeason() {

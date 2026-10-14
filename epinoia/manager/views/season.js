@@ -1,14 +1,15 @@
 'use strict';
 /* ============================================================================
    MANAGER - THE SEASON'S PAGES: the club's home (#/), the fixtures (#/fixtures), the table (#/table) and the statistics
-   with hints (#/stats). A game's own page is views/game.js; a game as it is being played, views/live.js. Everything here is the manager league's own, played in
+   with hints (#/stats). A game's own page is views/game.js; the game played live, views/match.js. Everything here is the manager league's own, played in
    this browser (core/season.js state): nothing of it is ever written to the site's real leagues.
    ============================================================================ */
 (function (root) {
 const Mgr = root.Mgr, A = Mgr.app, h = A.h;
 const SE = () => Mgr.season;
 const LINE = () => Mgr.season.LINE;
-const when = (d, o) => new Date(d + 'T' + String(Mgr.season.TIP_UTC).padStart(2, '0') + ':00:00Z').toLocaleString(undefined, o || { weekday: 'short', day: 'numeric', month: 'short' });
+/* a match day: the reader's own day (core/season.js dayStart) - its games are played any time on it */
+const when = (d, o) => Mgr.season.dayStart(d).toLocaleDateString(undefined, o || { weekday: 'short', day: 'numeric', month: 'short' });
 const form = list => h('span.mg-form', list.map(x => h('i.' + x, x)));
 const resultOf = (f, i) => { const home = f.h === i, us = home ? f.res[0] : f.res[1], them = home ? f.res[1] : f.res[0]; return { won: us > them, us, them, home, opp: home ? f.a : f.h }; };
 const per = (L, k) => (L && L.gp ? L[k] / L.gp : null);
@@ -19,9 +20,9 @@ function home(host) {
   const done = A.club.status === 'done';
   host.appendChild(h('div.mg-top', A.badge(A.club.badge, 72), h('div.who', A.nm(A.club.name, 'h1'), h('div.meta', h('span', 'Manager ', A.nm(A.club.manager, 'b')), h('span', A.nm(A.lg.L.name)),
     h('span', A.lg.L.seasonName || ''), done ? h('span.mg-chip.royal', 'Season complete') : null))));
-  /* the reader's game on now: the choice, or the game as it stands (views/live.js) */
-  if (A.livePanel) A.livePanel(host);
-  /* the results that came in on this visit (a game being watched waits for its end) */
+  /* MATCH DAY: today's game to play (live or straight to the result), or the game in hand to carry on (views/match.js) */
+  const mdPanel = A.livePanel ? A.livePanel(host) : null;
+  /* the results that came in on this visit (a game in hand waits for its end) */
   const hidden = A.hiddenRound();
   if (hidden != null) A.news = A.news.filter(n => n.r !== hidden);
   if (A.news.length) {
@@ -36,9 +37,9 @@ function home(host) {
     A.news = [];
   }
   /* the tiles */
-  /* the next game: the one after a game being played now (that one is the live panel's) */
-  const live = A.hiddenRound();
-  const nx = S.fixtures.filter(f => f.res == null && !f.live && (f.h === 0 || f.a === 0) && (live == null || f.r > live)).sort((a, b) => a.r - b.r)[0] || null;
+  /* the next game: the one after today's (today's is the match-day panel's) */
+  const live = A.hiddenRound(), md = A.matchday();
+  const nx = S.fixtures.filter(f => f.res == null && !f.live && (f.h === 0 || f.a === 0) && (live == null || f.r > live) && !(mdPanel && md && f.r === md.r)).sort((a, b) => a.r - b.r)[0] || null;
   const tiles = h('div.mg-tiles', { style: { margin: '16px 0' } },
     h('a.mg-tile', { href: '#/table' }, h('span.k', 'Position'), h('span.v', me.pos ? String(me.pos) : '–', h('small', 'of ' + S.clubs.length))),
     h('a.mg-tile' + (me.w > me.l ? '.up' : me.l > me.w ? '.dn' : ''), { href: '#/fixtures' }, h('span.k', 'Record'), h('span.v', me.w + '–' + me.l), h('span.s', me.gp ? Math.round(100 * me.w / me.gp) + '% won' : 'No games yet')),
@@ -53,8 +54,8 @@ function home(host) {
   if (nx) {
     const opp = nx.h === 0 ? nx.a : nx.h, homeGame = nx.h === 0;
     const meter = h('div.mg-meter', h('i', { style: { width: '50%' } })), chance = h('b', '…');
-    left.appendChild(h('div.mg-panel.glow', h('div.mg-h', h('h2', 'Next game'), h('span.mg-sub', 'Round ' + nx.r + ' · ' + when(nx.d, { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }))),
-      h('p.mg-sub', { style: { margin: '-4px 0 12px' } }, '⏱ This game is played in real time, at the date and time above. Real-life form counts: how your players perform in their real games before it affects how they play in this one.'),
+    left.appendChild(h('div.mg-panel' + (mdPanel ? '' : '.glow'), h('div.mg-h', h('h2', 'Next game'), h('span.mg-sub', 'Round ' + nx.r + ' · ' + when(nx.d, { weekday: 'long', day: 'numeric', month: 'long' }))),
+      h('p.mg-sub', { style: { margin: '-4px 0 12px' } }, '⏱ Play it any time on its day: live, managing every change as it happens, or straight to the result. If you have not by midnight, your assistant plays it. Real-life form counts: how your players do in their real games before it moves how they play in this one.'),
       h('div.mg-next', h('div.side', A.crest(homeGame ? 0 : opp, 64), homeGame ? A.nm(A.club.name, 'b') : A.clubLink(opp)), h('div.vs', h('span.mg-cap', homeGame ? 'Home' : 'Away'), h('span.big', 'v')),
         h('div.side', A.crest(homeGame ? opp : 0, 64), homeGame ? A.clubLink(opp) : A.nm(A.club.name, 'b'))),
       meter, h('div.mg-row.between', { style: { marginTop: '8px' } }, h('span.mg-sub', 'Your chance, simulated with your lineups and tactics: ', chance), h('a.mg-btn', { href: '#/tactics' }, 'Tactics')), countdown(nx)));
@@ -81,12 +82,13 @@ function home(host) {
       lead('ast', 'Assists', L => L.ast / L.gp), lead('stl', 'Steals', L => L.stl / L.gp), lead('blk', 'Blocks', L => L.blk / L.gp)));
   }
 }
-/* TIP-OFF COMING: within three hours, a countdown; at tip-off the round is played here and the game goes live */
+/* MATCH DAY COMING: within six hours of its start (the reader's midnight), a countdown; at midnight the day's other
+   rounds are played and the game is the reader's to play */
 function countdown(nx) {
-  const tip = Mgr.season.dueAt(nx.d).getTime(), box = h('div.mg-row', { style: { justifyContent: 'center', marginTop: '10px' } });
-  if (tip - Date.now() > 3 * 3600 * 1000) return box;
+  const tip = Mgr.season.dayStart(nx.d).getTime(), box = h('div.mg-row', { style: { justifyContent: 'center', marginTop: '10px' } });
+  if (tip - Date.now() > 6 * 3600 * 1000 || tip <= Date.now()) return box;
   const out = h('b', { style: { fontVariantNumeric: 'tabular-nums' } });
-  box.appendChild(h('span.mg-chip.royal', 'Tip-off in ', out));
+  box.appendChild(h('span.mg-chip.royal', 'Match day in ', out));
   const tick = async () => {
     if (!box.isConnected) return;
     const left = Math.round((tip - Date.now()) / 1000);
@@ -112,7 +114,9 @@ function fxRow(f) {
     const txt = f.res[0] + ' – ' + f.res[1] + (f.res[2] ? ' OT' : '');
     sc = mine ? h('a.sc', { href: '#/game/' + f.r }, txt) : h('span.sc', txt);
     if (mine) { const r = resultOf(f, 0); sc.classList.add(r.won ? 'w' : 'l'); }
-  } else sc = h('span.sc', { style: { color: 'var(--mg-ink-3)', fontWeight: '600' } }, 'v');
+  } else if (mine && f.live) sc = h('a.sc', { href: '#/match', style: { color: '#ff6b7d' } }, '● LIVE');
+  else if (mine && (A.matchday() || {}).r === f.r) sc = h('a.sc', { href: '#/match', style: { color: 'var(--mg-royal-3)' } }, 'Play ▶');
+  else sc = h('span.sc', { style: { color: 'var(--mg-ink-3)', fontWeight: '600' } }, 'v');
   return h('div.mg-fxrow' + (mine ? '.me' : ''), h('span.d', when(f.d)), h('span.h', A.clubLink(f.h), A.crest(f.h, 24)), sc, h('span.a', A.crest(f.a, 24), A.clubLink(f.a)));
 }
 A.fxRow = fxRow;
@@ -122,7 +126,7 @@ function fixtures(host) {
   const S = A.view();
   let onlyMine = A.stored('mgr_fx_all') !== '1';
   host.appendChild(h('div.mg-top', h('div.who', h('h1', 'Fixtures and results'), h('div.meta', h('span', S.meetings + ' meetings with every club'),
-    h('span', (S.perWeek === 1 ? 'Saturdays' : 'Wednesdays and Saturdays') + ', from ' + String(Mgr.season.TIP_UTC).padStart(2, '0') + ':00 UTC')))));
+    h('span', (S.perWeek === 1 ? 'Saturdays' : 'Wednesdays and Saturdays') + ': your game any time on its day')))));
   const tabs = h('div.mg-tabs', { role: 'group' });
   const list = h('div.mg-stack');
   const draw = () => {
@@ -137,7 +141,7 @@ function fixtures(host) {
   [['mine', 'My games'], ['all', 'Every game']].forEach(([k, l]) => tabs.appendChild(h('button', { type: 'button', 'data-k': k, onclick: () => { onlyMine = k === 'mine'; A.store('mgr_fx_all', onlyMine ? null : '1'); draw(); } }, l)));
   host.appendChild(h('div.mg-panel', h('div.mg-h', tabs), list));
   draw();
-  const next = list.querySelector('.mg-fxrow .sc:not(a)');
+  const next = list.querySelector('.mg-fxrow a.sc[href="#/match"]') || list.querySelector('.mg-fxrow .sc:not(a)');
   if (next) setTimeout(() => next.scrollIntoView({ block: 'center', behavior: 'smooth' }), 100);
 }
 
@@ -208,11 +212,11 @@ function stats(host) {
   if (me && ts.length >= 4) {
     const rank = (k, low) => 1 + ts.filter(x => (low ? x[k] < me[k] : x[k] > me[k])).length, n = ts.length, bottom = r => r > n - Math.max(2, Math.round(n / 4));
     const out = [];
-    if (bottom(rank('efg'))) out.push('Your shooting (eFG% ' + A.fmt(me.efg) + ') is among the league’s lowest. A shooter at the wing, or more of the plays to your most efficient scorer (the usage dial), moves it; so does Get downhill if your guards finish at the rim.');
-    if (bottom(rank('tov', true))) out.push('You turn the ball over more than most (' + A.fmt(me.tov) + '% of plays). A point guard with a better Handling pressure attribute, or less Off-ball cutting, steadies it.');
+    if (bottom(rank('efg'))) out.push('Your shooting (eFG% ' + A.fmt(me.efg) + ') is among the league’s lowest. A shooter at the wing, or more touches for your most efficient scorer (his player instructions), moves it; so does Ball handlers: Get downhill if your guards finish at the rim.');
+    if (bottom(rank('tov', true))) out.push('You turn the ball over more than most (' + A.fmt(me.tov) + '% of plays). A point guard with a better Handling pressure attribute, fewer touches for a loose handler, or less Off-ball cutting, steadies it.');
     if (bottom(rank('drb'))) out.push('You give up the defensive glass. A big with a high Def. boards attribute, or less Leak out, wins it back.');
     if (bottom(rank('drtg', true))) out.push('Your defence allows ' + A.fmt(me.drtg) + ' points per 100 possessions. A rim protector lets you Funnel to rim protection; quick hands make Gamble for steals pay.');
-    if (rank('p3') <= 3 && me.p3a < ts.reduce((a, x) => a + x.p3a, 0) / n) out.push('You make your threes (' + A.fmt(me.p3) + '%) but take fewer than the league does: Punish from deep plays to it.');
+    if (rank('p3') <= 3 && me.p3a < ts.reduce((a, x) => a + x.p3a, 0) / n) out.push('You make your threes (' + A.fmt(me.p3) + '%) but take fewer than the league does: Ball handlers: Punish from deep, or Green light for a shooting wing, plays to it.');
     if (!out.length) out.push('No glaring weakness: your club is at or above the league at most of what wins. Fine-tune the lineups’ minutes and watch the tired legs.');
     out.forEach(t => hints.appendChild(h('div.mg-hintcard', h('span.ic', 'i'), h('span', t))));
   } else hints.appendChild(h('p.mg-sub', 'The hints arrive once a few rounds have been played.'));

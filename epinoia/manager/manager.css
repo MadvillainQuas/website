@@ -58,6 +58,9 @@ body.mg::before{ content:""; position:fixed; inset:0; pointer-events:none; z-ind
     linear-gradient(transparent calc(100% - 1px), var(--mg-royal-3) 0) 0 0/100% 140px }
 .mg ::selection{ background:var(--mg-royal); color:#fff }
 .mg a{ color:var(--mg-royal-3) } html[data-theme="light"] .mg a{ color:var(--mg-royal-2) }
+/* a link drawn as a button is the button's colour, not a link's (the light theme's link blue on a primary's blue) */
+.mg a.mg-btn, html[data-theme="light"] .mg a.mg-btn{ color:var(--mg-ink) }
+.mg a.mg-btn.primary, html[data-theme="light"] .mg a.mg-btn.primary{ color:#fff }
 .mg button, .mg input, .mg select, .mg textarea{ font:inherit; color:inherit }
 .mg :focus-visible{ outline:2px solid var(--mg-royal-3); outline-offset:2px; border-radius:6px }
 .mg .num, .mg td.n, .mg .mg-n{ font-variant-numeric:tabular-nums lining-nums }
@@ -435,7 +438,7 @@ html[data-theme="light"] .mg-spot .who{ background:rgba(255,255,255,.75); border
 .mg-enter .mg-rail{ animation:mg-slide-r .55s cubic-bezier(.2,.8,.2,1) both } .mg-enter .mg-main{ animation:mg-fade-up .6s .08s cubic-bezier(.2,.8,.2,1) both }
 @keyframes mg-slide-r{ from{ opacity:0; transform:translateX(-24px) } to{ opacity:1; transform:none } }
 @keyframes mg-fade-up{ from{ opacity:0; transform:translateY(14px) } to{ opacity:1; transform:none } }
-.mg-view-in{ animation:mg-fade-up .35s cubic-bezier(.2,.8,.2,1) both }
+.mg-view-in{ animation:mg-fade-up .35s cubic-bezier(.2,.8,.2,1) backwards }   /* backwards: no transform left on it after (a transform makes it the box of every fixed thing inside it) */
 /* the results coming in (a round played on this visit) */
 .mg-results-in{ animation:mg-pulse 1.6s ease 2 }
 @keyframes mg-pulse{ 0%,100%{ box-shadow:var(--mg-shadow), 0 0 0 1px rgba(61,107,255,.25), 0 0 34px rgba(61,107,255,.22) } 50%{ box-shadow:var(--mg-shadow), 0 0 0 2px rgba(143,176,255,.7), 0 0 60px rgba(61,107,255,.6) } }
@@ -489,3 +492,292 @@ html[data-theme="light"] .mg-spot .who{ background:rgba(255,255,255,.75); border
 }
 
 .mg-go{ font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--mg-royal-3); text-decoration:none; white-space:nowrap } .mg-go:hover{ text-decoration:underline }
+
+/* ---------------------------------------------------------------- the pop-ups (views/ui.js) --- */
+/* one floating panel at a time: the team's instructions under the button at the top, a player's beside him; on a phone
+   a sheet from the foot. Solid glass (no blur behind a dense panel: a mid-range phone stays smooth) */
+.mg-pop{ position:fixed; z-index:70; width:min(430px, calc(100vw - 24px)); overflow-y:auto; overscroll-behavior:contain; box-sizing:border-box; padding:18px 18px 16px;
+  border-radius:18px; background:var(--mg-glass-solid); border:1px solid var(--mg-edge-2); color:var(--mg-ink);
+  box-shadow:var(--mg-shadow), 0 0 0 1px rgba(61,107,255,.2), 0 0 44px rgba(61,107,255,.32); animation:mg-pop-in .18s cubic-bezier(.2,.8,.2,1) both }
+.mg-pop.wide{ width:min(560px, calc(100vw - 24px)) }
+@keyframes mg-pop-in{ from{ opacity:0; transform:translateY(6px) scale(.985) } to{ opacity:1; transform:none } }
+.mg-pop > .x{ position:absolute; right:10px; top:8px; width:30px; height:30px; border:0; border-radius:9px; background:transparent; color:var(--mg-ink-3); font-size:22px; line-height:1; cursor:pointer }
+.mg-pop > .x:hover{ background:var(--mg-glass-2); color:var(--mg-ink) }
+.mg-pop.sheet{ left:8px !important; right:8px; bottom:8px; top:auto !important; width:auto; max-height:84vh !important; max-height:84dvh !important; border-radius:20px 20px 16px 16px;
+  padding-bottom:calc(16px + env(safe-area-inset-bottom)); animation:mg-sheet-in .22s cubic-bezier(.2,.8,.2,1) both }
+@keyframes mg-sheet-in{ from{ transform:translateY(30px); opacity:0 } to{ transform:none; opacity:1 } }
+.mg-pop .mg-tabs{ display:flex; width:100%; box-sizing:border-box; margin:10px 0 2px }
+.mg-pop .mg-tabs button{ flex:1; padding:7px 8px; font-size:12px }
+/* the team's instructions */
+.mg-tp-hd h3{ margin:0 32px 4px 0; font-size:18px; font-weight:900 }
+.mg-tp-sum{ display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 2px; min-height:22px }
+.mg-tp-body{ display:flex; flex-direction:column }
+.mg-tp-body .mg-slider:last-child{ border-bottom:0 }
+/* a player's instructions */
+.mg-pi-hd{ display:flex; align-items:center; gap:12px; margin:0 30px 10px 0 }
+.mg-pi-hd .t{ display:flex; flex-direction:column; gap:3px; min-width:0; flex:1 }
+.mg-pi-hd .t a{ color:var(--mg-ink); text-decoration:none } .mg-pi-hd .t a:hover b{ color:var(--mg-royal-3) }
+.mg-pi-hd .t b{ font-size:18px; font-weight:900; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block }
+.mg-pi-hd .t > span{ font-size:12px; color:var(--mg-ink-3); display:flex; align-items:center; gap:6px }
+.mg-pi-body{ display:flex; flex-direction:column; gap:4px }
+.mg-pi-sec{ padding:10px 0; border-top:1px solid color-mix(in srgb, var(--mg-edge) 70%, transparent) }
+.mg-pi-sec > .mg-cap{ display:block; margin-bottom:8px }
+.mg-touch{ display:grid; grid-template-columns:40px minmax(0,1fr) 40px; gap:10px; align-items:center }
+.mg-touch .mg-btn{ padding:0; height:38px; font-size:20px; border-radius:11px }
+.mg-touch .t{ display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center }
+.mg-touch .t b{ font-size:14px }
+.mg-touch + .mg-sub{ margin-top:7px; font-size:11.5px; line-height:1.4 }
+.mg-pips{ display:flex; gap:5px }
+.mg-pips i{ width:22px; height:7px; border-radius:5px; background:var(--mg-glass-3) }
+.mg-pips i.mid{ background:var(--mg-ink-4) }
+.mg-pips i.on{ background:var(--mg-royal-3); box-shadow:0 0 10px var(--mg-glow) }
+.mg-roles{ display:grid; grid-template-columns:repeat(auto-fill,minmax(122px,1fr)); gap:7px }
+.mg-role{ display:flex; flex-direction:column; align-items:flex-start; gap:3px; padding:8px 10px; border-radius:11px; border:1px solid var(--mg-edge); background:var(--mg-glass);
+  color:var(--mg-ink); cursor:pointer; text-align:left }
+.mg-role b{ font-size:12.5px } .mg-role .w{ font-size:10.5px; color:var(--mg-ink-3) }
+.mg-role .st{ font-size:12px; letter-spacing:1px; line-height:1 }
+.mg-role .st.a1{ color:var(--mg-a1) } .mg-role .st.a2{ color:var(--mg-a2) } .mg-role .st.a3{ color:var(--mg-a3) } .mg-role .st.a4{ color:var(--mg-a4); text-shadow:0 0 8px rgba(92,240,255,.45) }
+.mg-role:hover{ border-color:var(--mg-edge-2) }
+.mg-role.on{ border-color:var(--mg-royal-3); background:rgba(61,107,255,.28); box-shadow:0 0 16px rgba(61,107,255,.35) }
+.mg-ins-row{ display:grid; grid-template-columns:104px minmax(0,1fr); gap:8px; align-items:start; padding:4px 0 }
+.mg-ins-row .g{ font-size:11px; font-weight:700; color:var(--mg-ink-3); padding-top:7px; line-height:1.25 }
+.mg-ins-row .opts{ display:flex; flex-wrap:wrap; gap:6px }
+.mg-ins{ display:inline-flex; align-items:center; gap:7px; padding:6px 10px; border-radius:999px; border:1px solid var(--mg-edge); background:var(--mg-glass);
+  color:var(--mg-ink-2); cursor:pointer; font-size:12px; font-weight:700; text-align:left }
+.mg-ins:hover{ border-color:var(--mg-edge-2); color:var(--mg-ink) }
+.mg-ins.on{ color:#fff; border-color:rgba(160,190,255,.6); background:linear-gradient(180deg, #4a78ff, #2346d8); box-shadow:0 0 14px rgba(61,107,255,.45) }
+html[data-theme="light"] .mg-ins.on{ color:#fff }
+.mg-fit{ flex:none; width:9px; height:9px; border-radius:50%; background:var(--mg-ink-4) }
+.mg-fit.a1{ background:var(--mg-a1) } .mg-fit.a2{ background:var(--mg-a2) } .mg-fit.a3{ background:var(--mg-a3) } .mg-fit.a4{ background:var(--mg-a4); box-shadow:0 0 8px rgba(92,240,255,.6) }
+.mg-ins.on .mg-fit{ box-shadow:0 0 0 2px rgba(255,255,255,.75) }
+.mg-pi-info{ margin-top:8px; padding:10px 12px; border-radius:12px; background:rgba(61,107,255,.12); border:1px solid var(--mg-edge); font-size:12.5px; line-height:1.45; color:var(--mg-ink-2); min-height:2.9em }
+.mg-pi .mg-row .mg-btn{ padding:7px 12px; font-size:12.5px }
+@media (max-width: 520px){ .mg-ins-row{ grid-template-columns:minmax(0,1fr) } .mg-ins-row .g{ padding-top:0 } }
+
+/* ---------------------------------------------------------------- the tactics screen, 2026-10-14 --- */
+.mg-tac-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px }
+.mg-tac-head .mg-lineups{ margin-bottom:0 }
+.mg-tac-chips{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; max-width:100% }
+.mg-tac-chips .mg-chip{ cursor:pointer; font-size:11.5px; padding:5px 10px } .mg-tac-chips .mg-chip:hover{ box-shadow:0 0 14px rgba(61,107,255,.4) }
+.mg-lineups button.add{ border-style:dashed; color:var(--mg-ink-3) } .mg-lineups button.rm{ color:var(--mg-bad); border-color:rgba(255,107,125,.35) }
+.mg-btn.pulse{ animation:mg-save-pulse 1.8s ease infinite }
+@keyframes mg-save-pulse{ 0%,100%{ box-shadow:0 6px 22px rgba(35,70,216,.45), inset 0 1px 0 rgba(255,255,255,.35) } 50%{ box-shadow:0 6px 30px rgba(35,70,216,.75), 0 0 0 3px rgba(143,176,255,.45), inset 0 1px 0 rgba(255,255,255,.35) } }
+.mg-courtpanel{ padding:16px }
+/* the court as big as the window lets it be, whole (its foot never under the window's) */
+.mg-court.big{ aspect-ratio:1.19; max-width:min(100%, calc((100vh - 270px) * 1.19)); margin:0 auto }
+/* a wide screen: the court, and the simulation and the minutes beside it */
+@media (min-width: 1500px){
+  .mg-tactics > .mg-stack:first-child{ display:grid; grid-template-columns:minmax(0,1fr) minmax(300px,380px); align-items:start }
+  .mg-tactics > .mg-stack:first-child > .mg-courtpanel{ grid-row:span 2 }
+}
+.mg-slider .mg-range{ box-shadow:inset 0 0 0 1px var(--mg-edge-2) }
+.mg-court.big .mg-spot{ width:clamp(104px,19%,150px) }
+.mg-court.big .mg-spot .who{ cursor:pointer; min-height:76px; transition:transform .15s, box-shadow .2s, border-color .2s }
+.mg-court.big .mg-spot .who:hover{ transform:translateY(-2px); border-color:var(--mg-royal-3); box-shadow:0 10px 28px rgba(0,5,40,.55), 0 0 26px rgba(61,107,255,.5) }
+.mg-spot .who .ins{ display:flex; flex-wrap:wrap; justify-content:center; gap:3px; margin-top:5px }
+.mg-spot .who .ins i{ font-style:normal; font-size:9.5px; font-weight:800; letter-spacing:.03em; padding:2px 6px; border-radius:999px; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis }
+.mg-spot .who .ins i.r{ color:#fff; background:rgba(61,107,255,.6); border:1px solid rgba(160,190,255,.55) }
+.mg-spot .who .ins i.none{ color:var(--mg-ink-4); border:1px dashed var(--mg-edge-2) }
+.mg-spot .who .ins i.u{ color:var(--mg-ink-2); background:var(--mg-glass-2); border:1px solid var(--mg-edge) }
+.mg-spot .who .ins i.u.up{ color:var(--mg-good); border-color:currentColor } .mg-spot .who .ins i.u.dn{ color:var(--mg-warn); border-color:currentColor }
+.mg-bench li{ cursor:pointer } .mg-bench li:hover{ border-color:var(--mg-edge-2); background:var(--mg-glass-2) }
+.mg-bench.plain li{ cursor:pointer }
+.mg-bench li .mg-chip{ max-width:120px; overflow:hidden; text-overflow:ellipsis }
+@media (max-width: 860px){
+  .mg-court.big{ aspect-ratio:.9 } .mg-court.big .mg-spot{ width:clamp(80px,26%,116px) } .mg-court.big .mg-spot .who{ min-height:62px; padding:6px 4px }
+  .mg-spot .who .ins i{ font-size:8.5px; padding:1px 5px }
+  .mg-tac-head{ flex-direction:column }
+}
+
+/* ---------------------------------------------------------------- match day on the club's home --- */
+.mg-md{ margin-bottom:16px }
+.mg-md .go{ display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:14px }
+.mg-md .note{ text-align:center; margin:10px 0 0 }
+.mg-live-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:#ff4d64; box-shadow:0 0 10px #ff4d64; animation:mg-blink 1.2s ease infinite }
+@keyframes mg-blink{ 50%{ opacity:.35 } }
+.mg-chip.live{ color:#fff; background:#e0455c; border-color:#e0455c }
+/* the pre-match screen */
+.mg-pre .fives{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; margin-top:16px }
+.mg-pre .fives ol{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px }
+.mg-pre .fives li{ display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:11px; background:var(--mg-glass); border:1px solid var(--mg-edge); font-size:13px }
+.mg-pre .fives li .nm{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700 }
+.mg-pre .fives li .m{ color:var(--mg-ink-3); font-size:11.5px }
+@media (max-width: 860px){ .mg-pre .fives{ grid-template-columns:minmax(0,1fr) } }
+
+/* ---------------------------------------------------------------- the live match (views/match.js) --- */
+/* FULL SCREEN, FM's match screen: the scoreboard and the speed along the top, your team down the left, the court in the
+   middle with the commentary under it, the match's numbers down the right, the touchline's buttons along the foot */
+body.mg-full .mg-rail, body.mg-full .mg-tabbar{ display:none !important }
+body.mg-full .mg-app{ grid-template-columns:minmax(0,1fr) }
+body.mg-full .mg-main{ padding:0 }
+.mg-match{ --mx-me:#4f7dff; --mx-op:#ff9f43; display:grid; grid-template-rows:auto minmax(0,1fr) auto; min-height:100vh; min-height:100dvh; height:100vh; height:100dvh; box-sizing:border-box }
+.mg-mx-top{ position:relative; z-index:3; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:14px; padding:10px 16px;
+  background:linear-gradient(180deg, var(--mg-glass-3), var(--mg-glass)); border-bottom:1px solid var(--mg-edge-2);
+  box-shadow:0 8px 30px rgba(0,5,40,.35); -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px) }
+.mg-mx-leave{ display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:11px; border:1px solid var(--mg-edge-2); background:var(--mg-glass); color:var(--mg-ink);
+  font-weight:800; font-size:12.5px; text-decoration:none; cursor:pointer; white-space:nowrap }
+.mg-mx-leave:hover{ border-color:var(--mg-royal-3); box-shadow:0 0 16px rgba(61,107,255,.35) }
+.mg-mx-sb{ display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:center; gap:14px; justify-self:center; width:min(760px,100%) }
+.mg-mx-sb .side{ display:flex; align-items:center; gap:10px; min-width:0 }
+.mg-mx-sb .side.h{ justify-content:flex-end; text-align:right }
+.mg-mx-sb .nm{ display:flex; flex-direction:column; gap:3px; min-width:0 }
+.mg-mx-sb .nm b{ font-size:15px; font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.mg-mx-sb .nm .meta{ display:flex; gap:8px; font-size:10.5px; color:var(--mg-ink-3); letter-spacing:.04em; white-space:nowrap }
+.mg-mx-sb .side.h .nm .meta{ justify-content:flex-end }
+.mg-mx-sb .pts{ font-size:40px; font-weight:900; line-height:1; font-variant-numeric:tabular-nums; min-width:1.6em; text-align:center }
+.mg-mx-sb .pts.flash{ animation:mg-score .7s ease }
+@keyframes mg-score{ 0%{ color:#fff; text-shadow:0 0 0 transparent; transform:scale(1) } 30%{ color:#fff; text-shadow:0 0 22px var(--mg-royal-3); transform:scale(1.14) } 100%{ transform:none } }
+.mg-mx-sb .mid{ display:flex; flex-direction:column; align-items:center; gap:2px; min-width:96px; padding:6px 12px; border-radius:12px; background:rgba(0,6,40,.35); border:1px solid var(--mg-edge) }
+html[data-theme="light"] .mg-mx-sb .mid{ background:rgba(255,255,255,.6) }
+.mg-mx-sb .mid .per{ font-size:10.5px; font-weight:800; letter-spacing:.16em; color:var(--mg-royal-3) }
+.mg-mx-sb .mid .clk{ font-size:22px; font-weight:900; font-variant-numeric:tabular-nums; line-height:1.05 }
+.mg-mx-sb .mid .st{ font-size:9.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--mg-ink-3) }
+.mg-mx-sb .mid .st.live{ color:#ff6b7d }
+.mg-mx-pips{ display:inline-flex; gap:3px; align-items:center }
+.mg-mx-pips i{ width:7px; height:7px; border-radius:2px; background:var(--mg-edge-2) }
+.mg-mx-pips i.on{ background:var(--mg-royal-3) } .mg-mx-pips.f i.on{ background:var(--mg-warn) } .mg-mx-pips.f i.pen{ background:var(--mg-bad) }
+.mg-mx-speed{ display:flex; align-items:center; gap:8px }
+.mg-mx-speed .mg-tabs button{ padding:6px 10px; font-size:12px; min-width:34px }
+.mg-mx-body{ display:grid; grid-template-columns:300px minmax(0,1fr) 350px; gap:14px; padding:14px 16px; min-height:0 }
+.mg-mx-l, .mg-mx-r{ display:flex; flex-direction:column; gap:12px; min-height:0; overflow-y:auto; scrollbar-width:thin }
+.mg-mx-l > *, .mg-mx-r > *{ flex-shrink:0 }
+.mg-mx-c{ display:flex; flex-direction:column; gap:10px; min-width:0; min-height:0 }
+.mg-mx-card{ border-radius:14px; background:linear-gradient(180deg, var(--mg-glass-2), var(--mg-glass)); border:1px solid var(--mg-edge); padding:12px; box-shadow:inset 0 1px 0 var(--mg-hi) }
+.mg-mx-card .hd{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px }
+.mg-mx-card .hd h3{ margin:0; font-size:12px; font-weight:900; letter-spacing:.14em; text-transform:uppercase; color:var(--mg-ink-2) }
+/* a man on the floor or the bench */
+.mg-mx-men{ display:flex; flex-direction:column; gap:5px; margin:0; padding:0; list-style:none }
+.mg-mx-men li{ position:relative; display:grid; grid-template-columns:30px minmax(0,1fr) 38px; gap:4px 8px; align-items:center; padding:7px 8px; border-radius:11px;
+  background:var(--mg-glass); border:1px solid var(--mg-edge); cursor:pointer; font-size:12.5px; transition:border-color .15s, background .15s }
+.mg-mx-men li:hover{ border-color:var(--mg-edge-2); background:var(--mg-glass-2) }
+.mg-mx-men li.over{ border-color:#8fb0ff; box-shadow:0 0 0 2px rgba(143,176,255,.6) }
+.mg-mx-men li.out{ border-color:rgba(255,198,92,.7); box-shadow:inset 3px 0 0 var(--mg-warn) }
+.mg-mx-men li.gone{ opacity:.45; cursor:default }
+.mg-mx-men li .nm{ min-width:0; display:flex; flex-direction:column; gap:3px }
+.mg-mx-men li .nm b{ font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.mg-mx-men li .nm .ln{ display:flex; gap:7px; align-items:center; font-size:10.5px; color:var(--mg-ink-3); white-space:nowrap; overflow:hidden }
+.mg-mx-men li .pend{ grid-column:1 / -1; font-size:10.5px; color:var(--mg-warn); font-weight:700 }
+.mg-mx-en{ position:relative; height:5px; border-radius:4px; background:var(--mg-glass-3); overflow:hidden; width:100% }
+.mg-mx-en i{ position:absolute; left:0; top:0; bottom:0; border-radius:4px; background:var(--mg-good); transition:width .6s }
+.mg-mx-en i.mid{ background:var(--mg-warn) } .mg-mx-en i.low{ background:var(--mg-bad) }
+.mg-mx-rt{ display:inline-grid; place-items:center; min-width:34px; height:22px; padding:0 5px; box-sizing:border-box; border-radius:7px; font-weight:900; font-size:12px; font-variant-numeric:tabular-nums;
+  color:var(--mg-ink-3); background:var(--mg-glass-2); border:1px solid var(--mg-edge) }
+.mg-mx-rt.a1, .mg-mx-rt.a2, .mg-mx-rt.a3, .mg-mx-rt.a4{ color:#071233; border-color:transparent }
+.mg-mx-rt.a1{ background:var(--mg-a1); color:#fff } .mg-mx-rt.a2{ background:var(--mg-a2) } .mg-mx-rt.a3{ background:var(--mg-a3) } .mg-mx-rt.a4{ background:var(--mg-a4) }
+.mg-mx-fl{ display:inline-flex; gap:2px } .mg-mx-fl i{ width:6px; height:6px; border-radius:50%; background:var(--mg-edge-2) } .mg-mx-fl i.on{ background:var(--mg-warn) } .mg-mx-fl.trouble i.on{ background:var(--mg-bad) }
+/* the court */
+.mg-mx-courtwrap{ position:relative; flex:1 1 auto; min-height:220px; border-radius:16px; overflow:hidden; border:1px solid var(--mg-edge-2);
+  background:radial-gradient(ellipse at 50% 50%, rgba(61,107,255,.22), transparent 70%), linear-gradient(180deg, rgba(14,34,110,.9), rgba(8,22,80,.95));
+  box-shadow:var(--mg-shadow), 0 0 40px rgba(61,107,255,.18), inset 0 0 70px rgba(0,0,30,.5) }
+html[data-theme="light"] .mg-mx-courtwrap{ background:radial-gradient(ellipse at 50% 50%, rgba(39,71,232,.18), transparent 70%), linear-gradient(180deg, #dfe8ff, #c7d6ff) }
+.mg-mx-courtwrap svg{ position:absolute; inset:0; width:100%; height:100% }
+.mg-mx-courtwrap .ln{ fill:none; stroke:rgba(170,195,255,.42); stroke-width:3 }
+html[data-theme="light"] .mg-mx-courtwrap .ln{ stroke:rgba(39,71,232,.38) }
+.mg-mx-courtwrap .hoop{ fill:none; stroke:#ff9f43; stroke-width:3 }
+.mg-mx-courtwrap .pl{ transition:transform var(--mx-t,.55s) cubic-bezier(.3,.7,.3,1) }
+.mg-mx-courtwrap .pl circle{ stroke:rgba(255,255,255,.85); stroke-width:2.5 }
+.mg-mx-courtwrap .pl.me circle{ fill:var(--mx-me) } .mg-mx-courtwrap .pl.op circle{ fill:var(--mx-op) }
+.mg-mx-courtwrap .pl text{ fill:#fff; font:800 15px var(--mg-f); text-anchor:middle; dominant-baseline:central; pointer-events:none }
+.mg-mx-courtwrap .pl .lab{ font-size:12px; font-weight:700; fill:rgba(235,242,255,.9); paint-order:stroke; stroke:rgba(4,10,40,.75); stroke-width:3px }
+html[data-theme="light"] .mg-mx-courtwrap .pl .lab{ fill:#0b1846; stroke:rgba(255,255,255,.8) }
+.mg-mx-courtwrap .pl.hand circle{ stroke:#ffd66b; stroke-width:4 }
+.mg-mx-courtwrap .ball{ fill:#ff8a2a; stroke:#5a2500; stroke-width:1.5; transition:transform var(--mx-t,.55s) cubic-bezier(.3,.7,.3,1) }
+.mg-mx-courtwrap .shot{ stroke-width:3 } .mg-mx-courtwrap .shot.m{ fill:currentColor; stroke:rgba(255,255,255,.7) } .mg-mx-courtwrap .shot.x{ fill:none; stroke:currentColor }
+.mg-mx-courtwrap .shot.me{ color:var(--mx-me) } .mg-mx-courtwrap .shot.op{ color:var(--mx-op) }
+.mg-mx-courtwrap .pop{ font:900 30px var(--mg-f); text-anchor:middle; paint-order:stroke; stroke:rgba(4,10,40,.7); stroke-width:5px; animation:mg-pop-up 1.3s ease forwards }
+.mg-mx-courtwrap .pop.me{ fill:#9fbcff } .mg-mx-courtwrap .pop.op{ fill:#ffc48a } .mg-mx-courtwrap .pop.miss{ fill:#ff8a9a; font-size:24px }
+@keyframes mg-pop-up{ 0%{ opacity:0; transform:translateY(8px) } 15%{ opacity:1; transform:none } 75%{ opacity:1 } 100%{ opacity:0; transform:translateY(-16px) } }
+.mg-mx-courtwrap .banner{ font:900 34px var(--mg-f); letter-spacing:.2em; text-anchor:middle; fill:#fff; opacity:.9; paint-order:stroke; stroke:rgba(4,10,40,.6); stroke-width:6px }
+.mg-mx-view{ position:absolute; right:10px; top:10px; z-index:2 }
+.mg-mx-view .mg-tabs button{ padding:5px 10px; font-size:11px }
+/* the breaks, the timeouts, the final whistle: over the court */
+.mg-mx-over{ position:absolute; inset:0; z-index:3; display:grid; place-items:center; padding:16px; background:rgba(3,8,32,.62); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px) }
+html[data-theme="light"] .mg-mx-over{ background:rgba(220,230,255,.7) }
+.mg-mx-over .in{ width:min(520px,100%); max-height:100%; overflow-y:auto; text-align:center; padding:20px; border-radius:18px; background:var(--mg-glass-solid); border:1px solid var(--mg-edge-2);
+  box-shadow:var(--mg-shadow), 0 0 40px rgba(61,107,255,.35); box-sizing:border-box }
+.mg-mx-over h2{ margin:0 0 6px; font-size:26px; font-weight:900; letter-spacing:.02em }
+.mg-mx-over .sc{ font-size:44px; font-weight:900; font-variant-numeric:tabular-nums; margin:6px 0 }
+.mg-mx-over .go{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px }
+.mg-mx-over .stars{ display:flex; flex-direction:column; gap:6px; margin-top:12px; text-align:left }
+.mg-mx-over .stars div{ display:flex; justify-content:space-between; gap:10px; padding:7px 10px; border-radius:10px; background:var(--mg-glass); border:1px solid var(--mg-edge); font-size:13px }
+/* the commentary */
+.mg-mx-comm{ display:flex; align-items:center; gap:12px; min-height:52px; padding:10px 14px; border-radius:14px; background:linear-gradient(90deg, rgba(61,107,255,.28), var(--mg-glass)); border:1px solid var(--mg-edge-2);
+  box-shadow:inset 0 1px 0 var(--mg-hi) }
+.mg-mx-comm .t{ flex:none; font-size:11px; font-weight:800; letter-spacing:.08em; color:var(--mg-royal-3); font-variant-numeric:tabular-nums; min-width:70px }
+.mg-mx-comm .x{ font-size:15px; font-weight:700; line-height:1.35 }
+.mg-mx-comm .x.big{ font-size:17px; font-weight:900 }
+.mg-mx-comm.flash{ animation:mg-comm .8s ease }
+@keyframes mg-comm{ 0%{ box-shadow:0 0 0 2px rgba(143,176,255,.8), 0 0 30px rgba(61,107,255,.6) } 100%{ box-shadow:inset 0 1px 0 var(--mg-hi) } }
+.mg-mx-flow{ height:64px; border-radius:12px; background:var(--mg-glass); border:1px solid var(--mg-edge); padding:4px 8px; box-sizing:border-box }
+.mg-mx-flow svg{ width:100%; height:100%; display:block }
+/* the right: the numbers */
+.mg-mx-r > .mg-tabs{ display:flex; width:100%; box-sizing:border-box; overflow-x:auto; scrollbar-width:none }
+.mg-mx-r > .mg-tabs::-webkit-scrollbar{ display:none }
+.mg-mx-r > .mg-tabs button{ flex:1 0 auto; padding:6px 8px; font-size:11.5px }
+.mg-mx-cmp{ display:flex; flex-direction:column; gap:9px }
+.mg-mx-cmp .row{ display:grid; grid-template-columns:52px minmax(0,1fr) 52px; gap:6px 8px; align-items:center; font-size:12.5px }
+.mg-mx-cmp .row .k{ grid-column:1 / -1; text-align:center; font-size:10.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--mg-ink-3); margin-bottom:-4px }
+.mg-mx-cmp .row .a{ text-align:left; font-weight:800; font-variant-numeric:tabular-nums } .mg-mx-cmp .row .b{ text-align:right; font-weight:800; font-variant-numeric:tabular-nums }
+.mg-mx-cmp .bar{ display:flex; height:7px; border-radius:6px; overflow:hidden; background:var(--mg-glass-3); gap:2px }
+.mg-mx-cmp .bar i{ display:block; height:100% } .mg-mx-cmp .bar i.h{ background:var(--mx-h) } .mg-mx-cmp .bar i.v{ background:var(--mx-v); margin-left:auto }
+.mg-mx-feed{ display:flex; flex-direction:column; gap:4px; margin:0; padding:0; list-style:none; font-size:12.5px }
+.mg-mx-feed li{ display:grid; grid-template-columns:48px 18px minmax(0,1fr); gap:7px; align-items:center; padding:6px 8px; border-radius:9px; background:var(--mg-glass); border:1px solid transparent; line-height:1.35 }
+.mg-mx-feed li .t{ font-size:10.5px; color:var(--mg-ink-3); font-variant-numeric:tabular-nums }
+.mg-mx-feed li.sc{ border-color:var(--mg-edge); font-weight:700 }
+.mg-mx-feed li.me{ box-shadow:inset 3px 0 0 var(--mx-me) } .mg-mx-feed li.op{ box-shadow:inset 3px 0 0 var(--mx-op) }
+.mg-mx-feed li.mark{ grid-template-columns:minmax(0,1fr); text-align:center; font-size:11px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--mg-royal-3); background:transparent }
+.mg-mx-feed li .crest-s{ width:18px; height:18px }
+.mg-mx-notes{ display:flex; flex-direction:column; gap:7px; margin:0; padding:0; list-style:none }
+.mg-mx-notes li{ display:grid; grid-template-columns:10px minmax(0,1fr); gap:9px; align-items:start; padding:9px 11px; border-radius:11px; background:var(--mg-glass); border:1px solid var(--mg-edge); font-size:12.5px; line-height:1.45 }
+.mg-mx-notes li i{ width:10px; height:10px; border-radius:50%; margin-top:4px; background:var(--mg-royal-3) }
+.mg-mx-notes li i.warn{ background:var(--mg-warn) } .mg-mx-notes li i.bad{ background:var(--mg-bad) } .mg-mx-notes li i.good{ background:var(--mg-good) }
+.mg-mx-box{ font-size:11.5px } .mg-mx-box td, .mg-mx-box th{ padding:5px 6px }
+.mg-mx-box tr.on td:first-child{ box-shadow:inset 3px 0 0 var(--mg-good) }
+.mg-mx-switch{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border-radius:12px; background:var(--mg-glass); border:1px solid var(--mg-edge); font-size:13px }
+.mg-mx-switch button{ min-width:64px }
+/* the touchline: the buttons along the foot */
+.mg-mx-bar{ position:relative; z-index:3; display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  background:linear-gradient(0deg, var(--mg-glass-3), var(--mg-glass)); border-top:1px solid var(--mg-edge-2); box-shadow:0 -8px 30px rgba(0,5,40,.3);
+  -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px) }
+.mg-mx-bar .mg-btn{ padding:9px 14px; font-size:13px }
+.mg-mx-bar .mg-btn .ic{ font-size:15px; line-height:1 }
+.mg-mx-bar .mg-btn.on{ border-color:var(--mg-good); color:var(--mg-good) }
+.mg-mx-bar .mg-btn.wait{ border-color:var(--mg-warn); color:var(--mg-warn) }
+.mg-match .mg-mx-replay{ display:inline-flex; align-items:center; gap:6px }
+.mg-mx-bar .lbl-short{ display:none }
+@media (max-width: 1240px){ .mg-mx-body{ grid-template-columns:270px minmax(0,1fr) 300px } }
+@media (max-width: 1100px){
+  .mg-match{ height:auto; min-height:100vh; min-height:100dvh }
+  .mg-mx-body{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); grid-template-areas:"c c" "l r" }
+  .mg-mx-c{ grid-area:c } .mg-mx-l{ grid-area:l; overflow:visible } .mg-mx-r{ grid-area:r; overflow:visible }
+  .mg-mx-courtwrap{ flex:none; aspect-ratio:1.88; min-height:0 }
+}
+@media (max-width: 760px){
+  .mg-mx-top{ grid-template-columns:auto minmax(0,1fr); padding:8px 10px; gap:8px }
+  .mg-mx-speed{ grid-column:1 / -1; justify-content:center }
+  .mg-mx-sb{ gap:8px } .mg-mx-sb .pts{ font-size:30px } .mg-mx-sb .nm b{ font-size:12px } .mg-mx-sb .nm .meta{ display:none }
+  .mg-mx-sb .side .mg-crest, .mg-mx-sb .side .mg-badge{ display:none }
+  .mg-mx-sb .mid{ min-width:74px; padding:4px 8px } .mg-mx-sb .mid .clk{ font-size:18px }
+  .mg-mx-leave .lbl{ display:none }
+  .mg-mx-body{ grid-template-columns:minmax(0,1fr); grid-template-areas:"c" "l" "r"; padding:10px; gap:10px }
+  .mg-mx-comm .x{ font-size:13.5px } .mg-mx-comm .x.big{ font-size:14.5px }
+  .mg-mx-bar{ position:sticky; bottom:0; gap:5px; padding:8px 6px calc(8px + env(safe-area-inset-bottom)); flex-wrap:nowrap }
+  .mg-mx-bar .mg-btn{ flex:1 1 0; min-width:0; padding:7px 4px; font-size:11px; flex-direction:column; gap:2px; white-space:nowrap }
+  .mg-mx-bar .mg-btn .lbl-long{ display:none } .mg-mx-bar .mg-btn .lbl-short{ display:inline }
+  /* the court's men big enough to read on a phone: bigger dots, their numbers, no names under them */
+  .mg-mx-courtwrap .pl circle{ r:27px } .mg-mx-courtwrap .pl text{ font-size:24px } .mg-mx-courtwrap .pl .lab{ display:none }
+  .mg-mx-courtwrap .ball{ r:11px } .mg-mx-courtwrap .pop{ font-size:46px } .mg-mx-courtwrap .banner{ font-size:52px }
+  /* the breaks and the final whistle over the whole screen (the court is too short for them) */
+  .mg-mx-over{ position:fixed; z-index:60 }
+}
+/* the tactics head on a phone: the title with a small badge, the three buttons in a row */
+@media (max-width: 520px){
+  .mg-top.tac{ gap:8px 10px; margin-bottom:14px }
+  .mg-top.tac .mg-badge svg{ width:38px; height:38px }
+  .mg-top.tac .meta, .mg-top.tac .grow{ display:none }
+  .mg-top.tac > .mg-btn{ padding:8px 10px; font-size:12.5px }
+}
+@media (prefers-reduced-motion: reduce){
+  .mg-pop, .mg-pop.sheet, .mg-mx-sb .pts.flash, .mg-mx-comm.flash, .mg-btn.pulse, .mg-live-dot{ animation:none !important }
+  .mg-mx-courtwrap .pl, .mg-mx-courtwrap .ball{ transition:none !important }
+}

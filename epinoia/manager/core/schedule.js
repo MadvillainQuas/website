@@ -33,8 +33,11 @@ function roundRobin(ids, meetings, seed) {
     for (let i = 0; i < half; i++) {
       const a = arr[i], b = arr[n - 1 - i];
       if (a == null || b == null) continue;
-      /* alternate the fixed club's home and away, and every other pairing by round, so homes spread */
-      games.push((i === 0 ? r % 2 === 0 : (r + i) % 2 === 0) ? [a, b] : [b, a]);
+      /* every pairing alternates by round: a club moves one place round the circle a round, so it is home one round and
+         away the next (at most two or three in a row where it turns the circle's corner). By (round + place) it kept
+         the same end all the way along its side of the circle: sixteen away games in a row in a 17-club league
+         (seen 2026-10-14) */
+      games.push(r % 2 === 0 ? [a, b] : [b, a]);
     }
     base.push(games);
     arr = [arr[0]].concat([arr[n - 1]], arr.slice(1, n - 1));
