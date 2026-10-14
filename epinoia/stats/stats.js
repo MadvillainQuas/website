@@ -209,6 +209,9 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
            this table's percentiles are one league's, which is exactly what the table's own
            comparison ranks over, so it opens the shared chart itself. */
         selectable: { max: 5 },
+        /* THE STAT FILTERS AND QUICK COMBINE, as on Global scouting (2026-10-14) */
+        filters: true,
+        combine: true,
         rows,
         playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
         /* RAPM on request: it needs every stint of the scope, which means reading the

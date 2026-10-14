@@ -971,7 +971,15 @@ function render(opts) {
   };
 
   /* ---- the stat filters' catalogue and arithmetic (RATE_VOL, above render) ---- */
-  const extraCols = isTeam ? [] : FILTER_EXTRA;
+  /* AGE, HEIGHT AND WEIGHT AS FILTERS (2026-10-14): wherever the table shows them, in centimetres and kilograms (the
+     figures the leagues file); an age worked out from the birth year where that is all there is */
+  const BIO_FILTERS = BIO ? [
+    { k: 'bio_age', l: 'AGE', t: 'age (from the birth year where only that is known)' },
+    { k: 'bio_ht', l: 'HT (cm)', t: 'height in centimetres' },
+    { k: 'bio_wt', l: 'WT (kg)', t: 'weight in kilograms' }
+  ] : [];
+  const extraCols = isTeam ? [] : FILTER_EXTRA.concat(BIO_FILTERS);
+  const lineVal = (r, k) => (k === 'bio_age' ? ageOrGuess(r) : r[k]);
   const fcol = k => CAT.find(x => x.k === k && x.heat) || extraCols.find(x => x.k === k) || null;
   const filterStats = () => CAT.filter(c => c.heat && !c.g.includes('id') && !absent(c.k))
     .concat(extraCols.filter(c => !CAT.some(x => x.k === c.k)));
@@ -1299,7 +1307,8 @@ function render(opts) {
     stats.forEach(c => { const o = document.createElement('option');
       o.value = c.k; o.textContent = c.t ? c.l + ' — ' + c.t : c.l; sel.appendChild(o); });
     sel.value = f.k;
-    sel.addEventListener('change', () => { f.k = sel.value; if (f.x != null) applyFilters(); else paintFilters(); });
+    /* age, height and weight are asked for as figures (HT >= 200), not percentiles */
+    sel.addEventListener('change', () => { f.k = sel.value; if (/^bio_/.test(f.k) && f.mode !== 'val') { f.mode = 'val'; mode.textContent = 'value'; val.placeholder = 'value'; } if (f.x != null) applyFilters(); else paintFilters(); });
     const op = el('button', 'ep-btn ft-btn ft-fop', f.op === 'le' ? '≤' : '≥');
     op.type = 'button';
     op.setAttribute('aria-label', f.op === 'le' ? 'at most' : 'at least');
@@ -1755,7 +1764,7 @@ function render(opts) {
       floors.forEach(fl => { v = v.filter(r => fin(r[fl.vol]) && r[fl.vol] >= fl.x); });
       lines.forEach(f => {
         v = v.filter(r => {
-          const x = f.mode === 'pct' ? (pct.get(f.k) || new Map()).get(r.id) : r[f.k];
+          const x = f.mode === 'pct' ? (pct.get(f.k) || new Map()).get(r.id) : lineVal(r, f.k);
           if (!fin(x)) return false;
           return f.op === 'le' ? x <= f.x : x >= f.x;
         });

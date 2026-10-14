@@ -890,6 +890,9 @@ async function renderLeaders() {
     leagueId: league.id, leagueSlug: league.slug,
     /* the same pick-and-compare the season statistics page offers (fulltable.js tray) */
     selectable: { max: 5 },
+    /* THE STAT FILTERS AND QUICK COMBINE, as on Global scouting (2026-10-14) */
+    filters: true,
+    combine: true,
     rows,
     playerHref: r => '../p/?p=' + encodeURIComponent(r.id),
     /* the same on-request RAPM as the season statistics page: every stint in the scope */
@@ -933,6 +936,8 @@ async function renderTeamStats() {
     host: board, kind: 'team', sortKey: 'ppg',
     filename: (league.slug || 'league') + '-team-stats',
     leagueId: league.id, leagueSlug: league.slug,
+    filters: true,
+    combine: true,
     rows,
     teamHref: r => r.slug ? '../t/?t=' + encodeURIComponent(r.slug) : null
   });
