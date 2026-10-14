@@ -17,6 +17,9 @@
    while somebody has switched it on: it is off when the tab opens, polls every ten seconds, pauses
    while the window is hidden, and stops by itself after ten minutes or when the tab is left. Charts are one accent hue on the kit's own tokens (light and dark),
    every bar list is also its own table, and every column carries its numbers on hover.
+   VIEWS (2026-10-14): the tab is split into views, each fetching only its own report, once per range - Overview, then from
+   analytics_activity_report (migration 0260) Insights (findings worked out from the figures, with their numbers), Time on page,
+   Video, Downloads, Links & sharing and Speed & errors, then Search and Where visits come from.
    ============================================================================ */
 (function (root, factory) {
   const api = factory();
@@ -40,7 +43,12 @@ const PAGE = {
   scouting: 'Scouting', go: 'EPINOIA GO', 'go/stamps': 'GO · stamps', 'go/photos': 'GO · photos',
   me: 'Profile', signin: 'Sign in', join: 'Join', invite: 'Invite', learn: 'Learn more', api: 'API',
   contact: 'Contact', privacy: 'Privacy', android: 'Android app', ios: 'iPhone app', app: 'App',
-  prophesy: 'Prophesy', fixtures_all: 'Fixtures'
+  prophesy: 'Prophesy', fixtures_all: 'Fixtures',
+  creators: 'Creators', 'creators/hub': 'Creator hub', 'creators/studio': 'Creator studio', community: 'Community', fan: 'Fan page',
+  leaderboards: 'Leaderboards', 'go/leaderboards': 'GO · leaderboards', 'go/nearby': 'GO · near me', manager: 'EPINOIA Manager',
+  profile: 'Profile dashboard', votes: "Fans' vote", watch: 'Watch page', edit: 'Video editor', countries: 'Countries',
+  embed: 'Widget gallery', 'embed/table': 'Table widget', 'embed/strip': 'Scores strip widget', 'embed/game': 'Game widget',
+  'embed/merch': 'Merch widget', 'embed/notify': 'Alerts widget'
 };
 const GAME_TAB = {
   box: 'Box score', pbp: 'Play-by-play', shots: 'Shot charts', adv: 'Full stats', lineups: 'Lineups',
@@ -105,6 +113,25 @@ const CSS = `
 @keyframes an-pulse{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.an-live.running .an-dot{animation:none}}
 .an-live-off{font-family:var(--f-micro);font-size:9.5px;line-height:1.8;color:var(--ink-3);margin:6px 0 0;max-width:70ch}
+.an-views{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--rule);margin:0 0 calc(var(--u)*3)}
+.an-view{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:9px 12px;cursor:pointer;
+  font-family:var(--f-ui);font-weight:700;font-size:12.5px;letter-spacing:.02em;color:var(--ink-3)}
+.an-view:hover{color:var(--ink)}
+.an-view.on{color:var(--ink);border-bottom-color:var(--lume)}
+.an-view:focus-visible{outline:2px solid var(--lume);outline-offset:-2px}
+@media (max-width:719px){.an-views{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.an-view{white-space:nowrap}}
+.an-body > .an-card{margin-bottom:calc(var(--u)*3)}
+.an-ins{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.an-in{border:1px solid var(--rule);border-left-width:4px;padding:10px 12px;background:var(--ground)}
+.an-in.fix{border-left-color:var(--bad)}
+.an-in.improve{border-left-color:var(--amber)}
+.an-in.works{border-left-color:var(--good)}
+.an-in-h{font-family:var(--f-ui);font-weight:800;font-size:13.5px;color:var(--ink);display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.an-in-t{font-family:var(--f-ui);font-size:12.5px;line-height:1.55;color:var(--ink-2);margin-top:4px;max-width:80ch}
+.an-tag{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;padding:2px 6px;border:1px solid currentColor}
+.an-in.fix .an-tag{color:var(--bad)}
+.an-in.improve .an-tag{color:var(--amber)}
+.an-in.works .an-tag{color:var(--good)}
 .an-h2{font-family:var(--f-ui);font-weight:800;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink);margin:calc(var(--u)*4) 0 calc(var(--u)*2)}
 `;
 
@@ -120,11 +147,27 @@ function mount(o) {
   if (!document.getElementById('an-css')) { const s = el('style'); s.id = 'an-css'; s.textContent = CSS; document.head.appendChild(s); }
   st = st || { days: 30, live: { on: false } };
   st.sb = o.sb; st.say = o.say || (() => {}); st.host = host;
-  draw();
+  draw(true);
 }
 
-async function draw() {
+/* ============================================================================
+   THE VIEWS (2026-10-14). The tab is split into views, and a view fetches only its own report, once per range (refresh
+   fetches again): Overview (analytics_report), and from ONE call to analytics_activity_report (0260) Insights, Time on page,
+   Video, Downloads, Links & sharing and Speed & errors; Search and Where visits come from as before.
+   ============================================================================ */
+const VIEWS = [
+  ['overview', 'Overview'], ['insights', 'Insights'], ['time', 'Time on page'], ['video', 'Video'], ['downloads', 'Downloads'],
+  ['links', 'Links & sharing'], ['health', 'Speed & errors'], ['search', 'Search'], ['sources', 'Where visits come from']
+];
+const VIEW_KEY = 'epinoia.analytics.view';
+function savedView() { try { const v = localStorage.getItem(VIEW_KEY); return VIEWS.some(x => x[0] === v) ? v : 'overview'; } catch (_) { return 'overview'; } }
+function keepView(v) { try { localStorage.setItem(VIEW_KEY, v); } catch (_) { /* a private window */ } }
+
+async function draw(fresh) {
   const host = st.host;
+  if (fresh) st.cache = {};
+  st.cache = st.cache || {};
+  st.view = st.view || savedView();
   host.textContent = '';
   const bar = el('div', 'an-bar');
   RANGES.forEach(([d, label]) => {
@@ -134,41 +177,374 @@ async function draw() {
     bar.appendChild(b);
   });
   const again = el('button', 'ep-btn mini', 'refresh'); again.type = 'button';
-  again.addEventListener('click', draw);
+  again.addEventListener('click', () => draw(true));
   bar.appendChild(again);
   const note = el('span', 'an-note', 'loading…');
   bar.appendChild(note);
   host.appendChild(bar);
+
+  const views = el('nav', 'an-views');
+  views.setAttribute('aria-label', 'Analytics views');
+  VIEWS.forEach(([k, label]) => {
+    const b = el('button', 'an-view' + (st.view === k ? ' on' : ''), label);
+    b.type = 'button';
+    if (st.view === k) b.setAttribute('aria-current', 'page');
+    b.addEventListener('click', () => { if (st.view !== k) { st.view = k; keepView(k); draw(); } });
+    views.appendChild(b);
+  });
+  host.appendChild(views);
   host.appendChild(liveCard());          // its own element, kept across redraws so a running live view is not reset
 
   const cfg = window.EPINOIA_CONFIG || {};
   if (cfg.analytics !== true) {
     host.appendChild(el('div', 'an-off',
-      'Counting is switched off on the site (config.js analytics: false), so the figures below only cover the time it was on. ' +
-      'It is turned on once migration 0173 is applied.'));
+      'Counting is switched off on the site (config.js analytics: false), so the figures below only cover the time it was on.'));
   }
+  const body = el('div', 'an-body');
+  host.appendChild(body);
+  const stamp = () => { note.textContent = 'updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); };
+  const v = st.view;
 
-  let r = null;
+  if (v === 'search') { stamp(); return drawSearch(body); }
+  if (v === 'sources') { stamp(); return drawSources(body); }
+  if (v === 'overview') {
+    const r = await cached('overview', 'analytics_report', note, body,
+      'The analytics tables are not in the database yet: migration 0173 has not been applied.');
+    if (r && st.view === v) { stamp(); render(body, r); }
+    return;
+  }
+  const a = await cached('activity', 'analytics_activity_report', note, body,
+    'Time on page, video, downloads, links, speed and errors need migration 0260, which has not been applied yet. ' +
+    'Until it is, the tracker sends none of it (it stops after one refused call per page).');
+  if (!a || st.view !== v) return;
+  stamp();
+  ({ insights: renderInsights, time: renderTime, video: renderVideo, downloads: renderDownloads,
+     links: renderLinks, health: renderHealth })[v](body, a);
+}
+/* one call per report and range, kept until refresh */
+async function cached(key, fn, note, body, missing) {
+  const k = key + ':' + st.days;
+  if (st.cache[k]) return st.cache[k];
   try {
-    const res = await st.sb.rpc('analytics_report', { p_days: st.days });
+    const res = await st.sb.rpc(fn, { p_days: st.days });
     if (res.error) throw res.error;
-    r = res.data;
+    st.cache[k] = res.data || {};
+    return st.cache[k];
   } catch (e) {
     note.textContent = '';
     const msg = String((e && e.message) || e);
-    host.appendChild(el('div', 'an-off', /analytics_report|schema cache|does not exist/i.test(msg)
-      ? 'The analytics tables are not in the database yet: migration 0173 has not been applied.'
-      : 'The report could not be read: ' + msg));
-    return;
+    body.appendChild(el('div', 'an-off', new RegExp(fn + '|schema cache|does not exist|PGRST202', 'i').test(msg + ' ' + ((e && e.code) || ''))
+      ? missing : 'The report could not be read: ' + msg));
+    return null;
   }
-  note.textContent = 'updated ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-  render(host, r || {});
-  const sBox = el('div', 'an-search');
-  host.appendChild(sBox);
-  drawSearch(sBox);
-  const wBox = el('div', 'an-search');
-  host.appendChild(wBox);
-  drawSources(wBox);
+}
+
+/* ---------------------------------------------------------------- words --- */
+const secs = s => {
+  s = Math.round(Number(s) || 0);
+  if (s < 60) return s + ' s';
+  if (s < 3600) return Math.floor(s / 60) + ' m ' + String(s % 60).padStart(2, '0') + ' s';
+  return Math.floor(s / 3600) + ' h ' + String(Math.floor((s % 3600) / 60)).padStart(2, '0') + ' m';
+};
+const msWords = ms => (ms == null ? '—' : (Number(ms) >= 1000 ? (Number(ms) / 1000).toFixed(1) + ' s' : Math.round(Number(ms)) + ' ms'));
+const share = (a, b) => (b ? Math.round((100 * a) / b) : null);
+const pctOr = v => (v == null ? '—' : Math.round(Number(v)) + '%');
+const pageName = k => PAGE[k] || k;
+const DOWNLOAD = {
+  'season-stats': 'Season stats table', 'league-leaders': 'League leaders table', 'league-team-stats': 'League team stats table',
+  'club-players': "A club's players table", 'player-career': "A player's career table", table: 'Stats table',
+  calendar: 'Fixtures calendar', chart: 'Chart', 'compare-graphic': 'Player comparison graphic', 'stat-graphic': 'Stat graphic',
+  'weekly-card': 'Weekly card', 'creator-graphics': 'Creator graphics', 'video-clips': 'Video clip list', 'video-edit': 'Edited video',
+  'member-file': 'Member file', 'scouting-imports': 'Scouting imports', file: 'Other file'
+};
+const REPORT_ON = { t: 'Club report', p: 'Player report', scouting: 'Scouting report', game: 'Game report', l: 'League report' };
+const downloadName = (what, page) => (what === 'report' ? (REPORT_ON[page] || 'Report') : (DOWNLOAD[what] || what));
+const PROVIDER = { youtube: 'YouTube', 'youtube-live': 'YouTube live', vimeo: 'Vimeo', twitch: 'Twitch', 'twitch-live': 'Twitch live',
+                   facebook: 'Facebook', tiktok: 'TikTok', instagram: 'Instagram', file: 'Site clip' };
+const COPY = { link: 'Copied a link', 'embed-code': 'Copied widget code', text: 'Copied text', native: 'Used the share sheet' };
+
+function tiles(list) {
+  const t = el('div', 'tiles');
+  list.forEach(([n, k, sub]) => {
+    const d = el('div', 'tile');
+    d.append(el('div', 'n', n), el('div', 'k', k));
+    if (sub) d.appendChild(el('div', 'sub', sub));
+    t.appendChild(d);
+  });
+  return t;
+}
+function grid(...cards) { const g = el('div', 'an-grid'); cards.forEach(c => g.appendChild(c)); return g; }
+function lead(text) { return el('p', 'lead', text); }
+
+/* ------------------------------------------------------------- insights --- */
+/* Plain findings, worked out from the figures, each with the numbers behind it. A page needs enough visits before
+   anything is said about it, so a quiet week cannot produce a recommendation. */
+const MIN_VIEWS = 30, MIN_TIMED = 20;
+function insightsOf(a) {
+  const out = [];
+  const pages = (a.pages || []).filter(p => +p.views >= MIN_VIEWS);
+  let rule = '';
+  const add = (level, impact, title, text) => out.push({ level, impact, title, text, rule });
+
+  rule = 'error';
+  (a.errors || []).filter(e => +e.visits >= 3).slice(0, 3).forEach(e => add('fix', 1e6 + +e.visits,
+    'A script error on ' + pageName(e.page),
+    e.what + ' failed in ' + fmt(e.visits) + ' visits (' + fmt(e.n) + ' times). Whatever that code draws may be missing for those readers.'));
+
+  rule = 'slow';
+  pages.filter(p => +p.speed_n >= 10 && +p.p75_ms > 4000).forEach(p => add('fix', 5e5 + +p.views,
+    pageName(p.page) + ' is slow to appear',
+    'A quarter of loads wait ' + msWords(p.p75_ms) + ' or more for the main content (median ' + msWords(p.median_ms) + '). ' +
+    'Pages over about 2.5 s lose readers; look at what it fetches before it draws.'));
+
+  rule = 'bounce';
+  pages.filter(p => +p.landings >= MIN_VIEWS && share(+p.bounces, +p.landings) >= 60).forEach(p => add('improve', 4e5 + +p.landings,
+    'Visitors who arrive on ' + pageName(p.page) + ' leave without going further',
+    share(+p.bounces, +p.landings) + '% of the ' + fmt(p.landings) + ' visits that started here opened no second page. ' +
+    'Clear routes onward (the league table, the club, related games) keep them on the site.'));
+
+  rule = 'quick';
+  pages.filter(p => +p.timed >= MIN_TIMED && +p.quick >= 40).forEach(p => add('improve', 3e5 + +p.views,
+    'Many readers give ' + pageName(p.page) + ' under ten seconds',
+    Math.round(+p.quick) + '% of visits to it were in use for less than 10 s (median ' + secs(p.median_secs) + '). ' +
+    'Check that the top of the page shows what people came for, and that it is not waiting on data.'));
+
+  rule = 'unseen';
+  pages.filter(p => +p.timed >= MIN_TIMED && p.read_most != null && +p.read_most < 20 && +p.avg_depth < 50).forEach(p => add('improve', 2e5 + +p.views,
+    'Most of ' + pageName(p.page) + ' goes unseen',
+    'Only ' + Math.round(+p.read_most) + '% of readers scroll to its last quarter (on average they reach ' + Math.round(+p.avg_depth) + '%). ' +
+    'Move what matters higher, or shorten it.'));
+
+  rule = 'phones';
+  const sd = {};
+  (a.speed_devices || []).forEach(d => { sd[d.device] = d; });
+  if (sd.phone && sd.desktop && +sd.phone.n >= 30 && +sd.desktop.n >= 30 && +sd.phone.p75_ms > 1.8 * +sd.desktop.p75_ms)
+    add('improve', 1.5e5, 'Phones wait far longer than computers',
+      'Three quarters of loads on phones are drawn within ' + msWords(sd.phone.p75_ms) + ', against ' + msWords(sd.desktop.p75_ms) + ' on computers. ' +
+      'Lighter images and fewer requests on first load would help most people.');
+
+  rule = 'video';
+  const f = a.video_funnel || {};
+  if (+f.opened >= MIN_VIEWS && share(+f.played, +f.opened) < 40)
+    add('improve', 1.2e5, 'Video players are opened but not started',
+      'Only ' + share(+f.played, +f.opened) + '% of ' + fmt(f.opened) + ' players put on a page were played.');
+  if (+f.played >= MIN_VIEWS && share(+f.q50, +f.played) < 30)
+    add('improve', 1.1e5, 'Most viewers stop before halfway',
+      share(+f.q50, +f.played) + '% of plays reach the middle and ' + share(+f.done, +f.played) + '% the end. ' +
+      'Shorter highlights, or chapters in the long ones, may hold them.');
+
+  rule = 'engaging';
+  const engaging = pages.filter(p => +p.timed >= MIN_TIMED).sort((x, y) => +y.median_secs - +x.median_secs).slice(0, 2);
+  engaging.forEach(p => add('works', 1e4 + +p.views, 'Readers stay on ' + pageName(p.page),
+    'Median ' + secs(p.median_secs) + ' in use, a quarter of visits ' + secs(p.p75_secs) + ' or more. ' +
+    'Worth leading people to it from HOME and the rail.'));
+
+  rule = 'download';
+  const dl = (a.downloads || [])[0];
+  if (dl && +dl.n >= 10) add('works', 5e3, 'Most downloaded: ' + downloadName(dl.what, dl.page),
+    fmt(dl.n) + ' downloads (' + String(dl.fmt || '').toUpperCase() + ') from ' + pageName(dl.page) + (dl.about ? ', about ' + dl.about : '') + '.');
+  rule = 'top-video';
+  const vd = (a.videos || [])[0];
+  if (vd && +vd.plays >= 10) add('works', 4e3, 'Most watched video: ' + (vd.title || vd.what),
+    fmt(vd.plays) + ' plays, ' + fmt(vd.minutes) + ' minutes watched' + (vd.league ? ', ' + vd.league : '') + '.');
+
+  /* the biggest first within each kind of finding, at most two of a kind, and room kept for what is working */
+  const rank = { fix: 0, improve: 1, works: 2 }, room = { fix: 4, improve: 6, works: 3 }, perRule = {}, used = {};
+  return out.sort((x, y) => rank[x.level] - rank[y.level] || y.impact - x.impact).filter(x => {
+    perRule[x.rule] = (perRule[x.rule] || 0) + 1;
+    if (perRule[x.rule] > 2) return false;
+    used[x.level] = (used[x.level] || 0) + 1;
+    return used[x.level] <= room[x.level];
+  });
+}
+const LEVEL = { fix: 'Fix', improve: 'Improve', works: 'Working' };
+function renderInsights(host, a) {
+  const t = a.totals || {};
+  host.appendChild(tiles([
+    [secs(t.median_page_secs), 'median time on a page', 'in use: visible and touched in the last 30 s'],
+    [secs(t.median_visit_secs), 'median time a visit', fmt(t.engaged_hours) + ' hours in all'],
+    [pctOr(t.bounce_rate), 'bounce rate', 'visits that opened one page only'],
+    [fmt(t.video_plays), 'video plays', fmt(t.video_hours) + ' hours watched'],
+    [fmt(t.downloads), 'downloads'],
+    [msWords(t.median_speed_ms), 'median load', 'until the main content is drawn']
+  ]));
+  const list = insightsOf(a);
+  const box = el('section', 'an-card');
+  box.appendChild(el('h3', null, 'What the figures suggest'));
+  if (!list.length) {
+    box.appendChild(el('div', 'an-empty', 'Nothing stands out yet: a page needs ' + MIN_VIEWS + ' views in the range before anything is said about it. Try a longer range.'));
+  } else {
+    const ul = el('ol', 'an-ins');
+    list.forEach(x => {
+      const li = el('li', 'an-in ' + x.level);
+      const tag = el('span', 'an-tag', LEVEL[x.level]);
+      const h = el('div', 'an-in-h'); h.append(tag, document.createTextNode(x.title));
+      li.append(h, el('div', 'an-in-t', x.text));
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+  }
+  host.appendChild(box);
+  host.appendChild(lead('Worked out from this range only. "Fix" is something broken or slow; "Improve" a page that loses people; ' +
+    '"Working" what to lean on. Each one names its numbers, and the other views have the detail.'));
+}
+
+/* --------------------------------------------------------- time on page --- */
+function renderTime(host, a) {
+  const pages = a.pages || [];
+  const t = a.totals || {};
+  host.appendChild(tiles([
+    [secs(t.median_page_secs), 'median time on a page'],
+    [secs(t.median_visit_secs), 'median time a visit'],
+    [fmt(t.engaged_hours), 'hours spent on the site'],
+    [pctOr(t.bounce_rate), 'bounce rate']
+  ]));
+  host.appendChild(lead('Time is time IN USE: the page in front of the reader and touched, scrolled or typed in within the last 30 seconds ' +
+    '(or a video playing on it), so a tab left open in the background does not count. Median is the middle visit; "75% under" is the time ' +
+    'three quarters of visits stay below. Bounce: of the visits that started on a page, the share that opened nothing else. Exit rate: of a ' +
+    'page\'s views, the share that were the last of their visit.'));
+  host.appendChild(card('Every page, by traffic', plain(pages, [
+    ['Page', x => pageName(x.page)],
+    ['Views', x => fmt(x.views), 'num'],
+    ['Median time', x => (x.timed ? secs(x.median_secs) : '—'), 'num'],
+    ['75% under', x => (x.timed ? secs(x.p75_secs) : '—'), 'num'],
+    ['Under 10 s', x => pctOr(x.quick), 'num'],
+    ['Read 75%+', x => pctOr(x.read_most), 'num'],
+    ['Bounce', x => (+x.landings ? share(+x.bounces, +x.landings) + '%' : '—'), 'num'],
+    ['Exit rate', x => (+x.views ? share(+x.exits, +x.views) + '%' : '—'), 'num'],
+    ['Load', x => msWords(x.median_ms), 'num']
+  ], 'No page views in this range yet.')));
+  const timed = pages.filter(p => +p.timed >= 5);
+  host.appendChild(grid(
+    card('Where people stay longest (median time)', ranked(timed.slice().sort((x, y) => +y.median_secs - +x.median_secs), [
+      ['Page', x => pageName(x.page)], ['Median', x => secs(x.median_secs), 'num'], ['Visits timed', x => fmt(x.timed), 'num']
+    ], x => +x.median_secs)),
+    card('Where people leave fastest (under 10 s)', ranked(timed.slice().sort((x, y) => +y.quick - +x.quick), [
+      ['Page', x => pageName(x.page)], ['Under 10 s', x => pctOr(x.quick), 'num'], ['Visits timed', x => fmt(x.timed), 'num']
+    ], x => +x.quick))));
+  host.appendChild(grid(
+    card('How far down pages are read', ranked(timed.filter(p => p.avg_depth != null).sort((x, y) => +x.avg_depth - +y.avg_depth), [
+      ['Page', x => pageName(x.page)], ['Reached on average', x => pctOr(x.avg_depth), 'num'], ['Read 75%+', x => pctOr(x.read_most), 'num']
+    ], x => +x.avg_depth, 'Least read first. A page shorter than the screen counts as read to the end.')),
+    card('Time spent, league by league', ranked(a.leagues, [
+      ['League', x => x.name || x.slug], ['Time', x => secs(x.secs), 'num'], ['Visits', x => fmt(x.visits), 'num'],
+      ['Median a page', x => secs(x.median_secs), 'num']
+    ], x => +x.secs, 'Every page about the league: its own, its clubs\', its players\' and its games\'.'))));
+}
+
+/* ----------------------------------------------------------------- video --- */
+function renderVideo(host, a) {
+  const f = a.video_funnel || {};
+  const mins = (a.videos || []).reduce((s, v) => s + (+v.minutes || 0), 0);
+  host.appendChild(tiles([
+    [fmt(f.played), 'plays', fmt(f.opened) + ' players opened'],
+    [pctOr(share(+f.played, +f.opened)), 'play rate', 'opened and then played'],
+    [fmt((a.totals || {}).video_hours), 'hours watched', fmt(mins) + ' minutes on the top 50'],
+    [pctOr(share(+f.q50, +f.played)), 'reach halfway', 'of plays'],
+    [pctOr(share(+f.done, +f.played)), 'reach the end', 'of plays']
+  ]));
+  const steps = [['Opened', f.opened], ['Played', f.played], ['A quarter in', f.q25], ['Halfway', f.q50], ['Three quarters', f.q75], ['To the end', f.done]];
+  host.appendChild(grid(
+    card('How far viewers get', ranked(steps.map(([k, n]) => ({ k, n: +n || 0 })), [
+      ['Stage', x => x.k], ['Videos', x => fmt(x.n), 'num'], ['Of plays', x => (x.k === 'Opened' ? '' : pctOr(share(x.n, +f.played))), 'num']
+    ], x => x.n, 'One visit and one video counted once at each stage. Live streams have no end, so they stop at "Played".')),
+    card('Plays a day', columns((a.video_daily || []).map(d => ({
+      label: shortDay(d.day), value: +d.plays || 0, tip: shortDay(d.day) + ' — ' + fmt(d.plays) + ' plays, ' + fmt(d.minutes) + ' minutes watched'
+    })), 'No plays in this range yet.'))));
+  host.appendChild(card('Videos, most played first', plain(a.videos, [
+    ['Video', x => x.title || x.what],
+    ['Where', x => PROVIDER[x.provider] || x.provider],
+    ['League', x => x.league || ''],
+    ['Watched on', x => pageName(x.page)],
+    ['Plays', x => fmt(x.plays), 'num'],
+    ['Halfway', x => pctOr(share(+x.half, +x.plays)), 'num'],
+    ['Finished', x => pctOr(share(+x.done, +x.plays)), 'num'],
+    ['Minutes', x => fmt(x.minutes), 'num']
+  ], 'No videos played in this range yet.')));
+  host.appendChild(card('Where videos are watched', ranked(a.video_pages, [
+    ['Page', x => pageName(x.page)], ['Opened', x => fmt(x.opens), 'num'], ['Played', x => fmt(x.plays), 'num'], ['Minutes', x => fmt(x.minutes), 'num']
+  ], x => +x.plays)));
+  host.appendChild(lead('Players from YouTube and Vimeo say when they play and how far they get. Twitch, Facebook, TikTok and Instagram players ' +
+    'only say that they were opened, so they count under "Opened" alone. A video is named by its public id; the title comes from the news ' +
+    'item or the game it belongs to.'));
+}
+
+/* ------------------------------------------------------------- downloads --- */
+function renderDownloads(host, a) {
+  const kinds = a.download_kinds || [];
+  const total = +(a.totals || {}).downloads || 0;
+  const fmts = {};
+  kinds.forEach(k => { fmts[k.fmt] = (fmts[k.fmt] || 0) + (+k.n || 0); });
+  const topFmt = Object.keys(fmts).sort((x, y) => fmts[y] - fmts[x])[0];
+  host.appendChild(tiles([
+    [fmt(total), 'downloads'],
+    [fmt(kinds.length), 'kinds of file'],
+    [topFmt ? String(topFmt).toUpperCase() : '—', 'most common format', topFmt ? pctOr(share(fmts[topFmt], total)) + ' of downloads' : '']
+  ]));
+  host.appendChild(card('What is downloaded, from where, and about whom', plain(a.downloads, [
+    ['What', x => downloadName(x.what, x.page)],
+    ['Format', x => String(x.fmt || '').toUpperCase()],
+    ['From page', x => pageName(x.page)],
+    ['About', x => (x.about ? x.about + (x.about_kind ? ' (' + x.about_kind + ')' : '') : '')],
+    ['Downloads', x => fmt(x.n), 'num'],
+    ['Visits', x => fmt(x.visits), 'num']
+  ], 'No downloads in this range yet.')));
+  host.appendChild(grid(
+    card('By kind', ranked(kinds, [
+      ['What', x => (x.what === 'report' ? 'Report (club, player, game or scouting)' : downloadName(x.what))],
+      ['Format', x => String(x.fmt || '').toUpperCase()], ['Downloads', x => fmt(x.n), 'num']
+    ], x => +x.n)),
+    card('By format', ranked(Object.keys(fmts).map(k => ({ k, n: fmts[k] })).sort((x, y) => y.n - x.n), [
+      ['Format', x => String(x.k).toUpperCase()], ['Downloads', x => fmt(x.n), 'num'], ['Share', x => pctOr(share(x.n, total)), 'num']
+    ], x => x.n))));
+  host.appendChild(lead('A download is counted as the kind of thing it is (a club report, a season stats table, the fixtures calendar), ' +
+    'the page it was saved from and the league, club, player or game that page is about. File names are never sent.'));
+}
+
+/* ------------------------------------------------------- links & sharing --- */
+function renderLinks(host, a) {
+  const t = a.totals || {};
+  host.appendChild(tiles([
+    [fmt(t.outbound), 'links followed to other sites'],
+    [fmt(t.shares), 'shares and copies'],
+    [fmt(t.embeds), 'widgets shown on other sites']
+  ]));
+  host.appendChild(grid(
+    card('Other sites people go to', ranked(a.outbound, [
+      ['Site', x => x.host], ['Clicks', x => fmt(x.n), 'num'], ['Visits', x => fmt(x.visits), 'num'], ['Mostly from', x => pageName(x.page)]
+    ], x => +x.n, 'The site\'s name only, never the page on it.')),
+    card('Sharing and copying', ranked(a.shares, [
+      ['What', x => COPY[x.what] || (x.kind === 'copy' ? 'Copied: ' + x.what : 'Shared: ' + x.what)], ['Page', x => pageName(x.page)],
+      ['Times', x => fmt(x.n), 'num']
+    ], x => +x.n, 'That it happened and the kind of thing, never what was copied.'))));
+  host.appendChild(card('The site\'s widgets on other sites', ranked(a.embeds, [
+    ['Widget', x => pageName(x.widget)], ['Shown on', x => x.host || '(opened directly)'], ['Times shown', x => fmt(x.n), 'num']
+  ], x => +x.n, 'Each time a widget is drawn on a club\'s or league\'s own site. These are not visits to EPINOIA.')));
+}
+
+/* ------------------------------------------------------- speed & errors --- */
+function renderHealth(host, a) {
+  const t = a.totals || {};
+  const slow = (a.pages || []).filter(p => +p.speed_n >= 5).sort((x, y) => +y.p75_ms - +x.p75_ms);
+  host.appendChild(tiles([
+    [msWords(t.median_speed_ms), 'median load', 'until the main content is drawn'],
+    [fmt(t.errors), 'script errors', 'in the site\'s own code']
+  ]));
+  host.appendChild(grid(
+    card('Slowest pages (75% of loads within)', ranked(slow, [
+      ['Page', x => pageName(x.page)], ['75% within', x => msWords(x.p75_ms), 'num'], ['Median', x => msWords(x.median_ms), 'num'],
+      ['Loads', x => fmt(x.speed_n), 'num']
+    ], x => +x.p75_ms, 'Under 2.5 s is good, over 4 s is poor.')),
+    card('By device', plain(a.speed_devices, [
+      ['Device', x => DEVICE[x.device] || x.device], ['Loads', x => fmt(x.n), 'num'], ['Median', x => msWords(x.median_ms), 'num'],
+      ['75% within', x => msWords(x.p75_ms), 'num']
+    ], 'No loads measured in this range yet.'))));
+  host.appendChild(card('Script errors', plain(a.errors, [
+    ['Where in the code', x => x.what], ['Page', x => pageName(x.page)], ['Times', x => fmt(x.n), 'num'], ['Visits', x => fmt(x.visits), 'num'],
+    ['Last seen', x => (x.last_at ? new Date(x.last_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '')]
+  ], 'No script errors in this range.')));
+  host.appendChild(lead('An error is recorded as the file and line of the site\'s own code that failed, at most five a page, never its message. ' +
+    'Load time is the browser\'s own measure of when the largest piece of the page was drawn.'));
 }
 
 /* ------------------------------------------------- where visitors came from --- */

@@ -885,7 +885,7 @@ async function renderLeaders() {
   }
   window.EpinoiaTable.render({
     host: board, kind: 'player', sortKey: 'ppg', minGames: 1,
-    filename: (league.slug || 'league') + '-leaders',
+    filename: (league.slug || 'league') + '-leaders', track: 'league-leaders',
     /* the table drops the premium columns itself when this league's analytics are locked */
     leagueId: league.id, leagueSlug: league.slug,
     /* the same pick-and-compare the season statistics page offers (fulltable.js tray) */
@@ -934,7 +934,7 @@ async function renderTeamStats() {
   }
   window.EpinoiaTable.render({
     host: board, kind: 'team', sortKey: 'ppg',
-    filename: (league.slug || 'league') + '-team-stats',
+    filename: (league.slug || 'league') + '-team-stats', track: 'league-team-stats',
     leagueId: league.id, leagueSlug: league.slug,
     filters: true,
     combine: true,

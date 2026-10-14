@@ -410,10 +410,11 @@ function zip(files, when) {
   return out;
 }
 
-function download(blob, name) {
+function download(blob, name, track) {
   const url = root.URL.createObjectURL(blob);
   const a = root.document.createElement('a');
   a.href = url; a.download = name;
+  if (track) a.dataset.track = track;
   root.document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => root.URL.revokeObjectURL(url), 60000);
 }
@@ -444,7 +445,7 @@ async function pdfBytes(nodes, opt) {
 }
 async function savePdf(nodes, name, opt) {
   const bytes = await pdfBytes(nodes, opt);
-  download(new root.Blob([bytes], { type: 'application/pdf' }), name + '.pdf');
+  download(new root.Blob([bytes], { type: 'application/pdf' }), name + '.pdf', opt && opt.track);
 }
 
 async function saveImages(nodes, name, opt) {
@@ -456,8 +457,8 @@ async function saveImages(nodes, name, opt) {
     files.push({ name: name + '-p' + String(i + 1).padStart(2, '0') + '.png', bytes: new Uint8Array(await (await blobOf(c, 'image/png')).arrayBuffer()) });
     c.width = c.height = 1;
   }
-  if (files.length === 1) download(new root.Blob([files[0].bytes], { type: 'image/png' }), files[0].name);
-  else download(new root.Blob([zip(files)], { type: 'application/zip' }), name + '-pages.zip');
+  if (files.length === 1) download(new root.Blob([files[0].bytes], { type: 'image/png' }), files[0].name, o.track);
+  else download(new root.Blob([zip(files)], { type: 'application/zip' }), name + '-pages.zip', o.track);
 }
 
 return { canvasOf, savePdf, pdfBytes, saveImages, pdfFromJpegs, zip, crc32, PROPS };

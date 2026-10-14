@@ -46,7 +46,7 @@ function browser(o = {}) {
     addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); }
   };
   const env = {
-    EPINOIA_CONFIG: { supabaseUrl: URL_, supabaseAnonKey: 'sb_publishable_test', analytics: o.analytics !== false },
+    EPINOIA_CONFIG: { supabaseUrl: URL_, supabaseAnonKey: 'sb_publishable_test', analytics: o.analytics !== false, analyticsActivity: o.activity !== false },
     location: { pathname: o.path || '/epinoia/game/', search: o.search || '', hostname: 'prophesyscouting.co.uk' },
     navigator: Object.assign({ userAgent: 'Mozilla/5.0 (Secret Device Model)' }, o.nav || {}),
     localStorage: ls, sessionStorage: ss, document: doc, innerWidth: o.width || 390,
@@ -386,9 +386,16 @@ console.log('\n-- the VIDEO view (2026-10-07): its own page, and what is done in
   T.view();
   await T.flush(true);
   const ev = b.calls.length ? b.calls[0].body.p_events : [];
-  ok('the landing is a view of home/video, the actions tabs on it, the view switch a second view',
+  ok('the landing is a view of home/video, the actions tabs on it; view() on an address that has not changed is not a second view',
      ev.map(e => e.kind + ':' + e.page + ':' + (e.tab || '')).join(' ') ===
-     'view:home/video: tab:home/video:play-highlights tab:home/video:kind-full tab:home/video:chat-send view:home/video:', ev);
+     'view:home/video: tab:home/video:play-highlights tab:home/video:kind-full tab:home/video:chat-send', ev);
+  b.env.location.search = '';
+  T.view();
+  T.view();
+  await T.flush(true);
+  const ev2 = b.calls.length > 1 ? b.calls[1].body.p_events : [];
+  ok('...and a real switch (back to MAIN) is one view of the page it went to, however many times it is said',
+     ev2.map(e => e.kind + ':' + e.page).join(' ') === 'view:home', ev2);
   const play = ev.find(e => e.tab === 'play-highlights') || {};
   ok('an action carries the league and game it was about (a bad slug or id falls back to the page\'s, here none)',
      play.league === 'bcl-x' && play.game === '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0'
@@ -411,6 +418,219 @@ console.log('\n-- the VIDEO view (2026-10-07): its own page, and what is done in
   const nav = readFileSync(path.join(ROOT, 'epinoia', 'nav.js'), 'utf8');
   ok('MAIN -> VIDEO in place is a view, back to MAIN an action, the rail\'s VIDEOS row counts its press',
      /if \(to === 'video'\) T\.view\(\); else T\.action\('main'\)/.test(mode) && /EpinoiaTrack\.action\('rail-videos'\)/.test(nav));
+}
+
+/* ============================================================================ 0260: WHAT PEOPLE DO ON A PAGE === */
+const acts = B => B.calls.filter(c => /analytics_activity$/.test(c.url));
+const views = B => B.calls.filter(c => /analytics_track$/.test(c.url));
+const ANCHOR = (attrs, data) => ({
+  getAttribute: k => (k in attrs ? attrs[k] : null), hasAttribute: k => k in attrs, dataset: data || {},
+  closest(sel) { return /a\[href\]|data-track/.test(sel) ? this : null; }, className: ''
+});
+
+console.log('\n-- 0260: time on the page, sent once, when the reader leaves');
+{
+  const B = browser({ path: '/epinoia/stats/', search: '?l=slb' });
+  T.boot();
+  X.tick(); X.tick(); X.tick();
+  ok('three ticks of a page in use are fifteen seconds owed, and nothing has been sent for them yet',
+     X.unsentSecs() === 15 && acts(B).length === 0, X.unsentSecs());
+  B.doc.visibilityState = 'hidden';
+  X.tick();
+  ok('a hidden page is not time spent on it', X.unsentSecs() === 15);
+  X.leaving();
+  await tick(5);
+  const a = acts(B);
+  ok('leaving sends ONE activity request (and the view in its own), not one per thing done', a.length === 1 && views(B).length === 1, B.calls.map(c => c.url));
+  const body = a[0] ? a[0].body : {};
+  ok('it carries exactly session, device, app and the events',
+     JSON.stringify(Object.keys(body).sort()) === JSON.stringify(['p_app', 'p_device', 'p_events', 'p_session']), Object.keys(body));
+  const t = (body.p_events || []).find(e => e.kind === 'time') || {};
+  ok('the time is the page, its league and the seconds in use, with how far down it was read',
+     t.page === 'stats' && t.league === 'slb' && t.secs === 15 && typeof t.depth === 'number', t);
+  ok('...sent with the public key only, keepalive as the page goes', a[0].init.headers.apikey === 'sb_publishable_test' && !('Authorization' in a[0].init.headers) && a[0].init.keepalive === true);
+}
+
+console.log('\n-- 0260: a new page without a new load is a new view; a tidier address is not');
+{
+  const P1 = '11111111-2222-4333-8444-555555555555', P2 = '66666666-7777-4888-8999-aaaaaaaaaaaa';
+  const B = browser({ path: '/epinoia/p/', search: '?p=' + P1 });
+  T.boot();
+  X.tick();
+  B.env.location.search = '?p=' + P1 + '&s=2025';
+  ok('a season chosen on the same player is not a new page', X.countView() === false);
+  B.env.location.search = '?p=' + P2;
+  ok('another player is', X.countView() === true);
+  await T.flush(false);
+  const v = views(B)[0].body.p_events.filter(e => e.kind === 'view');
+  ok('...so two views, the second the new player\'s page', v.length === 2 && v[1].page === 'p', v);
+  ok('...and the first page\'s time was settled as it was left', X.actQueue.some(e => e.kind === 'time' && e.secs === 5));
+  const C = browser({ path: '/epinoia/t/', search: '?t=' + P1 });
+  T.boot();
+  C.env.location.search = '?t=london-lions';
+  ok('a club opened by its id whose address then shows its slug is the same page', X.countView() === false);
+}
+
+console.log('\n-- 0260: downloads say WHAT was saved and FROM WHERE, never the file\'s name');
+{
+  const B = browser({ path: '/epinoia/t/', search: '?t=london-lions&l=slb' });
+  T.boot();
+  X.onClick({ target: ANCHOR({ href: 'blob:https://prophesyscouting.co.uk/abc', download: 'epinoia-report-london-lions.pdf' }, { track: 'report' }) });
+  X.onClick({ target: ANCHOR({ href: 'blob:https://prophesyscouting.co.uk/def', download: 'london-lions-players.csv' }, { track: 'club-players' }) });
+  X.onClick({ target: ANCHOR({ href: 'blob:https://prophesyscouting.co.uk/ghi', download: 'whatever.PNG' }) });
+  X.onClick({ target: ANCHOR({ href: 'webcal://prophesyscouting.co.uk/cal/slb.ics' }) });
+  T.download('Season Report', 'pdf');
+  T.download('season-report', 'pdf');
+  X.leaving(); await tick(5);
+  const d = acts(B)[0].body.p_events.filter(e => e.kind === 'download');
+  ok('a club report PDF from the club page, with the club and league it is about',
+     d[0] && d[0].what === 'report' && d[0].fmt === 'pdf' && d[0].page === 't' && d[0].team === 'london-lions' && d[0].league === 'slb', d[0]);
+  ok('a CSV of the club\'s players', d[1] && d[1].what === 'club-players' && d[1].fmt === 'csv', d[1]);
+  ok('a file the page did not label is a "file" in its format', d[2] && d[2].what === 'file' && d[2].fmt === 'png', d[2]);
+  ok('a calendar subscription is a calendar download', d[3] && d[3].what === 'calendar' && d[3].fmt === 'ics', d[3]);
+  ok('download() from a page: a key is kept, words are not', d.length === 5 && d[4].what === 'season-report', d.map(x => x.what));
+  ok('no file name, blob address or calendar address leaves the page', !/epinoia-report|players\.csv|whatever|blob:|webcal|slb\.ics/.test(JSON.stringify(acts(B)[0].body)));
+}
+
+console.log('\n-- 0260: a link to another site is that site\'s name only');
+{
+  const B = browser({ path: '/epinoia/game/', search: '?g=' + GAME });
+  T.boot();
+  X.onClick({ target: ANCHOR({ href: 'https://www.tickets.example.com/seat/12?ref=fan@example.org' }) });
+  X.onClick({ target: ANCHOR({ href: '/epinoia/t/?t=london-lions' }) });
+  X.onClick({ target: ANCHOR({ href: 'mailto:someone@example.org' }) });
+  X.leaving(); await tick(5);
+  const o = acts(B)[0].body.p_events.filter(e => e.kind === 'out');
+  ok('one outbound link, by its host, on the game it was followed from', o.length === 1 && o[0].what === 'tickets.example.com' && o[0].game === GAME, o);
+  ok('...and nothing of its address (path, query, an email in it)', !/seat|fan@|someone@/.test(JSON.stringify(acts(B)[0].body)));
+}
+
+console.log('\n-- 0260: sharing and copying, never what was copied');
+{
+  let wrote = null, shared = null;
+  const B = browser({ path: '/epinoia/stats/wowy/', nav: { clipboard: { writeText: t => { wrote = t; return Promise.resolve(); } }, share: d => { shared = d; return Promise.resolve(); } } });
+  T.boot();
+  await B.env.navigator.clipboard.writeText('https://prophesyscouting.co.uk/epinoia/stats/wowy/?private=1');
+  await B.env.navigator.clipboard.writeText('<iframe src="x"></iframe>');
+  await B.env.navigator.share({ url: 'https://x.test/a' });
+  ok('the page\'s own copy and share still work', /private=1/.test(String(wrote)) === false && wrote === '<iframe src="x"></iframe>' && shared && shared.url === 'https://x.test/a');
+  X.leaving(); await tick(5);
+  const s = acts(B)[0].body.p_events.filter(e => e.kind === 'copy' || e.kind === 'share');
+  ok('a link copied, embed code copied, the share sheet: by kind', s.map(e => e.kind + ':' + e.what).join(' ') === 'copy:link copy:embed-code share:native', s);
+  ok('...and not one word of what was copied or shared', !/private|iframe|x\.test/.test(JSON.stringify(acts(B)[0].body)));
+}
+
+console.log('\n-- 0260: videos, whoever put the player on the page');
+{
+  ok('the players the site uses are named by platform and public id',
+     X.videoOf('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&enablejsapi=1').what === 'youtube:dQw4w9WgXcQ'
+     && X.videoOf('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1').api === null
+     && X.videoOf('https://www.youtube.com/embed/live_stream?channel=UCabcdefghijklmnopqrstuv').what === 'youtube-live:UCabcdefghijklmnopqrstuv'
+     && X.videoOf('https://player.vimeo.com/video/123456').what === 'vimeo:123456'
+     && X.videoOf('https://player.twitch.tv/?video=v998877&parent=x').what === 'twitch:998877'
+     && X.videoOf('https://player.twitch.tv/?channel=SLBtv&parent=x').what === 'twitch-live:slbtv'
+     && X.videoOf('https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent('https://www.facebook.com/club/videos/4455/')).what === 'facebook:4455'
+     && X.videoOf('https://example.com/embed/x') === null && X.videoOf('https://www.youtube.com/embed/short') === null);
+  const B = browser({ path: '/epinoia/home/', search: '?view=video' });
+  T.boot();
+  const sent = [];
+  const cw = { postMessage: (m, origin) => sent.push([m, origin]) };
+  const frame = { tagName: 'IFRAME', getAttribute: k => (k === 'src' ? 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&enablejsapi=1&origin=x' : null),
+                  contentWindow: cw, isConnected: true, closest: () => null, addEventListener() {} };
+  T.action('play-highlights', { league: 'slb', game: GAME });
+  X.attachFrame(frame);
+  ok('the player is asked for its events, at its own origin', sent.length >= 2 && sent.every(s => s[1] === 'https://www.youtube-nocookie.com') && /"listening"/.test(sent[0][0]));
+  const msg = (data, origin) => X.onMessage({ origin: origin || 'https://www.youtube-nocookie.com', source: cw, data: JSON.stringify(data) });
+  msg({ event: 'onStateChange', info: 1 }, 'https://evil.example');
+  ok('a message from anywhere else is ignored', ![...X.players.values()][0].playing);
+  msg({ event: 'onStateChange', info: 1 });
+  for (let t = 0; t <= 60; t += 2) msg({ event: 'infoDelivery', info: { currentTime: t, duration: 100, playerState: 1 } });
+  msg({ event: 'infoDelivery', info: { currentTime: 90, duration: 100 } });           // jumped ahead: reached, not watched
+  X.leaving(); await tick(5);
+  const v = acts(B)[0].body.p_events.filter(e => e.kind === 'video');
+  ok('open, play, a quarter, half, three quarters reached, then the seconds actually watched',
+     v.map(e => e.step).join(' ') === 'open play q25 q50 q75 watch', v.map(e => e.step));
+  const w = v.find(e => e.step === 'watch') || {};
+  ok('...sixty seconds watched (the jump to 90% is not watching), on the league and game the play button named',
+     w.secs === 60 && w.league === 'slb' && w.game === GAME && w.page === 'home/video', w);
+}
+
+console.log('\n-- 0260: speed and script errors');
+{
+  const B = browser({ path: '/epinoia/game/', search: '?g=' + GAME });
+  B.env.performance = { getEntriesByType: () => [{ domContentLoadedEventEnd: 812.4 }] };
+  T.boot();
+  X.onError({ filename: 'https://prophesyscouting.co.uk/epinoia/game/game.js?v=806', lineno: 2163, message: 'cannot read x of fan@example.org' });
+  X.onError({ filename: 'https://www.youtube.com/s/player/base.js', lineno: 9 });
+  X.onRejection({ reason: { stack: 'TypeError: x\n    at f (https://prophesyscouting.co.uk/epinoia/boxscore.js?v=806:412:9)' } });
+  for (let i = 0; i < 8; i++) X.onError({ filename: 'https://prophesyscouting.co.uk/epinoia/nav.js', lineno: i + 1 });
+  X.leaving(); await tick(5);
+  const ev = acts(B)[0].body.p_events;
+  const sp = ev.find(e => e.kind === 'speed') || {};
+  ok('the load\'s time, once, on its page', sp.ms === 812 && sp.page === 'game' && ev.filter(e => e.kind === 'speed').length === 1, sp);
+  const er = ev.filter(e => e.kind === 'error').map(e => e.what);
+  ok('errors in our own files by file and line; another site\'s script is not ours to count; at most five a page',
+     er[0] === 'game.js:2163' && er[1] === 'boxscore.js:412' && er.length === 5 && !er.some(x => /base\.js/.test(x)), er);
+  ok('...and never the message', !/fan@|cannot read/.test(JSON.stringify(acts(B)[0].body)));
+}
+
+console.log('\n-- 0260: the widgets on other sites, and what is not counted');
+{
+  const B = browser({ path: '/epinoia/embed/table/', search: '?l=slb', referrer: 'https://www.clubsite.co.uk/fixtures?member=7' });
+  T.boot();
+  X.leaving(); await tick(5);
+  const e = acts(B)[0] ? acts(B)[0].body.p_events : [];
+  ok('a widget on another site is one "embed" of that widget, with that site\'s name and the league it shows',
+     e.length === 1 && e[0].kind === 'embed' && e[0].page === 'embed/table' && e[0].what === 'clubsite.co.uk' && e[0].league === 'slb', e);
+  ok('...and is not a visit (no page view is sent from it)', views(B).length === 0);
+  const own = browser({ path: '/epinoia/embed/table/', referrer: 'https://prophesyscouting.co.uk/epinoia/embed/' });
+  T.boot(); X.leaving(); await tick(5);
+  ok('the site\'s own gallery previewing a widget is not counted', own.calls.length === 0);
+  const gal = browser({ path: '/epinoia/embed/' });
+  T.boot(); await T.flush(false);
+  ok('the gallery itself is a page of the site, counted like any other', views(gal).length === 1 && views(gal)[0].body.p_events[0].page === 'embed');
+  for (const [name, o] of [['Global Privacy Control', { nav: { globalPrivacyControl: true } }], ['a staff tool', { path: '/epinoia/admin/platform/' }],
+                           ['an automated browser', { nav: { webdriver: true } }]]) {
+    const Z = browser(Object.assign({ path: '/epinoia/game/' }, o));
+    T.boot(); X.tick(); X.onClick({ target: ANCHOR({ href: 'https://example.com/' }) }); X.leaving(); await tick(5);
+    ok('nothing at all for ' + name, Z.calls.length === 0, Z.calls.map(c => c.url));
+  }
+  const R = browser({ path: '/epinoia/stats/', status: 404 });
+  T.boot(); X.tick(); X.leaving(); await tick(5);
+  X.tick(); X.leaving(); await tick(5);
+  ok('before 0260 is applied the refused activity call is made once and not again', acts(R).length === 1, acts(R).length);
+}
+
+console.log('\n-- 0260: the migration');
+{
+  const sql = readFileSync(path.join(ROOT, 'supabase', 'migrations', '0260_analytics_activity.sql'), 'utf8');
+  ok('no browser role reaches the table; recording is open, the report is administrators only',
+     /revoke all on public\.site_activity from public, anon, authenticated/.test(sql)
+     && /grant execute on function public\.analytics_activity\(text, text, text, jsonb\) to anon, authenticated, service_role/.test(sql)
+     && /analytics_activity_report[\s\S]*is_platform_admin\(\)/.test(sql)
+     && /revoke all on function public\.analytics_activity_build\(int\) from public, anon, authenticated/.test(sql));
+  ok('each kind is checked for its own shape (a host has no path, an error no message, a download a key)',
+     /when 'out'\s+then coalesce\(e ->> 'what', ''\) ~ '\^\[a-z0-9\.-\]\{1,80\}\$'/.test(sql)
+     && /when 'error'\s+then coalesce\(e ->> 'what', ''\) ~ '\^\[a-z0-9\._-\]\{1,60\}\(:\[0-9\]\{1,6\}\)\?\$'/.test(sql)
+     && /when 'download' then coalesce\(e ->> 'what', ''\) ~ '\^\[a-z0-9_-\]\{1,40\}\$'/.test(sql));
+  ok('capped per call and per visit, and pruned at 400 days with the rest',
+     /least\(50, v_room\)/.test(sql) && /400 - count\(\*\)/.test(sql) && /delete from site_activity where at < now\(\) - interval '400 days'/.test(sql));
+  ok('no column could hold a person: no user, email, address, agent or free text',
+     !/\b(user_id|email|ip_addr|inet|user_agent|message)\b/.test(sql.split('-- IN.')[0].replace(/^--.*$/mg, '')));
+}
+
+console.log('\n-- 0260: its own switch in config.js');
+{
+  const B = browser({ path: '/epinoia/game/', search: '?g=' + GAME, activity: false });
+  T.boot();
+  X.tick();
+  X.onClick({ target: ANCHOR({ href: 'https://example.com/x' }) });
+  X.onError({ filename: 'https://prophesyscouting.co.uk/epinoia/game/game.js', lineno: 3 });
+  X.leaving(); await tick(5);
+  ok('until analyticsActivity is true (0260 applied), only the visit is sent: no activity request at all',
+     acts(B).length === 0 && views(B).length === 1, B.calls.map(c => c.url));
+  const cfg = readFileSync(path.join(ROOT, 'epinoia', 'config.js'), 'utf8');
+  ok('config.js has the switch, and the page views keep their own', /\n\s*analyticsActivity: (true|false),/.test(cfg) && /\n\s*analytics: true,/.test(cfg));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

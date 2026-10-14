@@ -1962,7 +1962,7 @@ async function teamStats(team, kind) {
     host.appendChild(sub);
     T.render({
       host: sub, kind: 'player', sortKey: 'ppg', showMinGames: false,
-      filename: (team.slug || 'team') + '-players',
+      filename: (team.slug || 'team') + '-players', track: 'club-players',
       /* the table drops the premium columns itself when the league's analytics are locked */
       leagueId: (team.leagues || {}).id, leagueSlug: ACCESS.slug,
       rows: squad,

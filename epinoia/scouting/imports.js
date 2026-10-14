@@ -798,7 +798,7 @@ function mount(o) {
     if (!view.length) return;
     const body = toCsv(view, cols);
     const url = root.URL.createObjectURL(new root.Blob([body], { type: 'text/csv;charset=utf-8' }));
-    const a = el('a'); a.href = url; a.download = 'epinoia-imports-' + new Date().toISOString().slice(0, 10) + '.csv';
+    const a = el('a'); a.href = url; a.download = 'epinoia-imports-' + new Date().toISOString().slice(0, 10) + '.csv'; a.dataset.track = 'scouting-imports';
     root.document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => root.URL.revokeObjectURL(url), 4000);
   });

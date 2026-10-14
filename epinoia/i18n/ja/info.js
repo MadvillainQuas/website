@@ -640,7 +640,16 @@
       'How many': '回数',
       'Ten previews a week, plus one free player report and one free club report a week. Opening the same thing again in the same week is free.': '週に10回のプレビューに加え、選手レポートとクラブレポートをそれぞれ週に1件無料で開けます。同じ週に同じものを開き直すのは無料です。',
       'A week, and then it is deleted.': '1週間保存し、その後削除します。',
-      'Which pages of the site are opened, which tabs on them are chosen and what is done in the video view (a kind of video or a league chosen, a video or a live stream played, a game’s chat joined or a message sent, never what is written), so we can see what is read and watched and make it better: the page, the league, club or game it is about, and the name of the tab or of what was done.': 'サイトのどのページが開かれ、そのページでどのタブが選ばれ、動画ビューで何が行われたか（動画の種類やリーグの選択、動画やライブ配信の再生、試合チャットへの参加やメッセージの送信。書かれた内容は記録しません）です。何が読まれ、視聴されているかを把握し、サイトを良くするためです。記録するのは、ページ、それが関わるリーグ・クラブ・試合、そしてタブまたは行われたことの名前です。'
+      'Which pages of the site are opened, which tabs on them are chosen and what is done in the video view (a kind of video or a league chosen, a video or a live stream played, a game’s chat joined or a message sent, never what is written), so we can see what is read and watched and make it better: the page, the league, club or game it is about, and the name of the tab or of what was done.': 'サイトのどのページが開かれ、そのページでどのタブが選ばれ、動画ビューで何が行われたか（動画の種類やリーグの選択、動画やライブ配信の再生、試合チャットへの参加やメッセージの送信。書かれた内容は記録しません）です。何が読まれ、視聴されているかを把握し、サイトを良くするためです。記録するのは、ページ、それが関わるリーグ・クラブ・試合、そしてタブまたは行われたことの名前です。',
+      'How long, and how far': '滞在時間とスクロール',
+      'How long each page is in use (in front of you and touched, scrolled or typed in within the last half minute, or with a video playing on it) and how far down it was scrolled, sent once as you leave it.': '各ページが使われていた時間（画面に表示され、直近30秒以内にタップ・スクロール・入力があったか、動画が再生中だった時間）と、どこまでスクロールされたかです。ページを離れるときに一度だけ送信されます。',
+      'When a video player is on a page: that it was opened, played, how far it got (a quarter, half, three quarters, the end) and for how long, with the video’s public id on the platform it is on. Nothing more is sent to YouTube, Vimeo or any other platform because of it.': 'ページに動画プレーヤーがある場合：開かれたこと、再生されたこと、どこまで進んだか（4分の1、半分、4分の3、最後まで）と再生時間を、その動画の配信プラットフォーム上の公開IDとともに記録します。これによってYouTube、Vimeoなどのプラットフォームに追加で送られる情報はありません。',
+      'Downloads, links and sharing': 'ダウンロード、リンク、共有',
+      'When you save a file (a report, a stats table, the fixtures calendar): the kind of file, its format and the page it came from, never its name. When you follow a link to another website: that website’s name, never the page. When you use the share button or a copy button: that you did and the kind of thing (a link, widget code), never what it was.': 'ファイルを保存したとき（レポート、成績表、日程カレンダーなど）：ファイルの種類、形式、保存元のページで、ファイル名は記録しません。他のウェブサイトへのリンクをたどったとき：そのサイトの名前だけで、ページは記録しません。共有ボタンやコピーボタンを使ったとき：使ったことと、その種類（リンク、ウィジェットのコードなど）だけで、中身は記録しません。',
+      'Speed and errors': '表示速度とエラー',
+      'How long a page took to appear, and, if part of the site’s own code fails, which file and line, never the error’s text.': 'ページが表示されるまでにかかった時間と、サイト自身のコードの一部が失敗した場合はそのファイル名と行番号です。エラーの内容は記録しません。',
+      'Our widgets on other sites': '他のサイトに置かれたウィジェット',
+      'When a club or league shows one of our widgets on its own website: that it was shown, which widget and that website’s name, with the same switches off as here. It is not counted as a visit, and nothing else about the person viewing it is kept.': 'クラブやリーグが自分のウェブサイトに私たちのウィジェットを表示したとき：表示されたこと、どのウィジェットか、そのサイトの名前を、ここと同じオプトアウトの仕組みのもとで記録します。訪問としては数えず、それを見ている人についてそれ以上の情報は保存しません。'
     },
 
     ctx: {

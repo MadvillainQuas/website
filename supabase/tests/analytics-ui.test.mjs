@@ -57,7 +57,7 @@ const LIVE = { window_s: 300, sessions: 3, signed_in: 1, last_30m: 5, devices: [
   visitors: [{ page: 'game', tab: 'shotclock', home: 'Home Club', away: 'Away Club', device: 'desktop', lang: 'en', app: 'web', signed_in: false, idle_s: 12, on_page_s: 95 }],
   feed: [{ ago_s: 5, kind: 'tab', page: 'game', tab: 'shotclock', home: 'Home Club', away: 'Away Club' }],
   per_minute: Array.from({ length: 30 }, (_, i) => ({ ago_min: 29 - i, views: i % 3, sessions: 1 })) };
-let liveFails = null, searchFails = null;
+let liveFails = null, searchFails = null, activityFails = null;
 const SEARCH = { range: { days: 30 }, totals: { searches: 40, queries: 25, picked: 30, no_results: 6 },
   daily: [{ day: '2026-09-24', searches: 15, picked: 11, no_results: 2 }, { day: '2026-09-25', searches: 25, picked: 19, no_results: 4 }],
   top: [{ q: 'diggins', searches: 9, results: 1, picked: 7, no_results: 0 }, { q: 'newcastle', searches: 6, results: 2, picked: 5, no_results: 0 }],
@@ -66,7 +66,9 @@ const SEARCH = { range: { days: 30 }, totals: { searches: 40, queries: 25, picke
   picked: [{ kind: 'player', ref: 'michael-diggins', n: 7, name: 'Michael Diggins' }, { kind: 'team', ref: 'newcastle-eagles', n: 5, name: 'Newcastle Eagles' }],
   devices: [{ k: 'desktop', n: 30 }, { k: 'phone', n: 10 }], langs: [{ k: 'en', n: 38 }, { k: 'ja', n: 2 }], apps: [{ k: 'web', n: 40 }] };
 const sb = { rpc: async (fn, args) => { calls.push(fn); if (fn === 'analytics_report') return { data: REPORT };
-  if (fn === 'analytics_search_report') return searchFails ? { error: { message: searchFails } } : { data: SEARCH }; if (liveFails) return { error: { message: liveFails } }; return { data: LIVE }; } };
+  if (fn === 'analytics_search_report') return searchFails ? { error: { message: searchFails } } : { data: SEARCH };
+  if (fn === 'analytics_activity_report') return activityFails ? { error: { message: activityFails } } : { data: ACTIVITY };
+  if (fn === 'analytics_sources_report') return { data: {} }; if (liveFails) return { error: { message: liveFails } }; return { data: LIVE }; } };
 
 const UI = createRequire(import.meta.url)(path.join(here, '..', '..', 'epinoia', 'admin', 'platform', 'analytics-ui.js'));
 const T = UI._test;
@@ -164,13 +166,16 @@ ok('who: device, app, language, signed in - and nothing else', T.doing({ page: '
 ok('a club page', T.doing({ page: 't', club: 'Home Club' }).what === 'Club profile: Home Club');
 ok('seconds, then minutes', T.ago(5) === '5 s' && T.ago(89) === '89 s' && T.ago(120) === '2 min');
 
+const openView = name => { const b = HOST.find(n => n.tag === 'button' && n._cls.has('an-view') && n.textContent === name)[0]; if (!b) throw new Error('no view ' + name); b.click(); };
 console.log('-- what people search for (migration 0180)');
 {
   HOST.textContent = ''; ROOT.children = [HOST];
   UI.mount({ host: HOST, sb }); await tick(); await tick(); await tick();
+  ok('the visits do not ask for the searches: each view reads its own report', calls.filter(c => c === 'analytics_search_report').length === 0);
+  openView('Search'); await tick(); await tick(); await tick();
   const text = HOST.textContent;
-  ok('the tab asks for it with the same range as the visits', calls.filter(c => c === 'analytics_search_report').length >= 1);
-  ok('it draws under the visits: a heading, and the three figures - searches, picked, found nothing',
+  ok('the Search view asks for it with the same range as the visits', calls.filter(c => c === 'analytics_search_report').length >= 1);
+  ok('it draws in its own view: a heading, and the three figures - searches, picked, found nothing',
      /What people search for/.test(text) && /searches/.test(text) && /picked a result/.test(text) && /found nothing/.test(text) && /75%/.test(text) && /15%/.test(text), text.slice(-700));
   const card = title => HOST.find(n => n.tag === 'section' && new RegExp(title).test(n.children[0] && n.children[0].textContent))[0];
   ok('the most common searches, with how many results and how often one was picked', /diggins/.test(card('Most common searches').textContent) && /78%/.test(card('Most common searches').textContent), card('Most common searches') && card('Most common searches').textContent);
@@ -180,8 +185,66 @@ console.log('-- what people search for (migration 0180)');
   searchFails = 'Could not find the function public.analytics_search_report(p_days) in the schema cache';
   HOST.textContent = ''; ROOT.children = [HOST];
   UI.mount({ host: HOST, sb }); await tick(); await tick(); await tick();
-  ok('a database without 0180 says so in a line, and the visits still draw', /migration 0180 has not been applied/.test(HOST.textContent) && /Most read leagues/.test(HOST.textContent));
+  const without = HOST.textContent;
+  openView('Overview'); await tick(); await tick();
+  ok('a database without 0180 says so in a line, and the visits still draw', /migration 0180 has not been applied/.test(without) && /Most read leagues/.test(HOST.textContent));
   searchFails = null;
+}
+
+console.log('-- what people do on a page (migration 0260): the views');
+var ACTIVITY = {
+  totals: { median_page_secs: 71, median_visit_secs: 262, engaged_hours: 12.5, bounce_rate: 38.6, video_plays: 40, video_hours: 3, downloads: 25, outbound: 9, shares: 4, errors: 6, embeds: 100, median_speed_ms: 1460 },
+  pages: [
+    { page: 'game', views: 400, timed: 300, median_secs: 132, p75_secs: 410, quick: 14, avg_depth: 72, read_most: 41, landings: 100, bounces: 30, exits: 120, median_ms: 1800, p75_ms: 4700, speed_n: 300, errors: 6 },
+    { page: 't', views: 200, timed: 150, median_secs: 61, p75_secs: 170, quick: 44, avg_depth: 47, read_most: 18, landings: 80, bounces: 52, exits: 60, median_ms: 1200, p75_ms: 2300, speed_n: 150 }
+  ],
+  leagues: [{ slug: 'slb', name: 'Super League Basketball', secs: 36000, visits: 90, median_secs: 88 }],
+  video_funnel: { opened: 60, played: 40, q25: 30, q50: 20, q75: 12, done: 8 },
+  videos: [{ what: 'youtube:abc', provider: 'youtube', opens: 50, plays: 30, half: 15, done: 6, minutes: 140, page: 'home/video', title: 'Highlights: Lions v Riders', league: 'Super League Basketball' }],
+  video_pages: [{ page: 'home/video', opens: 50, plays: 30, minutes: 140 }], video_daily: [],
+  downloads: [{ what: 'report', fmt: 'pdf', page: 't', n: 12, visits: 10, about: 'London Lions', about_kind: 'club' },
+              { what: 'season-stats', fmt: 'csv', page: 'stats', n: 8, visits: 8, about: 'Super League Basketball', about_kind: 'league' }],
+  download_kinds: [{ what: 'report', fmt: 'pdf', n: 12 }, { what: 'season-stats', fmt: 'csv', n: 8 }],
+  outbound: [{ host: 'tickets.example.com', n: 9, visits: 8, page: 'game' }],
+  shares: [{ kind: 'copy', what: 'link', page: 'game', n: 4 }],
+  errors: [{ page: 'game', what: 'boxscore.js:412', n: 6, visits: 5, last_at: '2026-10-13T10:00:00Z' }],
+  speed_devices: [{ device: 'phone', n: 200, median_ms: 1900, p75_ms: 3400 }, { device: 'desktop', n: 100, median_ms: 900, p75_ms: 1500 }],
+  embeds: [{ widget: 'embed/table', host: 'clubsite.co.uk', n: 100 }]
+};
+{
+  HOST.textContent = ''; ROOT.children = [HOST];
+  calls.length = 0;
+  UI.mount({ host: HOST, sb }); await tick(); await tick();
+  ok('the tab opens on one view and reads only its report', count('analytics_report') === 1 && count('analytics_activity_report') === 0, calls);
+  openView('Insights'); await tick(); await tick();
+  const ins = HOST.textContent;
+  ok('Insights: the headline figures and what they suggest', /median time on a page/.test(ins) && /1 m 11 s/.test(ins) && /What the figures suggest/.test(ins), ins.slice(0, 300));
+  ok('...a script error first, as something to fix, with its file and line and how many visits',
+     HOST.cls('an-in')[0] && HOST.cls('an-in')[0]._cls.has('fix') && /boxscore\.js:412 failed in 5 visits/.test(HOST.cls('an-in')[0].textContent));
+  ok('...a slow page, and a club page people leave fast, each with its numbers',
+     /Game \(box score\) is slow to appear/.test(ins) && /4\.7 s/.test(ins) && /Visitors who arrive on Club profile leave without going further/.test(ins) && /65%/.test(ins));
+  openView('Time on page'); await tick();
+  const tm = HOST.textContent;
+  ok('Time on page: every page with its median, 75%, quick exits, depth, bounce, exit rate and load',
+     /Every page, by traffic/.test(tm) && /2 m 12 s/.test(tm) && /6 m 50 s/.test(tm) && /Time spent, league by league/.test(tm) && /10 h 00 m/.test(tm), tm.slice(0, 400));
+  openView('Video'); await tick();
+  ok('Video: plays, how far viewers get, and the videos by title', /How far viewers get/.test(HOST.textContent) && /Highlights: Lions v Riders/.test(HOST.textContent) && /YouTube/.test(HOST.textContent));
+  openView('Downloads'); await tick();
+  const dl = HOST.textContent;
+  ok('Downloads: "a club report, PDF, from the club page, about London Lions"; a season stats CSV from Statistics',
+     /Club reportPDFClub profileLondon Lions \(club\)/.test(dl) && /Season stats tableCSVStatistics/.test(dl), dl.slice(0, 400));
+  openView('Links & sharing'); await tick();
+  ok('Links & sharing: other sites by name, copies by kind, widgets by site', /tickets\.example\.com/.test(HOST.textContent) && /Copied a link/.test(HOST.textContent) && /clubsite\.co\.uk/.test(HOST.textContent));
+  openView('Speed & errors'); await tick();
+  ok('Speed & errors: slowest pages, by device, the errors', /Slowest pages/.test(HOST.textContent) && /Phone/.test(HOST.textContent) && /boxscore\.js:412/.test(HOST.textContent));
+  ok('six views, ONE read of the activity report', count('analytics_activity_report') === 1, calls);
+  const refresh = HOST.find(n => n.tag === 'button' && n.textContent === 'refresh')[0];
+  refresh.click(); await tick(); await tick();
+  ok('refresh reads it again', count('analytics_activity_report') === 2, calls);
+  activityFails = 'Could not find the function public.analytics_activity_report(p_days) in the schema cache';
+  refresh.click(); await tick(); await tick();
+  ok('a database without 0260 says so in a line', /need migration 0260/.test(HOST.textContent), HOST.textContent.slice(-300));
+  activityFails = null;
 }
 
 Date.now = realNow;

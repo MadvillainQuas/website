@@ -312,7 +312,7 @@ function reportRow(f) {
     dl.disabled = true; msg.textContent = 'Preparing…';
     try {
       const url = await signed(f, true);
-      const x = el('a'); x.href = url; x.rel = 'noopener'; x.download = fileName(f);
+      const x = el('a'); x.href = url; x.rel = 'noopener'; x.download = fileName(f); x.dataset.track = 'member-file';
       doc.body.appendChild(x); x.click(); x.remove();
       msg.textContent = '';
       seen([f]);

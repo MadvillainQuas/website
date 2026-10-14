@@ -278,7 +278,7 @@ function mount(opts) {
       const blob = await SC().png(got.model, drawOpts(1));
       const url = URL.createObjectURL(blob);
       const a = el('a');
-      a.href = url; a.download = SC().filename(got.model, st.size);
+      a.href = url; a.download = SC().filename(got.model, st.size); a.dataset.track = 'stat-graphic';
       root.document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     } catch (e) { console.warn('[statgfx] export', e); status.textContent = 'The graphic could not be drawn.'; }

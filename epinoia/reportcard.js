@@ -630,6 +630,7 @@ async function save(model, kind, opts) {
   const a = root.document.createElement('a');
   a.href = url;
   a.download = filename(model, kind);
+  a.dataset.track = 'weekly-card';
   root.document.body.appendChild(a);
   a.click();
   a.remove();

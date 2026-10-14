@@ -821,7 +821,7 @@ async function exportPng(o, scope, discs) {
   const blob = await SC.png(model, { size: 'auto', theme: pageTheme(), scale: 1, modules: discs === 'team' ? { discs: 'team' } : {} });
   const url = URL.createObjectURL(blob);
   const a = root.document.createElement('a');
-  a.href = url; a.download = exportName(o);
+  a.href = url; a.download = exportName(o); a.dataset.track = 'compare-graphic';
   root.document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
   return model;

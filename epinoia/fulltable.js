@@ -2241,7 +2241,7 @@ function render(opts) {
       .join('\r\n');
     const url = URL.createObjectURL(new Blob([body], { type: 'text/csv' }));
     const a = document.createElement('a');
-    a.href = url; a.download = (opts.filename || 'epinoia') + '.csv';
+    a.href = url; a.download = (opts.filename || 'epinoia') + '.csv'; a.dataset.track = opts.track || 'table';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }

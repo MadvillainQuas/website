@@ -546,7 +546,7 @@ function exportClips() {
     .toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
   const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = name;
+  a.href = URL.createObjectURL(blob); a.download = name; a.dataset.track = 'video-clips';
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
 }

@@ -160,7 +160,9 @@ const EMBED_HOSTS = ['https://www.youtube-nocookie.com', 'https://www.tiktok.com
 function embedNode(e, title) {
   const box = el('div', 'pc-embed pc-embed-' + e.shape + ' pc-embed-' + e.provider);
   const f = document.createElement('iframe');
-  f.src = e.src;
+  /* a YouTube player that says when it plays (track.js counts how far it is watched, anonymously) */
+  f.src = e.provider === 'youtube' && typeof location !== 'undefined'
+    ? e.src + (e.src.includes('?') ? '&' : '?') + 'enablejsapi=1&origin=' + encodeURIComponent(location.origin) : e.src;
   f.title = (title ? title + ' — ' : '') + e.label;
   f.loading = 'lazy';
   f.referrerPolicy = 'strict-origin-when-cross-origin';

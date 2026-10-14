@@ -1387,7 +1387,7 @@ async function paintCareer(pl, team, scopes, hooks) {
 function renderCareerRows(host, rows, pl) {
   window.EpinoiaTable.render({
     host: '#seasons', kind: 'player', sortKey: 'rank', sortDir: 1, showMinGames: false, heat: false,
-    filename: (pl.slug || 'player') + '-career',
+    filename: (pl.slug || 'player') + '-career', track: 'player-career',
     nameLabel: 'SEASON', compColumn: true,
     /* a season is a link to it on this page (?s= and ?c=): a plain press redraws in place (below) */
     playerHref: r => r._href || null,

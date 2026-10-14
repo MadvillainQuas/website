@@ -272,7 +272,7 @@ async function exportLocal() {
   const name = ((job.player_name || 'reel') + '-edit.' + (isMp4 ? 'mp4' : 'webm')).toLowerCase().replace(/[^a-z0-9.-]+/g, '-');
   const a = $('#localDl');
   if (a.href && a.href.startsWith('blob:')) URL.revokeObjectURL(a.href);
-  a.href = URL.createObjectURL(blob); a.download = name; a.classList.remove('hide');
+  a.href = URL.createObjectURL(blob); a.download = name; a.dataset.track = 'video-edit'; a.classList.remove('hide');
   a.textContent = 'save ' + name + ' (' + (blob.size / 1048576).toFixed(1) + ' MB)';
   status.textContent = isMp4 ? 'done — saved in your browser; the file is yours to post' : 'done — this browser writes WebM, not MP4; for an MP4 use the league’s PC below';
   localBusy = false;

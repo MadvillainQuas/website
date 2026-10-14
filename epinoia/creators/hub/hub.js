@@ -40,7 +40,7 @@
   const studio = (extra) => BASE + 'creators/studio/?o=' + encodeURIComponent(outlet.outlet_id) + (extra || '');
   function save(blob, name) {
     const u = URL.createObjectURL(blob);
-    const a = el('a'); a.href = u; a.download = name;
+    const a = el('a'); a.href = u; a.download = name; a.dataset.track = 'creator-graphics';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(u), 5000);
   }

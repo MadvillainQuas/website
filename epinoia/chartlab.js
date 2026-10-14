@@ -1358,7 +1358,7 @@ async function svgToPng(svgStr, w, h, scale) {
 function download(blob, name) {
   const a = document.createElement('a');
   const url = URL.createObjectURL(blob);
-  a.href = url; a.download = name; a.rel = 'noopener'; a.style.display = 'none';
+  a.href = url; a.download = name; a.rel = 'noopener'; a.style.display = 'none'; a.dataset.track = 'chart';
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 4000);
 }
