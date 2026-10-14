@@ -177,5 +177,51 @@ ok("...its players' points sum to 71 and the club's line to 73, as the league's 
    (sum(p["sPoints"] for p in b.raw["tm"]["1"]["pl"].values()), b.team["home"]["points"]) == (71, 73),
    (sum(p["sPoints"] for p in b.raw["tm"]["1"]["pl"].values()), b.team["home"]["points"]))
 
+print("\n-- the feed's new shape (about 5 Oct 2026): the plays inside periodData, no pbp block")
+
+
+def new_shape(reply):
+    """A captured game's two replies as the embed sends them since early October 2026: `pbp` gone,
+    `periodData` a list of periods for every game, each carrying its own events (the pbp feed) or
+    only its score (the statistics feed)."""
+    out = json.loads(json.dumps(reply))
+    pbp = out["pbp"]["data"].pop("pbp")
+    scores = out["statistics"]["data"].pop("periodData")["teamScores"]
+    periods = []
+    for key in sorted(pbp, key=int):
+        pid, blk = int(key), pbp[key]
+        periods.append({"periodId": pid, "started": True, "ended": bool(blk.get("ended")),
+                        "isOvertime": bool(blk.get("isOvertime")), "isShootout": False, "durationMinutes": 10 if pid <= 4 else 5,
+                        "teamScore": {eid: next((r["score"] for r in rows if r.get("periodId") == pid), 0) for eid, rows in scores.items()},
+                        "events": blk.get("events") or []})
+    out["pbp"]["data"]["periodData"] = periods
+    out["statistics"]["data"]["periodData"] = [{k: v for k, v in per.items() if k != "events"} for per in periods]
+    return out
+
+
+class NewShape(Offline):
+    def _req(self, method, url, **kw):
+        s = kw["params"]["state"]
+        st = json.loads(zlib.decompress(base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))))
+        if url.rsplit("/", 1)[-1] == "fixtures":
+            return super()._req(method, url, **kw)
+        name = f"game-{st['f'][:8]}.json.gz"
+        return new_shape(load(name))[st["z"]] if os.path.exists(os.path.join(DATA, name)) else None
+
+
+for fid, what in (("d227b6cc-606a-11f1-a41c-e31854a0309d", "Abejas de León v Freseros"),
+                  ("505ce350-5304-11f1-9b38-e34ebd3f0048", "Fuerza Regia v Soles, after one overtime")):
+    was, now = Offline().fetch(f"{S26}_{fid}", {}), NewShape().fetch(f"{S26}_{fid}", {})
+    ok(what + ": the plays read off periodData, the same log as the old pbp block",
+       len(now.raw["pbp"]) > 400 and now.raw["pbp"] == was.raw["pbp"], (len(now.raw["pbp"]), len(was.raw["pbp"])))
+    ok("...the same stints, final, the same score and quarters",
+       now.stints == was.stints and now.status == "final" and
+       [(now.raw["tm"][t]["score"], now.raw["tm"][t].get("quarters")) for t in "12"] ==
+       [(was.raw["tm"][t]["score"], was.raw["tm"][t].get("quarters")) for t in "12"],
+       (len(now.stints), len(was.stints), now.status))
+ok("a statistics-feed period list (no events) is never read as empty plays",
+   P.LnbpAdapter._pbp_of_periods([{"periodId": 1, "started": True, "teamScore": {}}]) == {}
+   and P.LnbpAdapter._pbp_of_periods(None) == {} and P.LnbpAdapter._pbp_of_periods({"teamScores": {}}) == {})
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

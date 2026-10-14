@@ -294,7 +294,7 @@ class LnbAdapter(FibaLiveStatsAdapter):
         home_id = next((c["entityId"] for c in sides if c.get("isHome")), sides[0].get("entityId"))
         away_id = next((c["entityId"] for c in sides if c.get("entityId") != home_id), None)
         quarters = self._quarters(feeds["statistics"].get("periodData") or feeds["pbp"].get("periodData") or {})
-        pbp = feeds["pbp"].get("pbp") or {}
+        pbp = feeds["pbp"].get("pbp") or self._pbp_of_periods(feeds["pbp"].get("periodData"))
         # the scoreboard: the live score, clock and period, newer than the competitors' own score
         summary = feeds["statistics"].get("summary") or feeds["pbp"].get("summary") or {}
         live_now = str(fixture.get("status") or "").upper() in LIVE_STATUS
@@ -446,6 +446,26 @@ class LnbAdapter(FibaLiveStatsAdapter):
         for k, v in TEAM_EXTRA.items():
             if (side.get("totalEntityStats") or {}).get(v) is not None:
                 out[k] = S.num(side["totalEntityStats"][v])
+        return out
+
+    @staticmethod
+    def _pbp_of_periods(period_data) -> dict:
+        """THE PLAY-BY-PLAY WHERE THE FEED NOW KEEPS IT: {periodId: period} off periodData's list.
+
+        Until about 5 Oct 2026 the pbp feed carried `pbp`, {periodId: {events, ended, isOvertime}}.
+        Sportradar then dropped it: each period of `periodData` - now a list for every game, played
+        or finished - carries its own `events`, with the same fields and the same `ended` /
+        `isOvertime` flags. Read as before, the plays came out empty (one action), so no game had a
+        log, finalise-game refused every one, and the site showed Q1 and no stats all game long -
+        France, Finland, Bulgaria and LNBP alike, every league on this embed. The statistics feed's
+        periodData has no `events`, and a period without them is left out (not read as an empty one)."""
+        out: dict = {}
+        for per in period_data if isinstance(period_data, list) else []:
+            if not isinstance(per, dict) or not isinstance(per.get("events"), list):
+                continue
+            p = S.num(per.get("periodId"))
+            if p:
+                out[str(int(p))] = per
         return out
 
     @staticmethod
