@@ -8,20 +8,21 @@ name: NCAA live lane (sharded)
 # crc32(external id) % SHARDS is i-1, so no two runners ever write the same game. The default lane
 # ignores every source that names a lane, so nothing is polled twice.
 #
-# OFF UNTIL THE NCAA SOURCES EXIST. Only a manual run starts it; the schedule below is commented out on
-# purpose (an empty lane every ten minutes would spend ~200 Actions minutes a day finding nothing).
-# At go-live: uncomment the schedule, set the repository variable NCAA_SHARDS (default 4) and read
-# docs/ncaa-readiness.md for the minutes budget (public repos: Actions minutes are free; private: not).
+# ON FROM 14 OCT 2026 for NCAA Division II, men and women (NCAA_D2M / NCAA_D2W). The schedule only fires
+# November to March, so the lane wakes for the season by itself. D2 is followed live ON DEMAND (0264): one
+# scoreboard read per division and day covers every unwatched game, a game is read in full only while somebody
+# watches it and at its final whistle - so one runner is enough (repository variable NCAA_SHARDS = 1). Raise it
+# if a Saturday's finals queue up. Public repo: Actions minutes are free (docs/ncaa-readiness.md).
 on:
-  # schedule:
-  #   - cron: "*/10 15-23,0-5 * 11,12,1,2,3 *"   # US afternoons and evenings, Nov-Mar (UTC)
-  #   - cron: "7 * * 11,12,1,2,3 *"              # the hourly floor, as ingest.yml has
+  schedule:
+    - cron: "*/10 15-23,0-5 * 11,12,1,2,3 *"   # US afternoons and evenings, Nov-Mar (UTC)
+    - cron: "7 * * 11,12,1,2,3 *"              # the hourly floor, as ingest.yml has
   workflow_dispatch:
     inputs:
       shards:
         description: "How many runners split the games (1-8)"
         required: false
-        default: "4"
+        default: "1"
       dry_run:
         description: "Fetch, write nothing"
         type: boolean
@@ -44,8 +45,8 @@ jobs:
     steps:
       - id: p
         run: |
-          n="${{ github.event.inputs.shards || vars.NCAA_SHARDS || '4' }}"
-          case "$n" in ''|*[!0-9]*) n=4;; esac
+          n="${{ github.event.inputs.shards || vars.NCAA_SHARDS || '1' }}"
+          case "$n" in ''|*[!0-9]*) n=1;; esac
           [ "$n" -lt 1 ] && n=1; [ "$n" -gt 8 ] && n=8
           echo "shards=$n" >> "$GITHUB_OUTPUT"
           echo "list=$(python3 -c "import json,sys;print(json.dumps(list(range(1,int(sys.argv[1])+1))))" "$n")" >> "$GITHUB_OUTPUT"
