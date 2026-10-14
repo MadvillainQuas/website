@@ -100,6 +100,47 @@ ok("a scoreboard line is a fixture: ids, names, UTC tip-off, live, conference, c
 ok("conference slugs read as names", [N.conference_name(x) for x in ("nescac", "great-lakes-valley", "ne-10", "uaa", "", "odac")]
    == ["NESCAC", "Great Lakes Valley", "Northeast-10", "UAA", None, "ODAC"])
 
+print("\na club is named as its league prints it, not as the scoreboard abbreviates it")
+# (ncaa.com nameShort, seoname, the club's name) - every one a real 2025-26 D2 scoreboard line
+for short, seo, want in (
+        ("Bemidji St.", "bemidji-st", "Bemidji State"),                       # "St." after the first word: State
+        ("St. Cloud St.", "st-cloud-st", "St. Cloud State"),                  # ...first word: Saint, as written
+        ("St. Edward's", "st-edwards", "St. Edward's"),
+        ("Concordia-St. Paul", "concordia-st-paul", "Concordia-St. Paul"),    # ...first after a hyphen: Saint
+        ("Mo.-St. Louis", "mo-st-louis", "Missouri-St. Louis"),
+        ("Neb.-Kearney", "neb-kearney", "Nebraska-Kearney"),                  # a state that is part of the name
+        ("Mont. St. Billings", "mont-st-billings", "Montana State Billings"),
+        ("Ga. Southwestern", "ga-southwestern", "Georgia Southwestern"),
+        ("Minn.-Crookston", "minn-crookston", "Minnesota-Crookston"),
+        ("West Va. Wesleyan", "west-va-wesleyan", "West Virginia Wesleyan"),
+        ("Lincoln (MO)", "lincoln-mo", "Lincoln (MO)"),                       # a bracketed disambiguator stays
+        ("Albany St. (GA)", "albany-st-ga", "Albany State (GA)"),
+        ("St. Mary's (TX)", "st-marys-tx", "St. Mary's (TX)"),
+        ("American Int'l", "american-intl", "American International"),       # Int'l, Sch.
+        ("Tex. A&M Int'l", "tex-am-intl", "Texas A&M International"),
+        ("Colo. Sch. of Mines", "colorado-mines", "Colorado School of Mines"),
+        ("UAH", "ala-huntsville", "UAH"),                                     # the school's own short form stays
+        ("UT Dallas ", "texas-dallas", "UT Dallas"),                          # (the board's trailing space goes)
+):
+    ok(f"'{short}' -> '{want}'", N.club_name(short, seo) == want, N.club_name(short, seo))
+# the exceptions: what the rules cannot know, by seoname
+for short, seo, want in (
+        ("Northwestern Okla.", "northwestern-okla", "Northwestern Oklahoma State"),  # the abbreviation drops "State"
+        ("Middle Georgia", "middle-georgia-st", "Middle Georgia State"),
+        ("Cal St. Dom. Hills", "cal-st-dom-hills", "Cal State Dominguez Hills"),     # not a state abbreviation
+        ("P.R.-Bayamon", "pr-bayamon", "Puerto Rico-Bayamón"),                       # the town's own spelling
+):
+    ok(f"exception: '{short}' -> '{want}'", N.club_name(short, seo) == want, N.club_name(short, seo))
+ok("without its seoname a name still goes by the rules (no exception is guessed)",
+   N.club_name("Northwestern Okla.") == "Northwestern Oklahoma" and N.club_name("") == "")
+named = N.NcaaAdapter._game(dict(contest, teams=[
+    {"isHome": True, "seoname": "neb-kearney", "nameShort": "Neb.-Kearney", "name6Char": "NEBKER", "score": 0,
+     "conferenceSeo": "miaa"},
+    {"isHome": False, "seoname": "point-park", "nameShort": "Point Park", "name6Char": "", "score": 0,
+     "conferenceSeo": "mountain-east"}]))
+ok("discovery names the clubs the same way", (named.home_name, named.away_name) == ("Nebraska-Kearney", "Point Park"),
+   (named.home_name, named.away_name))
+
 print("\nthe scoreboard decides who is read again")
 A = N.NcaaAdapter()
 A.max_age_s = 90
@@ -167,6 +208,66 @@ ok("a game outside the division that was listed before the rule is not read (no 
    refused is None and "not read - not in the division: Arkansas St." in said.getvalue(), said.getvalue())
 ok("...and the on-demand scoreboard path hands nothing back for it", B.scoreline("6504938", cfg) is None
    and B.scoreline("6507589", cfg) is not None)
+print("\n...and only in a season it is a FULL Division II member")
+ok("2025-26: Jamestown, UT Dallas, Ferrum and Middle Georgia St. were in the membership process",
+   {"jamestown", "texas-dallas", "ferrum", "middle-georgia-st"} <= N.provisional_d2(2025))
+ok("2026-27: Jamestown and UT Dallas are full members (1 Sep 2026), Ferrum and Middle Georgia St. still in it",
+   not {"jamestown", "texas-dallas"} & N.provisional_d2(2026) and {"ferrum", "middle-georgia-st"} <= N.provisional_d2(2026))
+ok("Jessup and Vanguard, full members from 1 Sep 2025, count in 2025-26",
+   not {"jessup", "vanguard"} & N.provisional_d2(2025))
+SEASON_LINES = {
+    "6509115": line(6509115, ("jamestown", "Jamestown", "nsic"), ("sioux-falls", "Sioux Falls", "nsic"), day="01/31/2026"),
+    "6521477": line(6521477, ("mount-olive", "Mount Olive", "conference-carolinas"), ("ferrum", "Ferrum", "conference-carolinas"),
+                    day="01/31/2026"),
+    "6590132": line(6590132, ("daemen", "Daemen", "ecc"), ("staten-island", "Staten Island", "ecc"), day="01/31/2026"),
+}
+C = N.NcaaAdapter()
+for season, day_s in ((2025, "01/31/2026"), (2026, "01/30/2027")):
+    C._members[("MBB", 2, season)] = (1e18, N.D2_CONFERENCES)
+    C._boards[("MBB", 2, day_s)] = (1e18, {cid: dict(c, startDate=day_s) for cid, c in SEASON_LINES.items()})
+with contextlib.redirect_stdout(io.StringIO()) as said:
+    in_2025 = sorted(g.external_id for g in C.discover("", {"sport": "MBB", "division": 2, "season": "2025-26",
+                                                            "dates": "2026-01-31"}))
+ok("2025-26: a game against Jamestown or Ferrum (provisional that season) is not listed", in_2025 == ["6590132"], in_2025)
+ok("...and discovery says so by its reason", "2 against a provisional D2 member left out" in said.getvalue(), said.getvalue())
+C._boards[("MBB", 2, "01/30/2027")] = (1e18, {cid: dict(c, startDate="01/30/2027") for cid, c in SEASON_LINES.items()
+                                              if cid != "6521477"} | {"6521478": dict(SEASON_LINES["6521477"], contestId=6521478)})
+N._SAID.clear()                                    # (said once per run: the checks above already asked for 2026)
+with contextlib.redirect_stdout(io.StringIO()) as said:
+    in_2026 = sorted(g.external_id for g in C.discover("", {"sport": "MBB", "division": 2, "season": "2026-27",
+                                                            "dates": "2027-01-30"}))
+ok("2026-27: the same school's game is listed once it is a full member (Jamestown), not while it is not (Ferrum)",
+   in_2026 == ["6509115", "6590132"], in_2026)
+C._boards[("MBB", 2, "01/29/2027")] = (1e18, {
+    "7000001": dict(line(7000001, ("shawnee-st", "Shawnee St.", "g-mac"), ("findlay", "Findlay", "g-mac"), day="01/29/2027"),
+                    startDate="01/29/2027"),
+    "7000002": dict(line(7000002, ("tex-am-texarkana", "Tex. A&M-Texarkana", "lone-star"), ("angelo-st", "Angelo St.", "lone-star"),
+                         day="01/29/2027"), startDate="01/29/2027"),
+    "7000003": dict(line(7000003, ("ashland", "Ashland", "g-mac"), ("findlay", "Findlay", "g-mac"), day="01/29/2027"),
+                    startDate="01/29/2027")})
+with contextlib.redirect_stdout(io.StringIO()) as said:
+    pend = sorted(g.external_id for g in C.discover("", {"sport": "MBB", "division": 2, "season": "2026-27",
+                                                         "dates": "2027-01-29"}))
+ok("2026-27: a provisional school not yet known by seoname is left out by its club name (Shawnee St., Tex. A&M-Texarkana)",
+   pend == ["7000003"], pend)
+ok("...and its seoname is said once, to go into D2_PROVISIONAL",
+   "'Shawnee St.' is seoname 'shawnee-st'" in said.getvalue() and said.getvalue().count("'shawnee-st'") == 1, said.getvalue())
+ok("a full member whose name only resembles one (Shawnee State's opponent Findlay) is listed", "7000003" in pend)
+for cid in SEASON_LINES:
+    C._line_of[cid] = ("MBB", 2, "01/31/2026")
+cfg25 = {"sport": "MBB", "division": 2, "_tipoff_at": "2026-01-31T19:00:00Z"}
+with contextlib.redirect_stdout(io.StringIO()) as said:
+    refused = C.fetch("6509115", cfg25)
+ok("a provisional member's game is refused by fetch, and the line names the reason",
+   refused is None and "not read - provisional D2 member: Jamestown" in said.getvalue(), said.getvalue())
+ok("...and the on-demand scoreboard path hands nothing back for it",
+   C.scoreline("6509115", cfg25) is None and C.scoreline("6590132", cfg25) is not None)
+with contextlib.redirect_stdout(io.StringIO()) as said:
+    none_2031 = (N.provisional_d2(2031), N.provisional_d2(2031))
+ok("a season the table does not have leaves nobody out...", none_2031 == (frozenset(), frozenset()))
+ok("...and says so once per run, so a new season is noticed",
+   said.getvalue().count("2031-32: no list of provisional members") == 1, said.getvalue())
+
 B2 = N.NcaaAdapter()
 B2._gql = lambda meta, v: (_ for _ in ()).throw(RuntimeError("offline"))
 with contextlib.redirect_stdout(io.StringIO()):
@@ -214,6 +315,15 @@ data = {"pbp": {"data": {"playbyplay": {"status": "final", "contestId": "1", "te
             {"teamId": "2", "isHome": False, "nameShort": "Away St.", "name6Char": "AWAYST", "seoname": "away-st"}]}}},
         "box": {"data": {"boxscore": {"status": "F", "teamBoxscore": []}}}}
 raw = N.to_fiba(data, parsed, N.HALVES)
+ok("the game names its clubs as discovery does, and keys them by the feed's code as before",
+   (raw["tm"]["1"]["name"], raw["tm"]["2"]["name"]) == ("Home U", "Away State")
+   and (raw["tm"]["1"]["code"], raw["tm"]["2"]["code"]) == ("HOMEU", "AWAYST"),
+   [(raw["tm"][k]["name"], raw["tm"][k]["code"]) for k in ("1", "2")])
+noc = json.loads(json.dumps(data))
+noc["pbp"]["data"]["playbyplay"]["teams"][1].update(nameShort="Neb.-Kearney", name6Char="", seoname="neb-kearney")
+from feedplatform import team_code, slugify  # noqa: E402
+ok("a school with no name6Char is keyed by its name's slug, the same from the game as from discovery",
+   team_code(N.to_fiba(noc, parsed, N.HALVES)["tm"]["2"]) == slugify("Nebraska-Kearney") == "nebraska-kearney")
 ok("the payload says it is played in halves", raw["format"] == {"periods": 2, "period_ms": 1200000, "ot_ms": 300000})
 ok("its overtime is FIBA's OVERTIME 1", any(a.get("periodType") == "OVERTIME" and a.get("period") == 1 for a in raw["pbp"]))
 ok("#0 is a player (slot 1), not 'no player'", raw["tm"]["1"]["pl"]["1"]["shirtNumber"] == "0" and all(a.get("pno") != 0 for a in raw["pbp"] if "pno" in a))

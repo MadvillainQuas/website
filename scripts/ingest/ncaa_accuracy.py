@@ -170,7 +170,8 @@ def discover(sports, dates, per_date) -> dict:
                 picked.append({"id": str(c["contestId"]), "date": ds, "ot": "OT" in str(c.get("currentPeriod") or "").upper(),
                                "champ": bool(c.get("isChampionship")),
                                "game": f"{h.get('nameShort')} {h.get('score')}-{a.get('score')} {a.get('nameShort')}",
-                               "conferences": [h.get("conferenceSeo"), a.get("conferenceSeo")]})
+                               "conferences": [h.get("conferenceSeo"), a.get("conferenceSeo")],
+                               "teams": [h.get("seoname"), a.get("seoname")]})
             print(f"  {sport} {ds}: {len(fin)} final, took {len(take[:per_date + 1])} ({len(ot)} OT, {len(ch)} championship)")
         out[sport] = picked
     return out
@@ -469,6 +470,12 @@ def main(argv=None) -> int:
                 confs = g.get("conferences")
                 if listed.get(s) and confs and any(c not in listed[s] for c in confs):
                     print(f"[{s} {g['id']}] {g.get('game')}: outside Division II {confs} - left out")
+                    continue
+                # ...nor one against a school in the D2 membership process that season (adapters/ncaa.py D2_PROVISIONAL)
+                season = N.season_year({}, datetime.strptime(g["date"], "%Y-%m-%d").date()) if g.get("date") else None
+                prov = [t for t in g.get("teams") or [] if season and t in N.D2_PROVISIONAL.get(season, ())]
+                if prov:
+                    print(f"[{s} {g['id']}] {g.get('game')}: provisional D2 member {prov} - left out")
                     continue
                 todo.append((s, g["id"]))
 

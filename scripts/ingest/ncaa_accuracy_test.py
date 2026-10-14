@@ -2,7 +2,7 @@
 
     python scripts/ingest/ncaa_accuracy_test.py
 
-Sixteen ncaa.com games of the 2025-26 season between two Division II schools (the scraper checkout's
+Fifteen ncaa.com games of the 2025-26 season between two FULL Division II members (the scraper checkout's
 validation/ncaa/captures_d2 - never this public repository - gzipped GraphQL documents, men and women, all three
 text dialects, overtimes and national-championship games) go through the website's own path - the scraper's parse
 via adapters/ncaa.py, to_fiba, bundle_from_raw, translate, deriveGame in node - and every player's and team's
@@ -24,9 +24,8 @@ something the parse once got wrong:
   6521331  women, dialect A without names: every miss written twice (the copy without a full stop, free throws
            and ten rows apart included), and no assist, steal, block or foul row at all (box-reconciled)
   6521726  women, dialect A without names, overtime
-  6522732  women: a basket the feed left out - St. Mary's (TX) 50 -> 52 at 5:11 of the fourth on "Layup MISSED by
-           Texas-Dallas's Addy Self", and Raynne Malik one made two (and one attempt) short in the box: added
-  6522969  women: the same, Westminster (UT) 38 -> 40 at 8:38 of the third, Emily Evans one made two short
+  6522969  women: a basket the feed left out - Westminster (UT) 38 -> 40 at 8:38 of the third on "Jumper MISSED by
+           Adams St.'s Taejhuan Hill", and Emily Evans one made two (and one attempt) short in the box: added
   6538041  women's national championship (regional)
 and two that must NOT replay as exact, for the reasons the harness gives:
   6522288  Lydia Haack's basket the feed left out (Concordia-St. Paul 62 -> 64 at 0:54 of the fourth on a Winona
@@ -70,7 +69,7 @@ EXACT = {
     "6506812": ("MBB", "injected"), "6507128": ("MBB", "injected"),
     "6520601": ("WBB", "voided"), "6520177": ("WBB", "voided"),
     "6521331": ("WBB", "injected"), "6521726": ("WBB", "injected"),
-    "6522732": ("WBB", "basket_added"), "6522969": ("WBB", "basket_added"), "6538041": ("WBB", None),
+    "6522969": ("WBB", "basket_added"), "6538041": ("WBB", None),
 }
 NOT_EXACT = {"6522288": ("WBB", "DIFF"), "6507902": ("MBB", "DIFF")}
 
@@ -80,7 +79,7 @@ if not mod:
     print(f"\n(skipped: the scraper checkout's NCAA parse is not importable - {N.NcaaAdapter._mod_error})")
     sys.exit(0)
 
-print("\nevery game here is between two Division II schools (the sample's own record of both conferences)")
+print("\nevery game here is between two full Division II members (the sample's own record of both teams)")
 smp = H.json.loads(H.SAMPLE.read_text())
 listed = smp.get("_d2_conferences_2025") or {}
 conf_of = {g["id"]: (s, g.get("conferences")) for s in ("MBB", "WBB") for g in smp.get(s, [])}
@@ -90,6 +89,9 @@ for cid in list(EXACT) + list(NOT_EXACT):
        bool(confs) and all(c in listed.get(s, ()) for c in confs), (s, confs))
 ok("...and the sample holds no game against a school outside the division",
    all(all(c in listed[s] for c in g["conferences"]) for s in ("MBB", "WBB") for g in smp[s]))
+ok("...nor one against a school in the D2 membership process that season (Ferrum, UT Dallas, Jamestown and Middle "
+   "Georgia St. in 2025-26)", all(not set(g["teams"]) & N.D2_PROVISIONAL[2025] for s in ("MBB", "WBB") for g in smp[s])
+   and {"6521477", "6522732", "6509115", "6506743"}.isdisjoint(g["id"] for s in ("MBB", "WBB") for g in smp[s]))
 
 games = dict(EXACT, **NOT_EXACT)
 datas, sites, batch = {}, {}, {}
@@ -117,7 +119,7 @@ for cid, (sport, feature) in EXACT.items():
            r["flags"]["reconciled"])
 
 print("\na basket the feed left out is added only on two witnesses, and with nothing else")
-for cid, who in (("6522732", "Raynne Malik"), ("6522969", "Emily Evans"), ("6522288", "Lydia Haack")):
+for cid, who in (("6522969", "Emily Evans"), ("6522288", "Lydia Haack")):
     s = sites.get(cid)
     if not s:
         continue
@@ -129,7 +131,7 @@ for cid, who in (("6522732", "Raynne Malik"), ("6522969", "Emily Evans"), ("6522
         others = [a for a in s["parsed"]["actions"] if abs(a[2] - at) < 0.01 and a is not added[0]
                   and a[1] == added[0][1] and a[0].startswith("Assist")]
         ok(f"{cid}: ...with no assist made up for it", not others, others)
-s = sites.get("6522732")
+s = sites.get("6522969")
 if s:
     plain = [a["actionNumber"] for a in s["raw"]["pbp"] if a.get("actionType") == "2pt" and a.get("success")
              and a.get("subType") == ""]

@@ -124,15 +124,139 @@ def conference_seo(name: Optional[str]) -> str:
     return re.sub(r"[^a-z0-9]+", "-", str(name or "").lower()).strip("-")
 
 
-def outside_division(c: dict, members) -> Optional[str]:
-    """Why this scoreboard line is NOT a game between two of the division's schools, or None when it is: each team's
-    conferenceSeo must be one of the division's conferences (members)."""
+#: A SCHOOL COUNTS ONLY IN A SEASON IT IS A FULL (ACTIVE) NCAA DIVISION II MEMBER (Louie, 2026-10-14). A school in the
+#: Division II membership process - provisional, or reclassifying from the NAIA or Division III - already plays in a
+#: D2 conference and is on the D2 scoreboards like any other, so the conference rule cannot see it; its games are left
+#: out in those seasons by its scoreboard seoname. Keyed by the season's START year (2025 = 2025-26), from the NCAA's
+#: own membership announcements; the sources, and what is uncertain, are in docs/ncaa/d2-provisional.md (a note for
+#: maintainers). A season with no entry leaves nobody out, and says so once per run, so a new season is noticed.
+D2_PROVISIONAL = {
+    # NCAA, 10 Jul 2025 ("4 schools to become active DII members Sept. 1"): in the process in 2025-26
+    2025: frozenset({"jamestown", "merced", "texas-dallas", "ferrum", "roosevelt-university", "sul-ross-st",
+                     "point-park", "menlo", "middle-georgia-st"}),
+    # NCAA, 10 Jul 2026 ("6 schools set to become active Division II members Sept. 1") and 14 Sep 2026 (Menlo
+    # active from 11 Sep 2026): in the process in 2026-27
+    2026: frozenset({"middle-georgia-st", "ferrum"}),
+}
+#: schools the NCAA has in the process whose ncaa.com seoname is not known yet (on no scoreboard and no school page of
+#: ncaa.com's on 2026-10-14): left out BY THEIR CLUB NAME (club_name of the scoreboard's nameShort, letters and digits
+#: only) until their seoname is added to D2_PROVISIONAL - the first line that names one says its seoname, once a run.
+#: Shawnee State: expedited, year 1; Texas A&M-Texarkana: year 1 (docs/ncaa/d2-provisional.md)
+D2_PROVISIONAL_PENDING = {2026: ("Shawnee State", "Texas A&M-Texarkana")}
+_SAID: set = set()                 # what has been said once this run (a season with no table, the pending names)
+
+
+def _name_key(s: str) -> str:
+    return "name:" + re.sub(r"[^a-z0-9]+", "", str(s or "").lower())
+
+
+def provisional_d2(season: int) -> frozenset:
+    """The schools in the D2 membership process in that season: their seonames, and 'name:...' keys for those still
+    pending an seoname (D2_PROVISIONAL_PENDING). Empty, and said once per run, for a season the table does not have."""
+    season = int(season)
+    if season not in D2_PROVISIONAL:
+        if ("no-table", season) not in _SAID:
+            _SAID.add(("no-table", season))
+            print(f"     NCAA D2 {season}-{str(season + 1)[2:]}: no list of provisional members for this season "
+                  f"(adapters/ncaa.py D2_PROVISIONAL) - none is left out; see docs/ncaa/d2-provisional.md")
+        return frozenset()
+    return D2_PROVISIONAL[season] | frozenset(_name_key(n) for n in D2_PROVISIONAL_PENDING.get(season, ()))
+
+
+def outside_division(c: dict, members, provisional=frozenset()) -> Optional[str]:
+    """Why this scoreboard line is NOT a game between two of the division's full members, or None when it is: each
+    team's conferenceSeo must be one of the division's conferences (members), and neither team may be a school in
+    the membership process that season (provisional: seonames, provisional_d2)."""
     teams = c.get("teams") or []
     if len(teams) != 2:
         return "not two teams on the line"
     out = [f"{t.get('nameShort') or t.get('seoname')} ({t.get('conferenceSeo') or 'no NCAA conference'})"
            for t in teams if str(t.get("conferenceSeo") or "") not in members]
-    return ("not in the division: " + ", ".join(out)) if out else None
+    if out:
+        return "not in the division: " + ", ".join(out)
+    prov = []
+    for t in teams:
+        if t.get("seoname") in provisional:
+            prov.append(str(t.get("nameShort") or t.get("seoname")).strip())
+        elif _name_key(club_name(t.get("nameShort"), t.get("seoname"))) in provisional:
+            # a pending school, known by its name: say its seoname once, so it can go into D2_PROVISIONAL
+            prov.append(str(t.get("nameShort") or "").strip())
+            if ("seo", t.get("seoname")) not in _SAID:
+                _SAID.add(("seo", t.get("seoname")))
+                print(f"     NCAA D2: provisional member {t.get('nameShort')!r} is seoname {t.get('seoname')!r} - "
+                      f"add it to adapters/ncaa.py D2_PROVISIONAL (it is left out by name until then)")
+    return ("provisional D2 member: " + ", ".join(prov)) if prov else None
+
+
+#: A CLUB IS NAMED THE WAY ITS LEAGUE PRINTS IT, NOT THE WAY A SCOREBOARD ABBREVIATES IT. ncaa.com's nameShort squeezes
+#: every school into a column: "Bemidji St.", "Neb.-Kearney", "Mont. St. Billings", "Ga. Southwestern". The college game's
+#: own box scores and media write the school: "Bemidji State", "Nebraska-Kearney", "Montana State Billings". So the club
+#: is created under that (club_name) - its identity is untouched: the platform keys a club by its feed code, here the
+#: scoreboard's name6Char ('BEMDJI'), identical on the scoreboard and in the game's own documents (checked on every team
+#: of the 82 captured games); the six schools with no name6Char (Jamestown, Jessup, UC Merced, Point Park, Roosevelt,
+#: Vanguard) are keyed by their name's slug, and both paths name them with this same function.
+#: The rules: "St." is Saint as the first word of the name or of a part after a hyphen ("St. Cloud St.", "Concordia-St.
+#: Paul", "Mo.-St. Louis") and State anywhere else; a state abbreviation is spelled out where it is part of the name, and
+#: a disambiguator in brackets is left as ncaa.com writes it ("Lincoln (MO)", "Albany St. (GA)"); "Int'l", "Sch." and
+#: "Univ." are spelled out. A school's own short form that IS its name in print stays ("UAH", "UIndy", "CSUSB").
+#: CLUB_NAMES is everything the rules get wrong, by seoname. The whole list, before and after, with what is uncertain:
+#: docs/ncaa/d2-club-names.md. (The platform stores a club's name in ASCII - names.team_name - so "Bayamón" is kept
+#: here as the school writes it and becomes "Bayamon" on the site, as every accented club name does.)
+_ABBR = {
+    "Ala.": "Alabama", "Alas.": "Alaska", "Ariz.": "Arizona", "Ark.": "Arkansas", "Calif.": "California",
+    "Colo.": "Colorado", "Conn.": "Connecticut", "Del.": "Delaware", "Fla.": "Florida", "Ga.": "Georgia",
+    "Ill.": "Illinois", "Ind.": "Indiana", "Kan.": "Kansas", "Ky.": "Kentucky", "La.": "Louisiana",
+    "Mass.": "Massachusetts", "Md.": "Maryland", "Mich.": "Michigan", "Minn.": "Minnesota", "Miss.": "Mississippi",
+    "Mo.": "Missouri", "Mont.": "Montana", "N.C.": "North Carolina", "N.D.": "North Dakota", "N.H.": "New Hampshire",
+    "N.J.": "New Jersey", "N.M.": "New Mexico", "N.Y.": "New York", "Neb.": "Nebraska", "Nev.": "Nevada",
+    "Okla.": "Oklahoma", "Ore.": "Oregon", "Pa.": "Pennsylvania", "S.C.": "South Carolina", "S.D.": "South Dakota",
+    "Tenn.": "Tennessee", "Tex.": "Texas", "Va.": "Virginia", "Vt.": "Vermont", "W.Va.": "West Virginia",
+    "Wash.": "Washington", "Wis.": "Wisconsin", "Wyo.": "Wyoming",
+    "Int'l": "International", "Sch.": "School", "Univ.": "University"}
+#: what the rules get wrong (seoname -> name), each with its reason
+CLUB_NAMES = {
+    # the institution is "... Oklahoma STATE University" (ncaa.com's own nameFull for Northwestern), which the
+    # abbreviation drops altogether
+    "northwestern-okla": "Northwestern Oklahoma State",
+    "southeastern-okla": "Southeastern Oklahoma State",
+    "southwestern-okla": "Southwestern Oklahoma State",
+    # Middle Georgia State University (ncaa.com's nameFull); "Middle Georgia" is the scoreboard cutting it short
+    "middle-georgia-st": "Middle Georgia State",
+    # abbreviations that are not states, each in one name only
+    "cal-st-dom-hills": "Cal State Dominguez Hills",
+    "san-fran-st": "San Francisco State",
+    "palm-beach-atl": "Palm Beach Atlantic",
+    "dist-columbia": "District of Columbia",
+    "pitt-johnstown": "Pittsburgh-Johnstown",
+    # the University of Puerto Rico's campuses, with their own spelling of the town
+    "pr-bayamon": "Puerto Rico-Bayamón",
+    "pr-mayaguez": "Puerto Rico-Mayagüez",
+    "pr-rio-piedras": "Puerto Rico-Río Piedras",
+}
+
+
+def club_name(name_short: Optional[str], seoname: Optional[str] = None) -> str:
+    """ncaa.com's nameShort as the club's name ('Bemidji St.' -> 'Bemidji State', 'Neb.-Kearney' -> 'Nebraska-Kearney',
+    'St. Cloud St.' -> 'St. Cloud State', 'Lincoln (MO)' as it is). See the rules above CLUB_NAMES."""
+    s = re.sub(r"\s+", " ", str(name_short or "")).strip()
+    if seoname and seoname in CLUB_NAMES:
+        return CLUB_NAMES[seoname]
+    m = re.match(r"^(.*?)(\s*\([^()]*\))?$", s)
+    base, bracket = (m.group(1), m.group(2) or "") if m else (s, "")
+    parts = re.split(r"(\s+|-)", base)
+    out, starts = [], True                  # `starts`: this word opens the name, or follows a hyphen
+    for p in parts:
+        if p == "" or p.isspace() or p == "-":
+            out.append(p)
+            if p == "-":
+                starts = True
+            continue
+        if p == "St.":
+            out.append("St." if starts else "State")
+        else:
+            out.append(_ABBR.get(p, p))
+        starts = False
+    return ("".join(out) + bracket).strip()
 
 
 def conference_name(seo: Optional[str]) -> Optional[str]:
@@ -423,7 +547,10 @@ def to_fiba(data: dict, parsed: dict, fmt: tuple, final: Optional[bool] = None) 
                       sAssists=S.num(tot.get("assists")), sTurnovers=S.num(tot.get("turnovers")),
                       sSteals=S.num(tot.get("steals")), sBlocks=S.num(tot.get("blockedShots")),
                       sFoulsPersonal=S.num(tot.get("personalFouls")))
-        name = (m.get("nameShort") or m.get("nameFull") or ((parsed.get("teams") or [{}, {}])[i] or {}).get("name") or "").strip()
+        # the club's name as the league prints it (club_name), from the same nameShort and seoname the scoreboard
+        # names it by at discovery, so the two never make two clubs
+        name = club_name(m.get("nameShort") or m.get("nameFull") or ((parsed.get("teams") or [{}, {}])[i] or {}).get("name") or "",
+                         m.get("seoname"))
         score = (tt or {}).get("sPoints") or ((parsed.get("teams") or [{}, {}])[i] or {}).get("total_points") or 0
         quarters = [per_pts[i].get(q, 0) for q in range(1, fmt[0] + 1)]
         t = S.team(name, (m.get("name6Char") or "").strip(), score=score, quarters=quarters, players=players,
@@ -556,10 +683,13 @@ class NcaaAdapter(FibaLiveStatsAdapter):
         return got
 
     def outside(self, c: dict, sport: str, division: int, day: date) -> Optional[str]:
-        """outside_division for one scoreboard line, against its own sport, division and season's list. A list that
-        could not be had at all (a division with no fallback) filters nothing rather than everything."""
-        members = self.members(sport, division, season_year({}, day))
-        return outside_division(c, members) if members else None
+        """outside_division for one scoreboard line, against its own sport, division and season's list (and, in
+        Division II, that season's provisional members). A list that could not be had at all (a division with no
+        fallback) filters nothing rather than everything."""
+        season = season_year({}, day)
+        members = self.members(sport, division, season)
+        prov = provisional_d2(season) if int(division) == 2 else frozenset()
+        return outside_division(c, members, prov) if members else None
 
     def board(self, sport: str, division: int, day: date, max_age: Optional[float] = None) -> dict:
         """{contestId: scoreboard line} for one division and date, read at most every board_every_s."""
@@ -633,7 +763,7 @@ class NcaaAdapter(FibaLiveStatsAdapter):
                 lo = max(lo, today - timedelta(days=int(config.get("days_back", 3))))
                 hi = min(hi, today + timedelta(days=int(config.get("days_ahead", 14))))
             days = [lo + timedelta(days=i) for i in range((hi - lo).days + 1)]
-        out, left_out = [], 0
+        out, left_out, provisional = [], 0, 0
         for day in days:
             try:
                 lines = self.board(sport, division, day, max_age=3600)
@@ -641,17 +771,23 @@ class NcaaAdapter(FibaLiveStatsAdapter):
                 print(f"     NCAA {sport} D{division} {day}: scoreboard unreadable ({exc})")
                 continue
             for cid, c in lines.items():
-                # a game against a school outside the division is never listed, so never created, followed live or
-                # backfilled (the backfill is this discovery over the whole season)
-                if self.outside(c, sport, division, day):
-                    left_out += 1
+                # a game against a school outside the division, or one in its membership process that season, is
+                # never listed, so never created, followed live or backfilled (the backfill is this discovery over
+                # the whole season)
+                why = self.outside(c, sport, division, day)
+                if why:
+                    if why.startswith("provisional"):
+                        provisional += 1
+                    else:
+                        left_out += 1
                     continue
                 g = self._game(c)
                 if g:
                     out.append(g)
         print(f"     NCAA {sport} D{division} {start_year}-{str(start_year + 1)[2:]}: {len(out)} games over {len(days)} day(s) "
               f"({sum(1 for g in out if g.status == 'final')} final)"
-              + (f", {left_out} against a school outside Division {division} left out" if left_out else ""))
+              + (f", {left_out} against a school outside Division {division} left out" if left_out else "")
+              + (f", {provisional} against a provisional D2 member left out" if provisional else ""))
         return out
 
     @staticmethod
@@ -672,8 +808,8 @@ class NcaaAdapter(FibaLiveStatsAdapter):
                  "stage": "playoffs" if c.get("isChampionship") or c.get("championshipId") else "regular"}
         if not c.get("hasStartTime", True) or c.get("tba"):
             extra["time_tbc"] = True
-        return ScheduleGame(external_id=str(c["contestId"]), home_name=(home.get("nameShort") or "").strip(),
-                            away_name=(away.get("nameShort") or "").strip(), tipoff_at=tip,
+        return ScheduleGame(external_id=str(c["contestId"]), home_name=club_name(home.get("nameShort"), home.get("seoname")),
+                            away_name=club_name(away.get("nameShort"), away.get("seoname")), tipoff_at=tip,
                             status=STATE.get(str(c.get("gameState") or "").upper(), "scheduled"), extra=extra)
 
     # ------------------------------------------------------------------ one game
