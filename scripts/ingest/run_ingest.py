@@ -1855,6 +1855,16 @@ LIVE_STALE = 7 * 3600          # a game still 'live' this long after tip is a lo
 # Capped at a week so a game that was postponed and never played cannot be asked about for ever.
 OUTSTANDING_MAX_AGE = 7 * 24 * 3600
 CHAIN_AHEAD = 8 * 3600         # the live lane re-dispatches itself when the next tip-off is within this
+# THE DAY'S SCHEDULES, READ AGAIN BY THE LIVE LANE (2026-10-14). Discovery runs twice a week, and GitHub drops or cancels
+# those slots too (Mon 12 Oct's never ran; Thu 9 Oct's was cancelled before it started), so a fixture moved on the day was
+# never seen: EABL's Kent Crusaders v New City College moved from 15:00 to 13:10 UTC and the lane, polling from twenty
+# minutes before the stored 15:00, wrote its first play at 14:41 - an hour and a half late - while games moved to
+# December sat on today's list. So on a day a league plays, the lane re-reads that league's schedule when it starts and
+# every SCHEDULE_RECHECK after: the ordinary discovery pass for those sources, in a child process, with --max-games 0 -
+# schedule facts only (times, clubs, withdrawn fixtures), never a game fetched, so it is never a second writer for a
+# live game.
+SCHEDULE_RECHECK = 2 * 3600
+SCHEDULE_AHEAD = 18 * 3600     # "a day it plays": a fixture listed from LIVE_AFTER_TIP ago to this far ahead
 MAIN_CHAIN_AHEAD = 3 * 3600    # the discovery lane starts the live lane when the next tip-off is within this
 
 # ───────────────────────────────── how long the PC's wrapper should sleep between passes
@@ -2375,6 +2385,31 @@ def in_shard(external_id, shard: tuple[int, int] | None) -> bool:
     return shard is None or zlib.crc32(str(external_id).encode()) % shard[1] == shard[0]
 
 
+def playing_today(sb: "Supabase", sources: list[dict], now: datetime) -> list[str]:
+    """The codes of the sources with a fixture not yet final listed from LIVE_AFTER_TIP ago to SCHEDULE_AHEAD ahead."""
+    lo, hi = _zulu(now - timedelta(seconds=LIVE_AFTER_TIP)), _zulu(now + timedelta(seconds=SCHEDULE_AHEAD))
+    rows = external_rows(sb, sources, f"external_status=neq.final&tipoff_at=gte.{lo}&tipoff_at=lte.{hi}", "external_id")
+    return sorted({code for (_adapter, code), rs in rows.items() if rs})
+
+
+def schedule_child(codes: list[str], args) -> tuple:
+    """Start the discovery pass for these sources in a child process (schedule facts only: --max-games 0).
+    Returns (process, log path). Its output goes to a file, read when it ends; GITHUB_OUTPUT is withheld so the
+    child cannot speak for this lane's chain, and YOUTUBE_API_KEY so a fresh process - which remembers no earlier miss
+    (auto_video's rationing is in-process) - cannot spend the day's hundred searches on the fixtures it reads; the lane
+    itself still finds each game's broadcast as it comes due."""
+    import subprocess, tempfile
+    env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_OUTPUT", "YOUTUBE_API_KEY")}
+    cmd = [sys.executable, "-u", os.path.abspath(__file__), "--config", "--source", ",".join(codes), "--max-games", "0", "--feed-out", ""]
+    if getattr(args, "worker_config", False):
+        cmd.append("--worker-config")
+    fd, path = tempfile.mkstemp(prefix="epinoia_sched_", suffix=".log")
+    out = os.fdopen(fd, "w", encoding="utf-8", errors="replace")
+    proc = subprocess.Popen(cmd, env=env, stdout=out, stderr=subprocess.STDOUT, cwd=os.path.dirname(os.path.abspath(__file__)))
+    out.close()
+    return proc, path
+
+
 def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, bool]:
     """One long-lived live-lane pass (see the note above). Returns (exit_code, chain)."""
     if not claim_live_lane():
@@ -2462,6 +2497,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     # ten-minute cron for console-jobs.yml went hours without a run. Every two minutes, a queued backfill or reset
     # that nobody has started is started; nothing at all without a token (GH_TOKEN, the workflow's own).
     console_check = 0.0
+    sched_tick, sched_seen, sched_proc = 0.0, {}, None     # the day's schedules (SCHEDULE_RECHECK, above)
     def armed_games():
         try:
             rows = sb.select("games", f"broadcast_until=gt.{datetime.now(timezone.utc).isoformat()}&select=id")
@@ -2484,6 +2520,33 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             said = console_kick.mail_cadence()
             if said.startswith("started") or said.startswith("dispatch failed"):
                 print(f"{now.strftime('%H:%M:%S')}Z report mailer: {said}")
+        # THE DAY'S SCHEDULES: a child pass that has ended says what it changed, and the due set is read again at once
+        if sched_proc is not None and sched_proc[0].poll() is not None:
+            try:
+                with open(sched_proc[1], encoding="utf-8", errors="replace") as fh:
+                    said = [ln.rstrip() for ln in fh if "changed on the schedule" in ln or "no longer on the schedule" in ln or ln.startswith("-> ")]
+                os.remove(sched_proc[1])
+            except OSError:
+                said = []
+            moved = [ln for ln in said if "changed on the schedule" in ln and not ln.strip().endswith(" 0 changed on the schedule")]
+            print(f"{now.strftime('%H:%M:%S')}Z the day's schedules read again: " + ("; ".join(x.strip() for x in moved) if moved else "nothing moved"))
+            sched_proc = None
+            recheck = 0.0
+        if sb and not getattr(args, "dry_run", False) and sched_proc is None and time.time() >= sched_tick:
+            sched_tick = time.time() + 300
+            try:
+                codes = [c for c in playing_today(sb, fiba, now) if time.time() - sched_seen.get(c, 0.0) >= SCHEDULE_RECHECK]
+            except Exception as exc:
+                codes = []
+                print(f"   (the day's schedules: {exc})")
+            if codes:
+                for c in codes:
+                    sched_seen[c] = time.time()
+                try:
+                    sched_proc = schedule_child(codes, args)
+                    print(f"{now.strftime('%H:%M:%S')}Z reading the day's schedules again: {', '.join(codes)}")
+                except Exception as exc:
+                    print(f"   (the day's schedules: could not start - {exc})")
         if time.time() >= recheck:
             due, next_tip = live_due(sb, fiba, now)
             due = [(s, r) for s, r in due if str(r["external_id"]) not in finished and in_shard(r["external_id"], shard)]
