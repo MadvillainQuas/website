@@ -7,9 +7,10 @@
    to_fiba -> FibaLiveStatsAdapter.bundle_from_raw (stints) -> translate -> the engine (node), and every
    clock-based number must come out in halves: periods 1, 2 and OT 3, a half's period_start at 20:00,
    2,700 seconds of stints, 225 player-minutes a side, the score the plays add up to.
-2. THE SCRAPER'S CAPTURES, when the private scraper-pipeline checkout is there (SCRAPER_DIR, or
-   ../scraper-pipeline): its 46 ncaa.com games through the same path. They are not copied into this public
-   repository; without the checkout this part says it was skipped.
+2. THE SCRAPER'S CAPTURES, when the private scraper-pipeline checkout is there (SCRAPER_DIR, ../scraper-pipeline,
+   or fiba_livestats.DEFAULT_SCRAPER_DIR): its 46 ncaa.com games through the same path. They are not copied into
+   this public repository; without the checkout this part says it was skipped. (The 2025-26 Division II games
+   this repository does carry are compared line by line in ncaa_accuracy_test.py.)
 3. The pure pieces: period_clock, gt, action_of, the season, the scoreboard change test, the lanes.
 """
 from __future__ import annotations
@@ -68,6 +69,16 @@ ok("free throw 2 of 2", N.action_of("Free Throw 2 of 2 made by #0 X Y") == {"pno
 ok("rebounds, assists, fouls, subs", [N.action_of(t)["actionType"] for t in (
     "Offensive Rebound by #4 Q", "Assist by #4 Q", "Personal Foul by #4 Q", "Substitution Out by #4 Q")] == ["rebound", "assist", "foul", "substitution"])
 ok("anything else is not an action", N.action_of("Timeout Mules") is None)
+stream = [("2pt jump shot missed by #4 Q", 0, 100.0, {"actionType": "2pt", "subType": "jumpshot", "success": 0, "pno": 4}),
+          ("Substitution out", 0, 100.0, {"actionType": "substitution", "subType": "out", "pno": 4}),
+          ("Substitution in", 0, 100.0, {"actionType": "substitution", "subType": "in", "pno": 5})]
+merged = N.with_team_actions(stream, [("Team Offensive Rebound", 0, 100.0), ("Team Turnover", 1, 50.0), ("Nonsense", 0, 1.0)])
+ok("a team's rebound goes after the miss it answers and before the change at that moment",
+   [m[0] for m in merged] == ["Team Turnover", "2pt jump shot missed by #4 Q", "Team Offensive Rebound", "Substitution out", "Substitution in"],
+   [m[0] for m in merged])
+ok("...as a data.json action with nobody named (the translator's team qualifier)",
+   merged[2][3] == {"actionType": "rebound", "subType": "offensive", "pno": 0, "qualifier": ["team"]} and merged[0][3]["actionType"] == "turnover")
+ok("no team rows: the stream as it was", N.with_team_actions(stream, []) is stream)
 
 print("\nthe season and the source")
 from datetime import date  # noqa: E402
@@ -269,7 +280,7 @@ pl.league("SLB", "Super League", "slb")
 ok("a league created without league_rules gets the database's own default (no rules column written)", "rules" not in made["row"])
 
 # ------------------------------------------------------------------ the scraper's own captures
-cands = [os.environ.get("SCRAPER_DIR") or "", str(REPO.parent / "scraper-pipeline")]
+cands = [os.environ.get("SCRAPER_DIR") or "", str(REPO.parent / "scraper-pipeline"), N.DEFAULT_SCRAPER_DIR]
 cap_dir = next((Path(c) / "validation" / "ncaa" / "captures" for c in cands
                 if c and (Path(c) / "validation" / "ncaa" / "captures").is_dir()), None)
 print("\nthe scraper's captures")
@@ -285,7 +296,7 @@ else:
     sub_warn = 0
     for f in games:
         d = json.load(open(f, encoding="utf-8"))
-        p = mod.parse_ncaa_game(d)
+        p = A.parse(mod, d, "MBB")
         if not p.get("actions"):
             continue
         r = N.to_fiba(d, p, N.HALVES)

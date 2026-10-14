@@ -31,9 +31,15 @@ the bundle already held (same payload hash: the lane writes nothing), and is rea
 they move or `max_age_s` has passed. That is what makes several hundred simultaneous games affordable:
 see docs/ncaa-readiness.md for the arithmetic.
 
-Women's games need the scraper's period clock to know about quarters; until scraper-pipeline carries the
-patch in docs/ncaa/scraper-ncaa-women.patch, `_elapsed` is supplied for a WBB parse from here (the same
-clamp at a period's 0:00), which is a call into the scraper's own parse, not a copy of it.
+Women's games need the scraper's period clock to know about quarters: scraper-pipeline's parse_ncaa_game takes
+`sport` (the patch that was docs/ncaa/scraper-ncaa-women.patch, applied there 2026-10-14) and is called with it.
+A checkout older than that still gets `_elapsed` lent for a WBB parse from here - but that swaps a module global,
+and the live lane parses games on several threads, so a men's game parsed while a women's is being parsed would
+read its halves as quarters: the scraper checkout must carry the patch wherever the lane runs.
+
+WHAT THE PLAYS ADD UP TO IS CHECKED AGAINST THE OFFICIAL BOX, GAME BY GAME: scripts/ingest/ncaa_accuracy.py runs
+this path to the engine's box and holds every player's and team's line against ncaa.com's (the documents are kept
+in the scraper's private checkout, validation/ncaa/captures_d2, so it never asks twice).
 """
 from __future__ import annotations
 
@@ -245,6 +251,33 @@ def paired_subs(actions, starters: dict) -> list:
     return out
 
 
+#: the scraper's team rows (parse_ncaa_game out['team_actions']) as data.json actions with nobody named
+TEAM_ACTION = {"Team Offensive Rebound": {"actionType": "rebound", "subType": "offensive"},
+               "Team Defensive Rebound": {"actionType": "rebound", "subType": "defensive"},
+               "Team Turnover": {"actionType": "turnover", "subType": ""}}
+
+
+def with_team_actions(stream: list, team_actions) -> list:
+    """paired_subs' stream with the rebounds and turnovers the box charges to a TEAM merged in at their moments.
+
+    The official box's team line holds rebounds and turnovers no player is charged with - a shot clock violation,
+    a ball out of bounds off nobody in particular - and the scraper reads them from the feed's team rows, reconciled
+    with that line, in a list of their own (its own engine sums players and never sees them). Without them a side's
+    rebounds or turnovers fell short of the official team line in every game of the 2025-26 D2 sample that had a
+    play-by-play (77 of 77). At one moment a team row goes after the plays (the miss it answers) and before the
+    changes, as the scraper orders."""
+    extra = []
+    for text, tidx, el in team_actions or []:
+        a = TEAM_ACTION.get(text)
+        if a:
+            extra.append((text, int(tidx), float(el), dict(a, pno=0, qualifier=["team"])))
+    if not extra:
+        return stream
+    rank = {"out": 1, "in": 2}
+    return sorted(list(stream) + extra, key=lambda r: (
+        r[2], rank.get(r[3].get("subType"), 0) if r[3]["actionType"] == "substitution" else 0))
+
+
 def _player(row: dict) -> dict:
     """One box line of the scraper's site_box as pl[pno]."""
     first, _, last = str(row.get("name") or "").partition(" ")
@@ -299,11 +332,14 @@ def to_fiba(data: dict, parsed: dict, fmt: tuple, final: Optional[bool] = None) 
              for i in (0, 1)}
     add({"actionType": "period", "subType": "start", "period": 1, "periodType": "REGULAR",
          "gt": gt(fmt[1]), "tno": 0})
-    for text, tidx, el, a in paired_subs(parsed.get("actions") or [], parsed.get("starters") or {}):
-        slot = slots[int(tidx)].get(str(a.get("pno")))
-        if slot is None:
-            continue                                   # a shirt the box does not know: no player to credit
-        a["pno"] = slot
+    stream = with_team_actions(paired_subs(parsed.get("actions") or [], parsed.get("starters") or {}),
+                               parsed.get("team_actions"))
+    for text, tidx, el, a in stream:
+        if "team" not in (a.get("qualifier") or []):
+            slot = slots[int(tidx)].get(str(a.get("pno")))
+            if slot is None:
+                continue                               # a shirt the box does not know: no player to credit
+            a["pno"] = slot
         p, ptype, left = period_clock(el, fmt)
         if (p, ptype) != last_period:
             add({"actionType": "period", "subType": "start", "period": p, "periodType": ptype,
@@ -360,7 +396,9 @@ def to_fiba(data: dict, parsed: dict, fmt: tuple, final: Optional[bool] = None) 
             "clock": "00:00" if over else (last.get("gt") or gt(fmt[1])),
             "ncaa": {"contestId": pbp_d.get("contestId") or box_d.get("contestId"), "status": status,
                      "unmapped": len(parsed.get("unmapped") or {}), "partial_box": parsed.get("partial_box") or [],
-                     "degraded_feed": parsed.get("degraded_feed") or []}}
+                     "degraded_feed": parsed.get("degraded_feed") or [],
+                     # what the scraper's box reconciliation changed (plays voided, rows added or dropped)
+                     "reconciled": parsed.get("reconciled") or {}}}
 
 
 def log_disagrees(raw: dict) -> Optional[str]:
@@ -629,8 +667,9 @@ class NcaaAdapter(FibaLiveStatsAdapter):
 
     @classmethod
     def parse(cls, mod, data: dict, sport: str) -> dict:
-        """The scraper's parse, told the sport: directly once scraper-pipeline takes `sport` (the patch in
-        docs/ncaa/scraper-ncaa-women.patch), else with the quarters clock lent for a women's game."""
+        """The scraper's parse, told the sport: directly when scraper-pipeline takes `sport` (it does since the patch
+        in docs/ncaa/scraper-ncaa-women.patch was applied), else with the quarters clock lent for a women's game -
+        the old checkout's path, which is not safe on the lane's threads (module docstring)."""
         try:
             takes_sport = "sport" in inspect.signature(mod.parse_ncaa_game).parameters
         except (TypeError, ValueError):
@@ -658,6 +697,11 @@ class NcaaAdapter(FibaLiveStatsAdapter):
     def bundle_from_raw(self, raw: dict, external_id: str, config: dict | None = None) -> GameBundle:
         b = super().bundle_from_raw(raw, external_id, config)
         why = log_disagrees(raw)
+        if not why and "attribution" in ((raw.get("ncaa") or {}).get("degraded_feed") or []):
+            # THE SCORE CAN ADD UP AND THE LINES STILL BE WRONG: the scraper's parse flags a feed whose baskets are
+            # credited to the wrong players for whole stretches (three or more players' field-goal points four or
+            # more off the box's). Replayed, every one of those players' lines would be published wrong.
+            why = "the play-by-play credits its baskets to the wrong players (the box disagrees player by player)"
         if b.status == "final" and why:
             # A FINISHED GAME WHOSE PLAYS DO NOT ADD UP TO ITS SCORE IS PUBLISHED AS A RESULT, NOT REPLAYED.
             # finalise-game writes the score the log replays to, so a log short of a team's baskets would

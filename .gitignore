@@ -50,3 +50,7 @@ data/reset/
 
 # What wins builder: the private store and --local output (members-only data) when run here
 .cache/
+
+# ncaa.com documents fetched by scripts/ingest/ncaa_accuracy.py: never published from this public repository
+# (the sample's documents are kept in the scraper's private checkout, validation/ncaa/captures_d2)
+scripts/ingest/data/ncaa/captures/
