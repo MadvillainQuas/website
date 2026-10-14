@@ -5,7 +5,7 @@
 -- quarters of the database: ~775 rows a game, 2.8 million in all. The play-by-play itself is not lost. Each archived
 -- game keeps:
 --   snapshots/events/<game>.json        the event log every page already reads first (0156), untouched
---   snapshots/archive/<game>.json.gz    the whole game, gzipped: every event row as stored (select *) and every row
+--   feed/archive/<game>.json.gz         the whole game, gzipped: every event row as stored (select *) and every row
 --                                       the box score page reads for it - enough to rebuild the page, and to put the
 --                                       rows back exactly (scripts/ingest/archive.py --restore)
 -- and its raw feed copy is gzipped beside where it was (external_games.raw_ref follows).
@@ -18,7 +18,7 @@
 alter table public.games add column if not exists archived_at timestamptz;
 
 comment on column public.games.archived_at is
-  'When this game''s play-by-play rows were moved to snapshots/archive/<id>.json.gz (scripts/ingest/archive.py). '
+  'When this game''s play-by-play rows were moved to feed/archive/<id>.json.gz (scripts/ingest/archive.py). '
   'Null: the rows are in game_events.';
 
 create or replace function public.games_archive_guard()
@@ -26,7 +26,7 @@ returns trigger language plpgsql set search_path = public as $$
 begin
   if old.archived_at is not null and new.archived_at is not null
      and (new.status is distinct from old.status or new.finalised_at is distinct from old.finalised_at) then
-    raise exception 'game % is archived: its play-by-play is in snapshots/archive - restore it before finalising it again', old.id
+    raise exception 'game % is archived: its play-by-play is in feed/archive - restore it before finalising it again', old.id
       using errcode = '55000';
   end if;
   return new;

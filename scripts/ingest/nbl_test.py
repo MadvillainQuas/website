@@ -472,6 +472,54 @@ key = lambda r: [(e.get("pno"), e.get("actionType"), e.get("tno")) for e in r["p
 ok("...each action credited to the box's player through personId, exactly as the record form",
    got is not None and key(got) == key(want))
 
+# ============================================================================ a box and no play-by-play
+print("\n-- NBL 2023-24: the box kept, the play-by-play not")
+# Perth v Adelaide, 4 Nov 2023 (99-88): every NBL24 game comes so - the league's lines, its clubs' quarters, and
+# play_by_play empty. It used to be read as nothing (no action, no game) and the season never filled.
+g24 = load("game-900fee72.json.gz")
+raw = N.raw_from_match(g24)
+ok("read as a game, not as nothing: from the box, no play-by-play", raw is not None and raw["nbl"]["boxOnly"]
+   and raw["pbp"] == [], raw and raw["nbl"])
+m24 = g24["data"][0]
+lines = [r for r in m24["player_match_statistics"] if str(r.get("period")) == "0"]
+mine = {**raw["tm"]["1"]["pl"], **raw["tm"]["2"]["pl"]}
+ok("every player the league lists, each his own line (25)", len(mine) == 25 == len(lines), len(mine))
+same = all(mine[r["player"]["id"]]["sPoints"] == r["points"] and mine[r["player"]["id"]]["sReboundsTotal"] == r["rebounds"]
+           and mine[r["player"]["id"]]["sAssists"] == r["assists"] and mine[r["player"]["id"]]["sMinutes"].zfill(5) == r["minutes"].zfill(5)
+           and mine[r["player"]["id"]]["sPlusMinusPoints"] == r["plus_minus"] for r in lines)
+ok("...points, rebounds, assists, minutes and plus-minus exactly the league's", same)
+ok("...fouls from personal_fouls (NBL24's FLS column is 0 on every line)",
+   all(mine[r["player"]["id"]]["sFoulsPersonal"] == r["personal_fouls"] for r in lines)
+   and sum(r["personal_fouls"] for r in lines) > 0)
+h, a = raw["tm"]["1"], raw["tm"]["2"]
+ok("the score is the result: 99-88", (h["score"], a["score"]) == (99, 88) and raw["nbl"]["final"] == [99, 88])
+ok("the quarters, from the clubs' rows, adding up to it", [h[f"p{q}_score"] for q in range(1, 5)] == [19, 31, 23, 26]
+   and [a[f"p{q}_score"] for q in range(1, 5)] == [22, 22, 24, 20])
+ok("the clubs' totals as the league printed them: team rebounds (46 and 35), a bench foul (16)",
+   (h["tot_sReboundsTotal"], h["tot_sReboundsTeam"], a["tot_sReboundsTotal"], a["tot_sReboundsTeam"]) == (46, 4, 35, 5)
+   and (a["tot_sFoulsPersonal"], a["tot_sFoulsTeam"]) == (16, 1))
+ok("the starters are the league's five a side, a DNP never one",
+   [sum(p["starter"] for p in t["pl"].values()) for t in (h, a)] == [5, 5])
+
+b = fresh().fetch("900fee72-412f-11f0-a6fb-c18ca6e1b4e0", {})
+ok("published as a result: final, not translated, no lineups", b is not None and b.status == "final"
+   and b.translate is False and b.stints == [] and b.lineups == {}, b and (b.status, b.translate))
+ok("...the clubs' rows and the box from the league's lines", b is not None
+   and (b.team["home"]["points"], b.team["away"]["points"]) == (99, 88)
+   and (len(b.box["home"]), len(b.box["away"])) == (13, 12) and b.team["home"]["q_scores"] == [19, 31, 23, 26])
+ok("...tipped off when the league says", b is not None and b.tipoff_at == "2023-11-04T09:00:00+00:00", b and b.tipoff_at)
+
+ok("a game of the last two days with no play-by-play yet is left for its play-by-play",
+   fresh().fetch("900fee72-412f-11f0-a6fb-c18ca6e1b4e0", {"_tipoff_at": N.datetime.now(N.timezone.utc).isoformat()}) is None)
+unfinished = copy.deepcopy(g24)
+unfinished["data"][0]["match_status"], unfinished["data"][0]["status"] = "live", "IN_PROGRESS"
+ok("a game not finished with no play-by-play is still nothing to show", N.raw_from_match(unfinished) is None)
+oneside = copy.deepcopy(g24)
+away_id = oneside["data"][0]["away_team"]["id"]
+oneside["data"][0]["player_match_statistics"] = [r for r in oneside["data"][0]["player_match_statistics"]
+                                                 if r["team"]["id"] != away_id]
+ok("a box with one side missing is not published", N.raw_from_match(oneside) is None)
+
 # ============================================================================ NBL1's conferences
 print("\n-- NBL1's conferences, from the feed")
 src = {"code": "NBL1M", "adapter": "nbl", "schedule_url": "https://www.nbl1.com.au/fixtures#men",

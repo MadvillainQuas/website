@@ -721,6 +721,121 @@ def _count(box: dict, ev: dict) -> None:
         box["sFoulsOn"] += 1
 
 
+def _player_row(who: dict, b: dict, secs: float, pm: int) -> dict:
+    """One player's line in FIBA's shape: his name and role, then his counting stats."""
+    first, last = who["first"], who["last"]
+    row = {"firstName": first, "familyName": last, "name": f"{first} {last}".strip(),
+           "internationalFirstName": first, "internationalFamilyName": last,
+           "scoreboardName": (f"{first[:1]}. {last}" if first else last).strip(),
+           "shirtNumber": who["shirt"], "playingPosition": who["position"],
+           "starter": 1 if who["starter"] else 0, "active": 1,
+           "sMinutes": _mmss(secs), "sPlusMinusPoints": pm}
+    row.update(b)
+    for k in ZERO_SPLITS:
+        row[k] = 0
+    row["eff_1"] = (b["sPoints"] + b["sReboundsTotal"] + b["sAssists"] + b["sSteals"] + b["sBlocks"]
+                    - (b["sFieldGoalsAttempted"] - b["sFieldGoalsMade"])
+                    - (b["sFreeThrowsAttempted"] - b["sFreeThrowsMade"]) - b["sTurnovers"])
+    return row
+
+
+def _club(t: dict, pl: dict, tot: dict, points: int, quarters: Dict[int, int], last_q: int) -> dict:
+    """One club in FIBA's shape: its players, its totals and its score by period."""
+    for k in ZERO_SPLITS:
+        tot["tot_" + k] = 0
+    tot["tot_sBenchPoints"] = sum(p["sPoints"] for p in pl.values() if not p["starter"])
+    name = (t.get("name") or t.get("external_team_name") or "").strip()
+    code3 = (t.get("team_code") or t.get("team_nickname") or "").strip()
+    entry = {"name": name, "nameInternational": name, "shortName": code3 or name,
+             "code": club_id(t), "score": points, "pl": pl, "shot": [], **tot}
+    logo = crest(t)
+    if logo:
+        entry["logoT"] = {"url": logo}
+        entry["logoS"] = {"url": logo}
+    for qn, v in sorted(quarters.items()):
+        entry[f"p{qn}_score"] = v
+    for qn in range(1, last_q + 1):
+        entry.setdefault(f"p{qn}_score", 0)
+    entry["ot_score"] = sum(v for q_, v in quarters.items() if q_ > 4)
+    entry["full_score"] = points
+    return entry
+
+
+def _box_only(m: dict, people: Dict[Tuple[int, str], dict], league_rows: Dict[Tuple[int, str], dict],
+              tno_of) -> Optional[dict]:
+    """A FINISHED GAME WHOSE FEED KEPT THE BOX AND NOT THE PLAY-BY-PLAY - every game of NBL 2023-24 (NBL24): each
+    player's line (player_match_statistics), each club's by quarter and for the game (team_match_statistics), the
+    result, and play_by_play empty. Read only as a log it was nothing, and the whole season never filled. Read as
+    what it is, it is the game as the league printed it: every line, the quarters, the score. fetch publishes it as
+    a result (translate False) - there is no log to replay, so no shot chart, no lineups, no play-by-play.
+
+    None for anything else: a game not finished (its play-by-play may still come), or a box missing a side."""
+    status_txt = {str(m.get("match_status") or "").lower(), str(m.get("status") or "").lower()}
+    if not status_txt & STATUS_FINAL or not all(any(s == t for s, _ in league_rows) for t in (1, 2)):
+        return None
+    clubs: Dict[Tuple[int, int], dict] = {}
+    for r in m.get("team_match_statistics") or []:
+        tno = tno_of(r.get("team"))
+        if tno and r.get("period") is not None:
+            clubs[(tno, 0 if str(r.get("period")) == "0" else qnum(r))] = r
+    home, away = m["home_team"], m["away_team"]
+    finals = {1: m.get("home_score"), 2: m.get("away_score")}
+    played = [q for (_, q) in clubs if q]
+    last_q = max(played) if played else 4
+    tm: Dict[str, dict] = {}
+    short = []
+    for tno, t in ((1, home), (2, away)):
+        pl: Dict[str, dict] = {}
+        for (s, pid), r in league_rows.items():
+            if s != tno:
+                continue
+            b = {k: 0 for k in BOX_KEYS}
+            for k, fiba in LEAGUE_BOX.items():
+                b[fiba] = _num(r.get(k))
+            # NBL24's "fouls" (FLS) is 0 on every line; its personal_fouls holds them
+            b["sFoulsPersonal"] = max(_num(r.get("fouls")), _num(r.get("personal_fouls")))
+            b["sFoulsTechnical"] = _num(r.get("technical_fouls"))
+            pl[pid] = _player_row(people[(s, pid)], b, _secs(r.get("minutes")) or 0.0, _num(r.get("plus_minus")))
+        tot = {"tot_" + k: sum(p[k] for p in pl.values()) for k in BOX_KEYS}
+        whole = clubs.get((tno, 0)) or {}
+        # the club's line beyond its players', as the league printed it: team rebounds (in its REB, not split into
+        # offensive and defensive), team turnovers, and a bench or coach's technical (its FLS over its players' PF)
+        reb_team = max(0, _num(whole.get("rebounds")) - tot["tot_sReboundsTotal"]) if whole else 0
+        tov_team = max(0, _num(whole.get("turnovers")) - tot["tot_sTurnovers"]) if whole else 0
+        fouls_team = max(0, _num(whole.get("fouls")) - tot["tot_sFoulsPersonal"]) if whole else 0
+        tot["tot_sReboundsTotal"] += reb_team
+        tot["tot_sReboundsTeam"] = reb_team
+        tot["tot_sReboundsTeamOffensive"] = tot["tot_sReboundsTeamDefensive"] = 0
+        tot["tot_sTurnovers"] += tov_team
+        tot["tot_sTurnoversTeam"] = tov_team
+        tot["tot_sFoulsTeam"] = fouls_team
+        tot["tot_sFoulsPersonal"] += fouls_team
+        points = tot["tot_sPoints"]
+        if finals[tno] not in (None, "") and _num(finals[tno]) != points:
+            short.append(f"{tno}: lines {points}, result {_num(finals[tno])}")
+            points = _num(finals[tno])          # the result stands; the lines are what the league printed
+        quarters = {q: _num(r.get("points")) for (s, q), r in clubs.items() if s == tno and q}
+        if sum(quarters.values()) != points:
+            quarters = {}                       # quarters that do not add up to the score are not shown
+        tm[str(tno)] = _club(t, pl, tot, points, quarters, last_q if quarters else 4)
+    season = m.get("season") or {}
+    raw = {"tm": tm, "pbp": [], "period": last_q, "periodType": "REGULAR" if last_q <= 4 else "OVERTIME",
+           "inOT": 1 if last_q > 4 else 0, "clock": "00:00"}
+    raw["nbl"] = {
+        "matchId": str(m.get("id") or ""), "slug": m.get("match_slug"),
+        "season": season.get("name") or season.get("year"), "round": m.get("round"),
+        "matchType": m.get("match_type"), "date": utc_iso(m.get("start_time_datetime") or m.get("start_time")),
+        "finished": True, "venue": ((m.get("venue") or {}).get("name") or "").strip() or None,
+        "attendance": _num(m.get("attendance")) or None,
+        "final": [_num(finals[1]) if finals[1] not in (None, "") else None,
+                  _num(finals[2]) if finals[2] not in (None, "") else None],
+        "unknown": [], "teamInferred": 0, "teamUnresolved": [], "scoresAwayFirst": False, "drawnUnpaired": 0,
+        "startersInferred": [], "blocksReordered": 0, "subsDropped": 0, "leagueBoxCurrent": True,
+        "leagueBoxDiffers": [], "notFive": 0, "boxOnly": True, "linesShort": short,
+    }
+    return raw
+
+
 def raw_from_match(match: dict) -> Optional[dict]:
     """One /live/all game -> FIBA data.json shape: play-by-play OLDEST first, actionNumber 1..n,
     every period opened and closed once, the box counted from the play-by-play. Pure: the same
@@ -821,7 +936,7 @@ def raw_from_match(match: dict) -> Optional[dict]:
         }
         keyed.append((_order_key(e, i), ev))
     if not keyed:
-        return None
+        return _box_only(m, people, league_rows, tno_of)
     keyed.sort(key=lambda kv: kv[0])
     chrono, blocks_moved = _blocked_shot_first([ev for _, ev in keyed])
     inferred, unresolved = _infer_teams(chrono)
@@ -978,21 +1093,7 @@ def raw_from_match(match: dict) -> Optional[dict]:
         for (s, pid), who in people.items():
             if s != tno:
                 continue
-            b = box[(s, pid)]
-            first, last = who["first"], who["last"]
-            row = {"firstName": first, "familyName": last, "name": f"{first} {last}".strip(),
-                   "internationalFirstName": first, "internationalFamilyName": last,
-                   "scoreboardName": (f"{first[:1]}. {last}" if first else last).strip(),
-                   "shirtNumber": who["shirt"], "playingPosition": who["position"],
-                   "starter": 1 if who["starter"] else 0, "active": 1,
-                   "sMinutes": _mmss(secs[(s, pid)]), "sPlusMinusPoints": pm[(s, pid)]}
-            row.update(b)
-            for k in ZERO_SPLITS:
-                row[k] = 0
-            row["eff_1"] = (b["sPoints"] + b["sReboundsTotal"] + b["sAssists"] + b["sSteals"] + b["sBlocks"]
-                            - (b["sFieldGoalsAttempted"] - b["sFieldGoalsMade"])
-                            - (b["sFreeThrowsAttempted"] - b["sFreeThrowsMade"]) - b["sTurnovers"])
-            pl[pid] = row
+            pl[pid] = _player_row(who, box[(s, pid)], secs[(s, pid)], pm[(s, pid)])
         tot = {"tot_" + k: sum(p[k] for p in pl.values()) for k in BOX_KEYS}
         te = team_events[tno]
         tot["tot_sReboundsOffensive"] += te["oreb"]
@@ -1008,25 +1109,7 @@ def raw_from_match(match: dict) -> Optional[dict]:
         tot["tot_sFoulsTeam"] = sum(1 for ev in events if ev["actionType"] == "foul" and ev["tno"] == tno
                                     and not ev["pno"])
         tot["tot_sFoulsPersonal"] += tot["tot_sFoulsTeam"]
-        for k in ZERO_SPLITS:
-            tot["tot_" + k] = 0
-        tot["tot_sBenchPoints"] = sum(p["sPoints"] for p in pl.values() if not p["starter"])
-        name = (t.get("name") or t.get("external_team_name") or "").strip()
-        code3 = (t.get("team_code") or t.get("team_nickname") or "").strip()
-        points = sum(periods_pts[tno].values())
-        entry = {"name": name, "nameInternational": name, "shortName": code3 or name,
-                 "code": club_id(t), "score": points, "pl": pl, "shot": [], **tot}
-        logo = crest(t)
-        if logo:
-            entry["logoT"] = {"url": logo}
-            entry["logoS"] = {"url": logo}
-        for qn, v in sorted(periods_pts[tno].items()):
-            entry[f"p{qn}_score"] = v
-        for qn in range(1, last_q + 1):
-            entry.setdefault(f"p{qn}_score", 0)
-        entry["ot_score"] = sum(v for q_, v in periods_pts[tno].items() if q_ > 4)
-        entry["full_score"] = points
-        tm[str(tno)] = entry
+        tm[str(tno)] = _club(t, pl, tot, sum(periods_pts[tno].values()), periods_pts[tno], last_q)
 
     # the shot chart, joined to its action by number
     for ev in events:
@@ -1194,6 +1277,8 @@ class NblAdapter(FibaLiveStatsAdapter):
         if raw is None:
             return None
         meta = raw["nbl"]
+        if meta.get("boxOnly"):
+            return self._box_only_bundle(raw, gid, config)
         if meta["unknown"]:
             print(f"     NBL {gid}: {len(meta['unknown'])} action string(s) the adapter does not know, "
                   f"left out: {meta['unknown'][:4]}")
@@ -1210,6 +1295,32 @@ class NblAdapter(FibaLiveStatsAdapter):
                   f"the result says {fin[0]}-{fin[1]}")
         b = self.bundle_from_raw(raw, gid, config)
         b.tipoff_at = config.get("_tipoff_at") or meta["date"]
+        return b
+
+    #: a finished game with a box and no play-by-play is published as a result only once it is this old: the feed
+    #: can fill a game's play-by-play after its box, and a game published as a result is closed to its log
+    BOX_ONLY_AFTER_S = 2 * 86400
+
+    def _box_only_bundle(self, raw: dict, gid: str, config: dict) -> Optional[GameBundle]:
+        meta = raw["nbl"]
+        tip = config.get("_tipoff_at") or meta["date"]
+        try:
+            t = datetime.fromisoformat(str(tip).replace("Z", "+00:00")) if tip else None
+        except ValueError:
+            t = None
+        if t is not None and t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+        if t is None or (datetime.now(timezone.utc) - t).total_seconds() < self.BOX_ONLY_AFTER_S:
+            return None                   # a recent game: its play-by-play may yet come
+        if meta["linesShort"]:
+            print(f"     NBL {gid}: the players' lines do not add up to the result ({'; '.join(meta['linesShort'])}); "
+                  f"the result stands")
+        print(f"     NBL {gid}: no play-by-play in the feed - published as a result, from the league's box")
+        b = self.bundle_from_raw(raw, gid, config)
+        b.translate = False
+        b.status = "final"
+        b.stints, b.lineups = [], {}
+        b.tipoff_at = tip
         return b
 
     # ------------------------------------------------------------------ plumbing

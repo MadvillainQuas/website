@@ -3269,7 +3269,8 @@ def main() -> int:
                         stored[k] = r
                         known_db[k] = {**known_repo.get(k, {"id": k}), "id": k, "home": r.get("home_name"), "away": r.get("away_name"),
                                        "homeScore": r.get("home_score"), "awayScore": r.get("away_score"),
-                                       "status": r.get("external_status"), "hash": r.get("payload_hash"), "raw_ref": r.get("raw_ref"), "date": r.get("game_date")}
+                                       "status": r.get("external_status"), "hash": r.get("payload_hash"), "raw_ref": r.get("raw_ref"), "date": r.get("game_date"),
+                                       "game": r.get("game_id")}
                 except Exception as exc:
                     print(f"   (external_games unavailable: {exc})")
             if sb and not args.dry_run and stored:
@@ -3290,9 +3291,16 @@ def main() -> int:
             # weeks away buys a refusal and costs a request plus its politeness gap.
             # The schedule facts for those games are still written, just below — only
             # the game feed is left alone. See fetchwindow.py.
+            # DONE MEANS ON THE PLATFORM. A game deleted from it (its season or competition deleted, 2026-10: SLB's
+            # 2025-26 Championship, 143 games) leaves its external_games row final, hashed and pointing at nothing -
+            # game_id is set null, unlike release_orphans' case where the game row stays. Read as done, the backfill
+            # skipped all 143 and wrote nothing however often it ran. A row with no game is fetched and written again.
+            def linked(k):
+                return bool(k.get("game")) or not sb
+
             def done(g):
                 k = known.get(g.external_id, {})
-                return k.get("status") == "final" and k.get("hash") and str(g.external_id) not in stuck
+                return k.get("status") == "final" and k.get("hash") and linked(k) and str(g.external_id) not in stuck
 
             now_utc = datetime.now(timezone.utc)
             if args.refresh:
@@ -3363,7 +3371,7 @@ def main() -> int:
                 run["games_fetched"] += 1
                 beat()                      # a backfill's lease, kept alive through a long season
                 prev = known.get(g.external_id)
-                if prev and prev.get("hash") == b.payload_hash and b.status != "live" and not args.refresh \
+                if prev and prev.get("hash") == b.payload_hash and linked(prev) and b.status != "live" and not args.refresh \
                         and str(g.external_id) not in stuck:
                     continue
                 if b.status == "live" and feed_abandoned(b.raw or {}, g.tipoff_at or (prev or {}).get("date")):
