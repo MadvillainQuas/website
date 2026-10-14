@@ -1058,6 +1058,30 @@ def video_due(game_id, status: str) -> bool:
     return True
 
 
+_GAME_COLS = "status,tipoff_at,competition_id,venue,home_score,away_score"
+_HAS_ARCHIVED = {"v": None}     # games.archived_at (0262): None until the first read says
+
+
+def game_now(sb: Supabase, game_id) -> list:
+    """The game's row as write_platform compares against - with archived_at where the database has it.
+
+    A DATABASE WITHOUT 0262 HAS NO archived_at, and asking for it fails the whole read (42703): on 14 Oct 2026 the
+    live lane, restarted on the archive tier's code before 0262 was pushed, wrote no live game at all - every write
+    'platform write failed ... column games.archived_at does not exist'. The column is asked for once; a database
+    that says it has none is read without it from then on (and no game there can be archived)."""
+    if _HAS_ARCHIVED["v"] is not False:
+        try:
+            rows = sb.select("games", f"id=eq.{game_id}&select={_GAME_COLS},archived_at")
+            _HAS_ARCHIVED["v"] = True
+            return rows
+        except Exception as exc:
+            if "archived_at" not in str(exc):
+                raise
+            _HAS_ARCHIVED["v"] = False
+            print("   (games.archived_at is not in the database yet - 0262 not pushed: games are read without it)")
+    return sb.select("games", f"id=eq.{game_id}&select={_GAME_COLS}")
+
+
 def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: tuple | None = None,
                    stamps: dict | None = None, venue: str | None = None, from_schedule: bool = False) -> bool:
     """games + game_advanced (+ event log) for the Epinoia site — only when the source names a league.
@@ -1114,7 +1138,7 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                                 **({"venue": venue} if venue else {})}, "id")
         game_id = g[0]["id"]
     else:
-        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,competition_id,venue,home_score,away_score,archived_at")
+        cur = game_now(sb, game_id)
         extra = {"tipoff_at": b.tipoff_at} if (b.tipoff_at and cur and not same_instant(cur[0].get("tipoff_at"), b.tipoff_at)) else {}
         if venue and cur and cur[0].get("venue") != venue:
             extra["venue"] = venue

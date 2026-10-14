@@ -143,5 +143,29 @@ sb5, st5 = FakeSB([]), FakeStore()
 ok("no-log, nothing marked or deleted", A.archive_game(sb5, st5, sb5.games["g1"], log=lambda *a: None) == "no-log"
    and not sb5.patched and not sb5.deleted)
 
+print("\n-- the live write before 0262 is pushed")
+import run_ingest as R  # noqa: E402
+
+
+class Pre0262:
+    """a database with no games.archived_at: asking for it fails the read, as PostgREST does (42703)"""
+    def __init__(self):
+        self.asked = []
+
+    def select(self, table, q):
+        self.asked.append(q)
+        if "archived_at" in q:
+            raise RuntimeError('400 Client Error: {"code":"42703","message":"column games.archived_at does not exist"}')
+        return [{"status": "live", "tipoff_at": None}]
+
+
+R._HAS_ARCHIVED["v"] = None
+db = Pre0262()
+rows = R.game_now(db, "g1")
+rows2 = R.game_now(db, "g2")
+ok("a database without archived_at: the game is still read (14 Oct 2026: every live write failed)", rows and rows[0]["status"] == "live")
+ok("...and the column is asked for once, not on every game", sum("archived_at" in q for q in db.asked) == 1 and rows2, db.asked)
+R._HAS_ARCHIVED["v"] = None
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)
