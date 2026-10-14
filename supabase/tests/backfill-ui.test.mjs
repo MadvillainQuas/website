@@ -26,7 +26,7 @@ class Node {
   constructor(tag) { this.tag = tag; this.children = []; this.className = ''; this.own = ''; this.style = {}; this.on = {}; }
   setAttribute(k, v) { this[k] = String(v); }
   appendChild(c) { this.children.push(c); return c; }
-  append(...cs) { cs.forEach(c => this.children.push(c)); }
+  append(...cs) { cs.forEach(c => this.children.push(typeof c === 'string' ? { textContent: c } : c)); }
   set textContent(v) { this.own = String(v); this.children = []; }
   get textContent() { return this.own + this.children.map(c => c.textContent).join(''); }
   addEventListener(t, f) { this.on[t] = f; }
@@ -152,6 +152,81 @@ sandbox.window.EpinoiaJobBar = JB;
   ok('...without the function: queued, and the worker will be started within a few minutes (an hour at most)',
      /2023-24 is queued\. The worker will be started within a few minutes \(at most about an hour\)/.test(said[said.length - 1]), said);
   BF.clear();
+}
+
+/* WHAT THE SOURCE HOLDS (backfill-coverage.js, written by backfill_audit.py --coverage): said before anybody asks */
+console.log('\nwhat the source holds');
+const SPLIT6 = ['2020-21', '2021-22', '2022-23', '2023-24', '2024-25', '2025-26'];
+const seasonsOf = (codes) => Object.fromEntries(SPLIT6.map((s, i) => [s, codes[i]]));
+ok('runs: consecutive seasons as one, oldest first', JSON.stringify(BF.runs(['2023-24', '2020-21', '2021-22'], SPLIT6))
+   === JSON.stringify(['2020-21 – 2021-22', '2023-24']));
+{
+  const s = BF.summary({ checked: '2026-10-14', seasons: seasonsOf(['full', 'full', 'full', 'full', 'full', 'full']) });
+  ok('every season whole: "every season, 2020-21 – 2025-26", nothing else said',
+     s.can.every && s.can.range === '2020-21 – 2025-26' && !s.can.apart.length && !s.lines.length, JSON.stringify(s.can));
+}
+{
+  const s = BF.summary({ seasons: seasonsOf(['full', 'none', 'full', 'full', 'full', 'full']) });
+  ok('one season missing in the middle: every season apart from 2021-22',
+     s.can.every && s.can.range === '2020-21 – 2025-26' && s.can.apart.join() === '2021-22', JSON.stringify(s.can));
+  ok('...and it is said not to be held', s.lines.length === 1 && s.lines[0].kind === 'none' && s.lines[0].parts[0].seasons === '2021-22');
+}
+{
+  const s = BF.summary({ seasons: seasonsOf(['none', 'none', 'full', 'full', 'box', 'box']), why: { '2020-21': 'not-yet', '2021-22': 'not-yet' } });
+  ok('a league that began later: 2022-23 – 2025-26, not "every season"', !s.can.every && s.can.range === '2022-23 – 2025-26'
+     && !s.can.apart.length, JSON.stringify(s.can));
+  const box = s.lines.find(l => l.kind === 'box'), none = s.lines.find(l => l.kind === 'none');
+  ok('...its box-score-only seasons as one run', box && box.parts[0].seasons === '2024-25 – 2025-26');
+  ok('...and the seasons before it with their reason', none && none.parts.length === 1 && none.parts[0].seasons === '2020-21 – 2021-22'
+     && /before the league or competition began/.test(none.parts[0].why));
+}
+{
+  const s = BF.summary({ seasons: seasonsOf(['full', 'none', 'full', 'none', 'full', 'none']) });
+  ok('scattered seasons: listed as runs, nothing "apart from"', s.can.range === '2020-21, 2022-23, 2024-25' && !s.can.apart.length, JSON.stringify(s.can));
+}
+{
+  const s = BF.summary({ seasons: seasonsOf(['results', 'results', 'none', 'none', 'none', 'none']) });
+  ok('nothing that can be filled: no range at all', s.can === null && s.lines.map(l => l.kind).join() === 'results,none');
+}
+ok('a league never checked: nothing said', BF.summary(null) === null && BF.summary({ seasons: {} }) === null);
+{
+  sandbox.EPINOIA_BACKFILL_COVERAGE = { checked: '2026-10-14', leagues: { 'the-league': { checked: '2026-10-14',
+    seasons: seasonsOf(['none', 'part', 'full', 'box', 'full', 'full']), why: { '2020-21': 'not-yet' } } } };
+  const host = new Node('div');
+  BF.mount({ host, sb: { from: () => chain, rpc: async () => ({}) }, say: () => {}, league: { id: 'L1', slug: 'the-league', name: 'A league' },
+             seasons: [{ name: '2025-26' }] });
+  const text = host.textContent;
+  ok('the panel says what the source holds, with a chip a season', /What the source holds/.test(text) && host.all('span')
+     .filter(n => /bf-chip/.test(n.className)).length === 6);
+  ok('...a chip coloured by what it holds', host.all('span').some(n => n.className === 'bf-chip bf-box' && n.textContent === '2023-24'));
+  ok('...which seasons can be filled in', /Can be filled in: 2021-22 – 2025-26/.test(text), text.slice(0, 400));
+  ok('...and why one cannot', /Not held by the source: 2020-21 \(before the league or competition began\)/.test(text));
+  const opt = v => host.all('option').find(o => o.value === v);
+  ok('the list marks each season: box scores only, some games missing, not held, nothing on a whole one',
+     /· box scores only/.test(opt('2023-24').textContent) && /· some games missing/.test(opt('2021-22').textContent)
+     && /· not held by the source/.test(opt('2020-21').textContent) && opt('2024-25').textContent === '2024-25');
+  ok('...and a season older than the check as not checked', /· not checked/.test(opt('2019-20').textContent));
+  const sel = host.all('select')[0], note = host.all('div').find(n => /bf-note/.test(n.className));
+  sel.value = '2020-21'; sel.on.change();
+  ok('picking a season the source never held says so before the button', /2020-21: not held by the source \(before the league or competition began\)\. A request for it will come back empty\./.test(note.textContent), note.textContent);
+  sel.value = '2024-25'; sel.on.change();
+  ok('...and a whole one says nothing', note.textContent === '');
+  BF.clear();
+  delete sandbox.EPINOIA_BACKFILL_COVERAGE;
+}
+{
+  /* the file the audit writes loads the way the page loads it */
+  const cov = path.join(ROOT, 'epinoia/admin/backfill-coverage.js');
+  if (fs.existsSync(cov)) {
+    const box = { console }; box.self = box; box.globalThis = box;
+    vm.runInContext(fs.readFileSync(cov, 'utf8'), vm.createContext(box), { filename: 'backfill-coverage.js' });
+    const d = box.EPINOIA_BACKFILL_COVERAGE;
+    const codes = new Set(Object.values((d && d.leagues) || {}).flatMap(l => Object.values(l.seasons)));
+    const whys = new Set(Object.values((d && d.leagues) || {}).flatMap(l => Object.values(l.why || {})));
+    ok('backfill-coverage.js: loads, and every state and reason in it is one the panel can say',
+       d && Object.keys(d.leagues).length > 0 && [...codes].every(c => BF.COVER[c]) && [...whys].every(w => BF.WHY[w]),
+       [...codes, ...whys].join());
+  }
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

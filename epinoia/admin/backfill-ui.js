@@ -97,6 +97,139 @@ const STATE = {
   failed:  'could not be filled in'
 };
 
+/* WHAT THE SOURCE HOLDS, season by season (backfill-coverage.js, written by scripts/ingest/backfill_audit.py
+   --coverage: every league's source read the way a backfill reads it, three games of each season fetched). Asking
+   for a season the source never kept is not an error anybody can see coming from this panel - the request goes in,
+   an hour passes, and it comes back "could not be filled in". So the panel says beforehand what each season holds,
+   and the list marks every season with it. A word per state; `fill` is whether a request brings the games in. */
+const COVER = {
+  full:    { fill: true,  tag: '',                            says: 'box scores and play-by-play' },
+  box:     { fill: true,  tag: 'box scores only',             says: 'box scores only, no play-by-play' },
+  mixed:   { fill: true,  tag: 'play-by-play for some games', says: 'box scores; play-by-play for some games only' },
+  part:    { fill: true,  tag: 'some games missing',          says: 'some games have no box score' },
+  results: { fill: false, tag: 'results only',                says: 'results only, no box scores' },
+  none:    { fill: false, tag: 'not held by the source',      says: 'not held by the source' },
+  skip:    { fill: false, tag: 'not readable by its source',  says: 'this league’s source cannot read past seasons' }
+};
+/* why a season cannot be filled - backfill_audit.py NOTES; a season without one gets its state's own words */
+const WHY = {
+  'not-yet':      'before the league or competition began',
+  'not-played':   'no season was played',
+  'renamed':      'the league ran under another name then',
+  'current-only': 'the source keeps only recent seasons',
+  'other-source': 'held only by a source this league does not read'
+};
+
+function coverageOf(slug, data) {
+  const d = data || (typeof globalThis !== 'undefined' ? globalThis.EPINOIA_BACKFILL_COVERAGE : null);
+  return (d && d.leagues && slug && d.leagues[slug]) || null;
+}
+
+/* the seasons named, oldest first, as runs: ['2020-21', '2022-23 – 2025-26'] */
+function runs(names, order) {
+  const at = names.map(n => order.indexOf(n)).filter(i => i >= 0).sort((a, b) => a - b);
+  const out = [];
+  at.forEach(i => {
+    const last = out[out.length - 1];
+    if (last && last[1] === i - 1) last[1] = i; else out.push([i, i]);
+  });
+  return out.map(([a, b]) => a === b ? order[a] : order[a] + ' – ' + order[b]);
+}
+
+/* WHAT A LEAGUE'S CHECK COMES TO, IN THE FEW LINES A PERSON READS: which seasons can be filled in ("every season,
+   2020-21 – 2025-26", "2020-21 – 2025-26 apart from 2021-22", "2022-23 – 2025-26"), then each kind of season that is
+   not whole, with its reason. Pure, for the test. */
+function summary(entry) {
+  const order = Object.keys((entry && entry.seasons) || {}).sort();
+  if (!order.length) return null;
+  const code = s => entry.seasons[s];
+  const fill = order.filter(s => (COVER[code(s)] || {}).fill);
+  let can = null;
+  if (fill.length) {
+    const span = order.slice(order.indexOf(fill[0]), order.indexOf(fill[fill.length - 1]) + 1);
+    const apart = span.filter(s => fill.indexOf(s) < 0);
+    /* "apart from" only while the gaps are the exception: two seasons of five missing reads better as a list */
+    can = apart.length <= 2 && apart.length * 2 < fill.length
+      ? { every: span.length === order.length, range: runs(span, order)[0], apart: apart }
+      : { every: false, range: runs(fill, order).join(', '), apart: [] };
+  }
+  const lines = [];
+  ['box', 'mixed', 'part', 'results', 'none', 'skip'].forEach(k => {
+    const these = order.filter(s => code(s) === k);
+    if (!these.length) return;
+    /* one part per reason, so "2020-21 – 2024-25 (before the league or competition began)" reads as one */
+    const groups = new Map();
+    these.forEach(s => {
+      const why = (entry.why && entry.why[s]) || '';
+      if (!groups.has(why)) groups.set(why, []);
+      groups.get(why).push(s);
+    });
+    lines.push({ kind: k, says: COVER[k].says,
+      parts: [...groups].map(([why, ss]) => ({ seasons: runs(ss, order).join(', '), why: WHY[why] || '' })) });
+  });
+  return { order: order, can: can, lines: lines, checked: entry.checked || '' };
+}
+
+/* the block under the heading: a chip a season, coloured by what it holds, then the lines summary() wrote. Every
+   word is its own text node, so the console's translation reads phrases, never a sentence with seasons inside it */
+function coverageBlock(sum, cov) {
+  const box = el('div', 'bf-cov');
+  box.appendChild(el('div', 'fmt-h', 'What the source holds'));
+  const chips = el('div', 'bf-chips');
+  sum.order.forEach(s => {
+    const k = cov.seasons[s];
+    const c = el('span', 'bf-chip bf-' + (COVER[k] ? k : 'none'), s);
+    const why = cov.why && WHY[cov.why[s]];
+    c.title = (COVER[k] || COVER.none).says + (why ? ' · ' + why : '');
+    chips.appendChild(c);
+  });
+  box.appendChild(chips);
+  /* what the colours mean, said once, with only the kinds this league has */
+  const key = el('div', 'bf-key');
+  [['full', 'box scores and play-by-play', ['full']], ['box', 'box scores, but not everything', ['box', 'mixed', 'part']],
+   ['none', 'cannot be filled in', ['results', 'none', 'skip']]].forEach(([cls, says, kinds]) => {
+    if (!sum.order.some(s => kinds.indexOf(cov.seasons[s]) >= 0)) return;
+    const k = el('span', 'bf-k');
+    k.appendChild(el('i', 'bf-chip bf-' + cls));
+    k.appendChild(el('span', null, says));
+    key.appendChild(k);
+  });
+  box.appendChild(key);
+  const line = (label, cls) => {
+    const d = el('div', 'bf-line' + (cls ? ' ' + cls : ''));
+    d.appendChild(el('b', null, label));
+    d.append(': ');
+    return d;
+  };
+  const can = line('Can be filled in', 'bf-can');
+  if (!sum.can) can.appendChild(el('span', null, 'none of the seasons checked'));
+  else {
+    if (sum.can.every) { can.appendChild(el('span', null, 'every season')); can.append(', '); }
+    can.append(sum.can.range);
+    if (sum.can.apart.length) {
+      can.append(' ');
+      can.appendChild(el('span', null, 'apart from'));
+      can.append(' ' + sum.can.apart.join(', '));
+    }
+  }
+  box.appendChild(can);
+  sum.lines.forEach(l => {
+    const d = line(l.says.charAt(0).toUpperCase() + l.says.slice(1), 'bf-l-' + l.kind);
+    l.parts.forEach((p, i) => {
+      if (i) d.append('; ');
+      d.append(p.seasons);
+      if (p.why) { d.append(' ('); d.appendChild(el('span', null, p.why)); d.append(')'); }
+    });
+    box.appendChild(d);
+  });
+  const foot = el('div', 'ep-micro');
+  foot.appendChild(el('span', null, 'Checked on'));
+  foot.append(' ' + sum.checked + '. ');
+  foot.appendChild(el('span', null, 'Three games of each season were read from the source; a season can still hold a surprise.'));
+  box.appendChild(foot);
+  return box;
+}
+
 let current = null;          // the mounted panel, so admin.js can ask for a redraw
 
 function mount(opts) {
@@ -152,16 +285,27 @@ function draw(panel) {
   const seasonRows = (typeof opts.seasons === 'function' ? opts.seasons() : opts.seasons) || [];
   const known = new Set(seasonRows.map(s => s.name));
   const calendar = isCalendar(seasonRows);
+  const cov = coverageOf(league.slug);
+  const sum = summary(cov);
+  if (sum) host.appendChild(coverageBlock(sum, cov));
   const row = el('div', 'row');
   const pick = el('select', 'ep-input');
   pick.style.flex = '0 0 auto';
+  /* each season marked with what its source holds; one older than the check went back is said to be unchecked,
+     never passed off as whole */
+  const held = name => {
+    if (!cov || isLive(name, /^\d{4}$/.test(name))) return '';
+    const k = cov.seasons[name];
+    if (!k) return ' · not checked';
+    return COVER[k] && COVER[k].tag ? ' · ' + COVER[k].tag : '';
+  };
   const add = (into, name) => {
     const o = document.createElement('option');
     o.value = name;
     /* "already here" is not a reason not to ask — a season may hold six games
        of forty — but it changes what the answer will look like, so it is said. */
     o.textContent = name + (isLive(name, /^\d{4}$/.test(name)) ? ' · being played: its finished games' : '')
-      + (known.has(name) ? ' · already on the platform' : '');
+      + held(name) + (known.has(name) ? ' · already on the platform' : '');
     into.appendChild(o);
   };
   /* A LEAGUE WITH NO SEASON YET is offered both ways of naming one: the worker reads a season only in the form its
@@ -180,6 +324,25 @@ function draw(panel) {
   go.type = 'button';
   row.append(pick, go);
   host.appendChild(row);
+  /* the season picked, said in full when it is not a whole one - before the button, not an hour after it */
+  const note = el('div', 'ep-micro bf-note');
+  const sayPick = () => {
+    note.textContent = '';
+    const k = cov && cov.seasons[pick.value];
+    if (!k || k === 'full' || !COVER[k]) return;
+    note.append(pick.value + ': ');
+    note.appendChild(el('span', null, COVER[k].says));
+    const why = cov.why && WHY[cov.why[pick.value]];
+    if (why) { note.append(' ('); note.appendChild(el('span', null, why)); note.append(')'); }
+    note.append('. ');
+    if (!COVER[k].fill) {
+      note.appendChild(el('span', null, k === 'results' ? 'A request for it brings in no box scores.'
+        : 'A request for it will come back empty.'));
+    }
+  };
+  pick.addEventListener('change', sayPick);
+  host.appendChild(note);
+  sayPick();
   host.appendChild(el('div', 'ep-micro',
     'The season being played (' + (calendar === null ? liveSeason() + ' or ' + new Date().getUTCFullYear()
       : calendar ? String(new Date().getUTCFullYear()) : liveSeason()) +
@@ -298,5 +461,6 @@ function draw(panel) {
   restart();
 }
 
-return { mount: mount, refresh: refresh, clear: clear, liveSeason: liveSeason, pastSeasons: pastSeasons, isCalendar: isCalendar };
+return { mount: mount, refresh: refresh, clear: clear, liveSeason: liveSeason, pastSeasons: pastSeasons, isCalendar: isCalendar,
+         coverageOf: coverageOf, summary: summary, runs: runs, COVER: COVER, WHY: WHY };
 }));

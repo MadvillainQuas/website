@@ -16,15 +16,15 @@
 <title>League Admin · Epinoia</title>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=820"></script>
-<script src="../i18n.js?v=820" data-i18n-packs="admin platform"></script>
-<script src="../glyphs.js?v=820" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=820">
-<link rel="stylesheet" href="../kit/nav.css?v=820">
-<link rel="stylesheet" href="../kit/labeltype.css?v=820">
-<link rel="stylesheet" href="../kit/news.css?v=820">
-<link rel="stylesheet" href="jobbar.css?v=820">
-<link rel="stylesheet" href="graphics.css?v=820">
+<script src="../appmode.js?v=821"></script>
+<script src="../i18n.js?v=821" data-i18n-packs="admin platform"></script>
+<script src="../glyphs.js?v=821" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=821">
+<link rel="stylesheet" href="../kit/nav.css?v=821">
+<link rel="stylesheet" href="../kit/labeltype.css?v=821">
+<link rel="stylesheet" href="../kit/news.css?v=821">
+<link rel="stylesheet" href="jobbar.css?v=821">
+<link rel="stylesheet" href="graphics.css?v=821">
 <style>
   .bar{display:flex;align-items:center;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3);
     border-bottom:1px solid var(--rule);flex-wrap:wrap}
@@ -160,6 +160,23 @@
     background:color-mix(in oklch,var(--flare) 7%,transparent)}
   .im-commit{margin-top:calc(var(--u));align-items:center;gap:12px}
 
+  /* the backfill panel's "what the source holds" (backfill-ui.js coverageBlock): a chip a season */
+  .bf-cov{margin:calc(var(--u)*2) 0 calc(var(--u)*2)}
+  .bf-chips{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 8px}
+  .bf-chip{font-family:var(--f-micro);font-size:9px;letter-spacing:0.04em;padding:4px 7px;border:1px solid var(--rule-2);
+    color:var(--ink-3);cursor:default}
+  .bf-chip.bf-full{color:var(--ink);background:color-mix(in oklch,var(--good) 24%,transparent);
+    border-color:color-mix(in oklch,var(--good) 60%,transparent)}
+  .bf-chip.bf-box,.bf-chip.bf-mixed,.bf-chip.bf-part{color:var(--ink);background:color-mix(in oklch,var(--amber) 20%,transparent);
+    border-color:color-mix(in oklch,var(--amber) 60%,transparent)}
+  .bf-chip.bf-results,.bf-chip.bf-none,.bf-chip.bf-skip{border-style:dashed;text-decoration:line-through}
+  .bf-key{display:flex;flex-wrap:wrap;gap:4px 14px;margin:-2px 0 8px;font-family:var(--f-ui);font-size:11px;color:var(--ink-3)}
+  .bf-k{display:inline-flex;align-items:center;gap:6px}
+  .bf-k .bf-chip{display:inline-block;width:12px;height:10px;padding:0}
+  .bf-line{font-family:var(--f-ui);font-size:12px;line-height:1.55;margin:2px 0;color:var(--ink-2)}
+  .bf-line b{font-weight:600;color:var(--ink)}
+  .bf-line.bf-can b{color:var(--good)}
+  .bf-note{color:var(--amber);margin-top:6px}
   .fmt-h{font-family:var(--f-micro);font-size:9px;letter-spacing:0.08em;text-transform:uppercase;
     color:var(--lume);margin:calc(var(--u)*3) 0 6px}
   .fmt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;
@@ -329,9 +346,9 @@
   .ax-st.warn{color:var(--amber);border-color:color-mix(in oklch,var(--amber) 55%,transparent)}
   #paidAccessPanel .row > .mt{font-family:var(--f-micro);font-size:9px;color:var(--ink-3)}
 </style>
-<link rel="stylesheet" href="../kit/suggest.css?v=820">
-<link rel="stylesheet" href="../kit/newsrefresh.css?v=820">
-<link rel="stylesheet" href="../kit/legibility.css?v=820">
+<link rel="stylesheet" href="../kit/suggest.css?v=821">
+<link rel="stylesheet" href="../kit/newsrefresh.css?v=821">
+<link rel="stylesheet" href="../kit/legibility.css?v=821">
 </head>
 <body>
 <div class="ep-frame">
@@ -768,56 +785,57 @@
     <a href="../" class="ep-micro" style="color:var(--ink-3)">← hub</a>
   </div>
 </div>
-<script src="../config.js?v=820" defer></script>
-<script src="../upload.js?v=820" defer></script>
-<script src="../teamcolour.js?v=820" defer></script>
-<script src="../vendor/supabase.js?v=820" defer></script>
-<script src="../livestats.js?v=820" defer></script>
-<script src="import-ui.js?v=820" defer></script>
-<script src="feed-ui.js?v=820" defer></script>
-<script src="schedule.js?v=820" defer></script>
-<script src="fixtures-ui.js?v=820" defer></script>
-<script src="jobbar.js?v=820" defer></script>
-<script src="backfill-ui.js?v=820" defer></script>
-<script src="formats-ui.js?v=820" defer></script>
-<script src="stream-ui.js?v=820" defer></script>
-<script src="bcastimg-ui.js?v=820" defer></script>
-<script src="officials-ui.js?v=820" defer></script>
-<script src="export-ui.js?v=820" defer></script>
-<script src="keys-ui.js?v=820" defer></script>
-<script src="feeds-ui.js?v=820" defer></script>
-<script src="../artwork.js?v=820" defer></script>
-<script src="merch-ui.js?v=820" defer></script>
-<script src="webhook-ui.js?v=820" defer></script>
-<script src="governance-ui.js?v=820" defer></script>
-<script src="awards-ui.js?v=820" defer></script>
-<script src="socials-ui.js?v=820" defer></script>
-<script src="../reportcard.js?v=820" defer></script>
-<script src="../silhouette.js?v=820" defer></script>
-<script src="../socialcard.js?v=820" defer></script>
-<script src="socialgfx-ui.js?v=820" defer></script>
-<script src="../sos.js?v=820" defer></script>
-<script src="../bpm.js?v=820" defer></script>
-<script src="../season.js?v=820" defer></script>
-<script src="../data.js?v=820" defer></script>
-<script src="../statinfo.js?v=820" defer></script>
-<script src="../fulltable.js?v=820" defer></script>
-<script src="statcat.js?v=820" defer></script>
-<script src="statpicker.js?v=820" defer></script>
-<script src="graphics-ui.js?v=820" defer></script>
-<script src="wstabs.js?v=820" defer></script>
-<script src="wsindex.js?v=820" defer></script>
-<script src="../fanvote.js?v=820" defer></script>
-<script src="fanvote-ui.js?v=820" defer></script>
-<script src="../newsblocks.js?v=820" defer></script>
-<script src="news-ui.js?v=820" defer></script>
-<script src="../newsrefresh.js?v=820" defer></script>
-<script src="creators-ui.js?v=820" defer></script>
-<script src="appearance-ui.js?v=820" defer></script>
-<script src="embeds-ui.js?v=820" defer></script>
-<script src="access-ui.js?v=820" defer></script>
-<script src="suggestions-ui.js?v=820" defer></script>
-<script src="admin.js?v=820" defer></script>
-<script src="../nav.js?v=820" defer></script>
+<script src="../config.js?v=821" defer></script>
+<script src="../upload.js?v=821" defer></script>
+<script src="../teamcolour.js?v=821" defer></script>
+<script src="../vendor/supabase.js?v=821" defer></script>
+<script src="../livestats.js?v=821" defer></script>
+<script src="import-ui.js?v=821" defer></script>
+<script src="feed-ui.js?v=821" defer></script>
+<script src="schedule.js?v=821" defer></script>
+<script src="fixtures-ui.js?v=821" defer></script>
+<script src="jobbar.js?v=821" defer></script>
+<script src="backfill-coverage.js?v=821" defer></script>
+<script src="backfill-ui.js?v=821" defer></script>
+<script src="formats-ui.js?v=821" defer></script>
+<script src="stream-ui.js?v=821" defer></script>
+<script src="bcastimg-ui.js?v=821" defer></script>
+<script src="officials-ui.js?v=821" defer></script>
+<script src="export-ui.js?v=821" defer></script>
+<script src="keys-ui.js?v=821" defer></script>
+<script src="feeds-ui.js?v=821" defer></script>
+<script src="../artwork.js?v=821" defer></script>
+<script src="merch-ui.js?v=821" defer></script>
+<script src="webhook-ui.js?v=821" defer></script>
+<script src="governance-ui.js?v=821" defer></script>
+<script src="awards-ui.js?v=821" defer></script>
+<script src="socials-ui.js?v=821" defer></script>
+<script src="../reportcard.js?v=821" defer></script>
+<script src="../silhouette.js?v=821" defer></script>
+<script src="../socialcard.js?v=821" defer></script>
+<script src="socialgfx-ui.js?v=821" defer></script>
+<script src="../sos.js?v=821" defer></script>
+<script src="../bpm.js?v=821" defer></script>
+<script src="../season.js?v=821" defer></script>
+<script src="../data.js?v=821" defer></script>
+<script src="../statinfo.js?v=821" defer></script>
+<script src="../fulltable.js?v=821" defer></script>
+<script src="statcat.js?v=821" defer></script>
+<script src="statpicker.js?v=821" defer></script>
+<script src="graphics-ui.js?v=821" defer></script>
+<script src="wstabs.js?v=821" defer></script>
+<script src="wsindex.js?v=821" defer></script>
+<script src="../fanvote.js?v=821" defer></script>
+<script src="fanvote-ui.js?v=821" defer></script>
+<script src="../newsblocks.js?v=821" defer></script>
+<script src="news-ui.js?v=821" defer></script>
+<script src="../newsrefresh.js?v=821" defer></script>
+<script src="creators-ui.js?v=821" defer></script>
+<script src="appearance-ui.js?v=821" defer></script>
+<script src="embeds-ui.js?v=821" defer></script>
+<script src="access-ui.js?v=821" defer></script>
+<script src="suggestions-ui.js?v=821" defer></script>
+<script src="admin.js?v=821" defer></script>
+<script src="../nav.js?v=821" defer></script>
 </body>
 </html>
