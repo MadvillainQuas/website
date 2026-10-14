@@ -660,9 +660,14 @@ adb shell dumpsys notification | findstr /i "epinoia_alerts"
    - Target audience: 13 and over
 7. Fill in **Data safety** from the Phase 8 audit:
    - Collected: Personal info (Name, Email address); Photos and videos (uploads); Other user-generated content (scores, rosters, news); App activity (follows); Device or other IDs (push subscriptions)
+   - Collected for the anonymous visit counts (privacy page section 09; migrations 0173, 0180, 0260), all **not shared, not ephemeral, optional** (the privacy page's switch, Global Privacy Control, Do Not Track), purpose **Analytics**:
+     - App activity → App interactions: pages and tabs opened, time in use and scroll depth, videos played and how far, downloads by kind, links out by site name, share and copy by kind
+     - App activity → In-app search history: the search box's folded words (purposes **App functionality** and **Analytics**)
+     - App info and performance → Diagnostics: load speed and script errors (file and line of our own code)
+     - Device or other IDs: add the purpose **Analytics** (the random per-tab visit token, deleted when the tab closes)
    - Security: encrypted in transit; deleted on request
-   - Sharing: none (Supabase and Resend are service providers)
-   - SDKs: no ads or analytics SDK
+   - Sharing: none (Supabase and Resend are service providers; the counts go to Epinoia's own database only)
+   - SDKs: no ads or analytics SDK (the counting is the site's own code, track.js)
 
 ```bat
 cd /d C:\Users\Admin\Documents\epinoia-android-key
