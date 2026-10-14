@@ -321,15 +321,28 @@ ok("a fixture stored under another source's code is still found (one read), neve
    not any(c[0] == "UPSERT" and c[1] == "games" for c in db.calls) and any(c[1] == "external_games" for c in db.calls), db.calls)
 
 # ------------------------------------------------------------------ lanes, videos, the Czech id
-print("-- a version another lane already wrote is not written again")
+print("-- a version another lane already wrote is not written again - unless the platform never got it")
 b = GameBundle(external_id="99", status="live", home_name="A", away_name="B", tipoff_at=None, team={}, box={}, stints=[])
 b.payload_hash = "abc"
-db = FakeSB({"external_games": [{"adapter": "fiba_livestats", "external_id": "99", "payload_hash": "abc", "external_status": "live"}]})
-ok("same payload, same status: skip", RI.version_in_db(db, {"adapter": "fiba_livestats"}, "99", b))
-b.status = "final"
-ok("same payload but now final (the stale-final rule): write", not RI.version_in_db(db, {"adapter": "fiba_livestats"}, "99", b))
+_fed = {"adapter": "fiba_livestats", "external_id": "99", "payload_hash": "abc", "external_status": "live",
+        "last_fetched_at": "2026-10-14T19:59:13.5+00:00",
+        "games": {"status": "live", "game_state": {"updated_at": "2026-10-14T19:59:14.123456+00:00"}}}
+V = lambda row: RI.version_in_db(FakeSB({"external_games": [row]}), {"adapter": "fiba_livestats"}, "99", b)  # noqa: E731
+ok("same payload, same status, the platform written after the feed row: skip", V(_fed))
+ok("same payload, but the other lane's platform write never landed (game_state older than the feed row): write",
+   not V(dict(_fed, games={"status": "live", "game_state": {"updated_at": "2026-10-14T19:58:50+00:00"}})))
+ok("same payload, no game_state at all: write", not V(dict(_fed, games={"status": "live", "game_state": None})))
+ok("same payload, no game linked: write", not V(dict(_fed, games=None)))
+ok("the two timestamps in different spellings, equal: skip",
+   V(dict(_fed, last_fetched_at="2026-10-14T19:59:14Z", games={"status": "live", "game_state": {"updated_at": "2026-10-14T19:59:14+00:00"}})))
+ok("game_state embedded as a list: read the same", V(dict(_fed, games={"status": "live", "game_state": [{"updated_at": "2026-10-14T20:00:00+00:00"}]})))
+ok("same payload but now final (the stale-final rule): write", not V(_fed) if not setattr(b, "status", "final") else False)
+ok("a final on the feed row that the platform never closed (14 Oct 2026, eight games): write",
+   not V(dict(_fed, external_status="final")))
+ok("a final the platform closed: skip", V(dict(_fed, external_status="final", games={"status": "final", "game_state": None})))
 b.status, b.payload_hash = "live", "new"
-ok("a new payload: write", not RI.version_in_db(db, {"adapter": "fiba_livestats"}, "99", b))
+ok("a new payload: write", not V(_fed))
+ok("a read that fails: write", not RI.version_in_db(type("Down", (), {"select": lambda *a: 1 / 0})(), {"adapter": "fiba_livestats"}, "99", b))
 
 print("-- a club whose payload has no code is keyed the same way by the roster and the event log")
 import feedplatform as FP  # noqa: E402
@@ -376,7 +389,7 @@ ok("... and only the games with no competition are deleted", [c for c in _o.call
 ok("a source with none does nothing", RI.release_orphans(_OrphanSB([]), {"adapter": "x", "code": "Y"}) == 0)
 ok("a failed read releases none and does not stop the pass", RI.release_orphans(_OrphanSB(boom=True), {"adapter": "x", "code": "Y"}) == 0)
 _ri2 = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read()
-ok("the pass releases them before it reads what it already has", _ri2.index("release_orphans(sb, src)") < _ri2.index("known_repo = feed.known"))
+ok("the pass releases them before it reads what it already has", _ri2.index("release_orphans(sb, src)") < _ri2.index("known_repo = sfeed.known"))
 
 print("-- two names that play each other in the schedule are two clubs")
 

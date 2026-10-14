@@ -9,6 +9,7 @@ each exactly once, never one game in two workers at once; and EPINOIA_LANE_THREA
 import argparse
 import os
 import sys
+import tempfile
 import threading
 import time
 
@@ -16,6 +17,10 @@ os.environ["EPINOIA_OBSERVER"] = "0"        # the off-CDN path: every game read 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import run_ingest as R  # noqa: E402
 from adapters.base import GameBundle  # noqa: E402
+
+# NEVER THE REAL WAIT FILE: live_lane.bat reads %TEMP%\epinoia_live_wait when the lane exits, and a test pass that
+# ends with "nothing near" writes four hours there (14 Oct 2026: the PC's lane slept 4 h after this test ran)
+R.LIVE_WAIT_FILE = os.path.join(tempfile.mkdtemp(prefix="lane_pool_test_"), "epinoia_live_wait")
 
 PASS = FAIL = 0
 
@@ -262,6 +267,57 @@ ok("the unwatched live game (A): its scoreboard line only - game_state, and its 
    and od.fetched.index("A") > 0 if "A" in od.fetched else False, (od.fetched, osb.state, osb.patches))
 ok("...then, at its final whistle, the whole game - so every player's line is in the season", "A" in ow and od.reads["A"] >= 2)
 ok("which games are watched is one read a pass, not one a game", 1 <= osb.watch_asked <= 3, osb.watch_asked)
+
+print("\n-- a final the feed has and the platform never closed: read again in full, a few times a pass (14 Oct 2026)")
+
+
+class Settle(FakeAdapter):
+    """L is live all pass (it keeps the loop going); S and K are final on their feed rows and still open here."""
+    def fetch(self, xid, cfg):
+        b = super().fetch(xid, cfg)
+        if xid == "L":
+            b.status = "live"
+        return b
+
+
+def run_settle():
+    R.LANE_THREADS, R.INLINE_EVERY_S, R.LIVE_RECHECK_S = 1, 1, 0.5
+    writes, asked, closed, calls = [], {"n": 0}, set(), {"n": 0}
+    final_row = {"home_name": "H", "away_name": "A", "tipoff_at": "2026-10-14T16:00:00+00:00", "external_status": "final",
+                 "payload_hash": "stored-by-the-other-lane"}
+
+    def live_due(sb_, fiba, now):
+        calls["n"] += 1
+        if calls["n"] <= 6:
+            return [(fiba[0], {"external_id": "L", "game_id": "gL", "home_name": "H", "away_name": "A",
+                               "tipoff_at": "2026-10-14T19:00:00+00:00", "external_status": "live"})], None
+        return [], None
+
+    def unsettled_due(sb_, fiba, now):
+        asked["n"] += 1
+        return [(fiba[0], dict(final_row, external_id=x, game_id="g" + x)) for x in ("S", "K") if x not in closed]
+
+    def write_platform(sb_, src, b, run_, observed=None, memory=None, venue=None, **k):
+        writes.append(b.external_id)
+        if b.external_id == "S" and writes.count("S") == 2:
+            closed.add("S")                       # finalise-game lands on the second try
+        return True
+
+    R.live_due, R.unsettled_due, R.write_platform = live_due, unsettled_due, write_platform
+    R.version_in_db = lambda *a, **k: True        # the feed row already holds each version: "another lane got there"
+    R.get_adapter = lambda name: Settle()
+    src = {"code": "EC", "adapter": "euroleague", "adapter_config": {}, "id": None}
+    R.live_keeper(FakeSb(), [src], argparse.Namespace(live_loop=60, live_every=1, broadcast_every=2, shard=None, dry_run=False))
+    return writes, asked["n"]
+
+
+sw, s_asked = run_settle()
+ok("a final never closed is written through, though the feed row already holds its version", "S" in sw and "K" in sw, sw)
+ok("...again on the next recheck until it closes (S: twice), then no more", sw.count("S") == 2, sw)
+ok(f"...and one that never closes is read {R.SETTLE_TRIES} times a pass, then left to the catch-up",
+   sw.count("K") == R.SETTLE_TRIES, sw)
+ok("the live game that kept the pass going is not written over a version the database holds", "L" not in sw, sw)
+ok("the open finals are one read a recheck", s_asked >= R.SETTLE_TRIES + 1, s_asked)
 
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

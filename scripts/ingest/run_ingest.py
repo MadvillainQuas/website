@@ -1186,6 +1186,15 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
         elif cur and cur[0].get("status") == "final" and will_translate:
             # marked final without a scored log (an earlier run inserted it closed) → reopen it
             n_ev = sb.select("game_events", f"game_id=eq.{game_id}&select=seq&limit=1")
+            if n_ev and REFRESH["on"] and b.status != "final":
+                # A FEED THAT NO LONGER SAYS FINAL IS NOT A BETTER COPY (2026-10-14). A scorer's laptop can upload an
+                # older state after the game: BCB's Falkirk Fury v Nottingham Hoods read final 85-118 on the feed on 28
+                # Sep, and 82-116 at 1:24 left in the fourth by 14 Oct. A refresh rewrote the closed game from that and
+                # reopened it - LIVE again on the site, five points gone from its log. Left closed, untouched.
+                print(f"    = left closed: the feed says {b.status} now, not final - a refresh would rewrite the game from less")
+                if extra:
+                    sb.patch("games", f"id=eq.{game_id}", extra)
+                return False
             if not n_ev or REFRESH["on"]:
                 # A --refresh REOPENS a finished game as well: a final game's log is closed (the insert trigger refuses
                 # events), so a corrected translation - the players re-resolved by identity.py after the slot-cache
@@ -2005,6 +2014,8 @@ LIVE_PROMISE_S = 30            # a live page moves at least this often; a game r
 INLINE_EVERY_S = 20            # a game on a league's own back end: read this often and no more
 OBS_EVERY_S = max(2, int(os.environ.get("EPINOIA_OBS_EVERY", "") or 10))   # a CDN game's conditional GET
 LANE_THREADS = max(1, int(os.environ.get("EPINOIA_LANE_THREADS", "") or 6))    # games the lane reads and writes at once
+SETTLE_TRIES = 3               # a final the feed has and the platform never closed: read again in full this often a pass
+LIVE_RECHECK_S = 120           # how often the lane asks the database which games are due
 
 
 def on_demand(src: dict) -> bool:
@@ -2217,6 +2228,24 @@ def live_due(sb: "Supabase", sources: list[dict], now: datetime) -> tuple[list[t
     return due, next_tip
 
 
+def unsettled_due(sb: "Supabase", sources: list[dict], now: datetime) -> list:
+    """(source, row) for every game of these sources the FEED calls final and the platform never closed, tipped off
+    inside the live window - one read for every source at once (external_rows), the rows shaped as live_due's.
+
+    THE LANE CLOSES WHAT IT MISSED (2026-10-14). The feed row says final as soon as any lane has read the final
+    version, whether or not that lane's platform write then landed - and from then on live_due never offers the game
+    again (it asks for rows that are not final). Only the catch-up between passes looked for such games (and only
+    after LIVE_AFTER_TIP), while a pass lasts up to six hours: eight finals sat LIVE on the site for two hours on 14 Oct.
+    A read that fails says none."""
+    lo = _zulu(now - timedelta(seconds=LIVE_STALE))
+    cols = "external_id,external_status,tipoff_at,game_date,home_name,away_name,payload_hash,game_id,error,games!inner(status)"
+    try:
+        got = external_rows(sb, sources, f"external_status=eq.final&games.status=neq.final&tipoff_at=gt.{lo}", cols)
+    except Exception as exc:
+        print(f"   (unsettled finals lookup failed: {exc})"); return []
+    return [(src, r) for src in sources for r in got.get((src["adapter"], src["code"]), [])]
+
+
 def outstanding_rows(sb: "Supabase", src: dict, now: datetime) -> list[dict]:
     """Games of one source that tipped off more than LIVE_AFTER_TIP ago (so the live lane has
     stopped looking), less than OUTSTANDING_MAX_AGE ago (so a postponed game is not chased for
@@ -2308,15 +2337,40 @@ def claim_live_lane() -> bool:
 
 
 def version_in_db(sb: "Supabase", src: dict, xid: str, b: GameBundle) -> bool:
-    """Does the database already hold exactly this version of the game - same payload, same status?
-    Then another lane wrote it and writing it again changes nothing. A read that fails says no:
-    a duplicate write is the old behaviour, a skipped one would be a lost version."""
+    """Does the database already hold exactly this version of the game - same payload, same status - AND has the
+    platform got it? Then another lane wrote it and writing it again changes nothing. A read that fails says no:
+    a duplicate write is the old behaviour, a skipped one would be a lost version.
+
+    THE FEED ROW IS HALF A WRITE (2026-10-14). write_supabase_feed stores the version before write_platform runs,
+    so a lane whose platform write fails still leaves the hash behind. A GitHub run checked out before the
+    archived_at fix failed every platform write for two hours while storing every hash, and this lane read each one
+    as "another lane got there first": a BCL game froze mid-fourth while its feed played on, and eight finals never
+    closed. So the platform must have it too: its game_state written no earlier than the feed row (game_state is
+    the last row write_platform writes), and a final closed (games.status)."""
     try:
-        rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{xid}&select=payload_hash,external_status")
+        rows = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{xid}"
+                                           f"&select=payload_hash,external_status,last_fetched_at,games(status,game_state(updated_at))")
     except Exception:
         return False
-    return bool(rows) and bool(b.payload_hash) and rows[0].get("payload_hash") == b.payload_hash \
-        and rows[0].get("external_status") == b.status
+    if not (rows and b.payload_hash and rows[0].get("payload_hash") == b.payload_hash
+            and rows[0].get("external_status") == b.status):
+        return False
+    game = rows[0].get("games") or {}
+    if b.status == "final":
+        return game.get("status") == "final"
+    state = game.get("game_state") or {}
+    if isinstance(state, list):
+        state = state[0] if state else {}
+    fed, wrote = _when(rows[0].get("last_fetched_at")), _when(state.get("updated_at"))
+    return bool(fed and wrote and wrote >= fed)
+
+
+def _when(s) -> "datetime | None":
+    """A timestamp as the database sends it (ISO 8601, any precision), or None."""
+    try:
+        return datetime.fromisoformat(str(s).replace("Z", "+00:00")) if s else None
+    except ValueError:
+        return None
 
 
 def release_orphans(sb: "Supabase", src: dict) -> int:
@@ -2611,6 +2665,8 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     # that nobody has started is started; nothing at all without a token (GH_TOKEN, the workflow's own).
     console_check = 0.0
     sched_tick, sched_seen, sched_proc = 0.0, {}, None     # the day's schedules (SCHEDULE_RECHECK, above)
+    resettle: set[str] = set()                  # final on the feed, never closed here: read again in full (unsettled_due)
+    settle_tries: dict[str, int] = {}
     def armed_games():
         try:
             rows = sb.select("games", f"broadcast_until=gt.{datetime.now(timezone.utc).isoformat()}&select=id")
@@ -2679,9 +2735,32 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                                      r.get("tipoff_at"), s.get("adapter_config") or {})
                     except Exception as exc:
                         print(f"    (auto video: {exc})")
-            recheck = time.time() + 120
-            print(f"{now.strftime('%H:%M:%S')}Z {len(due)} live/due game(s)" + (f", next tip-off {next_tip.strftime('%d %b %H:%M')}Z" if next_tip else "") +
-                  ((": " + ", ".join(f"{r.get('home_name') or r['external_id']} v {r.get('away_name') or ''}" for _, r in due[:6])) if due else ""))
+            # A FINAL THAT NEVER CLOSED, read again in full (unsettled_due): SETTLE_TRIES times a pass, two minutes
+            # apart, then it is left to the catch-up between passes - a game finalise-game refuses is not asked for
+            # every two minutes for six hours.
+            closing = []
+            if not getattr(args, "dry_run", False):
+                for s, r in unsettled_due(sb, fiba, now):
+                    x = str(r["external_id"])
+                    if not in_shard(x, shard) or any(str(r2["external_id"]) == x for _, r2 in due):
+                        continue
+                    settle_tries[x] = settle_tries.get(x, 0) + 1
+                    if settle_tries[x] > SETTLE_TRIES:
+                        if settle_tries[x] == SETTLE_TRIES + 1:
+                            print(f"    ! {r.get('home_name') or x} v {r.get('away_name') or ''}: final on the feed, still not closed "
+                                  f"after {SETTLE_TRIES} full reads - left to the catch-up")
+                        continue
+                    resettle.add(x); finished.discard(x)
+                    closing.append((s, r))
+            n_live = len(due)
+            due += closing
+            recheck = time.time() + LIVE_RECHECK_S
+
+            def names(rows):
+                return ", ".join(f"{r.get('home_name') or r['external_id']} v {r.get('away_name') or ''}" for _, r in rows[:6])
+            print(f"{now.strftime('%H:%M:%S')}Z {n_live} live/due game(s)" + (f", next tip-off {next_tip.strftime('%d %b %H:%M')}Z" if next_tip else "")
+                  + ((": " + names(due[:n_live])) if n_live else "")
+                  + (f"; {len(closing)} final(s) on the feed never closed here, read again: {names(closing)}" if closing else ""))
         # the slow set is read on the ordinary cadence; an armed game is read every pass
         slow_pass = time.time() >= slow_due
         if slow_pass:
@@ -2744,14 +2823,18 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 
         def _one_game(src, r, xid):
             is_armed = str(r.get("game_id") or "") in armed
-            use_obs = observer is not None and on_cdn(src)
+            closing = xid in resettle                           # final on the feed, never closed here (unsettled_due)
+            # a final read again is fetched whole, never taken from the observer, which forgot the game at its final
+            use_obs = observer is not None and on_cdn(src) and not closing
             if not use_obs and not slow_pass and not is_armed:
                 return
-            if on_demand(src) and scoreboard_only(src, r, xid):
+            if on_demand(src) and not closing and scoreboard_only(src, r, xid):
                 return                                          # nobody watching: its score and clock only (0264)
             g = ScheduleGame(external_id=xid, home_name=r.get("home_name") or "", away_name=r.get("away_name") or "",
                              tipoff_at=r.get("tipoff_at"), status=r.get("external_status") or "scheduled")
-            force = False       # a stalled game read afresh is written through, whatever the stored hash says
+            # a stalled game read afresh is written through, whatever the stored hash says - and so is a final that
+            # never closed: its hash is stored, and the platform write after it is the part that did not happen
+            force = closing
 
             def quiet(bb, quiet_s):
                 """The stall rule (STALLED_S) for a live game with nothing new: the bundle to write through
@@ -2807,7 +2890,9 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                     # counts: S3 truncates Last-Modified to whole seconds, so new content can carry
                     # an equal header.
                     print(f"    ~ {xid}: older copy (Last-Modified {b.feed_lm_ms} < {last_lm[xid]}), skipped"); return
-                if hashes.get(xid) == b.payload_hash:
+                if closing:
+                    pass                                                    # written through (force), whatever the hash
+                elif hashes.get(xid) == b.payload_hash:
                     # NOTHING NEW - but a game a scorer never closed must still finish. Genius only
                     # marks a game final through an explicit 'game end' action; when the payload has
                     # sat unchanged for 15 min at the end of the fourth period (or later) with the
@@ -2912,6 +2997,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             elif vs["basis"] == "lm":
                 last_lm[xid] = max(last_lm.get(xid) or 0, b.feed_lm_ms)
             wrote.append(1)
+            resettle.discard(xid)       # one full read a recheck: unsettled_due offers it again if it still did not close
             e = entry_for(b, None, raw_ref, g)
             print(f"    ~ {b.home_name} {e['homeScore']}-{e['awayScore']} {b.away_name} ({b.status}) {datetime.now(timezone.utc).strftime('%H:%M:%S')}Z")
             if b.status == "final":
