@@ -31,7 +31,7 @@ window.EPINOIA_CONFIG = {
 
   // true ONLY once migration 0260 (site_activity, analytics_activity) is applied: then pages also count time in use,
   // scrolling, videos, downloads, links out, sharing, speed and errors (track.js, anonymous). Until then none of it is sent.
-  analyticsActivity: false,
+  analyticsActivity: true,
 
   // FALSE: crests and logos are served as stored files, never through Storage's image
   // transformation. Pro includes 100 transformed images a month; the site asked for 671 in one
