@@ -47,9 +47,9 @@ ok('no season yet: cannot say', BF.isCalendar([]) === null && BF.isCalendar(null
 
 console.log('\nwhat is offered');
 const at = new Date(Date.UTC(2026, 8, 30));
-ok('split: the eight before the season being played, newest first', BF.pastSeasons(at, false).join() ===
-   '2025-26,2024-25,2023-24,2022-23,2021-22,2020-21,2019-20,2018-19');
-ok('calendar: the eight years before this one', BF.pastSeasons(at, true).join() === '2025,2024,2023,2022,2021,2020,2019,2018');
+ok('split: the season being played and the eight before it, newest first (0261)', BF.pastSeasons(at, false).join() ===
+   '2026-27,2025-26,2024-25,2023-24,2022-23,2021-22,2020-21,2019-20,2018-19');
+ok('calendar: this year and the eight before it (0261: NBL1 2026)', BF.pastSeasons(at, true).join() === '2026,2025,2024,2023,2022,2021,2020,2019,2018');
 
 function draw(seasons) {
   const host = new Node('div');
@@ -61,17 +61,18 @@ function draw(seasons) {
   const groups = host.all('optgroup');
   const opts = g => g.all('option').map(o => o.value);
   ok('a league with no season yet: two groups', groups.length === 2, groups.map(g => g.label).join(' | '));
-  ok('...two years each in the first', groups[0] && opts(groups[0]).length === 8 && opts(groups[0]).every(v => /^\d{4}-\d{2}$/.test(v)));
-  ok('...single years in the second, named as a league played inside one year', groups[1] && opts(groups[1]).length === 8
+  ok('...two years each in the first', groups[0] && opts(groups[0]).length === 9 && opts(groups[0]).every(v => /^\d{4}-\d{2}$/.test(v)));
+  ok('...single years in the second, named as a league played inside one year', groups[1] && opts(groups[1]).length === 9
      && opts(groups[1]).every(v => /^\d{4}$/.test(v)) && /calendar year/.test(groups[1].label));
-  ok('...and the season being played named both ways', /is not on this list/.test(host.textContent) &&
+  ok('...and the season being played named both ways, as one that can be asked for', /can be asked for too/.test(host.textContent) &&
      /\d{4}-\d{2} or \d{4}\)/.test(host.textContent));
 }
 {
   const host = draw([{ name: '2026' }]);
   const vals = host.all('option').map(o => o.value);
-  ok('a calendar-year league: years only, no groups', host.all('optgroup').length === 0 && vals.length === 8 && vals.every(v => /^\d{4}$/.test(v)));
-  ok('...this year not among them', !vals.includes(String(new Date().getUTCFullYear())));
+  ok('a calendar-year league: years only, no groups', host.all('optgroup').length === 0 && vals.length === 9 && vals.every(v => /^\d{4}$/.test(v)));
+  const thisYear = host.all('option').find(o => o.value === String(new Date().getUTCFullYear()));
+  ok('...this year among them, said to read its finished games', !!thisYear && /being played: its finished games/.test(thisYear.textContent));
 }
 {
   const host = draw([{ name: '2025-26' }, { name: '2024-25' }]);

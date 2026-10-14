@@ -783,8 +783,18 @@ def raw_from_match(match: dict) -> Optional[dict]:
             whistle = True
             continue
         tno = tno_of(e.get("team"))
-        p = e.get("player") or {}
-        pid = str(p.get("id") or e.get("personId") or "").strip()
+        # THE PLAYER CAN BE A STRING. Some seasons' play-by-play (NBL1 2025's among them) carries `player` as a
+        # string, not the record: read as a record it threw on every such event, and 310 of NBL1 2025's 697
+        # regular-season games were never written by the backfill. That string is NOT the box's id (none of 24
+        # matched in a 2025 WA game); `personId` is (24 of 24), so it comes first, and the name comes from the
+        # league's box (people).
+        p = e.get("player")
+        if isinstance(p, str):
+            pid = str(e.get("personId") or p or "").strip()
+            p = {}
+        else:
+            p = p if isinstance(p, dict) else {}
+            pid = str(p.get("id") or e.get("personId") or "").strip()
         if pid and tno and (tno, pid) not in people:
             # a player the league's box has not listed (yet): kept, named from the action itself
             people[(tno, pid)] = {"first": (p.get("first_name") or "").strip(), "last": (p.get("last_name") or "").strip(),

@@ -2942,6 +2942,15 @@ def backfill_sources(job: dict, sources: list[dict]) -> list[dict]:
     return out
 
 
+def backfill_is_current(season) -> bool:
+    """Is a backfill's season the one being played? A calendar year ("2026") is this year; a split one ("2026-27") is
+    season_name_for's."""
+    s = str(season or "").strip()
+    if re.fullmatch(r"\d{4}", s):
+        return int(s) >= datetime.now(timezone.utc).year
+    return s == season_name_for()
+
+
 def backfill_finish(q: "Supabase | None", job: dict, state: str, sources_run: int,
                     seen: int, written: int, error: str | None) -> None:
     """Close the queued row. Always called - a pass that threw still has to say so, because a row
@@ -3118,6 +3127,7 @@ def main() -> int:
             except Exception:
                 run_id = None
         t0 = time.time(); err = None
+        fails = {"n": 0, "first": None}          # games whose read threw (a backfill says so instead of "done")
         try:
             print(f"-> {src['label']} [{src['adapter']}] {src['schedule_url'][:90]}")
             if args.ids:
@@ -3242,6 +3252,11 @@ def main() -> int:
                 unfinished = [g for g in games if not done(g)]
                 # a game with its date withdrawn has nothing to fetch until a date comes back
                 ready = [g for g in unfinished if worth_fetching(g.tipoff_at, now_utc) and not (g.extra or {}).get("date_tbc")]
+                # A BACKFILL OF THE SEASON BEING PLAYED (2026-10-14: NBL1 2026, which its source's first_season keeps
+                # from the ordinary pass) reads only games finished long enough ago that no live lane is still on them -
+                # a game in progress has one writer, the live lane, never two.
+                if job and backfill_is_current(job["season"]):
+                    ready = [g for g in ready if (lambda s: s is not None and -s >= LIVE_AFTER_TIP)(seconds_until_tip(g.tipoff_at))]
                 waiting = len(unfinished) - len(ready)
             todo = ready[: args.max_games]
             print(f"   {len(games)} on schedule, {len(todo)} to (re)fetch"
@@ -3292,6 +3307,7 @@ def main() -> int:
                     b = adapter.fetch(g.external_id, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
                 except Exception as exc:                                 # one bad game never stops the league
                     print(f"    ! {g.external_id}: {exc}")
+                    fails["n"] += 1; fails["first"] = fails["first"] or f"{g.external_id}: {exc}"
                     continue
                 if not b:
                     continue
@@ -3430,6 +3446,9 @@ def main() -> int:
                 except Exception:
                     pass
             tot["seen"] += run["games_seen"]; tot["written"] += run["games_written"]
+            tot.setdefault("per", []).append({"label": src.get("competition_label") or src.get("label") or src.get("code") or "?",
+                                              "kind": src.get("competition_kind"), "seen": run["games_seen"],
+                                              "failed": fails["n"], "first": fails["first"]})
             if err:
                 tot["error"] = err
             beat()
@@ -3451,6 +3470,23 @@ def main() -> int:
             state = "failed"
             error = (f"found no {job['season']} games on " + ", ".join(s.get("label") or s.get("code") or "?" for s in sources) +
                      " - the source shows nothing for that season")
+        # A PART OF A SEASON IS NOT "DONE" EITHER (2026-10-14). SLB 2025-26 was marked filled in on its cup, trophy and
+        # play-offs (37 games) while its Championship's schedule failed to read and came back empty; NBL1 2025 on 385
+        # of 697 regular-season games after 310 reads threw. Either is now said on the request, so the season is asked
+        # for again (games already written are skipped, so asking again costs only what is missing).
+        per = tot.get("per") or []
+        if state == "done" and per:
+            empty = [p for p in per if not p["seen"] and p["kind"] in (None, "league")]
+            bad = sum(p["failed"] for p in per)
+            if empty:
+                state = "failed"
+                error = (f"read {tot['written']} games, but " + ", ".join(p["label"] for p in empty) +
+                         " came back with no games - its schedule could not be read this time; ask for the season again")
+            elif bad > max(2, tot["seen"] // 50):
+                first = next((p["first"] for p in per if p["first"]), "")
+                state = "failed"
+                error = (f"{bad} of {tot['seen']} games could not be read (the first: {first[:160]}); "
+                         "the games that were read are in - ask for the season again to retry the rest")
         backfill_finish(queue, job, state, len(sources), tot["seen"], tot["written"], error)
         return exit_code            # an old season has no live games - never chain the live lane
     # discovery is done - if a game is live or tips soon, ask the workflow to start the live lane

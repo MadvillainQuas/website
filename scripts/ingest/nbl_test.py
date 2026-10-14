@@ -454,6 +454,24 @@ done["data"][0]["play_by_play"] = [e for e in done["data"][0]["play_by_play"] if
 ok("a finished game whose operator never closed it still gets its final whistle (the result says complete)",
    FibaLiveStatsAdapter._status(N.raw_from_match(done)) == "final")
 
+# THE PLAYER AS A STRING (2026-10-14): NBL1 2025's play-by-play names `player` as a string that is not the box's id,
+# with the box's id in personId. Read as a record it threw on every event and 310 of 697 games were never written.
+asstr = copy.deepcopy(load("game-36e0818b.json.gz"))
+want = N.raw_from_match(copy.deepcopy(asstr))
+for e in asstr["data"][0]["play_by_play"]:
+    p = e.get("player")
+    if isinstance(p, dict) and p.get("id"):
+        e["personId"] = p["id"]
+        e["player"] = "not-the-box-id-" + str(p["id"])[:8]
+try:
+    got = N.raw_from_match(asstr); why = ""
+except Exception as exc:
+    got, why = None, repr(exc)
+ok("a play-by-play whose player is a string is read, not thrown on", got is not None, why)
+key = lambda r: [(e.get("pno"), e.get("actionType"), e.get("tno")) for e in r["pbp"]]
+ok("...each action credited to the box's player through personId, exactly as the record form",
+   got is not None and key(got) == key(want))
+
 # ============================================================================ NBL1's conferences
 print("\n-- NBL1's conferences, from the feed")
 src = {"code": "NBL1M", "adapter": "nbl", "schedule_url": "https://www.nbl1.com.au/fixtures#men",

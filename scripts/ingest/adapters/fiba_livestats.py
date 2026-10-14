@@ -260,6 +260,25 @@ class FibaLiveStatsAdapter(BaseAdapter):
                                            "home_logo": h.get("logo"), "away_logo": a.get("logo")}))
         return out
 
+    def _get_retry(self, url: str, tries: int = 3):
+        """The hosted page, asked up to three times. A refusal used to be skipped without a word, and the headless
+        fallback that followed found no ids: SLB's 2025-26 Championship and EABL 2025-26 were read as empty by a
+        backfill on 5 Oct 2026 (the same pages read 144 and 76 games on any other try), and the season was marked
+        filled in on its cups alone."""
+        last = None
+        for i in range(tries):
+            try:
+                r = requests.get(url, headers={"User-Agent": UA}, timeout=40)
+                if r.status_code == 200:
+                    return r
+                last = f"HTTP {r.status_code}"
+            except Exception as exc:
+                last = str(exc)[:120]
+            if i < tries - 1:
+                time.sleep(5 * (i + 1))
+        print(f"     hosted schedule unreadable after {tries} tries ({last}): {url[:90]}")
+        return None
+
     def discover(self, schedule_url: str, config: dict) -> Iterable[ScheduleGame]:
         games: dict[str, ScheduleGame] = {}
         for hu in self.hosted_urls(schedule_url, dict(config, code=config.get("code") or self._code_hint)):
@@ -268,8 +287,8 @@ class FibaLiveStatsAdapter(BaseAdapter):
                 if gap < self.min_request_gap_s:
                     time.sleep(self.min_request_gap_s - gap)
                 self._last = time.time()
-                r = requests.get(hu, headers={"User-Agent": UA}, timeout=40)
-                if r.status_code != 200:
+                r = self._get_retry(hu)
+                if r is None:
                     continue
                 if config.get("date_paged") and "/competition/" in hu:
                     paged = self.date_paged_games(hu, config)

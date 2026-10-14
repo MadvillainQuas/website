@@ -65,17 +65,20 @@ function liveSeason(now) {
 
 function pastSeasons(now, calendar) {
   const out = [];
-  /* A CALENDAR-YEAR LEAGUE (CIBACOPA, Liga Ouro, NBL1) names a season by its year ("2026"); the year being
-     played is the ordinary pass's, so the list starts at last year. 0187's guard accepts this form. */
+  /* A CALENDAR-YEAR LEAGUE (CIBACOPA, Liga Ouro, NBL1) names a season by its year ("2026"). THE SEASON BEING PLAYED
+     IS ON THE LIST TOO (0261, 2026-10-14): NBL1's 2026 was never read by the ordinary pass (its source starts at 2027),
+     and a league joining mid-season has weeks the ordinary pass never saw. The worker takes only its finished games. */
   if (calendar) {
     const y = (now || new Date()).getUTCFullYear();
-    for (let i = 1; i <= BACK; i++) out.push(String(y - i));
+    for (let i = 0; i <= BACK; i++) out.push(String(y - i));
     return out;
   }
   const start = parseInt(liveSeason(now).slice(0, 4), 10);
-  for (let i = 1; i <= BACK; i++) out.push((start - i) + '-' + String(start - i + 1).slice(2));
+  for (let i = 0; i <= BACK; i++) out.push((start - i) + '-' + String(start - i + 1).slice(2));
   return out;
 }
+/* the season being played, in the form a league names it */
+const isLive = (name, calendar) => name === (calendar ? String(new Date().getUTCFullYear()) : liveSeason());
 
 /* a league whose seasons are all named as a single year runs on the calendar year; null when it has no season
    on the platform yet (NBL1 before its first, CEBL before its import) and so cannot say which it is */
@@ -157,7 +160,8 @@ function draw(panel) {
     o.value = name;
     /* "already here" is not a reason not to ask — a season may hold six games
        of forty — but it changes what the answer will look like, so it is said. */
-    o.textContent = name + (known.has(name) ? ' · already on the platform' : '');
+    o.textContent = name + (isLive(name, /^\d{4}$/.test(name)) ? ' · being played: its finished games' : '')
+      + (known.has(name) ? ' · already on the platform' : '');
     into.appendChild(o);
   };
   /* A LEAGUE WITH NO SEASON YET is offered both ways of naming one: the worker reads a season only in the form its
@@ -179,7 +183,7 @@ function draw(panel) {
   host.appendChild(el('div', 'ep-micro',
     'The season being played (' + (calendar === null ? liveSeason() + ' or ' + new Date().getUTCFullYear()
       : calendar ? String(new Date().getUTCFullYear()) : liveSeason()) +
-    ') is not on this list: it is already read by the live feed.'));
+    ') can be asked for too: its games that have finished are read, and the live feed keeps the rest.'));
 
   const list = el('div', 'list');
   host.appendChild(list);
