@@ -1396,7 +1396,32 @@ function renderCareerRows(host, rows, pl) {
     leagueId: ACCESS_LEAGUE.id, leagueSlug: ACCESS_LEAGUE.slug,
     rows
   });
-  paintSeasonShot(rows);
+  paintSeasonShot(shotLines(rows));
+}
+
+/* THE PICTURE IS A SEASON, EVERY COMPETITION OF IT (Louie, 2026-10-14: "for BCB - not just the league, also including
+   trophy games"): one line a season, its competitions added together from their totals - games, minutes and every
+   count summed, the percentages from the makes and attempts, never an average of averages. A season of one competition
+   is that competition's own line. Newest first, as the table. */
+function shotLines(rows) {
+  const by = new Map();
+  (rows || []).forEach(r => { const k = r._season || r.name; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+  return [...by.values()].map(list => {
+    if (list.length === 1) return list[0];
+    const sum = k => list.reduce((n, r) => n + (Number(r[k]) || 0), 0);
+    const gp = sum('gp'), g = gp || 1;
+    const pct = (m, a) => (a > 0 ? 100 * m / a : null);
+    const clubs = [...new Set(list.flatMap(r => String(r._club || r.teamName || '').split(' / ').filter(Boolean)))];
+    return Object.assign({}, list[0], {
+      gp, mpg: sum('min') / g, ppg: sum('pts') / g,
+      orpg: sum('oreb') / g, drpg: sum('dreb') / g, rpg: sum('reb') / g, apg: sum('ast') / g,
+      pfpg: sum('pf') / g, bpg: sum('blk') / g, spg: sum('stl') / g, topg: sum('tov') / g,
+      p2_pct: pct(sum('p2m'), sum('p2a')), p3_pct: pct(sum('p3m'), sum('p3a')), ft_pct: pct(sum('ftm'), sum('fta')),
+      _club: clubs.join(' / '),
+      _label: list[0]._season + ' · all competitions',
+      _all: list.map(r => r.compLabel || r._comp).filter(Boolean)
+    });
+  });
 }
 /* the row (or, for every competition of a season, the rows) the profile is showing */
 function markCareer() {
@@ -1470,6 +1495,14 @@ function paintSeasonShot(rows) {
   if (r) {
     const card = el('div', 'shotcard');
     card.appendChild(el('div', 'shot-h', 'Averages'));
+    /* a season added up from several competitions says which, under the heading, inside the frame */
+    if (r._all && r._all.length) {
+      const sub = el('div', 'shot-sub');
+      const names = el('span', null, ' · ' + r._season + ' · ' + r._all.join(' + '));
+      names.setAttribute('translate', 'no');           // a season's and the competitions' names
+      sub.append(el('span', null, 'All competitions'), names);
+      card.appendChild(sub);
+    }
     const t = el('table', 'shot');
     const thead = el('thead'), hr = el('tr');
     hr.appendChild(el('th', null, 'TEAM'));
