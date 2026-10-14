@@ -1982,7 +1982,11 @@
       'Opening the chart lab…': 'Abriendo el laboratorio de gráficos…',
       'The chart lab could not be loaded.': 'No se pudo cargar el laboratorio de gráficos.',
       'The graphic maker could not be loaded.': 'No se pudo cargar el creador de gráficos.',
-      'Your scout as a table or as charts': 'Tu scouting como tabla o como gráficos'
+      'Your scout as a table or as charts': 'Tu scouting como tabla o como gráficos',
+      'highlight': 'destacar',
+      'highlight: on': 'destacar: sí',
+      'clear highlights': 'quitar destacados',
+      'highlight columns: press this, then a column’s header to pin it beside the name (press it again to let it go)': 'destacar columnas: pulsa aquí y luego la cabecera de una columna para fijarla junto al nombre (púlsala otra vez para soltarla)'
     },
 
     ctx: {

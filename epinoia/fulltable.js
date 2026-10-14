@@ -818,6 +818,10 @@ function render(opts) {
   let filters = [];                       // [{ k, op:'ge'|'le', mode:'val'|'pct', x }]
   const picked = new Map();               // id -> row, in the order picked
   let heat = opts.heat !== false;
+  /* HIGHLIGHTED COLUMNS (Louie, 2026-10-14): with HIGHLIGHT on, a header pressed moves its column next to the name and
+     keeps it there (sticky), in the order pressed, whatever view is showing; pressed again it goes back. Several at once. */
+  const HL_MAX = 5;
+  let hl = [], hlMode = false, pinLeft = new Map(), pinEnd = null, pinW = 0;
   let extra = new Set();          // columns added by hand on top of the preset
   let removed = new Set();        // and ones taken away
   const minGames0 = minGames, heat0 = heat;
@@ -1365,6 +1369,30 @@ function render(opts) {
   csv.type = 'button';
   csv.addEventListener('click', exportCsv);
   more.appendChild(csv);
+  const hlBtn = el('button', 'ep-btn ft-btn ft-hlbtn', 'highlight');
+  hlBtn.type = 'button';
+  hlBtn.title = 'highlight columns: press this, then a column’s header to pin it beside the name (press it again to let it go)';
+  const hlClear = el('button', 'ep-btn ft-btn ft-hlclear', 'clear highlights');
+  hlClear.type = 'button';
+  hlClear.hidden = true;
+  function paintHl() {
+    hlBtn.textContent = hlMode ? 'highlight: on' : hl.length ? 'highlight · ' + hl.length : 'highlight';
+    hlBtn.classList.toggle('pri', hlMode);
+    hlBtn.setAttribute('aria-pressed', hlMode ? 'true' : 'false');
+    hlClear.hidden = !hl.length;
+    host.classList.toggle('ft-hlmode', hlMode);
+  }
+  hlBtn.addEventListener('click', () => { hlMode = !hlMode; paintHl(); draw(); });
+  hlClear.addEventListener('click', () => { hl = []; paintHl(); draw(); });
+  function togglePin(k) {
+    if (hl.indexOf(k) !== -1) hl = hl.filter(x => x !== k);
+    else if (hl.length < HL_MAX) hl = hl.concat([k]);
+    paintHl();
+    draw();
+  }
+  more.appendChild(hlBtn);
+  more.appendChild(hlClear);
+  paintHl();
   /* THE TABLE AS A PICTURE (opts.graphic, the stats page's statgfx.js): a button in the bar itself, not
      folded into the phone's 'filters', that hands the page this table's API to draw from. Free to every
      reader: it draws only the rows and columns already on the screen. */
@@ -2014,6 +2042,7 @@ function render(opts) {
           if (g > 0) td.classList.add('pos'); else if (g < 0) td.classList.add('neg');
         }
       }
+      if (pinLeft.has(c.k)) { td.classList.add('stick', 'hl'); if (c.k === pinEnd) td.classList.add('hl-end'); td.style.left = pinLeft.get(c.k) + 'px'; }
       tr.appendChild(td);
     });
     return tr;
@@ -2059,7 +2088,7 @@ function render(opts) {
     /* the pinned # and name are always on screen: nothing to reveal, and measuring one
        would pan a reader who had scrolled right back towards the start */
     if (!th || th.classList.contains('stick')) return;
-    const pinned = w0 + W1_PHONE;
+    const pinned = Math.max(w0 + W1_PHONE, pinW);
     const l = th.offsetLeft, r = l + th.offsetWidth;
     if (l >= wrap.scrollLeft + pinned && r <= wrap.scrollLeft + wrap.clientWidth) return;
     wrap.scrollLeft = Math.max(0, l - pinned - 8);
@@ -2076,6 +2105,9 @@ function render(opts) {
        with no colour or logo draws no crest, and its players would show no club at all.
        The CSV keeps it (visible()). */
     if (phone && rows.length && rows.every(hasCrest)) cols = cols.filter(c => c.k !== 'teamName');
+    /* the highlighted columns, next to the name in the order they were pressed: shown whatever view is on */
+    const pins = hl.map(k => cols.find(c => c.k === k) || (!absent(k) ? colOf(k) : null)).filter(Boolean);
+    if (pins.length) cols = cols.slice(0, 2).concat(pins, cols.slice(2).filter(c => hl.indexOf(c.k) === -1));
     const all = view();
     const v = all.length > shown ? all.slice(0, shown) : all;
     paintCount(all);
@@ -2127,12 +2159,16 @@ function render(opts) {
     /* a width the reader set by hand wins over the measured one */
     Object.keys(held).forEach(k => { if (widths[k] != null) widths[k] = held[k]; });
     const totalW = w0 + W1 + cols.slice(2).reduce((n, c) => n + widths[c.k], 0);
+    pinLeft = new Map(); pinEnd = pins.length ? pins[pins.length - 1].k : null;
+    { let at = w0 + W1; pins.forEach(c => { pinLeft.set(c.k, at); at += widths[c.k]; }); pinW = at; }
     t.style.width = totalW + 'px';
     const grips = !phone && !isCoarse();
 
     const thead = el('thead'), hr = el('tr');
     cols.forEach((c, i) => {
-      const th = el('th', (c.k === sortKey ? 'sorted ' + (sortDir > 0 ? 'asc ' : 'desc ') : '') + (i < 2 ? 'stick c' + i : ''), c.l);
+      const th = el('th', (c.k === sortKey ? 'sorted ' + (sortDir > 0 ? 'asc ' : 'desc ') : '') + (i < 2 ? 'stick c' + i : '') +
+        (pinLeft.has(c.k) ? ' stick hl' + (c.k === pinEnd ? ' hl-end' : '') : '') + (hlMode && i >= 2 ? ' hl-pick' : ''), c.l);
+      if (pinLeft.has(c.k)) th.style.left = pinLeft.get(c.k) + 'px';
       if (c.k === sortKey) th.setAttribute('aria-sort', sortDir > 0 ? 'ascending' : 'descending');
       /* Width is set on the header only; the table is fixed-layout, so the
          column follows. Without this a long header like "OPP OREB%" or a wide
@@ -2144,7 +2180,9 @@ function render(opts) {
       /* a grip on the trailing edge, so a column can be widened by hand when
          the measured width is not what this particular reader wants */
       if (i >= 1 && grips) addGrip(th, c, t);
+      if (hlMode && i >= 2) th.title = (pinLeft.has(c.k) ? 'let go of ' : 'highlight ') + c.l;
       th.addEventListener('click', () => {
+        if (hlMode && i >= 2) { togglePin(c.k); return; }
         if (sortKey === c.k) sortDir = -sortDir;
         else { sortKey = c.k; sortDir = c.text ? 1 : -1; }
         shown = PAGE;

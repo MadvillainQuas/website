@@ -1980,7 +1980,11 @@
       'Opening the chart lab…': 'チャートラボを開いています…',
       'The chart lab could not be loaded.': 'チャートラボを読み込めませんでした。',
       'The graphic maker could not be loaded.': 'グラフィック作成ツールを読み込めませんでした。',
-      'Your scout as a table or as charts': 'スカウトを表またはチャートで'
+      'Your scout as a table or as charts': 'スカウトを表またはチャートで',
+      'highlight': 'ハイライト',
+      'highlight: on': 'ハイライト: オン',
+      'clear highlights': 'ハイライトを解除',
+      'highlight columns: press this, then a column’s header to pin it beside the name (press it again to let it go)': '列のハイライト：これを押してから列の見出しを押すと、名前の横に固定されます（もう一度押すと解除）'
     },
 
     ctx: {

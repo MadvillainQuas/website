@@ -781,3 +781,27 @@ body.pv-open{ overflow:hidden }
 .ft-pills.combining .ft-pill:not(.ft-combine)::before{content:"";display:inline-block;width:9px;height:9px;margin-right:6px;vertical-align:-1px;
   border:1px solid currentColor;border-radius:2px;opacity:.7}
 .ft-pills.combining .ft-pill.on:not(.ft-combine)::before{background:currentColor;opacity:1;box-shadow:inset 0 0 0 2px var(--panel,#fff)}
+
+/* HIGHLIGHTED COLUMNS (fulltable.js hl; 2026-10-14): pinned beside the name, sticky, tinted in the flare colour with a bar
+   along the header's top, the last one carrying the name column's edge shadow. With HIGHLIGHT on, every header that can be
+   pinned is outlined and takes the copy cursor. */
+table.ft th.stick.hl, table.ft td.stick.hl, table.ft td.stick.hl.heat{ position:sticky; z-index:2 }
+table.ft thead th.stick.hl{ z-index:4 }
+table.ft tbody td.stick.hl{ background:color-mix(in oklch,var(--flare) 10%,var(--ground)) }
+table.ft tbody tr:nth-child(even) td.stick.hl{ background:color-mix(in oklch,var(--flare) 13%,var(--ground)) }
+table.ft tbody tr:hover td.stick.hl{ background:color-mix(in oklch,var(--club) 14%,color-mix(in oklch,var(--flare) 10%,var(--ground))) }
+table.ft tbody tr.picked td.stick.hl{ background:color-mix(in oklch,var(--lume) 14%,color-mix(in oklch,var(--flare) 10%,var(--ground))) }
+table.ft thead th.stick.hl{ background:var(--flare); color:#ffffff; box-shadow:inset 0 -3px 0 color-mix(in oklch,var(--flare) 45%,#ffffff) }
+table.ft thead th.stick.hl.sorted{ background:var(--lume); color:var(--on-accent) }
+table.ft td.stick.hl.hl-end{ box-shadow:inset -1px 0 0 var(--flare), 6px 0 8px -6px rgba(0,0,0,.45) }
+table.ft thead th.stick.hl.hl-end{ box-shadow:inset 0 -3px 0 color-mix(in oklch,var(--flare) 45%,#ffffff), 6px 0 8px -6px rgba(0,0,0,.45) }
+:root[data-theme="light"] table.ft tbody tr td.stick.hl{ background:color-mix(in oklch,var(--flare) 9%,#ffffff) }
+:root[data-theme="light"] table.ft tbody tr:nth-child(even) td.stick.hl{ background:color-mix(in oklch,var(--flare) 12%,#ffffff) }
+:root[data-theme="light"] table.ft tbody tr:hover td.stick.hl{ background:color-mix(in oklch,var(--club) 12%,color-mix(in oklch,var(--flare) 9%,#ffffff)) }
+:root[data-theme="light"] table.ft thead th.stick.hl{ background:var(--flare); color:#ffffff }
+:root[data-theme="light"] table.ft thead th.stick.hl.sorted{ background:var(--lume) }
+:root[data-theme="light"] table.ft td.stick.hl.hl-end{ box-shadow:inset -1px 0 0 var(--flare), 6px 0 8px -6px rgba(13,31,23,.22) }
+.ft-host.ft-hlmode table.ft thead th.hl-pick{ cursor:copy; outline:1px dashed color-mix(in oklch,var(--flare) 70%,transparent); outline-offset:-3px }
+.ft-host.ft-hlmode table.ft thead th.hl-pick:hover{ background:color-mix(in oklch,var(--flare) 18%,var(--panel)) }
+.ft-btn.ft-hlbtn::before{ content:""; display:inline-block; width:8px; height:8px; margin-right:6px; border-radius:2px; background:var(--flare); vertical-align:0 }
+.ft-btn.ft-hlclear[hidden]{ display:none }
