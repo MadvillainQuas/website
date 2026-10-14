@@ -413,7 +413,8 @@
       'turnover %': '% de pérdidas',
       'On the newsdesk': 'En la redacción',
       'the storylines this game touches': 'las historias que toca este partido',
-      'every storyline in the league ↗': 'todas las historias de la liga ↗'
+      'every storyline in the league ↗': 'todas las historias de la liga ↗',
+      'full play-by-play starting - within half a minute': 'las jugadas completas llegan en menos de medio minuto'
     },
 
     ctx: {

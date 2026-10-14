@@ -347,7 +347,20 @@ window.EPINOIA_LEAGUE_TIERS = {
   /* Sweden */ 'basketligan': [1, 'm'], 'basketligan-dam': [1, 'w'],
   /* Slovakia */ 'slovak-sbl': [1, 'm'],
   /* Adriatic */ 'aba-league': [1, 'm'], 'aba-league-2': [2, 'm'], 'aba-u19-league': ['y1', 'm'],
+  /* United States */ 'ncaa-d2-men': ['uni', 'm'], 'ncaa-d2-women': ['uni', 'w'],
   /* Kosovo */ 'kosovo-superliga': [1, 'm']
+};
+/* LEAGUES SHOWN AS ONE GROUP (2026-10-14). NCAA Division II is ~300 schools in ~23 conferences a gender, 140 games a
+   side on a Saturday: listed like any league it would be the whole of HOME. It is shown like a COUNTRY instead - one
+   "NCAA D2" block - with its conferences inside it like leagues (Men's, then Women's), and the games inside those.
+   key: the group; part: this league's half of it; the conferences are its competitions' groups
+   (competition_teams.group_name, from the feed). */
+window.EPINOIA_LEAGUE_GROUPS = {
+  'ncaa-d2-men':   { key: 'ncaa-d2', name: 'NCAA D2', part: 'Men' },
+  'ncaa-d2-women': { key: 'ncaa-d2', name: 'NCAA D2', part: 'Women' }
+};
+window.epinoiaLeagueGroup = function (league) {
+  return (window.EPINOIA_LEAGUE_GROUPS || {})[(league || {}).slug] || null;
 };
 /* { tier, side ('men' | 'women'), youth (an under-age league), rank (the order: 1, 2, 3 ..., then youth tiers 51, 52 ...,
    university 60, none 90), label ('Tier 1', 'Youth Tier 1', 'University' or '') } */

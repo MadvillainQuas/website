@@ -321,6 +321,13 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/video-clubs.test.mjs
 
+      - name: Live on demand - NCAA D2's games followed in full only while watched (0263)
+        # on PGlite: watch_game marks a live (or due) game of an on-demand league watched and nothing else, a renewal within
+        # 30 s writes nothing; live_frames_wanted is quiet for an unwatched on-demand game and unchanged for every other league
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/live-on-demand.test.mjs
+
       - name: Scheduled streams - a stream still to come, its WATCH pill and the live notice (0256)
         # every migration on PGlite: a channel's "LIVE" video on an unplayed game is SCHEDULED (not a full game), the pill
         # says 'scheduled', at tip-off it plays in LIVE, the game's followers are told once; and the pages' side of it

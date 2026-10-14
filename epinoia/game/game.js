@@ -3062,12 +3062,51 @@ function render() {
   const d = window.derive();
   renderHead(d);
   renderBody(d);
+  if (S.onDemand && (S.events || []).length) odNote(false);       // the full game has arrived (0263)
 }
 
 function setStatus(s) {
   statusVal = s;
   $('#status').className = 'status ' + (s === 'connecting' ? 'offline' : s);
   txt($('#statusText'), s);
+}
+
+/* LIVE ON DEMAND (0263). A league with hundreds of games a night (NCAA D2) is followed in full only while somebody
+   watches: every game's score and clock all the time, a game's play-by-play from the moment a reader opens it. This
+   page is that reader. While it is open on a live game it says so every 30 s (watch_game), the ingest reads the game
+   in full from its next pass, and the plays arrive through the live stream exactly as for any other league. Any other
+   league answers false and nothing more is asked; so does a database without 0263. */
+let watchTimer = null;
+async function keepWatched() {
+  if (document.visibilityState !== 'visible' || statusVal === 'final') return;
+  let on = false;
+  try { on = await rpcCall('watch_game', { p_game: gameId }, CFG.supabaseAnonKey); } catch (_) { on = false; }
+  if (on !== true) {
+    if (watchTimer) { clearInterval(watchTimer); watchTimer = null; }
+    odNote(false);
+    return;
+  }
+  if (window.S) window.S.onDemand = true;
+  odNote(!(window.S && (window.S.events || []).length));
+}
+function startWatch() {
+  if (watchTimer || walled) return;
+  watchTimer = setInterval(keepWatched, 30000);
+  keepWatched();
+  document.addEventListener('visibilitychange', () => { if (watchTimer && document.visibilityState === 'visible') keepWatched(); });
+}
+/* until the first full read lands (up to one pass of the ingest), the score and clock are all there is: said so */
+function odNote(show) {
+  let n = document.getElementById('odNote');
+  if (!show) { if (n) n.remove(); return; }
+  const st = document.getElementById('status');
+  if (n || !st) return;
+  n = document.createElement('span');
+  n.id = 'odNote';
+  n.className = 'odnote';
+  n.style.cssText = 'margin-left:8px;font-size:11px;opacity:.75';
+  n.textContent = 'full play-by-play starting - within half a minute';
+  st.after(n);
 }
 
 /* --------------------------------------------------------------- live feed --- */
@@ -3099,6 +3138,7 @@ function goLive() {
     }
   });
   detectFed();
+  startWatch();
   /* The clock lives inside the scoreboard block the scorer renders, not in a
      element of its own, so ticking it means redrawing that block — which is
      cheap. The body is untouched, so tables keep their scroll position. */

@@ -461,6 +461,50 @@ class NcaaAdapter(FibaLiveStatsAdapter):
             self._line_of[cid] = key
         return lines
 
+    # ------------------------------------------------------------------ the scoreboard line alone
+    def scoreline(self, external_id: str, config: dict) -> Optional[dict]:
+        """A game AS THE SCOREBOARD HAS IT, for a league followed on demand (0263): {status, period, clock_ms, running,
+        home, away}, from the one scoreboard read that covers every game of the division and day - no request of its
+        own. Enough for every card and list; the full read (fetch) is kept for a game somebody is watching and for the
+        final whistle. None when the game is on no board read yet."""
+        xid = str(external_id)
+        sport = sport_of(config.get("schedule_url") or "", config)
+        division = division_of(config.get("schedule_url") or "", config)
+        periods, period_ms, ot_ms = SPORTS[sport]
+        key = self._line_of.get(xid)
+        if key:
+            day = datetime.strptime(key[2], "%m/%d/%Y").date()
+        else:
+            tip = config.get("_tipoff_at")
+            try:
+                day = datetime.fromisoformat(str(tip).replace("Z", "+00:00")).astimezone(US_EASTERN).date()
+            except (TypeError, ValueError):
+                return None
+        line = self.board(sport, division, day).get(xid)
+        if not line:
+            return None
+        teams = line.get("teams") or []
+        home = next((t for t in teams if t.get("isHome")), None)
+        away = next((t for t in teams if t is not home), None)
+        if not (home and away):
+            return None
+        status = STATE.get(str(line.get("gameState") or "").upper(), "scheduled")
+        # currentPeriod reads "1ST", "2ND", "3RD", "4TH", "HALF", "OT", "2OT", "FINAL"; read loosely
+        per = str(line.get("currentPeriod") or "").upper()
+        n = re.search(r"(\d+)", per)
+        if "OT" in per:
+            period = periods + (int(n.group(1)) if n else 1)
+        elif "HALF" in per:
+            period = max(1, periods // 2)                  # half-time: the end of the first half (or second quarter)
+        else:
+            period = int(n.group(1)) if n else (periods if status == "final" else 1)
+        clock = re.match(r"^\s*(\d{1,2}):(\d{2})", str(line.get("contestClock") or ""))
+        clock_ms = (int(clock.group(1)) * 60 + int(clock.group(2))) * 1000 if clock else (
+            0 if status == "final" or "HALF" in per else (period_ms if period <= periods else ot_ms))
+        return {"status": status, "period": period, "clock_ms": clock_ms,
+                "running": status == "live" and "HALF" not in per and clock_ms > 0,
+                "home": int(home.get("score") or 0), "away": int(away.get("score") or 0)}
+
     # ------------------------------------------------------------------ discovery
     def discover(self, schedule_url: str, config: dict) -> Iterable[ScheduleGame]:
         sport, division = sport_of(schedule_url, config), division_of(schedule_url, config)

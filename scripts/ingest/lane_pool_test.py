@@ -190,5 +190,78 @@ ok("every CDN game taken from the observer and written once", sorted(w) == sorte
 ok("never two threads inside the observer at once", not FakeObserver.overlap)
 ok("...and it kept looking at the CDN while the writes ran", FakeObserver.polls >= 2, FakeObserver.polls)
 
+print("\n-- live on demand (0263, NCAA D2): the full game only while watched, and at the final whistle")
+
+
+class OnDemand(FakeAdapter):
+    """A watched game B, an unwatched live game A (final on its second scoreboard read), a game C already final."""
+    def __init__(self):
+        self.reads = {"A": 0}
+        self.fetched = []
+
+    def scoreline(self, xid, cfg):
+        if xid == "A":
+            self.reads["A"] += 1
+            st = "live" if self.reads["A"] == 1 else "final"
+            return {"status": st, "period": 2, "clock_ms": 461000, "running": True, "home": 50, "away": 48}
+        if xid == "C":
+            return {"status": "final", "period": 2, "clock_ms": 0, "running": False, "home": 70, "away": 60}
+        return {"status": "live", "period": 1, "clock_ms": 600000, "running": True, "home": 10, "away": 12}
+
+    def fetch(self, xid, cfg):
+        self.fetched.append(xid)
+        return super().fetch(xid, cfg)
+
+
+class OdSb(FakeSb):
+    def __init__(self):
+        self.state, self.patches, self.watch_asked = [], [], 0
+
+    def select(self, table, q):
+        if table == "game_watch":
+            self.watch_asked += 1
+            return [{"game_id": "gB"}]
+        return []
+
+    def upsert(self, table, rows, *a, **k):
+        if table == "game_state":
+            self.state.append(rows)
+        return []
+
+    def patch(self, table, q, body):
+        self.patches.append((table, q, body))
+        return []
+
+
+def run_od():
+    R.LANE_THREADS, R.INLINE_EVERY_S = 1, 1
+    od, sb = OnDemand(), OdSb()
+    writes = []
+    calls = {"n": 0}
+
+    def live_due(sb_, fiba, now):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return [(fiba[0], {"external_id": x, "game_id": "g" + x, "home_name": "H", "away_name": "A",
+                               "tipoff_at": "2026-11-14T00:00:00+00:00", "external_status": "live"}) for x in ("A", "B", "C")], None
+        return [], None
+
+    R.live_due, R.get_adapter = live_due, (lambda name: od)
+    R.write_platform = lambda sb_, src, b, run_, observed=None, memory=None, venue=None, **k: writes.append(b.external_id) or True
+    src = {"code": "NCAA_D2M", "adapter": "ncaa", "id": None, "adapter_config": {"live_on_demand": True, "sport": "MBB", "division": 2}}
+    R.live_keeper(sb, [src], argparse.Namespace(live_loop=60, live_every=1, broadcast_every=2, shard=None, dry_run=False))
+    return od, sb, writes
+
+
+od, osb, ow = run_od()
+ok("the watched game (B) is read and written in full, as any league's live game", "B" in od.fetched and "B" in ow, (od.fetched, ow))
+ok("the game at its final whistle (C) is read and written in full", "C" in od.fetched and "C" in ow)
+ok("the unwatched live game (A): its scoreboard line only - game_state, and its going live - no full read while live",
+   any(r.get("game_id") == "gA" and r.get("score_home") == 50 for r in osb.state)
+   and any(t == "games" and "gA" in q and b.get("status") == "live" for t, q, b in osb.patches)
+   and od.fetched.index("A") > 0 if "A" in od.fetched else False, (od.fetched, osb.state, osb.patches))
+ok("...then, at its final whistle, the whole game - so every player's line is in the season", "A" in ow and od.reads["A"] >= 2)
+ok("which games are watched is one read a pass, not one a game", 1 <= osb.watch_asked <= 3, osb.watch_asked)
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

@@ -2007,6 +2007,12 @@ OBS_EVERY_S = max(2, int(os.environ.get("EPINOIA_OBS_EVERY", "") or 10))   # a C
 LANE_THREADS = max(1, int(os.environ.get("EPINOIA_LANE_THREADS", "") or 6))    # games the lane reads and writes at once
 
 
+def on_demand(src: dict) -> bool:
+    """A source whose live games are followed in full only while somebody watches them (0263, NCAA D2):
+    adapter_config.live_on_demand. Its other live games carry their scoreboard line alone until the final whistle."""
+    return bool((src.get("adapter_config") or {}).get("live_on_demand"))
+
+
 def _looks_finished(raw: dict) -> bool:
     """End of the last regulation period or later (the fourth quarter; the second half, for a game in
     halves), clock at 0:00, scores not level: nothing but a scorer's 'game end' tap is missing. Level
@@ -2543,6 +2549,8 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     fast_every = max(1, min(10, int(getattr(args, "broadcast_every", 2) or 2)))
     read_at: dict[str, float] = {}              # when each inline game was last read (the 30-s promise, checked)
     late_said: dict[str, float] = {}
+    line_seen: dict[str, tuple] = {}            # LIVE ON DEMAND (0263): each unwatched game's last scoreboard line written
+    went_live: set[str] = set()
     # THE OBSERVER LOOKS, THIS LOOP WRITES (docs/feed-timing.md, step 2).
     #
     # This loop used to fetch a game, write it, fetch the next and write that, so the time
@@ -2684,6 +2692,48 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             with obs_lock:
                 observer.observe_due(cdn_due, OBS_EVERY, armed_x, fast_every)
         wrote, errs = [], []
+        # LIVE ON DEMAND (0263): of an on-demand league's games (NCAA D2), the ones somebody has open. One read a pass. A
+        # read that fails - a database without 0263 - takes them all as watched: every game in full, as before.
+        od_ids = [str(r.get("game_id")) for s_, r in due if on_demand(s_) and r.get("game_id")]
+        watched: set[str] = set()
+        if od_ids:
+            try:
+                watched = {str(x["game_id"]) for x in sb.select(
+                    "game_watch", f"game_id=in.({','.join(od_ids)})&until=gt.{_zulu(datetime.now(timezone.utc))}&select=game_id")}
+            except Exception:
+                watched = set(od_ids)
+
+        def scoreboard_only(src, r, xid) -> bool:
+            """An unwatched game of an on-demand league, from its scoreboard line alone: the score, period and clock
+            (game_state, which every card reads) and its going live - no play-by-play, no other row. True when that is
+            all this pass does for it; False to read it in full (the final whistle, or a game not on the board)."""
+            gid = str(r.get("game_id") or "")
+            if not gid or gid in watched or not hasattr(adapters[src["code"]], "scoreline"):
+                return False
+            try:
+                line = adapters[src["code"]].scoreline(xid, dict(src.get("adapter_config", {}), _tipoff_at=r.get("tipoff_at")))
+            except Exception as exc:
+                print(f"    ! {xid}: scoreboard: {exc}"); return True
+            if not line:
+                return False
+            if line["status"] == "final":
+                return False                                    # the final whistle: the whole game, below
+            if line["status"] != "live":
+                return True                                     # not started yet: nothing to write
+            key = (line["period"], line["clock_ms"], line["home"], line["away"], line["running"])
+            if line_seen.get(xid) == key:
+                return True
+            try:
+                if xid not in went_live:
+                    sb.patch("games", f"id=eq.{gid}&status=eq.scheduled", {"status": "live"})
+                    went_live.add(xid)
+                upsert_min(sb, "game_state", {"game_id": gid, "period": line["period"], "clock_ms": line["clock_ms"],
+                                              "running": line["running"], "score_home": line["home"], "score_away": line["away"],
+                                              "updated_at": now_iso()}, "game_id")
+                line_seen[xid] = key
+            except Exception as exc:
+                print(f"    ! {xid}: scoreboard write: {exc}")
+            return True
 
         def one_game(src, r):
             """One due game, start to finish: read (or take the observer's version), decide, write. Never two at once
@@ -2697,6 +2747,8 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             use_obs = observer is not None and on_cdn(src)
             if not use_obs and not slow_pass and not is_armed:
                 return
+            if on_demand(src) and scoreboard_only(src, r, xid):
+                return                                          # nobody watching: its score and clock only (0263)
             g = ScheduleGame(external_id=xid, home_name=r.get("home_name") or "", away_name=r.get("away_name") or "",
                              tipoff_at=r.get("tipoff_at"), status=r.get("external_status") or "scheduled")
             force = False       # a stalled game read afresh is written through, whatever the stored hash says

@@ -406,7 +406,8 @@
       'turnover %': 'ターンオーバー率',
       'On the newsdesk': 'ニュースデスク',
       'the storylines this game touches': 'この試合に関わるストーリーライン',
-      'every storyline in the league ↗': 'リーグのすべてのストーリーライン ↗'
+      'every storyline in the league ↗': 'リーグのすべてのストーリーライン ↗',
+      'full play-by-play starting - within half a minute': 'テキスト速報を開始中（30秒以内）'
     },
 
     ctx: {

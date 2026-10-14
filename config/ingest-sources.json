@@ -4133,6 +4133,91 @@
       "scheduleUrls": [
         "https://www.cebl.ca/games#finals"
       ]
+    },
+    {
+      "code": "NCAA_D2M",
+      "label": "NCAA Division II Men",
+      "adapter": "ncaa",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        0,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "ncaa-d2-men",
+      "league_name": "NCAA Division II Men",
+      "league_country": "US",
+      "league_gender": "men",
+      "league_rules": {
+        "periods": 2,
+        "period_ms": 1200000,
+        "ot_ms": 300000,
+        "bonus_at": 7,
+        "live": "on_demand"
+      },
+      "live_lane": "ncaa",
+      "repo_feed": false,
+      "adapter_config": {
+        "code": "NCAA_D2M",
+        "sport": "MBB",
+        "division": 2,
+        "season_refresh_s": 900,
+        "groups_from_feed": true,
+        "competition_format": "conferences",
+        "live_on_demand": true,
+        "archive_on_final": true,
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.ncaa.com/scoreboard/basketball-men/d2"
+      ]
+    },
+    {
+      "code": "NCAA_D2W",
+      "label": "NCAA Division II Women",
+      "adapter": "ncaa",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        0,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "ncaa-d2-women",
+      "league_name": "NCAA Division II Women",
+      "league_country": "US",
+      "league_gender": "women",
+      "league_rules": {
+        "periods": 4,
+        "period_ms": 600000,
+        "ot_ms": 300000,
+        "live": "on_demand"
+      },
+      "live_lane": "ncaa",
+      "repo_feed": false,
+      "adapter_config": {
+        "code": "NCAA_D2W",
+        "sport": "WBB",
+        "division": 2,
+        "season_refresh_s": 900,
+        "groups_from_feed": true,
+        "competition_format": "conferences",
+        "live_on_demand": true,
+        "archive_on_final": true,
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.ncaa.com/scoreboard/basketball-women/d2"
+      ]
     }
   ]
 }
