@@ -2006,7 +2006,8 @@
       'Show the groups as tabs or in one scrolling page': 'Mostrar los grupos como pestañas o en una sola página desplazable',
       'Feed & video': 'Feed y vídeo',
       'full names': 'nombres completos',
-      'Whole names on the chart, shortened with … only where they would overlap': 'Nombres completos en el gráfico, acortados con … solo donde se solaparían'
+      'Whole names on the chart, shortened with … only where they would overlap': 'Nombres completos en el gráfico, acortados con … solo donde se solaparían',
+      'Non-conference': 'Fuera de conferencia'
     },
 
     ctx: {

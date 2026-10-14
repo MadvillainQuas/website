@@ -34,6 +34,11 @@
    'epinoia:live'. The announcement is a nudge to look, never a fact to show.
    The rail is only rebuilt when WHICH games or their scores change, so a
    refresh never throws a reader's sideways scroll back to the start.
+
+   LEAGUES SHOWN AS ONE GROUP (NCAA D2, 2026-10-14; config.js EPINOIA_LEAGUE_GROUPS): no tab's own list holds their
+   games. Under it, one closed block per group with a game in that tab ("NCAA D2 · 37 live"), shown like a COUNTRY:
+   its parts (Men, Women) inside, their conferences inside those like leagues, the games inside those - each level read
+   only when it is opened, and kept open, and read again, through the refreshes. See "THE GROUPS" below.
    ============================================================================ */
 (function () {
   const H = window.EpinoiaHome;
@@ -77,15 +82,17 @@
      going live between the two reads cannot shift an offset and skip one; the game on the seam comes back twice and is
      de-duplicated). */
   const UP_MS = 2 * 60 * 1000;
+  /* which leagues the held reads were read without (the groups, read() sets it): a different set is a new read */
+  let scopeKey = '';
   let upHeld = null;
   async function upcoming(G, now, need) {
     /* since the read, not before it: the list starts two hours back, so its first game has often tipped off already,
        and a new read would bring the same list back */
     const tipped = upHeld && upHeld.rows.some(g => { const t = Date.parse(g.tipoff_at || ''); return t > upHeld.at && t <= now; });
-    if (!upHeld || tipped || now - upHeld.at >= UP_MS) {
+    if (!upHeld || upHeld.sk !== scopeKey || tipped || now - upHeld.at >= UP_MS) {
       const from = new Date(now - G.STALE_MS).toISOString();
       const rows = await G.upcoming(from, 40);
-      upHeld = { at: now, rows, full: rows.length >= PAGE };
+      upHeld = { at: now, rows, full: rows.length >= PAGE, sk: scopeKey };
     }
     for (let pages = 0; upHeld.full && upHeld.rows.length < (need || 0) && pages < 3; pages++) {
       const last = upHeld.rows[upHeld.rows.length - 1];
@@ -111,10 +118,10 @@
   const RES_MS = 60 * 1000;
   let resHeld = null;
   async function results(G, now, need) {
-    if (!resHeld || now - resHeld.at > RES_MS) {
+    if (!resHeld || resHeld.sk !== scopeKey || now - resHeld.at > RES_MS) {
       const before = new Date(now).toISOString();
       const rows = await G.recent(new Date(now).toISOString(), 0, 40);
-      resHeld = { at: now, before, rows, full: rows.length >= PAGE };
+      resHeld = { at: now, before, rows, full: rows.length >= PAGE, sk: scopeKey };
     }
     for (let pages = 0; resHeld.full && resHeld.rows.length < (need || 0) && pages < 3; pages++) {
       const part = await G.recent(resHeld.before, resHeld.rows.length, PAGE);
@@ -145,15 +152,19 @@
      narrowing the next - and the tabs then show the most recent games of the leagues that are left, read for those
      leagues alone (not picked out of the forty everybody's tabs hold). Kept for the visit, as the tab is. */
   const PICK_KEY = 'epinoia_home_fxpick';
-  let pick = null;
-  try { const v = JSON.parse(sessionStorage.getItem(PICK_KEY) || 'null'); if (v && v.sel) pick = v.ids && v.ids.length ? new Set(v.ids) : null; } catch (_) { /* private mode */ }
+  /* pick: the leagues left by the dropdowns (null: all); pickLg: the leagues ticked BY NAME in the League dropdown - a
+     grouped league ticked by name is read into the tab's own list like any league, one only picked through its country
+     or continent stays in its group's block */
+  let pick = null, pickLg = new Set();
+  try { const v = JSON.parse(sessionStorage.getItem(PICK_KEY) || 'null'); if (v && v.sel) pick = v.ids && v.ids.length ? new Set(v.ids) : null; if (v && v.sel && pick) pickLg = new Set((v.sel.lg || []).map(String)); } catch (_) { /* private mode */ }
   const pickedHeld = new Map();
   let pickSeq = 0;
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   /* the picked leagues' games of one kind: the newest finals, or the next scheduled games (a minute's keep); the filter
-     is the one globalgames.js uses, on the inner-embedded season's league */
-  async function picked(G, kind, now, need) {
-    const ids = [...pick].filter(x => UUID.test(x));
+     is the one globalgames.js uses, on the inner-embedded season's league. `skip`: the picked leagues shown in their
+     group's block instead */
+  async function picked(G, kind, now, need, skip) {
+    const ids = [...pick].filter(x => UUID.test(x) && !(skip && skip.has(x)));
     if (!ids.length) return [];
     const k = kind + '|' + ids.join(',') + '|' + need;
     const h = pickedHeld.get(k);
@@ -167,36 +178,295 @@
   }
   const inPick = (G, g) => { const l = G.leagueOf(g); return !!(l && pick.has(String(l.id))); };
 
+  /* ======================================================================= THE GROUPS ===
+     LEAGUES SHOWN AS ONE GROUP (config.js EPINOIA_LEAGUE_GROUPS; NCAA D2: two leagues of ~23 conferences and up to 140 games
+     a night each, Louie 2026-10-14). Listed like any league they would be the whole of Daily fixtures, so on every tab:
+       * the tab's own list never reads a grouped league (globalgames.js scoped({ exclude })), so D2 cannot use up the
+         forty-row live read, the results or the fixtures - unless the reader ticked that league BY NAME in CHECK VIA
+         LEAGUE: then its games are in the list like any league's, and it has no block;
+       * after the list, ONE closed block per group with a game in the tab, shown like a COUNTRY: "NCAA D2 · 37 live"
+         (a counted read per part, globalgames.js groupCount; the tab's windows are groupWindow's). Its live games count
+         in the LIVE tab's badge, so a night when only D2 is live still has a LIVE tab;
+       * opened: its parts (Men, Women), each a dropdown with its count; a part opened reads its games LITE and its
+         clubs' conferences (groupGames, conferences) and shows its CONFERENCES like leagues, most games first (the
+         non-conference games last), each a dropdown with its count; a conference opened reads its own games in full
+         (gamesByIds, and the live ones' state) and shows them as the cards everywhere else, without a badge.
+     Nothing under the closed block is read until it is opened. What is open stays open through every refresh (per tab:
+     each tab is its own list), and a refresh reads again only what is open: on LIVE every tick, on the others a part's
+     list once a minute and a conference's cards when its games change.
+     THE BLOCK LIVES JUST AFTER THE TAB PANEL, not inside it: the panel is redrawn whenever a score changes, and the block
+     must never be taken down with it - a reader's open conference, the focus in it and its sideways scroll stay put. */
+  const SEP = '\u001f';
+  const pathOf = (...p) => p.map(String).join(SEP);
+  const LITE_MS = 60000;
+  const GRP = {
+    el: null, tab: null, nodes: new Map(),
+    open: { live: new Set(), up: new Set(), res: new Set() },
+    lite: new Map(), full: new Map(), flight: new Map()
+  };
+
+  /* which grouped leagues are a block and which the list reads: every grouped league inside the reader's pick (all of
+     them, with no pick) is its group's block unless it was ticked by name; the list reads none but those ticked */
+  function scopeOf(grps) {
+    const all = [], shown = [];
+    (grps || []).forEach(gr => {
+      const parts = gr.parts.filter(p => { const id = String(p.id); all.push(id); return (!pick || pick.has(id)) && !pickLg.has(id); });
+      if (parts.length) shown.push(Object.assign({}, gr, { parts }));
+    });
+    const asGroup = new Set();
+    shown.forEach(gr => gr.parts.forEach(p => asGroup.add(String(p.id))));
+    return { shown, asGroup, exclude: all.filter(id => !pickLg.has(id)) };
+  }
+
+  /* each shown group's games on one tab, counted part by part: [{ key, name, parts: [{ part, id, league, n }], n }].
+     A count that could not be read is nothing this time; the next tick asks again. */
+  function groupCounts(G, shown, tab, now) {
+    if (!shown.length || typeof G.groupCount !== 'function') return Promise.resolve([]);
+    return Promise.all(shown.map(gr => Promise.all(gr.parts.map(p => G.groupCount([p.id], tab, now).catch(() => 0)))
+      .then(ns => {
+        const parts = gr.parts.map((p, i) => Object.assign({}, p, { n: +ns[i] || 0 }));
+        return Object.assign({}, gr, { parts, n: parts.reduce((s, p) => s + p.n, 0) });
+      })));
+  }
+  const groupTotal = list => (list || []).reduce((s, gr) => s + (gr.n || 0), 0);
+
   let liveHeld = null;
   async function read(cur, quick) {
-    const G = window.EpinoiaGlobalGames;
-    if (!G) throw new Error('globalgames.js has not loaded');
+    const G0 = window.EpinoiaGlobalGames;
+    if (!G0) throw new Error('globalgames.js has not loaded');
     const now = Date.now();
-    const [liveRaw, fol] = quick && liveHeld ? liveHeld
-      : await Promise.all([G.live().catch(() => []), followed()]);
-    liveHeld = [liveRaw, fol];
+    /* the grouped leagues (none on a page without config.js's groups), and the reads without them */
+    const grps = typeof G0.groups === 'function' ? await G0.groups().catch(() => []) : [];
+    const sc = scopeOf(grps);
+    const pickIds = pick ? [...pick].filter(x => UUID.test(x) && !sc.asGroup.has(x)) : null;
+    const G = typeof G0.scoped === 'function' && (sc.exclude.length || (pickIds && pickIds.length))
+      ? G0.scoped({ exclude: sc.exclude, only: pickIds }) : G0;
+    scopeKey = sc.exclude.join(',') + '|' + (pickIds || []).join(',');
+    /* and if a held read from before the groups were known holds one of their games, it is left out here */
+    const drop = sc.exclude.length ? new Set(sc.exclude) : null;
+    const keep = g => { if (!g) return false; if (!drop) return true; const l = G0.leagueOf(g); return !(l && drop.has(String(l.id))); };
+    const [liveAll, fol, gLive] = quick && liveHeld ? liveHeld
+      : await Promise.all([G.live().catch(() => []), followed(), groupCounts(G0, sc.shown, 'live', now)]);
+    liveHeld = [liveAll, fol, gLive];
+    const liveRaw = liveAll.filter(keep);
     const lives = G.pickLive(liveRaw, now, fol).filter(g => !pick || inPick(G, g));
-    const tabPick = G.dailyTab({ chosen, live: lives.length, current: cur });
+    const liveN = lives.length + groupTotal(gLive);
+    const tabPick = G.dailyTab({ chosen, live: liveN, current: cur });
     const tab = tabPick.tab;
     let rows, avail;
     if (pick && tab !== 'live') {
-      const all = await picked(G, tab, now, limit[tab] + 1);
+      const all = await picked(G, tab, now, limit[tab] + 1, sc.asGroup);
       rows = all.slice(0, limit[tab]); avail = all.length;
     } else if (tab === 'live') {
       rows = lives.slice(0, limit.live); avail = lives.length;
     } else if (tab === 'res') {
-      const held = await results(G, now, limit.res + 1);
+      const held = (await results(G, now, limit.res + 1)).filter(keep);
       const all = G.pickResults(held, N, limit.res + 1, PER_LEAGUE);
       rows = all.slice(0, limit.res); avail = all.length;
     } else {
-      const [ups, nexts] = await Promise.all([upcoming(G, now, limit.up + 1), nextGames(G)]);
+      const [upsAll, nextsAll] = await Promise.all([upcoming(G, now, limit.up + 1), nextGames(G)]);
+      const ups = upsAll.filter(keep), nexts = nextsAll.filter(keep);
       const all = G.pickUpcoming(liveRaw, ups, nexts, now, N, limit.up + 1, fol);
       rows = all.slice(0, limit.up); avail = all.length;
     }
+    /* the groups' counts on this tab (LIVE's are the ones just read; SHOW MORE keeps the last read's) */
+    const groups = tab === 'live' ? gLive
+      : (quick && lastData && lastData.mode === tab && lastData.groups) || await groupCounts(G0, sc.shown, tab, now);
     /* on LIVE every live game's state, not only the shown ones': the dashboard of leagues (below) holds them all */
     const liveIds = (tab === 'live' ? lives : rows).filter(g => g.status === 'live').map(g => g.id);
     const state = liveIds.length ? await G.liveState(liveIds) : {};
-    return { rows, all: tab === 'live' ? lives : null, state, now, mode: tab, fell: tabPick.fell, live: lives.length, avail, limit: limit[tab], picked: !!pick };
+    return { rows, all: tab === 'live' ? lives : null, state, now, mode: tab, fell: tabPick.fell, live: liveN, avail, limit: limit[tab], picked: !!pick,
+      groups, gAny: groups.some(gr => gr.n > 0) };
+  }
+
+  /* ---------------------------------------------------------------- the groups' block ---
+     paintGroups(data): the block for the tab on screen, from what is held, changing only what changed - a node made once
+     per tab and kept (its open state with it), its count rewritten, its children put in order moving only those out of
+     place. loadGroups(tick): reads what is open and missing (or, on a tick, due again), painting as each part lands. */
+  const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const setText = (e, s) => { if (e && e.textContent !== s) e.textContent = s; };
+  const countText = (n, tab) => n + (tab === 'live' ? ' live' : tab === 'res' ? (n === 1 ? ' result' : ' results') : ' upcoming');
+  /* a box's children, in this order, moving only what is out of place (a moved element loses its scroll) */
+  function place(box, els) {
+    els.forEach((e, i) => { const at = box.children[i]; if (at !== e) box.insertBefore(e, at || null); });
+    while (box.children.length > els.length) box.removeChild(box.children[box.children.length - 1]);
+  }
+  function waitOf(nd) { return nd.wait || (nd.wait = mk('p', 'fxg-wait', 'loading…')); }
+  /* one dropdown of the block: open as the reader left it on this tab; opening one paints what is held and reads the rest */
+  function acc(cls, path, tab) {
+    const det = mk('details', 'ep-acc hmf-acc fxg-acc ' + cls);
+    if (GRP.open[tab].has(path)) det.open = true;
+    det.addEventListener('toggle', () => {
+      if (GRP.tab !== tab || det.open === GRP.open[tab].has(path)) return;   // a node of another tab's block, or nothing changed
+      if (det.open) GRP.open[tab].add(path); else GRP.open[tab].delete(path);
+      if (det.open && lastData) { paintGroups(lastData); loadGroups(false).catch(() => {}); }
+    });
+    return det;
+  }
+  /* a summary: the name (or the league badge), the count, and optionally a link out */
+  function summary(det, title, link) {
+    const sum = mk('summary');
+    const t = mk('span', 't');
+    if (title) t.appendChild(title);
+    const n = mk('span', 'hmf-n');
+    t.appendChild(n);
+    sum.appendChild(t);
+    if (link) {
+      const go = mk('a', 'hmf-go', 'league →');
+      go.href = link;
+      go.addEventListener('click', e => e.stopPropagation());       // inside a summary a click would toggle the row instead
+      sum.appendChild(go);
+    }
+    det.appendChild(sum);
+    return n;
+  }
+  function groupNode(G, gr, tab) {
+    const det = acc('fxc-lgrp fxg-grp', pathOf(gr.key), tab);
+    det.setAttribute('data-grp', gr.key);
+    /* the group's name on a league badge (the first part's logo, or its monogram), never translated */
+    const b = mk('span', 'fxg-badge');
+    badgeInto(G, b, Object.assign({}, gr.parts[0] && gr.parts[0].league, { name: gr.name }));
+    const n = summary(det, b, null);
+    const body = mk('div', 'fxg-in');
+    det.appendChild(body);
+    return { det, n, body };
+  }
+  function partNode(p, path, tab) {
+    const det = acc('fxg-part', path, tab);
+    det.setAttribute('data-part', String(p.id));
+    const nm = mk('span', 'fxg-nm', p.part);
+    nm.setAttribute('data-i18n-ctx', 'side');                     // Men / Women, worded as the rail's MEN / WOMEN
+    const n = summary(det, nm, p.league && p.league.slug ? base + '?l=' + encodeURIComponent(p.league.slug) : null);
+    const body = mk('div', 'fxg-in');
+    det.appendChild(body);
+    return { det, n, body };
+  }
+  function confNode(c, path, tab) {
+    const det = acc('fxg-conf', path, tab);
+    det.setAttribute('data-conf', c.conf || 'none');
+    const nm = mk('span', 'fxg-nm', c.conf || 'Non-conference');
+    if (c.conf) nm.setAttribute('translate', 'no');                // a conference's name is a name
+    const n = summary(det, nm, null);
+    const body = mk('div', 'fxg-games');
+    det.appendChild(body);
+    return { det, n, body };
+  }
+  const tabOrder = tab => (tab === 'res' ? (a, b) => Date.parse(b.tipoff_at) - Date.parse(a.tipoff_at) : (a, b) => Date.parse(a.tipoff_at) - Date.parse(b.tipoff_at));
+  function paintCards(G, nd, p, c, tab) {
+    const full = GRP.full.get(pathOf(tab, p.id, c.conf));
+    if (!full) { place(nd.body, [waitOf(nd)]); nd.print = null; return; }
+    const ids = new Set(c.games.map(g => String(g.id)));
+    const rows = full.rows.filter(g => ids.has(String(g.id))).sort((a, b) => tabOrder(tab)(a, b) || (String(a.id) < String(b.id) ? -1 : 1));
+    const print = printOf(rows, full.state);
+    if (!nd.rail) { nd.rail = mk('div', 'fxc-rail'); nd.rail.setAttribute('role', 'list'); }
+    if (nd.print !== print) {
+      nd.print = print;
+      const left = nd.rail.scrollLeft;
+      nd.rail.textContent = '';
+      rows.forEach(g => {
+        const card = G.card(g, { base, now: Date.now(), state: full.state[g.id], badge: false });
+        card.setAttribute('role', 'listitem');
+        nd.rail.appendChild(card);
+      });
+      if (left) nd.rail.scrollLeft = left;
+    }
+    place(nd.body, [nd.rail]);
+  }
+  function paintConfs(G, nd, gr, p, tab) {
+    const lite = GRP.lite.get(pathOf(tab, p.id));
+    if (!lite) { place(nd.body, [waitOf(nd)]); return; }
+    place(nd.body, lite.confs.map(c => {
+      const path = pathOf(gr.key, p.id, c.conf);
+      let cn = GRP.nodes.get(path);
+      if (!cn) { cn = confNode(c, path, tab); GRP.nodes.set(path, cn); }
+      setText(cn.n, countText(c.n, tab));
+      if (cn.det.open) paintCards(G, cn, p, c, tab);
+      return cn.det;
+    }));
+  }
+  function paintGroups(data) {
+    const G = window.EpinoiaGlobalGames;
+    const list = ((data && data.groups) || []).filter(gr => gr.n > 0);
+    const parent = host && host.parentNode;
+    if (!list.length || !parent || !G) {
+      if (GRP.el && GRP.el.parentNode) GRP.el.parentNode.removeChild(GRP.el);
+      return;
+    }
+    const tab = data.mode;
+    if (GRP.tab !== tab || !GRP.el) {
+      /* another tab: its own block, opened as the reader left it there */
+      if (GRP.el && GRP.el.parentNode) GRP.el.parentNode.removeChild(GRP.el);
+      GRP.el = mk('div', 'fxg');
+      GRP.el.id = 'fxGroups';
+      GRP.tab = tab;
+      GRP.nodes = new Map();
+    }
+    if (GRP.el.parentNode !== parent) parent.insertBefore(GRP.el, host.nextSibling || null);
+    place(GRP.el, list.map(gr => {
+      let nd = GRP.nodes.get(pathOf(gr.key));
+      if (!nd) { nd = groupNode(G, gr, tab); GRP.nodes.set(pathOf(gr.key), nd); }
+      setText(nd.n, countText(gr.n, tab));
+      if (nd.det.open) {
+        place(nd.body, gr.parts.filter(p => p.n > 0).map(p => {
+          const path = pathOf(gr.key, p.id);
+          let pn = GRP.nodes.get(path);
+          if (!pn) { pn = partNode(p, path, tab); GRP.nodes.set(path, pn); }
+          setText(pn.n, countText(p.n, tab));
+          if (pn.det.open) paintConfs(G, pn, gr, p, tab);
+          return pn.det;
+        }));
+      }
+      return nd.det;
+    }));
+  }
+
+  /* one read of a thing at a time: a second asker (a tick while an opening reads) shares the first's */
+  function once(k, fn) {
+    if (GRP.flight.has(k)) return GRP.flight.get(k);
+    const p = Promise.resolve().then(fn);
+    const done = () => { if (GRP.flight.get(k) === p) GRP.flight.delete(k); };
+    p.then(done, done);
+    GRP.flight.set(k, p);
+    return p;
+  }
+  const repaint = tab => { if (lastData && lastData.mode === tab) paintGroups(lastData); };
+  async function loadConf(G, tab, p, c, tick) {
+    const k = pathOf(tab, p.id, c.conf);
+    const ids = c.games.map(g => String(g.id)).sort();
+    const held = GRP.full.get(k);
+    if (held && held.ids === ids.join(',') && !(tick && tab === 'live')) return;
+    await once('f' + k, async () => {
+      const rows = await G.gamesByIds(ids);
+      const liveIds = rows.filter(g => g.status === 'live').map(g => g.id);
+      const state = liveIds.length ? await G.liveState(liveIds) : {};
+      GRP.full.set(k, { ids: ids.join(','), rows, state });
+    }).catch(() => { /* the next tick asks again */ });
+    repaint(tab);
+  }
+  async function loadPart(G, tab, gr, p, tick) {
+    const k = pathOf(tab, p.id);
+    const held = GRP.lite.get(k), now = Date.now();
+    if (!held || (tick && (tab === 'live' || now - held.at >= LITE_MS))) {
+      await once('l' + k, async () => {
+        const rows = await G.groupGames([p.id], tab, now);
+        const confs = await G.conferences(rows.map(g => g.competition_id));
+        GRP.lite.set(k, { at: now, confs: G.byConference(rows, confs) });
+      }).catch(() => { /* the next tick asks again */ });
+      repaint(tab);
+    }
+    const lite = GRP.lite.get(k);
+    if (!lite) return;
+    await Promise.all(lite.confs.filter(c => GRP.open[tab].has(pathOf(gr.key, p.id, c.conf))).map(c => loadConf(G, tab, p, c, tick)));
+  }
+  async function loadGroups(tick) {
+    const G = window.EpinoiaGlobalGames, data = lastData;
+    if (!G || !data || !data.groups || !data.groups.length || typeof G.groupGames !== 'function') return;
+    const tab = data.mode, open = GRP.open[tab], jobs = [];
+    data.groups.forEach(gr => {
+      if (!(gr.n > 0) || !open.has(pathOf(gr.key))) return;
+      gr.parts.forEach(p => { if (p.n > 0 && open.has(pathOf(gr.key, p.id))) jobs.push(loadPart(G, tab, gr, p, tick)); });
+    });
+    await Promise.all(jobs);
   }
 
   /* the clock is in the key too, so a stopped clock that moved (a timeout ended, a new quarter) redraws the card */
@@ -209,7 +479,7 @@
   function keyOf(data) {
     if (isDash(data)) return 'dash>' + dash.open + '>' + dash.shown + '>' + (fellNote ? '!' : '') + '>' + printOf(data.all, data.state);
     return data.mode + '>' + (data.limit === Infinity ? 'all' : data.limit) + '>' + (data.avail > data.rows.length ? '+' : '') +
-      (fellNote ? '!' : '') + '>' + printOf(data.rows, data.state);
+      (fellNote ? '!' : '') + (data.gAny ? '>g' : '') + '>' + printOf(data.rows, data.state);
   }
 
   /* ----------------------------------------------------------- the tabs ---
@@ -273,7 +543,13 @@
       : 'No games in the next few days. The full list is on the fixtures page.';
   }
 
+  /* the tab's own list, then the groups' block after it (THE GROUPS: painted on every draw, changed only where it changed) */
   function draw(data, first, opts) {
+    drawList(data, first, opts);
+    paintGroups(data);
+  }
+
+  function drawList(data, first, opts) {
     const G = window.EpinoiaGlobalGames;
     const o = opts || {};
     lastData = data;
@@ -284,6 +560,8 @@
     if (!data.rows.length) {
       host.textContent = '';
       if (fellNote) host.appendChild(note());
+      /* nothing in the tab's own list but a group's block under it: the block is what there is, not "nothing" */
+      if (data.gAny) return;
       const d = document.createElement('div');
       d.className = 'empty';
       d.textContent = data.picked ? 'No ' + (data.mode === 'res' ? 'results' : data.mode === 'live' ? 'live games' : 'games to come') + ' for the leagues you picked.' : emptyText(data.mode);
@@ -722,7 +1000,7 @@
     const cur = mode;
     try {
       const d = await read(cur);
-      if (mode === cur) { applyTab(d); draw(d, false); }
+      if (mode === cur) { applyTab(d); draw(d, false); loadGroups(true).catch(() => {}); }
     }
     catch (e) { /* a blip keeps what is on screen; the next tick tries again */ }
     finally { busy = false; schedule(); }
@@ -755,7 +1033,7 @@
     host.querySelectorAll('button[data-act]').forEach(b => { b.disabled = true; });
     try {
       const d = await read(fx);
-      if (mode === fx) { applyTab(d); lastKey = null; draw(d, true); }
+      if (mode === fx) { applyTab(d); lastKey = null; draw(d, true); loadGroups(false).catch(() => {}); }
     }
     catch (_) { /* what is on screen stays; the next tick tries again */ }
     finally { host.removeAttribute('aria-busy'); schedule(); }
@@ -765,14 +1043,16 @@
     const LP = window.EpinoiaLeaguePick;
     if (!LP || !seg || !host || !host.parentNode) return;
     LP.mount({ id: 'fxPick', key: PICK_KEY, btnAfter: seg, barBefore: host, base: '../',
-      onChange: ids => {
+      onChange: (ids, how) => {
         pick = ids;
+        /* the leagues ticked by name (leaguepick.js passes its choice): a grouped one of those is read into the list */
+        pickLg = new Set(ids && how && how.sel && Array.isArray(how.sel.lg) ? how.sel.lg.map(String) : []);
         lastKey = null;
         clearTimeout(timer);
         host.setAttribute('aria-busy', 'true');
         /* a tab picked, or another box ticked, while this read runs wins: its answer is dropped */
         const cur = mode, seq = ++pickSeq;
-        read(cur).then(d => { if (mode === cur && seq === pickSeq) { applyTab(d); draw(d, true); } }).catch(() => {}).finally(() => { if (seq === pickSeq) { host.removeAttribute('aria-busy'); schedule(); } });
+        read(cur).then(d => { if (mode === cur && seq === pickSeq) { applyTab(d); draw(d, true); loadGroups(false).catch(() => {}); } }).catch(() => {}).finally(() => { if (seq === pickSeq) { host.removeAttribute('aria-busy'); schedule(); } });
       } });
   }
 

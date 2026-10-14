@@ -9,7 +9,10 @@
        id          the bar's id (aria-controls)
        key         where the choice is kept for the visit (sessionStorage): { sel, ids }
        leagues     optional async () -> the leagues to offer (default: globalgames.js leagues(), every public league)
-       onChange    (Set of league ids | null) -> void, after every tick
+       onChange    (Set of league ids | null, { sel }) -> void, after every tick; `sel` is what is ticked in each
+                   dropdown ({ cont, cty, lg }), so a section can tell a league ticked by name (sel.lg) from one picked
+                   through its country or continent (HOME's fixtures: a grouped league, NCAA D2, joins the list only
+                   when ticked by name)
      }) -> { ids() }
 
    What a choice means: the leagues ticked; else every league of the countries ticked; else of the continents; else all
@@ -94,7 +97,9 @@
       pick = any ? new Set(ids.length ? ids : ['none']) : null;
       try { sessionStorage.setItem(o.key, JSON.stringify({ sel, ids: pick ? [...pick] : [] })); } catch (_) { /* private mode */ }
       label();
-      if (typeof o.onChange === 'function') { try { o.onChange(pick); } catch (e) { console.warn('[leaguepick]', e); } }
+      if (typeof o.onChange === 'function') {
+        try { o.onChange(pick, { sel: { cont: sel.cont.slice(), cty: sel.cty.slice(), lg: sel.lg.slice() } }); } catch (e) { console.warn('[leaguepick]', e); }
+      }
     }
     clear.addEventListener('click', () => { sel = { cont: [], cty: [], lg: [] }; if (groups) paint(); apply(); });
     btn.addEventListener('click', async () => {

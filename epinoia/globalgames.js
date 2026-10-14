@@ -113,22 +113,51 @@ function leagues() {
   return leaguesP.then(r => r.slice());
 }
 
-/* Every live game. Rarely more than a handful anywhere on the platform. */
-function live() {
+/* WHOSE GAMES A READ TAKES: opts { only, exclude }, each a list of league ids, on the inner-embedded season's league
+   (SEL joins it with !inner, as defaultFetch filters it). `exclude` leaves those leagues out - HOME's fixtures never
+   read a grouped league's games (NCAA D2, below), so its hundred live games cannot fill the forty-row live window or
+   the results; `only` reads those leagues alone (the reader's CHECK VIA LEAGUE pick). Anything that is not a league
+   id is left out of the address, and no option is the read every other caller has always made. */
+const idList = v => (Array.isArray(v) ? v : v == null ? [] : [v]).map(String).filter(x => UUID.test(x));
+function scopeQuery(o) {
+  const only = idList(o && o.only), ex = idList(o && o.exclude);
+  return (only.length === 1 ? '&competitions.seasons.league_id=eq.' + only[0]
+    : only.length ? '&competitions.seasons.league_id=in.(' + only.join(',') + ')' : '') +
+    (ex.length ? '&competitions.seasons.league_id=not.in.(' + ex.join(',') + ')' : '');
+}
+
+/* Every live game. Rarely more than a handful anywhere on the platform - apart from a grouped league's (opts.exclude). */
+function live(opts) {
   return request('games?select=' + SEL + '&status=eq.live&tipoff_at=gte.' + encodeURIComponent(iso(Date.now() - LIVE_CAP_MS)) +
-    '&order=tipoff_at.asc,id.asc&limit=40', false);
+    scopeQuery(opts) + '&order=tipoff_at.asc,id.asc&limit=40', false);
 }
 
 /* Scheduled games from fromISO onwards, soonest first. */
-function upcoming(fromISO, limit, offset) {
-  return request('games?select=' + SEL + '&status=eq.scheduled&tipoff_at=gte.' + encodeURIComponent(fromISO) +
+function upcoming(fromISO, limit, offset, opts) {
+  return request('games?select=' + SEL + '&status=eq.scheduled&tipoff_at=gte.' + encodeURIComponent(fromISO) + scopeQuery(opts) +
     '&order=tipoff_at.asc,id.asc&limit=' + (limit || 40) + (offset ? '&offset=' + offset : ''), false);
 }
 
 /* Results before beforeISO, newest first. */
-function recent(beforeISO, offset, limit) {
-  return request('games?select=' + SEL + '&status=eq.final&tipoff_at=lt.' + encodeURIComponent(beforeISO) +
+function recent(beforeISO, offset, limit, opts) {
+  return request('games?select=' + SEL + '&status=eq.final&tipoff_at=lt.' + encodeURIComponent(beforeISO) + scopeQuery(opts) +
     '&order=tipoff_at.desc,id.desc&limit=' + (limit || 30) + (offset ? '&offset=' + offset : ''), false);
+}
+
+/* THE SAME API, ITS EVERYDAY READS SCOPED: scoped({ only, exclude }) -> an object like this module whose live(),
+   upcoming() and recent() read with those options (a caller's own options add to them) and whose every other member
+   is the module's own. HOME's fixtures read through it, so their calls read exactly as they always have. No option at
+   all is the module itself. */
+function scoped(o) {
+  const s = { only: idList(o && o.only), exclude: idList(o && o.exclude) };
+  if (!s.only.length && !s.exclude.length) return api;
+  const w = x => ({ only: idList(x && x.only).length ? x.only : s.only, exclude: s.exclude.concat(idList(x && x.exclude)) });
+  return Object.assign({}, api, {
+    live: x => live(w(x)),
+    upcoming: (fromISO, limit, offset, x) => upcoming(fromISO, limit, offset, w(x)),
+    recent: (beforeISO, offset, limit, x) => recent(beforeISO, offset, limit, w(x)),
+    scope: s
+  });
 }
 
 /* EVERY LEAGUE'S NEXT GAME, IN TWO READS. It was one query per league — 26 on
@@ -224,6 +253,177 @@ async function liveState(ids) {
     rows.forEach(r => { out[r.game_id] = r; });
     return out;
   } catch (_) { return {}; }
+}
+
+/* ============================================== LEAGUES SHOWN AS ONE GROUP ===
+   NCAA DIVISION II (2026-10-14) is ~300 schools in ~23 conferences a side and up to 140 games a night each. Listed like
+   any other league it would be the whole of HOME. config.js EPINOIA_LEAGUE_GROUPS names the leagues shown as ONE GROUP
+   instead (epinoiaLeagueGroup(league) -> { key, name, part }), drawn as one closed block - its parts (Men, Women) in it,
+   their conferences in those, the games in those - and read only as far as a reader opens it:
+     * the everyday reads leave the group's leagues out (live / upcoming / recent { exclude }, or scoped());
+     * the closed block is a COUNT per part and tab (groupCount: one row, counted);
+     * an opened part reads its games LITE (groupGames: ids, clubs and tip-offs - no names, no crests) and its clubs'
+       conferences (conferences: competition_teams.group_name, kept for the session);
+     * an opened conference reads its own games in full, by id (gamesByIds), for the cards.
+   Nothing here names a league: another group (D3) is a line in config.js. */
+
+/* groups() -> [{ key, name, parts: [{ part, id, league }], ids }]: every group with a league this reader can see, in
+   config.js's order (its parts too: Men before Women). A page without config.js's groups has none, and reads nothing. */
+let groupsP = null;
+function groups() {
+  const of = root.epinoiaLeagueGroup;
+  if (typeof of !== 'function') return Promise.resolve([]);
+  if (!groupsP) groupsP = leagues().then(ls => groupLeagues(ls, of)).catch(e => { groupsP = null; throw e; });
+  return groupsP.then(gs => gs.map(g => Object.assign({}, g, { parts: g.parts.slice(), ids: g.ids.slice() })));
+}
+/* the pure half of groups(): the leagues as their groups, by `of` (default config.js epinoiaLeagueGroup) */
+function groupLeagues(ls, of) {
+  const fn = typeof of === 'function' ? of : root.epinoiaLeagueGroup;
+  if (typeof fn !== 'function') return [];
+  const order = Object.keys(root.EPINOIA_LEAGUE_GROUPS || {});
+  const rank = l => { const i = order.indexOf(String((l && l.slug) || '')); return i < 0 ? order.length : i; };
+  const by = new Map();
+  (ls || []).forEach(l => {
+    const g = l && l.id != null ? fn(l) : null;
+    if (!g || !g.key) return;
+    if (!by.has(g.key)) by.set(g.key, { key: g.key, name: g.name || g.key, parts: [] });
+    by.get(g.key).parts.push({ part: g.part || l.name || '', id: l.id, league: l });
+  });
+  return Array.from(by.values()).map(g => {
+    g.parts.sort((a, b) => rank(a.league) - rank(b.league) || String(a.part).localeCompare(String(b.part)));
+    g.ids = g.parts.map(p => p.id);
+    return g;
+  }).sort((a, b) => rank(a.parts[0].league) - rank(b.parts[0].league) || a.name.localeCompare(b.name));
+}
+
+/* WHICH OF A GROUP'S GAMES EACH OF HOME'S TABS HOLDS. HOME's own lists are pages of forty - the next forty fixtures,
+   the newest forty finals - and cover however long forty games take, minutes on a busy night. A group's block cannot
+   be "the same forty", so it is a window of time:
+     live  every live game, as the live read takes them (tipped off in the last eight hours);
+     up    scheduled from two hours ago (a game tipping off late is still tonight's, as the tab has it) to 24 hours on:
+           the coming day's games, whatever the reader's time zone;
+     res   finals that tipped off in the last 36 hours: an American night's games are still last night's through the
+           next European evening, and the block never holds more than about two nights. */
+const GROUP_UP_MS = 24 * HOUR, GROUP_RES_MS = 36 * HOUR;
+function groupWindow(tab, now) {
+  const at = ms(now == null ? Date.now() : now);
+  if (tab === 'live') return { status: 'live', from: at - LIVE_CAP_MS, to: null };
+  if (tab === 'res') return { status: 'final', from: at - GROUP_RES_MS, to: at };
+  return { status: 'scheduled', from: at - STALE_MS, to: at + GROUP_UP_MS };
+}
+function groupFilter(ids, tab, now) {
+  const w = groupWindow(tab, now);
+  return scopeQuery({ only: ids }) + '&status=eq.' + w.status + '&tipoff_at=gte.' + encodeURIComponent(iso(w.from)) +
+    (w.to != null ? '&tipoff_at=lt.' + encodeURIComponent(iso(w.to)) : '');
+}
+
+/* groupCount(leagueIds, tab, now) -> how many of those leagues' games the tab's window holds: one counted read of one
+   row (Content-Range), never the games */
+async function groupCount(ids, tab, now) {
+  if (!idList(ids).length) return 0;
+  const r = await request('games?select=id,competitions!inner(seasons!inner(league_id))' + groupFilter(ids, tab, now) + '&limit=1', true);
+  return r.total != null ? r.total : r.rows.length;
+}
+
+/* groupGames(leagueIds, tab, now) -> the window's games, LITE: [{ id, competition_id, home_team_id, away_team_id,
+   tipoff_at, status, league_id }], soonest first, paged past PostgREST's thousand */
+const LITE = 'id,competition_id,home_team_id,away_team_id,tipoff_at,status,competitions!inner(seasons!inner(league_id))';
+async function groupGames(ids, tab, now) {
+  if (!idList(ids).length) return [];
+  const rows = [];
+  for (let page = 0; page < 5; page++) {
+    const part = await request('games?select=' + LITE + groupFilter(ids, tab, now) +
+      '&order=tipoff_at.asc,id.asc&limit=1000' + (page ? '&offset=' + page * 1000 : ''), false);
+    rows.push(...part);
+    if (part.length < 1000) break;
+  }
+  return rows.map(g => {
+    const c = one(g.competitions), s = one(c && c.seasons);
+    return { id: g.id, competition_id: g.competition_id, home_team_id: g.home_team_id, away_team_id: g.away_team_id,
+      tipoff_at: g.tipoff_at, status: g.status, league_id: s ? s.league_id : null };
+  });
+}
+
+/* conferences(competitionIds) -> Map(competition id -> Map(team id -> conference)): each club's group_name in that
+   competition (competition_teams, public, the feed's own conference). Read once a session per competition: held by the
+   page, and in sessionStorage for twelve hours so the next page of the visit has it too; one read for every competition
+   not held, in pages of a thousand (~350 clubs a side). */
+const SAFE_ID = /^[\w-]{1,64}$/;
+const CONF_KEY = 'epinoia_conf:', CONF_MS = 12 * HOUR;
+const confHeld = new Map();
+function confStored(id) {
+  try {
+    const v = JSON.parse(root.sessionStorage.getItem(CONF_KEY + id) || 'null');
+    if (v && Array.isArray(v.rows) && Date.now() - v.at < CONF_MS) return new Map(v.rows);
+  } catch (_) { /* private mode, or none kept */ }
+  return null;
+}
+function confStore(id, m) {
+  try { root.sessionStorage.setItem(CONF_KEY + id, JSON.stringify({ at: Date.now(), rows: Array.from(m.entries()) })); }
+  catch (_) { /* private mode, or full: the page's copy serves */ }
+}
+async function readConferences(ids) {
+  const out = new Map(ids.map(id => [id, new Map()]));
+  for (let page = 0; page < 10; page++) {
+    const part = await request('competition_teams?select=competition_id,team_id,group_name&competition_id=in.(' + ids.join(',') + ')' +
+      '&order=competition_id.asc,team_id.asc&limit=1000' + (page ? '&offset=' + page * 1000 : ''), false);
+    part.forEach(r => {
+      const g = r && r.group_name != null ? String(r.group_name).trim() : '';
+      if (g && out.has(String(r.competition_id))) out.get(String(r.competition_id)).set(String(r.team_id), g);
+    });
+    if (part.length < 1000) break;
+  }
+  ids.forEach(id => confStore(id, out.get(id)));
+  return out;
+}
+function conferences(compIds) {
+  const want = Array.from(new Set((compIds || []).map(v => (v == null ? '' : String(v))).filter(x => SAFE_ID.test(x))));
+  const fresh = want.filter(id => {
+    if (confHeld.has(id)) return false;
+    const kept = confStored(id);
+    if (kept) { confHeld.set(id, Promise.resolve(kept)); return false; }
+    return true;
+  });
+  if (fresh.length) {
+    const read = readConferences(fresh);
+    fresh.forEach(id => {
+      const p = read.then(m => m.get(id) || new Map());
+      confHeld.set(id, p);
+      p.catch(() => { if (confHeld.get(id) === p) confHeld.delete(id); });
+    });
+  }
+  return Promise.all(want.map(id => confHeld.get(id).then(m => [id, m]))).then(e => new Map(e));
+}
+
+/* A GAME'S CONFERENCE: the one both clubs play in (their group_name in the game's own competition); two conferences,
+   or a club with none (an opponent from outside the division), is '' - a non-conference game */
+function conferenceOf(g, confs) {
+  const m = g && confs instanceof Map ? confs.get(String(g.competition_id)) : null;
+  const h = m && m.get(String(g.home_team_id != null ? g.home_team_id : g.home && g.home.id));
+  const a = m && m.get(String(g.away_team_id != null ? g.away_team_id : g.away && g.away.id));
+  return h && a && h === a ? h : '';
+}
+/* the games by conference: [{ conf, games, n }], most games first, then by name; the non-conference games ('') last,
+   whatever their number - they are not a conference */
+function byConference(rows, confs) {
+  const by = new Map();
+  dedupe(rows).forEach(g => {
+    const c = conferenceOf(g, confs);
+    if (!by.has(c)) by.set(c, { conf: c, games: [] });
+    by.get(c).games.push(g);
+  });
+  return Array.from(by.values()).map(x => Object.assign(x, { n: x.games.length }))
+    .sort((a, b) => (a.conf === '') - (b.conf === '') || b.n - a.n || a.conf.localeCompare(b.conf));
+}
+
+/* gamesByIds(ids) -> those games in full (SEL), for an opened conference's cards; eighty to an address */
+async function gamesByIds(ids) {
+  const want = Array.from(new Set((ids || []).map(v => (v == null ? '' : String(v))).filter(x => SAFE_ID.test(x))));
+  const rows = [];
+  for (let i = 0; i < want.length; i += 80) {
+    rows.push(...await request('games?select=' + SEL + '&id=in.(' + want.slice(i, i + 80).join(',') + ')', false));
+  }
+  return rows;
 }
 
 /* ======================================================= pure: choosing === */
@@ -971,10 +1171,13 @@ function liveLine(g, opts) {
   return line;
 }
 
-return {
+const api = {
   SEL, STALE_MS, LIVE_CAP_MS, overdue, LEAGUE_WINDOW_MS, liveLine, badge,
   leagues, live, upcoming, recent, nextFor, nextAll, liveState, leagueOf, request,
   pickDaily, pickLive, pickUpcoming, pickResults, dailyTab, moreStep, followSets, isFollowed, mergeNearest, groupOrder, nearer, feed, sideFeed, dedupe, weekLeagues, leagueCounts,
-  card, wireBadges, dayLabel, timeLabel, clockText, tickClocks, esc
+  card, wireBadges, dayLabel, timeLabel, clockText, tickClocks, esc,
+  /* leagues shown as one group (NCAA D2) */
+  scoped, scopeQuery, groups, groupLeagues, groupWindow, groupCount, groupGames, conferences, conferenceOf, byConference, gamesByIds
 };
+return api;
 }));
