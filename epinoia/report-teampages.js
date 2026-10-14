@@ -766,6 +766,110 @@ function modules(ctx) {
     }
   };
 
+  /* ---------------- SYNERGY ---------------- */
+  /* THE SQUAD'S SYNERGY FILES, A PAGE OF THEIR OWN (Louie, 2026-10-14: "a card for each player with visible bar charts for left
+     vs. right eFG% and TO%, then shot distribution for left vs. right and what they shoot at each distance ... like the modern
+     box score bars", then every player "ranked by screen defense eFG% in a card ... called 'potential targets', also face-up D";
+     "as instantly digestible and attractive/colourful as possible"). Only where at least one player of the squad has a file.
+     Each card: left in teal, right in orange, mirrored about the middle; the duel bars (eFG%, TO%, points a possession) grow
+     out from the centre, the better side starred, each figure tinted good or bad against a typical mark; the shot rows are the
+     modern box score's (game/modern.js shotsHTML): a bar's LENGTH is the attempts on one scale for the card, its solid part the
+     makes, FG% and made-attempted at its end (tinted against the zone's break-even), the zone and each side's share of the
+     shots in the middle. */
+  const SYN_L = '#0b8ea6', SYN_R = '#ee6a2c';
+  const SYN_TYP = { efg: 50, to: 14, ppp: 0.95, screen: 52.5 };     // typical marks a figure is tinted against
+  const synergy = {
+    key: 'synergy', title: 'Synergy', page: 'SYNERGY', on: true,
+    async build(c, R) {
+      const T = await season();
+      if (!T || !T.S || !E.synergyOf) return [];
+      const squad = T.S.players.filter(r => r.teamId === T.mine.id && +r.gp > 0)
+        .sort((a, b) => (+b.mpg || 0) * (+b.gp || 0) - (+a.mpg || 0) * (+a.gp || 0));
+      const syn = await E.synergyOf(squad.map(r => r.id)).catch(() => new Map());
+      const withFile = squad.map(r => ({ r, p: syn.get(String(r.id)) })).filter(x => x.p);
+      if (!withFile.length) return [];
+      const meta = await ctx.meta(withFile.map(x => x.r.id)).catch(() => ({}));
+      const nm = x => (meta[x.r.id] && meta[x.r.id].name) || x.r.name || x.p.name || 'Player';
+      const jer = x => (meta[x.r.id] && meta[x.r.id].jersey) || '';
+      const SC = root.EpinoiaShotChart, AN = (SC && SC.ANCHOR) || { paint: 58, mid: 40, three: 35 };
+      const BE = { rim: AN.paint, mid: AN.mid, three: AN.three };
+      /* good / bad against a mark, in four steps: deep green, green, amber, red */
+      const tone = (v, mark, step, low) => { if (!E.isNum(v)) return 'n'; const d = (low ? mark - v : v - mark) / step; return d >= 1 ? 'g2' : d >= 0 ? 'g1' : d >= -1 ? 'b1' : 'b2'; };
+      /* A DUEL: one stat, left against right, each half growing out from the middle */
+      const duel = (label, l, r, max, o) => {
+        if (!E.isNum(l) && !E.isNum(r)) return '';
+        const w = v => (E.isNum(v) ? Math.max(2, Math.min(100, 100 * v / max)) : 0).toFixed(1);
+        const better = E.isNum(l) && E.isNum(r) && l !== r ? ((o.low ? l < r : l > r) ? 'l' : 'r') : '';
+        const fig = (v, side) => '<b class="sy-v ' + tone(v, o.mark, o.step, o.low) + (better === side ? ' best' : '') + '">' + (better === side ? '★ ' : '') + (E.isNum(v) ? o.fmt(v) : '—') + '</b>';
+        return '<div class="sy-duel">' + fig(l, 'l') + '<div class="sy-half l"><i style="width:' + w(l) + '%"></i></div>' +
+          '<span class="sy-dk">' + esc(label) + '</span><div class="sy-half r"><i style="width:' + w(r) + '%"></i></div>' + fig(r, 'r') + '</div>';
+      };
+      /* THE SHOT ROWS, the modern box score's way */
+      const shotRows = (L, Rr) => {
+        const Z = [['rim', 'at the rim'], ['mid', 'pull-up 2'], ['three', 'pull-up 3']];
+        const max = Math.max(1, ...Z.flatMap(([k]) => [L.shots[k].a, Rr.shots[k].a]));
+        const fig = (o, k, side) => { const p = o.a ? 100 * o.m / o.a : null; return '<span class="sy-sv ' + side + ' ' + (o.a >= 3 ? tone(p, BE[k], 6) : 'n') + '"><b>' + (p == null ? '–' : Math.round(p) + '%') + '</b><i>' + o.m + '-' + o.a + '</i></span>'; };
+        const bar = (o, side) => '<div class="sy-sbar ' + side + '"><div class="sy-str" style="width:' + (100 * o.a / max).toFixed(1) + '%"><i style="width:' + (o.a ? 100 * o.m / o.a : 0).toFixed(1) + '%"></i></div></div>';
+        const sh = (ln, k) => (ln.att ? Math.round(100 * ln.shots[k].a / ln.att) + '%' : '–');
+        return Z.map(([k, lab]) => '<div class="sy-srow">' + fig(L.shots[k], k, 'l') + bar(L.shots[k], 'l') +
+          '<div class="sy-smid"><b>' + lab + '</b><span><em class="l">' + sh(L, k) + '</em> of shots <em class="r">' + sh(Rr, k) + '</em></span></div>' +
+          bar(Rr.shots[k], 'r') + fig(Rr.shots[k], k, 'r') + '</div>').join('');
+      };
+      const pct1 = v => (+v).toFixed(1) + '%';
+      const card = x => {
+        const dv = x.p.offense && x.p.offense.drives, L = dv && dv.left, Rr = dv && dv.right;
+        const head = '<div class="sy-hd"><div class="sy-nm"><b>' + (jer(x) ? '#' + esc(jer(x)) + ' ' : '') + esc(nm(x)) + '</b><span>' + esc(E.synergySource ? E.synergySource(x.p, true) : 'Synergy') + '</span></div>';
+        if (!L || !Rr || !(L.poss + Rr.poss)) return '<div class="sy-card">' + head + '</div><p class="sy-none">No drives left or right in their file: their defence is in Potential targets.</p></div>';
+        /* the two chips: which way they go, and which way it works */
+        const lr = L.poss + Rr.poss, goR = 100 * Rr.poss / lr;
+        const way = Math.abs(goR - 50) < 5 ? '<span class="sy-chip even">⇄ both ways · ' + Math.round(100 - goR) + '/' + Math.round(goR) + '</span>'
+          : '<span class="sy-chip ' + (goR > 50 ? 'r' : 'l') + '">' + (goR > 50 ? 'goes RIGHT ' + Math.round(goR) + '% →' : '← goes LEFT ' + Math.round(100 - goR) + '%') + '</span>';
+        const dp = E.isNum(L.ppp) && E.isNum(Rr.ppp) && L.poss >= 5 && Rr.poss >= 5 ? Rr.ppp - L.ppp : null;
+        const work = dp == null ? '' : Math.abs(dp) < 0.05 ? '<span class="sy-chip even">same either way</span>'
+          : '<span class="sy-chip hot ' + (dp > 0 ? 'r' : 'l') + '">★ better ' + (dp > 0 ? 'RIGHT' : 'LEFT') + ' +' + Math.abs(dp).toFixed(2) + ' pts/poss</span>';
+        return '<div class="sy-card">' + head + '<div class="sy-chips">' + way + work + '</div></div>' +
+          '<div class="sy-sides"><span class="l">◀ LEFT <small>' + L.poss + ' poss</small></span><span class="r"><small>' + Rr.poss + ' poss</small> RIGHT ▶</span></div>' +
+          duel('eFG%', L.efg, Rr.efg, 80, { mark: SYN_TYP.efg, step: 6, fmt: pct1 }) +
+          duel('TO%', L.toPct, Rr.toPct, 35, { mark: SYN_TYP.to, step: 4, low: true, fmt: pct1 }) +
+          duel('PTS/POSS', L.ppp, Rr.ppp, 1.6, { mark: SYN_TYP.ppp, step: 0.12, fmt: v => (+v).toFixed(2) }) +
+          (L.att + Rr.att ? '<div class="sy-sh">shot distribution &amp; FG% by distance</div><div class="sy-shots">' + shotRows(L, Rr) + '</div>' : '') + '</div>';
+      };
+      const out = [];
+      const key = '<div class="sy-key"><span class="l">◀ LEFT</span><span class="r">RIGHT ▶</span>' +
+        '<span><i class="g"></i>better than typical</span><span><i class="b"></i>worse</span><span>★ the better side</span>' +
+        '<span>shot bars: length = attempts, solid = makes</span></div>';
+      for (let i = 0; i < withFile.length; i += 2) {
+        out.push(block((i === 0 ? title('Synergy: drives left v right', withFile.length + ' player' + (withFile.length === 1 ? '' : 's') + ' with a Synergy file · most minutes first') + key : '') +
+          '<div class="sy-pair">' + withFile.slice(i, i + 2).map(card).join('') + '</div>'));
+      }
+      /* POTENTIAL TARGETS: what the ball handler shot coming off a screen against each of them, lowest first; face-up D beside it */
+      const D = withFile.map(x => ({ x, s: x.p.defense && x.p.defense.screen, f: x.p.defense && x.p.defense.faceUp })).filter(d => d.s || d.f)
+        .sort((a, b) => (a.s ? a.s.efg : 999) - (b.s ? b.s.efg : 999) || (a.f ? a.f.efg : 999) - (b.f ? b.f.efg : 999));
+      if (D.length) {
+        const MAX = 80;
+        const dbar = (o, label) => {
+          if (!o || !E.isNum(o.efg)) return '<div class="sy-tb none"><span class="sy-tl">' + label + '</span><em>no data</em></div>';
+          const t = tone(o.efg, SYN_TYP.screen, 5, true), thin = o.fga < 10;
+          return '<div class="sy-tb' + (thin ? ' thin' : '') + '"><span class="sy-tl">' + label + '</span><div class="sy-tt"><i class="' + t + '" style="width:' + Math.min(100, 100 * o.efg / MAX).toFixed(1) + '%"></i>' +
+            '<u style="left:' + (100 * SYN_TYP.screen / MAX).toFixed(1) + '%"></u></div><b class="' + t + '">' + o.efg.toFixed(1) + '%</b><small>' + o.fga + ' FGA</small></div>';
+        };
+        const rows = D.map((d, i) => {
+          const worst = Math.max(d.s ? d.s.efg : 0, d.f ? d.f.efg : 0), tag = worst >= 56 ? '<span class="sy-tag hit">TARGET</span>' : (d.s && d.s.efg <= 45) || (d.f && d.f.efg <= 45) ? '<span class="sy-tag lock">STOPPER</span>' : '';
+          return '<div class="sy-trow"><span class="sy-rk">' + (i + 1) + '</span><div class="sy-tn"><b>' + esc(nm(d.x)) + '</b>' + tag + '</div>' +
+            dbar(d.s, 'SCREEN D') + dbar(d.f, 'FACE-UP D') + '</div>';
+        }).join('');
+        out.push(block(title('Potential targets', 'what their man shot at them (eFG%) · ranked by screen defence, lowest first · face-up defence beside it') +
+          '<div class="sy-targets">' + rows + '</div>' +
+          '<div class="sy-key"><span><i class="g"></i>stingy: under ' + SYN_TYP.screen + '%</span><span><i class="b"></i>leaky: over it</span><span>the line on each bar: ' + SYN_TYP.screen + '%, a typical mark</span>' +
+          '<span>faded: under 10 shots</span><span class="sy-tag hit">TARGET</span><span>56%+ on either</span><span class="sy-tag lock">STOPPER</span><span>45% or less</span></div>'));
+      }
+      R.legendExtra.push(['SYNERGY: LEFT V RIGHT', 'From each player’s Synergy file: every drive going left (teal) and right (orange), whatever the play type. eFG% is their effective field-goal percentage on those drives, TO% the share of them that ended in a turnover, PTS/POSS the points they scored a possession. Each figure is tinted against a typical mark (eFG% 50, TO% 14, 0.95 points); the star marks the better side.'],
+        ['SHOT DISTRIBUTION BY DISTANCE', 'What the drives ended in, each side: shots at the rim, pull-up twos and pull-up threes. A bar’s length is the attempts (one scale for the card), its solid part the makes; the figure at its end is FG% (tinted against the break-even: rim 58, mid-range 40, three 35) and made-attempted; the middle says what share of that side’s shots each was.'],
+        ['POTENTIAL TARGETS', 'What the player they guarded shot (eFG%) against them: SCREEN D, the ball handler coming off a screen (Synergy’s defensive pick-and-roll ball handler); FACE-UP D, every defensive isolation and every drive at them. Ranked by screen defence, lowest first. Green under 52.5%, red over it; TARGET marks 56% or more on either, STOPPER 45% or less.']);
+      return out;
+    }
+  };
+
   /* ---------------- DEPTH CHART ---------------- */
   /* the most-used fives as cards (teamviz.js), from the club's play-by-play records (lineupevents.js: the four factors at
      both ends, assisted baskets, where the shots came from), each number against the club's own over all its minutes */
@@ -1261,7 +1365,7 @@ function modules(ctx) {
     }
   };
   const legend = { key: 'legend', title: 'Legend', on: true };
-  return [cover, main, shots, players, depth, combos, clutch, week, legend];
+  return [cover, main, shots, players, synergy, depth, combos, clutch, week, legend];
 }
 
 return { modules, TEAM_STATS };
