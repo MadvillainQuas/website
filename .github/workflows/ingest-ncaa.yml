@@ -17,6 +17,15 @@ on:
   schedule:
     - cron: "*/10 15-23,0-5 * 11,12,1,2,3 *"   # US afternoons and evenings, Nov-Mar (UTC)
     - cron: "7 * * 11,12,1,2,3 *"              # the hourly floor, as ingest.yml has
+    # DISCOVERY, DAILY, OCTOBER TO MARCH (13:20 UTC, before any US tip-off). ingest.yml discovers every league
+    # twice a week, and GitHub drops scheduled runs: a season published on a Tuesday, or a Thursday run that
+    # never fired, would leave the first games unlisted - and the live lane only follows games already listed.
+    # This reads the two NCAA sources' scoreboards around today (3 days back, 14 ahead: ~36 requests), so the
+    # season is listed the day ncaa.com publishes it, and a moved tip-off or an added game is caught within a day.
+    # The first fixtures written create the leagues, their conferences and clubs. Division II has never opened
+    # before 1 November (Fri 1 Nov 2024, Sat 1 Nov 2025; later in 2023) - adapters/ncaa.py SEASON_START - so
+    # October's runs read nothing until 1 November is within the 14 days ahead (from the 18th).
+    - cron: "20 13 * 10,11,12,1,2,3 *"
   workflow_dispatch:
     inputs:
       shards:
@@ -27,9 +36,14 @@ on:
         description: "Fetch, write nothing"
         type: boolean
         default: false
+      discover:
+        description: "Run the NCAA discovery pass (fixtures) instead of the live lane"
+        type: boolean
+        default: false
 
+# discovery has a group of its own: in the live lane's, it would wait behind a pass of up to 5.5 h
 concurrency:
-  group: ncaa-live-lane
+  group: ${{ (github.event.schedule == '20 13 * 10,11,12,1,2,3 *' || github.event.inputs.discover == 'true') && 'ncaa-discovery' || 'ncaa-live-lane' }}
   cancel-in-progress: false
 
 permissions:
@@ -37,7 +51,37 @@ permissions:
   actions: write        # a pass may dispatch the next one
 
 jobs:
+  discover:
+    if: ${{ github.event.schedule == '20 13 * 10,11,12,1,2,3 *' || github.event.inputs.discover == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r scripts/requirements.txt
+      # the scoreboard query's hash is the scraper pipeline's (validation/ncaa/ncaa_adapter.py SHAS)
+      - name: Checkout scraper pipeline
+        if: ${{ vars.SCRAPER_REPO != '' }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.SCRAPER_REPO }}
+          ssh-key: ${{ secrets.SCRAPER_DEPLOY_KEY }}
+          path: scraper
+      - name: Discover NCAA fixtures
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SCRAPER_DIR: ${{ github.workspace }}/scraper
+          PYTHONPATH: ${{ github.workspace }}/scraper
+        run: |
+          codes=$(python3 -c "import json; d=json.load(open('config/ingest-sources.json')); rows=d if isinstance(d,list) else d.get('sources',[]); print(','.join(r['code'] for r in rows if r.get('adapter')=='ncaa' and r.get('enabled',True)))")
+          echo "NCAA sources: $codes"
+          python scripts/ingest/run_ingest.py --config --source "$codes" --feed-out "" \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+
   plan:
+    if: ${{ github.event.schedule != '20 13 * 10,11,12,1,2,3 *' && github.event.inputs.discover != 'true' }}
     runs-on: ubuntu-latest
     outputs:
       shards: ${{ steps.p.outputs.shards }}
