@@ -143,5 +143,41 @@ ok("...and the stamp followed Moss", sb.players["moss"]["external_ids"].get("fib
 again = plat.team_players(team, "HAL", {"15": line("Justin ", "Moss", "4", "JUSTIN TREVON", "MOSS"), "13": line("Juan", "Martinez", "9")})
 ok("a second poll of game 2 is a cache hit (no new patches)", again is g2)
 
+# ============================================================================ Leicester's Johnsons (SLB 2025-26)
+print("\n-- two Johnsons the club never had, beside two it has")
+# the records as they are on the platform (2026-10-14), half-name aliases and all: LiveStats' international first
+# name and family name were each kept as an alias, so "Johnson" stood for Trent and "Johnson Jr" for Deante
+LEI = [{"id": "trent", "first_name": "Trent Donald Macdonnell", "last_name": "Johnson", "number": "8", "team": "Leicester Riders",
+        "aliases": ["T. Johnson", "Trent Donald MacDonnell", "Johnson"]},
+       {"id": "deante", "first_name": "Deante", "last_name": "Johnson Jr", "number": "35", "team": "Leicester Riders",
+        "aliases": ["D. Johnson Jr", "Deante", "Johnson Jr"]},
+       {"id": "jordan", "first_name": "Jordan", "last_name": "Johnson", "number": "11", "team": "Manchester Basketball",
+        "aliases": ["J. Johnson", "Jordan", "Johnson"]}]
+
+
+def fl(first, last, shirt):
+    return {"firstName": first, "familyName": last, "internationalFirstName": first, "internationalFamilyName": last,
+            "scoreboardName": f"{first[:1]}. {last}", "shirtNumber": shirt}
+
+
+res = I.assign([("4", fl("Spencer", "Johnson", "20")), ("3", fl("Kedrian", "Johnson", "1")),
+                ("7", fl("Trent Donald MacDonnell", "Johnson", "8"))], LEI, "Leicester Riders")
+ok("Spencer Johnson (#20, 36 minutes some nights) is nobody on the platform yet - a new player, not 'Player #4'",
+   res["4"]["status"] == "none", res["4"])
+ok("Kedrian Johnson (#1) likewise", res["3"]["status"] == "none", res["3"])
+ok("...while Trent Johnson is still Trent", res["7"]["status"] == "match" and res["7"]["player"]["id"] == "trent", res["7"])
+ok("the feed's 'Kendrian' Johnson is nobody either", I.resolve(fl("Kendrian", "Johnson", "1"), LEI, "Leicester Riders")["status"] == "none")
+ok("a scoreboard initial alone still finds the one T. Johnson", I.resolve({"firstName": "T.", "familyName": "Johnson", "shirtNumber": "8"},
+                                                                        LEI, "Leicester Riders")["player"]["id"] == "trent")
+kev = [{"id": "kevin", "first_name": "Kevin", "last_name": "Johnson", "number": "4", "team": "Leicester Riders", "aliases": ["K. Johnson"]}]
+ok("a scoreboard's 'K. Johnson' on a Kevin does not swallow Kedrian", I.resolve(fl("Kedrian", "Johnson", "1"), kev, "Leicester Riders")["status"] != "match")
+twins = [{"id": "m1", "first_name": "Michael", "last_name": "Johnson", "number": "", "team": "Leicester Riders", "aliases": []},
+         {"id": "m2", "first_name": "Michael", "last_name": "Johnson", "number": "", "team": "Leicester Riders", "aliases": []}]
+ok("two people of one name are still never guessed between", I.resolve(fl("Michael", "Johnson", ""), twins, "Leicester Riders")["status"]
+   in ("ambiguous", "match") and I.resolve(fl("Michael", "Johnson", ""), twins, "Leicester Riders")["status"] != "none")
+import names as N  # noqa: E402
+_f, _l, al = N.person(fl("Trent Donald MacDonnell", "Johnson", "8"))
+ok("a feed's two name halves are never aliases on their own any more", "Johnson" not in al and "Trent Donald MacDonnell" not in al, al)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

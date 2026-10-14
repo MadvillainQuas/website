@@ -217,6 +217,17 @@ def team_score(a, b) -> float:
     return max(jac, 0.85 if jaro_winkler(na, nb) >= 0.94 else 0.0, 0.55 if inter else 0.0)
 
 
+def _forenames_conflict(q: "Name", c: "Name") -> bool:
+    """Two FULL first names that are not one person's: not the same, not a nickname of each other, not one
+    spelling of the other (Jaro-Winkler 0.9), not one the start of the other."""
+    a, b = q.first_tok, c.first_tok
+    if len(a) <= 1 or len(b) <= 1:
+        return False
+    if same_forename(a, b) or jaro_winkler(a, b) >= 0.9:
+        return False
+    return not (q.initial == c.initial and (b in q.first or a in c.first))
+
+
 def match_player(query: dict, candidates: list[dict], threshold: float = 0.82, margin: float = 0.06) -> dict:
     """query: {name | first,last, team, number, position}; candidate: {id, name | first_name,last_name,
     aliases, team | teams, number, position}. Returns {status, match, best, ranked}."""
@@ -225,9 +236,25 @@ def match_player(query: dict, candidates: list[dict], threshold: float = 0.82, m
     q_pos = str(query["position"]).lower()[:1] if query.get("position") else None
     ranked = []
     for c in candidates:
-        names = [c.get("name") or {"first": c.get("first_name") or c.get("first"), "last": c.get("last_name") or c.get("last")}] + list(c.get("aliases") or [])
+        # HALF A NAME IS NOT AN ALIAS. Records made from LiveStats carried their international first name and family
+        # name as aliases on their own ("Johnson" on Trent Johnson): a bare surname alias, with the club, scored 0.88
+        # against ANY Johnson there - Spencer and Kedrian Johnson tied between two Leicester players, were left
+        # unmatched, and showed as "Player #13" (SLB 2025-26). An alias that is just the record's own first or last
+        # name is skipped; its whole name is still read.
+        c_first, c_last = c.get("first_name") or c.get("first") or "", c.get("last_name") or c.get("last") or ""
+        halves = {normalize(x) for x in (c_first, c_last)} if (c_first and c_last) else set()
+        names = [c.get("name") or {"first": c_first, "last": c_last}] + [
+            a for a in (c.get("aliases") or []) if not (isinstance(a, str) and normalize(a) in halves)]
+        # A WEAK ALIAS CANNOT OVERRULE THE NAME. When the record's own first name is full and plainly someone else's
+        # (Trent, asked about Spencer), an alias that offers no first name or only an initial ("Johnson", "T.
+        # Johnson", a scoreboard's "K. Johnson" on a Kevin asked about Kedrian) is no evidence for it at all: only
+        # an alias with a full first name of its own (a nickname, a second spelling) may still speak.
+        main = parse_name(names[0])
+        conflict = _forenames_conflict(q, main)
         best = (0.0, [])
-        for n in names:
+        for i, n in enumerate(names):
+            if i and conflict and len(parse_name(n).first_tok) <= 1:
+                continue
             r = name_score(q, n)
             if r[0] > best[0]:
                 best = r

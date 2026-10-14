@@ -570,11 +570,17 @@ def person(p, prefer_latin: bool = True) -> tuple[str, str, list[str]]:
             first, last = split_display(raw)
             if raw:
                 seen.append(str(raw))
-        for k in ("name", "playerName", "displayName", "scoreboardName", "fullName",
-                  "internationalFirstName", "internationalFamilyName"):
+        for k in ("name", "playerName", "displayName", "scoreboardName", "fullName"):
             v = p.get(k)
             if isinstance(v, str) and v.strip():
                 seen.append(v.strip())
+        # THE INTERNATIONAL NAME, WHOLE. Its two halves went in as aliases of their own - "Trent Donald MacDonnell" and
+        # "Johnson" - and a bare surname alias made every Johnson on the club read as Trent: Leicester's Spencer and
+        # Kedrian Johnson matched two people equally, were left unmatched, and 37 SLB 2025-26 lines (36 minutes in
+        # some) showed as "Player #13". A half of a name is not a name.
+        i_full = f"{p.get('internationalFirstName') or ''} {p.get('internationalFamilyName') or ''}".strip()
+        if i_full:
+            seen.append(i_full)
 
     native = f"{first} {last}".strip()
     shout = _is_shouted(first) or _is_shouted(last)

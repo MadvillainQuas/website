@@ -36,7 +36,7 @@ from __future__ import annotations
 import re
 
 import names
-from matching import match_player, normalize as normalize_name
+from matching import match_player, normalize as normalize_name, parse_name, _forenames_conflict
 
 TIER_NAMES = {1: "canonical name", 2: "name + shirt", 3: "compatible name on the club",
               4: "name + shirt at another club", 5: "name score"}
@@ -153,6 +153,14 @@ def resolve(p: dict, candidates: list, club: str, stamped: str | None = None, av
         if res["status"] == "match":
             return {"status": "match", "player": res["match"], "tier": 5, "reasons": res["best"]["reasons"], "ranked": []}
         if res["status"] == "ambiguous":
+            # TOO CLOSE TO CALL ONLY BETWEEN PEOPLE WHO COULD BE HIM. A tie among candidates none of whose names is
+            # compatible with the line's (two other Johnsons, for a Spencer) is not two possible answers, it is
+            # none: the line is a new person - created where the source creates them, never "Player #13".
+            qn = parse_name({"first": q["first"], "last": q["last"]})
+            fits = [x for x in res["ranked"][:3] if x["score"] >= 0.82 and not _forenames_conflict(
+                qn, parse_name((lambda n: {"first": n["first"], "last": n["last"]})(canonical_name(x["candidate"]))))]
+            if not fits:
+                return {"status": "none", "player": None, "tier": None, "reasons": ["no compatible name"], "ranked": []}
             return {"status": "ambiguous", "player": None, "tier": 5,
                     "reasons": ["name score too close"], "ranked": [(5, x["candidate"]) for x in res["ranked"][:3]]}
         return {"status": "none", "player": None, "tier": None, "reasons": [], "ranked": []}
