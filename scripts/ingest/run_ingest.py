@@ -466,6 +466,12 @@ def expand_competition_sources(sources: list[dict]) -> list[dict]:
             if whole_client or inc:
                 print(f"   {src.get('code')}: no {season} competition published yet - skipped")
                 continue
+            # A BACKFILL NEVER FALLS THROUGH (2026-10-14): the bare page is the season being played, and BCB's asked for
+            # 2022-23 came back as this season's 182 games (backfill_audit.py) - which a backfill would have filed under
+            # 2022-23. No competition of the season asked for is "the source does not hold it".
+            if ac.get("_backfill"):
+                print(f"   {src.get('code')}: no {season} competition on this client - skipped")
+                continue
             out.append(src); continue
         # A season that is ONE competition, play-offs included (CIBACOPA), comes as two sources - the
         # regular season and the play-offs - split by phase in FibaLiveStatsAdapter.stage_games. The
@@ -2947,11 +2953,35 @@ def backfill_sources(job: dict, sources: list[dict]) -> list[dict]:
         # season_auto says the year was run_ingest's own guess (load_sources, for a calendar league). A backfill's
         # season is asked for: kept, a first_season gate (NBL1's) no longer holds it back
         ac.pop("season_auto", None)
-        out.append({**s, "adapter_config": dict(ac, season=job["season"]), "competition_id": None, "id": None})
+        out.append({**s, "adapter_config": dict(ac, season=job["season"], _backfill=True), "competition_id": None, "id": None})
     print(f"   {len(out)} source(s) pinned to {job['season']}: " + (", ".join(s.get("code") or "?" for s in out) or "none"))
     if out:
         beat(1.0, f"{len(out)} source(s) to read for {job['season']}: " + ", ".join(s.get("label") or s.get("code") or "?" for s in out), force=True)
     return out
+
+
+def season_window(season) -> tuple:
+    """The dates a season's games fall between, generously (pre-season, late finals): a calendar year to mid-January
+    after it; a split season from July to mid-August of its second year."""
+    s = str(season or "").strip()
+    if re.fullmatch(r"\d{4}", s):
+        y = int(s)
+        return datetime(y, 1, 1, tzinfo=timezone.utc), datetime(y + 1, 1, 15, tzinfo=timezone.utc)
+    y = int(s[:4])
+    return datetime(y, 7, 1, tzinfo=timezone.utc), datetime(y + 1, 8, 15, tzinfo=timezone.utc)
+
+
+def in_season(g, season) -> bool:
+    """Is a scheduled game dated inside the season? Undated is not known to be outside it."""
+    if not getattr(g, "tipoff_at", None):
+        return True
+    try:
+        t = datetime.fromisoformat(str(g.tipoff_at).replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    t = t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+    lo, hi = season_window(season)
+    return lo <= t <= hi
 
 
 def backfill_is_current(season) -> bool:
@@ -3191,6 +3221,13 @@ def main() -> int:
                     beat(100.0 * src_i / max(1, len(sources)), f"{lbl}: reading the {job['season']} schedule", force=True)
                 games = list(adapter.discover(src["schedule_url"], dict(src.get("adapter_config", {}), code=src.get("code"))))
                 if job:
+                    # ONLY THE SEASON ASKED FOR (2026-10-14): a source that ignores the season (the Champions League's
+                    # page returned this season's 96 games for 2020-21; backfill_audit.py) hands back the season being
+                    # played, and a backfill would file it under the old one. Whatever is dated outside the season goes.
+                    outside = [g for g in games if not in_season(g, job["season"])]
+                    if outside:
+                        print(f"   {len(outside)} of {len(games)} game(s) are not {job['season']}'s - left out")
+                        games = [g for g in games if in_season(g, job["season"])]
                     beat(100.0 * src_i / max(1, len(sources)), f"{lbl}: {len(games)} game(s) on the {job['season']} schedule", force=True)
                 # the groups a feed names on its own fixtures (groups.learn: NBL1's conferences),
                 # known before a single club is entered

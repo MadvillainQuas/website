@@ -33,7 +33,7 @@ import run_ingest as R  # noqa: E402
 from adapters import get_adapter  # noqa: E402
 import fiba_format  # noqa: E402
 
-SPLIT = ["2024-25", "2023-24", "2022-23", "2021-22", "2020-21"]
+SPLIT = ["2025-26", "2024-25", "2023-24", "2022-23", "2021-22", "2020-21"]
 CALENDAR = ["2025", "2024", "2023", "2022", "2021", "2020"]
 
 
