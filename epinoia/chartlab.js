@@ -144,7 +144,7 @@ const newAxes = ent => ({ x: ENT_DEFAULTS[ent === 't' ? 't' : 'p'].x, y: ENT_DEF
   xm: 'a', ym: 'a', y2: '', xl: 0, yl: 0 });
 function defaultState(ent) {
   ent = ent === 't' ? 't' : 'p';
-  return { ent, a: newAxes(ent), b: null, sz: '', co: 'c', nm: 's', qd: 1, qc: 0, tr: 0, tb: 0, cr: 1,
+  return { ent, a: newAxes(ent), b: null, sz: '', co: 'c', nm: 's', fn: 0, qd: 1, qc: 0, tr: 0, tb: 0, cr: 1,
     pin: [], hl: [], gp: null, mn: 0, ps: '', tx: {}, lb: {} };
 }
 const KEYRE = /^[A-Za-z0-9_]{1,48}$/;
@@ -182,6 +182,7 @@ function sanitizeState(raw) {
   s.nm = ['s', 'a', 'n'].indexOf(r.nm) >= 0 ? r.nm : 's';
   ['qd', 'qc', 'tr', 'tb'].forEach(k => { if (r[k] !== undefined) s[k] = r[k] ? 1 : 0; });
   s.cr = r.cr === 0 || r.cr === false ? 0 : 1;
+  s.fn = r.fn === 1 || r.fn === true ? 1 : 0;
   s.pin = uniqIds(r.pin, PIN_MAX);
   s.hl = uniqIds(r.hl, HL_MAX);
   s.gp = isNum(r.gp) ? clamp(Math.round(r.gp), 0, 999) : null;
@@ -208,7 +209,7 @@ function compactState(state) {
   const ax = (a, base) => { const c = {}; Object.keys(base).forEach(k => { if (a[k] !== base[k]) c[k] = a[k]; }); return c; };
   const ca = ax(s.a, d.a); if (Object.keys(ca).length) o.a = ca;
   if (s.b) { o.b = ax(s.b, newAxes(s.ent)); o.b.x = s.b.x; o.b.y = s.b.y; }
-  ['sz', 'co', 'nm', 'qd', 'qc', 'tr', 'tb', 'cr', 'gp', 'mn', 'ps'].forEach(k => { if (!same(s[k], d[k])) o[k] = s[k]; });
+  ['sz', 'co', 'nm', 'fn', 'qd', 'qc', 'tr', 'tb', 'cr', 'gp', 'mn', 'ps'].forEach(k => { if (!same(s[k], d[k])) o[k] = s[k]; });
   if (s.pin.length) o.pin = s.pin;
   if (s.hl.length) o.hl = s.hl;
   if (Object.keys(s.tx).length) o.tx = s.tx;
@@ -248,7 +249,7 @@ function decodeState(str) {
     if (!s || s.length > URL_MAX || s.slice(0, 2) !== '1.') return null;
     const o = JSON.parse(fromB64u(s.slice(2)));
     if (!o || typeof o !== 'object') return null;
-    return sanitizeState({ ent: o.e, a: o.a, b: o.b ? Object.assign({}, o.b) : null, sz: o.sz, co: o.co, nm: o.nm, qd: o.qd, qc: o.qc,
+    return sanitizeState({ ent: o.e, a: o.a, b: o.b ? Object.assign({}, o.b) : null, sz: o.sz, co: o.co, nm: o.nm, fn: o.fn, qd: o.qd, qc: o.qc,
       tr: o.tr, tb: o.tb, cr: o.cr, pin: o.pin, hl: o.hl, gp: o.gp, mn: o.mn, ps: o.ps, tx: o.tx, lb: o.lb });
   } catch (_) { return null; }
 }
@@ -612,25 +613,39 @@ const inkOn = fill => { const c = parseHex(fill); return c && relLum(c) > 0.42 ?
 /* ------------------------------------------------------------------ labels --- */
 const ovl = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 /* the built-in placer, the same greedy search as statpop.js placeLabels, used when that file is not on the page */
+/* opts.shrink = { measure, pad, min }: a label with its `text` that has no room whole is tried shorter, ended with an ellipsis
+   (statpop.js placeLabels does the same; the answer carries the `text` it was placed with) */
 function basicPlaceLabels(points, opts) {
   const W = opts.width, H = opts.height, gap = opts.gap == null ? 3 : opts.gap, max = opts.max == null ? Infinity : opts.max;
+  const sh = opts.shrink && typeof opts.shrink.measure === 'function' ? opts.shrink : null;
   const markers = points.map(p => ({ x: p.x - p.r, y: p.y - p.r, w: 2 * p.r, h: 2 * p.r }));
   const placed = [], out = [];
   let others = 0;
-  for (const p of points) {
-    if (!p.must && others >= max) continue;
-    let done = null;
+  const tryAt = (p, w) => {
     for (const d of [gap, gap + 10, gap + 22]) {
       const o = p.r + d;
-      const cand = [['r', p.x + o, p.y - p.h / 2], ['l', p.x - o - p.w, p.y - p.h / 2], ['t', p.x - p.w / 2, p.y - o - p.h], ['b', p.x - p.w / 2, p.y + o],
-        ['tr', p.x + o * 0.7, p.y - o * 0.7 - p.h], ['br', p.x + o * 0.7, p.y + o * 0.7], ['tl', p.x - o * 0.7 - p.w, p.y - o * 0.7 - p.h], ['bl', p.x - o * 0.7 - p.w, p.y + o * 0.7]];
+      const cand = [['r', p.x + o, p.y - p.h / 2], ['l', p.x - o - w, p.y - p.h / 2], ['t', p.x - w / 2, p.y - o - p.h], ['b', p.x - w / 2, p.y + o],
+        ['tr', p.x + o * 0.7, p.y - o * 0.7 - p.h], ['br', p.x + o * 0.7, p.y + o * 0.7], ['tl', p.x - o * 0.7 - w, p.y - o * 0.7 - p.h], ['bl', p.x - o * 0.7 - w, p.y + o * 0.7]];
       for (const [side, x, y] of cand) {
-        const box = { x, y, w: p.w, h: p.h };
-        if (x < 0 || y < 0 || x + p.w > W || y + p.h > H) continue;
+        const box = { x, y, w, h: p.h };
+        if (x < 0 || y < 0 || x + w > W || y + p.h > H) continue;
         if (placed.some(b => ovl(box, b)) || markers.some(m => ovl(box, m))) continue;
-        done = { id: p.id, box, side }; break;
+        return { id: p.id, box, side };
       }
-      if (done) break;
+    }
+    return null;
+  };
+  for (const p of points) {
+    if (!p.must && others >= max) continue;
+    let done = tryAt(p, p.w);
+    if (!done && sh && p.text && p.w > 0) {
+      const L = [...String(p.text)].length, min = sh.min || 4, pad = sh.pad == null ? 4 : sh.pad;
+      const ks = [Math.round(L * 0.8), Math.round(L * 0.66), Math.round(L * 0.5), min].filter((k, j, a) => k >= min && k < L && a.indexOf(k) === j);
+      for (const k of ks) {
+        const t = String(p.text).slice(0, k).replace(/[\s.,·-]+$/, '') + '…', w = Math.ceil(sh.measure(t) + pad);
+        done = tryAt(p, w);
+        if (done) { done.text = t; break; }
+      }
     }
     if (done) { placed.push(done.box); out.push(done); if (!p.must) others++; }
   }
@@ -652,7 +667,7 @@ function placeNames(items, opts, placer) {
     if (!it || !b) return;
     if (b.x < 0 || b.y < 0 || b.x + b.w > opts.width || b.y + b.h > opts.height) return;
     if (kept.some(k => ovl(k.box, b)) || markers.some(m => ovl(m, b))) return;
-    kept.push({ id: o.id, box: b, side: o.side, anchor: anchorFor(o.side) });
+    kept.push({ id: o.id, box: b, side: o.side, anchor: anchorFor(o.side), text: o.text || null });
   });
   return kept;
 }
@@ -802,6 +817,14 @@ function S(tag, attrs, text) {
   if (text != null) n.textContent = text;
   return n;
 }
+/* NAMES ON CHARTS: the site's one choice (statpop.js NAMES_KEY), read here and, given a value, written and announced */
+function namesPref(v) {
+  const KEY = 'epinoia_chart_names';
+  if (v === undefined) { try { return root.localStorage.getItem(KEY) === 'full'; } catch (_) { return false; } }
+  try { root.localStorage.setItem(KEY, v ? 'full' : 'short'); } catch (_) { /* private mode */ }
+  try { root.dispatchEvent(new root.CustomEvent('epinoia:chartnames', { detail: { full: !!v } })); } catch (_) { /* old browser */ }
+  return !!v;
+}
 const initialsOf = n => {
   const p = String(n || '?').trim().split(/\s+/);
   return ((p.length > 1 ? p[0].charAt(0) + p[p.length - 1].charAt(0) : p[0].slice(0, 2)) || '?').toUpperCase();
@@ -817,9 +840,12 @@ const surname = n => { const p = String(n || '').trim().split(/\s+/); return p.l
 
 /* The name a point is labelled with: the reader's own text when there is one; otherwise "L. Nelson" in the smart view,
    "Nelson" when every point is named, and a club's own name (its short code when every club is named on a narrow chart). */
-function labelText(ent, kind, names, overrides) {
+function labelText(ent, kind, names, overrides, full) {
   const o = overrides && overrides[ent.id];
   if (o) return o;
+  /* FULL NAMES (the site's chart names choice, or this chart's own): the whole name; the placer shortens one only where it
+     would overlap another */
+  if (full) return String(ent.name || '').trim();
   if (kind === 'team') { const nm = String(ent.name || ''); return nm.length <= (names === 'a' ? 12 : 18) ? nm : (ent.short && ent.short.length <= 5 ? ent.short : shortName(nm, 18)); }
   if (names === 'a') { const sn = surname(ent.name); return sn.length > 14 ? sn.slice(0, 13) + '…' : sn; }
   return shortName(ent.name, 15);
@@ -1065,7 +1091,7 @@ function buildChart(cfg) {
     const list = ordered.slice(0, cap), tooMany = ordered.length - list.length;
     const items = [];
     list.forEach(rec => {
-      const txt = labelText(rec.p.e, cfg.kind, cfg.names, cfg.labels);
+      const txt = labelText(rec.p.e, cfg.kind, cfg.names, cfg.labels, cfg.full);
       if (!txt) return;
       const w = Math.ceil(mLab(txt) + 6 * fs), h = Math.round(14.5 * fs);
       items.push({ id: rec.id, x: rec.px - x0, y: rec.py - y0, r: (rec.hi ? R : rec.r) + 1, w, h, must: pinned.has(rec.id), text: txt, rec });
@@ -1091,16 +1117,18 @@ function buildChart(cfg) {
       for (let j = 0; j < cnt; j++) items.push({ id: '~k' + ki + '-' + j, x: k.x + (j + 0.5) * k.w / cnt, y: k.y + k.h / 2, r: k.h / 2 + 1, w: 0, h: 0, must: true, text: '', keep: true });
     });
     const max = cfg.names === 'a' ? Infinity : clamp(Math.round(pw * ph / 21000), 3, 16);
-    const out = placeNames(items, { width: pw, height: ph, gap: 3, max }, cfg.placer).filter(o => o.id.charAt(0) !== '~');
+    const out = placeNames(items, { width: pw, height: ph, gap: 3, max, shrink: cfg.full ? { measure: mLab, pad: 6 * fs, min: 5 } : null }, cfg.placer)
+      .filter(o => o.id.charAt(0) !== '~');
     const byItem = new Map(items.map(i => [i.id, i]));
     const lg = S('g', { class: 'cl-labels', 'clip-path': 'url(#' + clipId + ')' }); g.appendChild(lg);
     out.forEach(o => {
       const it = byItem.get(o.id), b = o.box;
       const tx = o.anchor === 'end' ? b.x + b.w - 3 * fs : o.anchor === 'middle' ? b.x + b.w / 2 : b.x + 3 * fs;
       const t = S('text', ed({ x: num1(x0 + tx), y: num1(y0 + b.y + b.h * 0.76), 'text-anchor': o.anchor, fill: pinned.has(o.id) || hi.has(o.id) ? T.ink : T.ink2, 'font-size': 10.5 * fs,
-        'font-weight': 700, 'font-family': FONT.ui, stroke: T.ground, 'stroke-width': 3 * fs, 'stroke-linejoin': 'round', 'paint-order': 'stroke', 'data-id': o.id }, cfg.editable ? 'lb' : null), it.text);
+        'font-weight': 700, 'font-family': FONT.ui, stroke: T.ground, 'stroke-width': 3 * fs, 'stroke-linejoin': 'round', 'paint-order': 'stroke', 'data-id': o.id }, cfg.editable ? 'lb' : null), o.text || it.text);
+      if (o.text) t.appendChild(S('title', null, it.text));                 // a shortened name keeps its whole self on hover
       lg.appendChild(t);
-      labelled.push({ id: o.id, x: x0 + b.x, y: y0 + b.y, w: b.w, h: b.h, text: it.text });
+      labelled.push({ id: o.id, x: x0 + b.x, y: y0 + b.y, w: b.w, h: b.h, text: o.text || it.text });
     });
     hiddenLabels = wanted - out.length;
     if (cfg.names === 'a' && hiddenLabels > 0) g.appendChild(S('text', { x: x0, y: H - 6 * fs, fill: T.ink3, 'font-size': 9.5 * fs, 'font-family': FONT.ui, 'font-weight': 600 }, out.length + ' of ' + wanted + ' names shown · ' + hiddenLabels + ' left out where they would overlap'));
@@ -1470,6 +1498,7 @@ async function mountAsync(opts) {
   if (state.ent === 'p' && !E.player.list.length) state = defaultState('t');
   if (state.ent === 't' && !E.team.list.length) state = defaultState('p');
   state = fitState(state, catOf(state.ent), ctx);
+  if (!(initial && initial.fn != null) && namesPref()) state.fn = 1;
   let views = [{}, {}];                        // zoom, per chart: { x: [lo, hi], y: [lo, hi] }
   let charts = [];                             // computeChart results
   let pending = null;                          // a read the chosen statistics wait for
@@ -1819,6 +1848,10 @@ async function mountAsync(opts) {
     colSel.addEventListener('change', () => change(s => { s.co = colSel.value; }, 'charts'));
     const names = h('div', { class: 'cl-seg', role: 'group', 'aria-label': 'Names on the chart' }, [['s', 'SMART', 'the extremes, the highlighted and their neighbours, never crowded'], ['a', 'ALL', 'every point named; where names would overlap some are left out, and the chart says how many'], ['n', 'NONE', 'no names; hover or tap a point']]
       .map(o => key(o[1], { fk: 'names:' + o[0], on: state.nm === o[0], title: o[2], click: () => change(s => { s.nm = o[0]; }, 'all') })));
+    /* FULL NAMES: whole names on the chart and its exports, shortened with … only where they would overlap; kept as the
+       reader's choice for every chart on the site */
+    names.appendChild(key('FULL', { fk: 'names:full', on: !!state.fn, title: 'full names: whole names, shortened with … only where they would overlap',
+      click: () => { const v = state.fn ? 0 : 1; namesPref(v); change(s => { s.fn = v; }, 'all'); } }));
     const sizeBtn = pickBtn(state.sz, cs, ev => showPicker({ anchor: ev.currentTarget, current: state.sz, allowNone: true, onPick: k => change(s => { s.sz = k; }, 'all') }), 'Size the dots by a third statistic', 'size');
     const gp = h('input', { class: 'ep-input cl-num', type: 'number', min: '0', max: '999', inputmode: 'numeric', placeholder: 'auto ' + autoGp(), 'aria-label': 'Minimum games played', 'data-fk': 'gp', value: state.gp == null ? '' : String(state.gp) });
     gp.addEventListener('change', () => change(s => { const v = parseInt(gp.value, 10); s.gp = isFinite(v) ? clamp(v, 0, 999) : null; }, 'all'));
@@ -1911,7 +1944,7 @@ async function mountAsync(opts) {
     let size = null;
     if (sc) { const f = sizeScale(D.pts.map(p => sc.get(p.e.row))); size = { get: p => f(sc.get(p.e.row)), label: sc.label }; }
     return { W: o.W, H: o.H, fs: o.fs, theme: o.theme, uid: 'cl' + ci + (o.uid || ''), data: D, kind: kindOf(), co: state.co === 'p' && state.ent === 't' ? 'c' : state.co, size,
-      names: state.nm, qd: state.qd, qc: state.qc, trend: state.tr, hi: hiSet(), must: pinSet(), view: o.view || {}, texts, labels: state.lb, crest: o.crest, editable: !!o.editable, zoomSpace: o.zoomSpace || 0 };
+      names: state.nm, full: !!state.fn, qd: state.qd, qc: state.qc, trend: state.tr, hi: hiSet(), must: pinSet(), view: o.view || {}, texts, labels: state.lb, crest: o.crest, editable: !!o.editable, zoomSpace: o.zoomSpace || 0 };
   }
   const logoUrl = e => {
     if (!e || !e.logo) return null;
@@ -2059,7 +2092,7 @@ async function mountAsync(opts) {
       recs.forEach(r => c.hov.appendChild(S('circle', { cx: num1(r.px), cy: num1(r.py), r: num1(r.r + 3.5), fill: 'none', stroke: theme.amber, 'stroke-width': 2.4 })));
       /* the other chart names the entity next to its ring, so the eye finds it there */
       if (ci !== hover.src && recs[0]) {
-        const e = byId().get(hover.id), r = recs[0], txt = labelText(e, kindOf(), 's', state.lb);
+        const e = byId().get(hover.id), r = recs[0], txt = labelText(e, kindOf(), 's', state.lb, state.fn);
         const right = r.px < c.W * 0.62;
         c.hov.appendChild(S('text', { x: num1(r.px + (right ? 1 : -1) * (r.r + 7)), y: num1(r.py + 3.5), 'text-anchor': right ? 'start' : 'end', fill: theme.ink, 'font-size': 11, 'font-weight': 800,
           'font-family': FONT.ui, stroke: theme.ground, 'stroke-width': 3.2, 'paint-order': 'stroke', 'stroke-linejoin': 'round' }, txt));
@@ -2264,7 +2297,7 @@ async function mountAsync(opts) {
     closeEdit(true);
     const c = cards[ci], rel = target.getAttribute('data-edit'), id = target.getAttribute('data-id');
     let cap, current, done;
-    if (rel === 'lb') { cap = LABEL_CAP; current = target.textContent; done = v => change(s => { if (v && v !== labelText(byId().get(id), kindOf(), s.nm, null)) s.lb[id] = v; else delete s.lb[id]; }, 'charts'); }
+    if (rel === 'lb') { cap = LABEL_CAP; current = target.textContent; done = v => change(s => { if (v && v !== labelText(byId().get(id), kindOf(), s.nm, null, s.fn)) s.lb[id] = v; else delete s.lb[id]; }, 'charts'); }
     else {
       const k = (ci ? 'b' : 'a') + rel;
       cap = TEXT_CAPS[k] || 60; current = target.textContent;
@@ -2331,7 +2364,7 @@ async function mountAsync(opts) {
       c.built.labelled.forEach(l => {
         if (seen.has(l.id)) return; seen.add(l.id);
         const inp = h('input', { class: 'ep-input cl-lab-in', type: 'text', maxlength: String(LABEL_CAP), value: l.text, 'aria-label': 'Label for ' + (byId().get(l.id) || {}).name });
-        inp.addEventListener('change', () => { const v = sanitizeText(inp.value, LABEL_CAP), e = byId().get(l.id); change(s => { if (v && v !== labelText(e, kindOf(), s.nm, null)) s.lb[l.id] = v; else delete s.lb[l.id]; }, 'charts'); });
+        inp.addEventListener('change', () => { const v = sanitizeText(inp.value, LABEL_CAP), e = byId().get(l.id); change(s => { if (v && v !== labelText(e, kindOf(), s.nm, null, s.fn)) s.lb[l.id] = v; else delete s.lb[l.id]; }, 'charts'); });
         labelListEl.appendChild(h('label', { class: 'cl-lab-row' }, [h('span', { class: 'cl-lab-n', text: (byId().get(l.id) || {}).name || l.id }), inp]));
       });
     });

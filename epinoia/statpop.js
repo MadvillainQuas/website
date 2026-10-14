@@ -33,36 +33,63 @@ const overlap = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h 
 /* points: [{ id, x, y, w, h, r, must? }] in priority order (first = most important). x,y is the marker's
    centre, r its radius, w x h the label's size. Returns [{ id, box:{x,y,w,h}, side }] for those placed.
    A label is never placed over another label, over any labelled marker, or outside opts.width x opts.height.
-   opts: { width, height, gap = 3, max = Infinity (labels other than a `must` one) } */
+   opts: { width, height, gap = 3, max = Infinity (labels other than a `must` one),
+           shrink: { measure: fn(text) -> px, pad = 4, min = 4 } }
+   SHRINK (full names on charts, 2026-10-14): a point that carries its `text` and has no room at its full width is tried again
+   shorter, its text cut and ended with an ellipsis (four fifths, two thirds, half, then `min` characters), before it is left
+   out; the answer then carries the `text` it was placed with. Without shrink a label is placed whole or not at all. */
+function shortened(text, k) { return String(text).slice(0, k).replace(/[\s.,·-]+$/, '') + '…'; }
 function placeLabels(points, opts) {
   const W = opts.width, H = opts.height, gap = opts.gap == null ? 3 : opts.gap, max = opts.max == null ? Infinity : opts.max;
+  const sh = opts.shrink && typeof opts.shrink.measure === 'function' ? opts.shrink : null;
   const markers = points.map(p => ({ x: p.x - p.r, y: p.y - p.r, w: 2 * p.r, h: 2 * p.r }));
   const placed = [], out = [];
   let others = 0;
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i];
-    if (!p.must && others >= max) continue;
-    let done = null;
+  const tryAt = (p, w) => {
     for (const d of [gap, gap + 5, gap + 12]) {
       const o = p.r + d;
       const cand = [
-        ['r', p.x + o, p.y - p.h / 2], ['l', p.x - o - p.w, p.y - p.h / 2],
-        ['t', p.x - p.w / 2, p.y - o - p.h], ['b', p.x - p.w / 2, p.y + o],
+        ['r', p.x + o, p.y - p.h / 2], ['l', p.x - o - w, p.y - p.h / 2],
+        ['t', p.x - w / 2, p.y - o - p.h], ['b', p.x - w / 2, p.y + o],
         ['tr', p.x + o * 0.7, p.y - o * 0.7 - p.h], ['br', p.x + o * 0.7, p.y + o * 0.7],
-        ['tl', p.x - o * 0.7 - p.w, p.y - o * 0.7 - p.h], ['bl', p.x - o * 0.7 - p.w, p.y + o * 0.7]
+        ['tl', p.x - o * 0.7 - w, p.y - o * 0.7 - p.h], ['bl', p.x - o * 0.7 - w, p.y + o * 0.7]
       ];
       for (const [side, x, y] of cand) {
-        const box = { x, y, w: p.w, h: p.h };
-        if (x < 0 || y < 0 || x + p.w > W || y + p.h > H) continue;
+        const box = { x, y, w, h: p.h };
+        if (x < 0 || y < 0 || x + w > W || y + p.h > H) continue;
         if (placed.some(b => overlap(box, b))) continue;
         if (markers.some(m => overlap(box, m))) continue;
-        done = { id: p.id, box, side }; break;
+        return { id: p.id, box, side };
       }
-      if (done) break;
+    }
+    return null;
+  };
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    if (!p.must && others >= max) continue;
+    let done = tryAt(p, p.w);
+    if (!done && sh && p.text && p.w > 0) {
+      const L = [...String(p.text)].length, min = sh.min || 4, pad = sh.pad == null ? 4 : sh.pad;
+      const ks = [Math.round(L * 0.8), Math.round(L * 0.66), Math.round(L * 0.5), min].filter((k, j, a) => k >= min && k < L && a.indexOf(k) === j);
+      for (const k of ks) {
+        const t = shortened(p.text, k), w = Math.ceil(sh.measure(t) + pad);
+        done = tryAt(p, w);
+        if (done) { done.text = t; break; }
+      }
     }
     if (done) { placed.push(done.box); out.push(done); if (!p.must) others++; }
   }
   return out;
+}
+
+/* NAMES ON CHARTS (Louie, 2026-10-14): 'full' or 'short', one choice for every chart on the site and their exports, kept on the
+   device (me/ Appearance, the chart lab's FULL NAMES, this popup's own switch). Full: the whole name, cut with an ellipsis
+   only where it would overlap another. */
+const NAMES_KEY = 'epinoia_chart_names';
+function namesFull() { try { return root.localStorage.getItem(NAMES_KEY) === 'full'; } catch (_) { return false; } }
+function setNamesFull(on) {
+  try { root.localStorage.setItem(NAMES_KEY, on ? 'full' : 'short'); } catch (_) { /* private mode: this page only */ }
+  try { root.dispatchEvent(new root.CustomEvent('epinoia:chartnames', { detail: { full: !!on } })); } catch (_) { /* old browser */ }
 }
 
 /* ------------------------------------------------------------------------- helpers --- */
@@ -175,7 +202,8 @@ function open(o) {
     (mean != null ? '<div class="stp-fact"><b>' + esc(fmt(mean, dp, signed)) + '</b><span>league avg</span></div>' : '') +
     '</div>';
   h += '<div class="stp-chart" tabindex="-1"><div class="stp-tip" hidden></div></div>' +
-    '<div class="stp-note">Every dot is one ' + (kind === 'team' ? 'club' : 'player') + ' in the league. Tap a dot for its name and value.</div>';
+    '<div class="stp-note">Every dot is one ' + (kind === 'team' ? 'club' : 'player') + ' in the league. Tap a dot for its name and value.' +
+      ' <button type="button" class="stp-names" aria-pressed="' + namesFull() + '" title="Whole names on the chart, shortened with … only where they would overlap">full names</button></div>';
   box.innerHTML = h;
   back.appendChild(box);
   document.body.appendChild(back);
@@ -198,6 +226,8 @@ function open(o) {
   };
   document.addEventListener('keydown', st.onKey, true);
   box.querySelector('.stp-x').addEventListener('click', close);
+  const namesBtn = box.querySelector('.stp-names');
+  if (namesBtn) namesBtn.addEventListener('click', () => { const on = !namesFull(); setNamesFull(on); namesBtn.setAttribute('aria-pressed', String(on)); draw(); });
   back.addEventListener('click', ev => { if (ev.target === back) close(); });
   box.querySelector('.stp-x').focus();
 
@@ -244,6 +274,7 @@ function open(o) {
   };
   function draw() {
     if (current !== st) return;
+    const full = namesFull();
     const W = Math.max(260, Math.floor(chartHost.clientWidth || 320));
     const H = Math.round(Math.min(380, Math.max(240, W * 0.78)));
     const m = { l: 40, r: 14, t: 14, b: 44 };
@@ -297,12 +328,12 @@ function open(o) {
     }
     const sizeOf = p => p === subject ? 24 : 18;
     const items = labelled.map(p => {
-      const nm = shortName(nameOf(p)) || '';
-      return { id: p.id, x: p.px, y: p.py, r: sizeOf(p) / 2 + 1, w: Math.ceil(textW(nm) + 4), h: 14, must: p === subject, name: nm, p };
+      const nm = (full ? String(nameOf(p) || '').trim() : shortName(nameOf(p))) || '';
+      return { id: p.id, x: p.px, y: p.py, r: sizeOf(p) / 2 + 1, w: Math.ceil(textW(nm) + 4), h: 14, must: p === subject, name: nm, text: nm, p };
     });
     /* an unnamed row gets its crest and no label until its name arrives; only named ones compete for label space */
     const named = items.filter(i => i.name && (i.must || !needsMeta(i.p)));
-    const placed = placeLabels(named, { width: W, height: H, gap: 3, max: 6 });
+    const placed = placeLabels(named, { width: W, height: H, gap: 3, max: 6, shrink: full ? { measure: textW, pad: 4, min: 5 } : null });
     const placedIds = new Map(placed.map(q => [q.id, q]));
     /* markers of the ones that did not get a label are dropped, so a crest never floats unexplained */
     const drawn = items.filter(i => i.must || placedIds.has(i.id));
@@ -326,7 +357,7 @@ function open(o) {
         const left = /l/.test(q.side), mid = q.side === 't' || q.side === 'b';
         const tx = mid ? q.box.x + q.box.w / 2 : left ? q.box.x + q.box.w - 2 : q.box.x + 2;
         labels += '<text class="stp-lab' + (isS ? ' subj' : '') + '" x="' + tx.toFixed(1) + '" y="' + (q.box.y + 11).toFixed(1) +
-          '" text-anchor="' + (mid ? 'middle' : left ? 'end' : 'start') + '">' + esc(i.name) + '</text>';
+          '" text-anchor="' + (mid ? 'middle' : left ? 'end' : 'start') + '">' + esc(q.text || i.name) + '</text>';
       }
     });
     s += '<defs>' + defs + '</defs>' + marks + labels + '<circle class="stp-hover" r="7" hidden/></svg>';
@@ -500,5 +531,5 @@ function helpButton(heading, kind) {
   return { btn, hint, toggle: setExplain };
 }
 
-return { open, close, bind, helpButton, placeLabels, _nice: niceTicks };
+return { open, close, bind, helpButton, placeLabels, namesFull, setNamesFull, NAMES_KEY, _nice: niceTicks };
 }));

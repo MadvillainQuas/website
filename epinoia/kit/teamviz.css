@@ -28,7 +28,9 @@
   font-family:var(--f-score,var(--f-ui)); font-size:14px; line-height:1 }
 .tv-lu-who{ min-width:0 }
 .tv-lu-five{ display:flex; flex-wrap:wrap; gap:3px 10px; margin:0; padding:0; list-style:none }
-.tv-lu-five li{ display:inline-flex; align-items:center; gap:4px; font-weight:700; font-size:11px; white-space:nowrap; line-height:1.3 }
+.tv-lu-five li{ display:inline-flex; align-items:center; gap:4px; font-weight:700; font-size:11px; white-space:nowrap; line-height:1.3; min-width:0; max-width:100% }
+/* a whole name (full names on charts) that the card cannot hold ends with an ellipsis */
+.tv-lu-five li span{ min-width:0; overflow:hidden; text-overflow:ellipsis }
 .tv-lu-five li img{ width:20px; height:20px; border-radius:50%; object-fit:cover; background:var(--panel-2) }
 .tv-lu-meta{ margin:3px 0 0; font-size:9.5px; line-height:1.3; color:var(--ink-3); white-space:nowrap }
 .tv-lu-meta b{ font-family:var(--f-data,ui-monospace,monospace); color:var(--ink) }

@@ -161,6 +161,22 @@ function applyTheme(t) {
   $('#themeLight').classList.toggle('on', t === 'light');
 }
 
+/* NAMES ON CHARTS: short (the default) or full, for every chart and export on this device (statpop.js NAMES_KEY) */
+const NAMES_KEY = 'epinoia_chart_names';
+function paintNames() {
+  let full = false;
+  try { full = localStorage.getItem(NAMES_KEY) === 'full'; } catch (_) { /* private mode */ }
+  $('#namesFull').classList.toggle('on', full);
+  $('#namesShort').classList.toggle('on', !full);
+  $('#namesFull').setAttribute('aria-pressed', String(full));
+  $('#namesShort').setAttribute('aria-pressed', String(!full));
+}
+function setNames(full) {
+  try { localStorage.setItem(NAMES_KEY, full ? 'full' : 'short'); } catch (_) { /* private mode */ }
+  try { window.dispatchEvent(new CustomEvent('epinoia:chartnames', { detail: { full } })); } catch (_) { /* old browser */ }
+  paintNames();
+}
+
 /* ----------------------------------------------------------------- push ---
    THIS PHONE, through push.js (docs/notifications.md §5) — the same module the
    follow sheet uses, so the profile and the sheet can never disagree about what
@@ -1085,6 +1101,7 @@ function wireDelete() {
   applyTheme(prefs.theme === 'dark' ? 'dark' : 'light');
   $('#themeDark').onclick = () => { applyTheme('dark'); save(); };
   $('#themeLight').onclick = () => { applyTheme('light'); save(); };
+  if ($('#namesFull')) { $('#namesShort').onclick = () => setNames(false); $('#namesFull').onclick = () => setNames(true); paintNames(); }
   paintColour();
   $('#colour').oninput = () => { prefs.colour = $('#colour').value; paintColour(); save(); };
   $('#plq').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(() => search($('#plq').value.trim()), 250); };

@@ -65,6 +65,11 @@ html.stp-lock{overflow:hidden}
 .stp-tip span b{display:inline;color:var(--ink)}
 .stp-empty{padding:28px 14px;text-align:center;font-size:13px;color:var(--ink-2)}
 .stp-note{margin:8px 0 0;font-size:11px;line-height:1.45;color:var(--ink-3)}
+/* FULL NAMES on the chart (statpop.js namesFull, shared by every chart): a small switch at the end of the note */
+.stp-names{appearance:none;margin-left:4px;padding:3px 9px;border:1px solid var(--rule-2);border-radius:999px;background:transparent;color:var(--ink-2);
+  font:600 10px/1.3 var(--f-ui);letter-spacing:.04em;cursor:pointer;vertical-align:1px}
+.stp-names[aria-pressed="true"]{background:var(--lume);border-color:var(--lume);color:var(--on-accent,#04100b)}
+.stp-names:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
 
 /* ---- the '?' help button and its panel ---- */
 .stp-q{appearance:none;flex:none;margin-left:auto;align-self:center;width:26px;height:26px;padding:0;border:1px solid var(--rule-2);border-radius:50%;

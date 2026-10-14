@@ -393,7 +393,12 @@
       'The win model: which stats decide games in each league.': 'El modelo de victoria: qué estadísticas deciden los partidos en cada liga.',
       'An account is free at the moment: sign in once, with your email, Google or Discord, and it is all open on every device.': 'Una cuenta es gratuita por ahora: inicia sesión una vez, con tu correo, Google o Discord, y todo queda abierto en todos tus dispositivos.',
       'Who is on the floor at every minute of every game, all season long.': 'Quién está en pista en cada minuto de cada partido, durante toda la temporada.',
-      'An account adds the analysis the clubs use:': 'Una cuenta añade el análisis que usan los clubes:'
+      'An account adds the analysis the clubs use:': 'Una cuenta añade el análisis que usan los clubes:',
+      'Names on charts': 'Nombres en los gráficos',
+      'short': 'cortos',
+      'full': 'completos',
+      'initial and surname, the busiest points named': 'inicial y apellido, solo los puntos principales con nombre',
+      'whole names, shortened with … only where they would overlap': 'nombres completos, acortados con … solo donde se solaparían'
     },
 
     ctx: {

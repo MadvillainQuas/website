@@ -53,6 +53,10 @@ const bandP = p => (p == null ? 0 : p >= 75 ? 4 : p >= 50 ? 3 : p >= 25 ? 2 : 1)
 const WORD = { 4: 'strength', 3: 'above average', 2: 'below average', 1: 'weakness', 0: '' };
 const WORD_VS = { 4: 'much better', 3: 'better', 2: 'worse', 1: 'much worse', 0: '' };
 const surname = n => { const p = String(n || '').trim().split(/\s+/); return p.length > 1 ? p[0][0] + '. ' + p.slice(1).join(' ') : (p[0] || ''); };
+/* NAMES ON CHARTS (the site's choice, statpop.js NAMES_KEY): full, every name here is whole, and a box too narrow for it ends
+   it with an ellipsis (kit/teamviz.css) */
+const namesFull = () => { try { return root.localStorage.getItem('epinoia_chart_names') === 'full'; } catch (_) { return false; } };
+const chartName = n => (namesFull() ? String(n || '').trim() : surname(n));
 
 /* --------------------------------------------------------------- lineups --- */
 /* [key, the coach's word, the abbreviation, decimals, lower is better ('style': neither), the step] */
@@ -82,7 +86,7 @@ function tile(spec, l, base) {
 function lineupCards(units, base, o) {
   const opt = o || {};
   const B = Object.assign({}, base || {}); B.astp = astOf(base);
-  const nm = id => surname((opt.names && opt.names[id]) || 'Player');
+  const nm = id => chartName((opt.names && opt.names[id]) || 'Player');
   const cards = (units || []).map((u, i) => {
     const l = Object.assign({}, u.line); l.astp = astOf(u.line);
     const nb = bandVs(l.net, B.net, 5, false);
@@ -287,7 +291,8 @@ function depthBars(c, o) {
   const rows = c.slots.map(s => {
     const segs = s.players.filter(p => p.pct > 0).map((p, i) => {
       const w = Math.max(1, p.pct), dark = i < 2;
-      const label = w >= 22 ? (p.num != null && p.num !== '' ? '#' + p.num + ' ' : '') + surname(p.name) + ' ' + p.pct + '%' : w >= 14 ? surname(p.name).split(' ').pop() + ' ' + p.pct + '%' : w >= 6 ? p.pct + '%' : '';
+      const full = namesFull();
+      const label = w >= 22 || (full && w >= 14) ? (p.num != null && p.num !== '' ? '#' + p.num + ' ' : '') + chartName(p.name) + ' ' + p.pct + '%' : w >= 14 ? surname(p.name).split(' ').pop() + ' ' + p.pct + '%' : w >= 6 ? p.pct + '%' : '';
       return '<span class="tv-dp-s' + (dark ? ' dk' : '') + '" style="flex:' + w + ' 1 0;--k:' + Math.max(18, 100 - i * 22) + '%" title="' + esc((p.name || '') + ': ' + p.pct + '% · ' + Math.round(p.min) + ' min') + '">' + esc(label) + '</span>';
     }).join('') + (s.others && s.others.pct > 0 ? '<span class="tv-dp-s ot" style="flex:' + Math.max(1, s.others.pct) + ' 1 0" title="' + esc(s.others.n + ' others') + '">' + (s.others.pct >= 7 ? s.others.pct + '%' : '') + '</span>' : '');
     return '<div class="tv-dp"><b class="tv-dp-k">' + esc(s.key) + '</b><div class="tv-dp-bar">' + (segs || '<span class="tv-dp-s ot" style="flex:1">—</span>') + '</div></div>';

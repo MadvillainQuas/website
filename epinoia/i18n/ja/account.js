@@ -388,7 +388,12 @@
       'The win model: which stats decide games in each league.': '勝利モデル：各リーグで試合を決める指標は何か。',
       'An account is free at the moment: sign in once, with your email, Google or Discord, and it is all open on every device.': 'アカウントは現在無料です。メール、GoogleまたはDiscordで一度ログインすれば、すべての端末で利用できます。',
       'Who is on the floor at every minute of every game, all season long.': 'シーズンを通して、すべての試合の各分に誰がコートにいるか。',
-      'An account adds the analysis the clubs use:': 'アカウントを作ると、クラブが使う分析が加わります。'
+      'An account adds the analysis the clubs use:': 'アカウントを作ると、クラブが使う分析が加わります。',
+      'Names on charts': 'グラフの名前表示',
+      'short': '短縮',
+      'full': 'フルネーム',
+      'initial and surname, the busiest points named': 'イニシャルと姓で表示し、名前を付けるのは主要な点のみ',
+      'whole names, shortened with … only where they would overlap': 'フルネームで表示し、重なる場合のみ「…」で省略'
     },
 
     ctx: {

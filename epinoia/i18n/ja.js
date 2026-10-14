@@ -2002,7 +2002,9 @@
       'Tabs': 'タブ',
       'Scroll': 'スクロール',
       'Show the groups as tabs or in one scrolling page': 'グループをタブで表示するか、1ページにまとめてスクロール表示するか',
-      'Feed & video': 'フィードと動画'
+      'Feed & video': 'フィードと動画',
+      'full names': 'フルネーム',
+      'Whole names on the chart, shortened with … only where they would overlap': 'グラフに名前をフルネームで表示し、重なる場合のみ「…」で省略します'
     },
 
     ctx: {

@@ -152,6 +152,9 @@ function modules(ctx) {
   const sg1 = v => (E.isNum(v) ? (+v > 0 ? '+' : '') + (+v).toFixed(1) : '—');
   const nameOf = (meta, id) => (meta && meta[id] && meta[id].name) || 'Player';
   const surname = n => { const p = String(n || '').trim().split(/\s+/); return p.length > 1 ? p[0][0] + '. ' + p.slice(1).join(' ') : (p[0] || ''); };
+  /* NAMES ON CHARTS (the site's choice, statpop.js NAMES_KEY): full, the charts here name a player in full; the tables keep the short form */
+  const namesFull = () => { try { return localStorage.getItem('epinoia_chart_names') === 'full'; } catch (_) { return false; } };
+  const chartName = n => (namesFull() ? String(n || '').trim() : surname(n));
   const rk = (r, n) => (r ? E.ordinal(r.r) + ' of ' + r.n : '');
 
   /* the club's season once: the season object, its row, its scope's games and its lineups' records */
@@ -192,7 +195,7 @@ function modules(ctx) {
       try {
         /* every player with minutes at each position, so a spot has a next player to go to when one leads two */
         const d = await ctx.depth(true);
-        if (d && d.c && d.c.slots) { names = V.fiveOf(d.c.slots).map(p => (p ? surname(p.name) : '')); games = d.c.games || 0; }
+        if (d && d.c && d.c.slots) { names = V.fiveOf(d.c.slots).map(p => (p ? chartName(p.name) : '')); games = d.c.games || 0; }
       } catch (_) { /* no lineups */ }
       try {
         const T = await season();
@@ -1055,6 +1058,7 @@ function modules(ctx) {
       if (missing.length) { try { Object.assign(meta, await ctx.meta(missing)); } catch (_) { /* unnamed */ } }
       const name = id => (meta[id] && meta[id].name) || ((Q && Q.sq.find(r => String(r.id) === String(id))) || {}).name || 'Player';
       const short = id => surname(name(id));
+      const onChart = id => chartName(name(id));
 
       /* ---- FREE THROWS: the foul line, most foulable first ---- */
       try {
@@ -1085,7 +1089,7 @@ function modules(ctx) {
               const few = !sure(x);
               const dot = x.ca > 0 ? '<i class="c" style="left:' + at(100 * x.cm / x.ca).toFixed(1) + '%" title="clutch"></i>' : '';
               const dia = x.car ? '<i class="k" style="left:' + at(x.car.pct).toFixed(1) + '%"></i>' : '';
-              return '<div class="rp-ft-r' + (few ? ' few' : '') + '" data-b="' + b + '"><span class="n">' + esc(short(x.k)) + '</span>' +
+              return '<div class="rp-ft-r' + (few ? ' few' : '') + '" data-b="' + b + '"><span class="n" title="' + esc(name(x.k)) + '">' + esc(onChart(x.k)) + '</span>' +
                 '<div class="rp-ft-tr">' + ticks + (E.isNum(x.season) ? '<b style="width:' + at(x.season).toFixed(1) + '%"></b>' : '') + dot + dia + '</div>' +
                 '<span class="v"><b>' + (E.isNum(x.season) ? f1(x.season) : '—') + '</b><small>' + x.ftm + '/' + x.fta + '</small></span>' +
                 (S.games ? '<span class="v cl">' + (x.ca ? '<b>' + x.cm + '/' + x.ca + '</b>' : '<b class="nil">—</b>') + '</span>' : '') +
@@ -1142,12 +1146,18 @@ function modules(ctx) {
              touches no dot and no label already put down (the biggest dots' labels first), inside the plot */
           const boxes = [], hit = b => boxes.some(q => !(b[2] < q[0] || b[0] > q[2] || b[3] < q[1] || b[1] > q[3]));
           const inside = b => b[0] >= P.l && b[2] <= W - P.r && b[1] >= P.t && b[3] <= Hh - P.b;
-          const label = (txt, x, y, cls, opts) => {
-            const w = 4.3 * txt.length + 2, h = 8;
+          const label = (txt, x, y, cls, opts, shrink) => {
             const tries = opts || [['start', 0, 0]];
-            for (const [anc, dx, dy] of tries) {
-              const x0 = anc === 'start' ? x + dx : anc === 'end' ? x + dx - w : x + dx - w / 2, b = [x0, y + dy - h + 2, x0 + w, y + dy + 2];
-              if (!hit(b) && inside(b)) { boxes.push(b); return '<text class="' + cls + '" x="' + (x + dx).toFixed(1) + '" y="' + (y + dy).toFixed(1) + '" text-anchor="' + anc + '">' + esc(txt) + '</text>'; }
+            const L = [...txt].length, cuts = shrink ? [Math.round(L * 0.8), Math.round(L * 0.66), Math.round(L * 0.5), 4].filter((k, j, a) => k >= 4 && k < L && a.indexOf(k) === j) : [];
+            for (const t of [txt].concat(cuts.map(k => txt.slice(0, k).replace(/[\s.,·-]+$/, '') + '…'))) {
+              const w = 4.3 * t.length + 2, h = 8;
+              for (const [anc, dx, dy] of tries) {
+                const x0 = anc === 'start' ? x + dx : anc === 'end' ? x + dx - w : x + dx - w / 2, b = [x0, y + dy - h + 2, x0 + w, y + dy + 2];
+                if (!hit(b) && inside(b)) {
+                  boxes.push(b);
+                  return '<text class="' + cls + '" x="' + (x + dx).toFixed(1) + '" y="' + (y + dy).toFixed(1) + '" text-anchor="' + anc + '">' + (t !== txt ? '<title>' + esc(txt) + '</title>' : '') + esc(t) + '</text>';
+                }
+              }
             }
             return '';
           };
@@ -1162,7 +1172,7 @@ function modules(ctx) {
           svg += label('one in five', X(20), P.t, 'rl', [['start', 3, 8], ['end', -3, 8], ['start', 3, Hh - P.b - P.t - 3], ['end', -3, Hh - P.b - P.t - 3]]);
           dots.forEach(d => {
             const r = d.r, g = 2, far = r + g + 8;
-            svg += label(short(d.x.k), d.cx, d.cy, 'pl', [['start', r + g, 3], ['end', -r - g, 3], ['middle', 0, -r - g], ['middle', 0, r + g + 7],
+            svg += label(onChart(d.x.k), d.cx, d.cy, 'pl', [['start', r + g, 3], ['end', -r - g, 3], ['middle', 0, -r - g], ['middle', 0, r + g + 7],
               ['start', r * 0.7 + g, -r * 0.7 - 1], ['start', r * 0.7 + g, r * 0.7 + 7], ['end', -r * 0.7 - g, -r * 0.7 - 1], ['end', -r * 0.7 - g, r * 0.7 + 7],
               ['start', far, -10], ['start', far, 14], ['end', -far, -10], ['end', -far, 14], ['middle', 0, -far - 4], ['middle', 0, far + 10]]);
           });
