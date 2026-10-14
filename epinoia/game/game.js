@@ -122,14 +122,27 @@ function rowToEvent(r) {
    once, and from the edge that costs the database nothing. No file (a game
    finalised in the last few minutes, a members-only league's) reads the
    database as before. */
+/* THE FILE IS ASKED FOR AT ONCE, BESIDE THE GAME'S ROW (2026-10-15), not after it: it needs nothing but the game's
+   id, and waiting to learn the game is final first put a whole round trip in front of the box score. The page's head
+   may already have asked (game/index.html: window.EPINOIA_EARLY_LOG, while the scripts were still downloading); its
+   answer is taken when it is this game's. For a game that is not final the answer is simply never used - a file that
+   is not there costs one uncached 400. */
+let fileRowsP = null;
+function fileRows() {
+  if (fileRowsP) return fileRowsP;
+  const early = window.EPINOIA_EARLY_LOG;
+  const asked = early && early.game === gameId && early.p ? early.p
+    : fetch(`${CFG.supabaseUrl}/storage/v1/object/public/snapshots/events/${encodeURIComponent(gameId)}.json`)
+        .then(r => (r.ok ? r.json() : null));
+  fileRowsP = Promise.resolve(asked)
+    .then(j => (j && j.game === gameId && Array.isArray(j.rows) ? j.rows : null))
+    .catch(() => null);
+  return fileRowsP;
+}
+
 async function fileLog() {
-  try {
-    const r = await fetch(`${CFG.supabaseUrl}/storage/v1/object/public/snapshots/events/${encodeURIComponent(gameId)}.json`);
-    if (r.ok) {
-      const j = await r.json();
-      if (j && j.game === gameId && Array.isArray(j.rows)) return j.rows;
-    }
-  } catch (_) { /* the archive, below */ }
+  const rows = await fileRows();
+  if (rows) return rows;
   /* AN ARCHIVED GAME (0262): its rows are no longer in the database, and its whole game is in feed/archive -
      rebuilt here, in this reader's session (data.js archive) */
   const D = window.EpinoiaData;
@@ -160,38 +173,42 @@ async function fetchLog(final) {
 }
 
 async function loadStored() {
-  const gs = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
+  /* EVERY QUESTION THAT NEEDS ONLY THE GAME'S ID, ASKED AT ONCE (2026-10-15). The game's row, its optional
+     columns and its video were three round trips one after another, and the finished game's log file a fourth
+     after them - about a second before a warm page could draw its box score. Each is still its own request, for
+     the reasons below, and each still fails on its own. */
+  const gsP = api(`games?id=eq.${encodeURIComponent(gameId)}` +
     `&select=id,status,period,home_score,away_score,tipoff_at,venue,venue_address,venue_id,` +
 
     `competition_id,home_team_id,away_team_id,roster_snapshot,starters,` +
     `tip_winner,arrow_init,home:home_team_id(slug,name,short_name,colour,colour_2,logo_path,home_venue_id),` +
     `away:away_team_id(slug,name,short_name,colour,colour_2,logo_path),competitions(name,seasons(name,leagues(id,name,slug,timezone)))&limit=1`);
-  if (!gs.length) return null;
-  const g = gs[0];
-
   /* THE OPTIONAL COLUMNS ARE A SECOND QUESTION, AND A REFUSAL IS AN ANSWER.
      capacity, attendance and officials arrived in migration 0076. Asking for
      them in the main select made the whole request 400 on any database that
      had not run it yet — which took out the entire game page, including the
      box score, over three fields that decorate a header. A page that cannot
      show the attendance is fine; a page that cannot show the game is not. */
-  try {
-    const extra = await api(`games?id=eq.${encodeURIComponent(gameId)}` +
-      `&select=capacity,attendance,officials&limit=1`);
-    if (extra.length) Object.assign(g, extra[0]);
-  } catch (_) { /* an older database simply has none of these */ }
-
+  const extraP = api(`games?id=eq.${encodeURIComponent(gameId)}` +
+    `&select=capacity,attendance,officials&limit=1`).catch(() => []);   // an older database simply has none of these
   /* THE VIDEO IS ALSO A SEPARATE QUESTION, for exactly the reason above: the
      table arrives in migration 0082 and a database without it must still be
      able to show a box score. */
+  const videoP = api(`game_videos?game_id=eq.${encodeURIComponent(gameId)}` +
+    `&is_primary=eq.true&select=url,provider,video_ref,label,` +
+    `stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,is_live,clock_track&limit=1`)
+    .catch(() => []);                          // no table, or none attached — the tab simply does not appear
+  fileRows();                                  // the finished game's log file, on its way (used only if the game is final)
+  const gs = await gsP;
+  if (!gs.length) return null;
+  const g = gs[0];
+  const extra = await extraP;
+  if (extra.length) Object.assign(g, extra[0]);
+
   let video = null;
-  try {
-    const vs = await api(`game_videos?game_id=eq.${encodeURIComponent(gameId)}` +
-      `&is_primary=eq.true&select=url,provider,video_ref,label,` +
-      `stream_started_at,tip_at,tip_wall,tip_offset_ms,trim_ms,is_live,clock_track&limit=1`);
-    if (vs.length && vs[0].url) video = vs[0];
-    else if (vs.length) video = vs[0];         // anchored, link still to come
-  } catch (_) { /* no table, or none attached — the tab simply does not appear */ }
+  const vs = await videoP;
+  if (vs.length && vs[0].url) video = vs[0];
+  else if (vs.length) video = vs[0];           // anchored, link still to come
 
   /* THE LEAGUE'S CHANNEL, WHEN NOBODY HAS PASTED A LINK.
 

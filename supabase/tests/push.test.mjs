@@ -861,7 +861,11 @@ const client = (url, o = {}) => {
   }
   ok('it carries a version line, so a deploy is a new worker', /SW_VERSION = 'notifications-v2-/.test(swSrc));
   ok('...bumped for the app (the badge and the fetch handler changed)', W.SW_VERSION !== 'notifications-v2-2026-09-17-home', W.SW_VERSION);
-  ok('fetch: nothing is ever cached', !/caches\./.test(swSrc));
+  /* NO PAGE AND NO DATA IS EVER CACHED (2026-10-15: the site's stamped scripts and stylesheets are, in one cache of
+     their own - perf-early.test.mjs holds that rule and its behaviour) */
+  ok('fetch: the only cache the worker opens is the stamped-asset one, and a page load never touches it',
+     (swSrc.match(/caches\.open\(/g) || []).length === 1 && /caches\.open\(ASSET_CACHE \+ v\)/.test(swSrc)
+     && /if \(req\.mode === 'navigate'\) \{\s*e\.respondWith\(fetch\(req\)\.catch\(\(\) => offlinePage\(\)\)\);\s*return;/.test(swSrc));
 }
 {
   /* ONLY A FAILED PAGE LOAD GETS THE OFFLINE PAGE, and with status 200 */
@@ -890,7 +894,14 @@ const client = (url, o = {}) => {
   ok('...light by default, dark when the phone is', /background:#f3faf6/.test(page.body) && /prefers-color-scheme:dark/.test(page.body));
   eq('fetch: a failed JSON read (not a page load) is not answered by the worker, so its caller sees a real network error',
      await respond(L, { method: 'GET', mode: 'cors', url: 'https://abc.supabase.co/rest/v1/games?select=id' }), null);
-  eq('fetch: nor is a script or image (no-cors)', await respond(L, { method: 'GET', mode: 'no-cors', url: ORIGIN + '/epinoia/nav.js?v=1' }), null);
+  eq('fetch: nor is an unstamped script or an image (no-cors)', [
+    await respond(L, { method: 'GET', mode: 'no-cors', url: ORIGIN + '/epinoia/nav.js' }),
+    await respond(L, { method: 'GET', mode: 'no-cors', url: ORIGIN + '/epinoia/brand/flags/gb.svg' })], [null, null]);
+  /* a STAMPED script is the worker's since 2026-10-15 (perf-early.test.mjs holds how): offline, with no copy kept, its
+     caller still sees the real network error, as it would with no worker at all */
+  let stampedErr = null;
+  try { await respond(L, { method: 'GET', mode: 'no-cors', url: ORIGIN + '/epinoia/nav.js?v=1' }); } catch (e) { stampedErr = e; }
+  ok('fetch: a stamped script offline with no copy kept: the real network error', !!stampedErr && /Failed to fetch/.test(stampedErr.message));
   eq('fetch: a POST is not touched', await respond(L, { method: 'POST', mode: 'cors', url: ORIGIN + '/x' }), null);
   L = swCtx({ offline: false });
   const online = await respond(L, { method: 'GET', mode: 'navigate', url: ORIGIN + '/epinoia/home/' });

@@ -135,9 +135,23 @@ function renderPanes() {
 
 async function boot() {
   try {
-    const ls = await api(`leagues?slug=eq.${encodeURIComponent(wantLeague)}&select=*&limit=1`);
+    /* THE LEAGUE WITH ITS SEASONS, THEIR COMPETITIONS AND WHICH OF THEM HAVE GAMES, IN ONE REQUEST (2026-10-15;
+       seasonbar.js leagueSelect): it was four, one after another, before the table could be asked for. An API that
+       refuses the embed gets the plain row, and SB.load below asks as it used to. */
+    const SB0 = window.EpinoiaSeasonBar;
+    let ls;
+    try {
+      ls = await api(`leagues?slug=eq.${encodeURIComponent(wantLeague)}&select=` +
+        (SB0 && SB0.leagueSelect ? SB0.leagueSelect() : '*') + '&limit=1');
+    } catch (_) {
+      ls = await api(`leagues?slug=eq.${encodeURIComponent(wantLeague)}&select=*&limit=1`);
+    }
     if (!ls.length) return fail(`No league "${wantLeague}".`);
     league = ls[0];
+    if (Array.isArray(league.seasons)) {
+      if (SB0 && SB0.prime) SB0.prime(league.id, league.seasons);
+      delete league.seasons;                       // the league's row, as every reader of it has always had it
+    }
     /* which league this is, for what loads beside this file (mediatabs.js: the Video and Live tabs) */
     window.EPINOIA_LEAGUE = league;
     try { window.dispatchEvent(new CustomEvent('epinoia:league', { detail: league })); } catch (_) { /* old browser */ }
@@ -363,13 +377,15 @@ async function renderStandingsInto(pane, competition) {
   const teamCols = 'name,short_name,colour,slug,logo_path';
   const cols = ST ? ST.columns(competition, teamCols)
     : `rank,gp,w,l,pts_for,pts_against,diff,league_points,deducted_points,streak,group_name,teams(${teamCols})`;
+  /* the ELO column (sos.js's rating), once per render; a league without one draws the table as it was. Asked BESIDE
+     the standings (2026-10-15), not after them: the two need nothing from each other, and loadElo never throws. */
+  const eloP = loadElo();
   const rows = await api(
     `standings?competition_id=eq.${competition.id}` +
     `&select=${cols},team_id` +
     `&order=group_name.asc,rank.asc`);
   if (!rows.length) { pane.appendChild(el('div', 'empty', 'No games played yet.')); return; }
-  /* the ELO column (sos.js's rating), once per render; a league without one draws the table as it was */
-  ELO_NOW = await loadElo();
+  ELO_NOW = await eloP;
 
   /* A CONFERENCE LEAGUE (0144) is read the college way: a table per
      conference, the division inside it, and two records per club. */

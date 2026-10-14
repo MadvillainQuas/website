@@ -2085,6 +2085,11 @@
     if (c && HAVE_FLAG.indexOf(c) >= 0) {
       const wrap = el('span', 'ic flagimg');
       const i = document.createElement('img');
+      /* LAZY (2026-10-15): the leagues panel draws a flag for every country, and a page asked for all
+         thirty-odd at once while its own data was loading - from a panel that is usually closed. A lazy
+         image in a closed panel is fetched when the panel opens. */
+      i.loading = 'lazy';
+      i.decoding = 'async';
       i.src = root + 'brand/flags/' + c.toLowerCase() + '.svg';
       i.alt = '';
       /* a file that fails to load leaves the emoji behind, not a gap */

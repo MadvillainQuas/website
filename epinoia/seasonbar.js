@@ -180,7 +180,46 @@ function load(api, leagueId) {
   return p;
 }
 
+/* ONE REQUEST, NOT THREE (2026-10-15): the seasons, every season's competitions and the one-game probe of each, as
+   PostgREST embeds (EMBED below; the probe is `games(id)` limited to one row per competition). Three round trips one
+   after another were half a second before a league's table could even be asked for. A read the embed is refused for
+   (an older API, an ambiguous relation one day) falls back to the three requests, which answer exactly the same. */
+const EMBED = 'id,name,starts_on,ends_on,competitions(*,games(id))';
+const EMBED_ORDER = '&order=starts_on.desc&competitions.order=name&competitions.games.limit=1';
+
+/* the rows of an embedded read (EMBED, or a league's `seasons(...)` with the same shape) -> what read() answers */
+function fromEmbed(seasons) {
+  const rows = (seasons || []).map(s => {
+    const comps = (s.competitions || []).map(c => {
+      const o = Object.assign({}, c);
+      delete o.games;                               // the probe's answer, not part of the competition's row
+      return o;
+    });
+    const played = (s.competitions || []).some(c => Array.isArray(c.games) && c.games.length > 0);
+    const r = Object.assign({}, s, { comps });
+    delete r.competitions;
+    return { r, played };
+  });
+  return offer({ seasons: rows.map(x => x.r), played: rows.filter(x => x.played).map(x => x.r.id) });
+}
+
+/* A PAGE THAT HAS ALREADY READ ITS LEAGUE WITH ITS SEASONS EMBEDDED (league.js: one request for the league, its
+   seasons, their competitions and the probes) hands them over here, so load() answers without asking again. */
+function prime(leagueId, seasons) {
+  if (!leagueId || !Array.isArray(seasons) || loading.has(leagueId)) return;
+  const sorted = seasons.slice().sort((a, b) => String(b.starts_on || '').localeCompare(String(a.starts_on || '')));
+  sorted.forEach(s => {
+    if (Array.isArray(s.competitions)) {
+      s.competitions = s.competitions.slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    }
+  });
+  loading.set(leagueId, Promise.resolve(fromEmbed(sorted)));
+}
+
 async function read(api, leagueId) {
+  try {
+    return fromEmbed(await api('seasons?league_id=eq.' + leagueId + '&select=' + EMBED + EMBED_ORDER));
+  } catch (_) { /* the three requests below */ }
   const seasons = await api('seasons?league_id=eq.' + leagueId +
     '&select=id,name,starts_on,ends_on&order=starts_on.desc');
   if (!seasons.length) return offer({ seasons: [], played: [] });
@@ -219,10 +258,22 @@ async function read(api, leagueId) {
 /* league slug in, everything a page needs out — data.js context()'s shape with
    the seasons filtered down to the ones a reader can actually go to, and the
    default named. Pages that already hold their league row call load() instead. */
+/* a league read WITH its seasons, their competitions and the probes (one request): '&select=' + leagueSelect() for a
+   `leagues?...` address; hand the answer's league to prime() via takeSeasons(). */
+function leagueSelect() {
+  return '*,seasons(' + EMBED + ')&seasons.order=starts_on.desc&seasons.competitions.order=name&seasons.competitions.games.limit=1';
+}
+
 async function context(api, leagueSlug, seasonRef) {
-  const lgs = await api('leagues?slug=eq.' + encodeURIComponent(leagueSlug) + '&select=*&limit=1');
+  let lgs;
+  try {
+    lgs = await api('leagues?slug=eq.' + encodeURIComponent(leagueSlug) + '&select=' + leagueSelect() + '&limit=1');
+  } catch (_) {
+    lgs = await api('leagues?slug=eq.' + encodeURIComponent(leagueSlug) + '&select=*&limit=1');
+  }
   if (!lgs.length) throw new Error('no league "' + leagueSlug + '"');
   const league = lgs[0];
+  if (Array.isArray(league.seasons)) { prime(league.id, league.seasons); delete league.seasons; }
   const o = await load(api, league.id);
   const season = pick(o.list, seasonRef);
   return { league, season, seasons: o.list, all: o.all, current: o.current,
@@ -296,5 +347,5 @@ function mount(o) {
   return true;
 }
 
-return { offer, pick, load, context, mount, href, syncUrl, newestFirst, label, leagueAbbr, compLabel, compLabels, bareComp };
+return { offer, pick, load, prime, leagueSelect, fromEmbed, context, mount, href, syncUrl, newestFirst, label, leagueAbbr, compLabel, compLabels, bareComp };
 }));

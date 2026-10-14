@@ -312,8 +312,10 @@ console.log('\n5. what is never folded, and what must never be lost');
   eq('and so does one that cannot be asked at all',
      [older.shown.length, older.shown[0].title], [1, 'A v B']);
 
+  /* dated, and no older than the grouping it shipped with (2026-09-18): pinning the exact string went red on the next
+     honest bump (phone-fixes.test.mjs says the same) */
   ok('the worker version moved, so phones take the new one',
-     /const SW_VERSION = 'notifications-v2-2026-09-18/.test(swSrc));
+     ((/const SW_VERSION = 'notifications-v2-(\d{4}-\d{2}-\d{2})/.exec(swSrc) || [])[1] || '') >= '2026-09-18');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

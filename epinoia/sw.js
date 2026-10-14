@@ -15,17 +15,20 @@
                              Epinoia when there is one, else in a new window
      pushsubscriptionchange  when the browser rotates the subscription, takes a new
                              one and tells the database which row it replaces
-     fetch                   page loads only: when one fails for want of a connection, a
-                             small offline page (status 200) instead of the browser's error.
-                             Every other request is left to the browser, so a JSON caller
-                             sees a real network error, never an HTML page
-   No caching: the site is served exactly as before.
+     fetch                   page loads: when one fails for want of a connection, a small
+                             offline page (status 200) instead of the browser's error; and the
+                             site's own STAMPED scripts and stylesheets (?v=N) from a cache of
+                             their own, re-checked in the background every ten minutes
+                             (2026-10-15, stampedAsset). Every other request - pages, data,
+                             Supabase - is left to the browser, so a JSON caller sees a real
+                             network error, never an HTML page
+   Nothing the reader sees as news is ever cached: a stamped file is code, never a score.
 
    The decisions are small pure functions (notificationFor, actionUrl, clickTarget,
    pickClient, swapBody) so supabase/tests/push.test.mjs can run this file in node
    with a stubbed `self` and check them.
    ============================================================================ */
-const SW_VERSION = 'notifications-v2-2026-09-18-grouped';
+const SW_VERSION = 'notifications-v2-2026-10-15-assets';
 const SITE_PATH = '/epinoia/';
 /* A NOTICE WITH NOWHERE OF ITS OWN TO GO OPENS HOME, not the splash. A tap that opens a fresh
    window carries no ?source=, no referrer and no stored app flag, so nothing downstream could
@@ -50,9 +53,9 @@ const SUPABASE_KEY = 'sb_publishable_iYjQNoDcYluFNbdbGGxMHw_kvL4dTZO';
 const VAPID_PUBLIC_KEY = 'BLskwAuRGoAJnRcYe0gyLE5R0otKhcvu8fL5UxE06ep_VGzxfbirqziIS4uu3N6BmQob4Vl9vSiokUuVKpa7toM';
 
 self.addEventListener('install', () => self.skipWaiting());
-/* A fetch handler makes the app installable. Nothing is cached here on purpose: a live score
-   served from yesterday's cache would be worse than no app at all, and the pages already carry
-   their own version stamps.
+/* A fetch handler makes the app installable. No page and no data is cached here, on purpose: a live
+   score served from yesterday's cache would be worse than no app at all. (The pages' stamped scripts
+   and stylesheets are, below: their address changes with every deploy, so a copy is never news.)
 
    ONLY A PAGE LOAD IS ANSWERED, and only when it fails. It used to be every GET: a Supabase
    read that failed offline came back as a 503 HTML page, and code waiting for JSON reported a
@@ -73,10 +76,79 @@ function offlinePage() {
     '<body><div><b>Epinoia is offline</b><p>Nothing is stored on this phone. Connect, then try again.</p><a href="">Try again</a></div></body></html>',
     { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
 }
+/* THE SITE'S OWN STAMPED FILES, FROM A CACHE OF ITS OWN (2026-10-15). Every script and stylesheet a page loads is
+   stamped with the site's version (src="game.js?v=821", tools/stamp-assets.py), and a deploy stamps them all anew,
+   so the file behind one such address does not change. GitHub Pages lets a browser keep a file for ten minutes;
+   after that, every page asked again for each of its 60-130 files before it could run - a burst of requests in front
+   of the box score on every visit after a short break. Here such a file is answered from this cache at once, and
+   when the copy is more than REVALIDATE_MS old it is asked for again AFTER the page has it (a conditional request,
+   nearly always "not modified"), so a file changed without a new stamp still reaches the reader within ten minutes,
+   as it did before. Nothing else is touched: pages, data, Supabase, an unstamped file - all go to the network exactly
+   as before. A deploy's new stamp is a new cache; the ones before the previous are deleted. */
+const ASSET_CACHE = 'epinoia-assets-v';
+const REVALIDATE_MS = 10 * 60 * 1000;
+const FETCHED_AT = 'x-epinoia-fetched-at';
+/* the stamp of a request this worker answers from its cache, or '' */
+function assetStamp(url, origin) {
+  let u;
+  try { u = new URL(url); } catch (_) { return ''; }
+  if (u.origin !== origin || u.pathname.indexOf(SITE_PATH) !== 0 || u.pathname === SITE_PATH + 'sw.js') return '';
+  if (!/\.(?:js|css)$/.test(u.pathname)) return '';
+  const v = u.searchParams.get('v');
+  return v && /^\d{1,9}$/.test(v) && [...u.searchParams.keys()].length === 1 ? v : '';
+}
+/* a response worth keeping: our own, whole, and OK */
+function keepable(res) { return !!(res && res.ok && res.status === 200 && (res.type === 'basic' || res.type === 'default')); }
+/* the response as stored, stamped with when it was fetched (a header of our own: the cache keeps no date) */
+async function stamped(res) {
+  const h = new Headers(res.headers);
+  h.set(FETCHED_AT, String(Date.now()));
+  return new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers: h });
+}
+async function refresh(cache, req) {
+  try {
+    const res = await fetch(req, { cache: 'no-cache' });
+    if (keepable(res)) await cache.put(req, await stamped(res));
+  } catch (_) { /* offline, or refused: the copy we have stands */ }
+}
+/* the previous deploy's cache is kept (a page opened before it may still ask for its files); older ones go */
+async function prune(v) {
+  try {
+    const n = +v;
+    for (const name of await caches.keys()) {
+      if (name.indexOf(ASSET_CACHE) !== 0) continue;
+      const k = +name.slice(ASSET_CACHE.length);
+      if (!(k >= n - 1)) await caches.delete(name);
+    }
+  } catch (_) { /* a cache that will not list is no reason to fail a page */ }
+}
+async function stampedAsset(e, req, v) {
+  let cache;
+  try { cache = await caches.open(ASSET_CACHE + v); } catch (_) { return fetch(req); }
+  let hit = null;
+  try { hit = await cache.match(req); } catch (_) { hit = null; }
+  if (hit) {
+    const at = +(hit.headers.get(FETCHED_AT) || 0);
+    if (!(Date.now() - at < REVALIDATE_MS)) e.waitUntil(refresh(cache, req));
+    return hit;
+  }
+  const res = await fetch(req);
+  if (keepable(res)) {
+    const copy = res.clone();
+    e.waitUntil(stamped(copy).then(s => cache.put(req, s)).then(() => prune(v)).catch(() => {}));
+  }
+  return res;
+}
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (!req || req.method !== 'GET' || req.mode !== 'navigate') return;
-  e.respondWith(fetch(req).catch(() => offlinePage()));
+  if (!req || req.method !== 'GET') return;
+  if (req.mode === 'navigate') {
+    e.respondWith(fetch(req).catch(() => offlinePage()));
+    return;
+  }
+  const v = assetStamp(req.url, self.location.origin);
+  if (!v) return;                              // everything else: the network, exactly as if there were no worker
+  e.respondWith(stampedAsset(e, req, v).catch(() => fetch(req)));
 });
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 
