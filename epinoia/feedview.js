@@ -272,5 +272,32 @@ async function mount(opts) {
   return true;
 }
 
-return { isVideo, newsOnly, mount, modesFor, openedRow, N, POOL };
+/* A SMALL FEED (HOME's MY FOLLOWED, under a follow's Best this week; 2026-10-14): one league's newest news, n cards on the
+   post card, no switch. opts: { league: { id, slug }, base, n, prefer (a club's name: its stories first) }. Resolves to
+   the grid, or null when the league has none (or the feed is not in the database). */
+async function mini(opts) {
+  const o = opts || {};
+  const K = root.EpinoiaNewsCard, c = root.EPINOIA_CONFIG || {};
+  const lg = o.league;
+  if (!K || !lg || !lg.id || !c.supabaseUrl) return null;
+  const n = o.n || N;
+  const r = await root.fetch(c.supabaseUrl + '/rest/v1/rpc/news_feed', { method: 'POST',
+    headers: { apikey: c.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ p_league: lg.id, p_limit: Math.min(POOL, n * 4) }) });
+  if (!r.ok) return null;
+  let rows = newsOnly(await r.json()) || [];
+  if (o.prefer) {
+    const p = String(o.prefer).toLowerCase();
+    const has = x => (String(x.title || '') + ' ' + String(x.summary || '')).toLowerCase().indexOf(p) >= 0;
+    rows = rows.filter(has).concat(rows.filter(x => !has(x)));
+  }
+  rows = rows.slice(0, n);
+  if (!rows.length) return null;
+  const media = p => (!p || /^https:\/\//.test(p)) ? p
+    : c.supabaseUrl + '/storage/v1/object/public/media-public/' + String(p).split('/').map(encodeURIComponent).join('/');
+  const crest = p => (typeof root.epinoiaLogoUrl === 'function' && root.epinoiaLogoUrl(p, 64)) || media(p);
+  return K.grid(rows.map(x => K.fromFeed(x, o.base || '', media, crest)), { lead: false, now: Date.now(), showLeague: false, hideTag: lg.slug });
+}
+
+return { isVideo, newsOnly, mount, mini, modesFor, openedRow, N, POOL };
 }));

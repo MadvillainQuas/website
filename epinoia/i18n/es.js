@@ -1971,7 +1971,8 @@
       'International': 'Internacional',
       'No results for the leagues you picked.': 'No hay resultados de las ligas elegidas.',
       'No live games for the leagues you picked.': 'No hay partidos en directo de las ligas elegidas.',
-      'No games to come for the leagues you picked.': 'No hay próximos partidos de las ligas elegidas.'
+      'No games to come for the leagues you picked.': 'No hay próximos partidos de las ligas elegidas.',
+      'Latest news': 'Últimas noticias'
     },
 
     ctx: {

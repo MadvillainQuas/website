@@ -1969,7 +1969,8 @@
       'International': '国際',
       'No results for the leagues you picked.': '選んだリーグの結果はありません。',
       'No live games for the leagues you picked.': '選んだリーグのライブ中の試合はありません。',
-      'No games to come for the leagues you picked.': '選んだリーグの今後の試合はありません。'
+      'No games to come for the leagues you picked.': '選んだリーグの今後の試合はありません。',
+      'Latest news': '最新ニュース'
     },
 
     ctx: {

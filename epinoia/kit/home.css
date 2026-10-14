@@ -798,3 +798,27 @@ html.vh-on .ft-panel{display:none !important}
   font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
 .fxp-clear:hover{border-color:var(--flare);color:var(--ink)}
 @media (max-width:640px){ .fxp-dd{flex:1 1 100%} .fxp-dd > summary{min-width:0} .fxp-list{left:0;right:0;min-width:0} }
+
+/* HOME'S GROUPS AS TABS ON A DESKTOP (home/groups.js showTab; 2026-10-14): one segmented bar, the open group's tab
+   filled in its colour; the other groups step aside and nothing folds. The VIDEO view keeps its own page. */
+@media (min-width:721px){
+  html.hg-tabs:not(.vh-on) .hg-off{display:none !important}
+  html.hg-tabs .hg-fold{display:none}
+  html.hg-tabs .hg-nav{width:max-content;max-width:calc(100% - 24px);gap:4px;padding:5px;border-radius:999px;background:var(--panel);
+    border:1px solid var(--rule-2);box-shadow:0 4px 18px rgba(0,0,0,.08)}
+  html.hg-tabs .hg-btn{border-color:transparent;box-shadow:none;background:transparent;color:var(--ink-2);transition:background .15s,color .15s}
+  html.hg-tabs .hg-btn:hover{transform:none;color:var(--ink);background:color-mix(in oklch,var(--hg) 8%,transparent)}
+  html.hg-tabs .hg-btn.on{color:var(--ink);background:color-mix(in oklch,var(--hg) 20%,var(--panel));border-color:var(--hg)}
+}
+
+/* DAILY FIXTURES FOUR A ROW (Louie, 2026-10-14): on a desktop four across wherever each card has 145px (the compact card,
+   kit/fxc.css, under 210), as Global fixtures does at 170 (gmg), measured by the rail itself; three, then two, below that. A phone keeps its swipe. */
+@media (min-width:721px){
+  .hm #homeDaily .fxc-rail{container:hmd / inline-size}
+  .hm #homeDaily .fxc-rail>.fxc{flex:0 0 calc((100% - var(--u) * 1.5) / 2 - .5px)}
+}
+@container hmd (min-width:460px){ .hm #homeDaily .fxc-rail>.fxc{flex-basis:calc((100% - 2 * var(--u) * 1.5) / 3 - .5px)} }
+@container hmd (min-width:616px){ .hm #homeDaily .fxc-rail>.fxc{flex-basis:calc((100% - 3 * var(--u) * 1.5) / 4 - .5px)} }
+/* MY FOLLOWED's small feed under Best this week (followed-home.js news, feedview.js mini) */
+.hmf-news .pc-grid{padding:0 calc(var(--u)*3) calc(var(--u)*2)}
+@media (max-width:560px){ .hmf-news .pc-grid{padding:0 12px 12px} }

@@ -42,6 +42,8 @@
   if (!H) return;
 
   const N = 4;
+  /* Best this week: three (Louie, 2026-10-14), a row of three on a desktop; and under it a small feed of six */
+  const STARS_N = 3, NEWS_N = 6;
   /* far enough back that a league playing once a week still has four results */
   const RESULT_DAYS = 24;
   const DAY = 86400000;
@@ -151,7 +153,7 @@
 
     const box = await S.boxScores(rows.map(g => g.id));
     const agg = S.computeWindow(box.pgs, box.tgs, rows, { leagueOf: g => G.leagueOf(g) });
-    const top = S.pick(agg.players, w, N);
+    const top = S.pick(agg.players, w, STARS_N);
     if (!top.length) return null;
 
     let meta = {};
@@ -271,7 +273,24 @@
        dropdown does not shift what is already in it */
     const starHost = el('div', 'hmf-stars');
     body.appendChild(starHost);
+    /* THE NEWS, under the stars: the league's newest six, or a club's league's with the club's own stories first */
+    const newsHost = el('div', 'hmf-news');
+    body.appendChild(newsHost);
     det.appendChild(body);
+    let newsAsked = false;
+    const news = () => {
+      if (newsAsked) return;
+      newsAsked = true;
+      const V = window.EpinoiaFeedView, G = window.EpinoiaGlobalGames;
+      const g0 = f.finals[0] || f.soon[0];
+      const lg = f.kind === 'league' ? f.who : (G && g0 ? G.leagueOf(g0) : null);
+      if (!V || !V.mini || !lg) return;
+      V.mini({ league: lg, base: ctx.base, n: NEWS_N, prefer: f.kind === 'league' ? null : f.who.name }).then(g => {
+        if (!g) return;
+        newsHost.append(el('h3', 'hm-fol-h', 'Latest news'), g);
+      }, () => { /* the games and stars stand without it */ });
+    };
+    det.addEventListener('toggle', () => { if (det.open) news(); });
 
     let asked = false;
     const fill = () => {
