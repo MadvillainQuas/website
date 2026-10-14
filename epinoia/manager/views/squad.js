@@ -255,24 +255,96 @@ async function draft(host) {
 }
 
 /* ------------------------------------------------------------------ the squad, after the draft --- */
+/* THE SQUAD'S VIEWS (Louie, 2026-10-14: "In Squad, can there be different views (i.e. attributes view, stats view [which
+   shows the simple view stats in player profiles for each player exhaustively], advanced view [which shows the scouting
+   view stats exhaustively] etc.?"): the 1-20 attributes; the profile's simple view, every row (his real season, a 75-
+   possession game); its scouting view, every row; and the manager season's own. Each value coloured by where it sits
+   among his own league's players (the manager season's: this manager league's), every column sortable. */
+const SQ_VIEWS = [['attrs', 'Attributes'], ['stats', 'Stats'], ['adv', 'Advanced'], ['sim', 'Manager season']];
 function squadView(host) {
   const S = A.club.state, roster = A.club.roster || [];
   host.appendChild(h('div.mg-top', A.badge(A.club.badge, 56), h('div.who', h('h1', 'Squad'), h('div.meta', h('span', roster.length + ' players'),
     h('span', 'Wages ', h('b', A.money(roster.reduce((a, e) => a + (e.wage || 0), 0))), ' of ', A.money(A.club.budget || 0)))), h('div.grow'),
     h('a.mg-btn.primary', { href: '#/trade' }, 'Trade a player')));
-  const t = h('table.mg-table');
-  t.appendChild(h('thead', h('tr', h('th.l', 'Player'), h('th', 'Pos'), Mgr.ratings.ATTRS.map(a => h('th', { title: a.label }, a.short || a.label)), h('th', 'GP'), h('th', 'MIN'), h('th', 'PTS'), h('th', 'REB'), h('th', 'AST'), h('th', 'Wage'))));
-  const tb = h('tbody');
-  roster.slice().sort((a, b) => (a.slot || 0) - (b.slot || 0)).forEach(e => {
-    const at = A.attrs(e.id) || {}, line = S ? Mgr.season.lineOf(S, e.id) : null, g = line ? Math.max(1, line.gp) : 1;
-    tb.appendChild(h('tr', h('td.l', h('button.rowbtn', { type: 'button', onclick: ev => A.playerCard(e.id, e.league, ev.currentTarget) }, A.nm(A.nameOf(e.id), 'b')), ' ', h('a.mg-go', { href: '#/player/' + encodeURIComponent(e.id) + '?l=' + encodeURIComponent(e.league || ''), title: 'Full profile' }, 'FULL PROFILE →')),
-      h('td', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.posOf(e.id))), Mgr.ratings.ATTRS.map(a => h('td', A.attrChip(at[a.k]))),
-      h('td', line ? String(line.gp) : '0'), h('td', line ? A.fmt(line.min / g) : '–'), h('td', line ? A.fmt(line.pts / g) : '–'),
-      h('td', line ? A.fmt((line.oreb + line.dreb) / g) : '–'), h('td', line ? A.fmt(line.ast / g) : '–'), h('td', A.money(e.wage))));
-  });
-  t.appendChild(tb);
-  host.appendChild(h('div.mg-panel', h('div.mg-tablewrap', t), h('p.mg-sub', { style: { marginTop: '10px' } },
-    'Attributes are for reading a player at a glance (1-20 against his league, moved by its level). The games themselves run on the players’ own numbers.')));
+  let view = SQ_VIEWS.some(([k]) => k === A.stored('mgr_squad_view')) ? A.stored('mgr_squad_view') : 'attrs', sort = null;
+  const tabs = h('div.mg-tabs', { role: 'group', 'aria-label': 'Squad view' }), panel = h('div.mg-panel');
+  host.appendChild(h('div.mg-row', { style: { marginBottom: '12px' } }, tabs));
+  host.appendChild(panel);
+  const drawTabs = () => { tabs.textContent = ''; SQ_VIEWS.forEach(([k, l]) => tabs.appendChild(h('button', { type: 'button', 'aria-pressed': String(view === k), onclick: () => { view = k; sort = null; A.store('mgr_squad_view', k); drawTabs(); draw(); } }, l))); };
+  const nameCell = e => h('td.l.sticky', h('button.rowbtn', { type: 'button', onclick: ev => A.playerCard(e.id, e.league, ev.currentTarget) }, A.nm(A.nameOf(e.id), 'b')), ' ',
+    h('a.mg-go', { href: '#/player/' + encodeURIComponent(e.id) + '?l=' + encodeURIComponent(e.league || ''), title: 'Full profile' }, 'PROFILE →'));
+  const posCell = e => h('td', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.posOf(e.id)));
+  const bySlot = (a, b) => (A.slotOfId(a.id) - A.slotOfId(b.id)) || ((a.slot || 0) - (b.slot || 0));
+  function draw() {
+    panel.textContent = '';
+    if (view === 'attrs') return drawAttrs();
+    const SV = A.statViews;
+    if (!SV) { panel.appendChild(h('p.mg-sub', 'These views could not be loaded.')); return; }
+    const sim = view === 'sim';
+    if (sim && !S) { panel.appendChild(h('p.mg-sub', 'The manager season starts once your squad is confirmed.')); return; }
+    const sections = view === 'stats' ? SV.SIMPLE : sim ? SV.SCOUT_SIM : SV.SCOUT;
+    /* each man's values, and the field each is read against (his own league's players with 40 minutes, or this manager
+       league's men with half the most games) */
+    const fields = new Map();
+    const fieldOf = e => {
+      if (sim) {
+        if (!fields.has('sim')) { const top = Object.values(S.stats).reduce((a, x) => Math.max(a, x[0]), 0); fields.set('sim', Object.keys(S.stats).filter(i => S.stats[i][0] >= Math.max(1, top / 2)).map(i => SV.simVals(S, S.people[+i])).filter(Boolean)); }
+        return fields.get('sim');
+      }
+      const L = A.leagueDataOf(e.id), key = L && L.L ? L.L.id : '-';
+      if (!fields.has(key)) fields.set(key, L ? (L.S.players || []).filter(x => (x.min || 0) >= 40).map(SV.realVals) : []);
+      return fields.get(key);
+    };
+    const valsOf = e => { if (sim) return SV.simVals(S, e.id); const r = A.rowOf(e.id); return r ? SV.realVals(r) : null; };
+    const big = e => SV.isBig(A.rowOf(e.id));
+    const cols = [];
+    sections.forEach(sec => sec.blocks.forEach(b => b.rows.forEach(([k, label]) => cols.push({ k, label, sec: sec.title, sub: b.title || '', bigsOnly: !!b.bigsOnly }))));
+    const rows = roster.slice().sort(bySlot).map(e => ({ e, v: valsOf(e), f: fieldOf(e) }));
+    if (sort) rows.sort((a, b) => { const x = a.v ? +a.v[sort.k] : NaN, y = b.v ? +b.v[sort.k] : NaN; return (isFinite(y) ? y : -1e9) * sort.dir - (isFinite(x) ? x : -1e9) * sort.dir; });
+    const pctOf = (k, v, field) => {
+      const xs = field.map(x => +x[k]).filter(x => isFinite(x));
+      if (!xs.length || !isFinite(v)) return null;
+      let below = 0, eq = 0; xs.forEach(x => { if (x < v) below++; else if (x === v) eq++; });
+      let p = (below + 0.5 * eq) / xs.length; if (SV.LOW.has(k)) p = 1 - p;
+      return p;
+    };
+    const t = h('table.mg-table.mg-sqtable');
+    /* the sections over their columns */
+    const groups = []; cols.forEach(c => { const g = groups[groups.length - 1]; if (g && g.sec === c.sec) g.n++; else groups.push({ sec: c.sec, n: 1 }); });
+    t.appendChild(h('thead', h('tr.grp', h('th.l.sticky', { colspan: '1' }, ''), h('th', ''), groups.map(g => h('th.g', { colspan: String(g.n) }, g.sec))),
+      h('tr', h('th.l.sticky', 'Player'), h('th', 'Pos'), cols.map(c => h('th.sort' + (sort && sort.k === c.k ? '.on' : ''), { title: (c.sub ? c.sub + ': ' : '') + c.label + ' (press to sort)', tabindex: '0', role: 'button',
+        onclick: () => { sort = sort && sort.k === c.k ? (sort.dir === 1 ? { k: c.k, dir: -1 } : null) : { k: c.k, dir: 1 }; draw(); } }, c.label + (sort && sort.k === c.k ? (sort.dir === 1 ? ' ▼' : ' ▲') : ''))))));
+    const tb = h('tbody');
+    rows.forEach(({ e, v, f }) => {
+      tb.appendChild(h('tr', nameCell(e), posCell(e), cols.map(c => {
+        const x = v ? +v[c.k] : NaN;
+        if (!v || v[c.k] == null || !isFinite(x) || (c.bigsOnly && !big(e))) return h('td.mg-sub', '–');
+        const p = pctOf(c.k, x, f), band = p == null ? '' : p >= 0.8 ? 'a4' : p >= 0.55 ? 'a3' : p >= 0.3 ? 'a2' : 'a1';
+        const dp = c.k === 'ast_to' || c.k === 'au' ? 2 : 1;
+        return h('td', h('span.mg-sv.' + (band || 'a0'), { title: p == null ? '' : 'Better than ' + Math.round(100 * p) + '% of ' + (sim ? 'this manager league' : 'his league') }, (SV.SIGNED(c.k) && x > 0 ? '+' : '') + x.toFixed(dp)));
+      })));
+    });
+    t.appendChild(tb);
+    panel.appendChild(h('div.mg-tablewrap', t));
+    panel.appendChild(h('p.mg-sub', { style: { marginTop: '10px' } }, view === 'stats' ? 'The profile’s simple view: his real season over a 75-possession game. Colours: where he sits among his own league’s players.'
+      : view === 'adv' ? 'The profile’s scouting view: his real season. Colours: where he sits among his own league’s players (for turnovers, fouls and assisted shots, fewer is better).'
+        : 'His season in this manager league, against its men with half the most games or more.'));
+  }
+  function drawAttrs() {
+    const t = h('table.mg-table');
+    t.appendChild(h('thead', h('tr', h('th.l', 'Player'), h('th', 'Pos'), Mgr.ratings.ATTRS.map(a => h('th', { title: a.label }, a.short || a.label)), h('th', 'GP'), h('th', 'MIN'), h('th', 'PTS'), h('th', 'REB'), h('th', 'AST'), h('th', 'Wage'))));
+    const tb = h('tbody');
+    roster.slice().sort(bySlot).forEach(e => {
+      const at = A.attrs(e.id) || {}, line = S ? Mgr.season.lineOf(S, e.id) : null, g = line ? Math.max(1, line.gp) : 1;
+      tb.appendChild(h('tr', nameCell(e), posCell(e), Mgr.ratings.ATTRS.map(a => h('td', A.attrChip(at[a.k]))),
+        h('td', line ? String(line.gp) : '0'), h('td', line ? A.fmt(line.min / g) : '–'), h('td', line ? A.fmt(line.pts / g) : '–'),
+        h('td', line ? A.fmt((line.oreb + line.dreb) / g) : '–'), h('td', line ? A.fmt(line.ast / g) : '–'), h('td', A.money(e.wage))));
+    });
+    t.appendChild(tb);
+    panel.appendChild(h('div.mg-tablewrap', t));
+    panel.appendChild(h('p.mg-sub', { style: { marginTop: '10px' } }, 'Attributes are for reading a player at a glance (1-20 against his league, moved by its level). The games themselves run on the players’ own numbers.'));
+  }
+  drawTabs(); draw();
 }
 
 A.views.squad = { render: async host => { if (A.club.status === 'draft') return draft(host); squadView(host); } };

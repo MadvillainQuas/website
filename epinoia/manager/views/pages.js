@@ -276,4 +276,6 @@ const ordinal = n => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n
 
 A.views.player = { render: player };
 A.views.team = { render: team };
+/* the profile's sections and how a line is read for them: the squad's Stats, Advanced and Manager season views too */
+A.statViews = { SCOUT, SCOUT_SIM, SIMPLE, LOW, SIGNED, realVals, simVals, isBig };
 })(typeof globalThis !== 'undefined' ? globalThis : self);

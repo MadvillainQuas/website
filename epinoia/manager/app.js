@@ -31,7 +31,8 @@ function h(sel, attrs, ...kids) {
     const v = attrs[k];
     if (v == null || v === false) return;
     if (k.startsWith('on') && typeof v === 'function') n.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (k === 'style' && typeof v === 'object') Object.assign(n.style, v);
+    /* (a custom property, --name, only goes in through setProperty) */
+    else if (k === 'style' && typeof v === 'object') Object.keys(v).forEach(p => { if (p.startsWith('--')) n.style.setProperty(p, v[p]); else n.style[p] = v[p]; });
     else if (k === 'text') n.textContent = v;
     else if (k === 'cls') n.className += (n.className ? ' ' : '') + v;
     else if (k === 'name' && v === true) n.setAttribute('translate', 'no');
@@ -228,11 +229,21 @@ A.realClubs = () => {
 
 /* ------------------------------------------------------------------ the teams that play --- */
 const X = () => ({ L: A.lg.sim, ref: A.lg.ref, G: 40 });
-/* the reader's lineups as they stand, each checked: five different men of the squad; none valid, the squad's own */
-A.lineups = () => {
+/* the reader's lineups as they stand, each checked: five different men of the squad, playing some minutes (its minutes,
+   or minutes painted on the rotation chart); none valid, the squad's own. Each place's ROLE (core/roles.js; Louie,
+   2026-10-14: "For each position set ... force the user to select their role [which is applied regardless if one is
+   selected - if not it just goes to default]"): a role of that position, else none (the position's default) */
+A.lineups = o => {
   const ids = new Set(A.mine.cards.keys());
-  const ok = (A.club.lineups || []).filter(l => l && Array.isArray(l.ids) && l.ids.length === 5 && new Set(l.ids).size === 5 && l.ids.every(id => ids.has(String(id))) && l.min > 0);
-  return ok.length ? ok : autoLineups();
+  const painted = l => Array.isArray(l.when) && l.when.some(w => Array.isArray(w) && +w[1] > +w[0]);
+  /* (o.all: a lineup given no minutes too - the tactics screen keeps it to be given some) */
+  const ok = (A.club.lineups || []).filter(l => l && Array.isArray(l.ids) && l.ids.length === 5 && new Set(l.ids).size === 5 && l.ids.every(id => ids.has(String(id))) && (l.min > 0 || painted(l) || (o && o.all)));
+  return ok.length && ok.some(l => l.min > 0 || painted(l)) ? ok.map(l => Object.assign({}, l, { roles: A.rolesOf(l) })) : autoLineups();
+};
+/* a lineup's roles, kept to roles of each place's position */
+A.rolesOf = l => {
+  const RO = Mgr.roles;
+  return [0, 1, 2, 3, 4].map(k => { const key = l && Array.isArray(l.roles) ? l.roles[k] : null, r = key && RO ? RO.BY.get(key) : null; return r && r.slot === k ? key : null; });
 };
 /* the squad's own lineups: its five most valuable men, set at the positions their own positions put them in (the
    smallest at the point, the biggest at centre - a man one position over costs little), twenty-eight minutes; the next
@@ -241,10 +252,10 @@ function autoLineups() {
   const men = [...A.mine.cards.values()].sort((a, b) => ((A.priceOf(b.id) || {}).value || 0) - ((A.priceOf(a.id) || {}).value || 0));
   if (men.length < 5) return [];
   const order = five => five.slice().sort((a, b) => (A.slotOfId(a.id) - A.slotOfId(b.id)) || (a.pos - b.pos)).map(c => c.id);
-  const first = men.slice(0, 5), rest = men.slice(5);
-  if (!rest.length) return [{ ids: order(first), min: 40 }];
+  const first = men.slice(0, 5), rest = men.slice(5), none = () => [null, null, null, null, null];
+  if (!rest.length) return [{ ids: order(first), min: 40, roles: none() }];
   const second = rest.slice(0, 5).concat(first.slice().reverse()).slice(0, 5);
-  return [{ ids: order(first), min: 28 }, { ids: order(second), min: 12 }];
+  return [{ ids: order(first), min: 28, roles: none() }, { ids: order(second), min: 12, roles: none() }];
 }
 A.autoLineups = autoLineups;
 /* A REAL CLUB: its own men at their own minutes, less the reader's draft; fewer than five, replacement-level fillers. It
@@ -349,7 +360,7 @@ const LKEY = () => 'mgr_live_' + (A.club && A.club.id);
 A.matchday = () => { const S = A.club && A.club.state; return S && A.club.status === 'active' ? Mgr.season.matchday(S, Date.now(), 0) : null; };
 A.liveGame = () => { const S = A.club && A.club.state; return S && S.live && !S.live.done ? S.live : null; };
 /* the plan a side carries into the game (kept, so a game taken up again plays the same men the same way) */
-const planOf = T => ({ id: T.id, segs: T.segs.map(x => ({ t0: x.t0, t1: x.t1, ids: x.ids.slice(), tac: x.tac || null })), identity: T.identity || null, bench: T.bench || null });
+const planOf = T => ({ id: T.id, segs: T.segs.map(x => Object.assign({ t0: x.t0, t1: x.t1, ids: x.ids.slice(), tac: x.tac || null }, x.roles ? { roles: x.roles.slice() } : {})), identity: T.identity || null, bench: T.bench || null });
 function liveTeams(S) {
   const lv = S.live, f = S.fixtures.find(x => x.r === lv.r && (x.h === 0 || x.a === 0)), form = new Map(lv.form || []);
   const build = (i, plan) => {

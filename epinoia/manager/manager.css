@@ -781,3 +781,175 @@ html[data-theme="light"] .mg-mx-over{ background:rgba(220,230,255,.7) }
   .mg-pop, .mg-pop.sheet, .mg-mx-sb .pts.flash, .mg-mx-comm.flash, .mg-btn.pulse, .mg-live-dot{ animation:none !important }
   .mg-mx-courtwrap .pl, .mg-mx-courtwrap .ball{ transition:none !important }
 }
+
+/* ---------------------------------------------------------------- tactics: the roles (2026-10-14) --- */
+/* Louie: "players represented by circles on the tactics screen, and the bench placed next to the lineup graphic", "colour
+   coding a player as to how much usage they'll have, how much they've been asked to get to the rim vs. shoot 3's", the
+   rotation "like an interactive rotations chart on box score pages" */
+.mg{ --mg-l0:#4a78ff; --mg-l1:#19c9b4; --mg-l2:#f2a93b; --mg-l3:#e35d9c; --mg-ringc:#e9f0ff; --mg-zr:#ff7a59; --mg-zm:#ffd166; --mg-z3:#5ce1ff }
+html[data-theme="light"] .mg{ --mg-l0:#2747e8; --mg-l1:#0e9c8b; --mg-l2:#c77d10; --mg-l3:#c23c7c; --mg-ringc:#1430b8; --mg-zr:#e0532f; --mg-zm:#c99400; --mg-z3:#0d8fc4 }
+.mg-tac2{ display:flex; flex-direction:column; gap:16px }
+.mg-tac2-court{ display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:16px; align-items:start }
+.mg-benchpanel{ position:sticky; top:12px }
+.mg-benchpanel .mg-bench{ max-height:min(620px, calc(100vh - 170px)); overflow-y:auto; padding-right:2px }
+.mg-benchpanel .keys{ margin:-4px 0 8px; font-size:11px }
+.mg-bench li .ks{ display:flex; gap:3px; flex:none }
+.mg-bench li .ks .mg-attr{ min-width:20px; padding:1px 3px; font-size:10.5px }
+.mg-lineups button b .sw, .mg-h h3 .sw, .mg-brush .sw{ display:inline-block; width:10px; height:10px; border-radius:3px; background:var(--lc); margin-right:7px; vertical-align:0; box-shadow:0 0 8px color-mix(in srgb, var(--lc) 60%, transparent) }
+.mg-lineups button[aria-pressed="true"]{ border-color:var(--lc, var(--mg-royal-3)) }
+
+/* the five, as circles */
+.mg-court.dots .mg-spot.c{ width:clamp(98px,19%,146px); gap:4px }
+.mg-spot .dotwrap{ position:relative }
+.mg-dot{ --sz:clamp(56px,7vw,78px); width:var(--sz); height:var(--sz); box-sizing:border-box; padding:5px; border-radius:50%; cursor:grab; position:relative;
+  background:conic-gradient(var(--mg-ringc) var(--ring), color-mix(in srgb, var(--mg-ringc) 16%, transparent) 0);
+  box-shadow:0 6px 18px rgba(0,0,0,.35), 0 0 20px color-mix(in srgb, var(--heat) 55%, transparent); transition:transform .15s, box-shadow .15s; outline:none }
+.mg-dot .in{ display:grid; place-items:center; align-content:center; gap:1px; width:100%; height:100%; border-radius:50%; color:#091024;
+  background:radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--heat) 62%, #fff), var(--heat) 58%, color-mix(in srgb, var(--heat) 72%, #000)) }
+.mg-dot .in b{ font-size:calc(var(--sz) * .3); font-weight:900; line-height:1; letter-spacing:.02em }
+.mg-dot .in small{ font-size:calc(var(--sz) * .16); font-weight:800; opacity:.78; line-height:1 }
+.mg-dot:hover, .mg-dot:focus-visible{ transform:scale(1.07) }
+.mg-dot:focus-visible{ box-shadow:0 0 0 3px var(--mg-royal-3), 0 0 22px var(--mg-glow) }
+.mg-dot.sel{ box-shadow:0 0 0 3px #ffd66b, 0 0 22px rgba(255,214,107,.6) }
+.mg-dot.oop{ outline:2px dashed rgba(255,198,92,.95); outline-offset:3px }
+.mg-spot.c.over .mg-dot{ box-shadow:0 0 0 3px #8fb0ff, 0 0 26px rgba(61,107,255,.7) }
+.mg-spot .bd{ position:absolute; top:-5px; right:-7px; width:19px; height:19px; border-radius:50%; display:grid; place-items:center; font-style:normal; font-weight:900; font-size:11px;
+  background:#ffb547; color:#1a1200; box-shadow:0 2px 8px rgba(0,0,0,.4) }
+.mg-spot .bd + .bd{ right:auto; left:-7px }
+.mg-spot .bd.oop{ background:#ffd66b }
+.mg-spot .lab{ display:flex; flex-direction:column; align-items:center; gap:3px; width:100% }
+.mg-spot .lab > b{ max-width:100%; font-size:12.5px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 6px rgba(0,0,0,.55) }
+html[data-theme="light"] .mg-spot .lab > b{ text-shadow:0 1px 6px rgba(255,255,255,.8) }
+.mg-rolechip{ display:inline-flex; align-items:center; justify-content:center; gap:5px; max-width:100%; box-sizing:border-box; padding:3px 8px; border-radius:12px; cursor:pointer; text-align:center;
+  border:1px solid var(--mg-edge-2); background:var(--mg-glass-solid); color:var(--mg-ink); font:700 10.5px/1.2 var(--mg-f) }
+.mg-rolechip span{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden }
+.mg-rolechip em{ font-style:normal; color:var(--mg-ink-3) }
+.mg-rolechip:hover{ border-color:var(--mg-royal-3) }
+.mg-rolechip.dflt{ border-style:dashed; color:var(--mg-ink-3) }
+.mg-mixbar{ display:flex; width:74%; height:5px; border-radius:3px; overflow:hidden; background:var(--mg-glass) }
+.mg-mixbar i{ display:block; height:100% }
+.mg-mixbar .rim, .mg-legend .mix .rim{ background:var(--mg-zr) } .mg-mixbar .mid, .mg-legend .mix .mid{ background:var(--mg-zm) } .mg-mixbar .three, .mg-legend .mix .three{ background:var(--mg-z3) }
+.mg-legend{ display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; font-size:11.5px; color:var(--mg-ink-3) }
+.mg-legend > span{ display:inline-flex; align-items:center; gap:7px }
+.mg-legend .heat{ width:30px; height:10px; border-radius:5px; background:linear-gradient(90deg, hsl(195 82% 54%), hsl(130 80% 50%), hsl(50 85% 50%), hsl(0 82% 48%)) }
+.mg-legend .ring{ width:13px; height:13px; border-radius:50%; background:conic-gradient(var(--mg-ringc) 62%, color-mix(in srgb, var(--mg-ringc) 18%, transparent) 0) }
+.mg-legend .mix{ display:inline-flex; width:30px; height:6px; border-radius:3px; overflow:hidden } .mg-legend .mix b{ flex:1 }
+
+/* how the five plays */
+.mg-gauges{ display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px 18px }
+.mg-gauge .lab{ display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--mg-ink-3) }
+.mg-gauge .lab b{ color:var(--mg-ink); font-size:12px; white-space:nowrap }
+.mg-gauge .track{ position:relative; height:8px; margin-top:6px; border-radius:4px; background:var(--mg-glass-2); overflow:hidden }
+.mg-gauge .band{ position:absolute; top:0; bottom:0; background:color-mix(in srgb, var(--mg-good) 22%, transparent) }
+.mg-gauge .v{ position:absolute; left:0; top:0; bottom:0; border-radius:4px; background:linear-gradient(90deg, var(--mg-royal), var(--mg-a4)) }
+.mg-gauge.lo .v{ background:linear-gradient(90deg, var(--mg-bad), var(--mg-warn)) }
+.mg-gauge.hi .v{ background:linear-gradient(90deg, var(--mg-warn), var(--mg-bad)) }
+.mg-gauge.good .v{ background:linear-gradient(90deg, var(--mg-good), var(--mg-a4)) }
+.mg-gauge .mk{ position:absolute; top:0; bottom:0; width:2px; margin-left:-1px; background:var(--mg-ink-3) }
+.mg-notes{ list-style:none; margin:14px 0 0; padding:0; display:flex; flex-direction:column; gap:6px }
+.mg-notes li{ display:flex; gap:10px; align-items:flex-start; padding:9px 12px; border-radius:11px; font-size:13px; line-height:1.45; background:var(--mg-glass); border:1px solid var(--mg-edge) }
+.mg-notes li > i{ flex:none; width:20px; height:20px; margin-top:1px; border-radius:50%; display:grid; place-items:center; font-style:normal; font-weight:900; font-size:11px }
+.mg-notes li.bad{ border-color:color-mix(in srgb, var(--mg-bad) 50%, transparent); background:color-mix(in srgb, var(--mg-bad) 9%, transparent) } .mg-notes li.bad > i{ background:var(--mg-bad); color:#fff }
+.mg-notes li.warn{ border-color:color-mix(in srgb, var(--mg-warn) 50%, transparent); background:color-mix(in srgb, var(--mg-warn) 9%, transparent) } .mg-notes li.warn > i{ background:var(--mg-warn); color:#1a1200 }
+.mg-notes li.good{ border-color:color-mix(in srgb, var(--mg-good) 45%, transparent); background:color-mix(in srgb, var(--mg-good) 8%, transparent) } .mg-notes li.good > i{ background:var(--mg-good); color:#00160b }
+.mg-readmen{ margin-top:14px }
+.mg-readmen td.l, .mg-readmen th.l{ white-space:nowrap }
+
+/* the rotation, a minute at a time */
+.mg-rothead{ flex-wrap:wrap; gap:10px; margin-bottom:12px }
+.mg-brushes{ display:flex; flex-wrap:wrap; gap:6px }
+.mg-brush{ display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px; border:1px solid var(--mg-edge); background:var(--mg-glass); color:var(--mg-ink-2); font:700 12px/1.2 var(--mg-f); cursor:pointer }
+.mg-brush .sw{ margin-right:0 }
+.mg-brush span{ color:var(--mg-ink-3); font-weight:600 }
+.mg-brush[aria-pressed="true"]{ color:var(--mg-ink); border-color:var(--lc); box-shadow:0 0 0 1px var(--lc), 0 0 14px color-mix(in srgb, var(--lc) 45%, transparent) }
+.mg-presets{ flex-wrap:wrap; gap:6px }
+.mg-btn.sm{ padding:6px 10px; font-size:11.5px }
+.mg-rot-wrap{ overflow-x:auto; padding-bottom:2px }
+.mg-rot{ --nw:150px; min-width:560px; display:flex; flex-direction:column; gap:3px }
+.mg-rot-row{ display:grid; grid-template-columns:var(--nw) minmax(0,1fr); align-items:center; gap:8px }
+.mg-rot-row .nm{ display:flex; align-items:center; gap:6px; min-width:0; font-size:12px }
+.mg-rot-row .nm b{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700 }
+.mg-rot-row .nm small{ color:var(--mg-ink-3); flex:none }
+.mg-rot-row .legs{ flex:none; font-style:normal; font-size:9.5px; font-weight:800; padding:1px 5px; border-radius:6px }
+.mg-rot-row .legs.bad{ background:color-mix(in srgb, var(--mg-bad) 22%, transparent); color:var(--mg-bad) } .mg-rot-row .legs.warn{ background:color-mix(in srgb, var(--mg-warn) 22%, transparent); color:var(--mg-warn) }
+.mg-rot-strip, .mg-rot-row .cells{ display:grid; grid-template-columns:repeat(40, minmax(0,1fr)); gap:1px }
+.mg-rot-strip .c{ height:28px; border:0; border-radius:3px; padding:0; background:var(--lc); cursor:crosshair; touch-action:none; box-shadow:inset 0 -6px 10px rgba(0,0,0,.18) }
+.mg-rot-strip .c:hover, .mg-rot-strip .c:focus-visible{ filter:brightness(1.3); outline:none }
+.mg-rot-strip .c.q, .mg-rot-row .cells i.q{ margin-left:4px }
+.mg-rot-row .cells i{ display:block; height:14px; border-radius:2px; background:var(--lc); opacity:.88 }
+.mg-rot-row .cells i.off{ background:var(--mg-glass); opacity:1 }
+.mg-rot-row.strip .nm b{ font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mg-ink-3) }
+.mg-rot-ax{ display:grid; grid-template-columns:repeat(4, 1fr); font-size:10.5px; color:var(--mg-ink-3); text-align:center; letter-spacing:.12em }
+
+/* a player: his role at a place, and its demonstration */
+.mg-pi.wide{ max-width:100% }
+.mg-pop.wide .mg-pi.wide{ min-width:0 }
+.mg-rolesec .mg-roles{ grid-template-columns:repeat(auto-fill, minmax(146px, 1fr)) }
+.mg-role.dflt{ border-style:dashed; border-color:var(--mg-royal-3) }
+.mg-rolebox{ display:grid; grid-template-columns:minmax(0,1fr) 210px; gap:12px; margin-top:10px; align-items:start }
+.mg-roledetail .t{ display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+.mg-roledetail .t b{ font-size:14.5px; font-weight:900 }
+.mg-roledetail .t .st{ font-size:12px; letter-spacing:1px }
+.mg-roledetail .t .st.a1{ color:var(--mg-a1) } .mg-roledetail .t .st.a2{ color:var(--mg-a2) } .mg-roledetail .t .st.a3{ color:var(--mg-a3) } .mg-roledetail .t .st.a4{ color:var(--mg-a4) }
+.mg-roledetail .t .w{ font-size:11px; color:var(--mg-ink-3) }
+.mg-roledetail .t .mg-chip{ margin-left:auto; cursor:pointer }
+.mg-roledetail .desc{ margin:7px 0; font-size:12.5px; line-height:1.5; color:var(--mg-ink-2) }
+.mg-roledetail ul{ margin:4px 0 0; padding-left:18px; font-size:12px; line-height:1.5; color:var(--mg-ink-2) }
+.mg-roledetail .why{ margin-top:9px }
+.mg-pi .locks{ margin-top:9px; font-size:11.5px }
+.mg-demo{ border-radius:12px; overflow:hidden; border:1px solid var(--mg-edge-2); background:linear-gradient(180deg, #14224f, #0a1230) }
+.mg-demo-court{ display:block; width:100%; height:auto }
+.mg-demo-court .ln *{ fill:none; stroke:rgba(170,195,255,.42); stroke-width:.6 }
+.mg-demo-court .man circle{ fill:#56678a; stroke:#d4dcef; stroke-width:.5 }
+.mg-demo-court .man.p circle{ fill:#3d6bff; stroke:#fff; stroke-width:.7 }
+.mg-demo-court .man.p.has circle{ filter:drop-shadow(0 0 1.6px #8fb0ff) }
+.mg-demo-court .man text{ fill:#fff; font-size:3.3px; font-weight:800; font-family:var(--mg-f) }
+.mg-demo-court .ball{ fill:#ff8a3d; stroke:#3a1500; stroke-width:.3; transition:opacity .2s }
+.mg-demo-foot{ display:flex; flex-direction:column; gap:6px; padding:8px 10px }
+.mg-demo-foot .mg-row{ justify-content:space-between; align-items:center }
+.mg-demo-note{ min-height:2.7em; font-size:12px; font-weight:700; line-height:1.35; color:#e8eeff }
+.mg-demo-dots{ display:flex; gap:6px }
+.mg-demo-dots .d{ width:10px; height:10px; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,.25); cursor:pointer }
+.mg-demo-dots .d.on{ background:#5ce1ff }
+.mg-demo .mg-btn.ghost{ color:#e8eeff; border-color:rgba(255,255,255,.3) }
+.mg-ins.locked{ opacity:.45; cursor:not-allowed }
+.mg-ins.locked span{ text-decoration:line-through; text-decoration-thickness:1px }
+.mg-lock{ font-style:normal; font-size:10px; line-height:1 }
+
+/* his attributes, on hover */
+.mg-hint.attrs{ width:268px }
+.mg-attrcard .hd{ display:flex; align-items:center; gap:7px; margin-bottom:7px }
+.mg-attrcard .hd b{ flex:1; min-width:0; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.mg-attrcard .hd .r{ font-size:10.5px; font-weight:700; color:var(--mg-royal-3) }
+.mg-attrgrid{ display:grid; grid-template-columns:1fr 1fr; gap:3px 12px }
+.mg-attrgrid .row{ display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:11.5px }
+.mg-attrcard > .mg-sub{ margin-top:7px; font-size:11px }
+
+@media (max-width: 980px){
+  .mg-tac2-court{ grid-template-columns:minmax(0,1fr) }
+  .mg-benchpanel{ position:static }
+  .mg-benchpanel .mg-bench{ max-height:340px }
+}
+@media (max-width: 640px){
+  .mg-rolebox{ grid-template-columns:minmax(0,1fr) }
+  .mg-demo{ max-width:300px }
+  .mg-court.big.dots{ aspect-ratio:.78; max-width:100% }
+  .mg-court.dots .mg-spot.c{ width:clamp(78px,26%,112px) }
+  .mg-dot{ --sz:clamp(44px,12.5vw,58px) }
+  .mg-spot .lab > b{ font-size:11px }
+  .mg-rolechip{ font-size:9.5px; padding:2px 5px; line-height:1.15 }
+  .mg-rolechip .mg-fit, .mg-rolechip em{ display:none }
+  .mg-rot{ --nw:96px }
+  .mg-legend{ font-size:10.5px }
+}
+@media (prefers-reduced-motion: reduce){ .mg-dot{ transition:none } }
+
+/* the squad's views: every row of the profile's simple and scouting views, coloured by where each sits in his league */
+.mg-sqtable th.g{ text-align:center; font-size:10px; letter-spacing:.12em; color:var(--mg-royal-3); border-bottom:1px solid var(--mg-edge) }
+.mg-sqtable tr.grp th{ padding-bottom:4px }
+.mg-sqtable th.sort{ cursor:pointer; white-space:nowrap } .mg-sqtable th.sort:hover, .mg-sqtable th.sort.on{ color:var(--mg-ink) }
+.mg-sqtable .sticky{ position:sticky; left:0; z-index:1; background:var(--mg-glass-solid) }
+.mg-sqtable td.l.sticky{ min-width:180px; white-space:nowrap }
+.mg-sv{ display:inline-block; min-width:36px; padding:2px 6px; border-radius:7px; font-weight:700; font-variant-numeric:tabular-nums; text-align:center }
+.mg-sv.a4{ background:color-mix(in srgb, var(--mg-a4) 24%, transparent) } .mg-sv.a3{ background:color-mix(in srgb, var(--mg-a3) 22%, transparent) }
+.mg-sv.a2{ background:color-mix(in srgb, var(--mg-a2) 20%, transparent) } .mg-sv.a1{ background:color-mix(in srgb, var(--mg-a1) 20%, transparent) }

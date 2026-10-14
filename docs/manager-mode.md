@@ -70,7 +70,9 @@ but only the chosen league is simulated.
   in transition is +1.30 for a runner and −0.78 for a walker.
 - **The team's instructions** (`E.TACTICS`, FM's three phases):
   - *In possession:* guard, wing and big play; **Ball handlers: Get downhill ↔ Punish from deep** (one slider, for the
-    ball handlers only); off-ball cutting ↔ space the floor; hit the big ↔ hit the shooters.
+    ball handlers only); off-ball cutting ↔ space the floor; hit the screener ↔ hit the shooters (the screener as his
+    role plays it: a roller at the rim, a popping big from three, a short roller from the middle; a real club's bigs
+    inside, as before).
   - *In transition:* leak out; attack the offensive boards.
   - *Out of possession:* funnel to rim protection ↔ no paint touches; gamble for steals.
 - **Each player's instructions** (`core/instruct.js`), by role:
@@ -80,8 +82,14 @@ but only the chosen league is simulated.
     crash the glass, gamble / stay solid, more aggressive rim protection.
   - Bigs: handle more / less, finisher only, roller big (short roll / dive) / pick and pop, post more / less / don't post
     up, hedge / contain / drop, defend the rim aggressively / be foul-conservative.
-  - Touches run −2..2. Role presets (floor general, 3-and-D wing, rim runner …) carry suitability stars, and every
-    instruction shows the player's fit for it (Natural, Good, Workable, Poor), with the stat it rests on.
+  - Touches run −2..2. Every instruction shows the player's fit for it (Natural, Good, Workable, Poor), with the reason
+    in plain words ("He blocks shots a bit less often than most small forwards"), never a ratio of rates. Green light and
+    rip through are rated by what the shot is worth to him: ripping through trades an open catch-and-shoot three for a
+    drive at a closing defender (a tracked league's drives: a shot on 0.45 of them at 49%, a foul on 7%, a pass on half),
+    so a real shooter rates the green light well above it.
+  - The family of instructions a man takes is his role's at the place he plays (a guard's, a wing's, a big's), and the
+    ones his role rules out are greyed with the reason (`roles.locks`). They are stored unfiltered on his roster entry;
+    the engine keeps to each five's roles itself.
 - **Every game is played possession by possession** (`core/match.js`, also for the games nobody watches) by the ten men
   on the floor: the winsim matchup of the two fives, then each man's own turnovers, trips, shot mix and makes; the
   assist, the board, the steal and the block by the right men.
@@ -102,6 +110,86 @@ but only the chosen league is simulated.
   wrecked its players-only mark (0.26).
 - **The play-by-play's clock.** Fast breaks shoot 2–6 s in, put-backs 2–5 s after the board, set plays late. The
   transition and shot-clock tabs of the box score read it.
+
+## Roles (core/roles.js, engine.js `ROLEK`; Louie, 2026-10-14)
+"For each position set ... force the user to select their role [which is applied regardless if one is selected - if not
+it just goes to default] ... similar to player roles in football manager". 54 roles: PG 7, SG 12, SF 11, PF 14, C 10,
+Louie's own list and descriptions.
+
+- **A role is a play-type diet** (the share of the plays he finishes from each kind of play: pick-and-roll handler,
+  isolation, post-up, handoff, transition, spot-up, off screens, cut, roll, pop, short roll, put-back) **and loads**:
+  `init` his share of the five's time on the ball, `use` the scoring it asks, `pass`, `screen`, `crash`, `run`, `def`,
+  `hub`, `rip`, a shooting style for his on-ball plays, and `rho` how far it moves his shots. `gen` marks the two
+  general roles (Mixed PG, Combo Mixed SG): his own game, shaped by his instructions; they rule nothing out.
+- **Every individual effect is relative to his natural role** (`roles.bestFor`: the role his own numbers suit best). His
+  numbers already play that role, so a role moves him by what it asks *beyond* it: the diet's shot mix and assisted
+  shares, its turnover and foul rates, its loads. Choosing his natural role is exactly his own game (a test holds it),
+  and a role nobody chose (the default) is too (`ROLEK.dflt` 0). Every move is paid at his own numbers (KAPPA volume
+  costs, DIFF for pull-ups/drives/post-ups he does not usually make, the skill curve).
+- **The five's roles meet** (centred on what the real clubs' default fives add up to, so a club left alone neither
+  gains nor loses; four leagues, then SLB held out: −0.08% points a chance on average):
+  - **One ball:** time on the ball is time of possession, not usage (a pass-first point guard has the ball as long as a
+    scoring one and ends far fewer plays; a movement shooter ends many on seconds of it). A five's roles may ask for
+    0.72–1.20 of one ball (the real fives: 0.82–1.22, the middle 0.98). Past it each gets his share, the rest is lost
+    on-ball time (his make logit −0.55 a unit × how on-ball his plays are) and the five stagnates (−0.08 makes, +0.25
+    turnovers a unit past); short of it the best creator is forced to run it (his usage, his turnovers, the five's
+    creation gap).
+  - **Downhill pressure opens the threes** (Louie: "a certain amount of downhill pressure is needed in order to generate
+    good 3pt looks"): drives, rolls, cuts and post-ups at each man's finishing; a handler's on all his time on the ball.
+    Within the usual range it moves catch-and-shoot threes a little (0.1 logit a unit); well short of it (0.2 under) every
+    possession suffers (0.35 a unit on catch-and-shoot threes, half on assisted twos, 0.3 on turnovers).
+  - **Screens** for the pick-and-roll and off-screen shooters; **the pick-and-roll's partners** (a roller, popper or short
+    roller needs a handler running it, and finishes better off a passer); **the post** needs spacing; **the cut** needs
+    passers - for its volume, not its finishing; **connectors** make the extra pass (their teammates' assisted shots);
+    **3-and-D** effort contests threes; **crashing** gets boards and gives up a little transition.
+- **True usage** (`men[].tusg`): the plays he ends plus every shot off his passes (made or not), shared by assists - what
+  a scouting service counts as potential assists.
+- **Notes** (`engine.roleNotes`) say in plain words what is wrong or right with a five: too many ball handlers, nobody
+  to run it, scorers everywhere, not enough pressure on the rim, few screens, a screener with no handler, a post-up
+  into a crowded paint, a cutter with no passer, a cramped floor, a connector moving the ball.
+- **What a manager can gain**: optimising roles on real clubs' starting fives gains +0.3% to +2.8% points a chance
+  over the defaults; poor fits cost in proportion to fit (a non-shooting PF as a stretch four −2.8%).
+- Live: `match.js` `rolesAt` gives each place on the floor its role (a role changed in the game, `act {type: 'role'}`,
+  else the plan's, else the man's role at that place in any lineup, else the default); kept in the snapshot (`roleOv`).
+
+**The research behind the numbers** (2026-10-14/15; sources here, never in the shipped files):
+- Play types, league totals 2021-25 (NBA.com Synergy and tracking endpoints, all 30 teams): frequency, PPP, TOV%, FT
+  frequency, 3PA and rim shares, assisted makes. E.g. spot-up 23.6% of plays, 1.04 PPP, 5.4% TOV, 74% threes; PnR handler
+  16.6%, 0.90, 14.9% TOV, 30% threes; cut 6.9%, 1.30. Roll and pop are one bucket there (about 29% of its shots are
+  popped threes): split in `PT`. EuroLeague 2017-18 hand-coded possessions (Int. J. Environ. Res. Public Health 18:1083)
+  give the same order (PnR handler TOV 19%, post 18%, spot-up 7%).
+- Catch-and-shoot vs pull-up 3P%: 37.1 vs 33.2 (NBA 2021-25), 39 vs 31 (EuroLeague 2022-23).
+- Archetypes 2025-26 (NBA.com play types and touches, players grouped by role): play-type mixes and time on the ball
+  (PnR engine 22% of his minutes, pass-first PG 22% at 18 usage, combo 15%, movement shooter 6% at 18 usage, 3-and-D 7%,
+  connector 10%, hub big 12%, post scorer 10%, rim runner 5%; the median rotation player 8%). `init` is these as shares of
+  a five's 57%. Taxonomies checked: Nylon Calculus 2017-19, BBall Index, CraftedNBA, arXiv 2403.13821, Hack a Stat.
+- Interactions: 3P% by closest defender (6+ ft 38.6%, 4-6 ft 35.0%, 2-4 ft 29.9%); more drives, more wide-open threes
+  (+10 drives/100 → +4-6 points of wide-open share); ShotTracker college half-court PPP 0.706 with no paint touch and
+  no reversal, 1.061 with a paint touch; lineup summed usage (APBRmetrics: under 80% −7.1, 120%+ +2.8); two elite ball
+  handlers lose about 9% of the pair's value (Maymin, Maymin and Shen); team assist rate goes with cut frequency (r .5),
+  not cut efficiency (r 0); crashing (Wiens et al., Sloan 2013) and its faded transition cost; screen assists 8.3 a team-game.
+- Calibration scripts (scratchpad, not kept): `roles_calib.mjs` (default fives on real rotations: the references),
+  `roles_real.mjs` (role scenarios and a greedy optimiser on real starting fives), `hurley.mjs` (Thomas Hurley, SLB
+  2026-27: rip 0.55 above green 0.52 before, green 0.74 Natural, rip 0.45 Workable after).
+
+## The tactics screen (views/tactics.js, `#/tactics`)
+- The five as **circles** on the court: the colour his share of the plays (cool few, hot many), the ring his time on the
+  ball, the bar where his shots come from (rim · other twos · threes), badges for out of position, wanting the ball more
+  than the five can give, being forced to run it. His role under him (dashed: none chosen, the default plays). Hover:
+  his 1-20 attributes. Press: his role at that place (the position's roles by fit, stars, what it asks, why he suits it,
+  an animated demonstration from `roles.SCENES`) and his instructions.
+- The **bench beside the court**: drag a man onto a place (the role stays with the place, FM's way), or press.
+- **How this five plays**: gauges (time on the ball, pressure on the rim, spacing, screens, passing) and the notes; each
+  man's plays, true usage, time on the ball and shot mix.
+- **The rotation**, a box-score rotation chart at lineup granularity: a cell a minute, painted with a lineup brush;
+  presets (lineup 1 opens and closes, share evenly, every quarter as the first); each man's minutes and legs. A lineup's
+  `when` holds its painted minutes (`engine.rotation` plays them; a minute nobody was given is lineup 1's); a plan from
+  before the chart is painted as it was played (`engine.paintOf`).
+- The Simulated panel is gone (Louie, 2026-10-14).
+
+## The squad's views (views/squad.js)
+Attributes, Stats (every row of the profile's simple view), Advanced (every row of its scouting view) and Manager season,
+each value coloured by where it sits among his own league's players, every column sortable (`A.statViews` from pages.js).
 
 ## The live game (views/match.js, `#/match`)
 FM's match screen, full screen (the rail and tab bar hidden):

@@ -7,14 +7,17 @@
                                    Escape, a press outside it or its × closes it
      teamPanel(o)                  THE TEAM INSTRUCTIONS in Football Manager's three phases (In possession, In transition,
                                    Out of possession): o {tac, title, sub, onChange(tac), extra (nodes for its foot)}
-     playerPanel(id, o)            A PLAYER'S INSTRUCTIONS, FM's way: his touches (two steps either way), the roles that
-                                   suit him (stars), and each instruction with how well HE suits it; o {entry, onChange(entry),
-                                   actions (nodes: swap, sub...), live}
+     playerPanel(id, o)            A PLAYER, FM's way: at a position (o.slot), HIS ROLE there (core/roles.js: the
+                                   position's roles, how well each suits him, what it asks, a demonstration), his touches
+                                   (two steps either way) and his instructions (the ones his role rules out greyed, and
+                                   why); o {entry, onChange(entry), slot, role, onRole(key | null), actions, sub, done}
+     roleDemo(role, label)         a role's demonstration: its plays drawn on a half court, frame by frame
+     attrCard(id)                  his 1-20 attributes (what the tactics screen shows on hover)
      fitDot(fit)                   the coloured dot of a fit
    ============================================================================ */
 (function (root) {
 const Mgr = root.Mgr, A = Mgr.app, h = A.h;
-const E = () => Mgr.engine, IN = () => Mgr.instruct;
+const E = () => Mgr.engine, IN = () => Mgr.instruct, RO = () => Mgr.roles;
 const doc = root.document;
 
 /* ------------------------------------------------------------------ one pop-up at a time --- */
@@ -115,24 +118,160 @@ function summary(tac) {
   return out;
 }
 
-/* ------------------------------------------------------------------ a player's instructions --- */
-const GROUP = { ball: 'On the ball', tempo: 'Tempo', shot: 'His shot', move: 'Off the ball', three: 'Threes', screen: 'After his screen', roll: 'The roll',
+/* ------------------------------------------------------------------ his attributes --- */
+/* HIS ATTRIBUTES ON HOVER (Louie, 2026-10-14: "Instead of hovering over a player and it showing their season stats, can it
+   show their Attributes?"): the eleven 1-20 attributes, coloured as the squad shows them */
+function attrCard(id, o) {
+  o = o || {};
+  const at = A.attrs(id) || {};
+  return h('div.mg-attrcard', h('div.hd', h('b', { translate: 'no' }, A.nameOf(id)), h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.posOf(id)), o.role ? h('span.r', o.role) : null),
+    h('div.mg-attrgrid', Mgr.ratings.ATTRS.map(a => h('div.row', h('span', a.label), A.attrChip(at[a.k])))),
+    o.foot ? h('div.mg-sub', o.foot) : null);
+}
+
+/* ------------------------------------------------------------------ a role, shown --- */
+const stars = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+const pctR = v => Math.round(100 * v) + '%';
+/* WHAT A ROLE ASKS OF HIM, in a few lines (its loads and its shots, core/roles.js) */
+function roleFacts(r) {
+  const P = RO().profile(r), out = [];
+  if (r.gen) out.push('His own game: his time on the ball, his scoring and his passing stay as they are, and his instructions shape the rest.');
+  else {
+    out.push(r.init >= 0.35 ? 'Has the ball a lot: he runs the offence.' : r.init >= 0.2 ? 'Shares the ball-handling.' : r.init >= 0.12 ? 'Some time on the ball.' : 'Very little time on the ball.');
+    out.push(r.use >= 0.6 ? 'A scorer: looks for his own shot.' : r.use >= 0.2 ? 'Scores when it is there.' : r.use <= -0.4 ? 'Takes few shots of his own.' : 'Shoots as the play asks.');
+    if (r.pass >= 0.6) out.push('Looks to set up his teammates first.'); else if (r.pass >= 0.3) out.push('A willing passer.'); else if (r.pass <= -0.2) out.push('Looks for his own shot before the pass.');
+  }
+  out.push('His shots: ' + pctR(P.mix.rim) + ' at the rim, ' + pctR(P.mix.mid) + ' other twos, ' + pctR(P.mix.three) + ' threes.');
+  if (r.screen >= 0.8) out.push('Sets lots of screens.'); else if (r.screen >= 0.4) out.push('Sets some screens.');
+  if (r.rip) out.push('Attacks close-outs rather than settling for the three.');
+  if (r.crash) out.push('Crashes the offensive glass.');
+  if (r.run) out.push('Runs the floor.');
+  if (r.def) out.push('Puts his energy into defending the ball and closing out on shooters.');
+  if (r.hub) out.push('Keeps the ball moving: handoffs, the extra pass, finding cutters.');
+  return out;
+}
+/* A ROLE'S DEMONSTRATION (Louie: "Can each role also get a visual demonstration?"): its scenes (core/roles.js SCENES) on
+   a half court, the basket at the top: the role's man in blue, two teammates, the ball; each frame moves them, a line
+   says what is happening, a shot flies to the rim. It plays on a loop (paused for a reader who asks for less motion). */
+function roleDemo(role, tag) {
+  const scenes = RO().demo(role);
+  if (!scenes.length) return null;
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (n, a) => { const x = doc.createElementNS(NS, n); Object.keys(a || {}).forEach(k => x.setAttribute(k, a[k])); return x; };
+  const svg = el('svg', { viewBox: '0 0 100 90', class: 'mg-demo-court', role: 'img', 'aria-label': 'A demonstration of the role' });
+  const lines = el('g', { class: 'ln' });
+  [el('rect', { x: 1, y: 1, width: 98, height: 87, rx: 2 }), el('rect', { x: 35, y: 1, width: 30, height: 35 }), el('path', { d: 'M41 36 A9 9 0 0 0 59 36' }),
+    el('path', { d: 'M6 1 L6 14 A44 44 0 0 0 94 14 L94 1' }), el('line', { x1: 44, y1: 5, x2: 56, y2: 5 }), el('circle', { cx: 50, cy: 9, r: 2 }),
+    el('path', { d: 'M38 88 A12 12 0 0 1 62 88' })].forEach(x => lines.appendChild(x));
+  svg.appendChild(lines);
+  const man = (cls, txt) => { const g = el('g', { class: 'man ' + cls }); g.appendChild(el('circle', { r: cls === 'p' ? 4.6 : 3.8 })); const t = el('text', { 'text-anchor': 'middle', dy: '1.6' }); t.textContent = txt; g.appendChild(t); svg.appendChild(g); return g; };
+  const gP = man('p', tag || '★'), gT = man('t', ''), gS = man('t', '');
+  const ball = el('circle', { class: 'ball', r: 1.7 });
+  svg.appendChild(ball);
+  const note = h('div.mg-demo-note', ''), dots = h('div.mg-demo-dots');
+  const playBtn = h('button.mg-btn.ghost.sm', { type: 'button' }, '❚❚ Pause');
+  const wrap = h('div.mg-demo', svg, h('div.mg-demo-foot', note, h('div.mg-row', dots, playBtn)));
+  const reduce = !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  let si = 0, fi = 0, t0 = null, playing = !reduce, started = false, raf = 0;
+  const MOVE = 900, HOLD = 700, FLY = 650;
+  const setPos = (g, p) => g.setAttribute('transform', 'translate(' + p[0].toFixed(2) + ' ' + p[1].toFixed(2) + ')');
+  const lerp = (a, b, x) => [a[0] + (b[0] - a[0]) * x, a[1] + (b[1] - a[1]) * x];
+  const ease = x => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+  const holder = (fr, which) => (which === 'P' ? fr.P : which === 'T' ? fr.T : which === 'S' ? fr.S : null);
+  const drawDots = () => { dots.textContent = ''; scenes.forEach((s, i) => dots.appendChild(h('button.d' + (i === si ? '.on' : ''), { type: 'button', 'aria-label': 'Scene ' + (i + 1), onclick: () => { si = i; fi = 0; t0 = null; drawDots(); paint(0); } }))); };
+  function paint(now) {
+    const fr = scenes[si].frames, a = fr[fi], b = fr[Math.min(fr.length - 1, fi + 1)];
+    if (t0 == null) t0 = now;
+    const el2 = now - t0, last = fi >= fr.length - 1;
+    const x = last ? 1 : ease(Math.min(1, el2 / MOVE));
+    const P = lerp(a.P, (last ? a : b).P, x), T = lerp(a.T, (last ? a : b).T, x), S = lerp(a.S, (last ? a : b).S, x);
+    setPos(gP, P); setPos(gT, T); setPos(gS, S);
+    const cur = last ? a : (x < 1 ? a : b);
+    note.textContent = (last ? a : b).note || '';
+    /* the ball: with its holder, or flying to the rim on a shot (the frame's own: 'rim-P', 'three-T' ...) */
+    const shot = last && a.shot ? a.shot : null;
+    if (shot) {
+      const who = shot.split('-')[1], from = who === 'P' ? P : who === 'T' ? T : S, f = Math.min(1, Math.max(0, (el2 - 150) / FLY));
+      const arc = lerp(from, [50, 9], f); arc[1] -= Math.sin(Math.PI * f) * (shot.startsWith('three') ? 9 : 5);
+      ball.setAttribute('cx', arc[0].toFixed(2)); ball.setAttribute('cy', arc[1].toFixed(2)); ball.style.opacity = '1';
+    } else {
+      const hb = holder({ P, T, S }, (last ? a : b).ball || cur.ball);
+      if (hb) { ball.setAttribute('cx', (hb[0] + 2.6).toFixed(2)); ball.setAttribute('cy', (hb[1] + 2.2).toFixed(2)); ball.style.opacity = '1'; } else ball.style.opacity = '0';
+    }
+    gP.classList.toggle('has', ((last ? a : b).ball || '') === 'P');
+  }
+  function tick(now) {
+    if (!wrap.isConnected) { if (started) return; raf = root.requestAnimationFrame(tick); return; }
+    started = true;
+    if (playing) {
+      if (t0 == null) t0 = now;
+      const fr = scenes[si].frames, last = fi >= fr.length - 1, el2 = now - t0;
+      if (!last && el2 > MOVE + HOLD) { fi++; t0 = now; }
+      else if (last && el2 > (fr[fi].shot ? FLY + 1100 : 1300)) { si = (si + 1) % scenes.length; fi = 0; t0 = now; drawDots(); }
+      paint(now);
+    }
+    raf = root.requestAnimationFrame(tick);
+  }
+  playBtn.addEventListener('click', () => { playing = !playing; playBtn.textContent = playing ? '❚❚ Pause' : '▶ Play'; t0 = null; });
+  if (!playing) playBtn.textContent = '▶ Play';
+  drawDots(); paint(0);
+  raf = root.requestAnimationFrame(tick);
+  void raf;
+  return wrap;
+}
+
+/* ------------------------------------------------------------------ a player's role and instructions --- */
+/* the instructions' choices, as the panel heads them ("His shot" is TENDENCIES: Louie, 2026-10-14) */
+const GROUP = { ball: 'On the ball', tempo: 'Tempo', shot: 'Tendencies', move: 'Off the ball', three: 'Threes', screen: 'After his screen', roll: 'The roll',
   post: 'The post', stl: 'Defending the ball', cover: 'Pick-and-roll coverage', rimd: 'At the rim' };
 const LONE = { kick: 'Passing', dump: 'Passing', crash: 'The glass', rimp: 'Help defence' };
 const fitDot = f => h('i.mg-fit.' + (f && f.band ? f.band : 'a0'), { title: f && f.word ? f.word + (f.why ? ': ' + f.why : '') : '', 'aria-hidden': 'true' });
-const stars = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
 function touchesText(u) { return u === 0 ? 'His usual touches' : (u > 0 ? 'More touches +' + u : 'Fewer touches ' + u); }
+/* the instruction family he takes at a place: his role's (a guard's, a wing's, a big's), else his own position's */
+function famOf(id, slot, roleKey) {
+  const card = A.cardOf(id), L = A.leagueDataOf(id), ref = (L && L.ref) || A.lg.ref;
+  if (slot != null && RO()) { const r = RO().resolve(roleKey || null, slot, card, ref); if (r) return { fam: r.family, role: r }; }
+  return { fam: IN().roleOf(card, A.slotOfId(id)), role: null };
+}
 function playerPanel(id, o) {
   o = o || {};
   const card = A.cardOf(id), L = A.leagueDataOf(id), ref = (L && L.ref) || A.lg.ref;
-  let entry = Object.assign({}, o.entry || {});
-  let role = entry.role || IN().roleOf(card, A.slotOfId(id));
+  let entry = Object.assign({}, o.entry || {}), roleKey = o.role || null;
+  const slot = o.slot != null ? o.slot : null;
   const info = h('div.mg-pi-info', 'Press an instruction to see what it does for him.');
   const body = h('div.mg-pi-body');
-  const commit = () => { entry = Object.assign({}, entry, IN().norm(entry, role)); entry.ins = entry.keys; delete entry.keys; if (role !== IN().roleOf(card, A.slotOfId(id))) entry.role = role; else delete entry.role; if (o.onChange) o.onChange(entry); draw(); };
+  const cur0 = () => famOf(id, slot, roleKey);
+  const commit = () => { const F = cur0(); entry = Object.assign({}, entry, IN().norm(entry, F.fam)); entry.ins = entry.keys; delete entry.keys; delete entry.role; if (o.onChange) o.onChange(entry); draw(); };
+  const say = (d, f, lockWhy) => d.label + ': ' + d.how + '. ' + (lockWhy ? 'Not in his role: ' + lockWhy.toLowerCase() + '.' : 'For him: ' + (f.word || '') + (f.why ? ' - ' + f.why : '.'));
   const draw = () => {
     body.textContent = '';
-    const n = IN().norm(entry, role), set = new Set(n.keys);
+    const F = cur0(), fam = F.fam, R = F.role;
+    const n = IN().norm(entry, fam), set = new Set(n.keys);
+    /* HIS ROLE AT THIS PLACE (core/roles.js): the position's roles, how well each suits him; the one chosen, else the
+       position's default (what he plays if nothing is chosen) */
+    if (slot != null && RO()) {
+      const sec = h('div.mg-pi-sec.mg-rolesec'), list = h('div.mg-roles');
+      const dflt = RO().resolve(null, slot, card, ref);
+      RO().forSlot(slot).map(r => ({ r, f: RO().fit(r, card, ref) })).sort((a, b) => b.f.s - a.f.s).forEach(({ r, f }) => {
+        const on = roleKey ? r.key === roleKey : false, isD = r.key === dflt.key;
+        list.appendChild(h('button.mg-role' + (on ? '.on' : '') + (!roleKey && isD ? '.dflt' : ''), { type: 'button', 'aria-pressed': String(on), title: r.desc,
+          onclick: () => { roleKey = r.key; if (o.onRole) o.onRole(r.key); draw(); } },
+          h('b', r.short), h('span.st.' + f.band, stars(f.stars)), h('span.w', f.word + (isD ? ' · default' : ''))));
+      });
+      const shown = R || dflt, ff = RO().fit(shown, card, ref);
+      sec.appendChild(h('div.mg-cap', 'Role at ' + E().SLOTS[slot] + (roleKey ? '' : ' · none chosen: he plays the default')));
+      sec.appendChild(list);
+      const detail = h('div.mg-roledetail',
+        h('div.t', h('b', shown.label), h('span.st.' + ff.band, stars(ff.stars)), h('span.w', ff.word), roleKey ? h('button.mg-chip', { type: 'button', onclick: () => { roleKey = null; if (o.onRole) o.onRole(null); draw(); } }, 'Use the default') : h('span.mg-chip.royal', 'Default')),
+        h('p.desc', shown.desc),
+        h('ul.facts', roleFacts(shown).map(x => h('li', x))),
+        ff.why && ff.why.length ? h('div.why', h('span.mg-cap', 'For him'), h('ul', ff.why.map(x => h('li', x)))) : null);
+      const demo = roleDemo(shown, E().SLOTS[slot]);
+      sec.appendChild(h('div.mg-rolebox', detail, demo));
+      const locks = RO().locks(shown);
+      if (locks.size) sec.appendChild(h('div.mg-sub.locks', 'This role rules out: ' + [...locks.keys()].map(k => (IN().BY.get(k) || {}).label).filter(Boolean).join(', ') + '.'));
+      body.appendChild(sec);
+    }
     /* his touches */
     const u = n.u;
     const pips = h('div.mg-pips', [-2, -1, 0, 1, 2].map(v => h('i' + (v === u ? '.on' : v === 0 ? '.mid' : ''), { 'aria-hidden': 'true' })));
@@ -141,19 +280,11 @@ function playerPanel(id, o) {
       h('div.t', h('b', touchesText(u)), pips),
       h('button.mg-btn', { type: 'button', 'aria-label': 'More touches', disabled: u >= 2 ? true : null, onclick: () => { entry.u = Math.min(2, u + 1); commit(); } }, '+')),
       h('div.mg-sub', 'How much of the ball he has: more for a creator costs him little, more for a role player costs him more')));
-    /* the roles that suit him */
-    const pre = IN().presetOf(entry, role);
-    const roles = h('div.mg-roles');
-    IN().roles(role).forEach(p => {
-      const f = IN().roleFit(p, card, ref);
-      roles.appendChild(h('button.mg-role' + (pre && pre.k === p.k ? '.on' : ''), { type: 'button', title: p.how + ' · ' + f.word, 'aria-pressed': String(!!(pre && pre.k === p.k)),
-        onclick: () => { entry.ins = p.keys.slice(); entry.u = p.u; commit(); info.textContent = p.label + ': ' + p.how + '. For him: ' + f.word + '.'; } },
-        h('b', p.label), h('span.st.' + f.band, stars(f.stars)), h('span.w', f.word)));
-    });
-    body.appendChild(h('div.mg-pi-sec', h('div.mg-cap', 'Roles'), roles));
-    /* the instructions, in their phases */
+    /* the instructions, in their phases: what his role rules out is greyed, with why (Louie: "lock off non-compatible
+       instructions when these roles are active") */
+    const lock = R && RO() ? RO().locks(R) : new Map();
     ['ip', 'op'].forEach(sec => {
-      const list = IN().list(role).filter(d => d.sec === sec);
+      const list = IN().list(fam).filter(d => d.sec === sec);
       if (!list.length) return;
       const box = h('div.mg-pi-sec', h('div.mg-cap', IN().SEC[sec]));
       const groups = new Map();
@@ -164,11 +295,15 @@ function playerPanel(id, o) {
         const row = h('div.mg-ins-row', title ? h('span.g', title) : null);
         const opts = h('div.opts');
         ds.forEach(d => {
-          const f = IN().fit(d.k, card, ref), on = set.has(d.k), blocked = d.needs && !set.has(d.needs);
-          opts.appendChild(h('button.mg-ins' + (on ? '.on' : ''), { type: 'button', 'aria-pressed': String(on), title: d.how,
-            onclick: () => { const nx = IN().toggle(entry, role, d.k, !on); entry.ins = nx.keys; entry.u = nx.u; commit(); info.textContent = d.label + ': ' + d.how + '. For him: ' + (f.word || '') + (f.why ? ' (' + f.why + ')' : '') + (blocked ? '. With it: Roller big.' : '.'); },
-            onmouseenter: () => { info.textContent = d.label + ': ' + d.how + '. For him: ' + (f.word || '') + (f.why ? ' (' + f.why + ')' : '') + '.'; } },
-            fitDot(f), h('span', d.label)));
+          const f = IN().fit(d.k, card, ref), on = set.has(d.k), lk = lock.get(d.k) || null;
+          const btn = h('button.mg-ins' + (on ? '.on' : '') + (lk ? '.locked' : ''), { type: 'button', 'aria-pressed': String(on), 'aria-disabled': lk ? 'true' : null, title: lk ? lk : d.how,
+            onclick: () => {
+              if (lk) { info.textContent = say(d, f, lk); return; }
+              const nx = IN().toggle(entry, fam, d.k, !on); entry.ins = nx.keys; entry.u = nx.u; commit(); info.textContent = say(d, f) + (d.needs && !set.has(d.needs) ? ' (With it: Roller big.)' : '');
+            },
+            onmouseenter: () => { info.textContent = say(d, f, lk); } },
+            lk ? h('i.mg-lock', { 'aria-hidden': 'true' }, '🔒') : fitDot(f), h('span', d.label));
+          opts.appendChild(btn);
         });
         row.appendChild(opts);
         box.appendChild(row);
@@ -176,21 +311,18 @@ function playerPanel(id, o) {
       body.appendChild(box);
     });
   };
-  const roleSel = h('select.mg-in', { 'aria-label': 'Instructions as', style: { width: 'auto', padding: '6px 9px', fontSize: '12px' } },
-    ['g', 'w', 'b'].map(k => h('option', { value: k, selected: k === role ? true : null }, 'As a ' + IN().ROLE[k].toLowerCase())));
-  roleSel.addEventListener('change', () => { role = roleSel.value; commit(); });
   draw();
   const head = h('div.mg-pi-hd', A.crestOfPlayer ? A.crestOfPlayer(id) : null, h('div.t', h('a', { href: '#/player/' + encodeURIComponent(String(id).replace(/^dup:/, '')), translate: 'no' }, h('b', A.nameOf(id))),
-    h('span', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.posOf(id)), ' ', o.sub || 'Player instructions')), roleSel);
-  return h('div.mg-pi', head, o.actions ? h('div.mg-row', { style: { margin: '2px 0 8px' } }, o.actions) : null, body, info,
+    h('span', h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, A.posOf(id)), ' ', o.sub || (slot != null ? 'At ' + E().SLOTS[slot] + ': his role and instructions' : 'Player instructions'))));
+  return h('div.mg-pi' + (slot != null ? '.wide' : ''), head, o.actions ? h('div.mg-row', { style: { margin: '2px 0 8px' } }, o.actions) : null, body, info,
     h('div.mg-row.between', { style: { marginTop: '8px' } }, h('button.mg-btn.ghost', { type: 'button', onclick: () => { entry = { u: 0, ins: [] }; commit(); } }, 'Clear his instructions'), o.done || null));
 }
-/* a man's instructions in a few words (the court's cards) */
+/* a man's instructions in a few words (the court's and the bench's cards) */
 function brief(entry, id) {
-  const card = A.cardOf(id), role = (entry && entry.role) || IN().roleOf(card, A.slotOfId(id)), n = IN().norm(entry || {}, role);
-  const pre = IN().presetOf(entry || {}, role);
-  return { u: n.u, n: n.keys.length, role: pre ? pre.label : n.keys.length ? n.keys.length + (n.keys.length === 1 ? ' instruction' : ' instructions') : '', keys: n.keys };
+  const card = A.cardOf(id), fam = IN().roleOf(card, A.slotOfId(id)), n = IN().norm(entry || {}, '*');
+  void fam;
+  return { u: n.u, n: n.keys.length, role: n.keys.length ? n.keys.length + (n.keys.length === 1 ? ' instruction' : ' instructions') : '', keys: n.keys };
 }
 
-A.ui = { pop, close, place, teamPanel, playerPanel, summary, brief, fitDot, PHASES };
+A.ui = { pop, close, place, teamPanel, playerPanel, summary, brief, fitDot, attrCard, roleDemo, roleFacts, PHASES };
 })(typeof globalThis !== 'undefined' ? globalThis : self);

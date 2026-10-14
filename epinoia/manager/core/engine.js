@@ -121,7 +121,7 @@ const TACTICS = [
   { k: 'handlers', lo: -1, hi: 1, left: 'Get downhill', right: 'Punish from deep', group: 'In possession', label: 'Ball handlers',
     how: 'For your ball handlers only (the one or two who run the offence). Downhill: they attack the rim and draw fouls, at their own finishing (loose handles turn it over). Deep: they take more pull-up threes, at their own three-point rate, and every extra one costs more the less they shoot off the dribble' },
   { k: 'motion', lo: -1, hi: 1, left: 'Off-ball cutting', right: 'Space the floor', group: 'In possession', how: 'Cutting: finishers who score off passes get rim looks (it needs passers). Spacing: catch-and-shoot threes, and driving lanes for the creators (it needs shooters)' },
-  { k: 'feed', lo: -1, hi: 1, left: 'Hit the big', right: 'Hit the shooters', group: 'In possession', how: 'Plays to the bigs inside, or to the best shooters' },
+  { k: 'feed', lo: -1, hi: 1, left: 'Hit the screener', right: 'Hit the shooters', group: 'In possession', how: 'Plays to the men who set the screens, the way their roles play it (a roller at the rim, a popping big from three, a short roller from the middle), or to the best shooters' },
   { k: 'leak', lo: 0, hi: 1, label: 'Leak out', group: 'In transition', how: 'Runners leave early: more transition chances, fewer defensive rebounds. A five that does not run gives the extra chances away' },
   { k: 'crash', lo: 0, hi: 1, label: 'Attack the offensive boards', group: 'In transition', how: 'Second chances for the crashers; the opponents run out against you more' },
   { k: 'scheme', lo: -1, hi: 1, left: 'Funnel to rim protection', right: 'No paint touches', group: 'Out of possession', how: 'Funnel: give up rim shots into your protector (a gift without one). No paint touches: pack the paint, give up threes (your perimeter defenders decide how open)' },
@@ -357,6 +357,60 @@ const HANDLER = { down: 0.16, deep: 0.18 };
 const DIFF = { pull: 0.25, drive: 0.20, post: 0.20 };
 const UN_FULL = { three: 0.40, rim: 0.50, mid: 0.70 };
 
+/* ------------------------------------------------------------------ the roles --- */
+/* PLAYER ROLES (core/roles.js; Louie, 2026-10-14): each man plays a role at his position - a play-type diet, an on-ball
+   load, a scoring load, his passing, his screens - and the five's roles meet. Where a five has no roles (a real club),
+   none of this is read: its men play their own games, as before. */
+const ROLESm = () => (root.Mgr && root.Mgr.roles) || (typeof require === 'function' ? require('./roles.js') : null);
+const INSTRUCTm = () => (root.Mgr && root.Mgr.instruct) || (typeof require === 'function' ? require('./instruct.js') : null);
+/* THE ROLES' NUMBERS. On the usage dial and the make and turnover logits, as the rest of the engine; the reasoning for
+   each, and where it was checked, is in docs/manager-mode.md (Roles). */
+const ROLEK = {
+  /* A ROLE'S SCORING LOAD (-1..1): a share of the plays to take, his position's usual times 1 + useStep x the load (an
+     isolation scorer's 0.9: about 40% more than the position's usual; a 3-and-D man's -0.6: about a quarter fewer) */
+  /* (use: how far toward it - a man changes his game only so far: a role player told to carry the scoring does not
+     become a 26% usage man) */
+  use: 0.6, useStep: 0.45,
+  /* ON-BALL TIME (time of possession, not usage: a pass-first point guard has the ball as long as a scoring one and ends
+     far fewer plays, a movement shooter ends many and has it for seconds): a position's usual share of a five's on-ball
+     time (a man's own: this, by his passing and his usage); a role's share above his own hands him more of the plays
+     (initTilt, on the usage dial), more of the assists (initAst, the power of the ratio) */
+  TYP_INIT: [0.30, 0.22, 0.17, 0.16, 0.15], initTilt: 0.8, initAst: 0.5,
+  /* ONE BALL: a five's roles may ask for this much on-ball time between them (the real clubs' fives: 0.82 to 1.22, the
+     middle 0.98); more and each gets his share of what there is, fewer and somebody has to run it anyway */
+  ballMax: 1.2, ballMin: 0.72,
+  lostMake: 0.55,           // a ball-dominant man's make logit for each unit of on-ball time he wanted and did not get (times how on-ball his plays are)
+  stagTov: 0.25, stagMake: 0.08,   // the five's turnover and make logit for each unit of on-ball time asked for past ballMax
+  forceTilt: 1.5, forceTov: 0.35, forceGap: 0.5,   // nobody to run it: the man who has to, his usage and his turnovers; the five's creation gap
+  pass: 0.4, passTov: 0.12,  // a role's passing (-1..1) against his own, on his assists (times his passing); a poor passer's turnovers for it
+  tovOn: 0.35, tovDiet: 0.5,   // on-ball plays beyond his own game's cost turnovers; a diet's own turnover rate (its log) against his own role's
+  /* DOWNHILL PRESSURE (Louie: "a certain amount of downhill pressure is needed in order to generate good 3pt looks"): the
+     five's drives, rolls, post-ups and cuts, each at its man's finishing - a ball handler's on his time on the ball
+     (pOn), everybody's on the plays he ends; around pRef nothing, short of it the catch-and-shoot threes are contested,
+     past it they are open (press3 on the make logit a unit, his assisted share of his threes) */
+  pRef: 0.94, press3: 0.1, pOn: 0.5,
+  /* ...and well short of it (pLow under pRef: a five with no paint touches) every possession suffers - the threes
+     contested, the twos too (half), the clock run down into turnovers: a half-court possession with no paint touch and
+     no ball reversal scores about 0.7 a play, with one 1.06 */
+  pLow: 0.2, pressLow: 0.35, pressTov: 0.3,
+  /* SCREENS: a pick-and-roll and an off-screen shooter need somebody setting them (each role's screens at his size) */
+  sRef: 1.24, screenMake: 0.12,
+  /* THE PICK-AND-ROLL'S PARTNERS: a roller, a popper, a short roller need a handler running it (lRef of the five's on-ball
+     time spent in it); without one their touches dry up */
+  lRef: 0.19, partnerTilt: 0.6, partnerMake: 0.08,
+  postSpace: 0.12, hubMake: 0.025, hRef: 0.24,   // the post needs space, the extra pass a better look
+  /* the cut needs a passer: the five's passing decides how many cuts are found (a cutter's touches), not how well they
+     finish (team assist rate goes with cut frequency, r .5, and not with cut efficiency, r 0) */
+  cutVol: 0.8,
+  def3: 0.012,               // a 3-and-D man's contests: the opponents' three make logit
+  /* A ROLE NOBODY CHOSE (the position's default: the role his own game is closest to, or the general one) is his own
+     game: nothing of him moves (dflt of the role's strength), and only what the five's roles do together counts */
+  dflt: 0
+  /* pRef, sRef, lRef and hRef are what the default roles of the real clubs' own rotations add up to (four leagues,
+     2026-10-15: docs/manager-mode.md, Roles), so a club left alone neither gains nor loses by them */
+};
+/* a five with roles asks this of the ball and the paint (for the screens: tactics.js, match.js) */
+
 /* THE BALL HANDLERS of a five (the team slider's men): its main creator - the most of the plays, weighed by how much of
    his own he makes, and his passing - in full, and a second where there is a second creator near him */
 function handlerWeights(P) {
@@ -377,7 +431,7 @@ function sideOf(five, X) {
   const mixMu = { rim: mu.mixRim / ms, mid: mu.mixMid / ms, three: mu.mix3 / ms };
   const lg = { tov: logit(mu.tov), rim: logit(mu.pRim), mid: logit(mu.pMid), three: logit(mu.p3), p2: logit(mu.p2), ft: logit(mu.ft) };
   const isGuard = k => k <= 1, isWing = k => k === 2, isBig = k => k >= 3;
-  const P = five.map(({ card: c, k }) => {
+  const P = five.map(({ card: c, k, role }) => {
     const e = Math.max(0, Math.abs(k + 1 - c.pos) - 1);
     const mins = X.mins && X.mins.has(c.id) ? X.mins.get(c.id) : c.mpg;
     const z = X.form && X.form.has(c.id) ? clamp(+X.form.get(c.id) || 0, -2, 2) : 0;
@@ -388,24 +442,105 @@ function sideOf(five, X) {
     const I = INSm ? INSm.get(String(c.id)) : null, has = key => !!(I && I.k && I.k.has(key));
     const passQ = clamp(c.off.ast / posAvg(c, 'ast_pct', 14), 0.2, 3), stlQ = clamp(c.def.stl / posAvg(c, 'stl_pct', 1.6), 0.2, 3);
     const blkQ = clamp(c.def.blk / posAvg(c, 'blk_pct', 1.5), 0.1, 4), orbQ = clamp(c.off.orb / posAvg(c, 'oreb_pct', 6), 0.1, 4);
-    return { c, k, e, z, mins, dLoad, work, threeApt, rimApt, u: clamp(c.usg + FORM.usg * z, 5, 45), I, has, passQ, stlQ, blkQ, orbQ };
+    return { c, k, e, z, mins, dLoad, work, threeApt, rimApt, u: clamp(c.usg + FORM.usg * z, 5, 45), I, has, passQ, stlQ, blkQ, orbQ, roleKey: role };
   });
+  /* ---- THE ROLES: each man's at his position (the one chosen, else the position's default: roles.resolve); a five
+     without them (a real club: no role given, undefined) plays its men's own games ---- */
+  const RL = ROLESm(), INSD = INSTRUCTm();
+  P.forEach(p => {
+    p.R = RL && p.roleKey !== undefined ? RL.resolve(p.roleKey, p.k, p.c, ref) : null;
+    p.RP = p.R ? RL.profile(p.R) : null;
+    /* a role chosen is played in full; a position's default (nobody chose it) at ROLEK.dflt of its strength */
+    p.chosen = !!(p.R && p.roleKey && p.R.key === p.roleKey);
+    p.st = p.R ? (p.chosen ? 1 : ROLEK.dflt) : 0;
+    p.rho = p.R ? p.R.rho * p.st : 0;
+    /* HIS OWN GAME, which a role moves him from: the on-ball time his passing and his usage suggest (the position's usual
+       for a man average at both), how much he looks to pass, how much he crashes and runs, the turnover rate of the
+       plays he usually makes (an on-ball man's more than a finisher's) */
+    p.posU = posAvg(p.c, 'usg', 19);
+    p.natInit = clamp(ROLEK.TYP_INIT[p.k] * clamp(p.passQ, 0.3, 3) * Math.pow(clamp(p.u / p.posU, 0.4, 2.5), 0.4), 0.01, 0.9);
+    p.natPass = clamp(0.8 * (p.passQ - 1), -0.8, 0.8);
+    if (!p.R) return;
+    /* the role his own game is closest to (the one that suits him best): his numbers already play it, so a role moves
+       his shots, his on-ball plays and his place on the floor by what it asks beyond that one (a general role, nothing) */
+    p.nat = p.R.gen ? null : RL.bestFor(p.k, p.c, ref);
+    p.NP = p.nat ? RL.profile(p.nat) : null;
+    /* WHAT THE ROLE ASKS BEYOND HIS OWN: each load against his natural role's (so the role that suits him best, chosen or
+       left as the default, is his own game exactly), as far as the role is played (st) */
+    const L0 = p.nat || p.R, dl = k => p.st * ((p.R[k] || 0) - (L0[k] || 0));
+    p.ld = p.R.gen ? { use: 0, init: 0, pass: 0, crash: 0, run: 0, def: 0 } : { use: dl('use'), init: dl('init'), pass: dl('pass'), crash: dl('crash'), run: dl('run'), def: dl('def') };
+    /* an instruction his role rules out (roles.locks), or one that is not his role's kind (a guard's at the four), is not
+       his to follow there */
+    const lock = RL.locks(p.R), fam = p.R.family, I = p.I;
+    p.has = key => { if (!(I && I.k && I.k.has(key)) || lock.has(key)) return false; const d = INSD && INSD.BY ? INSD.BY.get(key) : null; return !d || d.roles.includes(fam); };
+  });
+  const roled = P.some(p => p.R);
   const ON = key => P.some(p => p.has(key));
+  /* how much a man sets the screens: his role's, else a big's */
+  const screenerW = p => (p.R ? p.R.screen : isBig(p.k) ? 1 : 0);
+  /* ONE BALL (Louie: "flagging when you've designated too many high usage players and ball handlers [and also make sure
+     that takes effect in the engine - that there's only one ball]"): each role's call on the five's on-ball time (init)
+     is met in full while they add up to ballMax at most; past it each gets his share of what there is (the rest is
+     on-ball time he wanted and did not get: `lost`), and short of ballMin the man who makes the most of his own has to
+     run it anyway (`forced`) */
+  let I5 = 0, ballK = 1, deficit = 0;
+  if (roled) {
+    /* his on-ball time: his own, moved by what the role asks beyond his natural role (a general role leaves it his own) */
+    P.forEach(p => { p.init = p.R ? clamp(p.natInit + p.ld.init, 0.01, 0.95) : p.natInit; });
+    I5 = P.reduce((a, p) => a + p.init, 0);
+    ballK = I5 > ROLEK.ballMax ? ROLEK.ballMax / I5 : 1;
+    deficit = Math.max(0, ROLEK.ballMin - I5);
+    P.forEach(p => { p.onb = p.init * ballK; p.lost = p.init - p.onb; p.forced = 0; });
+    if (deficit > 0) {
+      const q = P.slice().sort((a, b) => (b.c.creator - 0.1 * clamp(b.c.off.dTov, -1, 1)) - (a.c.creator - 0.1 * clamp(a.c.off.dTov, -1, 1)))[0];
+      q.onb += deficit; q.forced = deficit;
+    }
+  }
+  /* THE PICK-AND-ROLL: the five's on-ball time spent running it (each handler's on-ball time, the share of his plays it
+     is) - what a roller, a popper and a short roller live on */
+  const Lpnr = roled ? P.reduce((a, p) => a + (p.R ? p.onb * (p.R.diet.pnr || 0) : 0), 0) : 0;
+  const partner = clamp(Lpnr / ROLEK.lRef, 0.3, 1.3);
+  const partnerShare = p => (p.R ? (p.R.diet.roll || 0) + (p.R.diet.pop || 0) + (p.R.diet.short || 0) : 0);
+  /* HIS PASSING IN HIS ROLE: as far as the role asks him to look for others more (or less) than he does, at his own
+     passing; and his assists move with his time on the ball against his own (true usage: a pass-first point guard runs
+     the plays and ends few of them). The five's passing with it, before anybody's instructions (the cutters' touches) */
+  P.forEach(p => {
+    p.dp = p.R ? p.ld.pass : 0;
+    p.passK = p.R ? clamp(1 + ROLEK.pass * p.dp * clamp(p.passQ, 0.3, 2), 0.4, 2.5) * Math.pow((p.onb + 0.08) / (p.natInit + 0.08), ROLEK.initAst) : 1;
+  });
+  const A50 = clamp(P.reduce((a, p) => a + p.c.off.ast * p.passK * p.work, 0) / Math.max(1, ref.five.ast_pct), 0.3, 2.5);
 
   /* ---- WHO TAKES THE PLAYS: the tilts, then the five's plays made to add up (squad.js usageSim) ---- */
   P.forEach(p => {
     let t = tac.guards * (isGuard(p.k) ? 1 : 0) + tac.wings * (isWing(p.k) ? 1 : 0) + tac.bigs * (isBig(p.k) ? 1 : 0);
-    if (tac.feed < 0 && isBig(p.k)) t += -tac.feed;
+    /* HIT THE SCREENER (Louie: "'hit the big inside' instead mean 'hit the screener' ... could be a pick and pop big"):
+       the plays go to the men who set the screens - each role's screens, else the bigs - and end the way his screens
+       do (the shot mix, below) */
+    if (tac.feed < 0) t += -tac.feed * screenerW(p);
     if (tac.feed > 0) t += tac.feed * clamp(p.threeApt - 0.6, 0, 1.5);
     if (tac.usage[p.c.id]) t += tac.usage[p.c.id];
     /* his own instructions: his touches (two steps either way, Louie: "up to 2 either way (to prioritise/lessen the
        touches of a player)") and what each asks of the ball */
     if (p.I) {
       t += 0.5 * clamp(+p.I.u || 0, -2, 2);
-      p.I.k.forEach(key => { const d = INS[key]; if (d && d.tilt) t += d.tilt; });
+      p.I.k.forEach(key => { const d = INS[key]; if (d && d.tilt && p.has(key)) t += d.tilt; });
+    }
+    p.d = Math.max(0, p.u - USG_FLOOR) * (1 + p.c.creator) + 2;
+    /* HIS ROLE: the scoring it asks beyond his natural role's (his position's usual usage times useStep a unit of the
+       load: an isolation scorer's role for a 3-and-D man, about two thirds more; the part of it that is on the ball
+       shrinks with the on-ball time he does not get); his on-ball time against his own; the ball forced on him when
+       nobody else runs it */
+    if (p.R) {
+      const lostShare = p.init > 0 ? p.lost / p.init : 0;
+      if (p.ld.use) t += ROLEK.use * ROLEK.useStep * p.posU * p.ld.use / (0.6 * p.d + 3) * (1 - p.RP.on * lostShare);
+      t += ROLEK.initTilt * (p.onb - p.natInit) + ROLEK.forceTilt * p.forced;
+      /* a screener's touches come with the pick-and-roll run with him: fewer without a handler, more with a busy one */
+      t += ROLEK.partnerTilt * (partner - 1) * partnerShare(p);
+      /* a cutter's come with the passers who find him (beyond what his own game's cuts were) */
+      const cutMore = (p.R.diet.cut || 0) - (p.nat ? p.nat.diet.cut || 0 : p.R.diet.cut || 0);
+      if (cutMore > 0) t += ROLEK.cutVol * p.st * cutMore * (A50 - 1);
     }
     p.tilt = t;
-    p.d = Math.max(0, p.u - USG_FLOOR) * (1 + p.c.creator) + 2;
     /* a tilt hands him 60% of his discretionary usage more at full, and three points besides (a role player near the
        floor still takes on more when told to) */
     p.u1 = Math.max(3, p.u + 0.6 * t * p.d + 3 * t);
@@ -421,8 +556,22 @@ function sideOf(five, X) {
     /* HIS OWN SHOTS AND HIS PASSING under his instructions: the unassisted share at each zone, the assist rate */
     p.un = { rim: p.c.un.rim, mid: p.c.un.mid, three: p.c.un.three };
     let astM = 1, tovI = 0;
+    /* HIS ROLE'S PLAYS: as many of his shots his own as its diet's (as far as the role goes, rho); its passing, and his
+       share of the assists with his on-ball time (true usage: a pass-first point guard runs the plays and ends few of
+       them); the turnovers of on-ball plays his habits do not cover, and of the diet's own kinds of play */
+    if (p.R) {
+      const RP = p.RP, NP = p.NP || RP, rho = p.rho;
+      ZONES.forEach(zn => { p.un[zn] = clamp(p.un[zn] + rho * (RP.un[zn] - NP.un[zn]), 0.01, 0.97); });
+      /* his passing (above); a poor passer asked to make the passes turns some of them over */
+      astM *= p.passK;
+      tovI += ROLEK.passTov * p.st * Math.max(0, p.dp) * clamp(1.2 - p.passQ, 0, 0.9);
+      /* on-ball plays beyond his own game's are turnovers his habits do not cover (the more so with loose handles); the
+         kinds of play his role adds turn it over at their own rates */
+      tovI += ROLEK.tovOn * rho * (RP.on - NP.on) * (1 + 0.5 * clamp(p.c.off.dTov, -1, 1)) + ROLEK.tovDiet * rho * Math.log(RP.tov / NP.tov);
+      if (p.forced) tovI += ROLEK.forceTov * p.forced * (1.2 - clamp(p.c.creator, 0, 1));
+    }
     if (p.I) p.I.k.forEach(key => {
-      const d = INS[key]; if (!d) return;
+      const d = INS[key]; if (!d || !p.has(key)) return;
       if (d.un) ZONES.forEach(zn => { if (d.un[zn]) p.un[zn] = clamp(p.un[zn] * d.un[zn], 0.01, 0.97); });
       if (d.ast) astM *= d.ast;
       if (d.astQ) astM *= 1 + d.astQ * clamp(p.passQ - 0.6, 0, 1.4);
@@ -467,12 +616,27 @@ function sideOf(five, X) {
     P.forEach((p, i) => { p.m = moveAdd(p.m, z, Math.min(0.6, total * P.length * ws[i] / W), from); });
   };
   const aptOf = k => p => 0.4 + 0.6 * clamp(p[k], 0, 2);
+  /* HIS ROLE'S SHOTS: his mix moved by what the role's diet asks beyond his own game's (the role that suits him best),
+     as far as the role goes (rho); the shots it adds that he does not usually make his own way are the pull-ups, drives
+     and post-ups they are, priced below (DIFF) at his own habits - a shooting role for a man who does not shoot pays at
+     his own rates */
+  P.forEach(p => {
+    if (!p.R || !p.nat) return;
+    const T = p.RP.mix, N = p.NP.mix, rho = p.rho, m0 = p.m0;
+    let m = { rim: Math.max(0.01, m0.rim + rho * (T.rim - N.rim)), mid: Math.max(0.01, m0.mid + rho * (T.mid - N.mid)), three: Math.max(0.005, m0.three + rho * (T.three - N.three)) };
+    { const t = m.rim + m.mid + m.three; m = { rim: m.rim / t, mid: m.mid / t, three: m.three / t }; }
+    p.extra.pull += Math.max(0, m.three - m0.three) * p.RP.un.three;
+    p.extra.drive += Math.max(0, m.rim - m0.rim) * p.RP.un.rim;
+    const post = Math.max(0, (p.R.diet.post || 0) - (p.nat.diet.post || 0)) * rho / 0.5;
+    if (post > 0) p.extra.post += post * (m.rim + m.mid);
+    p.m = m;
+  });
   /* his own: the ball handlers' slider, then his instructions */
   P.forEach(p => {
     if (p.deep > 0) { const before = p.m.three; p.m = moveAdd(p.m, 'three', HANDLER.deep * p.deep, [['mid', 0.7], ['rim', 0.3]]); p.extra.pull += p.m.three - before; }
     if (p.down > 0) { const before = p.m.rim; p.m = moveAdd(p.m, 'rim', HANDLER.down * p.down, [['mid', 0.7], ['three', 0.3]]); p.extra.drive += p.m.rim - before; }
     if (!p.I) return;
-    p.I.k.forEach(key => (INS_MIX[key] || []).forEach(([z, add, from]) => {
+    p.I.k.forEach(key => p.has(key) && (INS_MIX[key] || []).forEach(([z, add, from]) => {
       const before = p.m[z];
       p.m = moveAdd(p.m, z, add, from);
       if (key === 'arc') p.extra.pull += p.m[z] - before;
@@ -495,7 +659,19 @@ function sideOf(five, X) {
   /* cutting needs somebody to find the cutter: the five's passing scales how many of the cuts become shots */
   if (tac.motion < 0) shiftZone('rim', SHIFT.cut * -tac.motion * clamp(A5, 0.3, 1.5), p => 0.3 + 0.7 * clamp(p.cutApt, 0, 2), [['three', 0.5], ['mid', 0.5]]);
   if (tac.motion > 0) shiftZone('three', SHIFT.space * tac.motion, aptOf('catchApt'), [['mid', 0.8], ['rim', 0.2]]);
-  if (tac.feed < 0) shiftZone('rim', SHIFT.feed * -tac.feed, p => (isBig(p.k) ? 1 : 0.1), [['three', 0.6], ['mid', 0.4]]);
+  /* hit the screener: each screener's shots go the way his screens end - a roller's to the rim, a popper's to the arc, a
+     short roller's into the floater and the mid-range; a five without roles (a real club), its bigs inside, as ever */
+  if (tac.feed < 0 && !roled) shiftZone('rim', SHIFT.feed * -tac.feed, p => (isBig(p.k) ? 1 : 0.1), [['three', 0.6], ['mid', 0.4]]);
+  if (tac.feed < 0 && roled) P.forEach(p => {
+    const w = screenerW(p);
+    if (!(w > 0) || !p.R) return;
+    const d = p.R.diet, roll = (d.roll || 0) + (d.cut || 0) * 0.5, pop = d.pop || 0, sh = d.short || 0, tot = roll + pop + sh;
+    if (!(tot > 0)) return;
+    const add = 0.08 * -tac.feed * w;
+    if (roll) p.m = moveAdd(p.m, 'rim', add * roll / tot, [['mid', 0.5], ['three', 0.5]]);
+    if (pop) p.m = moveAdd(p.m, 'three', add * pop / tot, [['mid', 0.6], ['rim', 0.4]]);
+    if (sh) p.m = moveAdd(p.m, 'mid', add * sh / tot, [['three', 1]]);
+  });
   if (tac.feed > 0) shiftZone('three', SHIFT.feed * tac.feed, p => clamp(p.threeApt - 0.6, 0, 1.5) + 0.05, [['mid', 0.7], ['rim', 0.3]]);
   /* kick-outs and dump-offs: the passer's looks go to the men he finds - the shooters' catch-and-shoot threes, the bigs'
      shots at the rim - as many as his passing finds (his share of the plays, his passing) */
@@ -524,10 +700,20 @@ function sideOf(five, X) {
   /* a man's threat: his share of threes against the league's, times how well he shoots them - nothing under three
      quarters of the league's 3P% (nobody guards a non-shooter out there), the league's 1, a fifth better 1.8; a cutter and a
      crasher stand in the paint, a spacer and a popping big stand out there */
-  const threatMul = p => (p.has('cut') ? 0.6 : 1) * (p.has('crash') ? 0.85 : 1) * (p.has('space') || p.has('pop') ? 1.15 : 1);
+  /* where his role puts him: out on the arc (a spot-up, an off-screen, a popping role) his threat spaces the floor; in
+     the paint (the cut, the roll, the post, the glass) it does not, and he crowds it */
+  /* - against where his own game puts him (the role that suits him best: a man's own spacing is in his numbers already,
+     so his natural role changes nothing, and a general role leaves him where he is) */
+  const placeOf = r => { const q = RL.profile(r); return (0.55 + 0.75 * q.perim) * (1 - 0.3 * q.paint); };
+  const rollOf = r => Math.min(1, 2 * ((r.diet.roll || 0) + 0.5 * (r.diet.short || 0)));
+  P.forEach(p => { p.nat = p.R && !p.R.gen ? RL.bestFor(p.k, p.c, ref) : null; });
+  const roleMul = p => (p.nat ? 1 + p.st * (placeOf(p.R) / placeOf(p.nat) - 1) : 1);
+  const threatMul = p => (p.has('cut') ? 0.6 : 1) * (p.has('crash') ? 0.85 : 1) * (p.has('space') || p.has('pop') ? 1.15 : 1) * roleMul(p);
   const threat = p => clamp(p.m.three / Math.max(0.01, mixMu.three), 0, 2.5) * clamp((p.c.p3Rel - 0.75) * 4, 0, 2) * threatMul(p);
-  /* a rolling big who finishes is room of its own: the defence has to sink to him */
-  const vertical = P.reduce((a, p) => a + (p.has('roll') ? 0.06 * clamp(p.c.rimRel - 0.95, 0, 0.5) * 10 : 0), 0);
+  /* a rolling big who finishes is room of its own: the defence has to sink to him (his instruction; or his role's rolls
+     beyond his own game's) */
+  const vOf = p => 0.6 * clamp(p.c.rimRel - 0.95, 0, 0.5);
+  const vertical = P.reduce((a, p) => a + (p.has('roll') ? vOf(p) : 0) + (p.nat ? p.st * vOf(p) * (rollOf(p.R) - rollOf(p.nat)) : 0), 0);
   const spacing = clamp(mean(P.map(threat)) + vertical, 0.1, 2.5);
   /* a packed paint: fewer rim attempts for everybody (they go to the mid-range), more with real spacing */
   P.forEach(p => {
@@ -552,15 +738,17 @@ function sideOf(five, X) {
      plays - and the extra chances go at HIS transition rate against his half court, less what he gives away for being
      unused to running (his own unfamiliarity, and his turnovers for it); slowing it down plays his chances at his half
      court rate */
-  const pushW = P.reduce((a, p) => a + (p.has('push') ? p.s : 0), 0), slowW = P.reduce((a, p) => a + (p.has('slow') ? p.s : 0), 0);
+  /* a role that runs (a slasher's) pushes as the instruction does, a little less - the running he does not already do */
+  const pushOf = p => (p.has('push') ? 1 : 0) + (p.R ? 0.6 * Math.max(0, p.ld.run) : 0);
+  const pushW = P.reduce((a, p) => a + Math.min(1, pushOf(p)) * p.s, 0), slowW = P.reduce((a, p) => a + (p.has('slow') ? p.s : 0), 0);
   const trPush = clamp(1 + 0.8 * pushW - 0.6 * slowW, 0.4, 1.8);
   P.forEach(p => {
     p.trMake = 0; p.trTov = 0;
-    const own = p.c.off.tr, uf = Math.max(0, 1 - own.share / Math.max(0.01, ref.trShare));
-    if (p.has('push')) {
-      const moved = trShare0 * 0.8;
+    const own = p.c.off.tr, uf = Math.max(0, 1 - own.share / Math.max(0.01, ref.trShare)), pu = Math.min(1, pushOf(p));
+    if (pu > 0) {
+      const moved = trShare0 * 0.8 * pu;
       p.trMake = moved * ((X.dTr || 0) + ((own.ppp - own.hcPpp) - 0.30 * uf) / PPP_LOGIT);
-      p.trTov = 0.30 * uf;
+      p.trTov = 0.30 * uf * pu;
     }
     /* the chances he walks up: from his transition rate (and the league's transition bonus) to his half court rate */
     if (p.has('slow')) { const moved = trShare0 * 0.6; p.trMake += moved * ((own.hcPpp - own.ppp) / PPP_LOGIT - (X.dTr || 0)); }
@@ -570,7 +758,58 @@ function sideOf(five, X) {
   /* CREATION, A FIVE'S OWN (the What wins model's creation efficacy): a five with nobody to make a shot out of nothing
      ends more possessions late in the clock - turnovers and forced shots; around the league's five, nothing */
   const create5 = P.reduce((a, p) => a + p.s * (p.c.creator * Math.sqrt(p.un.rim / Math.max(0.05, p.c.un.rim + 1e-6))), 0);
-  const createGap = clamp(0.22 - create5, 0, 0.22);
+  let createGap = clamp(0.22 - create5, 0, 0.22);
+  /* nobody to run it: the possessions nobody starts end late and badly */
+  if (roled && deficit > 0) createGap = clamp(createGap + ROLEK.forceGap * deficit, 0, 0.32);
+
+  /* ---- THE ROLES TOGETHER: the ball, the paint, the screens, the pick-and-roll, the post, the cut, the extra pass ----
+     each a make logit (rk) or a turnover logit on the men whose plays lean on it, centred on what a five usually has */
+  let P5 = 0, S5 = 0, hub5 = 0;
+  P.forEach(p => { p.rk = { rim: 0, mid: 0, three: 0, tov: 0 }; p.press = 0; });
+  if (roled) {
+    /* DOWNHILL PRESSURE: the five's drives, rolls, post-ups and cuts, each at its man's finishing (a man who does not
+       finish is not feared) - a ball handler's on every possession he runs (his time on the ball: true usage, not only
+       the plays he ends), everybody's on the plays he ends */
+    P.forEach(p => {
+      if (!p.R) return;
+      const apt = clamp(0.4 + 0.6 * p.rimApt, 0.3, 1.8);
+      p.press = apt * (ROLEK.pOn * p.onb * p.RP.onPress + p.s * p.RP.press);
+      P5 += p.press;
+    });
+    S5 = P.reduce((a, p) => a + screenerW(p) * clamp((p.c.pos - 2.5) / 2, 0.3, 1.2), 0);
+    hub5 = P.reduce((a, p) => a + (p.R ? p.R.hub * clamp(p.passQ, 0.3, 2) : 0), 0);
+    const stag = Math.max(0, I5 - ROLEK.ballMax), dP = P5 - ROLEK.pRef, press = clamp(dP, -0.25, 0.25), low = Math.max(0, -ROLEK.pLow - dP);
+    const scr = clamp(S5 - ROLEK.sRef, -1, 0.6);
+    /* the handlers' passing feeds the pick-and-roll's partners */
+    const feedQ = Lpnr > 0 ? P.reduce((a, p) => a + (p.R ? p.onb * (p.R.diet.pnr || 0) * clamp(p.passQ, 0.3, 2) : 0), 0) / Lpnr : 1;
+    P.forEach(p => {
+      if (!p.R) return;
+      const d = p.R.diet, r = p.rk;
+      /* open threes need the paint attacked: on his catch-and-shoot share of his threes; and a five that never gets
+         there plays every possession against a set defence */
+      r.three += (ROLEK.press3 * press - ROLEK.pressLow * low) * (1 - p.un.three);
+      r.rim -= 0.5 * ROLEK.pressLow * low * (1 - p.un.rim); r.mid -= 0.5 * ROLEK.pressLow * low * (1 - p.un.mid);
+      r.tov += ROLEK.pressTov * low;
+      /* a ball-dominant man without the ball: the plays he wanted come as worse ones */
+      const lp = -ROLEK.lostMake * p.lost * p.RP.on;
+      /* a stagnant five: the clock runs down with everybody waiting for the ball */
+      ZONES.forEach(zn => { r[zn] += lp - ROLEK.stagMake * stag; });
+      r.tov += ROLEK.stagTov * stag;
+      /* the screens his pick-and-roll and his off-screen plays need */
+      const sp = ROLEK.screenMake * scr, pn = d.pnr || 0, of = d.offs || 0;
+      r.rim += sp * pn; r.mid += sp * (pn + of); r.three += sp * (pn + of);
+      /* the pick-and-roll's partners: with a handler the roll finishes better (and better still off a passer's feed) */
+      if (partnerShare(p) > 0) {
+        const q = ROLEK.partnerMake * ((partner - 1) + 0.5 * (feedQ - 1));
+        r.rim += q * ((d.roll || 0) + (d.short || 0)); r.three += q * (d.pop || 0); r.mid += q * (d.short || 0);
+      }
+      /* the post: room to work - the spacing around it */
+      if (d.post) { const q = ROLEK.postSpace * clamp(spacing - 1, -0.8, 0.8) * d.post; r.rim += q; r.mid += q; }
+      /* the extra pass: a connector makes his teammates' assisted looks better (than a five's usual connectors do) */
+      const hubOthers = hub5 - p.R.hub * clamp(p.passQ, 0.3, 2) - 0.8 * ROLEK.hRef;
+      ZONES.forEach(zn => { r[zn] += ROLEK.hubMake * hubOthers * (1 - p.un[zn]); });
+    });
+  }
 
   /* ---- EACH MAN'S PLAYS ---- */
   P.forEach(p => {
@@ -588,15 +827,17 @@ function sideOf(five, X) {
     /* a roller's finishes come off the handler's pass: the five's passing again */
     if (p.has('roll')) motion += 0.15 * (A5 - 1);
     const dRim = isNum(o.dRim) ? o.dRim : o.d2, dMid = isNum(o.dMid) ? o.dMid : o.d2;
+    /* the roles together (above): nothing for a five without them */
+    const rk = p.rk;
     p.p = {
-      rim: expit(lg.rim + dRim + common + p.vol.rim + pass('rim') + SYN.space * clamp(spacing - 1, -0.8, 0.8) + motion + lane),
-      mid: expit(lg.mid + dMid + common + p.vol.mid + pass('mid')),
-      three: expit(lg.three + o.d3 + common + p.vol.three + pass('three'))
+      rim: expit(lg.rim + dRim + common + p.vol.rim + pass('rim') + SYN.space * clamp(spacing - 1, -0.8, 0.8) + motion + lane + rk.rim),
+      mid: expit(lg.mid + dMid + common + p.vol.mid + pass('mid') + rk.mid),
+      three: expit(lg.three + o.d3 + common + p.vol.three + pass('three') + rk.three)
     };
     p.ft = expit(lg.ft + o.dFt);
     /* driving into traffic: the men who do not get to the rim, and the loose handles, give it away */
     const downTov = (p.down + (p.has('dh') ? 0.6 : 0)) * (0.14 * (1.5 - clamp(p.rimApt, 0, 1.5)) + 0.05 * clamp(o.dTov, -1, 1));
-    let tovAdj = p.tovSkill + OOP.tov * p.e * p.e + onTov + leakTov + downTov + p.tovI + p.trTov + 0.4 * createGap;
+    let tovAdj = p.tovSkill + OOP.tov * p.e * p.e + onTov + leakTov + downTov + p.tovI + p.trTov + 0.4 * createGap + rk.tov;
     if (tac.motion < 0) tovAdj += 0.03 * -tac.motion + 0.10 * -tac.motion * clamp(1.2 - A5, 0, 1);
     p.tov = expit(lg.tov + o.dTov + tovAdj);
     let sf = mu.sfoul * p.rFta, bo = mu.bonus * (0.5 + 0.5 * p.rFta);
@@ -624,6 +865,14 @@ function sideOf(five, X) {
   const sumRate = (f, w) => P.reduce((a, p) => a + f(p) * (w ? p.work : 1), 0);
   /* the glass: a crasher attacks it as well as he rebounds (his ORB% against his position's) */
   P.forEach(p => { p.orb = p.c.off.orb * (p.has('crash') ? 1 + 0.45 * clamp(p.orbQ, 0.3, 2.2) : 1) * (p.has('spot') || p.has('pop') ? 0.85 : 1); });
+  /* his role's place on the floor: a crashing role attacks the glass as the instruction does (a little less), a role out
+     on the arc leaves it (as far as the role moves him) */
+  P.forEach(p => {
+    if (!p.R) return;
+    /* the crashing it asks beyond his natural role's; where it puts him against where his natural role does */
+    const N = p.NP || p.RP, place = 0.25 * p.rho * ((clamp(2 * p.RP.paint - 0.4, 0, 1) - clamp(2 * N.paint - 0.4, 0, 1)) - (clamp(2 * p.RP.perim - 1, 0, 1) - clamp(2 * N.perim - 1, 0, 1)));
+    p.orb *= clamp(1 + 0.35 * p.ld.crash * clamp(p.orbQ, 0.3, 2.2), 0.5, 2) * (1 + place);
+  });
   const orb5 = sumRate(p => p.orb, true);
   off.orb = clamp(mu.orb + DR * (orb5 - ref.five.oreb_pct) / 100 + 0.5 * P.reduce((a, p) => a + p.c.onoff.oreb, 0) / 100
     + 0.05 * tac.crash * (clamp(orb5 / Math.max(1, ref.five.oreb_pct), 0.3, 2) - 0.5), 0.04, 0.65);
@@ -655,7 +904,7 @@ function sideOf(five, X) {
     drb5 -= 0.15 * tac.leak * leakers.reduce((a, p) => a + p.c.def.drb * p.work, 0);
   }
   /* a pusher leaks a little too */
-  drb5 -= 0.08 * P.reduce((a, p) => a + (p.has('push') ? p.c.def.drb * p.work : 0), 0);
+  drb5 -= 0.08 * P.reduce((a, p) => a + Math.min(1, pushOf(p)) * p.c.def.drb * p.work, 0);
   const pf5 = sumRate(p => p.dpf, false);
   const rimSave5 = P.reduce((a, p) => a + p.dsave, 0), deter5 = P.reduce((a, p) => a + p.c.def.rimDeter, 0);
   const stlRel = stl5 / Math.max(0.5, ref.five.stl_pct);
@@ -684,6 +933,9 @@ function sideOf(five, X) {
   /* staying solid: better contests */
   const solid = P.reduce((a, p) => a + (p.has('sol') ? 0.012 : 0), 0);
   dMid -= solid; d3 -= solid;
+  /* a 3-and-D role: his energy goes into guarding the ball and closing out - the opponents' threes (the mid-range a
+     little), with the feet for it (his steal rate against his position's: how well he moves) */
+  P.forEach(p => { if (p.R && p.ld.def) { const q = ROLEK.def3 * p.ld.def * clamp(p.stlQ, 0.5, 1.5); d3 -= q; dMid -= 0.5 * q; } });
   /* asked to go for blocks: a shot blocker turns them away, anybody gives up and-ones */
   P.forEach(p => { if (p.has('rimp') || p.has('rima')) dRim -= 0.02 * clamp(p.blkQ - 0.6, -0.4, 1.5); if (p.has('cons')) dRim += 0.012; });
   /* a hedging big who cannot move gives up the drive and the pop; a dropping big gives up the mid-range */
@@ -702,7 +954,9 @@ function sideOf(five, X) {
   }
   /* crashing the offensive glass gives the opponents more transition: the league's transition bonus on the share - the
      team's tactic, and each crasher's own */
-  const crashers = P.filter(p => p.has('crash')).length;
+  /* (a role's crashing beyond his own: the getting back it costs is small now - the link between crashing and the
+     opponents' transition has faded - so it counts for less than the instruction) */
+  const crashers = P.reduce((a, p) => a + (p.has('crash') ? 1 : 0) + (p.R ? 0.3 * Math.max(0, p.ld.crash) : 0), 0);
   if (tac.crash > 0 || crashers) { const up = (0.5 * tac.crash + 0.15 * crashers) * ref.trShare * (X.dTr || 0); dRim += up; dMid += up; d3 += up; }
   ms = mixRim + mixMid + mix3;
   def.mixRim = mixRim / ms; def.mixMid = mixMid / ms; def.mix3 = mix3 / ms;
@@ -716,35 +970,127 @@ function sideOf(five, X) {
   def.tr = clamp(mu.tr * (1 + 0.5 * tac.crash + 0.12 * crashers), 0.01, 0.9);
   def.d = mu.d / Math.sqrt(pace5) * (1 - 0.03 * tac.gamble) * (1 + 0.02 * Math.max(0, tac.scheme)) * (1 - 0.03 * tac.crash);
 
+  /* TRUE USAGE: the plays he ends, and the shots he makes for the others - every shot off a pass (made or not) shared
+     among the passers by their assists, as a scouting service counts the potential assists */
+  const astW = P.map(p => p.c.off.ast * p.astM * p.work), astT = astW.reduce((a, v) => a + v, 0) || 1;
+  const passed = P.reduce((a, p) => a + p.s * (1 - p.tov) * (1 - p.sfoul - p.bonus) * ZONES.reduce((b, zn) => b + p.m[zn] * (1 - p.un[zn]), 0), 0);
+  P.forEach((p, i) => { p.tusg = p.u2 + 100 * passed * astW[i] / astT; });
+
   return {
     off, def, n: 0,
     /* what each man does here, for the box score, the play-by-play and the screens */
     men: P.map(p => ({ id: p.c.id, k: p.k, s: p.s, u: p.u, u2: p.u2, tov: p.tov, trip: p.sfoul + p.bonus, sfoul: p.sfoul, bonus: p.bonus, m: p.m, p: p.p, ft: p.ft, and1: p.and1,
       orb: p.orb * p.work, drb: p.c.def.drb * p.work, stl: p.dstl * p.work, blk: p.dblk * p.work, pf: p.dpf, ast: p.c.off.ast * p.astM * p.work,
-      un: p.un, e: p.e, dLoad: p.dLoad, z: p.z, hw: p.hw, tr: p.c.off.tr.share * (p.has('push') ? 1.8 : p.has('slow') ? 0.6 : 1), ins: p.I ? [...p.I.k] : [] })),
-    five: { spacing, passing: A5, run: trRel, prot, perim, stl: stl5, blk: blk5, drb: drb5, orb: orb5, create: create5 },
+      un: p.un, e: p.e, dLoad: p.dLoad, z: p.z, hw: p.hw, tr: p.c.off.tr.share * Math.min(1.8, 1 + 0.8 * pushOf(p)) * (p.has('slow') ? 0.6 : 1), ins: p.I ? [...p.I.k] : [],
+      /* his role here: its key, his share of the five's time on the ball (and what he wanted of it), the pressure he puts
+         on the rim, his true usage */
+      role: p.R ? p.R.key : null, onb: roled ? p.onb : null, init: roled ? p.init : null, lost: roled ? p.lost : 0, forced: roled ? p.forced : 0,
+      press: p.press, tusg: p.tusg })),
+    five: { spacing, vertical, passing: A5, run: trRel, prot, perim, stl: stl5, blk: blk5, drb: drb5, orb: orb5, create: create5,
+      /* the roles together (a five with roles): the ball they ask for, the paint pressure, the screens, the pick-and-roll */
+      roled, ball: I5, ballMax: ROLEK.ballMax, ballMin: ROLEK.ballMin, deficit, pressure: P5, pRef: ROLEK.pRef, screens: S5, sRef: ROLEK.sRef, pnr: Lpnr, hub: hub5,
+      notes: roled ? roleNotes(P, { I5, deficit, P5, S5, Lpnr, hub5, spacing, A5 }) : [] },
     tac
   };
 }
 
+/* WHAT THE TACTICS SCREEN SAYS ABOUT A FIVE'S ROLES (Louie: "flagging when you've designated too many high usage players
+   and ball handlers"): each note {lvl: 'bad' | 'warn' | 'good', text, ids} - the text names the men as {who} */
+function roleNotes(P, f) {
+  const out = [], R = P.filter(p => p.R), ids = list => list.map(p => String(p.c.id));
+  const by = (fn, min) => R.filter(p => fn(p) >= min).sort((a, b) => fn(b) - fn(a));
+  if (f.I5 > ROLEK.ballMax + 0.05) {
+    const who = by(p => p.init, 0.2);
+    out.push({ lvl: f.I5 > ROLEK.ballMax + 0.35 ? 'bad' : 'warn', key: 'ball', ids: ids(who),
+      text: 'Too many ball handlers: {who} all want the ball. There is only one - each gets less of it than his role asks, and the plays he does get come late in the clock.' });
+  }
+  if (f.deficit > 0.02) {
+    const q = P.find(p => p.forced > 0);
+    out.push({ lvl: f.deficit > 0.2 ? 'bad' : 'warn', key: 'noball', ids: q ? [String(q.c.id)] : [],
+      text: 'Nobody runs the offence: these roles start very few plays. {who} has to bring it up anyway, and possessions end late and badly.' });
+  }
+  const scorers = by(p => p.R.use, 0.5);
+  if (scorers.length >= 3) out.push({ lvl: 'warn', key: 'scorers', ids: ids(scorers),
+    text: 'Scorers everywhere: {who} all look for their own shot. There are only so many shots - each takes fewer than his role asks.' });
+  if (f.P5 < ROLEK.pRef - 0.08) out.push({ lvl: f.P5 < ROLEK.pRef - 0.2 ? 'bad' : 'warn', key: 'press', ids: [],
+    text: 'Not enough pressure on the rim: few drives, rolls, cuts or post-ups, so the defence stays at home on the shooters and their threes come contested.' });
+  else if (f.P5 > ROLEK.pRef + 0.1) out.push({ lvl: 'good', key: 'press', ids: ids(by(p => p.press, 0.12)),
+    text: 'Plenty of pressure on the rim from {who}: the defence collapses into the paint, and the shooters get open threes.' });
+  const needScreens = R.reduce((a, p) => a + p.s * ((p.R.diet.pnr || 0) + (p.R.diet.offs || 0)), 0);
+  if (needScreens > 0.12 && f.S5 < ROLEK.sRef - 0.35) out.push({ lvl: 'warn', key: 'screens', ids: [],
+    text: 'Few screens: the pick-and-roll and the shooters coming off screens need somebody setting them - a big, or a role that screens.' });
+  const partners = by(p => (p.R.diet.roll || 0) + (p.R.diet.pop || 0) + (p.R.diet.short || 0), 0.3);
+  if (partners.length && f.Lpnr < 0.6 * ROLEK.lRef) out.push({ lvl: 'warn', key: 'partner', ids: ids(partners),
+    text: '{who} lives on the pick-and-roll, but nobody here runs it: give a guard a pick-and-roll role.' });
+  const posts = by(p => p.R.diet.post || 0, 0.25);
+  if (posts.length && f.spacing < 0.85) out.push({ lvl: 'warn', key: 'post', ids: ids(posts),
+    text: '{who} posts up into a crowded paint: put shooters around him.' });
+  const cutters = by(p => p.R.diet.cut || 0, 0.25);
+  if (cutters.length && f.A5 < 0.85) out.push({ lvl: 'warn', key: 'cut', ids: ids(cutters),
+    text: '{who} cuts, but nobody here finds the cutter: the five needs a passer.' });
+  if (f.spacing < 0.7) out.push({ lvl: 'warn', key: 'space', ids: [],
+    text: 'A cramped floor: few shooters out on the arc, so the paint is packed for everybody.' });
+  const hubs = by(p => p.R.hub * clamp(p.passQ, 0.3, 2), 0.8);
+  if (hubs.length) out.push({ lvl: 'good', key: 'hub', ids: ids(hubs),
+    text: '{who} keeps the ball moving: the extra pass gets the others better shots.' });
+  if (!out.some(n => n.lvl !== 'good') && f.I5 >= ROLEK.ballMin && f.I5 <= ROLEK.ballMax) out.unshift({ lvl: 'good', key: 'balance', ids: [],
+    text: 'A balanced five: one ball, somebody to run it, and the roles fit together.' });
+  return out;
+}
+
 /* ------------------------------------------------------------------ rotations --- */
-/* THE USER'S LINEUPS on a game's clock: each lineup's minutes shared evenly over the four quarters; lineup 1 opens
-   each quarter (60% of its share there) and closes it (40%), the others play the middle in their order */
+/* THE USER'S LINEUPS on a game's clock, each stretch with its lineup's five, team instructions and roles (li: which
+   lineup). PAINTED (Louie, 2026-10-14: "an interactive rotations chart ... I'd rather lineup granularity"): each lineup
+   plays the minutes it was given on the clock (when: [[t0, t1], ...] in the game's minutes; a minute nobody was given
+   goes to lineup 1). A plan from before the chart (no `when`): each lineup's minutes shared evenly over the four
+   quarters; lineup 1 opens each quarter (60% of its share there) and closes it (40%), the others play the middle in
+   their order. */
 function rotation(lineups, G) {
   G = G || 40;
-  const L = (lineups || []).filter(l => l && Array.isArray(l.ids) && l.ids.length === 5 && l.min > 0);
+  const all = (lineups || []).map((l, li) => ({ l, li })).filter(x => x.l && Array.isArray(x.l.ids) && x.l.ids.length === 5);
+  if (!all.length) return [];
+  const seg = (x, t0, t1) => ({ t0, t1, ids: x.l.ids.map(String), tac: x.l.tac || null, roles: Array.isArray(x.l.roles) ? x.l.roles.slice(0, 5).map(r => r || null) : null, li: x.li });
+  if (all.some(x => Array.isArray(x.l.when) && x.l.when.length)) {
+    const cuts = new Set([0, G]);
+    all.forEach(x => (x.l.when || []).forEach(w => { if (Array.isArray(w)) w.slice(0, 2).forEach(v => { if (isNum(+v)) cuts.add(+clamp(+v, 0, G).toFixed(6)); }); }));
+    const times = [...cuts].sort((a, b) => a - b), segs = [];
+    for (let i = 0; i < times.length - 1; i++) {
+      const a = times[i], b = times[i + 1], mid = (a + b) / 2;
+      if (b - a < 1e-6) continue;
+      const x = all.find(y => (y.l.when || []).some(w => Array.isArray(w) && +w[0] <= mid && mid < +w[1])) || all[0];
+      segs.push(seg(x, a, b));
+    }
+    return mergeSame(segs);
+  }
+  const L = all.filter(x => x.l.min > 0);
   if (!L.length) return [];
-  const tot = L.reduce((a, l) => a + l.min, 0), q = G / 4, segs = [];
+  const tot = L.reduce((a, x) => a + x.l.min, 0), q = G / 4, segs = [];
   for (let k = 0; k < 4; k++) {
     let t = k * q;
-    const share = L.map(l => q * l.min / tot);
-    const push = (l, d) => { if (d > 1e-9) { segs.push({ t0: t, t1: t + d, ids: l.ids.map(String), tac: l.tac || null }); t += d; } };
+    const share = L.map(x => q * x.l.min / tot);
+    const push = (x, d) => { if (d > 1e-9) { segs.push(seg(x, t, t + d)); t += d; } };
     push(L[0], 0.6 * share[0]);
     for (let j = 1; j < L.length; j++) push(L[j], share[j]);
     push(L[0], 0.4 * share[0]);
     segs[segs.length - 1].t1 = (k + 1) * q;     // the quarter ends where it ends
   }
   return mergeSame(segs);
+}
+/* the minutes each lineup plays under a plan, painted on the clock to the minute (for the chart: a plan from before it,
+   or any plan, as the chart shows it): [[t0, t1], ...] for each lineup */
+function paintOf(lineups, G) {
+  G = G || 40;
+  const segs = rotation(lineups, G), out = (lineups || []).map(() => []);
+  /* each minute to the lineup that plays most of it */
+  for (let t = 0; t < G; t++) {
+    const own = new Map();
+    segs.forEach(s => { const o = Math.min(s.t1, t + 1) - Math.max(s.t0, t); if (o > 1e-9) own.set(s.li, (own.get(s.li) || 0) + o); });
+    if (!own.size) continue;
+    const li = [...own.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0], w = out[li];
+    if (!w) continue;
+    if (w.length && w[w.length - 1][1] === t) w[w.length - 1][1] = t + 1; else w.push([t, t + 1]);
+  }
+  return out;
 }
 /* A REAL CLUB'S ROTATION from its own minutes: its men at their main positions (the minutes at each position where we
    have them, else the box-score position), the most-used first; each position's minutes made to fill the game (a man
@@ -847,11 +1193,16 @@ function autoRotation(players, G, o) {
   return mergeSame(segs);
 }
 function mergeSame(segs) {
-  const out = [];
+  const out = [], rk = s => (s.roles ? s.roles.join(',') : '');
   segs.forEach(s => {
     const last = out[out.length - 1];
-    if (last && last.ids.join('|') === s.ids.join('|') && last.tac === s.tac && Math.abs(last.t1 - s.t0) < 1e-6) last.t1 = s.t1;
-    else out.push({ t0: s.t0, t1: s.t1, ids: s.ids.slice(), tac: s.tac });
+    if (last && last.ids.join('|') === s.ids.join('|') && last.tac === s.tac && rk(last) === rk(s) && last.li === s.li && Math.abs(last.t1 - s.t0) < 1e-6) last.t1 = s.t1;
+    else {
+      const o = { t0: s.t0, t1: s.t1, ids: s.ids.slice(), tac: s.tac };
+      if (s.roles) o.roles = s.roles.slice();
+      if (s.li != null) o.li = s.li;
+      out.push(o);
+    }
   });
   return out;
 }
@@ -916,9 +1267,12 @@ function interact(r, o, d) {
 function prepareSides(T, X, G) {
   const mins = minutesOf(T.segs), cache = new Map();
   const sideFor = s => {
-    const tac = normTac(s.tac || T.tac), key = s.ids.join('|') + '#' + tacKey(tac) + '#' + insKey(T.ins);
+    /* the roles at the five's positions (the reader's lineups; a real club's stretches have none: undefined, its men's
+       own games) - a position with no role chosen plays the position's default */
+    const roles = Array.isArray(s.roles) ? s.roles : null;
+    const tac = normTac(s.tac || T.tac), key = s.ids.join('|') + '#' + tacKey(tac) + '#' + insKey(T.ins) + '#' + (roles ? roles.map(r => r || '').join(',') : '-');
     if (cache.has(key)) return cache.get(key);
-    const five = s.ids.map((id, k) => ({ card: T.cards.get(String(id)), k })).filter(x => x.card);
+    const five = s.ids.map((id, k) => ({ card: T.cards.get(String(id)), k, role: roles ? (roles[k] || null) : undefined })).filter(x => x.card);
     if (five.length !== 5) throw new Error('a five is missing a player: ' + s.ids.join(','));
     const side = sideOf(five, { mu: X.L.rates, ref: X.ref, tac, mins, form: T.form || X.form, G, zones: X.L.zones, dTr: X.L.dTr || 0, ins: T.ins || null });
     /* the five's own rates before its club's identity: each man's rates are read against them (core/match.js) */
@@ -1156,6 +1510,6 @@ function pbp(stretches, trace, X, G, R, RT) {
   return { box: out, events, poss };
 }
 
-return { use, sim: () => SIM(), styleOf, sideOf, handlerWeights, applyIdentity, insKey, INS, INS_MIX, HANDLER, rotation, autoRotation, overlay, minutesOf, mixRates, interact, play, preview, pbp, leagueOf, identityOf, normTac, tacKey, rng, hashOf, fatigueLoad,
-  TACTICS, SLOTS, KAPPA, FATIGUE, FORM, OOP, SYN, SHIFT, DR, USG_FLOOR, SKILL_L, PPP_LOGIT, FALLBACK_L, IDENTITY_K, HCA_PER };
+return { use, sim: () => SIM(), styleOf, sideOf, handlerWeights, applyIdentity, insKey, INS, INS_MIX, HANDLER, rotation, paintOf, autoRotation, overlay, minutesOf, mixRates, interact, play, preview, pbp, leagueOf, identityOf, normTac, tacKey, rng, hashOf, fatigueLoad,
+  TACTICS, SLOTS, KAPPA, FATIGUE, FORM, OOP, SYN, SHIFT, DR, USG_FLOOR, SKILL_L, PPP_LOGIT, FALLBACK_L, IDENTITY_K, HCA_PER, ROLEK, roleNotes };
 }));

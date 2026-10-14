@@ -853,7 +853,12 @@ function screen(host, o) {
       sd.floor.forEach((x, kk) => actions.push(h('button.mg-btn', { type: 'button', style: { padding: '6px 10px', fontSize: '12px' }, onclick: () => sub(x, id) },
         h('span.mg-pos', A.SLOTS[kk]), ' ', A.nm(surname(x)), h('span.mg-sub', { style: { fontSize: '11px' } }, ' ' + Math.round(sd.en[x]) + '%'))));
     }
-    A.ui.pop(A.ui.playerPanel(id, { entry, actions, sub: 'This game: from the next possession', onChange: x => setIns(id, x) }), anchor, { label: 'Player: ' + A.nameOf(id) });
+    /* on the floor: his role at his place, changeable for the rest of the game (core/match.js act 'role') */
+    const roles = onFloor ? MT().rolesAt(sd, M.g.t / 60, M.G) : null;
+    A.ui.pop(A.ui.playerPanel(id, { entry, actions, sub: 'This game: from the next possession', onChange: x => setIns(id, x),
+      slot: roles ? k : null, role: roles ? roles[k] : null,
+      onRole: key => { MT().act(M, me, { type: 'role', id, k, role: key || null }); dirty.men = true; A.keepLive(false); A.toast((key ? Mgr.roles.BY.get(key).label : 'His default role') + ' for ' + who(id) + ', from the next possession.'); } }),
+      anchor, { label: 'Player: ' + A.nameOf(id), cls: roles ? 'wide' : '' });
   }
   /* a bench man's fit at a place: his minutes there, his position near it, his legs */
   function fitAt(sd, id, k) {

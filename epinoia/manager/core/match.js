@@ -94,10 +94,12 @@ const pickBy = (R, list, w) => {
 /* a five's rates, cached by the five, its tactics and the team's instructions (engine.sideOf, then the club's identity) */
 function sidesOf(T, X) {
   const E = ENG(), cache = new Map();
-  return function sideFor(ids, tac) {
-    const tacN = E.normTac(tac || null), key = ids.join('|') + '#' + E.tacKey(tacN) + '#' + E.insKey(T.ins);
+  /* roles: the five's roles at its positions (the reader's club: rolesAt), none for a real club (its men's own games) */
+  return function sideFor(ids, tac, roles) {
+    const tacN = E.normTac(tac || null), R = Array.isArray(roles) ? roles : null;
+    const key = ids.join('|') + '#' + E.tacKey(tacN) + '#' + E.insKey(T.ins) + '#' + (R ? R.map(r => r || '').join(',') : '-');
     if (cache.has(key)) return cache.get(key);
-    const five = ids.map((id, k) => ({ card: T.cards.get(String(id)), k })).filter(x => x.card);
+    const five = ids.map((id, k) => ({ card: T.cards.get(String(id)), k, role: R ? (R[k] || null) : undefined })).filter(x => x.card);
     if (five.length !== 5) throw new Error('a five is missing a player: ' + ids.join(','));
     const side = E.sideOf(five, { mu: X.L.rates, ref: X.ref, tac: tacN, G: X.G || 40, zones: X.L.zones, dTr: X.L.dTr || 0, form: T.form || null, ins: T.ins || null });
     side.off0 = side.off; side.def0 = side.def;
@@ -111,6 +113,21 @@ function sidesOf(T, X) {
 function planAt(segs, min, G) {
   const t = Math.min(min, G - 1e-6);
   return segs.find(s => s.t0 <= t + 1e-9 && t < s.t1) || segs[segs.length - 1];
+}
+/* THE ROLES OF THE FIVE ON THE FLOOR (the reader's club; a real club has none: null): at each place, the role the reader
+   gave him there in the game (act 'role'), else the plan's role for him at that place now, else the one his lineups give
+   him at that place, else the place's default (null) */
+function rolesAt(sd, min, G) {
+  const segs = sd.T.segs || [];
+  if (!segs.some(s => Array.isArray(s.roles))) return null;
+  const plan = planAt(segs, min, G);
+  return sd.floor.map((id, k) => {
+    const ov = sd.roleOv ? sd.roleOv[id + '@' + k] : undefined;
+    if (ov !== undefined) return ov || null;
+    if (plan && String(plan.ids[k]) === id && plan.roles) return plan.roles[k] || null;
+    const s = segs.find(x => x.roles && String(x.ids[k]) === id);
+    return s ? s.roles[k] || null : null;
+  });
 }
 /* everybody the side may play: the plan's men, and a bench it names (the reader's whole squad) */
 function rosterOf(T) {
@@ -175,7 +192,7 @@ function expected(M) {
   const E = ENG(), S = SIM(), X = M.X, L = M.L, G = M.G;
   const [H, A] = M.sides;
   const st = E.overlay(H.T.segs, A.T.segs).map(o2 => {
-    const sh = H.sideFor(o2.a.ids.map(String), o2.a.tac || null), sa = A.sideFor(o2.b.ids.map(String), o2.b.tac || null);
+    const sh = H.sideFor(o2.a.ids.map(String), o2.a.tac || null, o2.a.roles || null), sa = A.sideFor(o2.b.ids.map(String), o2.b.tac || null, o2.b.roles || null);
     const mm = S.matchup({ off: sh.off, def: sh.def, n: 0 }, { off: sa.off, def: sa.def, n: 0 }, L, { home: M.home });
     return { w: (o2.t1 - o2.t0) / G, rH: E.interact(mm.r[0], sh, sa), rA: E.interact(mm.r[1], sa, sh) };
   });
@@ -302,6 +319,8 @@ function act(M, s, a) {
   } else if (a.type === 'unsub') sd.pend = sd.pend.filter(p => !(p.out === String(a.out) && p.in === String(a.in)));
   else if (a.type === 'tac') sd.tac = a.tac ? Object.assign({}, a.tac) : null;
   else if (a.type === 'ins') sd.T = Object.assign({}, sd.T, { ins: insMap(a.ins) }), sd.sideFor = sidesOf(sd.T, M.X);
+  /* a man's role at a place, for the rest of the game (null: the place's default) */
+  else if (a.type === 'role' && a.id != null && a.k >= 0 && a.k <= 4) { sd.roleOv = Object.assign({}, sd.roleOv); sd.roleOv[String(a.id) + '@' + a.k] = a.role || null; }
   else if (a.type === 'auto') sd.auto = !!a.on;
   else if (a.type === 'timeout') sd.wantTO = true;
   else ok = false;
@@ -337,7 +356,7 @@ function deadBall(M, dead) {
 function ratesFor(M, off) {
   const E = ENG(), S = SIM(), O = M.sides[off], D = M.sides[off ^ 1], min = M.g.t / 60;
   const tacO = O.tac || planAt(O.T.segs, min, M.G).tac || null, tacD = D.tac || planAt(D.T.segs, min, M.G).tac || null;
-  const sO = O.sideFor(O.floor, tacO), sD = D.sideFor(D.floor, tacD);
+  const sO = O.sideFor(O.floor, tacO, rolesAt(O, min, M.G)), sD = D.sideFor(D.floor, tacD, rolesAt(D, min, M.G));
   M._mc = M._mc || new Map();
   const hs = off === 0 ? M.home : -M.home, key = sO.key + '>' + sD.key + '@' + hs;
   let mm = M._mc.get(key);
@@ -621,7 +640,7 @@ function finish(M) { let n = 0; while (!M.g.over && n < 4000) { step(M); n++; } 
 function refreshShares(M) {
   M.sides.forEach(sd => {
     try {
-      const min = M.g.t / 60, side = sd.sideFor(sd.floor, sd.tac || planAt(sd.T.segs, min, M.G).tac || null);
+      const min = M.g.t / 60, side = sd.sideFor(sd.floor, sd.tac || planAt(sd.T.segs, min, M.G).tac || null, rolesAt(sd, min, M.G));
       sd._lastFive = new Map(side.men.map(m => [String(m.id), m.s]));
     } catch (_) { sd._lastFive = null; }
   });
@@ -649,7 +668,7 @@ function play(H, A, X, o) {
    teams handed to restore - so a game interrupted goes on with the same men, its past exactly as it was */
 function snapshot(M) {
   const sides = M.sides.map(sd => ({ id: sd.id, floor: sd.floor.slice(), tac: sd.tac, pf: sd.pf, en: sd.en, sec: sd.sec, tf: sd.tf, to: sd.to, auto: sd.auto, hold: sd.hold === Infinity ? 1e9 : sd.hold,
-    runFor: sd.runFor, runAg: sd.runAg, pend: sd.pend, wantTO: !!sd.wantTO, ins: insObj(sd.T.ins), roster: sd.roster }));
+    runFor: sd.runFor, runAg: sd.runAg, pend: sd.pend, wantTO: !!sd.wantTO, ins: insObj(sd.T.ins), roster: sd.roster, roleOv: sd.roleOv || null }));
   return { v: 1, seed: M.seed, home: M.home, G: M.G, g: M.g, noise: M.noise, exp: M.exp, events: M.events, lineups: M.lineups, lineup: M.lineup, log: M.log, box: M.box, tally: M.tally, poss: M.poss, lastMade: M.lastMade, sides };
 }
 function restore(snap, H, A, X) {
@@ -663,7 +682,7 @@ function restore(snap, H, A, X) {
     const roster = new Set(sd.roster.concat(x.roster || []));
     sd.roster = [...roster].filter(id => sd.T.cards.has(id));
     Object.assign(sd, { floor: x.floor.filter(id => sd.T.cards.has(id)), tac: x.tac, pf: Object.assign({}, sd.pf, x.pf), en: Object.assign({}, sd.en, x.en), sec: Object.assign({}, sd.sec, x.sec), tf: x.tf.slice(), to: x.to,
-      auto: x.auto, hold: x.hold >= 1e9 ? Infinity : x.hold, runFor: x.runFor, runAg: x.runAg, pend: (x.pend || []).slice(), wantTO: !!x.wantTO });
+      auto: x.auto, hold: x.hold >= 1e9 ? Infinity : x.hold, runFor: x.runFor, runAg: x.runAg, pend: (x.pend || []).slice(), wantTO: !!x.wantTO, roleOv: x.roleOv ? Object.assign({}, x.roleOv) : null });
     /* a man of the five no longer to hand (a league file that changed): the coach fills the place */
     while (sd.floor.length < 5) { const av = available(M, sd); if (!av.length) break; sd.floor.push(av[0]); }
   });
@@ -675,5 +694,5 @@ function liveStep(M) { refreshShares(M); return step(M); }
 function liveRunTo(M, sec) { let n = 0; while (!M.g.over && M.g.t < sec && n < 2000) { liveStep(M); n++; } return M; }
 function liveFinish(M) { let n = 0; while (!M.g.over && n < 4000) { liveStep(M); n++; } return M; }
 
-return { create, step: liveStep, runTo: liveRunTo, finish: liveFinish, act, result, play, snapshot, restore, insMap, insObj, planAt, pen, ENERGY, TIMEOUTS, TROUBLE, rng, hashOf, available };
+return { create, step: liveStep, runTo: liveRunTo, finish: liveFinish, act, result, play, snapshot, restore, insMap, insObj, planAt, rolesAt, pen, ENERGY, TIMEOUTS, TROUBLE, rng, hashOf, available };
 }));

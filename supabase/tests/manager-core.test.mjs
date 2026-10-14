@@ -9,9 +9,9 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..',
 globalThis.EpinoiaWinStats = require(path.join(ROOT, 'winstats.js'));
 const Sim = require(path.join(ROOT, 'winsim.js'));
 const Mgr = {};
-['value', 'ratings', 'schedule', 'names', 'badge', 'cards', 'engine', 'season', 'instruct', 'match'].forEach(n => { Mgr[n] = require(path.join(ROOT, 'manager', 'core', n + '.js')); });
+['value', 'ratings', 'schedule', 'names', 'badge', 'cards', 'roles', 'engine', 'season', 'instruct', 'match'].forEach(n => { Mgr[n] = require(path.join(ROOT, 'manager', 'core', n + '.js')); });
 globalThis.Mgr = Mgr;
-const { value: V, ratings: R, schedule: SC, names: N, badge: B, cards: C, engine: E, season: SE, instruct: IN, match: MT } = Mgr;
+const { value: V, ratings: R, schedule: SC, names: N, badge: B, cards: C, engine: E, season: SE, instruct: IN, match: MT, roles: RO } = Mgr;
 E.use(Sim);
 
 let pass = 0, fail = 0;
@@ -278,9 +278,94 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   const strong = E.preview(Hid, A, X, 300).margin, plain = E.preview(H, A, X, 300).margin;
   ok('identity: and plays better for it', strong > plain + 3, [plain, strong]);
 }
+/* ---------------------------------------------------------------- the roles --- */
+/* core/roles.js and engine.js (Louie, 2026-10-14): a role at every position, played against each man's own numbers and
+   against the four beside him - one ball, the pressure that opens the threes, the screens, the screener hit as his role
+   plays it - its instructions kept to what it allows, a club left at the defaults playing its own men's games */
+{
+  const per = [0, 1, 2, 3, 4].map(k => RO.forSlot(k).length);
+  ok('roles: every position has its roles (7, 12, 11, 14, 10), each diet a whole, each shot mix a whole', JSON.stringify(per) === '[7,12,11,14,10]'
+    && RO.ROLES.every(r => near(Object.values(r.diet).reduce((a, v) => a + v, 0), 1, 1e-9) && near((p => p.mix.rim + p.mix.mid + p.mix.three)(RO.profile(r)), 1, 1e-6) && 'gwb'.includes(r.family)), per);
+  const T0 = teams[0], cardAt = k => cards.get(T0.men[k].id);
+  ok('roles: the defaults - the general role at the guards, the best fit at the forwards and the centre, never another position\'s',
+    RO.resolve(null, 0, cardAt(0), ref).key === 'pg-mixed' && RO.resolve(null, 1, cardAt(1), ref).key === 'sg-combomixed' && RO.resolve(null, 4, cardAt(4), ref).key === RO.bestFor(4, cardAt(4), ref).key
+    && RO.resolve('c-roller', 0, cardAt(0), ref).key === 'pg-mixed');
+  const pps = s => s.off.mixRim * s.off.pRim * 2 + s.off.mixMid * s.off.pMid * 2 + s.off.mix3 * s.off.p3 * 3;
+  const ppc = s => { const o = s.off, sh = 1 - o.sfoul - o.bonus; return (1 - o.tov) * (sh * pps(s) + (o.sfoul + o.bonus) * 2 * o.ft); };
+  const fiveOf = (T, roles) => T.men.slice(0, 5).map((r, k) => ({ card: cards.get(r.id), k, role: roles ? roles[k] : undefined }));
+  const X0 = { mu: L.rates, ref, tac: null, G: 40, dTr: L.dTr }, NONE = [null, null, null, null, null];
+  const diffs = teams.map(T => ppc(E.sideOf(fiveOf(T, NONE), X0)) / ppc(E.sideOf(fiveOf(T), X0)) - 1), md = diffs.reduce((a, v) => a + v, 0) / diffs.length;
+  ok('roles: left at the defaults, a club plays its own men\'s games (on average nothing; a five that fits badly a little less)', Math.abs(md) < 0.015 && diffs.every(d => Math.abs(d) < 0.05), diffs.map(d => +d.toFixed(4)));
+  const sD = E.sideOf(fiveOf(T0, NONE), X0);
+  const nat = [null, null, RO.bestFor(2, cardAt(2), ref).key, RO.bestFor(3, cardAt(3), ref).key, RO.bestFor(4, cardAt(4), ref).key];
+  ok('roles: choosing a man the role his own game is closest to is his own game', near(ppc(E.sideOf(fiveOf(T0, nat), X0)), ppc(sD), 1e-9));
+  /* ONE BALL */
+  const over = E.sideOf(fiveOf(T0, ['pg-slashpass', 'sg-comboiso', 'sf-iso', 'pf-iso', 'c-post']), X0);
+  ok('one ball: too many ball handlers - each gets less of it than his role asks, the plays come late, and the five says so',
+    over.five.ball > E.ROLEK.ballMax && over.men.filter(m => m.lost > 0.005).length >= 4 && over.five.notes.some(n => n.key === 'ball') && ppc(over) < ppc(sD), [over.five.ball, ppc(over), ppc(sD)]);
+  const none = E.sideOf(fiveOf(T0, ['pg-passspace', 'sg-3d', 'sf-3d', 'pf-3d', 'c-roller']), X0);
+  ok('one ball: nobody to run it - the man who creates most has to, and the five says so', none.five.deficit > 0 && none.men.some(m => m.forced > 0) && none.five.notes.some(n => n.key === 'noball'),
+    [none.five.ball, none.five.deficit]);
+  /* DOWNHILL PRESSURE opens the threes: the same spot-up guard in a five that never gets to the rim and in one that does */
+  const flat = E.sideOf(fiveOf(T0, ['pg-shoot', 'sg-3d', 'sf-moveshoot', 'pf-dualspot', 'c-spot']), X0), down = E.sideOf(fiveOf(T0, ['pg-slash', 'sg-3d', 'sf-slashoff', 'pf-cuthustle', 'c-roller']), X0);
+  ok('pressure: a five that never attacks the paint gets its shooters contested threes, and says so', down.five.pressure > flat.five.pressure && down.men[1].p.three > flat.men[1].p.three
+    && flat.five.notes.some(n => n.key === 'press'), [flat.five.pressure, down.five.pressure, flat.men[1].p.three, down.men[1].p.three]);
+  /* HIT THE SCREENER, the way his role plays it */
+  const f0 = (r, tac) => E.sideOf(fiveOf(T0, ['pg-mixed', 'sg-combomixed', 'sf-3d', 'pf-3d', r]), Object.assign({}, X0, { tac }));
+  const roll = [f0('c-roller', null).men[4], f0('c-roller', { feed: -1 }).men[4]], pop = [f0('c-spot', null).men[4], f0('c-spot', { feed: -1 }).men[4]];
+  ok('hit the screener: more of the plays to him - a rim roller\'s at the rim, a pick-and-pop big\'s from three', roll[1].u2 > roll[0].u2 + 1 && roll[1].m.rim > roll[0].m.rim
+    && pop[1].u2 > pop[0].u2 + 1 && pop[1].m.three > pop[0].m.three && E.TACTICS.find(t => t.k === 'feed').left === 'Hit the screener', [roll[0].m.rim, roll[1].m.rim, pop[0].m.three, pop[1].m.three]);
+  /* WHAT A ROLE RULES OUT, AND WHAT IS NOT ITS KIND */
+  const insOf = (id, keys) => new Map([[String(id), { u: 0, k: new Set(keys) }]]);
+  const rr = ['pg-mixed', 'sg-combomixed', 'sf-3d', 'pf-3d', 'c-roller'];
+  const told = E.sideOf(fiveOf(T0, rr), Object.assign({}, X0, { ins: insOf(T0.men[4].id, ['pop']) })), plain = E.sideOf(fiveOf(T0, rr), X0);
+  ok('locks: an instruction his role rules out is not followed (a rim roller told to pop)', RO.locks('c-roller').has('pop') && near(told.men[4].m.three, plain.men[4].m.three, 1e-12));
+  const bigRoles = ['pg-mixed', 'sg-combomixed', 'sf-3d', 'pf-dualspot', 'c-roller'];
+  const arc = E.sideOf(fiveOf(T0, bigRoles), Object.assign({}, X0, { ins: insOf(T0.men[3].id, ['arc']) })), arc0 = E.sideOf(fiveOf(T0, bigRoles), X0);
+  ok('roles: a guard\'s instruction is not a big\'s to follow (pull-up threes for a two-big stretch four)', RO.family('pf-dualspot') === 'b' && near(arc.men[3].m.three, arc0.men[3].m.three, 1e-12));
+  /* TRUE USAGE: the plays he ends and the shots he makes for the others */
+  const euro = E.sideOf(fiveOf(T0, ['pg-euro', null, null, null, null]), X0), shoot = E.sideOf(fiveOf(T0, ['pg-shoot', null, null, null, null]), X0);
+  ok('true usage: never under his usage; a pass-first point guard sets up more and ends fewer than a shooting one', euro.men.every(m => m.tusg >= m.u2 - 1e-9)
+    && euro.men[0].ast > shoot.men[0].ast && euro.men[0].u2 < shoot.men[0].u2 && euro.men[0].tusg - euro.men[0].u2 > shoot.men[0].tusg - shoot.men[0].u2,
+    [euro.men[0].u2, euro.men[0].tusg, shoot.men[0].u2, shoot.men[0].tusg]);
+  /* THE FIT, AND ITS WORDS (Louie: "Thomas Hurley (a great shooter and solid slasher) should not be getting a more
+     positive rip through colour vs green light"; "Block rate 80% of his position's [what does this mean!?]") */
+  const base1 = cardAt(1);
+  const shooter = Object.assign({}, base1, { p3Rel: 1.18, rimRel: 1.06, mixRel: Object.assign({}, base1.mixRel, { three: 1.4 }) });
+  const slasher = Object.assign({}, base1, { p3Rel: 0.8, rimRel: 1.15, mixRel: Object.assign({}, base1.mixRel, { three: 0.6 }) });
+  ok('fit: a real shooter who can also slash suits the green light far more than ripping through; a slasher who cannot shoot the other way round',
+    IN.fit('green', shooter, ref).s > IN.fit('rip', shooter, ref).s + 0.2 && IN.fit('rip', slasher, ref).s > IN.fit('green', slasher, ref).s,
+    [IN.fit('green', shooter, ref).s, IN.fit('rip', shooter, ref).s, IN.fit('green', slasher, ref).s, IN.fit('rip', slasher, ref).s]);
+  const why = IN.fit('rimp', cardAt(2), ref).why;
+  ok('fit: the reasons are plain words, never a ratio of rates', /blocks shots .* most small forwards/.test(why) && !/of his position/.test(why), why);
+}
+{
+  /* THE ROTATION, PAINTED (Louie: "an interactive rotations chart ... I'd rather lineup granularity") */
+  const lu = [{ ids: ['a1', 'a2', 'a3', 'a4', 'a5'], min: 0, when: [[0, 8], [32, 40]], roles: ['pg-euro', null, null, null, 'c-roller'] }, { ids: ['b1', 'b2', 'b3', 'b4', 'b5'], min: 0, when: [[8, 32]] }];
+  const sg = E.rotation(lu, 40), mm = E.minutesOf(sg);
+  ok('rotation: painted minutes are played where they were painted, each stretch with its lineup\'s roles', near(mm.get('a1'), 16, 1e-9) && near(mm.get('b1'), 24, 1e-9)
+    && sg[0].roles && sg[0].roles[0] === 'pg-euro' && sg[0].roles[4] === 'c-roller' && sg.find(s => s.t0 <= 10 && s.t1 > 10).ids[0] === 'b1' && sg[sg.length - 1].ids[0] === 'a1');
+  const gap = E.minutesOf(E.rotation([{ ids: ['a1', 'a2', 'a3', 'a4', 'a5'], when: [[0, 10]] }, { ids: ['b1', 'b2', 'b3', 'b4', 'b5'], when: [[10, 20]] }], 40));
+  ok('rotation: a minute nobody was given goes to lineup 1', near(gap.get('a1'), 30, 1e-9) && near(gap.get('b1'), 10, 1e-9));
+  const old = [{ ids: ['a1', 'a2', 'a3', 'a4', 'a5'], min: 24 }, { ids: ['b1', 'b2', 'b3', 'b4', 'b5'], min: 16 }], w = E.paintOf(old, 40);
+  const tot = ws => ws.reduce((a, x) => a + x[1] - x[0], 0);
+  ok('rotation: a plan from before the chart, painted to the minute as it was played', tot(w[0]) + tot(w[1]) === 40 && Math.abs(tot(w[0]) - 24) <= 1 && w[0][0][0] === 0, w);
+}
 /* ---------------------------------------------------------------- the match, possession by possession --- */
 /* core/match.js (Louie, 2026-10-14: live games "where the user can change team instructions, make subs etc. to change the
    game"): every game is played by the men on the floor at that moment, and every change is the game's from then on */
+{
+  /* THE ROLES ON THE FLOOR: the plan's, a real club none, a role changed in the game holding, and kept with it */
+  const ids = teams[0].men.slice(0, 5).map(r => r.id);
+  const H = teamObj(teams[0], { segs: E.rotation([{ ids, min: 40, roles: ['pg-euro', null, null, null, 'c-roller'] }], 40) }), A = teamObj(teams[1]), X = { L, ref, G: 40 };
+  const M = MT.create(H, A, X, { seed: 5, home: 1 });
+  const r0 = MT.rolesAt(M.sides[0], 0, 40), rA = MT.rolesAt(M.sides[1], 0, 40);
+  MT.act(M, 0, { type: 'role', id: M.sides[0].floor[4], k: 4, role: 'c-spot' });
+  MT.runTo(M, 300);
+  const r1 = MT.rolesAt(M.sides[0], M.g.t / 60, 40), M2 = MT.restore(JSON.parse(JSON.stringify(MT.snapshot(M))), H, A, X);
+  ok('match: the five on the floor plays its roles (a real club none); a role changed in the game holds, and is kept with it',
+    r0[0] === 'pg-euro' && r0[4] === 'c-roller' && rA === null && (M.sides[0].floor[4] !== ids[4] || r1[4] === 'c-spot') && M2.sides[0].roleOv && M2.sides[0].roleOv[ids[4] + '@4'] === 'c-spot', [r0, r1]);
+}
 {
   const H = teamObj(teams[0]), A = teamObj(teams[1]), X = { L, ref, G: 40 };
   const g1 = MT.play(H, A, X, { seed: 21, home: 1 }), g2 = MT.play(H, A, X, { seed: 21, home: 1 });
