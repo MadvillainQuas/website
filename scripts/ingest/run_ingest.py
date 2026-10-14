@@ -49,6 +49,9 @@ for _stream in (sys.stdout, sys.stderr):        # Windows consoles default to cp
         pass
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+# ONE PACE PER SITE, and a site that says 429 is listened to (polite.py): under every request any adapter makes
+import polite  # noqa: E402
+polite.install()
 from adapters import get_adapter, REGISTRY  # noqa: E402
 from adapters.base import GameBundle, ScheduleGame  # noqa: E402
 from adapters.fiba_livestats import FibaLiveStatsAdapter  # noqa: E402
@@ -1933,6 +1936,10 @@ def _write_live_wait(seconds: int) -> None:
     except Exception:
         pass
 STALE_FINAL_S = 15 * 60        # a payload unchanged this long at the end of P4+ with unequal scores is a finished game
+# HOW OFTEN THE LIVE LANE ASKS (live_keeper): as seldom as still moves the page every LIVE_PROMISE_S
+LIVE_PROMISE_S = 30            # a live page moves at least this often; a game read less often is reported
+INLINE_EVERY_S = 20            # a game on a league's own back end: read this often and no more
+OBS_EVERY_S = max(2, int(os.environ.get("EPINOIA_OBS_EVERY", "") or 10))   # a CDN game's conditional GET
 
 
 def _looks_finished(raw: dict) -> bool:
@@ -2461,8 +2468,16 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
     unchanged_since: dict[str, float] = {}      # when each game's payload last changed (stale-final rule)
     stall: dict[str, dict] = {}                 # a live game gone quiet: {"refreshed": when read afresh, "flagged": bool}
     last_lm: dict[str, int] = {}                # newest Last-Modified written per game (the inline path's older-copy rule)
-    end = time.time() + max(60, args.live_loop); every = max(10, args.live_every)
+    # AS POLITE AS POSSIBLE WHILE THE SITE STILL MOVES EVERY 30 SECONDS (2026-10-14). A game read from a league's own
+    # back end (EuroLeague, EuroCup, LNB, ...) is asked every INLINE_EVERY_S, whatever --live-every says (the PC's lane
+    # said 15, the workflow 10): 20 s, plus the read and the write, is a page that moves within ~25 s. A site that
+    # says 429 is not asked again until it says it may be (polite.py) - and in this lane that never holds the other
+    # leagues back: a request to a site still cooling down comes straight back unsent.
+    polite.configure(patient=False)
+    end = time.time() + max(60, args.live_loop); every = max(INLINE_EVERY_S, args.live_every)
     fast_every = max(1, min(10, int(getattr(args, "broadcast_every", 2) or 2)))
+    read_at: dict[str, float] = {}              # when each inline game was last read (the 30-s promise, checked)
+    late_said: dict[str, float] = {}
     # THE OBSERVER LOOKS, THIS LOOP WRITES (docs/feed-timing.md, step 2).
     #
     # This loop used to fetch a game, write it, fetch the next and write that, so the time
@@ -2497,7 +2512,10 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
         except Exception as exc:
             print(f"live lane: observer unavailable ({exc!r}) - polling inline")
     written: dict[str, int] = {}; last_bundle: dict[str, GameBundle] = {}; write_s: dict[str, list] = {}
-    OBS_EVERY = 5
+    # THE CDN'S GAMES, a conditional GET each (almost every answer an empty 304) every OBS_EVERY_S: FIBA publishes a
+    # game every 26-35 s, so a look every 10 s sees each version within 10 s of its upload - half the requests the 5 s
+    # look made, and the page still moves with every version. EPINOIA_OBS_EVERY puts it back without a commit.
+    OBS_EVERY = OBS_EVERY_S
 
     def observer_line(xid: str) -> str:
         s, ws = observer.stats(xid), sorted(write_s.get(xid) or [])
@@ -2637,6 +2655,13 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 
             if not use_obs:   # the kill switch (EPINOIA_OBSERVER=0), and every source off the CDN
                 t_obs = time.time()
+                # THE 30-SECOND PROMISE, CHECKED: a game read longer than that after its last read is said (once in
+                # five minutes a game), with how many games this pass is carrying - the number that makes it slow
+                last = read_at.get(xid); read_at[xid] = t_obs
+                if last and t_obs - last > LIVE_PROMISE_S and t_obs - late_said.get(xid, 0.0) > 300:
+                    late_said[xid] = t_obs
+                    print(f"    ! {xid}: read {t_obs - last:.0f} s after its last read - over the {LIVE_PROMISE_S} s a live "
+                          f"page promises ({len(due)} game(s) on this pass)")
                 try:
                     b = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at, _live=True))
                 except Exception as exc:
@@ -2763,7 +2788,9 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                 # sources off the CDN are held to `every` by the slow_pass gate above.
                 time.sleep(0 if wrote_any else 1); continue
             hot = any(str(r.get("game_id") or "") in armed for _, r in due)
-            time.sleep(fast_every if hot else every); continue
+            # until the next pass is due, not a whole `every` after this one ended: a pass that took 8 s followed by a
+            # 20 s nap read each game every 28 s, and a slower pass would break the 30-s promise
+            time.sleep(fast_every if hot else max(1.0, slow_due - time.time())); continue
         # nothing on: wait for the next tip-off if this pass can still reach it (short naps - the
         # 2-minute recheck notices a schedule change or a game that goes live early)
         wait = ((next_tip - datetime.now(timezone.utc)).total_seconds() - LIVE_BEFORE_TIP) if next_tip else None
@@ -2775,6 +2802,9 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
         # gaps are over 25 s, the writes are starving the observer - ship 2b, then a thread.
         for xid in list(observer.st):
             print(observer_line(xid))
+    said = polite.summary()
+    if said:
+        print("live lane: sites that asked us to slow down - " + said)
     flush_refresh(sb, runs)
     # every source's "polled" stamp in ONE request (it was one PATCH per source, ~60 of them on every
     # quarter-hour probe of the PC's lane); a run row only where a game was actually fetched

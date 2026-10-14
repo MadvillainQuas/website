@@ -122,6 +122,19 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
     name = "euroleague"
     min_request_gap_s = 0.4
     competition = "E"        # "U" is the EuroCup: same hosts, same fields, one letter apart
+    #: (live) each game's shot attempts at its last Points read, and what that read said - EuroLeague and EuroCup
+    #: share it, as they share the host
+    _points_seen: dict = {}
+
+    @staticmethod
+    def _attempts(stats: list) -> tuple:
+        """Each side's field-goal and free-throw attempts, summed over its players: what a shot moves."""
+        out = []
+        for side in stats or []:
+            rows = side.get("PlayersStats") or []
+            out.append(tuple(sum(S.num(r.get(k)) for r in rows)
+                             for k in ("FieldGoalsAttempted2", "FieldGoalsAttempted3", "FreeThrowsAttempted")))
+        return tuple(out)
 
     # ---------------------------------------------------------------- schedule ---
     def _json(self, url: str):
@@ -175,7 +188,18 @@ class EuroLeagueAdapter(FibaLiveStatsAdapter):
         if len(stats) != 2:
             return None                      # not played, or half-published: try again next pass
         pbp = self._json(LIVE.format(feed="PlayByPlay", code=code, season=season)) or {}
-        points = self._json(LIVE.format(feed="Points", code=code, season=season)) or {}
+        # THE SHOT CHART ONLY WHEN THERE IS A NEW SHOT (live, 2026-10-14). Every shot moves a team's attempts in the
+        # box, so attempts unchanged since the last read mean the Points feed has nothing new: the chart read then is
+        # used again, and the live lane asks this site two things a poll instead of three. A fresh read (the stall
+        # rule's) and every read outside the lane ask for it as before.
+        shots_now = self._attempts(stats)
+        seen = EuroLeagueAdapter._points_seen.get(str(external_id)) if config.get("_live") and not config.get("_fresh") else None
+        if seen and seen[0] == shots_now:
+            points = seen[1]
+        else:
+            points = self._json(LIVE.format(feed="Points", code=code, season=season)) or {}
+            if config.get("_live"):
+                EuroLeagueAdapter._points_seen[str(external_id)] = (shots_now, points)
 
         # The PBP feed is where the club's own spelling and its three-letter code live; the
         # Boxscore shouts the name ("ANADOLU EFES ISTANBUL") and carries no code at all.

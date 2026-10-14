@@ -24,10 +24,11 @@ cd /d "%~dp0"
 :loop
 REM --live-only     no discovery: only games already on the schedule that are live or due
 REM --live-loop     seconds this pass stays up (it naps until the next tip-off inside that)
-REM --live-every    seconds between reads of a live game
+REM --live-every    seconds between reads of a live game on a league's own site (20 at least: run_ingest
+REM                 INLINE_EVERY_S; FIBA's CDN games are looked at every 10 s by the observer)
 REM --feed-out ""   write to Supabase only; the repo feed is the workflow's job, not this one
 if exist "%TEMP%\epinoia_live_wait" del "%TEMP%\epinoia_live_wait"
-python -u run_ingest.py --worker-config --live-only --live-loop 21600 --live-every 15 --feed-out ""
+python -u run_ingest.py --worker-config --live-only --live-loop 21600 --live-every 20 --feed-out ""
 
 REM HOW LONG TO WAIT IS THE LANE'S ANSWER, NOT A CONSTANT. It stops as soon as nothing is live
 REM and no tip-off is near, and this used to restart it 30 s later regardless -- roughly 1,300

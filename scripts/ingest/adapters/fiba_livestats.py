@@ -494,10 +494,14 @@ class FibaLiveStatsAdapter(BaseAdapter):
         # instead — see _pbp_newest_first for why that is not a preference but a correctness
         # requirement.
         stints = []
-        if self._pbp_newest_first(raw):
-            stints = self._stints_via_pipeline(raw, external_id, config, team_rows)
-        if not stints:
-            stints = self._stints_in_repo(raw, external_id, config, team_rows)
+        # NO PLAY-BY-PLAY, NO STINTS - and neither builder is asked: the scraper's printed "CRITICAL: PBP empty in API
+        # response" for every game with a box and no log yet (a game not under way, a box-only result), a line per
+        # game per pass in the live lane that buried the errors worth reading (2026-10-14)
+        if raw.get("pbp"):
+            if self._pbp_newest_first(raw):
+                stints = self._stints_via_pipeline(raw, external_id, config, team_rows)
+            if not stints:
+                stints = self._stints_in_repo(raw, external_id, config, team_rows)
         lineups = _stints.lineups_from_stints(stints) if stints else {}
         return GameBundle(
             external_id=external_id, status=status,

@@ -629,6 +629,11 @@ jobs:
         # without a new play, a fresh read, ten minutes more, then the flag; the first new play clears it
         run: python scripts/ingest/stall_test.py
 
+      - name: Every site is asked politely - one pace per site, a 429's Retry-After obeyed (polite.py)
+        # Cloudflare in front of the EuroLeague's live API answered 429 (Retry-After 85) for a whole EuroCup round on
+        # 14 Oct 2026 while the lane kept asking. Fake clock, fake site, no network.
+        run: python scripts/ingest/polite_test.py
+
       - name: NCAA D2/D3 - two 20-minute halves end to end, the thin adapter, lanes and shards (docs/ncaa-readiness.md)
         # a synthetic game in halves with an overtime through to_fiba, the stints, the translator and the
         # engine (2,700 s, 225 player-minutes a side, h1/h2/ot1); the scraper's captures are read only where

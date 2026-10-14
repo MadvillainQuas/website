@@ -209,7 +209,9 @@ print("\n-- the schedule")
 a = fresh()
 g26 = list(a.discover("", {"stage": "regular", "season": "2026-27"}))
 ok("2026-27 is the API's season 2027", Offline.asked[0][0] == "/phase/season/2027", Offline.asked[:2])
-ok("2026-27: 240 fixtures, all to come", len(g26) == 240 and all(g.status == "scheduled" for g in g26), len(g26))
+# none finished, as captured; one that tipped off in the last three hours of the day the test runs reads as live
+# (LIVE_GUARD_S), so "scheduled" alone broke on any evening a fixture's date came round
+ok("2026-27: 240 fixtures, none finished", len(g26) == 240 and all(g.status in ("scheduled", "live") for g in g26), len(g26))
 f0 = next(g for g in g26 if g.external_id == "11271")
 ok("11271: House of Talents Spurs Kortrijk v Donar Groningen, 2 Oct 20:00 Brussels = 18:00 UTC",
    (f0.home_name, f0.away_name, f0.tipoff_at, f0.extra["venue"]) ==

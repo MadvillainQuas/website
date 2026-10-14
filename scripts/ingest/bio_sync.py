@@ -28,6 +28,8 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import polite  # noqa: E402  (one pace per site, 429s listened to: the same layer as run_ingest)
+polite.install()
 import bio  # noqa: E402
 import bio_sources  # noqa: E402
 import run_ingest as RI  # noqa: E402
