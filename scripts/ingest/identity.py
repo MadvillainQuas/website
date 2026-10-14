@@ -36,7 +36,7 @@ from __future__ import annotations
 import re
 
 import names
-from matching import match_player, normalize as normalize_name, parse_name, _forenames_conflict
+from matching import match_player, normalize as normalize_name, parse_name, _forenames_conflict, same_forename
 
 TIER_NAMES = {1: "canonical name", 2: "name + shirt", 3: "compatible name on the club",
               4: "name + shirt at another club", 5: "name score"}
@@ -62,7 +62,13 @@ def forename_compatible(a, b) -> bool:
     x, y = A[0], B[0]
     if len(x) == 1 or len(y) == 1:
         return x[0] == y[0]
-    return x == y
+    if x == y or same_forename(x, y):
+        return True                     # the same name, or a nickname of it (Mike / Michael)
+    # A SECOND GIVEN NAME GOING FIRST: "Sean Maurice" Walker is Maurice (or Mo) on another sheet, "Torren Lorenzo"
+    # Jones is Torren. Once the surname alias stopped standing in for every Walker on the club (0632ed87a), these
+    # would otherwise be filed as new people.
+    return any(len(w) > 1 and (w == y or same_forename(w, y)) for w in A[1:]) or \
+        any(len(w) > 1 and (w == x or same_forename(w, x)) for w in B[1:])
 
 
 def compatible(first_a, last_a, first_b, last_b) -> bool:

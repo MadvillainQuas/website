@@ -175,6 +175,14 @@ twins = [{"id": "m1", "first_name": "Michael", "last_name": "Johnson", "number":
          {"id": "m2", "first_name": "Michael", "last_name": "Johnson", "number": "", "team": "Leicester Riders", "aliases": []}]
 ok("two people of one name are still never guessed between", I.resolve(fl("Michael", "Johnson", ""), twins, "Leicester Riders")["status"]
    in ("ambiguous", "match") and I.resolve(fl("Michael", "Johnson", ""), twins, "Leicester Riders")["status"] != "none")
+ok("a second given name going first is the same first name (Sean Maurice / Maurice, Torren Lorenzo / Torren)",
+   I.forename_compatible("Sean Maurice", "Maurice") and I.forename_compatible("Torren Lorenzo", "Torren"))
+ok("...and a nickname is (Mike / Michael), while two different names are not (Malcolm / Tavis, Michael / Jalen)",
+   I.forename_compatible("Mike", "Michael") and not I.forename_compatible("Malcolm", "Tavis")
+   and not I.forename_compatible("Michael", "Jalen"))
+walker = [{"id": "mo", "first_name": "Maurice", "last_name": "Walker", "number": "15", "team": "Reading Rockets", "aliases": []}]
+ok("so 'Sean Maurice Walker' on the sheet is still Maurice Walker, not a new player",
+   I.resolve(fl("Sean Maurice", "Walker", "15"), walker, "Reading Rockets")["player"]["id"] == "mo")
 import names as N  # noqa: E402
 _f, _l, al = N.person(fl("Trent Donald MacDonnell", "Johnson", "8"))
 ok("a feed's two name halves are never aliases on their own any more", "Johnson" not in al and "Trent Donald MacDonnell" not in al, al)
