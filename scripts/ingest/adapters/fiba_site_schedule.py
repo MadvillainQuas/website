@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, Optional
@@ -38,6 +39,40 @@ import requests
 
 from .base import ScheduleGame
 from .fiba_livestats import FIBA_DATA_URL, FibaLiveStatsAdapter, UA, ZoneInfo
+
+_CACHE_LOCK = threading.Lock()
+
+
+def _merge_json(path: str, ours: dict, per_entry: bool = False, ensure_ascii: bool = True) -> None:
+    """Write one of this adapter's cache files (an id map, a league's game list) as what is on disk with OURS laid over
+    it - whole, or not at all.
+
+    WHY. Every writer read the file, added its games and wrote the whole of it back, so two writers of one league at
+    once - backfill_audit.py reads seasons side by side in one process; a backfill can run beside the live lane - lost
+    each other's entries, and two writes at the same moment left data/feed/LBFA2/games.json torn mid-entry
+    (2026-10-14): unreadable, so every game of the league was "not in the cache" and a sampled 2020-21 and 2021-22
+    game each fetched as nothing. Now the file is read again under a lock, ours is laid over it (entry by entry where
+    an entry is a record of facts, so a stale copy never takes back a LiveStats id another writer found), and it is
+    replaced in one step (os.replace): a reader sees the old file or the new one, never half of one. Nothing is ever
+    removed from these files, so laying over is all a write has to do."""
+    with _CACHE_LOCK:
+        try:
+            with open(path, encoding="utf-8") as f:
+                disk = json.load(f)
+            if not isinstance(disk, dict):
+                disk = {}
+        except (OSError, ValueError):
+            disk = {}                       # none yet, or a file torn before this fix: rebuilt from ours
+        for k, v in (ours or {}).items():
+            if per_entry and isinstance(v, dict) and isinstance(disk.get(k), dict):
+                disk[k] = {**disk[k], **v}
+            else:
+                disk[k] = v
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = f"{path}.{os.getpid()}.{threading.get_ident()}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(disk, f, ensure_ascii=ensure_ascii, indent=1, sort_keys=True)
+        os.replace(tmp, path)
 
 CZECH_BASE = "https://nbl.basketball"
 CZECH_SCHEDULE = CZECH_BASE + "/zapasy?y={year}&p1=0&c=0&d_od=&d_do=&k=0"
@@ -53,6 +88,12 @@ _CZ_COMP_H2 = re.compile(r'<h2 class="gamma">\s*([^<]+?)\s*</h2>')
 _CZ_PART = re.compile(r'href="/soutez/(\d+)\?p=(\d+)"[^>]*>\s*<div class="font-weight-bold mb-1">\s*([^<]+?)\s*</div>')
 # a first-phase group is "Skupina VÝCHOD"; a later placement group carries its places ("Skupina C 1.-6.")
 _CZ_GROUP = re.compile(r"skupina\s+([^\d]+?)\s*$", re.I)
+# THE PAGE IS IN TABS, ONE PER CATEGORY: <a href="#tab-pane-1218" ... role="tab" ...>muži</a>, and each tab's
+# competitions sit inside <div ... id="tab-pane-1218">. Until 2023-24 a competition's name did not say whose it was
+# - the men's "1. liga" and the women's "1. liga" were both just "1. liga", told apart only by the tab they sat in -
+# so a name with a men's or women's ending is looked for again, bare, inside that category's tab.
+_CZ_TAB = re.compile(r'<a href="#(tab-pane-\d+)"[^>]*role="tab"[^>]*>\s*([^<]+?)\s*</a>')
+_CZ_GENDER = {"mužů": "muži", "muži": "muži", "žen": "ženy", "ženy": "ženy"}
 SLOVAK_BASE = "https://sbl.slovakbasket.sk"
 SLOVAK_LIST = (SLOVAK_BASE + "/sk/stats/match-list/{sid}/tipos-slovenska-basketbalova-liga"
                "?month={month}&listtype=grid&tournamentpartid=0&competitorid=0")
@@ -86,6 +127,13 @@ _SK_CARD = re.compile(r'class="match-ticket-inner".*?(?=class="match-ticket-inne
 _SK_TEAM = re.compile(r'<img[^>]+src="([^"]*Competitor/(\d+)/[^"]*)"[^>]*alt="([^"]*)"')
 _SK_WHEN = re.compile(r"(\d{1,2})\.(\d{1,2})\.(\d{4})\s*o\s*(\d{1,2}):(\d{2})")
 _SK_VENUE = re.compile(r'class="match-ticket-header">.*?<span>\s*([^<]+?)\s*</span>', re.S)
+# BEFORE 2022-23 THE SBL'S CARDS LINK NO WEBCAST - only the site's own match page, whose Štatistiky tab is the box
+# score (2021-22 and 2020-21 have no LiveStats link anywhere: not on the card, the overview or the stats page). A
+# crest on those cards is the site's blank default, so the clubs are named by the image's alt text alone.
+_SK_OVERVIEW = re.compile(r'href="/sk/stats/matches/(\d+)/[^/"]+/match/(\d+)/overview"', re.I)
+_SK_ALT = re.compile(r'<img[^>]+alt="([^"]*)"')
+_SK_SCORE = re.compile(r'class="match-content-small[^"]*">.*?<span>\s*(\d+)\s*:\s*(\d+)\s*</span>', re.S)
+SLOVAK_STATS = SLOVAK_BASE + "/sk/stats/matches/{sid}/x/match/{mid}/Stats"     # the slug is not read; the season id is
 
 
 # --- nkl.lt (Lithuania's NKL) ----------------------------------------------------------------
@@ -283,6 +331,66 @@ def _fold(s) -> str:
 # JSON API. robots.txt on pulsbasketu.com allows every path to every agent; api.pulsbasketu.com
 # publishes none (404), so nothing is disallowed there either.
 PULS_API = "https://api.pulsbasketu.com/api/v1"
+#: a Puls Basketu stat line's fields -> FIBA's names (a player's line, and a club's, which is its players' plus the
+#: team line: 44 rebounds = 39 + 5 for Żak Koszalin on 2024-01-13)
+_PULS_STATS = {"points": "sPoints", "fgm": "sFieldGoalsMade", "fga": "sFieldGoalsAttempted",
+               "f2m": "sTwoPointersMade", "f2a": "sTwoPointersAttempted", "f3m": "sThreePointersMade",
+               "f3a": "sThreePointersAttempted", "ftm": "sFreeThrowsMade", "fta": "sFreeThrowsAttempted",
+               "off_rebounds": "sReboundsOffensive", "def_rebounds": "sReboundsDefensive", "rebounds": "sReboundsTotal",
+               "assists": "sAssists", "turnovers": "sTurnovers", "steals": "sSteals", "blocks": "sBlocks",
+               "blocks_on": "sBlocksReceived", "fouls": "sFoulsPersonal", "fouls_on": "sFoulsOn",
+               "plus_minus": "sPlusMinusPoints"}
+_PULS_EXTRA = {"pts_from_turnovers": "sPointsFromTurnovers", "pts_from_paint": "sPointsInThePaint",
+               "seconds_chance_pts": "sPointsSecondChance", "fast_break_pts": "sPointsFastBreak",
+               "bench_pts": "sBenchPoints", "highest_lead": "sBiggestLead", "changing_lead": "sLeadChanges"}
+
+
+def puls_payload(game: dict) -> Optional[dict]:
+    """A Puls Basketu game (GET /games/<id>) -> the FIBA data.json shape (fibashape), as a RESULT. Puls keeps the
+    federation's full box score for every game it lists - players' minutes, shooting, rebounds, assists, fouls,
+    plus-minus and the team lines - including the seasons the federation never put on LiveStats (1LM before 2024-25:
+    fiba_game_id is null on every game sampled from 2020-21 to 2023-24). The clubs carry Puls' club ids and names,
+    as the fixture list does; each player is keyed on Puls' own player id. None for a game not finished, a walkover,
+    a game Puls has the points of only, or one with nobody on either side."""
+    from . import fibashape as S
+    if not isinstance(game, dict) or not game.get("finished") or game.get("walkover") or game.get("points_only"):
+        return None
+    sides = []
+    for side in ("home_team", "away_team"):
+        t = game.get(side) or {}
+        pl = {}
+        for p in t.get("players") or []:
+            line = p.get("stat_line") or {}
+            if p.get("points_only") or not p.get("player_id"):
+                continue
+            stats = {fiba: S.num(line.get(k)) for k, fiba in _PULS_STATS.items()}
+            mins = _nkl_minutes(line.get("time"))
+            row = S.player(p.get("first_name") or "", p.get("last_name") or "", name=p.get("name") or "",
+                           shirt=p.get("shirt_number") or "", starter=1 if p.get("starter") else 0,
+                           active=0 if mins == "0:00" else 1, minutes=mins, stats=stats)
+            if line.get("eval") is not None:
+                row["eff_1"] = S.num(line.get("eval"))
+            pl[str(p["player_id"])] = row
+        if not pl:
+            return None
+        tot = S.totals_of(pl)
+        tot.update({fiba: S.num((t.get("stat_line") or {}).get(k)) for k, fiba in _PULS_STATS.items()
+                    if (t.get("stat_line") or {}).get(k) is not None})
+        tot.update({fiba: S.num((t.get("extra_stat_line") or {}).get(k)) for k, fiba in _PULS_EXTRA.items()
+                    if (t.get("extra_stat_line") or {}).get(k) is not None})
+        logo = t.get("logo") if str(t.get("logo") or "").startswith("https://") else None
+        name = (t.get("name") or "").strip()
+        # the short name is the club's NAME here, never the id the code is (a club created from this box would
+        # otherwise be "80" on a phone); the caller puts the fixture list's abbreviation on it where it has one
+        sides.append(S.team(name, str(t.get("team_id") or ""), score=t.get("points"), short_name=name,
+                            quarters=[t.get(f"q{i}") for i in range(1, 5)], players=pl, totals=tot, logo=logo))
+    raw = S.game(sides[0], sides[1], played=True)
+    raw["period"] = 4 + int(S.num(game.get("overtimes_number")))
+    raw["periodType"] = "OVERTIME" if raw["period"] > 4 else "REGULAR"
+    raw["clock"] = "00:00"
+    return raw
+
+
 NKL_SITE = "https://nkl.lt"
 NKL_MATCHES = NKL_SITE + "/matches/?type=schedule"
 NKL_MATCH = NKL_SITE + "/matches/{id}/"
@@ -415,8 +523,9 @@ def nkl_match_page(page: str) -> dict:
         periods   the quarter table's headings ('Q1'..'Q4', then any overtime), and
         quarters  each club's points in them: ([16, 22, 19, 26], [32, 22, 28, 26])
         abbr      ('PAT', 'ŽAL')
-        teams     [{'name', 'players': [{'id', 'shirt', 'name', 'min', 'pts', 'fg': (m, a), 'fg2', 'fg3', 'ft',
-                  'reb', 'ast', 'stl', 'tov', 'blk', 'eff'}, ...]}, {...}] - the Protokolas tab
+        teams     [{'name', 'players': [{'id', 'shirt', 'name', 'starter', 'min', 'pts', 'fg': (m, a), 'fg2', 'fg3',
+                  'ft', 'reb', 'ast', 'stl', 'tov', 'blk', 'eff'}, ...]}, {...}] - the Protokolas tab ('starter' is
+                  only ever True on a page that stars its starters, as the older seasons' do)
         stats     ({FIBA stat: n}, {...}) - the Statistika tab's team lines
         referees  ['Milita Stalaučinskaitė', ...]
         venue     the arena under the score"""
@@ -430,12 +539,15 @@ def nkl_match_page(page: str) -> dict:
             out["score"] = (int(sc.group(1)), int(sc.group(2)))
         arena = re.search(r"<a\b[^>]*>(.*?)</a>", m.group(2), re.S)
         out["venue"] = (_nkl_text(arena.group(1)) or None) if arena else None
+        if (out["venue"] or "").casefold() == "nenustatyta":
+            out["venue"] = None               # "not set": what an older season's re-entered games say
     m = re.search(r"class=[\"']?nkl-badge-status[\"']?\s*>(.*?)</span>", page, re.S)
     if m:
         out["status"] = _nkl_text(m.group(1))
     m = re.search(r">\s*Teis\w*jai\s*</span>\s*<span\b[^>]*>(.*?)</span>", page, re.S)
     if m:
-        out["referees"] = [r for r in (x.strip() for x in _nkl_text(m.group(1)).split(",")) if r]
+        # "Nepaskelbta" ("not announced") is nobody
+        out["referees"] = [r for r in (x.strip() for x in _nkl_text(m.group(1)).split(",")) if r and r.casefold() != "nepaskelbta"]
     m = re.search(r"<table\b[^>]*nkl-quarters-table[^>]*>(.*?)</table>", page, re.S)
     if m:
         heads = [_nkl_text(h) for h in re.findall(r"<th\b[^>]*>(.*?)</th>", m.group(1), re.S)]
@@ -460,7 +572,11 @@ def nkl_match_page(page: str) -> dict:
             link = re.search(r"nkl\.lt/zaidejai/(\d+)/?[\"']?[^>]*>(.*?)</a>", r, re.S)
             if not link or len(cells) != len(heads):
                 continue                     # a line with no player on it (a team or totals line)
-            p = {"id": link.group(1), "name": _nkl_text(link.group(2))}
+            # AN OLDER SEASON MARKS ITS STARTERS with a trailing star ("Donnell Karon Cegers *", five a side on
+            # 2024-25's pages); it is the player's role, not his name
+            name = _nkl_text(link.group(2))
+            star = bool(re.search(r"\s\*$", name))
+            p = {"id": link.group(1), "name": re.sub(r"\s*\*$", "", name).strip(), "starter": star}
             for h, c in zip(heads, cells):
                 k = _NKL_COLS.get(h)
                 if k in ("fg", "fg2", "fg3", "ft"):
@@ -513,7 +629,8 @@ def nkl_payload(page: dict, fixture: dict) -> Optional[dict]:
             fg2, fg3, ft = p.get("fg2") or (0, 0), p.get("fg3") or (0, 0), p.get("ft") or (0, 0)
             fg = p.get("fg") or (fg2[0] + fg3[0], fg2[1] + fg3[1])
             mins = _nkl_minutes(p.get("min"))
-            row = S.player(name=p["name"], shirt=p.get("shirt") or "", minutes=mins, active=0 if mins == "0:00" else 1, stats={
+            row = S.player(name=p["name"], shirt=p.get("shirt") or "", minutes=mins, active=0 if mins == "0:00" else 1,
+                           starter=1 if p.get("starter") else 0, stats={
                 "sPoints": p.get("pts", 0), "sFieldGoalsMade": fg[0], "sFieldGoalsAttempted": fg[1],
                 "sTwoPointersMade": fg2[0], "sTwoPointersAttempted": fg2[1],
                 "sThreePointersMade": fg3[0], "sThreePointersAttempted": fg3[1],
@@ -677,6 +794,42 @@ def _start_year(season: str) -> int:
     return now.tm_year if now.tm_mon >= 8 else now.tm_year - 1
 
 
+def czech_competition_parts(page: str, comp: str) -> Optional[list]:
+    """[(competition id?p=part id, part name)] of one competition on a cz.basketball competitions page (/soutez?y=),
+    None when the page has no competition of that name.
+
+    The name is matched as the page prints it ("1. liga mužů", from 2023-24). Failing that, a name ending in a men's
+    or women's word is matched without it, inside that category's tab only: 2022-23 and before print "1. liga" in
+    the men's tab AND in the women's, and the bare name anywhere on the page would be whichever came first."""
+    import html as _html
+    norm = lambda s: re.sub(r"\s+", " ", _html.unescape(s or "")).strip().casefold()  # noqa: E731
+    heads = list(_CZ_COMP_H2.finditer(page or ""))
+
+    def parts_of(k: int, h) -> list:
+        block = page[h.end():heads[k + 1].start() if k + 1 < len(heads) else None]
+        return [(f"{cid}?p={pid}", _html.unescape(label)) for cid, pid, label in _CZ_PART.findall(block)]
+
+    want = norm(comp)
+    for k, h in enumerate(heads):
+        if norm(h.group(1)) == want:
+            return parts_of(k, h)
+    words = want.rsplit(" ", 1)
+    tab_label = _CZ_GENDER.get(words[-1]) if len(words) == 2 else None
+    if not tab_label:
+        return None
+    pane = next((p for p, label in _CZ_TAB.findall(page) if norm(label) == tab_label), None)
+    start = page.find(f'id="{pane}"') if pane else -1
+    if start < 0:
+        return None
+    # the tab's own pane runs to the next pane (or the end of the page)
+    nxt = re.search(r'\bid="tab-pane-\d+"', page[start + 1:])
+    end = start + 1 + nxt.start() if nxt else len(page)
+    for k, h in enumerate(heads):
+        if start <= h.start() < end and norm(h.group(1)) == words[0]:
+            return parts_of(k, h)
+    return None
+
+
 def czech_rows(page: str, base: str, competition_page: bool = False) -> list[dict]:
     """Every fixture row on a ČBF schedule page: an NBL-style /zapasy page, or the "Zápasy" tab of a
     federation competition page (which also carries the part's name in its first cell and the hall
@@ -708,6 +861,171 @@ def czech_rows(page: str, base: str, competition_page: bool = False) -> list[dic
                     "when": when.groups() if when else None, "crests": [base + u for u in _CZ_LOGO.findall(row)],
                     "fiba_id": web.group(1) if web else None, "venue": venue, "part": part})
     return out
+
+
+# ------------------------------------------------------------------------- sbl.slovakbasket.sk's pages
+def _sk_text(fragment) -> str:
+    import html as _html
+    return re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ", str(fragment or "")))).strip()
+
+
+def slovak_card(card: str) -> dict:
+    """One fixture card of a month's match list: both clubs (the crests' alt text, entities read - "Spišsk&#237;
+    Rytieri" is Spišskí Rytieri), the club ids where the crest is the club's own, the kick-off, the hall, the score
+    once there is one, the LiveStats id where the card links a webcast, and the site's own (season id, match id)."""
+    import html as _html
+    small = re.search(r'class="match-content-small[^"]*">(.*?)</div>', card or "", re.S)
+    teams = _SK_TEAM.findall(card or "")
+    names = [_html.unescape(n).strip() for n in _SK_ALT.findall(small.group(1) if small else "")]
+    when = _SK_WHEN.search(card or "")
+    venue = _SK_VENUE.search(card or "")
+    web = _WEBCAST.search(card or "") or _WEBCAST_ANY.search(card or "")
+    ov = _SK_OVERVIEW.search(card or "")
+    sc = _SK_SCORE.search(card or "")
+    hall = _html.unescape(venue.group(1)).strip() if venue else None
+    if hall and re.search(r"bude doplnen", hall, re.I):
+        hall = None                       # "SBL, bude doplnené": the hall is still "to be filled in"
+    return {"home": names[0] if names else (_html.unescape(teams[0][2]).strip() if teams else ""),
+            "away": names[1] if len(names) > 1 else (_html.unescape(teams[1][2]).strip() if len(teams) > 1 else ""),
+            "home_logo": teams[0][0] if teams else None, "away_logo": teams[1][0] if len(teams) > 1 else None,
+            "home_code": teams[0][1] if teams else None, "away_code": teams[1][1] if len(teams) > 1 else None,
+            "when": (when.group(3), when.group(2), when.group(1), when.group(4), when.group(5)) if when else None,
+            "venue": hall,
+            "score": (int(sc.group(1)), int(sc.group(2))) if sc else None,
+            "fiba_id": web.group(1) if web else None, "site": (ov.group(1), ov.group(2)) if ov else None}
+
+
+#: the Štatistiky tab's columns, as its table heads them (in English on the Slovak site)
+_SK_COLS = {"MIN": "min", "2P": "fg2", "3P": "fg3", "FG": "fg", "FT": "ft", "PTS": "pts", "F+": "fd", "OFF": "oreb",
+            "DEF": "dreb", "STL": "stl", "A": "ast", "BLK": "blk", "TO": "tov", "PF": "pf", "INDEX": "eff"}
+
+
+def _sk_value(key: str, text: str):
+    if key in ("fg2", "fg3", "fg", "ft"):
+        return _ma(text)
+    if key == "eff":
+        try:
+            return float(text.replace(",", "."))
+        except ValueError:
+            return None
+    if key == "min":
+        m = re.match(r"\s*(\d+)(?::(\d{1,2}))?", text or "")
+        return f"{int(m.group(1))}:{int(m.group(2) or 0):02d}" if m else None
+    return _int(text)
+
+
+def slovak_stats_page(page: str) -> dict:
+    """A sbl.slovakbasket.sk match's Štatistiky tab (/sk/stats/matches/<season>/<slug>/match/<id>/Stats) as plain
+    data, home first as the page draws it:
+        score     (89, 81), or None
+        quarters  ([..], [..]); empty where the site has none (it prints 0:0 for every quarter it was never given)
+        clubs     [(site team id, name, abbreviation or ''), (...)] - the header's two clubs
+        teams     [{'name', 'players': [{'id', 'shirt', 'first', 'last', 'min', 'pts', 'fg2': (m, a), 'fg3', 'fg', 'ft',
+                    'fd', 'oreb', 'dreb', 'stl', 'ast', 'blk', 'tov', 'pf', 'eff'}], 'totals': {...the Spolu line}},
+                   {...}]"""
+    page = page or ""
+    out = {"score": None, "quarters": ([], []), "clubs": [], "teams": []}
+    h = re.search(r'data-match-text="goalsHome">\s*(\d+)', page)
+    a = re.search(r'data-match-text="goalsAway">\s*(\d+)', page)
+    if h and a:
+        out["score"] = (int(h.group(1)), int(a.group(1)))
+    q = re.search(r'data-match-text="scorePeriods">(.*?)</p>', page, re.S)
+    pairs = re.findall(r"(\d+)\s*:\s*(\d+)", _sk_text(q.group(1))) if q else []
+    if any(int(x) or int(y) for x, y in pairs):
+        out["quarters"] = ([int(x) for x, _ in pairs], [int(y) for _, y in pairs])
+    # the header names each club twice: its abbreviation (for a phone) and its name; 2020-21 has the name only
+    clubs: dict = {}
+    for tid, text in re.findall(r'<h2 class="team-title[^"]*">\s*<a href="[^"]*/team/(\d+)/[^"]*">([^<]+)</a>', page):
+        clubs.setdefault(tid, []).append(_sk_text(text))
+    for tid, texts in list(clubs.items())[:2]:
+        name = max(texts, key=len)
+        abbr = min(texts, key=len)
+        out["clubs"].append((tid, name, abbr if abbr != name and len(abbr) <= 4 else ""))
+    tables = list(re.finditer(r"<table\b[^>]*table-excel[^>]*>(.*?)</table>", page, re.S))
+    prev = 0
+    for t in tables:
+        title = re.findall(r"<h2>\s*([^<]+?)\s*</h2>", page[prev:t.start()])
+        prev = t.end()
+        heads = [_sk_text(x) for x in re.findall(r"<th\b[^>]*>(.*?)</th>", t.group(1), re.S)]
+        players, totals = [], {}
+        for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", t.group(1).split("</thead>")[-1], re.S):
+            cells = re.findall(r"<td\b[^>]*>(.*?)</td>", row, re.S)
+            link = re.search(r'/player/(\d+)/[^"]*"[^>]*>(.*?)</a>', row, re.S)
+            if link and len(cells) == len(heads):
+                last, _, first = _sk_text(link.group(2)).partition(",")
+                p = {"id": link.group(1), "shirt": _sk_text(cells[0]), "first": first.strip(), "last": last.strip()}
+                for hd, c in zip(heads, cells):
+                    k = _SK_COLS.get(hd)
+                    if k:
+                        p[k] = _sk_value(k, _sk_text(c))
+                players.append(p)
+            elif cells and len(cells) == len(heads) - 1 and _sk_text(cells[0]).casefold() == "spolu":
+                for hd, c in zip(heads[2:], cells[1:]):          # "#" and the name share the label's two columns
+                    k = _SK_COLS.get(hd)
+                    if k:
+                        totals[k] = _sk_value(k, _sk_text(c).strip("()"))
+        out["teams"].append({"name": _sk_text(title[-1]) if title else "", "players": players, "totals": totals})
+    return out
+
+
+def _sk_stats(d: dict) -> dict:
+    """One line of the Štatistiky tab (a player's or the Spolu line) in FIBA's stat names; a column the line leaves
+    empty is left out, so a team line laid over the players' sums only replaces what it actually says."""
+    out = {}
+    for k, (made, att) in (("fg2", ("sTwoPointersMade", "sTwoPointersAttempted")), ("fg3", ("sThreePointersMade", "sThreePointersAttempted")),
+                           ("fg", ("sFieldGoalsMade", "sFieldGoalsAttempted")), ("ft", ("sFreeThrowsMade", "sFreeThrowsAttempted"))):
+        if d.get(k):
+            out[made], out[att] = d[k]
+    for k, s in (("pts", "sPoints"), ("fd", "sFoulsOn"), ("oreb", "sReboundsOffensive"), ("dreb", "sReboundsDefensive"),
+                 ("stl", "sSteals"), ("ast", "sAssists"), ("blk", "sBlocks"), ("tov", "sTurnovers"), ("pf", "sFoulsPersonal")):
+        if d.get(k) is not None:
+            out[s] = d[k]
+    if d.get("oreb") is not None and d.get("dreb") is not None:
+        out["sReboundsTotal"] = d["oreb"] + d["dreb"]
+    if "sFieldGoalsMade" not in out and "sTwoPointersMade" in out and "sThreePointersMade" in out:
+        out["sFieldGoalsMade"] = out["sTwoPointersMade"] + out["sThreePointersMade"]
+        out["sFieldGoalsAttempted"] = out["sTwoPointersAttempted"] + out["sThreePointersAttempted"]
+    return out
+
+
+def slovak_payload(page: dict) -> Optional[dict]:
+    """A parsed Štatistiky tab (slovak_stats_page) -> the FIBA data.json shape (fibashape), as a RESULT: the site's
+    box score under the clubs' names as the site prints them, each player keyed on the site's own player id, the
+    Spolu line laid over the players' sums, and no play-by-play but the closing marker. Each club is coded by the
+    site's own id for it - the header's /team/<id>/, which is the id a card's crest carries wherever it has one
+    (Competitor/665670 is team/665670, Patrioti Levice in 2023-24), so a fixture and its box name a club alike - and
+    is never short-named by that number: the page's abbreviation, else the club's name. None when the page holds no
+    box score for both clubs (2021-22 has none for BC Komárno's players in any game sampled), or when its two tables
+    are not the two clubs of its header, in its order (never filed under the wrong club)."""
+    from . import fibashape as S
+    teams, clubs = page.get("teams") or [], page.get("clubs") or []
+    if len(teams) != 2 or len(clubs) != 2 or not (teams[0]["players"] and teams[1]["players"]):
+        return None
+    for t, (_tid, name, _abbr) in zip(teams, clubs):
+        if t["name"] and _fold(t["name"]) != _fold(name):
+            return None
+    sides = []
+    for i, t in enumerate(teams):
+        pl = {}
+        for p in t["players"]:
+            mins = p.get("min") or "0:00"
+            row = S.player(p.get("first") or "", p.get("last") or "", shirt=p.get("shirt") or "", minutes=mins,
+                           active=0 if mins == "0:00" else 1, stats=_sk_stats(p))
+            if p.get("eff") is not None:
+                row["eff_1"] = p["eff"]
+            pl[str(p["id"])] = row
+        tot = S.totals_of(pl)
+        tot.update(_sk_stats(t.get("totals") or {}))
+        tid, name, abbr = clubs[i]
+        score = page["score"][i] if page.get("score") else tot.get("sPoints")
+        sides.append(S.team(name, tid, score=score, quarters=(page.get("quarters") or ([], []))[i][:4], players=pl,
+                            totals=tot, short_name=abbr or name))
+    q = page.get("quarters") or ([], [])
+    raw = S.game(sides[0], sides[1], played=True)
+    raw["period"] = max(4, len(q[0]), len(q[1]))
+    raw["periodType"] = "OVERTIME" if raw["period"] > 4 else "REGULAR"
+    raw["clock"] = "00:00"
+    return raw
 
 
 class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
@@ -747,9 +1065,7 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         if not p:
             return
         try:
-            os.makedirs(os.path.dirname(p), exist_ok=True)
-            with open(p, "w", encoding="utf-8") as f:
-                json.dump(m, f, indent=1, sort_keys=True)
+            _merge_json(p, m)
         except Exception:
             pass                      # a cache that cannot be written is a slow pass, not a failure
 
@@ -769,6 +1085,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             if b is not None:
                 b.external_id = str(external_id)
             return b
+        if site in ("slovakia", "slovakia_sbl", "sba") and str(external_id).startswith("SK"):
+            return self._sk_fetch(str(external_id), config)
         if site == "nkl":
             return self._nkl_fetch(str(external_id), config)
         if site == "pulsbasketu":
@@ -1001,7 +1319,15 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             uuid = g.get("uuid")
             ext = known.get(uuid)
             if not ext:
-                info = self._dbl_json(f"{DBL_API}/game-info/{uuid}") or {}
+                # ONE GAME'S INFO REFUSED IS ONE GAME LEFT OUT, not the season: a "409 Conflict" on one 2024-25 game
+                # (backfill_audit.py, 2026-10-14; the next audit pass read the whole season cleanly) threw out of the
+                # loop, so the season discovered nothing and every id read before it was lost with the unsaved map.
+                # The game counts as one without an id, and the next pass asks again.
+                try:
+                    info = self._dbl_json(f"{DBL_API}/game-info/{uuid}") or {}
+                except (requests.RequestException, ValueError) as exc:
+                    print(f"     DBL: game {uuid} - its info could not be read ({exc})")
+                    info = {}
                 ext = str((info.get("gameInfo") or {}).get("extId") or "").strip()
                 if not ext.isdigit():
                     no_id += 1
@@ -1363,11 +1689,15 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
               f"({sum(1 for g in out if g.status == 'final')} final)")
         return out
 
-    def _puls_fiba_id(self, gid: str, config: dict) -> Optional[str]:
+    def _puls_fiba_id(self, gid: str, config: dict, reply_out: Optional[dict] = None) -> Optional[str]:
+        """The game's LiveStats id: remembered, else asked of Puls (the game's whole reply is handed back in reply_out,
+        so a game with no id costs no second request for its own box score)."""
         known = self._idmap(config)
         if known.get(gid):
             return known[gid]
         reply = self._puls_json(f"{PULS_API}/games/{gid}") or {}
+        if reply_out is not None:
+            reply_out.update(reply)
         fid = str(reply.get("fiba_game_id") or "").strip()
         if not fid.isdigit():
             return None                   # the federation has not set this game up on LiveStats yet
@@ -1377,9 +1707,17 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
 
     def _puls_fetch(self, gid: str, config: dict):
         """The FIBA fetch for a Puls Basketu fixture, with the site's own club ids and names put on
-        the payload - LiveStats' team codes are three letters the operator types, not an identity."""
-        fid = self._puls_fiba_id(gid, config)
+        the payload - LiveStats' team codes are three letters the operator types, not an identity.
+
+        A SEASON THAT IS OVER, with no LiveStats id on the game, is Puls' own box score (puls_payload), published as
+        a result: 1LM before 2024-25 was never on LiveStats, and Puls keeps every one of those games' box scores.
+        Never in the season being played - there a game with no id is a game not set up YET, and its LiveStats feed
+        (play-by-play, stints, shots) is what it will have."""
+        reply: dict = {}
+        fid = self._puls_fiba_id(gid, config, reply)
         if not fid:
+            if reply and _start_year(config.get("season") or "") != _start_year(""):
+                return self._puls_own(gid, reply, config)
             return None
         raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
         if not raw or "tm" not in raw:
@@ -1393,6 +1731,27 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                     raw["tm"][tno]["name"] = (t.get("name") or "").strip() or raw["tm"][tno].get("name") or ""
         b = self.bundle_from_raw(raw, gid, config)
         b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
+
+    def _puls_own(self, gid: str, reply: dict, config: dict):
+        raw = puls_payload(reply)
+        if raw is None:
+            print(f"     Puls Basketu {gid}: no box score to publish (not finished, a walkover, or points only)")
+            return None
+        # THE FIXTURE LIST'S NAMES AND ABBREVIATIONS, as on a LiveStats game: the club is one club from the
+        # schedule to the box (the game's own reply names it the same way, but only the list carries "SOK")
+        fixture = next((g for g in self._puls_games(config) if str(g.get("game_id")) == gid), None)
+        if fixture:
+            for tno, side in (("1", "home_team"), ("2", "away_team")):
+                t = fixture.get(side) or {}
+                if (t.get("name") or "").strip():
+                    raw["tm"][tno]["name"] = t["name"].strip()
+                if re.fullmatch(r"[A-ZĄĆĘŁŃÓŚŹŻ]{2,5}", str(t.get("abbr") or "")):
+                    raw["tm"][tno]["shortName"] = t["abbr"]
+        b = self.bundle_from_raw(raw, gid, config)
+        b.translate = False
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
         return b
@@ -1438,7 +1797,21 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return ("livestats", m.group(1)) if m else None
         return ("page", body)
 
-    def _nkl_matches(self) -> list:
+    _nkl_past: dict = {}                 # start year -> (fetched_at, allMatches) of a season that is over
+
+    def _nkl_matches(self, year: Optional[int] = None) -> list:
+        """allMatches of the season being played (the bare schedule page), or of an older one. THE PAGE TAKES THE
+        SEASON: ?season=<start year>, as its own season menu sends it (2004/05 to now), and then carries that whole
+        season, every stage at once - 2024-25 is 240 regular-season, 56 second-stage and 42 play-off games (read
+        2026-10-14). A season that is over does not change, so it is read once an hour at most."""
+        if year is not None and year != _start_year(""):
+            at, cached = FibaSiteScheduleAdapter._nkl_past.get(year, (0.0, []))
+            if cached and time.time() - at < 3600:
+                return cached
+            m = _NKL_ALL.search(self._nkl_get(f"{NKL_MATCHES}&season={int(year)}") or "")
+            rows = json.loads(m.group(1)) if m else []
+            FibaSiteScheduleAdapter._nkl_past[year] = (time.time(), rows)
+            return rows
         at, cached = FibaSiteScheduleAdapter._nkl_cache
         if cached and time.time() - at < 300:
             return cached
@@ -1448,18 +1821,31 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         return rows
 
     @staticmethod
+    def _nkl_stage(r: dict) -> str:
+        """stage_type_id 1 is the regular season, 3 its second stage ("Reguliarusis sezonas – II etapas", 2024-25's
+        56 games after the first 240), 2 the play-offs ("Atkrintamosios varžybos"). A regular-season stage is never
+        filed as a play-off: everything but 1 and 3 is."""
+        return "regular" if int(r.get("stage_type_id") or 0) in (1, 3) else "playoffs"
+
+    @staticmethod
     def _nkl_clean(s) -> str:
         return re.sub(r"\s+", " ", demojibake(str(s or ""))).strip()
 
+    @staticmethod
+    def _nkl_arena(s) -> Optional[str]:
+        """The arena, or None where the site says "Nenustatyta" ("not set" - every 2024-25 game the site re-entered)."""
+        a = FibaSiteScheduleAdapter._nkl_clean(s)
+        return None if not a or a.casefold() == "nenustatyta" else a
+
     def _nkl(self, config: dict) -> list[ScheduleGame]:
         """nkl.lt: the season's every game from the schedule page's own array, keyed on the site's match id.
-        stage "regular" is stage_type_id 1, "playoffs" everything else."""
+        stage "regular" is the regular season's stages, "playoffs" everything else (_nkl_stage)."""
         stage = (config.get("stage") or "").strip().lower()
         year = _start_year(config.get("season") or "")
-        rows = [r for r in self._nkl_matches() if int(r.get("season") or 0) == year]
+        rows = [r for r in self._nkl_matches(year) if int(r.get("season") or 0) == year]
         out = []
         for r in rows:
-            st = "regular" if int(r.get("stage_type_id") or 0) == 1 else "playoffs"
+            st = self._nkl_stage(r)
             if stage and st != stage:
                 continue
             d = re.match(r"(\d{4})-(\d{2})-(\d{2})", str(r.get("date_label") or ""))
@@ -1473,8 +1859,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             extra = {"home_code": str(r.get("home_team_id") or "") or None,
                      "away_code": str(r.get("away_team_id") or "") or None,
                      "home_logo": logo(r.get("home_logo")), "away_logo": logo(r.get("away_logo")),
-                     "venue": self._nkl_clean(r.get("arena")) or None,
-                     "round": f"{r.get('stage_name') or ''} · {r.get('round_no') or ''}".strip(" ·"), "stage": st}
+                     "venue": self._nkl_arena(r.get("arena")),
+                     "round": f"{self._nkl_clean(r.get('stage_name'))} · {r.get('round_no') or ''}".strip(" ·"), "stage": st}
             if tbc:
                 extra["time_tbc"] = True
             out.append(ScheduleGame(
@@ -1495,8 +1881,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         has not gone anywhere."""
         if (config.get("site") or "").lower() != "nkl":
             return []
-        every = self._nkl_matches()
         year = _start_year(config.get("season") or "")
+        every = self._nkl_matches(year)
         days = sorted(str(r.get("date_label") or "")[:10] for r in every
                       if int(r.get("season") or 0) == year and re.match(r"\d{4}-\d{2}-\d{2}$", str(r.get("date_label") or "")[:10]))
         if not days:
@@ -1572,7 +1958,7 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
                 raw["tm"][tno]["code"] = str(fixture.get(f"{side}_team_id") or raw["tm"][tno].get("code") or "")
                 raw["tm"][tno]["name"] = self._nkl_clean(fixture.get(f"{side}_name")) or raw["tm"][tno].get("name") or ""
         b = self.bundle_from_raw(raw, sid, config)
-        b.venue = self._nkl_clean(fixture.get("arena")) or None
+        b.venue = self._nkl_arena(fixture.get("arena"))
         b.feed_lm_ms, b.feed_recv_ms = meta.get("lm_ms"), meta.get("recv_ms")
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
@@ -1591,7 +1977,11 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         from collections import Counter
         offsets = Counter(int(f) - int(k) for k, f in known.items() if str(k).isdigit() and str(f).isdigit())
         offset = offsets.most_common(1)[0][0] if offsets and offsets.most_common(1)[0][1] >= 3 else NKL_OFFSET
-        tried = [known.get(sid), str(int(sid) + offset) if sid.isdigit() else None]
+        # THE OFFSET IS THIS SEASON'S. The remembered pairs and NKL_OFFSET are 2026-27's fixtures; an older season's
+        # match id + that offset is somebody else's game (refused by its clubs, but a request for nothing), and no
+        # page of an older season names its webcast - so an older game is the site's own box score.
+        current = _start_year(config.get("season") or "") == _start_year("")
+        tried = [known.get(sid), str(int(sid) + offset) if sid.isdigit() and current else None]
         for fid in dict.fromkeys(f for f in tried if f):
             raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=fid))
             if not raw or "tm" not in raw:
@@ -1626,7 +2016,7 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             return None
         b = self.bundle_from_raw(raw, sid, config)
         b.translate = False
-        b.venue = parsed.get("venue") or self._nkl_clean(fixture.get("arena")) or None
+        b.venue = parsed.get("venue") or self._nkl_arena(fixture.get("arena"))
         if config.get("_tipoff_at"):
             b.tipoff_at = config["_tipoff_at"]
         return b
@@ -1635,7 +2025,7 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         """A game as nkl.lt runs it. While it is being played: the LiveStats feed its page sends us to. Once the site
         has its result: that feed when it agrees with the result (_nkl_fiba_final), else the page's own box score.
         Nothing before tip-off, and nothing for a game the schedule no longer lists (see withdrawn)."""
-        fixture = next((r for r in self._nkl_matches() if str(r.get("id")) == sid), None)
+        fixture = next((r for r in self._nkl_matches(_start_year(config.get("season") or "")) if str(r.get("id")) == sid), None)
         if not fixture:
             return None
         if fixture.get("is_result"):
@@ -1696,10 +2086,8 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         if not p:
             return
         try:
-            os.makedirs(os.path.dirname(p), exist_ok=True)
-            with open(p, "w", encoding="utf-8") as f:
-                json.dump(games, f, ensure_ascii=False, indent=1, sort_keys=True)
-        except OSError:
+            _merge_json(p, games, per_entry=True, ensure_ascii=False)
+        except (OSError, ValueError, TypeError):
             pass
 
     def _lbf(self, config: dict) -> list[ScheduleGame]:
@@ -1755,7 +2143,13 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         if not ent.get("fls"):
             if time.time() - ent.get("checked", 0) < LBF_RECHECK_S:
                 return None
-            m = self._lbf_json(f"/matches/{mid}.json") or {}
+            m = self._lbf_json(f"/matches/{mid}.json")
+            if m is None:
+                # NO ANSWER IS NOT "NO ID": a refused or timed-out request stamped the game as checked, and for ten
+                # minutes it was a game with no feed. One audit pass (2026-10-14) read 2023-24 and 2022-23 as having
+                # no feed when every game sampled from both has its LiveStats id, and the next pass read both ok -
+                # the likeliest cause. Asked again next time.
+                return None
             ent["checked"] = time.time()
             if m.get("genius_id"):
                 ent["fls"] = str(m["genius_id"])
@@ -2018,16 +2412,11 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         except Exception as exc:
             print(f"     {comp}: the competitions page could not be read ({exc})")
             return []
-        import html as _html
-        want = re.sub(r"\s+", " ", comp).strip().casefold()
-        heads = list(_CZ_COMP_H2.finditer(page))
-        for k, h in enumerate(heads):
-            if re.sub(r"\s+", " ", _html.unescape(h.group(1))).strip().casefold() != want:
-                continue
-            block = page[h.end():heads[k + 1].start() if k + 1 < len(heads) else None]
-            return [(f"{cid}?p={pid}", _html.unescape(label)) for cid, pid, label in _CZ_PART.findall(block)]
-        print(f"     no '{comp}' on {CZ_COMPETITIONS.format(base=base, year=year)}")
-        return []
+        parts = czech_competition_parts(page, comp)
+        if parts is None:
+            print(f"     no '{comp}' on {CZ_COMPETITIONS.format(base=base, year=year)}")
+            return []
+        return parts
 
     def _czech_match_id(self, sid: str, config: dict) -> Optional[str]:
         """The LiveStats id behind a Czech fixture id, learnt once and remembered.
@@ -2057,7 +2446,11 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
         if not sid:
             return []
         months = [f"{year}-{m:02d}" for m in range(9, 13)] + [f"{year + 1}-{m:02d}" for m in range(1, 7)]
-        seen, out = set(), []
+        # A SEASON THAT IS OVER may be read off the site's own box scores where a card links no webcast (2021-22 and
+        # before link none at all). Never the season being played: there a card with no link is a game not set up
+        # YET, and keying it on the site's id would make it a second game the day its webcast appears.
+        past = year != _start_year("")
+        seen, out, own = set(), [], 0
         for month in months:
             try:
                 html = self._page(SLOVAK_LIST.format(sid=sid, month=month))
@@ -2066,26 +2459,53 @@ class FibaSiteScheduleAdapter(FibaLiveStatsAdapter):
             # EACH CARD CARRIES THE WHOLE FIXTURE: both clubs (named in the crest's alt text, with
             # the club's own id in the crest URL), the hall, and the kick-off. Taking only the
             # webcast link out of it threw all of that away and left the fixture unwritable.
+            # THE WEBCAST LINK HAS TWO FORMS: livestats.dcd.shared.geniussports.com/webcast/SBA/<id>/ from 2023-24,
+            # www.fibalivestats.com/webcast/EYOF/<id>/ in 2022-23 - read as the first only, 2022-23 had no games.
             for card in _SK_CARD.findall(html):
-                m = _WEBCAST.search(card)
-                if not m or m.group(1) in seen:
+                c = slovak_card(card)
+                extra = {"venue": c["venue"], "home_logo": c["home_logo"], "away_logo": c["away_logo"],
+                         "home_code": c["home_code"], "away_code": c["away_code"]}
+                if c["fiba_id"]:
+                    key = c["fiba_id"]
+                elif past and c["site"] and c["score"] and any(c["score"]):
+                    # the site's own box score: keyed on the season's id and the match's ("SK11609-125931"), which no
+                    # LiveStats id can ever be (2023-24 has 41 such games, its first weeks; 2021-22 and 2020-21 all)
+                    key = f"SK{c['site'][0]}-{c['site'][1]}"
+                    own += 1
+                else:
                     continue
-                seen.add(m.group(1))
-                teams = _SK_TEAM.findall(card)
-                when = _SK_WHEN.search(card)
-                venue = _SK_VENUE.search(card)
+                if key in seen:
+                    continue
+                seen.add(key)
                 out.append(ScheduleGame(
-                    external_id=str(m.group(1)),
-                    home_name=teams[0][2].strip() if len(teams) > 0 else "",
-                    away_name=teams[1][2].strip() if len(teams) > 1 else "",
-                    tipoff_at=(_utc("Europe/Bratislava", when.group(3), when.group(2), when.group(1),
-                                    when.group(4), when.group(5)) if when else None),
-                    extra={"venue": venue.group(1).strip() if venue else None,
-                           "home_logo": teams[0][0] if len(teams) > 0 else None,
-                           "away_logo": teams[1][0] if len(teams) > 1 else None,
-                           "home_code": teams[0][1] if len(teams) > 0 else None,
-                           "away_code": teams[1][1] if len(teams) > 1 else None}))
+                    external_id=key, home_name=c["home"], away_name=c["away"],
+                    tipoff_at=_utc("Europe/Bratislava", *c["when"]) if c["when"] else None,
+                    status="final" if key.startswith("SK") else "scheduled",
+                    extra=extra))
+        if own:
+            print(f"     SBA {year}/{year + 1}: {own} of {len(out)} games from the site's own box scores (no webcast linked)")
         return out
+
+    def _sk_fetch(self, key: str, config: dict):
+        """A game of a season the SBL scored without LiveStats: the site's own box score (slovak_payload), published
+        as a result - translate False, there is no play-by-play to replay."""
+        m = re.fullmatch(r"SK(\d+)-(\d+)", key)
+        if not m:
+            return None
+        try:
+            page = self._page(SLOVAK_STATS.format(sid=m.group(1), mid=m.group(2)))
+        except Exception as exc:
+            print(f"     SBA {key}: its statistics page could not be read ({exc})")
+            return None
+        raw = slovak_payload(slovak_stats_page(page))
+        if raw is None:
+            print(f"     SBA {key}: no box score on its statistics page")
+            return None
+        b = self.bundle_from_raw(raw, key, config)
+        b.translate = False
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
 
     def _slovak_season_id(self, config: dict, season: str, year: int) -> Optional[str]:
         """The tournament id for OUR season, read off the site's own season menu.

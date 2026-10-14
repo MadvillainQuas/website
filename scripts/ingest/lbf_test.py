@@ -138,6 +138,29 @@ json.dump(cache, open(os.path.join(ROOT, "data", "feed", "LBFA2", "games.json"),
 E.asked.clear()
 E.fetch("m1", CFG)
 ok("...then asked again", E.asked == ["/matches/m1.json"], E.asked)
+# m3's page does not answer (refused, timed out): that is not "no LiveStats id" - nothing is stamped, the next fetch asks
+E.asked.clear()
+seen.clear()
+ok("a game whose page does not answer is not fetched...", E.fetch("m3", CFG) is None and "url" not in seen)
+E.files["/matches/m3.json"] = {"genius_id": 2714390}
+E.asked.clear()
+E.fetch("m3", CFG)
+ok("...and is asked again at once, not ten minutes later: no answer is not 'no id'",
+   E.asked == ["/matches/m3.json"] and seen.get("url", "").endswith("/2714390/data.json"), (E.asked, seen.get("url")))
+
+print("\n-- two writers of one cache (backfill_audit.py reads seasons side by side; a backfill can run beside the lane)")
+cp = os.path.join(tempfile.mkdtemp(prefix="lbf_cache_"), "games.json")
+FibaSiteScheduleAdapter._lbf_save(cp, {"m1": {"home": "trieste", "fls": "2714381"}})
+FibaSiteScheduleAdapter._lbf_save(cp, {"m1": {"home": "trieste", "checked": 1.0}, "m2": {"home": "schio"}})   # a stale copy
+got = json.load(open(cp, encoding="utf-8"))
+ok("a stale copy written last neither drops the other writer's game nor takes back its LiveStats id",
+   got.get("m1", {}).get("fls") == "2714381" and got["m1"].get("checked") == 1.0 and "m2" in got, got)
+with open(cp, "w", encoding="utf-8") as f:
+    f.write('{"m1": {"home": "trieste", "fls": "27')                                                           # a torn file
+FibaSiteScheduleAdapter._lbf_save(cp, {"m3": {"home": "sassari"}})
+ok("a file torn by an earlier writer is rebuilt from what this one holds, readable again",
+   json.load(open(cp, encoding="utf-8")) == {"m3": {"home": "sassari"}})
+ok("...and no temporary file is left beside it", os.listdir(os.path.dirname(cp)) == ["games.json"], os.listdir(os.path.dirname(cp)))
 
 print("\n-- the config")
 src = [s for s in json.load(open(os.path.join(HERE, "..", "..", "config", "ingest-sources.json"), encoding="utf-8"))["sources"]

@@ -155,6 +155,26 @@ c = fresh(ext=gone)
 left_out = c._dbl(dict(CFG, repo_root=ROOT2))
 ok("a game with no LiveStats id yet is left out until it has one (131 of 132)", len(left_out) == 131 and all(g.external_id != "2868126" for g in left_out), len(left_out))
 
+
+class Refused(Offline):
+    """One game's info answered '409 Conflict', as one 2024-25 game's did once (backfill_audit.py, 2026-10-14)."""
+    def _dbl_json(self, url):
+        if url.endswith("/game-info/c4hh5nig6t"):
+            import requests
+            self.asked.append(url)
+            raise requests.HTTPError(f"409 Client Error: Conflict for url: {url}")
+        return super()._dbl_json(url)
+
+
+F.FibaSiteScheduleAdapter._dbl_cache = {}
+ROOT3 = tempfile.mkdtemp()
+r = Refused()
+refused = r._dbl(dict(CFG, repo_root=ROOT3))
+ok("one game's info refused (409) is that game left out, not the season: 131 of 132",
+   len(refused) == 131 and all(g.external_id != "2868126" for g in refused), len(refused))
+ok("...and every id read before and after it is remembered; the refused one is asked again next pass",
+   len(r._idmap(dict(CFG, repo_root=ROOT3))) == 131 and "c4hh5nig6t" not in r._idmap(dict(CFG, repo_root=ROOT3)))
+
 print("\n-- one game, end to end")
 a = fresh()
 b = a.fetch("2868126", dict(CFG, _tipoff_at=g0.tipoff_at))

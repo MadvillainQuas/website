@@ -6,6 +6,8 @@ What this holds the discovery to:
   * NBL and ŽBL: one /zapasy page each, the same rows, on their own address ("czech_base");
   * 1. liga mužů: the competition found by name on the federation's competitions page, every part of it read
     (its two groups, later the rest), only the fixtures tab of each part, each fixture tagged with its group;
+  * an older season's page (2022-23 and before), which names it plain "1. liga" in the men's tab AND the women's:
+    the men's tab's;
   * a row that links its LiveStats webcast hands the id to the id map, so the game never needs the hop;
   * the hop, when it is needed, goes to the league's own site;
   * every source in the config that says site=czech is one of these shapes.
@@ -151,6 +153,54 @@ ok("the webcast ids the rows link are remembered", C._idmap(c1) == {"535540": "2
 D = Fake({"https://cz.basketball/soutez?y=2026": COMPS.replace("1. liga mužů", "Něco jiného")})
 ok("a competition the page does not name gives no fixtures (and says so), not an error",
    D.discover("x", cfg(code="CZ1L", czech_base="https://cz.basketball", czech_competition="1. liga mužů")) == [])
+
+print("\n-- an older season (a backfill): 2022-23 and before named it '1. liga', in the men's tab and in the women's")
+# the competitions page as served for ?y=2022 (2026-10-14), cut down: one pane per category tab, and the men's and
+# the women's second division both headed plain "1. liga" - the women's pane put FIRST here, so a bare-name match
+# anywhere on the page would take the women's league
+OLD_COMPS = """<div class="js-tab-wrapper"><div role="tablist">
+<a href="#tab-pane-1218" class="tab-link gamma" role="tab" id="tab-1218" aria-selected="true">muži</a>
+<a href="#tab-pane-1227" class="tab-link gamma" role="tab" id="tab-1227" aria-selected="false">U19</a>
+<a href="#tab-pane-1219" class="tab-link gamma pl-5" role="tab" id="tab-1219" aria-selected="false">ženy</a></div>
+<div class="d-none" role="tab-pane" aria-labelledby="tab-1219" id="tab-pane-1219"><div class="row">
+<h2 class="gamma">Chance ŽBL</h2><a href="/soutez/3817?p=7140" class="x"><div class="font-weight-bold mb-1">Základní část</div></a>
+<h2 class="gamma">1. liga</h2><a href="/soutez/3818?p=7144" class="x"><div class="font-weight-bold mb-1">Základní část</div></a>
+</div></div>
+<div role="tab-pane" aria-labelledby="tab-1218" id="tab-pane-1218"><div class="row">
+<h2 class="gamma">Kooperativa NBL</h2><a href="/soutez/3790?p=7100" class="x"><div class="font-weight-bold mb-1">Základní část</div></a>
+<h2 class="gamma">1. liga</h2>
+<div><a href="/soutez/3799?p=7135" class="text-primary"><div class="font-weight-bold mb-1">Skupina ZÁPAD</div></a></div>
+<div><a href="/soutez/3799?p=7136" class="text-primary"><div class="font-weight-bold mb-1">Skupina VÝCHOD</div></a></div>
+<div><a href="/soutez/3799?p=7559" class="text-primary"><div class="font-weight-bold mb-1">Play-off</div></a></div>
+<h2 class="gamma">2. liga</h2><a href="/soutez/3800?p=7140" class="x"><div class="font-weight-bold mb-1">Skupina A</div></a>
+</div></div>
+<div class="d-none" role="tab-pane" aria-labelledby="tab-1227" id="tab-pane-1227"><div class="row">
+<h2 class="gamma">1. liga</h2><a href="/soutez/3801?p=7150" class="x"><div class="font-weight-bold mb-1">Skupina U19</div></a>
+</div></div></div>"""
+ok("'1. liga mužů' is the men's tab's '1. liga': its three parts",
+   F.czech_competition_parts(OLD_COMPS, "1. liga mužů") == [("3799?p=7135", "Skupina ZÁPAD"), ("3799?p=7136", "Skupina VÝCHOD"),
+                                                            ("3799?p=7559", "Play-off")],
+   F.czech_competition_parts(OLD_COMPS, "1. liga mužů"))
+ok("'1. liga žen' is the women's tab's", F.czech_competition_parts(OLD_COMPS, "1. liga žen") == [("3818?p=7144", "Základní část")],
+   F.czech_competition_parts(OLD_COMPS, "1. liga žen"))
+ok("a name the page has in no form is None", F.czech_competition_parts(OLD_COMPS, "3. liga mužů") is None)
+ok("a name with no category word is matched exactly, never loosened",
+   F.czech_competition_parts(OLD_COMPS, "2. liga") == [("3800?p=7140", "Skupina A")]
+   and F.czech_competition_parts(OLD_COMPS, "Kooperativa") is None)
+ok("...and the men's category word never reaches into another tab (U19's '1. liga')",
+   ("3801?p=7150", "Skupina U19") not in (F.czech_competition_parts(OLD_COMPS, "1. liga mužů") or []))
+ok("the page as it is now (the name in full) is read as before", F.czech_competition_parts(COMPS, "1. liga mužů")
+   == [("5404?p=10223", "Skupina VÝCHOD"), ("5404?p=10224", "Skupina ZÁPAD"), ("5404?p=10300", "Skupina C 1.-6.")])
+OLD_WEST = cz_page(cz_row("388076", "skupina ZÁPAD", "Slavoj BK Litoměřice", "BK Jindřichův Hradec", "2022-10-01-18-00",
+                          "Hala 6. ZŠ", "2134775"))
+G = Fake({"https://cz.basketball/soutez?y=2022": OLD_COMPS, "https://cz.basketball/soutez/3799?p=7135": OLD_WEST,
+          "https://cz.basketball/soutez/3799?p=7136": cz_page(""), "https://cz.basketball/soutez/3799?p=7559": cz_page("")})
+g22 = G.discover("x", dict(c1, season="2022-23"))
+ok("a 2022-23 backfill reads the men's parts of that season and finds their fixtures",
+   [x.external_id for x in g22] == ["388076"] and G.asked[0] == "https://cz.basketball/soutez?y=2022"
+   and "https://cz.basketball/soutez/3818?p=7144" not in G.asked, (G.asked, [x.external_id for x in g22]))
+ok("...the group and the 2022 kick-off with it", g22 and g22[0].extra.get("home_group") == "Západ" and g22[0].tipoff_at == "2022-10-01T16:00:00Z",
+   g22 and (g22[0].extra, g22[0].tipoff_at))
 
 print("\n-- the hop to a game's own page, when a row did not link it")
 E = Fake({"https://cz.basketball/zapas/535541": '<a href="https://www.fibalivestats.com/webcast/CBFFE/2890777/">x</a>'})

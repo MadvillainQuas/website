@@ -1,0 +1,55 @@
+{
+ "schedule": {
+  "REGULAR_SEASON": {
+   "stage_id": 221,
+   "start": "2023-09-22T18:00:00",
+   "end": "2024-04-14T18:00:00",
+   "lines": {
+    "19 kolejka": {
+     "round_id": 1938,
+     "start": "2024-01-12T18:00:00",
+     "end": "2024-01-14T18:00:00",
+     "games": [
+      {
+       "league": {
+        "league_id": 3,
+        "name": "Pekao S.A. 1 Liga Mężczyzn",
+        "abbr": "1LM",
+        "group": null
+       },
+       "season": "2024",
+       "game_id": 10816,
+       "home_team": {
+        "score": 86,
+        "name": "MKKS Żak Koszalin",
+        "logo": "https://pulsbasketu.com/images/teams-logos/t4126_l3_s2024.png?v=14",
+        "logo_url": "https://s1.static.esor.pzkosz.pl/internalfiles/image/kluby/s26/350-350/4126.jpg",
+        "abbr": "ZAK",
+        "team_id": 80
+       },
+       "away_team": {
+        "score": 91,
+        "name": "AZS AGH Kraków",
+        "logo": "https://pulsbasketu.com/images/teams-logos/t278_l3_s2024.png?v=14",
+        "logo_url": "https://s1.static.esor.pzkosz.pl/internalfiles/image/kluby/s24/350-350/7604.png",
+        "abbr": "AGH",
+        "team_id": 72
+       },
+       "date": "2024-01-13T20:00:00",
+       "finished": true,
+       "in_progress": false,
+       "comment": "",
+       "overtimes_number": 0,
+       "round": "19 kolejka",
+       "stage": "Runda Zasadnicza",
+       "tv_channel": null,
+       "youtube_url": null,
+       "external_game_id": null
+      }
+     ]
+    }
+   }
+  }
+ },
+ "game_date_changes": []
+}

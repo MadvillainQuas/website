@@ -141,6 +141,7 @@ def fresh(sched=None, feeds=None, redirects=None, idmap=None):
     Offline.feeds = feeds or {}
     Offline.nkl_gap_s = 0.0
     F.FibaSiteScheduleAdapter._nkl_cache = (0.0, [])
+    F.FibaSiteScheduleAdapter._nkl_past = {}
     F.FibaSiteScheduleAdapter._nkl_asked = {}
     F.FibaSiteScheduleAdapter._nkl_last = 0.0
     FibaLiveStatsAdapter._pipeline = False
@@ -194,7 +195,11 @@ ok("125745 Alytaus Patriotai v Kauno Žalgiris-2: codes 3386 / 266, 28 Sep 18:15
 ok("every crest is https", all((g.extra["home_logo"] or "").startswith("https://nkl.lt/") for g in reg))
 ok("nothing played yet: every game scheduled", {g.status for g in reg} == {"scheduled"})
 ok("the play-off source finds nothing yet", list(a.discover("https://nkl.lt/matches/#playoffs", dict(cfg, stage="playoffs"))) == [])
+# an older season is asked for by its own address; a page that answers with this season's games instead gives none
+Offline.pages[F.NKL_MATCHES + "&season=2025"] = MATCHES
 ok("another season's games are not this season's", list(a.discover("x", dict(cfg, season="2025-26"))) == [])
+ok("...and that season was asked for as the site's season menu asks (?season=2025)",
+   F.NKL_MATCHES + "&season=2025" in Offline.requests_made, Offline.requests_made)
 ok("the whole season is one request", Offline.requests_made.count(F.NKL_MATCHES) == 1, Offline.requests_made)
 
 # the arenas as nkl.lt served them on 2026-10-01: UTF-8 read as Windows-1252
@@ -229,7 +234,7 @@ home_box, away_box = mp["teams"]
 ok("both clubs' box scores: 12 + 12 players, home first", (home_box["name"], len(home_box["players"]), away_box["name"], len(away_box["players"]))
    == ("Alytaus Patriotai", 12, "Kauno Žalgiris-2", 12), (home_box["name"], away_box["name"]))
 ok("Karolis Guščikas: #10, 29:13, 17 pts, 7/11 (7/11 two, 0/0 three), 3/8 FT, 18 reb, 3 ast, eff 29, nkl.lt id 7053",
-   home_box["players"][0] == {"id": "7053", "name": "Karolis Guščikas", "shirt": "10", "min": "29:13", "pts": 17, "fg": (7, 11),
+   home_box["players"][0] == {"id": "7053", "name": "Karolis Guščikas", "starter": False, "shirt": "10", "min": "29:13", "pts": 17, "fg": (7, 11),
                               "fg2": (7, 11), "fg3": (0, 0), "ft": (3, 8), "reb": 18, "ast": 3, "stl": 0, "tov": 0, "blk": 0, "eff": 29},
    home_box["players"][0])
 names = [p["name"] for t in mp["teams"] for p in t["players"]]
@@ -482,6 +487,54 @@ sb = Sb([{"id": f"g{i}", "status": "scheduled", "home_score": None, "away_score"
 ok("...a schedule that seems to have lost dozens of games is a page that did not load: nothing removed",
    RI.retire_withdrawn(sb, SRC, Says([str(i) for i in range(30)]), many) == [] and sb.deletes == [])
 ok("...and an adapter that cannot say (no withdrawn()) removes nothing", RI.retire_withdrawn(Sb([]), SRC, object(), many) == [])
+
+print("\n-- an older season (a backfill): 2024-25, off ?season=2024 and each game's own page")
+# matches-2024.html: 7 of the season's 338 games as served 2026-10-14; match-117202.html: one of them, finished 82-108
+OLD, OLD_MATCH = text("matches-2024.html"), text("match-117202.html")
+a, cfg = fresh()
+Offline.pages[F.NKL_MATCHES + "&season=2024"] = OLD
+Offline.pages[page("117202")] = OLD_MATCH
+old = dict(cfg, season="2024-25")
+oreg = list(a.discover("x", dict(old, stage="regular")))
+opo = list(a.discover("x", dict(old, stage="playoffs")))
+ok("its regular season is both regular-season stages: 3 games of the first, 2 of 'II etapas' (stage type 3)",
+   sorted(g.external_id for g in oreg) == ["117023", "117029", "117202", "120198", "120199"], [g.external_id for g in oreg])
+ok("its play-offs are the play-off stage (type 2) alone", sorted(g.external_id for g in opo) == ["120342", "120343"],
+   [g.external_id for g in opo])
+ok("one request for that season, for both sources, and never the season being played",
+   Offline.requests_made.count(F.NKL_MATCHES + "&season=2024") == 1 and F.NKL_MATCHES not in Offline.requests_made,
+   Offline.requests_made)
+ok("every game is final", {g.status for g in oreg + opo} == {"final"})
+ok("'Nenustatyta' (not set) is no arena", all(g.extra["venue"] is None for g in oreg + opo), [g.extra["venue"] for g in oreg])
+ok("the stages' names are read as Lithuanian: 'Atkrintamosios varžybos', 'Reguliarusis sezonas – II etapas'",
+   all(g.extra["round"].startswith("Atkrintamosios varžybos") for g in opo)
+   and any(g.extra["round"].startswith("Reguliarusis sezonas – II etapas") for g in oreg),
+   [g.extra["round"] for g in oreg + opo])
+og = next(g for g in oreg if g.external_id == "117202")
+ok("117202 Joniškio Delikatesas v Telšių Telšiai: 14 Dec 2024 16:00 in Vilnius is 14:00 UTC, codes 246 / 997",
+   (og.home_name, og.away_name, og.tipoff_at, og.extra["home_code"], og.extra["away_code"])
+   == ("Joniškio Delikatesas", "Telšių Telšiai", "2024-12-14T14:00:00Z", "246", "997"), og)
+Offline.requests_made = []
+ob = a.fetch("117202", dict(old, stage="regular", _tipoff_at=og.tipoff_at))
+ok("a finished game of an older season is the site's own box score: no LiveStats id is guessed for it "
+   "(this season's offset names some other game), the game's page is the one request",
+   ob is not None and Offline.requests_made == [page("117202")], Offline.requests_made)
+ok("...published as a result, 82-108, under nkl.lt's clubs",
+   ob is not None and ob.translate is False and ob.status == "final"
+   and (ob.team["home"]["points"], ob.team["away"]["points"]) == (82, 108)
+   and (ob.team["home"]["team_code"], ob.team["away"]["team_code"]) == ("246", "997"),
+   ob and (ob.translate, ob.status, ob.team["home"].get("points"), ob.team["home"].get("team_code")))
+ok("...a starter's star is his role, not his name: five starters a side, no '*' in any name",
+   ob is not None and all(sum(int(r["starter"]) for r in ob.box[s]) == 5 for s in ("home", "away"))
+   and not any("*" in r["player_name"] for s in ("home", "away") for r in ob.box[s]),
+   ob and [(r["player_name"], r["starter"]) for r in ob.box["home"]])
+ok("...8 and 10 players, whose points make the score",
+   ob is not None and (len(ob.box["home"]), len(ob.box["away"])) == (8, 10)
+   and all(sum(float(r["sPoints"]) for r in ob.box[s]) == float(ob.team[s]["points"]) for s in ("home", "away")),
+   ob and (len(ob.box["home"]), len(ob.box["away"])))
+ok("...and no arena where the site has none", ob is not None and ob.venue is None, ob and ob.venue)
+ok("withdrawn() in that season reads that season's list: a stored game it lists is not gone",
+   a.withdrawn(old, {"117202": {"external_id": "117202", "tipoff_at": "2024-12-14T14:00:00+00:00"}}) == [])
 
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

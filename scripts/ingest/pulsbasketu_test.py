@@ -58,6 +58,8 @@ class Offline(F.FibaSiteScheduleAdapter):
         self.asked.append(url)
         if "/league-seasons/1lm/games?season=2027" in url:
             return load("1lm-2027.json")
+        if "/league-seasons/1lm/games?season=2024" in url:
+            return load("1lm-2024.json")             # 2023-24, cut to the one game below
         if "/league-seasons/" in url:
             return None                          # a league with no such season: the site's 404
         gid = url.rsplit("/", 1)[-1]
@@ -152,6 +154,49 @@ a2 = fresh()
 a2.fetch("37587", dict(cfg, _tipoff_at=g0.tipoff_at))
 ok("a remembered id costs no request to Puls Basketu for the game",
    not any(u.endswith("/games/37587") for u in a2.asked), a2.asked)
+
+print("\n-- a season scored before LiveStats (a backfill): 2023-24, from Puls' own box score")
+# game-10816.json: GET /games/10816 as served 2026-10-14 (MKKS Żak Koszalin 86-91 AZS AGH Kraków, 13 Jan 2024), with
+# fiba_game_id null - as on every 1LM game sampled from 2020-21 to 2023-24; 1lm-2024.json: that season's list, cut to it
+old = dict(CFG, repo_root=tempfile.mkdtemp(), stage="regular", season="2023-24")
+a = fresh()
+og = a.discover("", old)
+ok("the season is asked for by its end year (2024) and lists its game, final",
+   [g.external_id for g in og] == ["10816"] and og[0].status == "final"
+   and F.PULS_API + "/league-seasons/1lm/games?season=2024" in a.asked, (a.asked, og))
+a.asked = []
+ob = a.fetch("10816", dict(old, _tipoff_at=og[0].tipoff_at))
+ok("no LiveStats id: Puls' own box score, and LiveStats is never asked",
+   ob is not None and not any("geniussports" in u for u in a.asked)
+   and a.asked == [F.PULS_API + "/games/10816"], a.asked)
+ok("...published as a result (no play-by-play to replay), final, 86-91",
+   ob is not None and ob.translate is False and ob.status == "final"
+   and (ob.team["home"]["points"], ob.team["away"]["points"]) == (86, 91),
+   ob and (ob.translate, ob.status, ob.team["home"].get("points"), ob.team["away"].get("points")))
+ok("...the clubs as the fixture list has them: Puls' ids and names, its abbreviations",
+   ob is not None and (ob.team["home"]["team_code"], ob.team["away"]["team_code"], ob.home_name, ob.away_name)
+   == ("80", "72", "MKKS Żak Koszalin", "AZS AGH Kraków") and (ob.raw["tm"]["1"]["shortName"], ob.raw["tm"]["2"]["shortName"]) == ("ZAK", "AGH"),
+   ob and (ob.team["home"].get("team_code"), ob.home_name, ob.raw["tm"]["1"].get("shortName")))
+ok("...12 and 10 players, keyed on Puls' player ids, whose points make the score, five starters a side",
+   ob is not None and (len(ob.box["home"]), len(ob.box["away"])) == (12, 10)
+   and all(sum(float(r["sPoints"]) for r in ob.box[s]) == float(ob.team[s]["points"]) for s in ("home", "away"))
+   and all(sum(int(r["starter"]) for r in ob.box[s]) == 5 for s in ("home", "away")),
+   ob and (len(ob.box["home"]), len(ob.box["away"])))
+pw = ob and next((r for r in ob.box["home"] if r["player_id"] == "1290"), None)
+ok("...Szymon Pawlak: 27:54, 20 points, 5/9 two, 0/3 three, 10/11 FT, 5 rebounds (2 off), 5 assists",
+   pw is not None and (pw["sMinutes"], pw["sPoints"], pw["sTwoPointersMade"], pw["sTwoPointersAttempted"], pw["sThreePointersAttempted"],
+                       pw["sFreeThrowsMade"], pw["sFreeThrowsAttempted"], pw["sReboundsTotal"], pw["sReboundsOffensive"], pw["sAssists"])
+   == ("27:54", 20, 5, 9, 3, 10, 11, 5, 2, 5), pw)
+ok("...the club's line is the team's (44 rebounds: the players' 39 and 5 of the team's own), quarters 19-12-21-34",
+   ob is not None and ob.raw["tm"]["1"]["tot_sReboundsTotal"] == 44
+   and [ob.raw["tm"]["1"].get(f"p{i}_score") for i in range(1, 5)] == [19, 12, 21, 34],
+   ob and (ob.raw["tm"]["1"].get("tot_sReboundsTotal"), [ob.raw["tm"]["1"].get(f"p{i}_score") for i in range(1, 5)]))
+ok("...and nothing is remembered as its LiveStats id", "10816" not in a._idmap(old), a._idmap(old))
+rep = load("game-10816.json")
+ok("a walkover, a points-only game or one not finished has no box score to publish",
+   all(F.puls_payload(dict(rep, **kw)) is None for kw in ({"walkover": True}, {"points_only": True}, {"finished": False})))
+ok("the season being played never falls back to it: a game with no id there is one not set up YET",
+   fresh().fetch("37594", dict(CFG, repo_root=tempfile.mkdtemp(), stage="regular")) is None)
 
 print("\n-- the registry")
 ok("the row's adapter resolves", isinstance(get_adapter("fiba_site_schedule"), F.FibaSiteScheduleAdapter))
