@@ -522,7 +522,7 @@ function computeChart(pool, cat, ch, opts) {
     const g = regress(xs, yv); if (g) g.xlog = xlog, g.ylog = ylog; return g;
   };
   if (opts.trend) { trend.push(tr(null, 'y')); if (overlay) trend.push(tr(null, 'y2')); }
-  return { cx, cy, cy2, xm, ym, overlay, xlog, ylog, pts, noValue, logDropped, tx, ty, ty2, rawX: rx, rawY: ry, rawY2: ry2, n: pool.length,
+  return { cx, cy, cy2, xm, ym, overlay, xlog, ylog, fx: flipOf(cx, xm), fy: overlay ? false : flipOf(cy, ym), pts, noValue, logDropped, tx, ty, ty2, rawX: rx, rawY: ry, rawY2: ry2, n: pool.length,
     trend: trend.filter(Boolean) };
 }
 
@@ -826,18 +826,21 @@ function labelText(ent, kind, names, overrides) {
 }
 
 /* The quadrant a chart calls good: both statistics on their better side. 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right. */
+/* BETTER IS ALWAYS UP AND RIGHT (2026-10-14: a defensive rating read "higher is higher" beside an offensive one). A lower-is-better
+   statistic plotted as it is (ABS, the difference from the average, % of it) runs its axis the other way: the smallest value at
+   the top or the right, the ticks still the real figures. z-scores and percentiles are turned already (transformValues). */
+function flipOf(col, mode) { return !!(col && col.low) && mode !== 'z' && mode !== 'r'; }
 function goodQuadrant(cx, cy, xm, ym) {
-  const xLow = (xm === 'z' || xm === 'r') ? false : !!cx.low, yLow = (ym === 'z' || ym === 'r') ? false : !!cy.low;
-  return (yLow ? 2 : 0) + (xLow ? 0 : 1);
+  return 1;
 }
 /* the words for an axis, by mode */
 function axisTitleText(col, mode) {
   const t = col.title || col.name || col.label;
-  if (mode === 'd') return t + ' − league avg';
-  if (mode === 'p') return t + ': % vs league avg';
+  if (mode === 'd') return t + ' − league avg' + (col.low ? ' (reversed: lower is better)' : '');
+  if (mode === 'p') return t + ': % vs league avg' + (col.low ? ' (reversed: lower is better)' : '');
   if (mode === 'z') return t + ': z-score' + (col.low ? ' (flipped: lower is better)' : '');
   if (mode === 'r') return t + ': percentile' + (col.low ? ' (flipped: lower is better)' : '');
-  return t;
+  return t + (col.low ? ' (reversed: lower is better)' : '');
 }
 
 /* ------------------------------------------------------------------------- one chart --- */
@@ -898,8 +901,10 @@ function buildChart(cfg) {
   const x0 = m.l, x1 = W - m.r, y0 = m.t, y1 = H - m.b;
   const pw = Math.max(40, x1 - x0), ph = Math.max(40, y1 - y0);
   const lin = (v, a, b, p0, p1) => p0 + (v - a) / (b - a) * (p1 - p0);
-  const X = v => D.xlog ? lin(Math.log10(v), Math.log10(xr[0]), Math.log10(xr[1]), x0, x0 + pw) : lin(v, xr[0], xr[1], x0, x0 + pw);
-  const Y = v => D.ylog ? lin(Math.log10(v), Math.log10(yr[0]), Math.log10(yr[1]), y0 + ph, y0) : lin(v, yr[0], yr[1], y0 + ph, y0);
+  const fx = !!D.fx, fy = !!D.fy;
+  const xa = fx ? x0 + pw : x0, xb = fx ? x0 : x0 + pw, ya = fy ? y0 : y0 + ph, yb = fy ? y0 + ph : y0;
+  const X = v => D.xlog ? lin(Math.log10(v), Math.log10(xr[0]), Math.log10(xr[1]), xa, xb) : lin(v, xr[0], xr[1], xa, xb);
+  const Y = v => D.ylog ? lin(Math.log10(v), Math.log10(yr[0]), Math.log10(yr[1]), ya, yb) : lin(v, yr[0], yr[1], ya, yb);
   const clipId = uid + '-clip';
   const defs = S('defs'); g.appendChild(defs);
   defs.appendChild(S('clipPath', { id: clipId }, null)).appendChild(S('rect', { x: x0, y: y0 - 1, width: pw, height: ph + 2 }));
@@ -1112,7 +1117,7 @@ function buildChart(cfg) {
   {
     /* the direction that is better, in words and an arrow: at the foot of X, up the side of Y (both turned round for a
        lower-is-better statistic; z-scores and percentiles are already turned, so their arrows always point up and right) */
-    const eff = (mode, col) => (mode === 'z' || mode === 'r') ? false : !!col.low;
+    const eff = () => false;      // every axis runs better-upwards now (flipOf)
     const xLowE = eff(D.xm, D.cx), yLowE = D.overlay ? false : eff(D.ym, D.cy);
     const wB = measureFn(small, FONT.micro, 400)('better');
     const tri = (x, y, dir) => S('path', { d: dir > 0 ? 'M0 -3.4L5.4 0L0 3.4Z' : 'M0 -3.4L-5.4 0L0 3.4Z', fill: T.good, transform: 'translate(' + num1(x) + ' ' + num1(y) + ') scale(' + fs + ')' });
@@ -1134,7 +1139,7 @@ function buildChart(cfg) {
     cap(0, x0 + 6, y0 + 13 * fs + 8 * fs, 'start'); cap(1, x0 + pw - 6, y0 + 13 * fs + 8 * fs, 'end');
     cap(2, x0 + 6, y0 + ph - 7 * fs, 'start'); cap(3, x0 + pw - 6, y0 + ph - 7 * fs, 'end');
   }
-  return { g, hits, plot: { x0, y0, x1: x0 + pw, y1: y0 + ph, w: pw, h: ph }, X, Y, xr, yr, auto, xt, yt, labelled, hiddenLabels, wanted, legend, margins: m, R, clipId };
+  return { g, hits, plot: { x0, y0, x1: x0 + pw, y1: y0 + ph, w: pw, h: ph }, X, Y, xr, yr, auto, fx, fy, xt, yt, labelled, hiddenLabels, wanted, legend, margins: m, R, clipId };
 }
 const midLabel = (D, ax, v) => {
   const mode = ax === 'x' ? D.xm : (D.overlay ? 'z' : D.ym), c = ax === 'x' ? D.cx : D.cy;
@@ -1147,8 +1152,9 @@ function quadrantTexts(D, texts) {
   const xl = D.cx.label, yl = D.overlay ? 'both' : D.cy.label;
   const auto = i => {
     const right = (i & 1) === 1, top = i < 2;
-    if (D.overlay) return (right ? 'high ' : 'low ') + xl + ' · ' + (top ? 'above' : 'below') + ' avg';
-    return (right ? 'high ' : 'low ') + xl + ' · ' + (top ? 'high ' : 'low ') + yl;
+    const xHi = right !== !!D.fx, yHi = top !== !!D.fy;
+    if (D.overlay) return (xHi ? 'high ' : 'low ') + xl + ' · ' + (top ? 'above' : 'below') + ' avg';
+    return (xHi ? 'high ' : 'low ') + xl + ' · ' + (yHi ? 'high ' : 'low ') + yl;
   };
   return [0, 1, 2, 3].map(i => (texts && texts['aq' + i]) || auto(i));
 }
@@ -2175,7 +2181,7 @@ async function mountAsync(opts) {
       return log ? [Math.pow(10, n0), Math.pow(10, n1)] : [n0, n1];
     };
     fx = fx == null ? 0.5 : fx; fy = fy == null ? 0.5 : fy;
-    const nx = ax(r.x[0], r.x[1], fx, D.xlog, b.auto.x), ny = ax(r.y[0], r.y[1], 1 - fy, D.ylog, b.auto.y);
+    const nx = ax(r.x[0], r.x[1], b.fx ? 1 - fx : fx, D.xlog, b.auto.x), ny = ax(r.y[0], r.y[1], b.fy ? fy : 1 - fy, D.ylog, b.auto.y);
     views[ci] = (nx || ny) ? { x: nx || b.auto.x, y: ny || b.auto.y } : {};
     if (views[ci].x && !nx) views[ci].x = null;
     if (views[ci].y && !ny) views[ci].y = null;
@@ -2185,7 +2191,7 @@ async function mountAsync(opts) {
   function panBy(ci, dx, dy, base) {
     const c = cards[ci], D = charts[ci], b = c.built, p = b.plot;
     const sh = (lo, hi, d, len, log) => { const a = log ? Math.log10(lo) : lo, z = log ? Math.log10(hi) : hi, s = d / len * (z - a); return log ? [Math.pow(10, a - s), Math.pow(10, z - s)] : [a - s, z - s]; };
-    const x = sh(base.x[0], base.x[1], dx, p.w, D.xlog), y = sh(base.y[0], base.y[1], -dy, p.h, D.ylog);
+    const x = sh(base.x[0], base.x[1], b.fx ? -dx : dx, p.w, D.xlog), y = sh(base.y[0], base.y[1], b.fy ? dy : -dy, p.h, D.ylog);
     views[ci] = { x, y };
     interacting = true; clearTimeout(interT); interT = setTimeout(() => { interacting = false; scheduleDraw(ci); }, 160);
     scheduleDraw(ci);
@@ -2586,7 +2592,7 @@ return {
   mount, current: () => CURRENT, MODES, TEXT_CAPS, TEXT_KEYS, EXPORT_SIZES, PRESET_DEFS, THEMES,
   transformValues, rankOf, regress, sanitizeText, defaultState, sanitizeState, compactState, encodeState, decodeState, withQuery, readQuery,
   matchEntities, fold, buildCatalogue, columnState, groupState, usableKey, fitState, presetsFor, presetState, matchPreset,
-  computeChart, deriveRow, needsZones, niceTicks, logTicks, axisRange, tickDp, fmtMode, sizeScale, markColour, inkOn, parseHex, contrast,
+  computeChart, flipOf, deriveRow, needsZones, niceTicks, logTicks, axisRange, tickDp, fmtMode, sizeScale, markColour, inkOn, parseHex, contrast,
   placeNames, basicPlaceLabels, anchorFor, neighbourInDirection, wrapLines, exportLayout, exportPixels, exportFileName, labelText, quadrantTexts,
   axisTitleText, goodQuadrant, toB64u, fromB64u
 };

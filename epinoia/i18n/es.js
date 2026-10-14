@@ -1972,7 +1972,17 @@
       'No results for the leagues you picked.': 'No hay resultados de las ligas elegidas.',
       'No live games for the leagues you picked.': 'No hay partidos en directo de las ligas elegidas.',
       'No games to come for the leagues you picked.': 'No hay próximos partidos de las ligas elegidas.',
-      'Latest news': 'Últimas noticias'
+      'Latest news': 'Últimas noticias',
+      'Refine': 'Afinar',
+      'Charts': 'Gráficos',
+      '+ combine': '+ combinar',
+      'combine: on': 'combinar: sí',
+      'Show several views in the table at once: press COMBINE, then each view you want': 'Varias vistas a la vez en la tabla: pulsa COMBINAR y luego cada vista que quieras',
+      'No players to chart yet: load a set-up, or loosen the table’s filters.': 'Aún no hay jugadores para el gráfico: carga una configuración o afloja los filtros de la tabla.',
+      'Opening the chart lab…': 'Abriendo el laboratorio de gráficos…',
+      'The chart lab could not be loaded.': 'No se pudo cargar el laboratorio de gráficos.',
+      'The graphic maker could not be loaded.': 'No se pudo cargar el creador de gráficos.',
+      'Your scout as a table or as charts': 'Tu scouting como tabla o como gráficos'
     },
 
     ctx: {

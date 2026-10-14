@@ -883,6 +883,18 @@ function render(opts) {
     return cols.length > 0 && cols.every(c => premium(c.k));
   };
   if (presetLocked(preset)) preset = presets[0][0];
+  /* QUICK COMBINE (opts.combine; global scouting, 2026-10-14: "have on/off and advanced on the table at the same time"):
+     with COMBINE pressed, the views are tick boxes: each one pressed adds its columns after the first one's, in its own
+     order. `also` is the views added to `preset` (never "everything", never a locked one). */
+  const COMBINE = !!opts.combine;
+  let combining = false;
+  let also = [];
+  if (COMBINE && Array.isArray(S0.also)) {
+    also = S0.also.map(String).filter((k, i, a) => k !== preset && k !== '*' && a.indexOf(k) === i &&
+      presets.some(p => p[0] === k) && !presetLocked(k)).slice(0, 6);
+    combining = also.length > 0;
+  }
+  if (preset === '*') also = [];
 
   /* the groups are cut over the whole table once, not per row (season.js positionGroups) --
      or once per league when ranking within league, since a third of one league's players
@@ -931,7 +943,15 @@ function render(opts) {
     (COMP_COL && k === COMP_COL.k ? COMP_COL : null) || BIO_COLS.find(x => x.k === k) || null;
 
   const idCols = CAT.filter(c => c.g.includes('id'));
-  const inPreset = c => preset === '*' ? !c.g.includes('id') : c.g.includes(preset);
+  const inPreset = c => preset === '*' ? !c.g.includes('id') : (c.g.includes(preset) || also.some(k => c.g.includes(k)));
+  /* a column's place: the first view's own order, then each added view's, in the order they were added */
+  const placeOf = (c, i) => {
+    if (c.g.includes(preset) || preset === '*' || !also.length) return c.ord && c.ord[preset] != null ? c.ord[preset] : 1000 + i;
+    const j = also.findIndex(k => c.g.includes(k));
+    if (j < 0) return 1000 + i;
+    const k = also[j];
+    return 100000 * (j + 1) + (c.ord && c.ord[k] != null ? c.ord[k] : 1000 + i);
+  };
   const visible = () => {
     /* rank and name, then AGE / HT / WT, then the rest of the identity columns (the club), then the preset */
     const out = idCols.slice(0, 2).concat(
@@ -941,8 +961,7 @@ function render(opts) {
       CAT.filter(c => !c.g.includes('id') && !absent(c.k) &&
                       ((inPreset(c) && !removed.has(c.k)) || extra.has(c.k)))
          .map((c, i) => [c, i])
-         .sort((a, b) => ((a[0].ord && a[0].ord[preset] != null ? a[0].ord[preset] : 1000 + a[1]) -
-                          (b[0].ord && b[0].ord[preset] != null ? b[0].ord[preset] : 1000 + b[1])))
+         .sort((a, b) => placeOf(a[0], a[1]) - placeOf(b[0], b[1]))
          .map(x => x[0]));
     if (LEAGUE_COL) {
       const gp = out.findIndex(c => c.k === 'gp');
@@ -1409,9 +1428,24 @@ function render(opts) {
   };
   function drawPills() {
     pills.textContent = '';
+    pills.classList.toggle('combining', combining);
+    if (COMBINE) {
+      const cb = el('button', 'ft-pill ft-combine' + (combining ? ' on' : ''), combining ? 'combine: on' : '+ combine');
+      cb.type = 'button';
+      cb.setAttribute('aria-pressed', combining ? 'true' : 'false');
+      cb.title = 'Show several views in the table at once: press COMBINE, then each view you want';
+      cb.addEventListener('click', () => {
+        combining = !combining;
+        if (!combining && also.length) { also = []; extra.clear(); removed.clear(); drawDrawer(); draw(); emit(); }
+        drawPills();
+      });
+      pills.appendChild(cb);
+    }
     presets.forEach(([key, label]) => {
       const shut = presetLocked(key);
-      const b = el('button', 'ft-pill' + (key === preset ? ' on' : '') + (shut ? ' locked' : ''), label);
+      const isOn = key === preset || also.indexOf(key) !== -1;
+      const b = el('button', 'ft-pill' + (isOn ? ' on' : '') + (shut ? ' locked' : ''), label);
+      if (combining) b.setAttribute('aria-pressed', isOn ? 'true' : 'false');
       b.type = 'button'; b.dataset.g = key;
       if (shut) { b.appendChild(lockMark()); b.title = label + ' — part of Epinoia analytics';
         /* the stop-sign cursor and the popup, but the press still opens the teaser (passive) */
@@ -1419,8 +1453,14 @@ function render(opts) {
       b.addEventListener('click', () => {
         if (presetLocked(key)) { showTeaser(key, label); return; }
         hideTeaser();
-        preset = key; extra.clear(); removed.clear();
-        pills.querySelectorAll('.ft-pill').forEach(p => p.classList.toggle('on', p.dataset.g === key));
+        if (combining && key !== '*' && preset !== '*') {
+          /* a tick box: on adds the view's columns, off takes them away (the last one stays) */
+          if (key === preset) { if (!also.length) return; preset = also.shift(); }
+          else if (also.indexOf(key) !== -1) also = also.filter(k => k !== key);
+          else also = also.concat([key]);
+        } else { preset = key; also = []; }
+        extra.clear(); removed.clear();
+        drawPills();
         drawDrawer(); draw(); revealPill(); emit();
       });
       pills.appendChild(b);
@@ -2171,13 +2211,16 @@ function render(opts) {
     if (now === locked && sig === lockKey) return false;
     locked = now; lockKey = sig;
     const was = preset, nf = filters.length;
-    if (presetLocked(preset)) { preset = presets[0][0]; extra.clear(); removed.clear(); }
+    if (presetLocked(preset)) { preset = also.find(k => !presetLocked(k)) || presets[0][0]; also = also.filter(k => k !== preset); extra.clear(); removed.clear(); }
+    const alsoWas = also.length;
+    also = also.filter(k => !presetLocked(k));
+    if (also.length !== alsoWas) { extra.clear(); removed.clear(); }
     filters = filters.filter(f => !absent(f.k));
     hideTeaser(); drawPills(); drawDrawer(); lockCsv();
     if (filt && !filt.hidden) drawFilters();
     /* the lock took the preset or a filter away: a page keeping the state in its URL must hear
        it, or a reload restores the view the table no longer shows */
-    if (preset !== was || filters.length !== nf) emit();
+    if (preset !== was || filters.length !== nf || also.length !== alsoWas) emit();
     return true;
   }
   followAccess(host, () => { if (relock()) draw(); });
@@ -2185,6 +2228,7 @@ function render(opts) {
   function getState() {
     return {
       sort: sortKey, dir: sortDir, preset,
+      also: also.slice(),
       search: String(q.value || '').trim(),
       filters: filters.filter(f => f.x != null).map(f => ({ k: f.k, op: f.op, mode: f.mode, x: f.x })),
       league: leaguePick, team: teamPick, withinLeague,

@@ -142,7 +142,7 @@ console.log('\nURL state');
   eq('parameters the page does not own are kept', S.writeState(S.DEFAULTS, '?source=pwa'), '?source=pwa');
 
   const st = {
-    sort: 'bpm', dir: 1, preset: 'shooting', search: 'Leicester',
+    sort: 'bpm', dir: 1, preset: 'shooting', also: ['onoff', 'advanced'], search: 'Leicester',
     filters: [{ k: 'p3_pct', op: 'ge', mode: 'pct', x: 80 }, { k: 'p3a_pg', op: 'ge', mode: 'val', x: 3 },
               { k: 'topg', op: 'le', mode: 'val', x: 1.5 }],
     league: '6f1c0f7e-1111-4a2b-9c3d-000000000001', team: '42', withinLeague: false, page: 3, qualified: false
@@ -150,6 +150,8 @@ console.log('\nURL state');
   const qs = S.writeState(st, '?source=pwa');
   ok('the written query keeps source=pwa', new URLSearchParams(qs).get('source') === 'pwa', qs);
   eq('a full state round trips through the URL', S.readState(qs), st);
+  ok('the combined views ride in ?with=', new URLSearchParams(qs).get('with') === 'onoff,advanced', qs);
+  eq('an odd view key in ?with= is dropped', S.readState('?with=onoff,<x>,advanced').also, ['onoff', 'advanced']);
 
   const st2 = Object.assign({}, S.DEFAULTS, { sort: 'ts', filters: [] });
   eq('a state differing only in sort round trips', S.readState(S.writeState(st2, '')), st2);
@@ -186,6 +188,10 @@ console.log('\nthe table options');
   eq('the player link uses playerId, not the league-scoped id',
      o.playerHref({ id: 'L1:p 9', playerId: 'p 9' }), '../p/?p=p%209');
   ok('no qualified override: the table switches it on by default', !('qualified' in o));
+  ok('quick combine is on', o.combine === true);
+  const gf = () => {}, dr = () => {};
+  const o2 = S.tableOptions({ host: 'H', rows: [1], graphic: gf, onDraw: dr });
+  ok('the graphic button and the draw hook are passed through', o2.graphic === gf && o2.onDraw === dr && o.graphic === null);
 }
 
 /* ----------------------------------------------------------- compare input --- */
@@ -379,12 +385,12 @@ console.log('\nthe page boots');
   ok('the URL is written back from the state the table drew', log.urls.length > log.urlsAtRender);
   ok('the skeleton is gone', !nodes['#tbl'].find(n => n.className === skeleton));
 
-  o.onState({ sort: 'ts', dir: -1, preset: 'basic', search: '', filters: [{ k: 'ts', op: 'ge', mode: 'pct', x: 75 }],
+  o.onState({ sort: 'ts', dir: -1, preset: 'basic', also: [], search: '', filters: [{ k: 'ts', op: 'ge', mode: 'pct', x: 75 }],
     league: 'L1', team: '', withinLeague: true, page: 2, qualified: true });
   const url = log.urls[log.urls.length - 1] || '';
   ok('onState writes the URL with replaceState', url.startsWith('/epinoia/scouting/?'), url);
   eq('and the URL reads back as that state', S.readState(url.slice(url.indexOf('?'))),
-     { sort: 'ts', dir: -1, preset: 'basic', search: '', filters: [{ k: 'ts', op: 'ge', mode: 'pct', x: 75 }],
+     { sort: 'ts', dir: -1, preset: 'basic', also: [], search: '', filters: [{ k: 'ts', op: 'ge', mode: 'pct', x: 75 }],
        league: 'L1', team: '', withinLeague: true, page: 2, qualified: true });
   ok('source=pwa survives', /source=pwa/.test(url), url);
 

@@ -1970,7 +1970,17 @@
       'No results for the leagues you picked.': '選んだリーグの結果はありません。',
       'No live games for the leagues you picked.': '選んだリーグのライブ中の試合はありません。',
       'No games to come for the leagues you picked.': '選んだリーグの今後の試合はありません。',
-      'Latest news': '最新ニュース'
+      'Latest news': '最新ニュース',
+      'Refine': '絞り込み',
+      'Charts': 'チャート',
+      '+ combine': '+ 組み合わせ',
+      'combine: on': '組み合わせ: オン',
+      'Show several views in the table at once: press COMBINE, then each view you want': '複数の表示を同時に表に出す：「組み合わせ」を押してから、見たい表示を選ぶ',
+      'No players to chart yet: load a set-up, or loosen the table’s filters.': 'まだチャートにする選手がいません。設定を読み込むか、表のフィルターを緩めてください。',
+      'Opening the chart lab…': 'チャートラボを開いています…',
+      'The chart lab could not be loaded.': 'チャートラボを読み込めませんでした。',
+      'The graphic maker could not be loaded.': 'グラフィック作成ツールを読み込めませんでした。',
+      'Your scout as a table or as charts': 'スカウトを表またはチャートで'
     },
 
     ctx: {

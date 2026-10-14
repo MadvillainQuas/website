@@ -62,10 +62,11 @@ const PAGE_SIZE = 50;
    the URL is shared in chats; the defaults are the table's own, so an untouched page has
    a clean URL. */
 const DEFAULTS = Object.freeze({
-  sort: 'ppg', dir: -1, preset: 'basic', search: '', filters: [], league: '', team: '',
+  sort: 'ppg', dir: -1, preset: 'basic', also: [], search: '', filters: [], league: '', team: '',
   withinLeague: true, page: 1, qualified: true
 });
-const PARAM = { sort: 's', dir: 'dir', preset: 'view', search: 'q', filters: 'f', league: 'lg',
+/* also: the views COMBINE added to the first one (fulltable.js opts.combine), ?with=onoff,advanced */
+const PARAM = { sort: 's', dir: 'dir', preset: 'view', also: 'with', search: 'q', filters: 'f', league: 'lg',
   team: 'tm', withinLeague: 'wl', page: 'pg', qualified: 'ql' };
 const OWNED = Object.keys(PARAM).map(k => PARAM[k]);
 
@@ -102,12 +103,13 @@ function decodeFilters(s) {
 /* query string (or URLSearchParams) -> a full state object for EpinoiaTable.render */
 function readState(search) {
   const p = search instanceof URLSearchParams ? search : new URLSearchParams(search || '');
-  const st = Object.assign({}, DEFAULTS, { filters: [] });
+  const st = Object.assign({}, DEFAULTS, { filters: [], also: [] });
   const g = k => p.get(PARAM[k]);
   const clean = (v, max) => String(v).slice(0, max);
   if (g('sort') && /^[\w-]+$/.test(g('sort'))) st.sort = clean(g('sort'), 40);
   if (g('dir') === '1' || g('dir') === 'asc') st.dir = 1;
   if (g('preset') && /^[\w*-]+$/.test(g('preset'))) st.preset = clean(g('preset'), 40);
+  if (g('also')) st.also = String(g('also')).split(',').filter(k => /^[\w-]{1,40}$/.test(k)).slice(0, 6);
   if (g('search') != null) st.search = clean(g('search'), 80);
   st.filters = decodeFilters(g('filters'));
   if (g('league')) st.league = clean(g('league'), 80);
@@ -127,6 +129,7 @@ function writeState(state, search) {
   if (s.sort && s.sort !== DEFAULTS.sort) p.set(PARAM.sort, s.sort);
   if (s.dir === 1) p.set(PARAM.dir, '1');
   if (s.preset && s.preset !== DEFAULTS.preset) p.set(PARAM.preset, s.preset);
+  if (Array.isArray(s.also) && s.also.length) p.set(PARAM.also, s.also.join(','));
   if (s.search && String(s.search).trim()) p.set(PARAM.search, String(s.search).trim());
   const f = encodeFilters(s.filters);
   if (f) p.set(PARAM.filters, f);
@@ -160,6 +163,11 @@ function tableOptions(o) {
     noRapm: true,
     filters: true,
     selectable: { max: 5 },
+    /* QUICK COMBINE: several views on the table at once (2026-10-14) */
+    combine: true,
+    /* THE GRAPHIC MAKER (statgfx.js, read when first pressed) and every draw announced to it and to the charts */
+    graphic: o.graphic || null,
+    onDraw: o.onDraw || null,
     locked: o.locked,
     state: o.state,
     onState: o.onState,
@@ -426,6 +434,7 @@ function boot() {
   let cover = null;
   function paintSummary(setup) {
     if (!summary || !SU) return;
+    paintRefine();
     const parts = summary.querySelector('.sc-sum-parts') || summary;
     parts.textContent = '';
     const Un = root.EpinoiaUnits;
@@ -576,12 +585,195 @@ function boot() {
     if (!rows.length) return;
     if (!tbl) {
       host.textContent = '';
-      tbl = T.render(tableOptions({ host, rows, locked, state, onState, onCompare }));
+      tbl = T.render(tableOptions({ host, rows, locked, state, onState, onCompare, graphic: onGraphic, onDraw }));
+      if (gfx && tbl) gfx.bind(tbl);
+      if (viewRow) viewRow.hidden = false;
       /* the table drops what it cannot show (a locked preset, a filter on a locked or unknown
          stat), so the URL is written back from what it actually drew */
       if (tbl && typeof tbl.getState === 'function') onState(tbl.getState());
     } else tbl.setRows(rows);
   }
+
+  /* ---- THE PLAYERS' RANGES, ON THE PAGE (Louie, 2026-10-14: refilter age / height / weight "on the screen rather than
+     having to go into edit set-up"). Every league's rows are kept as read (rawByLeague), so a change filters them again
+     at once, the bio (ages, heights, weights) read only for leagues that have not had it yet. The set-up, this
+     browser's copy and the address follow, so LOAD and a reload give the same table. ---- */
+  let bio = {}, bioDone = new Set(), rawByLeague = new Map(), refineRun = 0;
+  const pid = r => (r.playerId != null ? r.playerId : r.id);
+  const year = new Date().getUTCFullYear();
+  const passes = r => SU.rowPasses(r, bio[pid(r)], setupNow, year);
+  const needBio = () => !!(SU && setupNow && SU.needsBio(setupNow) && Ages && typeof Ages.loadBio === 'function');
+  const bioFor = (id, rows) => (bioDone.has(id) || !rows.length) ? Promise.resolve()
+    : Promise.resolve(Ages.loadBio(cfg, rows.map(pid))).then(b => { Object.assign(bio, b || {}); bioDone.add(id); }, () => {});
+  const refineBox = $('#scRefine');
+  const rf = {};
+  async function refine() {
+    if (!SU || !setupNow) return;
+    const val = i => (i.value === '' ? null : Number(i.value));
+    const next = SU.cleanSetup(Object.assign({}, setupNow, {
+      age: [val(rf.age[0]), val(rf.age[1])], ht: [val(rf.ht[0]), val(rf.ht[1])], wt: [val(rf.wt[0]), val(rf.wt[1])],
+      pos: rf.pos.filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.dataset.pos), unk: rf.unk.checked }));
+    setupNow = current = next;
+    SU.saveStored(store, key, next);
+    writeUrl(SU.writeSetup(next, root.location.search, { go: true }));
+    if (ui) ui.set(next);
+    const my = ++refineRun;
+    if (needBio()) {
+      refineBox.classList.add('busy');
+      await Promise.all(arrived.map(L => bioFor(L.id, rawByLeague.get(L.id) || [])));
+      if (my !== refineRun) return;
+      refineBox.classList.remove('busy');
+      cover = SU.coverage([].concat(...arrived.map(L => rawByLeague.get(L.id) || [])), r => bio[pid(r)]);
+    } else cover = null;
+    arrived.forEach(L => byLeague.set(L.id, (rawByLeague.get(L.id) || []).filter(passes)));
+    paintSummary(next);
+    paintStatus();
+    if (tbl) tbl.setRows(allRows()); else paintTable();
+  }
+  let rfTimer = null;
+  const refineSoon = () => { clearTimeout(rfTimer); rfTimer = setTimeout(refine, 650); };
+  function paintRefine() {
+    if (!refineBox) return;
+    if (!SU || !setupNow) { refineBox.hidden = true; return; }
+    refineBox.hidden = false;
+    if (!rf.built) {
+      rf.built = true;
+      refineBox.appendChild(el('span', 'sc-rf-h', 'Refine'));
+      const B = SU.BOUNDS || { age: [14, 45], ht: [150, 235], wt: [45, 160] };
+      [['age', 'Age', 'years'], ['ht', 'Height', 'cm'], ['wt', 'Weight', 'kg']].forEach(([k, label, unit]) => {
+        const g = el('div', 'sc-rf-r');
+        g.setAttribute('role', 'group');
+        g.setAttribute('aria-label', label);
+        const io = [0, 1].map(i => {
+          const n = doc.createElement('input');
+          n.type = 'number'; n.inputMode = 'numeric'; n.min = String(B[k][0]); n.max = String(B[k][1]);
+          n.placeholder = String(B[k][i]);
+          n.setAttribute('aria-label', label + (i ? ', at most' : ', at least'));
+          n.addEventListener('input', refineSoon);
+          n.addEventListener('change', () => { clearTimeout(rfTimer); refine(); });
+          return n;
+        });
+        rf[k] = io;
+        g.append(el('span', 'sc-rf-l', label), io[0], el('span', 'sc-rf-to', 'to'), io[1], el('span', 'sc-rf-u', unit));
+        refineBox.appendChild(g);
+      });
+      const pg = el('div', 'sc-rf-r sc-rf-pos');
+      pg.setAttribute('role', 'group');
+      pg.setAttribute('aria-label', 'Position');
+      rf.pos = [['G', 'Guards'], ['F', 'Forwards'], ['C', 'Centres']].map(([p, t]) => {
+        const b = el('button', 'ep-chip', t);
+        b.type = 'button'; b.dataset.pos = p; b.setAttribute('aria-pressed', 'false');
+        b.addEventListener('click', () => { b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); refine(); });
+        return b;
+      });
+      pg.append(el('span', 'sc-rf-l', 'Position'), ...rf.pos);
+      refineBox.appendChild(pg);
+      const lab = el('label', 'sc-rf-unk');
+      rf.unk = doc.createElement('input');
+      rf.unk.type = 'checkbox';
+      rf.unk.addEventListener('change', refine);
+      lab.append(rf.unk, el('span', '', 'keep players with no data'));
+      refineBox.appendChild(lab);
+      const clr = el('button', 'ep-chip sc-rf-clear', 'clear');
+      clr.type = 'button';
+      clr.addEventListener('click', () => {
+        ['age', 'ht', 'wt'].forEach(k => rf[k].forEach(n => { n.value = ''; }));
+        rf.pos.forEach(b => b.setAttribute('aria-pressed', 'false'));
+        rf.unk.checked = false;
+        refine();
+      });
+      refineBox.appendChild(clr);
+    }
+    ['age', 'ht', 'wt'].forEach(k => { const r = setupNow[k]; rf[k][0].value = r && r[0] != null ? r[0] : ''; rf[k][1].value = r && r[1] != null ? r[1] : ''; });
+    rf.pos.forEach(b => b.setAttribute('aria-pressed', (setupNow.pos || []).indexOf(b.dataset.pos) >= 0 ? 'true' : 'false'));
+    rf.unk.checked = !!setupNow.unk;
+  }
+
+  /* ---- READ WHEN FIRST ASKED FOR: the graphic maker and the chart lab are a third of a megabyte between them, so a
+     scout who never presses GRAPHIC or CHARTS never downloads them. Same version stamp as this file. ---- */
+  const VER = (() => { const s = doc.querySelector('script[src*="scouting.js"]'); const m = s && /[?&]v=(\d+)/.exec(s.getAttribute('src') || ''); return m ? '?v=' + m[1] : ''; })();
+  const loaded = new Map();
+  const need = (list, css) => {
+    (css || []).forEach(href => {
+      if (doc.querySelector('link[href^="' + href + '"]')) return;
+      const l = doc.createElement('link'); l.rel = 'stylesheet'; l.href = href + VER;
+      /* before the teletext and legibility sheets, as every page links them: those stay last */
+      const before = doc.querySelector('link[href*="teletext.css"]') || doc.querySelector('link[href*="legibility.css"]');
+      if (before) before.before(l); else doc.head.appendChild(l);
+    });
+    return list.reduce((p, src) => p.then(() => {
+      if (!loaded.has(src)) {
+        loaded.set(src, new Promise((res, rej) => {
+          const s = doc.createElement('script');
+          s.src = src + VER;
+          s.onload = res;
+          s.onerror = () => { loaded.delete(src); rej(new Error('could not load ' + src)); };
+          doc.head.appendChild(s);
+        }));
+      }
+      return loaded.get(src);
+    }), Promise.resolve());
+  };
+
+  /* ---- THE TABLE AS A GRAPHIC (statgfx.js, as on a league's Statistics page): the top of the table as it is sorted and
+     filtered, as a post for socials. A table narrowed to one league wears that league's name and colours. ---- */
+  const gfxHost = $('#scGfx');
+  const gfxLeague = { name: 'Global scouting', slug: '', colour_a: null, colour_b: null };
+  let gfx = null, gfxP = null;
+  const ensureGfx = () => gfxP || (gfxP = need(['../reportcard.js', '../silhouette.js', '../socialcard.js', '../statgfx.js'], ['../kit/statgfx.css']).then(() => {
+    if (!root.EpinoiaStatGfx || !root.EpinoiaSocialCard || !gfxHost) throw new Error('the graphic maker is not here');
+    gfx = root.EpinoiaStatGfx.mount({ host: gfxHost, league: gfxLeague,
+      season: () => (setupNow && setupNow.seasons && setupNow.seasons.length ? setupNow.seasons.join(', ') : ''), scope: () => '' });
+    return gfx;
+  }).catch(e => { gfxP = null; throw e; }));
+  function onGraphic(api, b) {
+    ensureGfx().then(G => { fitLeague(); G.toggle(api, b); }, e => { console.warn('[scouting] graphic', e); if (status) status.textContent = 'The graphic maker could not be loaded.'; });
+  }
+  function fitLeague() {
+    const st = tbl && typeof tbl.getState === 'function' ? tbl.getState() : null;
+    const pick = st && st.league ? String(st.league) : '';
+    const L = pick ? arrived.find(x => [x.id, x.accessId, x.slug, x.short, x.name].some(v => v != null && String(v) === pick)) : null;
+    Object.assign(gfxLeague, L ? { name: L.name || 'Global scouting', slug: L.slug || '', colour_a: L.colour || null, colour_b: null }
+      : { name: 'Global scouting', slug: '', colour_a: null, colour_b: null });
+  }
+  function onDraw() {
+    if (gfx) { fitLeague(); gfx.refresh(); }
+    if (view === 'charts') chartsSoon();
+  }
+
+  /* ---- TABLE OR CHARTS (chartlab.js, as on a league's Statistics page): scatter graphs of any two columns over the players
+     the table holds as it is filtered (search, league, club, stat filters), the averages and percentiles over them ---- */
+  const viewRow = $('#scView'), chartsHost = $('#scCharts');
+  let view = 'table', chartRun = 0, chartT = null;
+  const chartsSoon = () => { clearTimeout(chartT); chartT = setTimeout(drawCharts, 500); };
+  function paintView() {
+    if (viewRow) viewRow.querySelectorAll('[data-v]').forEach(b => { const on = b.dataset.v === view; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+    host.hidden = view === 'charts';
+    if (gfxHost) gfxHost.hidden = view === 'charts';
+    if (gfx && view === 'charts') gfx.close();
+    if (chartsHost) chartsHost.hidden = view !== 'charts';
+  }
+  async function drawCharts() {
+    if (view !== 'charts' || !chartsHost) return;
+    const my = ++chartRun;
+    const rows = tbl && typeof tbl.getView === 'function' ? tbl.getView() : allRows();
+    if (!rows.length) { chartsHost.textContent = ''; chartsHost.appendChild(el('div', 'sc-state', 'No players to chart yet: load a set-up, or loosen the table’s filters.')); return; }
+    if (!root.EpinoiaChartLab) { chartsHost.textContent = ''; chartsHost.appendChild(el('div', 'sc-state', 'Opening the chart lab…')); }
+    try { await need(['../statinfo.js', '../chartlab.js'], ['../kit/chartlab.css']); }
+    catch (_) { if (my === chartRun) { chartsHost.textContent = ''; chartsHost.appendChild(el('div', 'sc-state', 'The chart lab could not be loaded.')); } return; }
+    if (my !== chartRun || view !== 'charts') return;
+    /* the lock is the page's: a league here that locks the analytics locks them on the chart too */
+    const lockL = (included || arrived).find(L => A && typeof A.analyticsOk === 'function' && !A.analyticsOk(L.accessId || L.id));
+    await root.EpinoiaChartLab.mount({ host: chartsHost, D, league: { name: 'Global scouting' }, season: { name: '' },
+      S: { players: rows.map(r => Object.assign({}, r)), teams: [], teamOfPlayer: null }, keep: () => true, url: false,
+      leagueId: lockL ? (lockL.accessId || lockL.id) : 'global', leagueSlug: '' });
+  }
+  if (viewRow) viewRow.querySelectorAll('[data-v]').forEach(b => b.addEventListener('click', () => {
+    if (view === b.dataset.v) return;
+    view = b.dataset.v;
+    paintView();
+    if (view === 'charts') drawCharts();
+  }));
 
   /* ---- LOAD: the chosen leagues only, a few at a time ---- */
   let run = 0, ac = null;
@@ -597,13 +789,13 @@ function boot() {
     if (setupNow && setupNow.g) who = setupNow.g;
     arrived = []; byLeague = new Map(); rawCount = new Map(); excluded = []; failed = []; done = false; stopped = false;
     total = 0; included = null; lockSet = new Set(); cover = null;
-    const bio = {};
-    const year = new Date().getUTCFullYear();
-    const wantBio = !!(SU && setupNow && SU.needsBio(setupNow) && Ages && typeof Ages.loadBio === 'function');
-    const keep = rows => (SU && setupNow ? rows.filter(r => SU.rowPasses(r, bio[r.playerId != null ? r.playerId : r.id], setupNow, year)) : rows);
+    bio = {}; bioDone = new Set(); rawByLeague = new Map();
+    const keep = rows => (SU && setupNow ? rows.filter(passes) : rows);
     const pending = [];
     if (tbl) { tbl = null; }
+    if (gfx) gfx.close();
     closePanel();
+    paintRefine();
     skeleton();
     if (results) { results.classList.remove('hide'); results.classList.add('sc-in'); setTimeout(() => results.classList.remove('sc-in'), 900); }
     if (ui) { ui.close(); ui.busy(true); }
@@ -645,16 +837,15 @@ function boot() {
         const land = () => {
           if (my !== run) return;
           rawCount.set(L.id, (rows || []).length);
+          rawByLeague.set(L.id, rows || []);
           byLeague.set(L.id, keep(rows || []));
           if (!arrived.some(x => x.id === L.id)) arrived.push(L);
           relock();
           paintStatus(); paintProg();
           paintTable();
         };
-        if (wantBio && rows && rows.length) {
-          pending.push(Promise.resolve(Ages.loadBio(cfg, rows.map(r => r.playerId != null ? r.playerId : r.id)))
-            .then(b => { Object.assign(bio, b || {}); }, () => {}).then(land));
-        } else land();
+        if (needBio() && rows && rows.length) pending.push(bioFor(L.id, rows).then(land));
+        else land();
       }
     };
     if (cat) opts.catalogue = cat;
@@ -674,9 +865,7 @@ function boot() {
       failed = res.failed || [];
       if (!total) total = (res.leagues || []).length;
       if (ui) ui.busy(false);
-      if (wantBio) {
-        cover = SU.coverage(res.rows || [], r => bio[r.playerId != null ? r.playerId : r.id]);
-      }
+      if (needBio()) cover = SU.coverage(res.rows || [], r => bio[pid(r)]);
       if (setupNow) paintSummary(setupNow);
       paintStatus(); paintProg();
       /* every included league has been handed over through onLeague by now, so the table is
