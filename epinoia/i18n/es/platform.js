@@ -594,7 +594,6 @@
       'SHORT NAME': 'Nombre corto',
       'ADDRESS (SLUG)': 'Dirección (slug)',
       'HOME NATION': 'Nación',
-      'COUNTRY': 'País',
       'TIME ZONE': 'Zona horaria',
       'REGISTERED NUMBER': 'Número de registro',
       'LOGO PATH': 'Ruta del logo',

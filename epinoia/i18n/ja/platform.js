@@ -590,7 +590,6 @@
       'SHORT NAME': '略称',
       'ADDRESS (SLUG)': 'アドレス（スラッグ）',
       'HOME NATION': '所属地域',
-      'COUNTRY': '国',
       'TIME ZONE': 'タイムゾーン',
       'REGISTERED NUMBER': '登録番号',
       'LOGO PATH': 'ロゴのパス',

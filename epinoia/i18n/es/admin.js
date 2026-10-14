@@ -716,7 +716,6 @@
       'Cleared — the league’s pages are in the platform’s colours again.': 'Borrado: las páginas de la liga vuelven a los colores de la plataforma.',
 
       /* ---- appearance-ui.js: country, sections, tabs, theme ---- */
-      'Country': 'País',
       'Two letters — GB, ES, DE. The sidebar groups leagues by country, and the flag comes from the code rather than being uploaded. A league with no country is filed under “Elsewhere”.': 'Dos letras: GB, ES, DE. La barra lateral agrupa las ligas por país, y la bandera sale del código, no se sube. Una liga sin país se archiva en «Otros».',
       'no country — “Elsewhere”': 'sin país: «Otros»',
       'Sections on the league’s front page': 'Secciones de la portada de la liga',

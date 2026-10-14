@@ -149,7 +149,6 @@
       'ok': 'OK',
       'Stamp the arenas you go to: at a game, with your phone.': '観戦に行ったアリーナを、試合会場でスマートフォンからスタンプしよう。',
       'Arenas to tick off': '未スタンプのアリーナ',
-      'Country': '国',
       'The arenas in your country you have not stamped yet. Go to a game at one, and it is yours.': 'あなたの国で、まだスタンプしていないアリーナです。試合を観に行けば、あなたのものになります。',
       'Every arena here is yours. Pick another country.': 'この国のアリーナはすべてスタンプ済みです。別の国を選んでください。',
       'The arenas could not be read just now.': 'アリーナを読み込めませんでした。',

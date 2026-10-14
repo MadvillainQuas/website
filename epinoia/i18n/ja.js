@@ -1956,7 +1956,20 @@
       'Percentiles: each player among the players of their own competition that season.': 'パーセンタイル：各選手を、そのシーズンの自分の大会の選手の中で順位付けしています。',
       'Drag up or down to reorder, or use the arrow keys': '上下にドラッグして並べ替え（矢印キーでも移動できます）',
       'rank each player against their own position group rather than the whole competition': '大会全体ではなく、各選手を同じポジショングループの選手と比べて順位付けします',
-      'similar players': '類似選手'
+      'similar players': '類似選手',
+      'Check via league': 'リーグで絞り込む',
+      'Continent': '大陸',
+      'Country': '国',
+      'Europe': 'ヨーロッパ',
+      'North America': '北米',
+      'South America': '南米',
+      'Asia': 'アジア',
+      'Oceania': 'オセアニア',
+      'Africa': 'アフリカ',
+      'International': '国際',
+      'No results for the leagues you picked.': '選んだリーグの結果はありません。',
+      'No live games for the leagues you picked.': '選んだリーグのライブ中の試合はありません。',
+      'No games to come for the leagues you picked.': '選んだリーグの今後の試合はありません。'
     },
 
     ctx: {
@@ -2797,7 +2810,8 @@
       'storyline': '{n}件のストーリーライン',
       'storylines': '{n}件のストーリーライン',
       'new': '新着{n}件',
-      'updated': '更新{n}件'
+      'updated': '更新{n}件',
+      'picked': '{n}件選択'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */

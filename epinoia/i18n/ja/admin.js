@@ -716,7 +716,6 @@
       'Cleared — the league’s pages are in the platform’s colours again.': '解除しました — リーグのページはプラットフォームのカラーに戻りました。',
 
       /* ---- appearance-ui.js: country, sections, tabs, theme ---- */
-      'Country': '国',
       'Two letters — GB, ES, DE. The sidebar groups leagues by country, and the flag comes from the code rather than being uploaded. A league with no country is filed under “Elsewhere”.': '2文字のコードです — GB、ES、DE。サイドバーではリーグが国別にまとめられ、国旗はアップロードではなくコードから表示されます。国が未設定のリーグは「その他」に分類されます。',
       'no country — “Elsewhere”': '国なし — 「その他」',
       'Sections on the league’s front page': 'リーグのトップページのセクション',

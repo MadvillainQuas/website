@@ -149,7 +149,6 @@
       'ok': 'OK',
       'Stamp the arenas you go to: at a game, with your phone.': 'Sella los pabellones a los que vas: en el partido, con tu móvil.',
       'Arenas to tick off': 'Pabellones pendientes',
-      'Country': 'País',
       'The arenas in your country you have not stamped yet. Go to a game at one, and it is yours.': 'Los pabellones de tu país que aún no has sellado. Ve a un partido en uno y será tuyo.',
       'Every arena here is yours. Pick another country.': 'Todos los pabellones de aquí son tuyos. Elige otro país.',
       'The arenas could not be read just now.': 'No se pudieron cargar los pabellones ahora mismo.',

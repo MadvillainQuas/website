@@ -1958,7 +1958,20 @@
       'Percentiles: each player among the players of their own competition that season.': 'Percentiles: cada jugador entre los jugadores de su propia competición esa temporada.',
       'Drag up or down to reorder, or use the arrow keys': 'Arrastra arriba o abajo para reordenar, o usa las flechas del teclado',
       'rank each player against their own position group rather than the whole competition': 'compara a cada jugador con su propio grupo de posición en lugar de con toda la competición',
-      'similar players': 'Jugadores similares'
+      'similar players': 'Jugadores similares',
+      'Check via league': 'Filtrar por liga',
+      'Continent': 'Continente',
+      'Country': 'País',
+      'Europe': 'Europa',
+      'North America': 'Norteamérica',
+      'South America': 'Sudamérica',
+      'Asia': 'Asia',
+      'Oceania': 'Oceanía',
+      'Africa': 'África',
+      'International': 'Internacional',
+      'No results for the leagues you picked.': 'No hay resultados de las ligas elegidas.',
+      'No live games for the leagues you picked.': 'No hay partidos en directo de las ligas elegidas.',
+      'No games to come for the leagues you picked.': 'No hay próximos partidos de las ligas elegidas.'
     },
 
     ctx: {
@@ -2798,7 +2811,8 @@
       'storyline': '{n} historia',
       'storylines': '{n} historias',
       'new': 'Nuevas: {n}',
-      'updated': 'Actualizadas: {n}'
+      'updated': 'Actualizadas: {n}',
+      'picked': '{n} elegidas'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */
