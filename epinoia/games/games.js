@@ -93,6 +93,11 @@
     if (cn) cn.textContent = list.filter(g => g.status === 'live').length + ' live · ' + list.length + (list.length === 1 ? ' game' : ' games');
     /* MORE LIVE GAMES THAN A GRID HOLDS (eight, as on HOME): split by league into dropdown rows, the same shape as HOME's Daily
        fixtures, each open on that league's cards, which then need no badge of their own; what a reader shuts stays shut */
+    /* MORE THAN THREE LEAGUES LIVE: HOME's dashboard of leagues (Louie, 2026-10-14: "the same as on home on daily
+       fixtures") - a card a league, its live games a line each; a card opens its league's game cards */
+    const lgs = new Map();
+    list.forEach(g => { const k = leagueKey(g); if (!lgs.has(k)) lgs.set(k, { key: k, league: G().leagueOf(g), games: [] }); lgs.get(k).games.push(g); });
+    if (lgs.size > 3) { drawLiveDash(grid, [...lgs.values()]); return; }
     if (list.length > LIVE_SPLIT) { drawLiveSplit(grid, list); return; }
     grid.className = 'fxc-grid';
     grid.textContent = '';
@@ -100,6 +105,56 @@
   }
 
   const LIVE_SPLIT = 8;
+  let dashOpen = null, dashShown = 8;
+  const hexOf = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : null);
+  const tint = (n, lg) => { const a = hexOf(lg && lg.colour_a), b = hexOf(lg && lg.colour_b) || a; if (a) n.style.setProperty('--la', a); if (b) n.style.setProperty('--lb', b); };
+  function badgeInto(n, lg) {
+    if (lg && typeof window.epinoiaLeagueBadge === 'function') { n.innerHTML = window.epinoiaLeagueBadge(lg, { cls: 'lg' }); G().wireBadges(n); }
+    else n.textContent = (lg && lg.name) || 'League';
+  }
+  function drawLiveDash(grid, groups) {
+    grid.className = 'gm-livedash';
+    grid.textContent = '';
+    const open = dashOpen && groups.find(g => g.key === dashOpen);
+    if (open) {
+      const wrap = el('div', 'fxd-one'); tint(wrap, open.league);
+      const bar = el('div', 'fxd-bar');
+      const back = el('button', 'ep-btn fxd-back', '\u2190 All live leagues'); back.type = 'button';
+      back.addEventListener('click', () => { dashOpen = null; drawLive(); });
+      const b = el('span', 'fxd-badge'); badgeInto(b, open.league);
+      const n = el('span', 'fxd-n'); n.append(el('i', 'dot'), document.createTextNode(open.games.length + ' live'));
+      bar.append(back, b, n);
+      const cards = el('div', 'fxc-grid');
+      open.games.forEach(g => cards.appendChild(G().card(g, { base: '../', now: Date.now(), state: liveState[g.id], badge: false })));
+      wrap.append(bar, cards);
+      grid.appendChild(wrap);
+      return;
+    }
+    dashOpen = null;
+    const g2 = el('div', 'fxd-grid');
+    groups.slice(0, dashShown).forEach(gr => {
+      const item = el('div', 'fxd-item');
+      const b = el('button', 'fxd-lg'); b.type = 'button'; tint(b, gr.league);
+      const hd = el('span', 'fxd-hd'), bd = el('span', 'fxd-badge'); badgeInto(bd, gr.league);
+      const n = el('span', 'fxd-n'); n.append(el('i', 'dot'), document.createTextNode(gr.games.length + ' live'));
+      hd.append(bd, n);
+      const lines = el('span', 'fxd-lines');
+      gr.games.slice(0, 4).forEach(g => lines.appendChild(G().liveLine(g, { state: liveState[g.id] })));
+      const ft = el('span', 'fxd-ft');
+      if (gr.games.length > 4) ft.appendChild(el('span', 'fxd-more', '...and ' + (gr.games.length - 4) + ' more'));
+      ft.appendChild(el('span', 'fxd-go', 'open \u2192'));
+      b.append(hd, lines, ft);
+      b.addEventListener('click', () => { dashOpen = gr.key; drawLive(); });
+      item.appendChild(b);
+      g2.appendChild(item);
+    });
+    grid.appendChild(g2);
+    if (groups.length > dashShown) {
+      const more = el('button', 'ep-btn', 'Show more leagues'); more.type = 'button';
+      more.addEventListener('click', () => { dashShown += 8; drawLive(); });
+      const bar = el('div', 'fx-more'); bar.appendChild(more); grid.appendChild(bar);
+    }
+  }
   const shutLive = new Set();
   function drawLiveSplit(grid, list) {
     const groups = new Map();
