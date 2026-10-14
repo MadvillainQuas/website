@@ -211,6 +211,20 @@ html.tt-on .sec[tabindex="-1"]:focus, html.tt-on section[tabindex="-1"]:focus{ o
   /* a phone's page headings sit close under the section above: room for the key over a long title */
   html.tt-on :is(.ep-hdr, .hm .sec-h):has(> .tt-skip){ padding-top:34px }
 }
+/* THE KEY THAT TRAVELS (nav.js ttIndex, 2026-10-14): one, fixed in the top right corner, beside the bell (the bell is
+   40px at right 14px), and in the corner itself where there is no bell; it skips whatever section is being read */
+.tt-skip.tt-skipf{ position:fixed; top:17px; right:62px; transform:none; z-index:1490; min-height:28px; padding:0 10px;
+  box-shadow:0 4px 18px rgba(0,0,0,.28) }
+body:not(:has(> .ep-bell)) .tt-skip.tt-skipf{ right:14px }
+.tt-skip.tt-skipf[hidden]{ display:none }
+@media (max-width:720px){
+  .tt-skip.tt-skipf{ top:14px; right:56px; min-height:28px; padding:0 9px; font-size:7.5px }
+  body:not(:has(> .ep-bell)) .tt-skip.tt-skipf{ right:10px }
+}
+@media (prefers-reduced-motion:no-preference){
+  .tt-skip.tt-skipf{ animation:tt-skip-in .18s ease }
+  @keyframes tt-skip-in{ from{ opacity:0; transform:translateY(-4px) } to{ opacity:1; transform:none } }
+}
 @media print{ .tt-skip{ display:none } }
 
 /* ============================================================================

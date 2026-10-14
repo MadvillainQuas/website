@@ -108,8 +108,16 @@
   let dashOpen = null, dashShown = 8;
   const hexOf = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : null);
   const tint = (n, lg) => { const a = hexOf(lg && lg.colour_a), b = hexOf(lg && lg.colour_b) || a; if (a) n.style.setProperty('--la', a); if (b) n.style.setProperty('--lb', b); };
+  /* THE NAMES FIT THE TILES THEY ARE DRAWN IN (2026-10-14): measured once laid out (config.js epinoiaFitLeagueNames), and
+     again when a tile opens or shuts, the window changes size, or the fonts come in */
+  let fitPend = 0;
+  const fitNames = force => { fitPend = 0; if (typeof window.epinoiaFitLeagueNames === 'function') window.epinoiaFitLeagueNames(document, force); };
+  const fitSoon = () => { if (!fitPend) fitPend = (window.requestAnimationFrame || setTimeout)(() => fitNames(false)); };
+  document.addEventListener('toggle', fitSoon, true);
+  window.addEventListener('resize', fitSoon, { passive: true });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitNames(true));
   function badgeInto(n, lg) {
-    if (lg && typeof window.epinoiaLeagueBadge === 'function') { n.innerHTML = window.epinoiaLeagueBadge(lg, { cls: 'lg' }); G().wireBadges(n); }
+    if (lg && typeof window.epinoiaLeagueBadge === 'function') { n.innerHTML = window.epinoiaLeagueBadge(lg, { cls: 'lg', fit: true }); G().wireBadges(n); fitSoon(); }
     else n.textContent = (lg && lg.name) || 'League';
   }
   function drawLiveDash(grid, groups) {
@@ -173,7 +181,7 @@
       det.addEventListener('toggle', () => { if (det.open) shutLive.delete(gr.key); else shutLive.add(gr.key); });
       const sum = el('summary');
       const t = el('span', 't');
-      if (gr.league && typeof window.epinoiaLeagueBadge === 'function') { t.innerHTML = window.epinoiaLeagueBadge(gr.league, { cls: 'lg' }); G().wireBadges(t); }
+      if (gr.league && typeof window.epinoiaLeagueBadge === 'function') { t.innerHTML = window.epinoiaLeagueBadge(gr.league, { cls: 'lg', fit: true }); G().wireBadges(t); fitSoon(); }
       else t.textContent = (gr.league && gr.league.name) || 'League';
       sum.appendChild(t);
       sum.appendChild(el('span', 'n', gr.games.length + ' live'));
@@ -270,10 +278,11 @@
     const sum = el('summary');
     const t = el('span', 't');
     t.innerHTML = typeof window.epinoiaLeagueBadge === 'function'
-      ? window.epinoiaLeagueBadge(l, { cls: 'lg' })
+      ? window.epinoiaLeagueBadge(l, { cls: 'lg', fit: true })
       : '<span class="lgb lg"><span class="lgb-name"></span></span>';
     if (typeof window.epinoiaLeagueBadge !== 'function') t.querySelector('.lgb-name').textContent = l.name || 'League';
     G().wireBadges(t);
+    fitSoon();
     sum.appendChild(t);
     if (l.country) {
       const f = el('span', 'flag', flagOf(l.country));

@@ -2933,39 +2933,76 @@
         list.appendChild(li);
       });
       box.hidden = list.children.length < 2;
-      /* SKIP: every section but the last carries a button on its heading that goes straight to
-         the next one, for a reader who knows they do not want this one and would otherwise
-         scroll through all of it */
-      secs.forEach((x, i) => {
-        let b = x.hd.querySelector(':scope > .tt-skip');
-        const next = secs[i + 1];
-        if (!next) { if (b) b.remove(); return; }
-        if (!b) {
-          b = el('button', 'tt-skip');
-          b.type = 'button';
-          /* its own words' context (i18n/<code>.js ctx.skip): the scorer's "skip" is another thing */
-          b.setAttribute('data-i18n-ctx', 'skip');
-          b.appendChild(el('span', 't', 'Skip'));
-          x.hd.appendChild(b);
-        }
-        b.dataset.to = next.sec.id;
-        b.setAttribute('aria-label', 'Skip ' + x.name + ', go to ' + next.name);
-        b.title = 'Next: ' + next.name;
-      });
+      /* the keys this page drew on its headings before 2026-10-14 (a page cached from before) go */
+      frame.querySelectorAll('.sec-h > .tt-skip, .ep-hdr > .tt-skip').forEach(n => n.remove());
+      SECS = secs;
+      place();
     };
-    /* caught on the way down, so a heading that opens and closes its section never sees it */
-    frame.addEventListener('click', e => {
-      const b = e.target && e.target.closest ? e.target.closest('.tt-skip') : null;
-      if (!b) return;
+    /* SKIP, ONE KEY THAT TRAVELS WITH THE READER (Louie, 2026-10-14). It sat on every section's heading,
+       so it could only be pressed at the top of a section, the one moment nobody knows yet whether
+       they want it. Now it is fixed in the top right corner, beside the bell, and always skips the
+       section being read: the last one whose top has passed under the top of the window, or the
+       first while it fills most of the screen. Above that, and in the last section, there is nothing
+       to skip and it steps aside. */
+    let SECS = [], cur = -1, pend = 0, chase = 0;
+    const key = el('button', 'tt-skip tt-skipf');
+    key.type = 'button';
+    /* its own words' context (i18n/<code>.js ctx.skip): the scorer's "skip" is another thing */
+    key.setAttribute('data-i18n-ctx', 'skip');
+    key.appendChild(el('span', 't', 'Skip'));
+    key.hidden = true;
+    document.body.appendChild(key);
+    const place = () => {
+      pend = 0;
+      const line = Math.min(160, window.innerHeight * 0.3);
+      let i = -1;
+      const shown = x => x && x.sec.isConnected && x.sec.getClientRects().length;
+      SECS.forEach((x, k) => { if (shown(x) && x.sec.getBoundingClientRect().top <= line) i = k; });
+      if (i < 0 && shown(SECS[0]) && SECS[0].sec.getBoundingClientRect().top < window.innerHeight * 0.6) i = 0;
+      /* the next section that is shown: on a desktop HOME shows one group of sections at a time (home/groups.js tabs) */
+      let next = null;
+      for (let j = i + 1; i >= 0 && j < SECS.length && !next; j++) if (shown(SECS[j])) next = SECS[j];
+      const on = !!next;
+      if (key.hidden === on) key.hidden = !on;
+      if (!on || i === cur && key.dataset.to === next.sec.id) { cur = i; return; }
+      cur = i;
+      key.dataset.to = next.sec.id;
+      key.setAttribute('aria-label', 'Skip ' + SECS[i].name + ', go to ' + next.name);
+      key.title = 'Next: ' + next.name;
+    };
+    const soon = () => { if (!pend) pend = (window.requestAnimationFrame || setTimeout)(place); };
+    window.addEventListener('scroll', soon, { passive: true });
+    window.addEventListener('resize', soon, { passive: true });
+    /* what loads as the page passes under the jump (HOME's feed cards and their pictures, a league
+       page still filling in above) pushes the section on after the jump has set off: it landed 700px
+       short on a phone, and a league page went on growing after the first landing. So while the
+       scroll is at rest the section is held where the jump put it, for four seconds or until the
+       reader scrolls, presses or touches for themselves */
+    const stopChase = () => { if (chase) { clearInterval(chase); chase = 0; } };
+    ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach(t => window.addEventListener(t, stopChase, { passive: true }));
+    key.addEventListener('click', e => {
       e.preventDefault();
-      e.stopPropagation();
-      const to = document.getElementById(b.dataset.to || '');
+      const to = document.getElementById(key.dataset.to || '');
       if (!to || !to.scrollIntoView) return;
-      to.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+      const land = how => to.scrollIntoView({ behavior: how, block: 'start' });
+      land(reduced() ? 'auto' : 'smooth');
       /* the keyboard follows the eye: the next section takes focus, without a second jump */
       if (!to.hasAttribute('tabindex')) to.setAttribute('tabindex', '-1');
       try { to.focus({ preventScroll: true }); } catch (_) { /* the scroll is what matters */ }
-    }, true);
+      stopChase();
+      let last = -1, held = -1, n = 0;
+      chase = setInterval(() => {
+        const y = window.scrollY;
+        if (++n > 40 || !to.isConnected) return stopChase();
+        /* once landed, a scroll it did not make is the reader's (a scrollbar dragged) or the browser keeping the page
+           still: either way it lets go */
+        if (held >= 0 && y !== held) return stopChase();
+        if (held < 0 && y !== last) { last = y; return; }
+        /* at rest: land again, at once (a section already in its place does not move) */
+        land('auto');
+        held = window.scrollY;
+      }, 100);
+    });
     paint();
     /* A PAGE'S OWN SWITCH between its sections (global scouting's Leagues / Imports, scouting/imports.js) says so with
        this event, at any time: the watch below stops after a minute */

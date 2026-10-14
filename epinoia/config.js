@@ -187,15 +187,126 @@ if (typeof window.addEventListener === 'function') window.addEventListener('erro
    make every league look like the same one. The img carries data-mono on its tile so a page can
    swap in the monogram when the logo fails (the CSP forbids onerror="";
    EpinoiaGlobalGames.wireBadges does it). opts: { cls, noName, small }. */
+/* A LEAGUE'S NAME THAT FITS A CARD (Louie, 2026-10-14: on the global fixtures page "Super League Basketball..." was cut to
+   the same words for the men's and the women's league). The full name when it sits on two lines of a card (about twelve
+   capitals a line); otherwise the first of these that does: the initials of the name with the side it is for said in full
+   ("SLB Men", "SLB Women") - or, where the name says it in another language, that language's letter ("LNBF"); the
+   initials and the last word, when that word is the one that tells it apart ("LF Challenge"); the initials alone ("EABL",
+   "BCB"). A word in capitals is kept whole ("WNBL"); the little words are left out. max: characters a line (12).
+   epinoiaLeagueFit.forms(league): every form, longest first, for a page that measures (epinoiaFitLeagueNames). */
+window.epinoiaLeagueFit = function (league, max) {
+  const per = max || 12;
+  const fits = s => { let lines = 1, cur = 0; for (const w of String(s).split(' ')) { if (w.length > per) return false;
+    if (cur && cur + 1 + w.length > per) { lines++; cur = w.length; } else cur += (cur ? 1 : 0) + w.length; } return lines <= 2; };
+  const forms = window.epinoiaLeagueFit.forms(league);
+  return forms.find(fits) || forms[0];
+};
+window.epinoiaLeagueFit.forms = function (league) {
+  const l = league || {};
+  const name = String(l.name || l.slug || 'League').trim().replace(/\s+/g, ' ');
+  /* the little words, written small ("de", "of"): a capital A is a word ("Serie A") */
+  const NOISE = /^(of|the|and|for|a|an|de|du|la|le|el|des|di|da|del|The|Of|And|For)$/;
+  const MEN = /^(men|mens|men's|men’s|m)$/i, WOMEN = /^(women|womens|women's|women’s|w)$/i;
+  const OTHER = { feminin: 'F', féminin: 'F', femenina: 'F', femenino: 'F', femminile: 'F', femra: 'F', dam: 'D', damen: 'D', kvinder: 'K',
+                  masculin: 'M', masculino: 'M', maschile: 'M', meshkuj: 'M', herren: 'H' };
+  const GENERIC = /^(league|liga|lega|ligue|lyga|basketball|basket|baschet|championship|cup|division|series|serie)$/i;
+  const ACR = /^[\p{Lu}0-9][\p{Lu}0-9.&]+$/u;
+  const DIV = { one: 1, two: 2, three: 3, i: 1, ii: 2, iii: 3, 1: 1, 2: 2, 3: 3 };
+  /* "Division One" is D1 ("WNBL D1"), in every form after the full name */
+  const dn = name.replace(/\bDivision\s+(One|Two|Three|III|II|I|1|2|3)\b/i, (m, k) => 'D' + DIV[k.toLowerCase()]);
+  let words = dn.split(/[\s-]+/).filter(w => w && !NOISE.test(w));
+  let side = '', letter = '';
+  const last = words[words.length - 1] || '';
+  if (words.length > 1 && MEN.test(last)) { side = 'Men'; words.pop(); }
+  else if (words.length > 1 && WOMEN.test(last)) { side = 'Women'; words.pop(); }
+  else if (words.length > 1 && OTHER[last.toLowerCase()]) { letter = OTHER[last.toLowerCase()]; words.pop(); }
+  /* initials: each word's first letter run together ("SLB"); a word in capitals is kept whole and stands apart ("WNBL"),
+     and beside one the generic words go ("SB League Women" is "SB Women"); add: a letter on the end ("LNBF") */
+  const ini = (ws, add) => {
+    const keep = ws.some(w => ACR.test(w)) ? ws.filter(w => ACR.test(w) || !GENERIC.test(w)) : ws;
+    const toks = [];
+    const put = (t, acr) => { const prev = toks[toks.length - 1]; if (!acr && prev && !prev.acr) prev.t += t; else toks.push({ t, acr }); };
+    keep.forEach(w => put(ACR.test(w) ? w : w.charAt(0).toUpperCase(), ACR.test(w)));
+    if (add) put(add, false);
+    return toks.map(x => x.t).join(' ');
+  };
+  const out = [];
+  if (dn !== name) out.push(dn);
+  if (side) out.push(ini(words) + ' ' + side);
+  /* the initials and the word that tells it apart ("LF Challenge"); a last word of a letter or two goes with the one before
+     it ("LB Serie A") */
+  const n = (words[words.length - 1] || '').length <= 2 && words.length >= 3 ? 2 : 1;
+  if (!side && !letter && words.length >= n + 2 && (n === 2 || !GENERIC.test(words[words.length - 1]))) {
+    out.push(ini(words.slice(0, -n)) + ' ' + words.slice(-n).join(' '));
+  }
+  /* the initials alone, the side still in them ("SLBW") */
+  out.push(ini(words, letter || side.charAt(0)));
+  return [name].concat(out.filter((s, i) => s.replace(/\s/g, '').length >= 2 && s !== name && out.indexOf(s) === i));
+};
+/* FIT THE NAMES TO THE ROOM THEY ARE DRAWN IN (2026-10-14). Twelve capitals a line is a card on a
+   wide screen; on a phone the fixtures page's tiles are half the screen and the same name broke
+   mid-word ("KORISL IIGA") or ran out ("WNBL DIVISI..."). For each badge name drawn with fit (it
+   carries data-full), on the page as laid out: the longest form that sits whole (no word cut, no
+   line past the box's own), else the shortest, allowed to break (.lgb-tight). Only names that are
+   shown, and only again when the room they have has changed (or force: the fonts came in).
+   A PAIR READS ALIKE: the men's and the women's league in one grid take the shorter of the forms
+   either needs, never "Super League Basketball Men" beside "SLB Women". */
+window.epinoiaFitLeagueNames = function (root, force) {
+  const scope = root || document;
+  if (!scope.querySelectorAll) return;
+  const SIDE = /^(men|mens|men's|men’s|women|womens|women's|women’s|feminin|féminin|femenina|femenino|femminile|femra|dam|damen|kvinder|kvinde|naisten|masculin|masculino|maschile|meshkuj|herren)$/i;
+  const say = (n, i) => {
+    const f = n._fit, t = f.forms[i];
+    if (n.textContent !== t) n.textContent = t;
+    const short = t !== f.full, badge = n.parentNode;
+    if (short) n.setAttribute('aria-label', f.full); else n.removeAttribute('aria-label');
+    if (badge && badge.classList && badge.classList.contains('lgb')) { if (short) badge.setAttribute('title', f.full); else badge.removeAttribute('title'); }
+  };
+  const grids = new Map();
+  scope.querySelectorAll('.lgb-name[data-full]').forEach(n => {
+    const host = (n.closest && n.closest('summary')) || (n.parentNode && n.parentNode.parentNode);
+    const room = host ? host.clientWidth : 0;
+    if (!room || !n.getClientRects().length) return;
+    if (!n._fit || n._fit.room !== room || force) {
+      const full = n.getAttribute('data-full');
+      const forms = window.epinoiaLeagueFit.forms({ name: full });
+      const whole = () => n.scrollWidth <= n.clientWidth + 1 && n.scrollHeight <= n.clientHeight + 1;
+      n.classList.remove('lgb-tight');
+      let i = 0;
+      for (; i < forms.length; i++) { n.textContent = forms[i]; if (whole()) break; }
+      if (i === forms.length) { i = forms.length - 1; n.classList.add('lgb-tight'); }
+      n._fit = { room, forms, full, level: i };
+    }
+    say(n, n._fit.level);
+    /* its pair: the same name but for the side it is for, said first or last ("Women's Elite...", "...Basketball Women"),
+       in the same grid. Not a side in the middle: "Liga Femenina Endesa" is not "Liga Endesa" made shorter */
+    const grid = host.parentNode && host.parentNode.parentNode;
+    const ws = n._fit.full.split(/\s+/);
+    while (ws.length > 1 && SIDE.test(ws[0])) ws.shift();
+    while (ws.length > 1 && SIDE.test(ws[ws.length - 1])) ws.pop();
+    const stem = ws.join(' ').toLowerCase();
+    if (!grids.has(grid)) grids.set(grid, new Map());
+    const g = grids.get(grid);
+    if (!g.has(stem)) g.set(stem, []);
+    g.get(stem).push(n);
+  });
+  grids.forEach(g => g.forEach(list => {
+    if (list.length < 2) return;
+    const most = Math.max.apply(null, list.map(n => n._fit.level));
+    list.forEach(n => say(n, Math.min(most, n._fit.forms.length - 1)));
+  }));
+};
 window.epinoiaLeagueBadge = function (league, opts) {
   const o = opts || {}; const l = league || {};
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const hex = v => (/^#[0-9a-f]{6}$/i.test(String(v || '')) ? v : null);
-  const name = String(l.name || l.slug || 'League').trim();
-  const words = name.split(/\s+/).filter(w => /^[A-Za-z0-9]/.test(w));
+  const full = String(l.name || l.slug || 'League').trim();
+  /* opts.fit: the name that fits a card (epinoiaLeagueFit), the full name in its title */
+  const name = o.fit ? window.epinoiaLeagueFit(l, typeof o.fit === 'number' ? o.fit : 12) : full;
+  const words = full.split(/\s+/).filter(w => /^[A-Za-z0-9]/.test(w));
   const mono = (words.length >= 2 ? words.slice(0, 3).map(w => w[0]).join('')
-    : name.slice(0, 3)).toUpperCase();
+    : full.slice(0, 3)).toUpperCase();
   const own = l.colour_source === 'logo' || l.colour_source === 'manual';
   const a = own && hex(l.colour_a), b = own && hex(l.colour_b);
   const style = a ? ' style="--lgb-a:' + a + ';--lgb-b:' + (b || a) + '"' : '';
@@ -204,8 +315,9 @@ window.epinoiaLeagueBadge = function (league, opts) {
     (url ? '<img src="' + esc(url) + '" alt="" loading="lazy" decoding="async">'
          : '<span class="lgb-mono">' + esc(mono) + '</span>') + '</span>';
   const cls = 'lgb' + (o.small ? ' sm' : '') + (o.cls ? ' ' + esc(o.cls) : '');
-  return '<span class="' + cls + '"' + (o.noName ? ' title="' + esc(name) + '"' : '') + '>' + tile +
-    (o.noName ? '' : '<span class="lgb-name">' + esc(name) + '</span>') + '</span>';
+  return '<span class="' + cls + '"' + (o.noName || name !== full ? ' title="' + esc(full) + '"' : '') + '>' + tile +
+    (o.noName ? '' : '<span class="lgb-name"' + (l.name || l.slug ? ' translate="no"' : '') + (o.fit ? ' data-full="' + esc(full) + '"' : '') +
+      (name !== full ? ' aria-label="' + esc(full) + '"' : '') + '>' + esc(name) + '</span>') + '</span>';
 };
 
 /* ============================================================================

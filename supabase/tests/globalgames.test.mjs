@@ -416,7 +416,7 @@ section('the league badge (config.js)');
   const withLogo = B({ name: 'Super League', logo_path: 'league/1/logo-a.webp', colour_source: 'logo', colour_a: '#f2594c', colour_b: '#000000' });
   /* at the size it is drawn, through Storage's image transformation (0158) */
   ok('a logo from the bucket, on a tile, then the name', /^<span class="lgb"><span class="lgb-tile" data-mono="SL" style="--lgb-a:#f2594c;--lgb-b:#000000"><img src="https:\/\/hhvofgqqadtyvcjudhjx\.supabase\.co\/storage\/v1\/render\/image\/public\/media-public\/league\/1\/logo-a\.webp\?width=128&amp;height=128&amp;resize=contain" alt=""/.test(withLogo)
-     && withLogo.includes('<span class="lgb-name">Super League</span>'), withLogo);
+     && withLogo.includes('<span class="lgb-name" translate="no">Super League</span>'), withLogo);
   const noLogo = B({ name: 'Basketball <b>Club</b> "B"', colour_source: 'default', colour_a: '#93f2bf' });
   ok('the name is escaped', noLogo.includes('Basketball &lt;b&gt;Club&lt;/b&gt; &quot;B&quot;') && !noLogo.includes('<b>'));
   ok('no logo: the monogram', /<span class="lgb-mono">B/.test(noLogo));
@@ -425,6 +425,78 @@ section('the league badge (config.js)');
   ok('options: small, extra class, no name', /class="lgb sm lg"/.test(B({ name: 'A B' }, { small: true, cls: 'lg' }))
      && !B({ name: 'A B' }, { noName: true }).includes('lgb-name') && B({ name: 'A B' }, { noName: true }).includes('title="A B"'));
   ok('no league at all still draws a badge', B(null).includes('League'));
+  /* A NAME THAT FITS A CARD (2026-10-14): "Super League Basketball..." was cut to the same words for the men's and the
+     women's league on the global fixtures page */
+  const F = sandbox.epinoiaLeagueFit;
+  const fit = n => F({ name: n });
+  ok('a name that does not fit two lines of a card is shortened, the side it is for kept in words',
+     fit('Super League Basketball Men') === 'SLB Men' && fit('Super League Basketball Women') === 'SLB Women', fit('Super League Basketball Men'));
+  ok('...to its initials where its last word is only "League" or "Basketball"', fit('Elite Academy Basketball League') === 'EABL' &&
+     fit('Women\'s Elite Academy Basketball League') === 'WEABL' && fit('British Championship Basketball') === 'BCB');
+  ok('...a side said in another language keeps that language\'s letter', fit('Liga Nationala de Baschet Feminin') === 'LNBF' && fit('Liga Nationala de Baschet Masculin') === 'LNBM');
+  ok('...the word that tells it apart is kept', fit('Liga Femenina Challenge') === 'LF Challenge' && fit('Liga Femenina Endesa') === 'LF Endesa');
+  ok('a name that fits stays whole', fit('WNBL Division One') === 'WNBL Division One' && fit('Macedonian Super League') === 'Macedonian Super League' && fit('SB League Women') === 'SB League Women');
+  const fitted = B({ name: 'Super League Basketball Women' }, { fit: true });
+  ok('the badge says the fitted name, the full one in its title and to a screen reader',
+     fitted.includes('>SLB Women</span>') && fitted.includes('title="Super League Basketball Women"') && fitted.includes('aria-label="Super League Basketball Women"'));
+  ok('...its monogram is still the full name\'s', fitted.includes('data-mono="SLB"'));
+  ok('...it carries its full name for a page that measures, and a name is never translated',
+     fitted.includes('data-full="Super League Basketball Women"') && fitted.includes('translate="no"') && !B({ name: 'ProA' }).includes('data-full'));
+  const ladder = n => F.forms({ name: n }).join(' · ');
+  ok('every form of a name, longest first, none twice, the side never lost',
+     ladder('Super League Basketball Men') === 'Super League Basketball Men · SLB Men · SLBM' && ladder('Liga Femenina Endesa') === 'Liga Femenina Endesa · LF Endesa · LFE' &&
+     F.forms({ name: 'NBL' }).length === 1, ladder('Super League Basketball Men'));
+  ok('...a word in capitals stands apart, "Division One" is D1, and beside a word in capitals the generic words go',
+     ladder('WNBL Division One') === 'WNBL Division One · WNBL D1' && ladder('SB League Women') === 'SB League Women · SB Women · SB W' &&
+     ladder('ABA League 2') === 'ABA League 2 · ABA 2', ladder('WNBL Division One') + ' | ' + ladder('SB League Women'));
+  ok('...a capital A is a word, and a last word of a letter or two goes with the one before it',
+     ladder('Lega Basket Serie A') === 'Lega Basket Serie A · LB Serie A · LBSA', ladder('Lega Basket Serie A'));
+  /* fitted as laid out: a stand-in name box `per` capitals wide (seven unless said) and two lines deep (ten pixels a
+     capital, twelve a line) */
+  const box = (full, per = 7) => {
+    const cls = new Set(), at = {}, n = { textContent: '', _cls: cls,
+      classList: { add: c => cls.add(c), remove: c => cls.delete(c), contains: c => cls.has(c) },
+      getAttribute: k => (k === 'data-full' ? full : at[k] == null ? null : at[k]), setAttribute: (k, v) => { at[k] = v; }, removeAttribute: k => { delete at[k]; },
+      getClientRects: () => [1], closest: () => ({ clientWidth: per * 10 + 30 }),
+      get clientWidth() { return per * 10; }, get clientHeight() { return 24; },
+      get scrollWidth() { return Math.max(...this.textContent.split(' ').map(w => w.length)) * 10; },
+      get scrollHeight() { let lines = 1, cur = 0;
+        for (const w of this.textContent.split(' ')) { if (cur && cur + 1 + w.length > per) { lines++; cur = w.length; } else cur += (cur ? 1 : 0) + w.length; } return lines * 12; } };
+    const badge = { classList: { contains: c => c === 'lgb' }, setAttribute: (k, v) => { at['badge-' + k] = v; }, removeAttribute: k => { delete at['badge-' + k]; } };
+    n.parentNode = badge;
+    return { n, at };
+  };
+  const laid = (list) => { sandbox.epinoiaFitLeagueNames({ querySelectorAll: () => list.map(x => x.n) }); return list; };
+  const [men, women, kor, nbl] = laid([box('Super League Basketball Men'), box('Super League Basketball Women'), box('Korisliiga'), box('WNBL Division One')]);
+  const [wide] = laid([box('Super League Basketball Women', 30)]);
+  ok('on a narrow tile the measured name is the longest form that sits whole: SLB Men, SLB Women',
+     men.n.textContent === 'SLB Men' && women.n.textContent === 'SLB Women', men.n.textContent + ' / ' + women.n.textContent);
+  ok('...with the full name to a screen reader and in the tile\'s title', women.at['aria-label'] === 'Super League Basketball Women' && women.at['badge-title'] === 'Super League Basketball Women');
+  ok('...a form that cannot sit whole is not chosen over a shorter one, and the last resort may break (lgb-tight)',
+     kor.n.textContent === 'Korisliiga' && kor.n._cls.has('lgb-tight') && nbl.n.textContent === 'WNBL D1' && !nbl.n._cls.has('lgb-tight'), kor.n.textContent + ' / ' + nbl.n.textContent);
+  ok('on a wide tile the full name stays, with no stand-in label', wide.n.textContent === 'Super League Basketball Women' && wide.at['aria-label'] == null && wide.at['badge-title'] == null);
+  /* fourteen capitals: "BASKETBALL MEN" sits on a line, "BASKETBALL WOMEN" does not */
+  const [pm, pw, peabl, pweabl, lone] = laid([box('Super League Basketball Men', 14), box('Super League Basketball Women', 14),
+    box('Elite Academy Basketball League', 18), box('Women\'s Elite Academy Basketball League', 18), box('Super League Basketball Men', 14)]);
+  ok('a pair reads alike: the men\'s league takes the short form its women\'s league needed, in the same grid',
+     pm.n.textContent === 'SLB Men' && pw.n.textContent === 'SLB Women' && peabl.n.textContent === 'EABL' && pweabl.n.textContent === 'WEABL' &&
+     pm.at['aria-label'] === 'Super League Basketball Men', [pm, pw, peabl, pweabl].map(x => x.n.textContent).join(' / '));
+  const [endesa, lfendesa] = laid([box('Liga Endesa', 7), box('Liga Femenina Endesa', 7)]);
+  ok('...a side said in the middle of a name is not a pair ("Liga Endesa" stays whole beside "LF Endesa")',
+     endesa.n.textContent === 'Liga Endesa' && lfendesa.n.textContent === 'LF Endesa', endesa.n.textContent + ' / ' + lfendesa.n.textContent);
+  const [alone] = laid([box('Super League Basketball Men', 14)]);
+  ok('...and without its pair beside it, the full name that fits', alone.n.textContent === 'Super League Basketball Men' && lone.n.textContent === 'SLB Men');
+  const gp = rd('epinoia', 'games', 'games.js');
+  ok('the global fixtures page draws its leagues with names that fit', (gp.match(/cls: 'lg', fit: true/g) || []).length === 3);
+  ok('...measured when they are drawn, when a tile opens or shuts, the window changes size or the fonts come in',
+     (gp.match(/fitSoon\(\);/g) || []).length === 3 && /document\.addEventListener\('toggle', fitSoon, true\)/.test(gp) &&
+     /window\.addEventListener\('resize', fitSoon/.test(gp) && /document\.fonts\.ready\.then\(\(\) => fitNames\(true\)\)/.test(gp));
+  const gh = rd('epinoia', 'games', 'index.html');
+  ok('...a tile\'s name is never cut mid-word unless nothing fits', /summary \.lgb-name\{white-space:normal;overflow:hidden;overflow-wrap:normal;/.test(gh) &&
+     /\.lgb-name\.lgb-tight\{overflow-wrap:anywhere\}/.test(gh));
+  ok('...on a phone a shut tile puts its logo or flag above the name, and the name runs on under the chevron',
+     /@media \(max-width:640px\)\{\s*details\.gm-cont:not\(\[open\]\) > summary \.t, details\.gm-cty:not\(\[open\]\) > summary \.t,\s*\.gm-cbody > details\.gm-acc:not\(\[open\]\) > summary \.lgb\{flex-direction:column/.test(gh) &&
+     /> summary \.t\{max-width:calc\(100% \+ 24px\);margin-right:-24px\}/.test(gh));
 }
 
 /* ------------------------------------------------------------------------- */

@@ -126,9 +126,22 @@ console.log('\nthe page');
   const home = rd('epinoia', 'home.js');
   ok('home.js draws it with the rest of the league page, not behind a members wall', /wall\.walled \? null : records\(clubsP\)/.test(home));
   const nav = rd('epinoia', 'nav.js');
-  ok('nav.js puts a skip key on each section but the last', /tt-skip/.test(nav) && /if \(!next\) \{ if \(b\) b\.remove\(\); return; \}/.test(nav));
+  /* 2026-10-14: ONE skip key that travels with the reader, fixed in the top right corner, skipping the section being read */
+  ok('nav.js has one skip key, on the page, not one on every section heading',
+     /el\('button', 'tt-skip tt-skipf'\)/.test(nav) && /document\.body\.appendChild\(key\)/.test(nav) && !/x\.hd\.appendChild\(b\)/.test(nav));
+  ok('it skips the section being read: the last whose top has passed under the top of the window, and steps aside in the last',
+     /getBoundingClientRect\(\)\.top <= line\) i = k/.test(nav) && /key\.hidden = !on/.test(nav) &&
+     /for \(let j = i \+ 1; i >= 0 && j < SECS\.length && !next; j\+\+\) if \(shown\(SECS\[j\]\)\) next = SECS\[j\];/.test(nav));
+  ok('...and goes to the next section that is shown (HOME\'s desktop tabs hide the other groups\')', /const shown = x => x && x\.sec\.isConnected && x\.sec\.getClientRects\(\)\.length;/.test(nav));
+  ok('...or the first section while it fills most of the screen', /if \(i < 0 && shown\(SECS\[0\]\) && SECS\[0\]\.sec\.getBoundingClientRect\(\)\.top < window\.innerHeight \* 0\.6\) i = 0/.test(nav));
+  ok('it follows the scroll, at most once a frame', /addEventListener\('scroll', soon, \{ passive: true \}\)/.test(nav) && /requestAnimationFrame/.test(nav));
   ok('the key moves focus to the section it lands on', /to\.focus\(\{ preventScroll: true \}\)/.test(nav));
-  ok('the key is styled in the teletext layer', /\.tt-skip\{/.test(rd('epinoia', 'kit', 'teletext.css')));
+  ok('it holds the section where it landed while the scroll is at rest (what loads on the way pushed HOME\'s sections 700px on), and gives way to the reader',
+     /if \(held >= 0 && y !== held\) return stopChase\(\);\s*if \(held < 0 && y !== last\) \{ last = y; return; \}\s*\/\*[^*]*\*\/\s*land\('auto'\);\s*held = window\.scrollY;/.test(nav) &&
+     /\['wheel', 'touchstart', 'keydown', 'pointerdown'\]\.forEach\(t => window\.addEventListener\(t, stopChase, \{ passive: true \}\)\)/.test(nav) && /if \(\+\+n > 40/.test(nav));
+  const tt = rd('epinoia', 'kit', 'teletext.css');
+  ok('the key is styled in the teletext layer, fixed in the top right corner beside the bell',
+     /\.tt-skip\{/.test(tt) && /\.tt-skip\.tt-skipf\{ position:fixed; top:17px; right:62px/.test(tt) && /body:not\(:has\(> \.ep-bell\)\) \.tt-skip\.tt-skipf\{ right:14px \}/.test(tt));
 }
 
 {
