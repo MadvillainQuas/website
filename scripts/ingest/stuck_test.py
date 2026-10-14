@@ -150,6 +150,46 @@ ok("with 0203 applied the database function does it (ids and the 6 h cap passed)
 fk = world(rpc_ok=False)
 ok("a dry run changes nothing", S.close_stuck(fk, S.stuck_games(fk, NOW), NOW, dry=True) and not fk.patches and not fk.inserts)
 
+print("\n-- the box score first: a game the rule calls final is offered to finalise-game (2026-10-14)")
+
+
+class WithFinalise(Fake):
+    """Fake, plus finalise-game: it accepts g1 and g4 (builds the box and closes the game), refuses g2 (its gate)."""
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.finalised = []
+
+    def function(self, name, body):
+        assert name == "finalise-game"
+        gid = body["gameId"]
+        self.finalised.append(gid)
+        if gid == "g2":
+            return 422, {"error": "sanity gate failed", "blocking": ["X and Y are the same player on the team sheet"]}
+        for g in self.games:
+            if g["id"] == gid:
+                g.update({"status": "final", "box": True})
+        return 200, {"ok": True}
+
+
+w = world(rpc_ok=False)
+fk = WithFinalise(w.games, w.ext, w.state, rpc_ok=False)
+done = {c["id"]: c for c in S.close_stuck(fk, S.stuck_games(fk, NOW), NOW)}
+gm, em = {g["id"]: g for g in fk.games}, {e["game_id"]: e for e in fk.ext}
+ok("finalise-game asked for the games the rule calls final (1, 2, 4), never the void one (3)", sorted(fk.finalised) == ["g1", "g2", "g4"], fk.finalised)
+ok("...the two it accepted are final WITH a box score, their feed rows closed with no error",
+   gm["g1"].get("box") and gm["g4"].get("box") and em["g1"]["external_status"] == "final" and em["g1"]["error"] is None
+   and done["g1"]["reason"].startswith("finalised on its last state"), (gm["g1"], em["g1"], done.get("g1")))
+ok("...the one its gate refused is closed on its last state as before, and 3 is void",
+   gm["g2"]["status"] == "final" and not gm["g2"].get("box") and em["g2"]["error"].startswith("reconciled (final)")
+   and gm["g3"]["status"] == "void" and set(done) == {"g1", "g2", "g3", "g4"}, (gm["g2"], em["g2"]))
+fk2 = WithFinalise(*[x for x in (world().games, world().ext, world().state)])
+fk2.rpc = lambda fn, body=None: fk2.rpcs.append((fn, body)) or []
+S.close_stuck(fk2, S.stuck_games(fk2, NOW), NOW)
+ok("...with 0203 the database function gets only what finalise-game did not take (2 and 3)",
+   [set(b["p_ids"]) for f, b in fk2.rpcs if f == "close_stuck_games"] == [{"g2", "g3"}], fk2.rpcs)
+fk3 = WithFinalise(*[x for x in (world().games, world().ext, world().state)])
+ok("...and a dry run asks nothing", S.close_stuck(fk3, S.stuck_games(fk3, NOW), NOW, dry=True) and not fk3.finalised)
+
 print("\n-- not a game still moving, and not an app-scored game before a day of silence (0208)")
 
 

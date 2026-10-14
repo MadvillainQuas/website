@@ -179,7 +179,13 @@ def by_source(games: list[dict]) -> dict:
 def close_stuck(sb, games: list[dict], now: datetime, hard_cap: int = REPAIR_HARD_CAP, dry: bool = False) -> list[dict]:
     """Close, on its last state, every game of `games` that is still live or finalising past the hard cap.
     The database function (0203) when it is there, the same rule from here when it is not (a migration that
-    has not been applied yet must not stop the repair). Returns [{id, was, verdict, reason, home, away}]."""
+    has not been applied yet must not stop the repair). Returns [{id, was, verdict, reason, home, away}].
+
+    THE BOX SCORE FIRST (2026-10-14). A game the rule calls FINAL is offered to finalise-game before it is closed
+    on its last state: closed without it, a game kept its score and its plays but had no box score, because only
+    finalise-game builds one - five games, 25 Sep - 4 Oct (NBL D1, Czech 1. liga, Kosovo, Espoirs ELITE 2, SB
+    League), each feed stopping a few seconds short of the buzzer without saying the game was over. A game the
+    gate refuses (a level score, a player twice on the sheet) is closed as before."""
     ids = [g["id"] for g in games if g.get("age_s") is not None and g["age_s"] >= hard_cap]
     if not ids:
         return []
@@ -188,15 +194,44 @@ def close_stuck(sb, games: list[dict], now: datetime, hard_cap: int = REPAIR_HAR
     todo = [g for g in games if g["id"] in still]
     if not todo:
         return []
+    first: list = []
+    if not dry and callable(getattr(sb, "function", None)):
+        rest = []
+        for g in todo:
+            feed = next((e.get("external_status") for e in g["ext"]), None)
+            v, why = verdict(g.get("period"), g.get("clock_ms"), g.get("home"), g.get("away"), feed, g.get("periods") or 4)
+            code = 0
+            if v == "final":
+                try:
+                    code, _ = sb.function("finalise-game", {"gameId": g["id"]})
+                except Exception:
+                    code = 0
+            if not (200 <= int(code or 0) < 300):
+                rest.append(g)
+                continue
+            for e in g["ext"]:
+                sb.patch("external_games", f"adapter=eq.{e['adapter']}&external_id=eq.{e['external_id']}",
+                         {"external_status": "final", "error": None})
+            try:
+                sb.insert("audit_log", {"action": "close_stuck_game", "subject": "game", "subject_id": g["id"],
+                                        "detail": {"was": g["status"], "verdict": "final", "reason": why, "finalised": True,
+                                                   "by": "run_ingest --repair-stalled"}})
+            except Exception:
+                pass
+            first.append({"id": g["id"], "was": g["status"], "verdict": "final", "reason": f"finalised on its last state: {why}",
+                          "home": int(g.get("home") or 0), "away": int(g.get("away") or 0)})
+        todo = rest
+        if not todo:
+            return first
     if not dry:
         try:
             got = sb.rpc("close_stuck_games", {"p_hard_hours": hard_cap / 3600.0, "p_ids": [g["id"] for g in todo]})
             if isinstance(got, list):
-                return [{"id": r["game_id"], "was": r["was"], "verdict": r["verdict"], "reason": r["reason"],
-                         "home": r["home_score"], "away": r["away_score"]} for r in got]
+                return first + [{"id": r["game_id"], "was": r["was"], "verdict": r["verdict"], "reason": r["reason"],
+                                 "home": r["home_score"], "away": r["away_score"]} for r in got]
         except Exception as exc:                                     # 0203 not applied yet, or the call failed
             print(f"   (close_stuck_games unavailable - {str(exc)[:160]} - closing from here)")
-    out, comps = [], set()
+    out, comps = list(first), set()
     for g in todo:
         feed = next((e.get("external_status") for e in g["ext"]), None)
         v, why = verdict(g.get("period"), g.get("clock_ms"), g.get("home"), g.get("away"), feed, g.get("periods") or 4)
