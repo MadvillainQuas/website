@@ -225,6 +225,9 @@ def _forenames_conflict(q: "Name", c: "Name") -> bool:
         return False
     if same_forename(a, b) or jaro_winkler(a, b) >= 0.9:
         return False
+    short, long_ = sorted((a, b), key=len)
+    if len(short) >= 4 and short in long_:
+        return False                    # a short form inside the full one (Tomiwa / Olutomiwa), whatever the initial
     return not (q.initial == c.initial and (b in q.first or a in c.first))
 
 

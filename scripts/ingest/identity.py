@@ -64,6 +64,9 @@ def forename_compatible(a, b) -> bool:
         return x[0] == y[0]
     if x == y or same_forename(x, y):
         return True                     # the same name, or a nickname of it (Mike / Michael)
+    short, long_ = sorted((x, y), key=len)
+    if len(short) >= 4 and short in long_:
+        return True                     # a short form inside the full one: Tomiwa / Olutomiwa (Leicester's #10)
     # A SECOND GIVEN NAME GOING FIRST: "Sean Maurice" Walker is Maurice (or Mo) on another sheet, "Torren Lorenzo"
     # Jones is Torren. Once the surname alias stopped standing in for every Walker on the club (0632ed87a), these
     # would otherwise be filed as new people.

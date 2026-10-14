@@ -180,6 +180,14 @@ ok("a second given name going first is the same first name (Sean Maurice / Mauri
 ok("...and a nickname is (Mike / Michael), while two different names are not (Malcolm / Tavis, Michael / Jalen)",
    I.forename_compatible("Mike", "Michael") and not I.forename_compatible("Malcolm", "Tavis")
    and not I.forename_compatible("Michael", "Jalen"))
+sul = [{"id": "olu", "first_name": "Olutomiwa", "last_name": "Sulaiman", "number": "10", "team": "Leicester Riders",
+        "aliases": ["O. Sulaiman", "Olutomiwa", "Sulaiman"]}]
+ok("a short form inside the full first name is the same player: the feed's 'Tomiwa' Sulaiman is Leicester's Olutomiwa",
+   I.resolve(fl("Tomiwa", "Sulaiman", "10"), sul, "Leicester Riders")["player"]["id"] == "olu")
+sul2 = sul + [{"id": "tom", "first_name": "Tomiwa", "last_name": "Sulaiman", "number": "10", "team": "Leicester Riders",
+               "aliases": ["T. Sulaiman", "Olutomiwa Sulaiman"]}]
+ok("...and with a duplicate 'Tomiwa' profile beside him, his lines go to the fuller one, never unmatched",
+   I.resolve(fl("Olutomiwa", "Sulaiman", "10"), sul2, "Leicester Riders")["player"]["id"] == "olu")
 walker = [{"id": "mo", "first_name": "Maurice", "last_name": "Walker", "number": "15", "team": "Reading Rockets", "aliases": []}]
 ok("so 'Sean Maurice Walker' on the sheet is still Maurice Walker, not a new player",
    I.resolve(fl("Sean Maurice", "Walker", "15"), walker, "Reading Rockets")["player"]["id"] == "mo")
