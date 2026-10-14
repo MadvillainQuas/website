@@ -1345,6 +1345,9 @@ READERS: dict = {
 
 # Leagues the ingest reads that have NO reader, and why (bio_test holds the two lists together).
 NO_BIO = {
+    "ncaa-d2-men": "ncaa.com's box score names a player and his shirt, nothing more; the heights, classes and hometowns are on each "
+                   "of ~300 schools' own athletics sites (mostly Sidearm rosters), not read yet",
+    "ncaa-d2-women": "as ncaa-d2-men (the same feed, the same schools' sites)",
     "kosovo-superliga": "basketbolli.com lists players by name and licence number only; no player page, no bio in the LiveStats data",
     "estonian-latvian-basketball-league": "the league's site (estlatbl.com) and the federation's (basket.ee) disallow crawlers in "
                                           "robots.txt; the permitted live-score portal (online.basket.ee) and the LiveStats data carry no bio",

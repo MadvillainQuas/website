@@ -188,6 +188,11 @@ sul2 = sul + [{"id": "tom", "first_name": "Tomiwa", "last_name": "Sulaiman", "nu
                "aliases": ["T. Sulaiman", "Olutomiwa Sulaiman"]}]
 ok("...and with a duplicate 'Tomiwa' profile beside him, his lines go to the fuller one, never unmatched",
    I.resolve(fl("Olutomiwa", "Sulaiman", "10"), sul2, "Leicester Riders")["player"]["id"] == "olu")
+adamu = [{"id": "amin", "first_name": "Amin", "last_name": "Adamu", "number": "5", "team": "London Lions", "aliases": ["A. Adamu"]}]
+ok("a given name filed into the surname is the same player: 'Mohammad Al-Amin' 'Abdul Adamu' is London Lions' Amin Adamu",
+   I.resolve(fl("Mohammad Al-Amin", "Abdul Adamu", "5"), adamu, "London Lions")["player"]["id"] == "amin")
+ok("...while a different surname is still a different person", not I.surname_compatible("Adamu", "Adams")
+   and I.surname_compatible("Garcia Lopez", "Garcia"))
 walker = [{"id": "mo", "first_name": "Maurice", "last_name": "Walker", "number": "15", "team": "Reading Rockets", "aliases": []}]
 ok("so 'Sean Maurice Walker' on the sheet is still Maurice Walker, not a new player",
    I.resolve(fl("Sean Maurice", "Walker", "15"), walker, "Reading Rockets")["player"]["id"] == "mo")

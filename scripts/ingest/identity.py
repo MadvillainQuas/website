@@ -52,7 +52,9 @@ def surname_compatible(a, b) -> bool:
     if not A or not B:
         return False
     short, long_ = (A, B) if len(A) <= len(B) else (B, A)
-    return long_[:len(short)] == short
+    # the shorter at the START of the longer (a second surname dropped: Garcia Lopez / Garcia) or at its END (a given
+    # name filed into the surname: "Abdul Adamu" on one sheet is London Lions' Amin Adamu on another, 2026-10-14)
+    return long_[:len(short)] == short or long_[-len(short):] == short
 
 
 def forename_compatible(a, b) -> bool:
