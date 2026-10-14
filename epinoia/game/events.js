@@ -385,7 +385,9 @@ function reboundsHTML(Z, colour, shooter, other) {
   };
   return '<div class="ev-mwrap"><table class="ev-mx az rb" style="--s:' + colour + '">' +
     '<caption class="ev-vh">What became of each shot attempt, by zone</caption>' +
-    '<thead><tr><th scope="col">Zone</th><th scope="col">Attempts</th><th scope="col">Made</th><th scope="col">Off. rebound</th><th scope="col">Def. rebound</th><th scope="col">No rebound</th>' +
+    /* each heading in full, and the box score's short form a phone shows instead (events.css .ev-lh / .ev-sh) */
+    '<thead><tr><th scope="col">Zone</th>' + [['Attempts', 'FGA'], ['Made', 'Made'], ['Off. rebound', 'OREB'], ['Def. rebound', 'DREB'], ['No rebound', 'None']]
+      .map(([l, s]) => '<th scope="col"><span class="ev-lh">' + l + '</span><span class="ev-sh" aria-hidden="true">' + s + '</span></th>').join('') +
       '<th scope="col" class="ev-mxbar">What became of it</th></tr></thead>' +
     '<tbody>' + rows.map(([z, label, q]) => row(z, label, q, false)).join('') + row('all', 'All', all, true) + '</tbody></table></div>' +
     '<p class="ev-key" style="--s:' + colour + '"><span><i class="rbm"></i>made</span><span><i class="rbo"></i><span translate="no">' + shooter + '</span> offensive rebound</span>' +
@@ -434,6 +436,8 @@ function inner(S) {
   const D = C.side[o];
   const all = D.sits.all;
   const nm = C.names, me = esc(nm[t]), them = esc(nm[1 - t]), attackers = esc(nm[o]);
+  /* the possessive: Crusaders’ and Lions’, but Men’s */
+  const apos = n => (/s$/i.test(String(n || '').trim()) ? '’' : '’s');
   if (!all.chances) {
     return controlsHTML(nm) + '<section class="ev-card ev-empty"><h3 class="ev-title">No plays yet</h3><p>This tab is drawn from the play-by-play, and there is none for this game yet.</p></section>';
   }
@@ -454,7 +458,7 @@ function inner(S) {
       (all.efg == null ? '' : gpWrap(gpRate('sit', 'all.efg', { s: all }), (100 * all.efg).toFixed(1) + '%', 'eFG%') + ' eFG, ') +
       gpWrap(gpRate('sit', 'all.tov', { s: all }), pct(all.tovPct), 'turnover rate') + ' turnovers.</p>' +
     '<section class="ev-card">' +
-      '<div class="ev-head"><h3 class="ev-title">Where ' + attackers + '’ points came from</h3>' +
+      '<div class="ev-head"><h3 class="ev-title">Where ' + attackers + apos(nm[o]) + ' points came from</h3>' +
         '<p class="ev-key"><span><i class="tick"></i>' + dec2(all.ppp) + ' per chance overall</span><span>shots: rim · mid · three</span></p></div>' +
       '<div class="ev-cols" aria-hidden="true"><span>situation</span><span>points</span><span>share of chances</span><span>points per chance</span><span>eFG%</span><span>TOV%</span><span>shot diet</span></div>' +
       '<div class="ev-rows">' + keys.map(k => rowHTML(k, D.sits[k], all.ppp, scale, all)).join('') + '</div>' +

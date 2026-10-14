@@ -123,6 +123,7 @@
      overflow:hidden box, so every write here copies across as it happens. */
   const setX = (box, x) => {
     box.scrollLeft = x;
+    if (box.dataset && box.dataset.more !== undefined || HINTED.has(box)) edges(box);   // an overflow:hidden box's 'scroll' event is not to be relied on
     const m = box.__ftMirror;
     if (m && m.scrollLeft !== box.scrollLeft) m.scrollLeft = box.scrollLeft;
   };
@@ -236,6 +237,80 @@
      pointer was captured, and capture happens only once a drag has gone
      sideways past the slop — which is not a tap. */
 
+  /* THERE IS MORE THIS WAY (Louie, 2026-10-14): a strip that runs off the screen says so. Each managed box carries
+     data-more = 'l', 'r' or 'lr' for the side(s) with more to see (kit/epinoia-kit.css draws a fade and an arrow there, in
+     the colour of whatever the strip sits on: --xs-bg), kept up as it scrolls. A tab strip on a phone that has more also
+     nudges sideways once, the first time it is on screen, so the reader sees that it moves (not with reduced motion). */
+  const HINTED = new WeakSet();
+  /* the strips that get the arrows and the nudge: this file's tab strips, and the box score's tab row, which scrolls natively */
+  const STRIPS = '.ep-xtabs, .tabrow, .ft-pills';
+  /* boxes a page scrolls natively that get the same hint: the box score's tab row, the play-type tab's wide tables */
+  const ALSO = '.tabrow, .ev-mwrap';
+  const STILL = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+  const clear = c => !c || c === 'transparent' || /rgba\([^)]*,\s*0\)$/.test(c);
+  function bgOf(el) {
+    for (let p = el; p && p.nodeType === 1; p = p.parentElement) {
+      const c = getComputedStyle(p).backgroundColor;
+      if (!clear(c)) return c;
+    }
+    return null;
+  }
+  function edges(box) {
+    const max = box.scrollWidth - box.clientWidth;
+    const v = (box.scrollLeft > 4 ? 'l' : '') + (max > 4 && box.scrollLeft < max - 4 ? 'r' : '');
+    if ((box.dataset.more || '') !== v) { if (v) box.dataset.more = v; else delete box.dataset.more; }
+    return max > 4;
+  }
+  function nudge(box) {
+    if (box.dataset.nudged === '1' || STILL.matches || !PHONE(box)) return;
+    const r = box.getBoundingClientRect();
+    if (!r.width || r.bottom < 0 || r.top > (window.innerHeight || 0)) return;    // not on screen yet: the next look tries again
+    box.dataset.nudged = '1';
+    if (box.scrollLeft > 4) return;
+    let stop = false;
+    const halt = () => { stop = true; };
+    box.addEventListener('pointerdown', halt, { once: true });
+    const t0 = performance.now(), D = 900, A = Math.min(44, box.scrollWidth - box.clientWidth);
+    const step = now => {
+      if (stop) return;
+      const k = Math.min(1, (now - t0) / D);
+      setX(box, Math.round(A * Math.sin(Math.PI * k)));                           // out and back
+      if (k < 1) requestAnimationFrame(step); else { setX(box, 0); edges(box); }
+    };
+    setTimeout(() => requestAnimationFrame(step), 350);
+  }
+  function hint(box) {
+    if (!box || !box.isConnected) return;
+    if (!HINTED.has(box)) {
+      HINTED.add(box);
+      box.addEventListener('scroll', () => edges(box), { passive: true });
+    }
+    /* the colour behind it, looked up once per theme (a live page re-sweeps every second) */
+    const theme = document.documentElement.getAttribute('data-theme') || '';
+    if (box.__xsTheme !== theme) {
+      box.__xsTheme = theme;
+      const bg = bgOf(box);
+      if (bg) box.style.setProperty('--xs-bg', bg); else box.style.removeProperty('--xs-bg');
+    }
+    if (box.matches(STRIPS)) {
+      /* the arrows take no room: their slot gives back the strip's own gap too */
+      const cs = getComputedStyle(box);
+      const g = /px$/.test(cs.columnGap) ? cs.columnGap : '0px';
+      if (box.style.getPropertyValue('--xs-gap') !== g) box.style.setProperty('--xs-gap', g);
+      /* ...and sit on the strip's very edge: a sticky box stops at the padding, which would leave a sliver showing past it */
+      if (box.style.getPropertyValue('--xs-pl') !== cs.paddingLeft) box.style.setProperty('--xs-pl', cs.paddingLeft);
+      if (box.style.getPropertyValue('--xs-pr') !== cs.paddingRight) box.style.setProperty('--xs-pr', cs.paddingRight);
+    }
+    if (edges(box) && box.matches(STRIPS)) nudge(box);
+  }
+  /* the strips that are on screen get their look and their nudge as the page scrolls to them, cheaply */
+  let lookQueued = false;
+  window.addEventListener('scroll', () => {
+    if (lookQueued) return;
+    lookQueued = true;
+    setTimeout(() => { lookQueued = false; document.querySelectorAll(':is(' + STRIPS + ')[data-more]:not([data-nudged])').forEach(nudge); }, 200);
+  }, { passive: true });
+
   function sweep(root) {
     const r = root || document;
     /* every wide table, wherever it was drawn */
@@ -254,7 +329,8 @@
     /* .ft-wrap and .ep-tw are built by the pages themselves and are already
        scrollers, so wrap() skips them — but they are exactly the boxes the
        drag is for. Every horizontal surface on the platform, in one place. */
-    document.querySelectorAll(MANAGED).forEach(drag);
+    document.querySelectorAll(MANAGED).forEach(b => { drag(b); hint(b); });
+    document.querySelectorAll(ALSO).forEach(hint);
   }
 
   const run = () => { try { sweep(); } catch (_) { /* never break a page for this */ } };

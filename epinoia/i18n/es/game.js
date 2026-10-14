@@ -725,7 +725,7 @@
         [/^points per chance,(?: ([\d.]+%) eFG,)?(?: ([\d.]+%|–) turnovers\.)?$/, m =>
           'puntos por oportunidad,' + (m[1] ? ' ' + m[1] + ' de eFG,' : '') + (m[2] ? ' ' + m[2] + ' de pérdidas.' : '')],
         [/^eFG,(?: ([\d.]+%|–) turnovers\.)?$/, m => 'de eFG,' + (m[1] ? ' ' + m[1] + ' de pérdidas.' : '')],
-        [/^Where (.+)’ points came from$/, 'De dónde salieron los puntos de $1'],
+        [/^Where (.+?)’s? points came from$/, 'De dónde salieron los puntos de $1'],
         [/^([\d.]+) per chance overall$/, '$1 por oportunidad en total'],
         [/^(\d+)% of points$/, 'el $1% de los puntos'],
         [/^(\d+) poss\.$/, '$1 pos.'],

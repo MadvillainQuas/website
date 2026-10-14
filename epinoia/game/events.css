@@ -7,7 +7,7 @@
 .ev{ --ev-s1:#d95926; --ev-s2:#3987e5; --ev-s3:#199e70; --ev-s4:#c98500;
   --ev-neutral:color-mix(in srgb,var(--text-primary) 55%,transparent);
   --ev-track:color-mix(in srgb,var(--text-primary) 9%,transparent);
-  display:grid; gap:16px; min-width:0; position:relative }
+  display:grid; grid-template-columns:minmax(0,1fr); gap:16px; min-width:0; position:relative }  /* one column the width of the page, never of its widest child (a long club name in the switch spread the whole tab) */
 :root[data-theme="light"] .ev{ --ev-s1:#eb6834; --ev-s2:#2a78d6; --ev-s3:#1baf7a; --ev-s4:#eda100 }
 
 /* ---- team and side ---- */
@@ -93,6 +93,7 @@
 .ev-stack .rbn, .ev-key i.rbn{ background:color-mix(in srgb,var(--text-primary) 12%,transparent) }
 .ev-key i.rbm, .ev-key i.rbo, .ev-key i.rbd, .ev-key i.rbn{ border-radius:2px }
 .ev-mx.rb{ min-width:520px }
+.ev-mx .ev-sh{ display:none }
 .ev-diet.none .ev-stack{ opacity:.5 }
 
 /* ---- the chosen situation ---- */
@@ -256,5 +257,18 @@ a.ev-person:hover{ text-decoration:underline }
   .ev-prow[aria-expanded="true"] .ev-pname small{ display:block }
   .ev-pmx{ margin-left:2px; padding-left:8px }
   .ev-mx{ min-width:700px }
+}
+/* WHERE EACH SHOT WENT ON A PHONE: the whole table on the screen - short headings, the bar column left out (the numbers and the key
+   below say the same), tighter cells - rather than half of it behind a swipe */
+@media (max-width:560px){
+  .ev-mx.rb{ min-width:0; font-size:12px }
+  .ev-mx.rb .ev-mxbar{ display:none }
+  .ev-mx.rb .ev-lh{ display:none }
+  .ev-mx.rb .ev-sh{ display:inline }
+  .ev-mx.rb th, .ev-mx.rb td{ padding:7px 5px }
+  .ev-mx.rb th:first-child{ padding-left:2px }
+  .ev-mx.rb td b{ font-size:12.5px }
+  .ev-mx.rb td small{ font-size:10px }
+  .ev-mx.rb thead th{ letter-spacing:.04em }
 }
 @media (prefers-reduced-motion:reduce){ .ev-row, .ev-prow, .ev-chev, .ev-pbtn, .ev-teams button, .ev-seg button{ transition:none } }

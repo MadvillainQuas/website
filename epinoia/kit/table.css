@@ -335,9 +335,7 @@ table.ft td.neg{ color:var(--bad,var(--flare)) }
   .ft-pills{
     flex-wrap:nowrap; overflow:hidden; position:relative;
     touch-action:pan-y pinch-zoom; overscroll-behavior-x:contain;
-    padding:8px 40px 8px 12px;
-    -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);
-            mask-image:linear-gradient(90deg,#000 calc(100% - 32px),transparent);
+    padding:8px 12px;            /* the arrows below say there is more (xscroll.js data-more), not a fade that never goes */
   }
   .ft-pill{ flex:none; min-height:40px; font-size:10px }
 
@@ -595,7 +593,7 @@ table.ft td.heat::before{
     -webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);
             mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);
   }
-  .ft-pills{ padding:10px 40px 10px 12px }
+  .ft-pills{ padding:10px 12px }
 }
 @media (prefers-reduced-motion:reduce){ .ft-pill, .ft-grip::after{ transition:none } }
 
@@ -805,3 +803,17 @@ table.ft thead th.stick.hl.hl-end{ box-shadow:inset 0 -3px 0 color-mix(in oklch,
 .ft-host.ft-hlmode table.ft thead th.hl-pick:hover{ background:color-mix(in oklch,var(--flare) 18%,var(--panel)) }
 .ft-btn.ft-hlbtn::before{ content:""; display:inline-block; width:8px; height:8px; margin-right:6px; border-radius:2px; background:var(--flare); vertical-align:0 }
 .ft-btn.ft-hlclear[hidden]{ display:none }
+
+/* THERE IS MORE THIS WAY (xscroll.js data-more, 2026-10-14): the preset strip, like every tab strip, fades with an arrow at
+   the end that has more, sticky to the visible edge, gone at an end that has been reached. */
+.ft-pills::before, .ft-pills::after{content:""; position:sticky; z-index:3; flex:0 0 34px; align-self:stretch; pointer-events:none;
+  opacity:0; transition:opacity .2s ease; background-repeat:no-repeat}
+.ft-pills::before{left:calc(-1 * var(--xs-pl, 0px)); order:-999; margin-right:calc(-34px - var(--xs-gap, 0px));
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 12'%3E%3Cpath d='M6.5 1.5 2 6l4.5 4.5' fill='none' stroke='%23808a85' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    linear-gradient(90deg, var(--xs-bg, var(--ground, #fff)) 40%, transparent);
+  background-position:6px 50%, 0 0; background-size:7px 11px, 100% 100%}
+.ft-pills::after{right:calc(-1 * var(--xs-pr, 0px)); order:999; margin-left:calc(-34px - var(--xs-gap, 0px));
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 12'%3E%3Cpath d='M1.5 1.5 6 6l-4.5 4.5' fill='none' stroke='%23808a85' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
+    linear-gradient(270deg, var(--xs-bg, var(--ground, #fff)) 40%, transparent);
+  background-position:calc(100% - 6px) 50%, 0 0; background-size:7px 11px, 100% 100%}
+.ft-pills[data-more*="l"]::before, .ft-pills[data-more*="r"]::after{opacity:1}

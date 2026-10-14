@@ -32,6 +32,7 @@
 (function () {
   const STEP = 10;                      // the newest large, then three rows of three
   const LIVE_EVERY = 60000;
+  const PHONE_VIEW = window.matchMedia ? window.matchMedia('(max-width:720px)') : { matches: false };   // HOME's phone width
   let S = null;                         // the open view's state
 
   const cfg = () => window.EPINOIA_CONFIG || {};
@@ -295,7 +296,9 @@
       if (!games.length) { gamesRow.textContent = ''; return; }
       const keep = chosen && games.find(g => g.id === chosen.id);
       if (keep) { chosen = keep; drawGames(); drawBug(keep); }
-      else if (first || !chosen) { chosen = games[0]; drawGames(); enter(chosen); }
+      /* a phone waits for the reader to tap a game (Louie, 2026-10-14): opening the first one by itself put a playing stream
+         at the top of the view that had to be scrolled past to reach anything else */
+      else if ((first || !chosen) && !PHONE_VIEW.matches) { chosen = games[0]; drawGames(); enter(chosen); }
       else drawGames();
     }
     /* ---- SCHEDULED: the games still to come with a stream to be played here ---- */
