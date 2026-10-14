@@ -822,3 +822,93 @@ html.vh-on .ft-panel{display:none !important}
 /* MY FOLLOWED's small feed under Best this week (followed-home.js news, feedview.js mini) */
 .hmf-news .pc-grid{padding:0 calc(var(--u)*3) calc(var(--u)*2)}
 @media (max-width:560px){ .hmf-news .pc-grid{padding:0 12px 12px} }
+
+/* THE FAVOURITES' LINE BELONGS TO THE GAMES TAB (groups.js data-hg-tab; 2026-10-14): on a desktop's other tabs it steps aside */
+html.hg-tabs:not([data-hg-tab="games"]) .hm #favourites, html.hg-tabs:not([data-hg-tab="games"]) #favourites{display:none !important}
+
+/* GAMES TO WATCH THIS WEEK (home/watch-home.js; 2026-10-14): three cards in the clubs' colours - a strip of both along the top,
+   their tints washed in from either corner - the clubs face to face, the lean as a bar, a short line and the rest folded */
+.gw-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;padding:4px 0 8px;align-items:start}
+@media (max-width:1000px){ .gw-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:640px){ .gw-grid{grid-template-columns:1fr;gap:12px} }
+.gw-grid > .empty{grid-column:1 / -1}
+.gw-card{position:relative;display:flex;flex-direction:column;gap:12px;padding:18px 16px 14px;border-radius:18px;overflow:hidden;min-width:0;
+  background:linear-gradient(155deg,color-mix(in oklch,var(--ha) 16%,var(--panel)) 0%,var(--panel) 46%,var(--panel) 54%,color-mix(in oklch,var(--aa) 16%,var(--panel)) 100%);
+  border:1px solid var(--rule-2);box-shadow:0 10px 28px rgba(0,0,0,.10);transition:transform .18s ease,box-shadow .18s ease}
+.gw-card::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:linear-gradient(90deg,var(--ha) 0 50%,var(--aa) 50% 100%)}
+@media (hover:hover){ .gw-card:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(0,0,0,.16)} }
+.gw-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.gw-lg{min-width:0;overflow:hidden;display:flex;align-items:center}
+.gw-when{flex:none;font-family:var(--f-micro);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);white-space:nowrap}
+.gw-rival{align-self:center;margin-top:-4px;padding:3px 10px;border-radius:999px;background:var(--flare);color:#fff;
+  font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase}
+.gw-teams{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:start;gap:8px}
+.gw-side{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;min-width:0}
+.gw-side .gw-cr{width:54px;height:54px;font-size:15px;border-radius:12px;box-shadow:0 0 0 2px var(--club,var(--rule-2)),0 6px 16px rgba(0,0,0,.14)}
+.gw-cr-txt{display:grid;place-items:center;color:#fff;font-weight:800}
+.gw-name{font-family:var(--f-ui);font-weight:800;font-size:14px;line-height:1.15;color:var(--ink);text-decoration:none;overflow-wrap:anywhere}
+a.gw-name:hover{text-decoration:underline;text-underline-offset:3px}
+.gw-meta{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--ink-3)}
+.gw-v{align-self:center;margin-top:-18px;font-family:var(--f-ui);font-weight:800;font-size:16px;color:var(--ink-3)}
+.gw-lean{display:flex;height:22px;border-radius:999px;overflow:hidden;font-family:var(--f-micro);font-size:10px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.gw-lean span{display:flex;align-items:center;min-width:38px;padding:0 9px;color:#fff}
+.gw-lh{background:var(--ha)}
+.gw-la{background:var(--aa);justify-content:flex-end}
+.gw-lean b{font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.gw-short{margin:0;font-size:14px;line-height:1.45;color:var(--ink)}
+.gw-more > summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;
+  border:1px solid var(--rule-2);background:var(--panel);font-family:var(--f-micro);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.gw-more > summary::-webkit-details-marker{display:none}
+.gw-more > summary::after{content:"\25be";transition:transform .2s ease}
+.gw-more[open] > summary{border-color:var(--lume);color:var(--ink)}
+.gw-more[open] > summary::after{transform:rotate(180deg)}
+.gw-body{display:flex;flex-direction:column;gap:10px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--rule-2)}
+.gw-why{margin:0;padding-left:18px;font-size:13px;line-height:1.45;color:var(--ink-2)}
+.gw-why li + li{margin-top:4px}
+.gw-reason b, .gw-players > b{display:block;font-family:var(--f-micro);font-size:9.5px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.gw-reason p{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--ink)}
+.gw-players{display:flex;flex-direction:column;gap:4px}
+.gw-pl{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:13px;line-height:1.4}
+.gw-pl a{font-weight:700;color:var(--ink)}
+.gw-pline{color:var(--ink-3)}
+.gw-go{align-self:flex-start}
+.gw-note{text-align:center;font-size:12px;color:var(--ink-3);margin:6px 0 0}
+.gw-note:empty{display:none}
+
+/* the watch score: a ring filled to it, between the clubs (watch-home.js markOf) */
+.gw-score{align-self:start;display:flex;flex-direction:column;align-items:center;gap:4px;margin-top:-2px}
+.gw-ring{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;width:58px;height:58px;border-radius:50%;
+  background:conic-gradient(var(--lume) calc(var(--m) * 1%), color-mix(in oklch,var(--ink) 12%,transparent) 0);
+  box-shadow:0 6px 16px rgba(0,0,0,.12)}
+.gw-ring::before{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--panel)}
+.gw-ring b, .gw-ring small{position:relative;line-height:1}
+.gw-ring b{font-family:var(--f-ui);font-weight:800;font-size:19px;color:var(--ink)}
+.gw-ring small{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.06em;color:var(--ink-3);margin-top:1px}
+.gw-sl{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.gw-how{margin:0;font-size:12px;line-height:1.45;color:var(--ink-3)}
+
+/* the card's layout, narrow-first (2026-10-14): the league, when and the score along the top; the clubs one under the other */
+.gw-top{align-items:flex-start}
+.gw-tl{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;flex:1 1 auto}
+.gw-tl .gw-when{white-space:normal}
+.gw-top .gw-score{flex:none;margin-top:0}
+.gw-top .gw-ring{width:52px;height:52px}
+.gw-top .gw-ring b{font-size:17px}
+.gw-teams{display:flex;flex-direction:column;gap:4px}
+.gw-side{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;column-gap:10px;text-align:left}
+.gw-side .gw-cr{width:40px;height:40px;font-size:12px;border-radius:10px}
+.gw-nm{display:flex;flex-direction:column;gap:2px;min-width:0}
+.gw-name{font-size:14px;overflow-wrap:break-word}
+.gw-teams .gw-v{align-self:flex-start;margin:0 0 0 13px;font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+/* a league's name wraps in the card rather than being cut */
+.gw-tl .gw-lg{overflow:visible;max-width:100%}
+.gw-tl .gw-lg .lgb{min-width:0;max-width:100%}
+.gw-card .gw-tl .gw-lg .lgb .lgb-name{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:normal;word-break:normal;line-height:1.15;font-size:11px !important;letter-spacing:.02em !important;max-width:none !important;width:auto !important;text-transform:none !important;font-weight:700}
+
+/* the pills under the top row, and the upset alert inside (watch-home.js) */
+.gw-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:-4px}
+.gw-pills .gw-rival{margin:0}
+.gw-upset{padding:3px 10px;border-radius:999px;background:#ffd23f;color:#1a1400;font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;cursor:help}
+.gw-alert{margin:0;padding:8px 10px;border-radius:10px;background:color-mix(in oklch,#ffd23f 18%,var(--panel));font-size:13px;line-height:1.45;color:var(--ink)}
+.gw-alert-k{font-family:var(--f-micro);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}

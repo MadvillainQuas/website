@@ -501,6 +501,24 @@ export async function buildLeague(api, lg, o) {
 }
 
 /* =============================================================================================== run === */
+/* THE GAME TO WATCH, SMALL (2026-10-14): what HOME's "Games to watch this week" draws of a league's card (newsroom.js
+   gameCard, out.watchCard), kept in the index so HOME reads one file rather than every league's: the game, when, how much
+   is at stake (its score orders the leagues), both clubs as a card shows them, the lean, why it matters, the first two
+   reasons and the players to watch. null when the league has no game to watch this week. */
+export function watchSummary(out) {
+  const w = out && out.watchCard;
+  if (!w || !w.home || !w.away || !w.game) return null;
+  const cl = id => { const c = (out.clubs && out.clubs[id]) || {}; return { name: c.name || '', short: c.short || '', slug: c.slug || '', colour: c.colour || null, logo: c.logo || null }; };
+  const side = s => Object.assign({ id: s.id, rec: s.rec || null, rank: s.rank || null, form: s.form || null }, cl(s.id));
+  return { game: w.game, at: w.at, stakes: w.stakes, score: w.score != null ? w.score : w.stakes, rival: !!w.rival,
+    upset: w.upset && w.upset.label ? { label: w.upset.label, side: w.upset.side, pts: w.upset.pts } : null,
+    home: side(w.home), away: side(w.away),
+    lean: w.lean ? { favourite: w.lean.favourite, chance: w.lean.chance } : null, line: w.line || null,
+    angle: w.angle || null, threads: (w.threads || []).slice(0, 2),
+    reasons: (w.reasons || []).slice(0, 2).map(r => ({ title: r.title, text: r.text })),
+    players: (w.players || []).slice(0, 2).map(p => ({ name: p.name, slug: p.slug || null, team: p.team, line: p.line || null })) };
+}
+
 export async function run(opts) {
   const o = opts || {};
   const log = o.log || (m => console.log(m));
@@ -596,7 +614,8 @@ export async function run(opts) {
         await api.upload(PUBLIC_BUCKET, 'narrative/' + lg.id + '.json', body, 600);
         await api.upload(PRIVATE_BUCKET, 'narrative-cache/' + lg.id + '.json', JSON.stringify(res.cache), 0);
         index.leagues = index.leagues || {};
-        index.leagues[lg.id] = { slug: lg.slug, built: res.out.built, token: res.out.token, stories: res.out.stories.length, engine: res.out.engine };
+        index.leagues[lg.id] = { slug: lg.slug, built: res.out.built, token: res.out.token, stories: res.out.stories.length, engine: res.out.engine,
+          watch: watchSummary(res.out) };
       }
       if (o.out) fs.writeFileSync(o.out, body);
       if (o.print) printBuild(res.out, log);
@@ -619,7 +638,18 @@ export async function run(opts) {
       await api.upload(PUBLIC_BUCKET, 'feed/salience.json', JSON.stringify({ v: 1, built: new Date(nowMs).toISOString(), items }), 600);
     } catch (e) { log('click-through model: ' + String(e.message || e).slice(0, 160)); }
   }
-  if (write && built.length) {
+  /* A LEAGUE BUILT BEFORE THE INDEX CARRIED ITS GAME TO WATCH: read once from its own public file, so HOME has every
+     league's at once rather than as each is next rebuilt */
+  let filled = 0;
+  if (write && index.leagues) {
+    for (const id of Object.keys(index.leagues)) {
+      if (index.leagues[id].watch !== undefined || Date.now() > deadline) continue;
+      try { index.leagues[id].watch = watchSummary(await api.publicJson('snapshots/narrative/' + id + '.json')); filled++; }
+      catch (_) { /* tried again next run */ }
+    }
+    if (filled) log('games to watch: ' + filled + ' league(s) read into the index');
+  }
+  if (write && (built.length || filled)) {
     index.v = 1; index.built = new Date(nowMs).toISOString();
     await api.upload(PUBLIC_BUCKET, 'narrative/index.json', JSON.stringify(index), 300);
   }

@@ -14,7 +14,7 @@
    ============================================================================ */
 (function () {
   const GROUPS = [
-    ['games', 'Games', ['fixtures', 'followed']],
+    ['games', 'Games', ['fixtures', 'followed', 'watch']],
     ['media', 'Feed & video', ['feed', 'videos']],
     ['go', 'EPINOIA GO', ['go']],
     ['stars', 'Stars', ['stars', 'records']],
@@ -75,6 +75,8 @@
     if (save) { try { localStorage.setItem(TAB_KEY, k); } catch (_) { /* private mode */ } }
     const on = !!desk.matches;
     document.documentElement.classList.toggle('hg-tabs', on);
+    /* which tab is open, for what belongs to one tab only (the favourites' line: Games) */
+    document.documentElement.setAttribute('data-hg-tab', on && k ? k : '');
     nav.setAttribute('role', on ? 'tablist' : 'navigation');
     built.forEach(g => {
       const off = on && g.key !== k;

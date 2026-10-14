@@ -1543,11 +1543,32 @@ function slate(X, horizon) {
   return X.fixtures.filter(g => time(g.tipoff_at) <= until).map(g => {
     const a = g.home_team_id, b = g.away_team_id, pa = X.posOf.get(a), pb = X.posOf.get(b), ca = X.C.get(a), cb = X.C.get(b);
     const of = pa ? pa.of : 0;
-    const topish = (pa ? 1 - (pa.pos - 1) / Math.max(1, of) : 0.4) + (pb ? 1 - (pb.pos - 1) / Math.max(1, of) : 0.4);
-    const close = pa && pb ? Math.max(0, 1 - Math.abs(pa.pos - pb.pos) / 6) : 0.3;
+    /* WHAT IS AT STAKE (2026-10-14, Louie: "why would a 3-1 vs a 1-3 team be ranked highly"): how good both clubs are, how
+       evenly matched, and how tight the What wins model makes it - out of 1.5 - plus an UPSET ALERT when the model's
+       four factors give the underdog a real edge in one of them. A club's quality is its record, leaning on its place in
+       the table only until six games have been played (a 1-3 club third in a four-game table is not a top club); before,
+       the table's places alone made two neighbouring clubs a big game whatever their records said. */
     const ex = expect(X.P, a, b, X.model);
+    const qOf = (c, p) => {
+      const pos = p ? 1 - (p.pos - 1) / Math.max(1, p.of) : 0.4;
+      const gp = c ? (+c.w || 0) + (+c.l || 0) : 0;
+      if (!gp) return pos;
+      const k = Math.min(1, gp / 6);
+      return k * ((+c.w || 0) / gp) + (1 - k) * pos;
+    };
+    const qa = qOf(ca, pa), qb = qOf(cb, pb);
+    const quality = (qa + qb) / 2;
+    const balance = Math.max(0, 1 - 1.5 * Math.abs(qa - qb));
     const tight = ex ? Math.max(0, 1 - Math.abs(ex.margin) / 12) : 0.4;
-    const stakes = Math.round(100 * (topish * 0.5 + close * 0.3 + tight * 0.2)) / 100;
+    let upset = null;
+    if (ex && Math.abs(ex.margin) >= 2) {
+      const favHome = ex.margin > 0;
+      Object.keys(ex.parts).forEach(k => {
+        const toDog = favHome ? -ex.parts[k].pts : ex.parts[k].pts;
+        if (toDog >= 1.5 && (!upset || toDog > upset.pts)) upset = { k, label: FACET[k], side: favHome ? b : a, pts: Math.round(toDog * 10) / 10 };
+      });
+    }
+    const stakes = Math.round(100 * (1.5 * (0.45 * quality + 0.25 * balance + 0.30 * tight) + (upset ? Math.min(0.2, 0.07 * upset.pts) : 0))) / 100;
     /* the meetings this season */
     const met = X.games.filter(m => (m.home_team_id === a && m.away_team_id === b) || (m.home_team_id === b && m.away_team_id === a));
     const winsA = met.filter(m => (m.home_team_id === a ? +m.home_score > +m.away_score : +m.away_score > +m.home_score)).length;
@@ -1590,7 +1611,7 @@ function slate(X, horizon) {
     /* a series game outranks the regular season; among series games, the regular measure still orders them */
     const stakes0 = Math.round(100 * ((ser ? 1.2 + 0.5 * stakes : stakes) + (rival ? 0.45 : 0))) / 100;
     return {
-      game: g.id, at: g.tipoff_at, day: dayWords(g.tipoff_at, X.tz), title, angle, stakes: stakes0, rival, series: ser ? { game: ser.n + 1, status: ser.n ? ser.status : null } : null,
+      game: g.id, at: g.tipoff_at, day: dayWords(g.tipoff_at, X.tz), title, angle, stakes: stakes0, rival, upset, series: ser ? { game: ser.n + 1, status: ser.n ? ser.status : null } : null,
       home: { id: a, rank: pa ? pa.pos : null, rec: ca ? rec(ca.w, ca.l) : null, form: ca ? ca.last5.join('') : '', streak: ca && ca.streak ? (ca.streak.won ? 'W' : 'L') + ca.streak.n : null, watch: watchP(a) },
       away: { id: b, rank: pb ? pb.pos : null, rec: cb ? rec(cb.w, cb.l) : null, form: cb ? cb.last5.join('') : '', streak: cb && cb.streak ? (cb.streak.won ? 'W' : 'L') + cb.streak.n : null, watch: watchP(b) },
       expect: ex ? { margin: Math.round(ex.margin * 10) / 10, favourite: ex.margin >= 0 ? a : b, model: ex.model } : null,
@@ -1750,7 +1771,8 @@ function coverage(stories, X) {
 
 /* THE ENGINE'S VERSION: raised when what it writes changes, so every league's file is rebuilt on the next run (the
    builder treats a file from an older engine as due) */
-const VERSION = 16;     // 16: every league built again, so this week's previews carry what they said of each game (watch 6)
+const VERSION = 17;     // 17: what is at stake from the records, not the table alone, with the upset alert (every league built again)
+                        // 16: every league built again, so this week's previews carry what they said of each game (watch 6)
                         // 15: the weekly preview keeps its week: a round-up, a bar of its own, early-season lines, no table before three games
                         // 14: a series' edge said of the side; the editor reads again what it has not read since it last changed
                         // 13: the editor reads every piece already out; a game to watch only with something to say

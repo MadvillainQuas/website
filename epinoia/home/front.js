@@ -37,12 +37,13 @@
 const NOW = new Date();
 const BASE = '../';
 const MOUNTS = {
-  fixtures: 'homeDaily', followed: 'homeFollowed', feed: 'homeFeed', videos: 'homeVideos', go: 'homeGoStrip', stars: 'homeStars', records: 'homeRecords',
+  fixtures: 'homeDaily', followed: 'homeFollowed', watch: 'homeWatch', feed: 'homeFeed', videos: 'homeVideos', go: 'homeGoStrip', stars: 'homeStars', records: 'homeRecords',
   leagues: 'homeLeagues', privateLeagues: 'homePrivateLeagues'
 };
 const QUIET = {
   fixtures: 'Fixtures could not be loaded just now.',
   followed: 'What you follow could not be loaded just now.',
+  watch: 'The games to watch could not be loaded just now.',
   feed: 'The feed could not be loaded just now.',
   videos: 'The videos could not be loaded just now.',
   go: 'EPINOIA GO could not be loaded just now.',
@@ -336,6 +337,8 @@ function boot() {
      whole page, so the second to ask gets it for nothing */
   const followed = fixtures.then(() => run('followed'));
   firstRuns.followed = followed;
+  /* GAMES TO WATCH (watch-home.js): one small file, after the fixtures */
+  fixtures.then(() => run('watch'));
   /* THE FEED (feed-home.js): one small read, after the fixtures a reader came for */
   const feed = fixtures.then(() => run('feed'));
   firstRuns.feed = feed;

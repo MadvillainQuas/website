@@ -1989,7 +1989,17 @@
       'highlight columns: press this, then a column’s header to pin it beside the name (press it again to let it go)': 'destacar columnas: pulsa aquí y luego la cabecera de una columna para fijarla junto al nombre (púlsala otra vez para soltarla)',
       'Youth': 'Juvenil',
       'University': 'Universitaria',
-      'Show leagues': 'Mostrar ligas'
+      'Show leagues': 'Mostrar ligas',
+      'Games to watch this week': 'Partidos a seguir esta semana',
+      'watch score': 'interés',
+      'Ones to watch': 'Jugadores a seguir',
+      'The game’s preview →': 'La previa del partido →',
+      'Rivalry': 'Rivalidad',
+      'No games to watch this week in the leagues you picked.': 'No hay partidos a seguir esta semana en las ligas elegidas.',
+      'The games to watch could not be loaded just now.': 'No se pudieron cargar los partidos a seguir.',
+      'Watch score: what is at stake and how much there is to say about it, out of 100': 'Interés: lo que está en juego y cuánto hay que contar, sobre 100',
+      'How much is at stake (how high both clubs sit, how close together and how tight the numbers make it), weighed by how much there is to say about it.': 'Lo que está en juego (lo arriba que están los dos clubes, lo cerca que están y lo igualado que lo ven los números), ponderado por cuánto hay que contar.',
+      'Upset alert': 'Alerta de sorpresa'
     },
 
     ctx: {

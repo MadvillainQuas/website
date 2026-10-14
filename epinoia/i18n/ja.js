@@ -1987,7 +1987,17 @@
       'highlight columns: press this, then a column’s header to pin it beside the name (press it again to let it go)': '列のハイライト：これを押してから列の見出しを押すと、名前の横に固定されます（もう一度押すと解除）',
       'Youth': 'ユース',
       'University': '大学',
-      'Show leagues': 'リーグを表示'
+      'Show leagues': 'リーグを表示',
+      'Games to watch this week': '今週の注目試合',
+      'watch score': '注目度',
+      'Ones to watch': '注目選手',
+      'The game’s preview →': '試合プレビュー →',
+      'Rivalry': 'ライバル対決',
+      'No games to watch this week in the leagues you picked.': '選んだリーグに今週の注目試合はありません。',
+      'The games to watch could not be loaded just now.': '注目試合を今は読み込めませんでした。',
+      'Watch score: what is at stake and how much there is to say about it, out of 100': '注目度：試合の重要性と語るべき内容を100点満点で',
+      'How much is at stake (how high both clubs sit, how close together and how tight the numbers make it), weighed by how much there is to say about it.': '試合の重要性（両クラブの順位の高さ、順位の近さ、数字が示す接戦度）を、語るべき内容の多さで重み付けしたもの。',
+      'Upset alert': '番狂わせ注意'
     },
 
     ctx: {

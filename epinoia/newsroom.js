@@ -1001,7 +1001,7 @@ function cardFor(L, o, b, g) {
              onoff: row && num(row.on_poss) >= 250 && num(row.on_net) != null && num(row.off_net) != null ? { on: Math.round(row.on_net * 10) / 10, off: Math.round(row.off_net * 10) / 10 } : null };
   }).filter(Boolean);
   const art = ((b && b.articles) || []).find(a => a.kind === 'watch' && (a.links || []).some(l => l.href === 'game/?g=' + g.game));
-  const card = { game: g.game, at: g.at, day: g.day, stakes: g.stakes, rival: !!g.rival, angle: whyLines[0] || null, threads: whyLines.slice(1),
+  const card = { game: g.game, at: g.at, day: g.day, stakes: g.stakes, rival: !!g.rival, upset: g.upset || null, angle: whyLines[0] || null, threads: whyLines.slice(1),
            home: side(g.home), away: side(g.away), lean: ex ? { favourite: ex.favourite, margin: Math.round(Math.abs(ex.margin) * 10) / 10, chance: Math.round(pFav * 100) } : null,
            reasons: why, players, article: art ? art.id : null, line };
   /* the editor reads the card's words (the lean, why it matters, each reason) as one piece */
