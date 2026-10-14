@@ -501,8 +501,12 @@ class Platform:
             cn = identity.canonical_name(p)
             r = res["player"] if res["status"] == "match" else None
             if r:
-                self.log(f"  = {cn['first']} {cn['last']} -> {r.get('first_name')} {r.get('last_name')} "
-                         f"(tier {res['tier']}: {', '.join(res['reasons'])})")
+                # SAID ONLY WHEN IT IS NEWS: a line placed on someone other than the person its slot was stamped with
+                # (a new stamp, or a moved one). A match the stored stamp already said is the ordinary case - and on
+                # every restart of the live lane, with the cache empty, it printed every player of every live game.
+                if stamps.get(slot) != r["id"]:
+                    self.log(f"  = {cn['first']} {cn['last']} -> {r.get('first_name')} {r.get('last_name')} "
+                             f"(tier {res['tier']}: {', '.join(res['reasons'])})")
                 if not self.dry and self.sb and stamps.get(slot) != r["id"]:
                     # MERGE, DON'T REPLACE: external_ids is a dict of named feeds; only this feed's stamp moves
                     cur = self.sb.select("players", f"id=eq.{r['id']}&select=external_ids")

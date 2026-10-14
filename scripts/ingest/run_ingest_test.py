@@ -273,7 +273,8 @@ ok("...and moves a game out of the catch-all only when it did",
 _calls = _re.findall(r"write_platform\(sb, src, b, run[^\n]*(?:\n[^\n]*from_schedule=[^\n]*)?", _src)
 ok("the main loop says so only for a discovery pass: not --ids, not a catch-up or repair, not the live pass",
    sum("from_schedule=not (args.ids or args.catch_up or args.live_only)" in c for c in _calls) == 2, _calls)
-ok("...and the live keeper never does", any("observer.stamps(xid)" in c and "from_schedule" not in c for c in _calls), _calls)
+# the live keeper's call passes the observer's memory (read under its lock as `memory`, 2026-10-14)
+ok("...and the live keeper never does", any("observed, memory" in c and "from_schedule" not in c for c in _calls), _calls)
 
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

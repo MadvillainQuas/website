@@ -30,13 +30,16 @@ job (min gap between requests); this runner never fans out in parallel.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures as cf
 import json
 import os
 import re
 import sys
+import threading
 import time
 import urllib.parse
 import zlib
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -119,7 +122,7 @@ class Supabase:
         # TLS connection. Once the feed observer polls between writes (docs/feed-timing.md,
         # step 2) the length of a write is the only thing left that stretches the gap between
         # two looks at a game, and a pooled keep-alive connection is the cheapest part of it
-        # to remove. The live lane is single-threaded, so one Session is safe.
+        # to remove.
         #
         # The one thing a pool adds is a connection that died while it sat idle: the live lane
         # naps up to two minutes waiting for a tip-off, the server closes the socket, and the
@@ -128,7 +131,21 @@ class Supabase:
         # to send twice - get exactly one more try on a ConnectionError. insert, rpc and
         # function are never resent: a second insert is a duplicate row, and a second
         # finalise-game is a second pass over a closed game.
-        self.s = session or requests.Session()
+        #
+        # ONE SESSION PER THREAD (2026-10-14): the live lane writes several games at once now (LANE_THREADS), and a
+        # requests.Session is not promised to be safe across threads. Each thread keeps its own pooled connection;
+        # a session handed in (the tests' fakes) is used by all of them.
+        self._fixed = session
+        self._local = threading.local()
+
+    @property
+    def s(self):
+        if self._fixed is not None:
+            return self._fixed
+        sess = getattr(self._local, "s", None)
+        if sess is None:
+            sess = self._local.s = requests.Session()
+        return sess
 
     def _again(self, send):
         """Send an idempotent request; once more if the pooled connection had gone away."""
@@ -1964,6 +1981,7 @@ STALE_FINAL_S = 15 * 60        # a payload unchanged this long at the end of P4+
 LIVE_PROMISE_S = 30            # a live page moves at least this often; a game read less often is reported
 INLINE_EVERY_S = 20            # a game on a league's own back end: read this often and no more
 OBS_EVERY_S = max(2, int(os.environ.get("EPINOIA_OBS_EVERY", "") or 10))   # a CDN game's conditional GET
+LANE_THREADS = max(1, int(os.environ.get("EPINOIA_LANE_THREADS", "") or 6))    # games the lane reads and writes at once
 
 
 def _looks_finished(raw: dict) -> bool:
@@ -2536,6 +2554,10 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
         except Exception as exc:
             print(f"live lane: observer unavailable ({exc!r}) - polling inline")
     written: dict[str, int] = {}; last_bundle: dict[str, GameBundle] = {}; write_s: dict[str, list] = {}
+    obs_lock = threading.Lock()                                     # the observer is one object, read by every worker
+    game_lock: "defaultdict[str, threading.Lock]" = defaultdict(threading.Lock)
+    pool = cf.ThreadPoolExecutor(max_workers=LANE_THREADS, thread_name_prefix="lane") if LANE_THREADS > 1 else None
+    pooled = False
     # THE CDN'S GAMES, a conditional GET each (almost every answer an empty 304) every OBS_EVERY_S: FIBA publishes a
     # game every 26-35 s, so a look every 10 s sees each version within 10 s of its upload - half the requests the 5 s
     # look made, and the page still moves with every version. EPINOIA_OBS_EVERY puts it back without a commit.
@@ -2636,14 +2658,22 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
         armed_x = {str(r["external_id"]) for _, r in due if str(r.get("game_id") or "") in armed}
         cdn_due = [str(r["external_id"]) for s_, r in due if on_cdn(s_)]
         if observer and cdn_due:
-            observer.observe_due(cdn_due, OBS_EVERY, armed_x, fast_every)
-        wrote_any = False
-        for src, r in due:
+            with obs_lock:
+                observer.observe_due(cdn_due, OBS_EVERY, armed_x, fast_every)
+        wrote, errs = [], []
+
+        def one_game(src, r):
+            """One due game, start to finish: read (or take the observer's version), decide, write. Never two at once
+            for the same game; any number for different games (LANE_THREADS)."""
             xid = str(r["external_id"])
+            with game_lock[xid]:
+                _one_game(src, r, xid)
+
+        def _one_game(src, r, xid):
             is_armed = str(r.get("game_id") or "") in armed
             use_obs = observer is not None and on_cdn(src)
             if not use_obs and not slow_pass and not is_armed:
-                continue
+                return
             g = ScheduleGame(external_id=xid, home_name=r.get("home_name") or "", away_name=r.get("away_name") or "",
                              tipoff_at=r.get("tipoff_at"), status=r.get("external_status") or "scheduled")
             force = False       # a stalled game read afresh is written through, whatever the stored hash says
@@ -2689,9 +2719,9 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                 try:
                     b = adapters[src["code"]].fetch(xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at, _live=True))
                 except Exception as exc:
-                    print(f"    ! {xid}: {exc}"); exit_code = 1; continue
+                    print(f"    ! {xid}: {exc}"); errs.append(1); return
                 if not b:
-                    continue                                                  # not published yet
+                    return                                                  # not published yet
                 vs = feedstamp.version_stamp(b.feed_lm_ms, b.feed_recv_ms or int(t_obs * 1000), last_lm.get(xid))
                 if vs["older"]:
                     # AN OLDER CDN COPY IS NOT NEWS. data.json comes through CloudFront, and an
@@ -2701,7 +2731,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                     # so a finished game nobody closed might never close. Only STRICTLY older
                     # counts: S3 truncates Last-Modified to whole seconds, so new content can carry
                     # an equal header.
-                    print(f"    ~ {xid}: older copy (Last-Modified {b.feed_lm_ms} < {last_lm[xid]}), skipped"); continue
+                    print(f"    ~ {xid}: older copy (Last-Modified {b.feed_lm_ms} < {last_lm[xid]}), skipped"); return
                 if hashes.get(xid) == b.payload_hash:
                     # NOTHING NEW - but a game a scorer never closed must still finish. Genius only
                     # marks a game final through an explicit 'game end' action; when the payload has
@@ -2714,7 +2744,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                     else:
                         fresh = quiet(b, time.time() - first_seen)
                         if fresh is None:
-                            continue
+                            return
                         if fresh.payload_hash != hashes.get(xid):
                             unchanged_since[xid] = time.time(); moved()
                         b, force = fresh, True
@@ -2727,9 +2757,10 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                 observed = (vs["stamp_ms"], int(((fast_every if is_armed else every) + (time.time() - t_obs)) * 1000))
                 snap = None
             else:
-                snap = observer.take(xid)
+                with obs_lock:
+                    snap = observer.take(xid)
                 if snap is None:
-                    continue                                                  # not published yet
+                    return                                                  # not published yet
                 if snap.version == written.get(xid):
                     # Nothing new since the last write - the same stale-final rule as the inline
                     # path, timed from when the observer last saw the content change.
@@ -2741,7 +2772,7 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                     else:
                         fresh = quiet(b, time.time() - unchanged_since.setdefault(xid, time.time())) if b and b.status == "live" else None
                         if fresh is None:
-                            continue
+                            return
                         if fresh.payload_hash != hashes.get(xid):
                             unchanged_since[xid] = time.time(); moved()
                         b, force = fresh, True
@@ -2750,13 +2781,13 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                         b = adapters[src["code"]].bundle_from_raw(snap.raw, xid, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
                     except Exception as exc:
                         # a payload the adapter cannot read is skipped, not retried every second
-                        print(f"    ! {xid}: {exc}"); exit_code = 1; written[xid] = snap.version; continue
+                        print(f"    ! {xid}: {exc}"); errs.append(1); written[xid] = snap.version; return
                     if g.tipoff_at:
                         b.tipoff_at = g.tipoff_at
                     b.feed_lm_ms, b.feed_recv_ms = snap.lm_ms, snap.recv_ms
                     last_bundle[xid] = b
                     if hashes.get(xid) == b.payload_hash:      # pass handover: the DB already has this content
-                        written[xid] = snap.version; unchanged_since.setdefault(xid, time.time()); continue
+                        written[xid] = snap.version; unchanged_since.setdefault(xid, time.time()); return
                     unchanged_since[xid] = time.time()
                     moved()
                 # the version's upload stamp; the error stays the CONFIGURED interval plus the
@@ -2774,8 +2805,10 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
                 if b.status == "final":
                     finished.add(xid)
                     if use_obs:
-                        observer.forget(xid); written.pop(xid, None); last_bundle.pop(xid, None)
-                continue
+                        with obs_lock:
+                            observer.forget(xid)
+                        written.pop(xid, None); last_bundle.pop(xid, None)
+                return
             run = runs[src["code"]]; run["games_fetched"] += 1
             t_write = time.time()
             raw_ref = None
@@ -2786,25 +2819,59 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
             try:
                 # the observer's per-action memory (step 3); the kill switch has none, and passes
                 # None, which is exactly the write this lane made before memory existed
-                write_platform(sb, src, b, run, observed, observer.stamps(xid) if use_obs else None, venue=(g.extra or {}).get("venue")); run["games_written"] += 1
+                memory = None
+                if use_obs:
+                    with obs_lock:
+                        memory = observer.stamps(xid)
+                write_platform(sb, src, b, run, observed, memory, venue=(g.extra or {}).get("venue")); run["games_written"] += 1
             except Exception as exc:
                 print(f"    (platform write failed: {exc})")
             if use_obs:
                 write_s.setdefault(xid, []).append(time.time() - t_write)
-                observer.observe_due(cdn_due, OBS_EVERY, armed_x, fast_every)
+                if not pooled:      # one game at a time: look at the CDN between writes (the pool's main thread does it)
+                    with obs_lock:
+                        observer.observe_due(cdn_due, OBS_EVERY, armed_x, fast_every)
             hashes[xid] = b.payload_hash
             if snap:
                 written[xid] = snap.version
             elif vs["basis"] == "lm":
                 last_lm[xid] = max(last_lm.get(xid) or 0, b.feed_lm_ms)
-            wrote_any = True
+            wrote.append(1)
             e = entry_for(b, None, raw_ref, g)
             print(f"    ~ {b.home_name} {e['homeScore']}-{e['awayScore']} {b.away_name} ({b.status}) {datetime.now(timezone.utc).strftime('%H:%M:%S')}Z")
             if b.status == "final":
                 finished.add(xid)
                 if use_obs:
-                    print(observer_line(xid))
-                    observer.forget(xid); written.pop(xid, None); last_bundle.pop(xid, None)
+                    with obs_lock:
+                        line = observer_line(xid)
+                        observer.forget(xid)
+                    print(line)
+                    written.pop(xid, None); last_bundle.pop(xid, None)
+
+        # SEVERAL GAMES AT ONCE (2026-10-14). One game at a time, a write of 2-18 s each, 35 live games on a Tuesday
+        # night: a pass took two minutes and a game off the CDN was read every 92-145 s, not the 30 s a live page
+        # promises. The games are independent - their own rows, their own state here, one lock each - so a few
+        # workers take them together; every site is still paced per host (polite.py) whoever is asking, and the
+        # main thread keeps the observer looking at the CDN while they write. EPINOIA_LANE_THREADS=1: one at a time.
+        pooled = pool is not None and len(due) > 1
+        if pooled:
+            futs = [pool.submit(one_game, s_, r_) for s_, r_ in due]
+            while True:
+                done_, pending_ = cf.wait(futs, timeout=1.0)
+                if not pending_:
+                    break
+                if observer and cdn_due:
+                    with obs_lock:
+                        observer.observe_due(cdn_due, OBS_EVERY, armed_x, fast_every)
+            for f in futs:
+                if f.exception() is not None:
+                    print(f"    ! a game's pass failed: {f.exception()!r}"); errs.append(1)
+        else:
+            for s_, r_ in due:
+                one_game(s_, r_)
+        wrote_any = bool(wrote)
+        if errs:
+            exit_code = 1
         due = [(s, r) for s, r in due if str(r["external_id"]) not in finished]
         if due:
             if observer and any(on_cdn(s_) for s_, _ in due):
@@ -2826,6 +2893,8 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
         # gaps are over 25 s, the writes are starving the observer - ship 2b, then a thread.
         for xid in list(observer.st):
             print(observer_line(xid))
+    if pool is not None:
+        pool.shutdown(wait=True)
     said = polite.summary()
     if said:
         print("live lane: sites that asked us to slow down - " + said)

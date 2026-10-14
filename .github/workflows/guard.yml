@@ -634,6 +634,11 @@ jobs:
         # 14 Oct 2026 while the lane kept asking. Fake clock, fake site, no network.
         run: python scripts/ingest/polite_test.py
 
+      - name: The live lane writes several games at once - each once, one worker a game, the observer one thread at a time
+        # 35 live games one at a time (14 Oct 2026) read each off-CDN game every 92-145 s, not the 30 s a live page
+        # promises. The real live_keeper loop against fakes; EPINOIA_LANE_THREADS=1 is still the old loop.
+        run: python scripts/ingest/lane_pool_test.py
+
       - name: NCAA D2/D3 - two 20-minute halves end to end, the thin adapter, lanes and shards (docs/ncaa-readiness.md)
         # a synthetic game in halves with an overtime through to_fiba, the stints, the translator and the
         # engine (2,700 s, 225 player-minutes a side, h1/h2/ot1); the scraper's captures are read only where
