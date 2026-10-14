@@ -24,6 +24,15 @@ SEASONS, or the one the league's own site names. A platform season that is none 
 with a reason, never read as the current one: that is how one season's games get filed under
 another's name.
 
+NOTHING BEFORE 2025-26 IS ON THE EMBED. The league moved to Sportradar for 2025-26: a 2025-26 game's
+LIVE page (game-live-378589) carries the EUI widget and its data-season-id, and none of the five
+sampled from 2024-25 back to 2020-21 does (game-live-373311, -38426, -35038, -29226, -25629: no
+widget, no season id). Those
+seasons live only on the league's own site, in its own Bulgarian HTML (games.inc.php?act=results&
+season=<site id 23..27>: the games; game-<n>: the box; game_play.inc.php?g_id=<n>: a play-by-play in
+Bulgarian words) - a different source this adapter does not read. So an older season is refused here,
+before a request, with that reason, rather than reported as "not on the feed yet".
+
 THE EMBED'S DEFAULT LAGS A NEW SEASON. On 8 Oct 2026, two days before 2026-27's first round, it still
 answered with 2025-26, and the league page sat empty. The league's own site had moved on: every game's
 LIVE page (nbl.basketball.bg/game-live-<n>) carries the EUI widget with its data-season-id. So a
@@ -64,6 +73,8 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0
 #: EUI season uuids by START year, for a season the feed is no longer (or not yet) on: it lists none itself
 SEASONS = {2025: "3f73b7bb-9a47-11f0-8a96-b5a52c2e9fb9",
            2026: "82efe64f-b74a-11f1-8cb6-256d030dc581"}     # off game-live-384275, 8 Oct 2026
+#: the first season the league kept on the EUI embed (see the module docstring)
+FIRST_SEASON = 2025
 #: the league's own site, whose game pages name the EUI season they are on
 SITE = "https://nbl.basketball.bg"
 #: the most of the site's LIVE pages read when looking for a season (each one request)
@@ -191,6 +202,11 @@ class BgNblAdapter(LnbAdapter):
         stage = (config.get("stage") or "regular").strip().lower()
         if stage not in ("regular", "playoffs"):
             raise ValueError(f"bgnbl: stage must be 'regular' or 'playoffs', not {stage!r}")
+        if want < FIRST_SEASON:
+            print(f"     NBL Bulgaria {season}: the league kept no season before "
+                  f"{FIRST_SEASON}/{FIRST_SEASON + 1} on the EUI embed (its own site's pages only) - nothing read")
+            self.last_competitions = []
+            return []
         sid, fixtures = self._season_fixtures("")
         on = feed_year(fixtures)
         if on != want:

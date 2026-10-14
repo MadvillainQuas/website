@@ -15,7 +15,10 @@ What it holds them to:
   * the format, for both competitions: every stage in playing order with its kind, groups, game
     system and how many go through (read from the later stages' feeders); one source per stage with
     the main group phase under the league's own label; a final four's ties with the final fed by
-    the semi-finals and the third-place game beside it, and every game on its tie and leg.
+    the semi-finals and the third-place game beside it, and every game on its tie and leg;
+  * a past season (a backfill): found on the competition's history page by its games' dates, never
+    the season being played in its place (nothing at all when no page holds it), its game pages
+    under the edition, and a box whose clubs the page lists the other way round put right.
 
 Fixtures: scripts/ingest/data/fiba_events/ (the pages' flight data, gzipped; *.json.gz as served).
 """
@@ -86,7 +89,7 @@ class Offline(F.FibaEventsAdapter):
         super().__init__()
         self.asked = []
         self.detail = detail or {}
-        self._slugs, self._pages, self._bases = {}, {}, {}
+        self._slugs, self._pages, self._bases, self._landed = {}, {}, {}, {}
         self.min_request_gap_s = 0
 
     def _get(self, url, redirects=True):
@@ -358,6 +361,151 @@ ok("four ties, sides unknown, the final pointing at both semi-finals",
    len(sb.ties) == 4 and fin["home_team_id"] is None
    and {fin["home_from_tie"], fin["away_from_tie"]} == {sb.ties[(1, 0)]["id"], sb.ties[(1, 1)]["id"]},
    {k: (t["id"], t.get("home_from_tie"), t.get("away_from_tie")) for k, t in sb.ties.items()})
+
+# ---------------------------------------------------------------------------- past seasons ---
+# Small pages built here in the site's shape (rows of flight data), because what matters is which
+# page is read and what is refused: the history page lists its editions as links with the year the
+# season ends printed beside them; an edition's /games page is fixtures like any other.
+def flight(*values):
+    rows = "".join("%x:%s\n" % (i + 1, json.dumps(v)) for i, v in enumerate(values))
+    return "<script>self.__next_f.push([1," + json.dumps(rows) + "])</script>"
+
+
+def season_page(y, games=9, first_id=9000, extra=()):
+    """A /games page holding the season that starts in year y: games from October to May, over -
+    status 5, as a history edition marks its games (a season's own page says 999)."""
+    gs = [{"gameId": first_id + i, "gameDateTime": "%d-%02d-10T19:00:00" % (y + (m < 7), m),
+           "gameDateTimeUTC": "%d-%02d-10T17:00:00" % (y + (m < 7), m), "liveGameStatus": 5,
+           "teamAScore": 80, "teamBScore": 70, "round": {"roundId": 1, "roundName": "Regular Season", "roundType": "G"},
+           "teamA": {"shortName": "Club A%d" % i, "code": "A%d" % i, "organisationId": 100 + i},
+           "teamB": {"shortName": "Club B%d" % i, "code": "B%d" % i, "organisationId": 200 + i}}
+          for i, m in enumerate([10, 10, 11, 12, 1, 2, 3, 4, 5][:games])]
+    return Resp(200, flight(["$", "$L5", None, {"games": gs + list(extra)}]))
+
+
+def index_page(path, editions):
+    """A history page: one row per edition, its link and the year printed beside it."""
+    rows = [["$", "$L28", None, {"ref": "$undefined", "link": {"url": "https://www.fiba.basketball%s/%s" % (path, eid)},
+                                 "children": ["$", "$L41", None, {"styleName": "paragraphXXS", "children": year}]}]
+            for eid, year in editions]
+    rows.append(["$", "$L28", None, {"link": "$55:props:children:0:props:link", "children": "Rytas Vilnius"}])   # a winner's cell
+    return Resp(200, flight(*rows))
+
+
+H1 = "/en/history/112-fiba-mens-european-club-competitions-tier-1"
+H2 = "/en/history/212-fiba-mens-european-club-competitions-tier-2"
+HIST1, HIST2 = "https://www.fiba.basketball" + H1, "https://www.fiba.basketball" + H2
+BCL_SEASON = "https://www.fiba.basketball/en/events/basketball-champions-league-{season}/games"
+TO_CURRENT = "https://www.championsleague.basketball/en/games, https://www.championsleague.basketball/en/games"
+HOLO = {"gameId": 136283, "gameDateTime": "2023-03-01T19:00:00", "gameDateTimeUTC": "2023-03-01T17:00:00",
+        "round": {"roundId": 1, "roundName": "Regular Season", "roundType": "G"}, "liveGameStatus": 999,
+        "teamAScore": 79, "teamBScore": 99,
+        "teamA": {"shortName": "Hapoel Holon", "code": "HOLO"}, "teamB": {"shortName": "Cholet Basket", "code": "CHO"}}
+
+
+class History(Offline):
+    ROUTES = {**Offline.ROUTES,
+              # FIBA now sends every past BCL season's address to the season being played, and the
+              # season being played's own address is an empty page
+              BCL_SEASON.format(season="22-23"): lambda: Resp(308, "", TO_CURRENT),
+              BCL_SEASON.format(season="26-27"): lambda: Resp(200, flight(["$", "$L2", None, {"title": "BCL"}])),
+              BCL_SEASON.format(season="17-18"): lambda: Resp(308, "", TO_CURRENT),
+              BCL_SEASON.format(season="15-16"): lambda: Resp(308, "", TO_CURRENT),
+              HIST1: lambda: index_page(H1, [("208737", 2024), ("208494", 2023), ("208407", 2022), ("10872", "$L60"),
+                                             ("10051", 2017), ("2159", 1992)]),
+              HIST1 + "/208494/games": lambda: season_page(2022, extra=[HOLO]),
+              HIST1 + "/208494/standings": lambda: Resp(200, flight(["$", "$L7", None, {"title": "Standings"}])),
+              HIST1 + "/208407/games": lambda: season_page(2021),
+              HIST1 + "/10872/games": lambda: season_page(2017),
+              HIST1 + "/10051/games": lambda: season_page(2016),
+              HIST1 + "/208494/games/136283": lambda: Resp(308, "", HIST1 + "/208494/games/136283-HOLO-CHO, "
+                                                                    + HIST1 + "/208494/games/136283-HOLO-CHO"),
+              HIST1 + "/208494/games/136283-HOLO-CHO": lambda: Resp(200, page("page-136283.rsc.txt.gz")),
+              # the Europe Cup's older seasons are a 'Page Not Found' served with a 200
+              FEC.format(season="23-24"): lambda: Resp(200, flight(["$", "$L2", None, {"title": "Page Not Found"}])),
+              HIST2: lambda: index_page(H2, [("208765", 2024), ("208500", 2023)]),
+              HIST2 + "/208765/games": lambda: season_page(2023, games=7)}
+
+
+BCL_CFG = {"games_url": BCL, "season_url": BCL_SEASON, "history_url": HIST1, "_backfill": True}
+
+print("\n-- past seasons: the history page")
+eds = F.history_editions(History.ROUTES[HIST1]().text, HIST1)
+ok("the history page's editions, each with the year printed beside it (none where the row prints none)",
+   eds == [("208737", 2024), ("208494", 2023), ("208407", 2022), ("10872", None), ("10051", 2017), ("2159", 1992)], eds)
+ok("2022-23 is tried as the edition printed 2023 first, then 2022 and 2024, then the unprinted; never 1992's",
+   F.edition_order(eds, "2022-23") == ["208494", "208737", "208407", "10872"], F.edition_order(eds, "2022-23"))
+
+h = History()
+past = list(h.discover(BCL, dict(BCL_CFG, season="2022-23")))
+ok("a 2022-23 backfill of the Champions League reads edition 208494: its 10 games, all of 2022-23",
+   len(past) == 10 and all("2022-07-01" <= g.tipoff_at[:10] <= "2023-08-15" for g in past), [g.tipoff_at for g in past])
+ok("...over, with their scores: a history edition marks a finished game 5, not 999",
+   all(g.status == "final" and g.extra["home_score"] == 80 for g in past if g.external_id != "136283"),
+   [(g.status, g.extra["home_score"]) for g in past][:3])
+ok("...after refusing the season's own address, which lands on the season being played",
+   h.asked == [BCL_SEASON.format(season="22-23"), BCL, HIST1, HIST1 + "/208494/games"], h.asked)
+ok("...its game pages under the edition", h._slugs["136283"] == HIST1 + "/208494/games/136283-HOLO-CHO", h._slugs.get("136283"))
+ok("...kept as one competition: the edition's standings carry no stages",
+   h.competition_format_for(BCL, dict(BCL_CFG, season="2022-23")) is None)
+gm = h.fetch("136283", dict(BCL_CFG, season="2022-23"))
+ok("...and a game of it reads whole from its page (the live cache has let it go)",
+   gm is not None and (gm.team["home"]["points"], gm.team["away"]["points"]) == (79, 99) and len(gm.stints) > 10)
+
+cold = History()                                # another pass: nothing learnt from a schedule
+gm2 = cold.fetch("136283", dict(BCL_CFG, season="2022-23"))
+ok("a game fetched with nothing learnt yet is found under the season's edition, through its redirect",
+   gm2 is not None and cold.asked[-2:] == [HIST1 + "/208494/games/136283", HIST1 + "/208494/games/136283-HOLO-CHO"],
+   cold.asked)
+
+h17 = History()
+g17 = list(h17.discover(BCL, dict(BCL_CFG, season="2017-18")))
+ok("a printed year is only a guess: 2017-18 refuses edition 10051 (printed 2017, its games 2016-17) and takes 10872",
+   len(g17) == 9 and all(g.tipoff_at[:4] in ("2017", "2018") for g in g17)
+   and h17.asked[-2:] == [HIST1 + "/10051/games", HIST1 + "/10872/games"], h17.asked)
+
+h15 = History()
+ok("a season the history does not hold is NOTHING, never the current season's games",
+   list(h15.discover(BCL, dict(BCL_CFG, season="2015-16"))) == [] and h15.competition_format_for(BCL, dict(BCL_CFG, season="2015-16")) is None
+   and h15.fetch("136283", dict(BCL_CFG, season="2015-16")) is None, h15.asked)
+
+bare = History()
+cfg_now = {"games_url": BCL, "season_url": BCL_SEASON, "_backfill": True}
+ok("...and so is a past season with no history page configured (FIBA's redirect to today's season is refused)",
+   list(bare.discover(BCL, dict(cfg_now, season="2022-23"))) == [] and HIST1 not in bare.asked, bare.asked)
+
+cur = History()
+now = list(cur.discover(BCL, dict(BCL_CFG, season="2026-27")))
+ok("the season being played, asked for by name: its address is an empty page, so the Champions League's own (no history read)",
+   len(now) == 96 and cur.asked == [BCL_SEASON.format(season="26-27"), BCL], cur.asked)
+
+fe = History()
+fec_cfg = {"games_url": FEC, "history_url": HIST2, "_backfill": True}
+old = list(fe.discover(FEC, dict(fec_cfg, season="2023-24")))
+ok("the Europe Cup's 2023-24: its address is 'Page Not Found', so edition 208765 of its history page",
+   len(old) == 7 and fe.asked == [FEC.format(season="23-24"), HIST2, HIST2 + "/208765/games"], fe.asked)
+fe2 = History()
+ok("...and 2026-27 still from its own address, its stages intact",
+   len(list(fe2.discover(FEC, dict(fec_cfg, season="2026-27")))) == 246 and HIST2 not in fe2.asked
+   and len(fe2.competition_format_for(FEC, dict(fec_cfg, season="2026-27"))["stages"]) == 4, fe2.asked)
+auto = History()
+ok("a calendar league's season_auto (the platform's guess, not a season asked for) reads the configured page as it is",
+   auto.games_base(BCL, {"season": "2026", "season_auto": True, "history_url": HIST1}) == BCL and auto.asked == [], auto.asked)
+
+print("\n-- a game page whose box has the clubs the other way round")
+# 2020-21 history pages: the fixture is JDA Dijon v Tofas (61-90) and gameDetails.teamA is Tofas.
+# The same here: Holon v Cholet's box and quarters turned round, each side still naming its club.
+straight = F.game_props(page("page-136283.rsc.txt.gz"))
+turned = json.loads(json.dumps(straight))
+gd = turned["gameDetails"]
+gd["teamA"], gd["teamB"] = gd["teamB"], gd["teamA"]
+for q in gd["quartersScores"]:
+    q["teamA"], q["teamB"] = q["teamB"], q["teamA"]
+gd["quartersScores"][:2] = gd["quartersScores"][1::-1]           # and Q2 listed before Q1, as that page does
+r1, r2 = F.FibaEventsAdapter.payload(straight), F.FibaEventsAdapter.payload(turned)
+ok("each club keeps its own box, score and quarters in period order (paired by the side's club id, not its place)",
+   r2["tm"] == r1["tm"] and (r2["tm"]["1"]["score"], r2["tm"]["2"]["score"], r2["tm"]["1"]["p2_score"]) == (79, 99, 9),
+   [(r2["tm"][t].get("score"), r2["tm"][t].get("p2_score")) for t in "12"])
 
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

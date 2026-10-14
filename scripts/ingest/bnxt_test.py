@@ -3,12 +3,15 @@
     python scripts/ingest/bnxt_test.py
 
 What it holds the adapter to:
-  * the source rows: the regular season and the two national play-offs (Belgium, the Netherlands)
-    as competitions of their own, in one league filed under Belgium;
+  * the source rows: the regular season, the two national play-offs (Belgium, the Netherlands) and
+    the cross-border BNXT play-offs (2021-22 to 2024-25) as competitions of their own, in one league;
   * the schedule, from captured replies of the league's own API: the API's END-year seasons (2026-27
     is 2027), one request per phase, a Supercup never read as the league's, home first (side 1), a
-    play-off entry's " playoff" tag dropped, Brussels time -> UTC;
-  * a game whose play-by-play the league has purged (every 2025-26 game): nothing to fetch;
+    play-off entry's " playoff" tag dropped, Brussels time -> UTC; and the older seasons' phase names
+    (2021-22..2023-24: "Domestic Belgium", "Elite Gold", "BNXT Playoffs", "Dutch Playoffs") each read
+    by the source it belongs to;
+  * a game whose play-by-play the league has purged (every 2025-26 game): published from its box as a
+    result once it is two days old, its quarters from the schedule; a recent one left for its film;
   * the translator, on a synthetic game written to the event codes the scraper validated in July 2026
     (20 of 20 games exact against the box) - because the league purges each season's film and
     2026-27 opens on 2 October, there is no real one to capture yet: made/missed twos, threes and free
@@ -24,6 +27,7 @@ import json
 import os
 import sys
 from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -135,13 +139,22 @@ class Offline(B.BnxtAdapter):
 
     def _get(self, path, params=None):
         Offline.asked.append((path, dict(params or {})))
+        if path.lstrip("/") in OLD:                    # 2023-24, below
+            return OLD[path.lstrip("/")] if not path.startswith("/schedule/club/") else OLD[path.lstrip("/")].get(params["phase_id"])
         if path.startswith("/phase/season/"):
             return FX.get(path.lstrip("/"))
         if path.startswith("/schedule/club/"):
             season = path.rsplit("/", 1)[1]
             return FX.get(f"schedule/club/{season}/{params['phase_id']}")
         if path == "/schedule/find/10569":
-            return {"id": 10569, "status": "finished", "game_time": "2026-04-28 20:00:00", "competition": {"id": 24}}
+            return {"id": 10569, "status": "finished", "game_time": "2026-04-28 20:00:00", "competition": {"id": 24},
+                    "competitors": [{"side": 1, "period_scores": [{"period_id": q, "score": v} for q, v in zip((1, 2, 3, 4), (25, 25, 25, 24))]},
+                                    {"side": 2, "period_scores": [{"period_id": q, "score": v} for q, v in zip((1, 2, 3, 4), (15, 15, 15, 20))]}]}
+        if path == "/schedule/find/10570":
+            return {"id": 10570, "status": "finished", "competition": {"id": 24},
+                    "game_time": (datetime.now(timezone.utc) - timedelta(hours=3)).astimezone(B.ZoneInfo("Europe/Brussels")).strftime("%Y-%m-%d %H:%M:%S")}
+        if path in ("/film/game/24/10570", "/boxscore/game/24/10570"):
+            return []
         if path == "/schedule/find/99999":
             return {"id": 99999, "status": "finished", "game_time": "2026-10-02 20:00:00", "competition": {"id": 25}}
         if path == "/film/game/24/10569":
@@ -155,6 +168,20 @@ class Offline(B.BnxtAdapter):
         return None
 
 
+# THE 2023-24 SEASON'S PHASES (API season 2024), one game each: the names as the API gave them in October 2026
+def _old_game(gid, home, away):
+    return {"id": gid, "game_time": "2024-01-20 20:00:00", "status": "finished", "arena": {"name": "Hall"},
+            "competitors": [{"side": 1, "competition_team": {"id": home, "name": f"Club {home}"}},
+                            {"side": 2, "competition_team": {"id": away, "name": f"Club {away}"}}]}
+
+
+OLD_PHASES = [(111, "Elite Gold"), (81, "Domestic Belgium"), (91, "Domestic Netherlands"), (131, ""),
+              (141, "BNXT Playoffs"), (142, "Belgium Playoffs"), (152, "Dutch Playoffs"), (999, "BNXT Supercup")]
+OLD = {"phase/season/2024": [{"competition": {"id": 12, "season": 2024},
+                              "phases": [{"id": i, "name": n} for i, n in OLD_PHASES]}],
+       "schedule/club/2024": {i: [_old_game(i * 10 + 1, i, i + 1)] for i, _ in OLD_PHASES}}
+
+
 def fresh():
     Offline.asked = []
     B.BnxtAdapter._games = {}
@@ -166,14 +193,14 @@ def fresh():
 print("-- the source rows")
 src = json.load(open(os.path.join(HERE, "..", "..", "config", "ingest-sources.json"), encoding="utf-8"))["sources"]
 rows = [s for s in src if s.get("adapter") == "bnxt"]
-ok("the regular season and the two national play-offs, one league, filed under Belgium + the Netherlands (0160)",
+ok("the regular season, the national play-offs and the cross-border ones, one league, filed under Belgium + the Netherlands (0160)",
    sorted((s["adapter_config"]["stage"], s["adapter_config"].get("phase_match", "")) for s in rows)
-   == [("playoffs", "belgium"), ("playoffs", "netherlands"), ("regular", "")]
+   == [("playoffs", "^bnxt"), ("playoffs", "belgium"), ("playoffs", "netherlands"), ("regular", "")]
    and {s["league_slug"] for s in rows} == {"bnxt-league"} and all(s["league_country"] == "BE+NL" for s in rows), rows)
 ok("each play-off is a competition of its own, with its own URL",
    sorted(s.get("competition_label") for s in rows if s["adapter_config"]["stage"] == "playoffs")
-   == ["BNXT Playoffs Belgium", "BNXT Playoffs Netherlands"]
-   and len({s["scheduleUrls"][0] for s in rows}) == 3)
+   == ["BNXT Playoffs", "BNXT Playoffs Belgium", "BNXT Playoffs Netherlands"]
+   and len({s["scheduleUrls"][0] for s in rows}) == 4)
 ok("the registry knows it, and a backfill can read a season",
    type(get_adapter("bnxt")).__name__ == "BnxtAdapter"
    and '"bnxt"' in open(os.path.join(HERE, "run_ingest.py"), encoding="utf-8").read().split("SEASON_AWARE_ADAPTERS =", 1)[1][:500])
@@ -202,6 +229,22 @@ cup_ids = [ph["id"] for blk in FX["phase/season/2026"] for ph in blk["phases"] i
 ok("a Supercup phase is never read", cup_ids and not (set(cup_ids) & set(phases_read)), (cup_ids, phases_read))
 ok("a play-off entry's club carries no ' playoff' tag",
    not any("playoff" in (g.home_name + g.away_name).lower() for g in be + nl), [g.home_name for g in be[:3]])
+ok("2025-26 has no cross-border play-offs",
+   list(fresh().discover("", {"stage": "playoffs", "season": "2025-26", "phase_match": "^bnxt"})) == [])
+
+# 2023-24's names: matching "regular" or a country alone read no regular season and filed the domestic phases under
+# the national play-offs
+ids = lambda cfg: sorted(int(g.external_id) for g in fresh().discover("", dict(cfg, season="2023-24")))  # noqa: E731
+ok("2023-24 regular season: the domestic phases and Elite Gold, nothing else",
+   ids({"stage": "regular"}) == [811, 911, 1111], ids({"stage": "regular"}))
+ok("...each game marked regular", {g.extra["stage"] for g in fresh().discover("", {"stage": "regular", "season": "2023-24"})} == {"regular"})
+ok("the Belgian play-offs: 'Belgium Playoffs' alone, not 'Domestic Belgium'",
+   ids({"stage": "playoffs", "phase_match": "belgium"}) == [1421])
+ok("the Dutch play-offs: 'Dutch Playoffs' is the Netherlands",
+   ids({"stage": "playoffs", "phase_match": "netherlands"}) == [1521])
+ok("the cross-border play-offs: 'BNXT Playoffs', never the BNXT Supercup",
+   ids({"stage": "playoffs", "phase_match": "^bnxt"}) == [1411])
+ok("a phase with no name is read by nobody", 1311 not in ids({"stage": "regular"}) + ids({"stage": "playoffs"}))
 for bad in ({"stage": "cup"},):
     try:
         list(fresh().discover("", bad))
@@ -212,8 +255,18 @@ for bad in ({"stage": "cup"},):
 
 print("\n-- a game the league has purged")
 a = fresh()
-ok("10569 (2025-26, film purged) is nothing to fetch", a.fetch("10569", {}) is None)
-ok("...and its box is never asked for", not any(p.startswith("/boxscore/") for p, _ in Offline.asked), Offline.asked)
+b = a.fetch("10569", {})
+ok("10569 (2025-26, film purged): published as a result, from its box", b is not None and b.status == "final"
+   and b.translate is False and b.stints == [] and b.lineups == {}, b and (b.status, b.translate))
+ok("...every line the league kept (12 + 10), the score its box's (99-65)", b is not None
+   and (len(b.box["home"]), len(b.box["away"])) == (12, 10)
+   and (b.team["home"]["points"], b.team["away"]["points"]) == (99, 65), b and (b.team["home"]["points"], b.team["away"]["points"]))
+ok("...the quarters from the schedule", b is not None and b.team["home"]["q_scores"] == [25, 25, 25, 24]
+   and b.team["away"]["q_scores"] == [15, 15, 15, 20], b and b.team["home"]["q_scores"])
+ok("...no play-by-play", b is not None and b.raw["pbp"] == [] and b.raw["bnxt"]["boxOnly"])
+a = fresh()
+ok("a game three hours over with no film yet is left for its film", a.fetch("10570", {}) is None)
+ok("...and its box is not asked for", not any(p.startswith("/boxscore/") for p, _ in Offline.asked), Offline.asked)
 
 print("\n-- the translator (a synthetic game to the validated codes)")
 raw = B.raw_from_bnxt(box_from(FILM), FILM, True, {"gameId": "99999"})

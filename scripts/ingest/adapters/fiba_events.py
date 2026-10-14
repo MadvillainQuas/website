@@ -42,6 +42,15 @@ THE FORMAT. The competition's /standings page is the competition's structure: ev
 phase, second-round groups, play-ins, quarter-finals, final four) with its rounds, groups,
 pairings, game system and feeder labels ("1st of group A"). competition_format() reads it into a
 plain description that run_ingest stores beside the competition (see fiba_format below).
+
+PAST SEASONS (a backfill names one) are not where the current one is. The season addresses stop
+reaching back: /events/basketball-champions-league-24-25/games now answers 308 to the CURRENT season
+on championsleague.basketball, and /events/fiba-europe-cup-23-24/games is a "Page Not Found" served
+with a 200. Every finished season is on the competition's HISTORY page instead
+(/en/history/112-fiba-mens-european-club-competitions-tier-1 for the Champions League, 212-...-tier-2
+for the Europe Cup), one edition per season, each with the whole season at <edition>/games in the same
+flight shape as any /games page and its games at <edition>/games/<gameId>-<A>-<B>. games_base() finds
+a named season there, and takes no page as a season's until its fixtures' dates say so.
 """
 from __future__ import annotations
 
@@ -295,6 +304,88 @@ def schedule_games(page: str) -> list:
     return list(seen.values())
 
 
+# ===================================================================== which season a page holds ===
+def season_window(season) -> Optional[tuple]:
+    """The dates a season's games fall between, drawn as run_ingest.season_window draws them (a
+    split season from July to mid-August of its second year, a calendar one to mid-January after
+    it), so that a page judged here to hold a season is one whose games the backfill then keeps."""
+    s = str(season or "").strip()
+    m = re.match(r"^(\d{4})", s)
+    if not m:
+        return None
+    y = int(m.group(1))
+    if re.fullmatch(r"\d{4}", s):
+        return datetime(y, 1, 1, tzinfo=timezone.utc), datetime(y + 1, 1, 15, tzinfo=timezone.utc)
+    return datetime(y, 7, 1, tzinfo=timezone.utc), datetime(y + 1, 8, 15, tzinfo=timezone.utc)
+
+
+def middle_tipoff(games: list) -> Optional[datetime]:
+    """The middle tip-off of a page's fixtures, the undated placeholders left out. It says which
+    season a page holds whatever its address or title claims (some history pages name their season,
+    others only the competition), and the middle one is not fooled by a stray early qualifier."""
+    ts = sorted(datetime.fromisoformat(t) for t in
+                (_utc(g.get("gameDateTimeUTC") or g.get("gameDateTime")) for g in games) if t)
+    return ts[len(ts) // 2] if ts else None
+
+
+def in_season(when: Optional[datetime], season) -> bool:
+    """Is a page's middle tip-off inside the season? The test a page passes before it is a season's."""
+    w = season_window(season)
+    return bool(when and w and w[0] <= when <= w[1])
+
+
+def _year_in(v, depth: int = 0) -> Optional[int]:
+    """The year printed in a history row's cell (a bare 2023 inside the text component)."""
+    if depth > 4:
+        return None
+    if isinstance(v, int) and 1900 <= v <= 2100:
+        return v
+    if isinstance(v, str) and re.fullmatch(r"(19|20)\d\d", v):
+        return int(v)
+    if isinstance(v, list):
+        return next((y for y in (_year_in(x, depth + 1) for x in v) if y), None)
+    if isinstance(v, dict):
+        return _year_in(v.get("children"), depth + 1)
+    return None
+
+
+def history_editions(page: str, history_url: str) -> list:
+    """The editions listed on a competition's history page (/en/history/<id>-<name>), in the page's
+    order, as [(edition id, year or None)]. The year is the one printed beside the edition, the year
+    its season ENDS on both club competitions (2023 for 2022-23); a row may print none (the BCL's
+    2017-18 is a component reference). It only decides which edition is read first - the season an
+    edition holds is judged from its games."""
+    m = re.search(r"/history/(\d+)", history_url or "")
+    if not m:
+        return []
+    edition = re.compile(r"/en/history/%s(?:-[a-z0-9-]*)?/(\d+)(?![0-9])" % m.group(1))
+    flight = rsc_text(page)
+    years: dict = {}
+
+    def row(d):
+        link = d.get("link")
+        hit = edition.search(str(link.get("url") or "")) if isinstance(link, dict) else None
+        if hit and years.get(hit.group(1)) is None:
+            years[hit.group(1)] = _year_in(d.get("children"))
+
+    for v in rsc_rows(flight).values():
+        _walk(v, row)
+    return [(eid, years.get(eid)) for eid in dict.fromkeys(edition.findall(flight))]
+
+
+def edition_order(editions: list, season) -> list:
+    """The edition ids to try for a season, likeliest first: printed with the season's end year (its
+    year, for a calendar season), then a year either side, then the ones printed with none. An
+    edition printed further away is never read, so asking for 2022-23 does not walk the 1958 one."""
+    s = str(season or "").strip()
+    if not re.match(r"^\d{4}", s):
+        return []
+    target = int(s[:4]) + (0 if re.fullmatch(r"\d{4}", s) else 1)
+    near = sorted((e for e in editions if e[1] is not None and abs(e[1] - target) <= 1),
+                  key=lambda e: abs(e[1] - target))
+    return [eid for eid, _ in near] + [eid for eid, y in editions if y is None]
+
+
 # ===================================================================== small readers ===
 def _undef(v):
     return None if v == _UNSET else v
@@ -430,31 +521,89 @@ class FibaEventsAdapter(FibaLiveStatsAdapter):
             url = loc
         return url, r
 
-    _bases: dict = {}                # (schedule url, season) -> the /games page that holds that season
+    _bases: dict = {}                # (schedule url, season, ...) -> the /games page that holds that season, or None
+    _landed: dict = {}               # an address read for a named season -> (the /games page it is, its middle tip-off)
+    HISTORY_READS = 4                # editions read at most to find one season (each is a whole season's page)
 
-    def games_base(self, schedule_url: str, config: dict) -> str:
-        """The /games page for the season asked for.
+    def games_base(self, schedule_url: str, config: dict) -> Optional[str]:
+        """The /games page for the season asked for - or None, when no page of that season is found.
 
-        The ordinary pass reads the configured page as it is. A pass for a named season (a backfill:
-        adapter_config.season) reads adapter_config.season_url instead when the source has one,
-        because the Champions League's own site shows its season being played only: a past season
-        lives on www.fiba.basketball, whose /events/basketball-champions-league-25-26/games answers
-        308 to the competition's history page (/en/history/112-.../208962/games), the whole season
-        on it. The Europe Cup needs none: its address carries the season ({season})."""
-        key = (schedule_url, str(config.get("season") or ""), config.get("season_url"))
+        The ordinary pass reads the configured page as it is. A pass for a NAMED season (a backfill
+        pins adapter_config.season; season_auto, the platform's own guess for a calendar league, is
+        not one) must get that season or nothing, because the games of any other would be filed
+        under it. So a page is taken only once its fixtures' middle tip-off is inside the season
+        (middle_tipoff, in_season), whatever its address promised, and it is looked for in two places:
+
+          1. the season's own address: adapter_config.season_url for a competition with a domain of
+             its own, then the configured schedule URL ({season} filled in: fiba-europe-cup-24-25;
+             the Champions League's own page, which holds the season being played). This is the
+             event page, whose standings carry the stages, so it is tried first;
+          2. the competition's history page, adapter_config.history_url (/en/history/<id>-<name>):
+             each edition there is one season at <edition>/games. The season addresses no longer
+             reach back (see PAST SEASONS at the top), so for an older season this is the only way.
+        """
+        season = str(config.get("season") or "")
+        named = bool(season) and not config.get("season_auto")
+        key = (schedule_url, season if named else "", config.get("season_url"), config.get("history_url"))
         if key in self._bases:
             return self._bases[key]
-        base = self.schedule_url(schedule_url, config)
-        if config.get("season") and config.get("season_url"):
-            url, r = self.follow(self.schedule_url(config["season_url"], config))
-            if r is not None and r.status_code == 200 and schedule_games(r.text):
-                self._pages[url.rstrip("/")] = (time.time(), r.text)
-                base = url.rstrip("/")
+        if not named:
+            base = self.schedule_url(schedule_url, config)
+        else:
+            # season_url, then the configured page itself: /events/basketball-champions-league-26-27
+            # is an empty page while 26-27 is the season being played, which the BCL's own page holds
+            own = dict.fromkeys(self.schedule_url(u, config) for u in (config.get("season_url"), schedule_url) if u)
+            base = next((b for b in (self._season_page(u, season) for u in own) if b), None)
+            if base is None and config.get("history_url"):
+                base = self._from_history(config["history_url"], season)
+            if base is None:
+                print(f"     {season}: no page of this competition holds that season - nothing read "
+                      f"rather than another season's games")
         self._bases[key] = base
         return base
 
-    def standings_url(self, schedule_url: str, config: dict) -> str:
-        return re.sub(r"/games$", "", self.games_base(schedule_url, config)) + "/standings"
+    def _season_page(self, url: str, season: str) -> Optional[str]:
+        """`url`, followed to the /games page it lands on, when that page's fixtures are `season`'s."""
+        if url not in self._landed:
+            landed, r = self.follow(url)
+            games_url, games = None, []
+            if r is not None and r.status_code == 200:
+                games_url = landed.split("#")[0].split("?")[0].rstrip("/")
+                if games_url.endswith("/games"):
+                    self._pages[games_url] = (time.time(), r.text)
+                    games = schedule_games(r.text)
+                else:
+                    # a history edition FIBA has moved back onto an event page lands on the event's
+                    # front page (.../212-.../208857/games -> /events/fiba-europe-cup-24-25); its
+                    # schedule, and the base its game pages hang off, is that page's /games
+                    games_url += "/games"
+                    text = self.page(games_url)
+                    games = schedule_games(text) if text else []
+            # under the page it landed on as well, so a second address that lands there (the BCL's
+            # season_url and its own page, both today's season) costs no second read
+            self._landed[url] = (games_url, middle_tipoff(games))
+            if games_url:
+                self._landed.setdefault(games_url, self._landed[url])
+        games_url, mid = self._landed[url]
+        return games_url if games_url and in_season(mid, season) else None
+
+    def _from_history(self, history_url: str, season: str) -> Optional[str]:
+        """The /games page of the history edition holding `season`, read off the history page.
+        The editions are tried likeliest first (edition_order) and each is judged by its games."""
+        index = history_url.split("#")[0].rstrip("/")
+        page = self.page(index, ttl=3600.0)
+        if not page:
+            return None
+        for eid in edition_order(history_editions(page, index), season)[:self.HISTORY_READS]:
+            base = self._season_page(f"{index}/{eid}/games", season)
+            if base:
+                print(f"     {season}: the history page's edition {eid} ({base})")
+                return base
+        return None
+
+    def standings_url(self, schedule_url: str, config: dict) -> Optional[str]:
+        base = self.games_base(schedule_url, config)
+        return re.sub(r"/games$", "", base) + "/standings" if base else None
 
     def _game_url(self, gid: str, config: dict) -> Optional[str]:
         """The game page's own URL: from the schedule when it has been read this run, otherwise
@@ -466,6 +615,8 @@ class FibaEventsAdapter(FibaLiveStatsAdapter):
         if not config.get("games_url"):
             return None
         base = self.games_base(config["games_url"], config)
+        if not base:
+            return None                                   # a named season no page holds
         url, r = self.follow(f"{base}/{gid}")
         if r is not None and r.status_code == 200:
             self._slugs[gid] = url
@@ -491,14 +642,16 @@ class FibaEventsAdapter(FibaLiveStatsAdapter):
 
     def season_games(self, schedule_url: str, config: dict) -> list:
         """Every fixture object of the season, placeholders included."""
-        page = self.page(self.games_base(schedule_url, config))
+        base = self.games_base(schedule_url, config)
+        page = self.page(base) if base else None
         return schedule_games(page) if page else []
 
     def competition_format_for(self, schedule_url: str, config: dict) -> Optional[dict]:
         """The competition's structure (competition_format) with each pairing's feeders filled in
         from the fixtures. None when the standings page cannot be read this pass (a history
         page's standings carry no stages: a past season is ingested as one competition)."""
-        page = self.page(self.standings_url(schedule_url, config), ttl=600.0)
+        url = self.standings_url(schedule_url, config)
+        page = self.page(url, ttl=600.0) if url else None
         if not page:
             return None
         fmt = competition_format(page)
@@ -510,6 +663,9 @@ class FibaEventsAdapter(FibaLiveStatsAdapter):
         """The season's fixtures with both clubs known - or, for a stage source
         (adapter_config.round_ids, see fiba_format.py), that stage's."""
         base = self.games_base(schedule_url, config)
+        self.last_competitions = []
+        if not base:
+            return []                         # a named season no page holds: nothing, never another season
         rounds = {int(x) for x in (config.get("round_ids") or [])}
         out = []
         for g in self.season_games(schedule_url, config):
@@ -521,7 +677,6 @@ class FibaEventsAdapter(FibaLiveStatsAdapter):
             gid = str(g["gameId"])
             self._slugs[gid] = f"{base}/{gid}-{a.get('code') or 'A'}-{b.get('code') or 'B'}"
             out.append(self.schedule_game(g))
-        self.last_competitions = []
         return out
 
     @staticmethod
@@ -530,7 +685,8 @@ class FibaEventsAdapter(FibaLiveStatsAdapter):
         rnd = _undef(g.get("round")) or {}
         comp = _undef(g.get("competition")) or {}
         live = bool(g.get("isLive"))
-        played = (not live) and _num(g.get("liveGameStatus")) == 999 and \
+        # over is 999 on a season's own page and 5 on a history edition's (where nearly every game is 5)
+        played = (not live) and _num(g.get("liveGameStatus")) in FINAL_STATUSES and \
             (g.get("teamAScore") is not None) and (_num(g.get("teamAScore")) + _num(g.get("teamBScore")) > 0)
         status = "live" if live else ("final" if played else "scheduled")
         if g.get("isPostponed"):
@@ -617,6 +773,14 @@ class FibaEventsAdapter(FibaLiveStatsAdapter):
         clubs = [_undef(g.get("teamA")) or {}, _undef(g.get("teamB")) or {}]
         rosters_in = [p.get("playersTeamA") or [], p.get("playersTeamB") or []]
         comp = _undef(g.get("competition")) or {}
+        # THE BOX'S SIDES BY CLUB, NOT BY POSITION. On some game pages gameDetails.teamA is the
+        # fixture's teamB (2020-21 Champions League history games: JDA Dijon v Tofas, the fixture
+        # 61-90 and gameDetails.teamA Tofas' 90), so paired by position each club got the other's box
+        # and score. Each side names its club ("Id": "T_<organisationId>"); quartersScores follows
+        # gameDetails' sides, so it turns with them.
+        swapped = cls.sides_swapped(clubs, sides_gd)
+        if swapped:
+            sides_gd = sides_gd[::-1]
 
         rosters = []
         for i in (0, 1):
@@ -652,6 +816,8 @@ class FibaEventsAdapter(FibaLiveStatsAdapter):
         shots: list = [[], []]
         events = cls.events(p.get("playByPlay") or {}, orgs, rosters, shots)
         quarters = cls.quarters(gd)
+        if swapped:
+            quarters = quarters[::-1]
 
         tm = []
         for i in (0, 1):
@@ -695,11 +861,21 @@ class FibaEventsAdapter(FibaLiveStatsAdapter):
         return raw
 
     @staticmethod
+    def sides_swapped(clubs: list, sides_gd: list) -> bool:
+        """Is gameDetails' teamA the fixture's teamB? Only when both sides name a club and they name
+        the fixture's two the other way round; anything less certain keeps the page's order."""
+        orgs = [str(_undef(c.get("organisationId")) or "") for c in clubs]
+        ids = [re.sub(r"^T_", "", str(_undef(s.get("Id")) or "")) for s in sides_gd]
+        return all(orgs) and orgs[0] != orgs[1] and ids == orgs[::-1]
+
+    @staticmethod
     def quarters(gd: dict) -> list:
-        """[[q1..q4], [q1..q4]], points scored IN each quarter (quartersScores), not the running score."""
+        """[[q1..q4], [q1..q4]], points scored IN each quarter (quartersScores), not the running score.
+        In period order, not the page's: a 2020-21 history page lists Q2 before Q1."""
         out = [[], []]
-        for row in _undef(gd.get("quartersScores")) or []:
-            if period_number(row.get("period")) <= 4:
+        rows = [r for r in _undef(gd.get("quartersScores")) or [] if isinstance(r, dict)]
+        for row in sorted(rows, key=lambda r: period_number(r.get("period"))):
+            if 1 <= period_number(row.get("period")) <= 4:
                 out[0].append(_num(row.get("teamA")))
                 out[1].append(_num(row.get("teamB")))
         return out

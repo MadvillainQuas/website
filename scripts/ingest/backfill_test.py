@@ -109,9 +109,24 @@ class Fin(F.BasketFiAdapter):
     def _listing(self, season):
         raise AssertionError("an unserved season is never asked of the feed")
 
+    def _get(self, url):
+        return None                      # FIBA LiveStats' data.json refusing the season's links (403)
 
-ok("a 2023-24 backfill reads nothing rather than fixtures that can never be fetched",
+
+class FinLive(Fin):
+    def _get(self, url):
+        return {"tm": {"1": {}, "2": {}}} if url.endswith("/data/2306036/data.json") else None
+
+
+# 2023-24 is not on the EUI; TorneoPal links it to FIBA LiveStats, whose data.json still holds Korisliiga's games
+# (2306036) and refuses the divisions' links - both offline here
+F.BasketFiAdapter._livestats_ok = {}
+ok("a 2023-24 backfill whose links data.json refuses reads nothing rather than fixtures that can never be fetched",
    list(Fin().discover("", {"category": 4, "stage": "regular", "season": "2023-24"})) == [])
+F.BasketFiAdapter._livestats_ok = {}
+ok("...and one whose links it answers lists its games, keyed by the LiveStats id",
+   [g.external_id for g in FinLive().discover("", {"category": 4, "stage": "regular", "season": "2023-24"})] == ["2306036"])
+F.BasketFiAdapter._livestats_ok = {}
 
 print("\n-- Brazil")
 MENU = [("106", "NBB 2026/2027", True), ("97", "NBB 2025/2026", False), ("88", "NBB 2024/2025", False)]

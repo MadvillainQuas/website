@@ -77,13 +77,26 @@ PAGES = {r"calendario\.aspx\?g=1&t=2026$": "cal-1-2026.html", r"calendario\.aspx
          r"/equipo/981431$": "equipo-981431.html", r"/jugador/981431/1517914$": "jugador-981431-1517914.html",
          r"resultados\.aspx\?g=4&t=2026$": "res-4-2026.html", r"/series/45080$": "series-45080.html",
          r"calendario\.aspx\?g=4&t=2026$": "INLINE:lfe-cal",
+         r"calendario\.aspx\?g=74&t=2022$": "INLINE:ligau-2022",
          r"/partido/\d+$": "res-1-2025.html"}           # any page carries the token
 POSTBACKS = {"90000": "cal-2-2026-90000.html"}
 # LF Endesa's 2026/27 calendar before its first round: one regular group and nothing else
 INLINE = {"lfe-cal": ('<html><body><form name="aspnetForm" method="post" action="/calendario/lfendesa/4/2026">'
                       '<input type="hidden" name="_ctl0:token" value="eyJhbGciOiJub25lIn0.eyJleHAiOjQxMDI0NDQ4MDB9.test">'
                       '<select name="_ctl0:MainContentPlaceHolderMaster:gruposDropDownList">'
-                      '<option selected="selected" value="89975">Liga Regular &#218;nico</option></select></body></html>')}
+                      '<option selected="selected" value="89975">Liga Regular &#218;nico</option></select></body></html>'),
+          # what the site answers for Liga U 2022/23, a season it never had (captured 14 Oct 2026, trimmed): the
+          # 2026/27 calendar - its season dropdown selecting 2026 - with a fixture of that season on it
+          "ligau-2022": ('<html><body><form name="aspnetForm" method="post" action="/calendario/74/2022">'
+                         '<select name="_ctl0:MainContentPlaceHolderMaster:temporadasDropDownList">'
+                         '<option selected="selected" value="2026">2026/2027</option><option value="2025">2025/2026</option></select>'
+                         '<select name="_ctl0:MainContentPlaceHolderMaster:gruposDropDownList">'
+                         '<option selected="selected" value="90027">LIGA REGULAR GRUPO &quot;A&quot;</option></select>'
+                         '<h1 class="titulo-modulo">Jornada 1 25/09/2026</h1><table><tr>'
+                         '<td class="equipo local"><a href="Equipo.aspx?i=1001">CLUB UNO</a></td>'
+                         '<td class="fecha"><a href="/partido/2540001">25/09/2026 20:00</a></td>'
+                         '<td class="equipo visitante"><a href="Equipo.aspx?i=1002">CLUB DOS</a></td>'
+                         '</tr></table></form></body></html>')}
 GAMES = ("2513900", "2486258", "2479452", "2513595")
 
 
@@ -208,6 +221,18 @@ lu = list(a.discover("", {"code": "LIGAU", "competition": 74, "stage": "playoffs
 ok("Liga U's later phases are its play-off source (the third-place game, named by its phase)",
    any(g.external_id == "2513595" and g.extra["round"].startswith("3º-4º") for g in lu), [(g.external_id, g.extra["round"]) for g in lu])
 ok("...a phase whose page cannot be read is skipped, not a failure", len(lu) >= 1)
+
+print("\n-- a season the competition never had (a backfill)")
+ok("the season a page shows is its season dropdown's: Liga U 2025/26, Primera FEB 2026/27, none on a page without one",
+   (F.season_shown(text("cal-74-2025.html")), F.season_shown(text("cal-1-2026.html")), F.season_shown(INLINE["lfe-cal"]))
+   == (2025, 2026, None))
+ok("(the fallback page does carry a fixture - of 2026/27)", len(F.calendar_games(INLINE["ligau-2022"])) == 1)
+for stage in ("regular", "playoffs"):
+    a = fresh()
+    old = list(a.discover("", {"code": "LIGAU", "competition": 74, "stage": stage, "season": "2022-23",
+                               "_backfill": True, "repo_root": ROOT}))
+    ok(f"Liga U 2022-23 ({stage}): the site shows 2026/27 instead, so NOTHING is read - never the season being played",
+       old == [] and not any("POSTBACK" in u or "resultados" in u for u in a.asked), ([g.external_id for g in old], a.asked))
 
 print("\n-- a cup filed under the league")
 for label, cup in (("Supercopa 1/2 Final", True), ("Supercopa Final", True), ("C.SM Reina 1/4 Final", True),

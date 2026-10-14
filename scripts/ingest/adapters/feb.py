@@ -15,7 +15,9 @@ nothing, so every path used here is open.
 THE SCHEDULE is server-rendered ASP.NET, one request per group:
     calendario.aspx?g=<competition>&t=<season start year>
         -> /calendario/<name>/<g>/<t>: every game of the selected group, round by round. A played
-           game shows its score; a game to come shows its date and local time.
+           game shows its score; a game to come shows its date and local time. A t= the competition
+           never had (Liga U before 2025/26) quietly shows the season being played instead, so the
+           page's own season dropdown is checked before a game is read (season_shown).
     A league in more than one group (Segunda FEB "A"/"B", LF2, Liga U) lists them in a dropdown,
     and the other group is an ASP.NET postback of that dropdown (the page's own hidden fields sent
     back), which plain requests do.
@@ -221,6 +223,22 @@ def groups_of(page: str) -> List[Tuple[str, str, bool]]:
         if name.endswith("gruposDropDownList"):
             return opts
     return []
+
+
+def season_shown(page: str) -> Optional[int]:
+    """The season a calendar or results page is SHOWING: the start year its season dropdown has selected
+    (2025 for "2025/2026"); None on a page without one.
+
+    The URL's t= is only a request. A season the competition never had is not refused: the site shows
+    the season being played instead, with no word said. Liga U (g=74) began in 2025/26, and
+    calendario.aspx?g=74&t=2022 answers with the 2026/27 calendar - 84 games a backfill of 2022-23 would
+    have filed under 2022-23 (backfill_audit.py, 14 Oct 2026). LF Challenge (g=67, from 2021/22) does
+    the same for 2020/21. The dropdown is what says which season the games are."""
+    for name, opts in selects(page).items():
+        if name.endswith("temporadasDropDownList"):
+            sel = next((v for v, _, s in opts if s), "")
+            return int(sel) if sel.isdigit() else None
+    return None
 
 
 def calendar_games(page: str) -> List[dict]:
@@ -775,6 +793,13 @@ class FebAdapter(FibaLiveStatsAdapter):
         if not page:
             print(f"     FEB {comp}: no calendar for {season}")
             return []
+        shown = season_shown(page)
+        if shown is not None and shown != season:
+            # the season asked for is not the one on the page (see season_shown): the competition has no
+            # such season, and reading what is shown would file another season's games under it
+            print(f"     FEB {comp}: the site has no {season}/{season + 1} season (its calendar shows "
+                  f"{shown}/{shown + 1} instead) - nothing read")
+            return []
         groups = groups_of(page)
         regular = [g for g in groups if REGULAR.match(g[1])]
         other = [g for g in groups if not REGULAR.match(g[1]) and not CUP.search(g[1])]
@@ -797,6 +822,8 @@ class FebAdapter(FibaLiveStatsAdapter):
             # each of the league's own play-off phases is selected in turn (the latest one is already)
             res_url = f"{SITE}/resultados.aspx?g={comp}&t={season}"
             res = self._page(res_url) or ""
+            if season_shown(res) not in (None, season):
+                res = ""                       # the results page fell back to another season: none of its series are this one's
             seen_f = set()
             for value, label, selected in groups_of(res):
                 if REGULAR.match(label):

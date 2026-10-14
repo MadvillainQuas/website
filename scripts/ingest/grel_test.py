@@ -127,6 +127,9 @@ a = fresh()
 po27 = list(a.discover("x", dict(CFG, season="2026-27", stage="playoffs")))
 ok("2026-27 post-season before it exists: the Final Four page's stand-in Round 1 is not taken as play-offs",
    po27 == [], [g.external_id for g in po27][:3])
+a = fresh()
+ok("2021-22, before the Elite League existed (the A2's season), is refused before a single request",
+   list(a.discover("x", dict(CFG, season="2021-22"))) == [] and ASKED == [], ASKED[:2])
 for bad, cfg in (("a season token that is not a season", {"season": "twenty"}),
                  ("a stage that is neither regular nor playoffs", {"stage": "cup"})):
     try:

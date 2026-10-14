@@ -274,23 +274,23 @@ def ibsl(today: date | None = None, log: Callable = print, **_) -> Iterator[dict
 # ------------------------------------------------------------------------------ LNB ---
 def lnb(division: int) -> Callable[..., Iterator[dict]]:
     def read(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
-        from adapters import lnb as L                       # the site's own headers; the API refuses a bare client
+        from adapters import lnb as L                       # the site's headers + its visitor token: the API refuses a bare client
         seen: set = set()
         y = _season_start(today)
         for year in (y, y - 1):
             comps = (get_json(L.LNB_API + "/competition/getDivisionCompetitionByYear",
-                              {"year": year, "division_external_id": division}, L.HEADERS) or {}).get("data") or []
+                              {"year": year, "division_external_id": division}, L.api_headers()) or {}).get("data") or []
             n = 0
             for c in comps:
                 if c.get("external_id") is None or "star game" in (c.get("competition_name") or "").lower():
                     continue
-                teams = (get_json(L.LNB_API + "/competition/getCompetitionTeams", {"competition_external_id": c["external_id"]}, L.HEADERS) or {}).get("data") or []
+                teams = (get_json(L.LNB_API + "/competition/getCompetitionTeams", {"competition_external_id": c["external_id"]}, L.api_headers()) or {}).get("data") or []
                 for t in teams:
                     if t["external_id"] in seen:
                         continue
                     seen.add(t["external_id"])
                     n += 1
-                    for r in (get_json(L.LNB_API + "/teams/getRoster", {"team_external_id": t["external_id"]}, L.HEADERS) or {}).get("data") or []:
+                    for r in (get_json(L.LNB_API + "/teams/getRoster", {"team_external_id": t["external_id"]}, L.api_headers()) or {}).get("data") or []:
                         pr = r.get("person") or {}
                         yield {"first": pr.get("first_name"), "last": pr.get("family_name"), "team": t.get("team_name"),
                                "height_cm": pr.get("height"), "weight_kg": pr.get("weight"), "birth": pr.get("dob"),

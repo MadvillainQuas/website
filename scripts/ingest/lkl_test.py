@@ -12,10 +12,15 @@ What it holds the adapter to:
     (starters inferred where an older box flags none, a split substitution put back together, an
     overtime that is ONE overtime), stints covering the game and summing to the score, and the
     event log translate() builds dropping nothing and summing to every box;
-  * a game still being played: live, no final whistle invented.
+  * a game still being played: live, no final whistle invented;
+  * a past season (a backfill): read off the results list for that season's id, never the calendar;
+    a triple round robin split from its play-offs even with a league game never played; the clubs
+    that have left coded off their own pages; a season not listed, or answered with another's games,
+    giving nothing; a game whose feed kept only the box published as a result once it is old.
 
-Fixtures live in scripts/ingest/data/lkl/ (captured 2026-09-23). The sweep behind them: 21 games
-over 2025/26 and 2026/27, all passing these same checks.
+Fixtures live in scripts/ingest/data/lkl/ (captured 2026-09-23; the 2023-24 results list, the club
+page lines and game 10886 on 2026-10-14). The sweep behind them: 21 games over 2025/26 and 2026/27,
+all passing these same checks.
 """
 import copy
 import json
@@ -249,6 +254,129 @@ ok("in Q2: live, no final whistle, Q1 closed and Q2 open",
    and [e["period"] for e in raw["pbp"] if e["actionType"] == "period" and e["subType"] == "end"] == [1])
 ok("a game with no action yet has no payload", K.raw_from_game({}, {"quarters": {"regular": {}, "overtime": []}}) is None)
 ok("a key that is not an LKL game id is not fetched", fresh().fetch("x-1", {}) is None)
+
+# ============================================================================ a past season
+# data/lkl/results-2023-24/ is the whole of 2023-24's results list as lkl.lt served it (20 pages,
+# 2026-10-14); team-pages.txt the "teamId" line of the three clubs that have since left the league;
+# game-10886.json a 2023-24 game whose feed kept the box and no plays.
+print("\n-- a past season (a backfill): the results list, never the calendar")
+
+
+class Reply:
+    def __init__(self, text):
+        self.text, self.encoding = text, "utf-8"
+
+
+TEAM_LINES = dict(line.split("\t", 1) for line in text("team-pages.txt").splitlines() if "\t" in line)
+
+
+class OfflinePast(Offline):
+    """Offline, plus the results list: every season id is answered with 2023-24's pages (so a season
+    asked for under another id is the site ignoring its filter)."""
+
+    def _get(self, url, accept="*/*"):
+        self.requests_made.append(url)
+        page = re.search(r"loadResults\?.*\bpage=(\d+)", url)
+        if page:
+            p = os.path.join(DATA, "results-2023-24", "2023-24_%02d.html" % int(page.group(1)))
+            return Reply(open(p, encoding="utf-8").read()) if os.path.exists(p) else None
+        team = re.search(r"/komandos/([a-z0-9-]+)$", url)
+        if team:
+            return Reply(TEAM_LINES.get(team.group(1), "")) if team.group(1) in TEAM_LINES else None
+        return None
+
+
+def fresh_past():
+    for cache in (K.LklAdapter._seasons, K.LklAdapter._team_ids, K.LklAdapter._past_clubs, K.LklAdapter._past_games):
+        cache.clear()
+    fresh()
+    return OfflinePast()
+
+
+seasons = K.parse_seasons(text("rezultatai.html"))
+ok("the season filter: 2026-27 selected, 2023-24 is 34698, 2024-25 39252 (the KMT's own select ignored)",
+   seasons["current"] == 2026 and seasons["ids"].get(2023) == "34698" and seasons["ids"].get(2024) == "39252"
+   and "49437" not in seasons["ids"].values(), seasons)
+rows, last = K.parse_results_page(text(os.path.join("results-2023-24", "2023-24_01.html")))
+ok("a results page: ten games, the last page 20, the final 11112 Rytas v Žalgiris 12 Jun 2024 18:30 Vilnius = 15:30 UTC",
+   len(rows) == 10 and last == 20 and (rows[0]["id"], rows[0]["home"]["slug"], rows[0]["away"]["slug"], rows[0]["tip"],
+                                        rows[0]["home"]["code"], rows[0]["scored"])
+   == ("11112", "rytas", "zalgiris", "2024-06-12T15:30:00+00:00", "RYT", True), (len(rows), last, rows[0]))
+cur, _ = K.parse_results_page(text("rezultatai.html"))
+ok("the current season's results page reads the same way (hall with its town)",
+   cur and cur[0]["id"] == "11583" and cur[0]["venue"] == "Jonavos sporto arena, Jonava", cur[:1])
+
+a = fresh_past()
+reg = list(a.discover("https://www.lkl.lt/tvarkarastis", {"stage": "regular", "season": "2023-24"}))
+read_once = len(a.requests_made)
+po = list(a.discover("https://www.lkl.lt/tvarkarastis#playoffs", {"stage": "playoffs", "season": "2023-24"}))
+per = defaultdict(int)
+for g in reg:
+    per[(g.home_name, g.extra["home_code"])] += 1
+    per[(g.away_name, g.extra["away_code"])] += 1
+ok("2023-24 regular: 164 games, 11 clubs, a triple round robin (30 each; Wolves and Lietkabelis 29 - one game never played)",
+   len(reg) == 164 and len(per) == 11 and sorted(set(per.values())) == [29, 30], (len(reg), dict(per)))
+ok("2023-24 play-offs: 26 games, the bronze series' opener 11110 (4 Jun 2024) among them, none before 12 May",
+   len(po) == 26 and "11110" in {g.external_id for g in po} and min(g.tipoff_at for g in po) >= "2024-05-12",
+   (len(po), sorted(g.external_id for g in po)[:5]))
+ok("every game dated inside 2023-24, the calendar (2026-27's) never read",
+   all("2023-07-01" <= g.tipoff_at <= "2024-08-15" for g in reg + po) and not any("kalendorius" in u for u in a.requests_made),
+   [u for u in a.requests_made if "kalendorius" in u])
+codes = {name: code for (name, code) in per}
+ok("every club coded by its league team id: the filter's for the clubs still in the league, the club page's for the "
+   "three that left (Wolves Twinsbet 9, Pieno žvaigždės 7, M Basket-Delamode 14)",
+   None not in codes.values() and (codes.get("Hipocredit"), codes.get("Wolves Twinsbet"), codes.get("Pieno žvaigždės"),
+                                   codes.get("M Basket-Delamode")) == ("41", "9", "7", "14"), codes)
+ok("the season read once: 20 results pages and 3 club pages, the play-off row asking for neither again",
+   sum("loadResults" in u for u in a.requests_made) == 20 and sum("/komandos/" in u for u in a.requests_made) == 3
+   and not any("loadResults" in u or "/komandos/" in u for u in a.requests_made[read_once:]), a.requests_made[read_once:])
+a = fresh_past()
+ok("a season the site does not list: nothing, and no results page asked for",
+   list(a.discover("x", {"stage": "regular", "season": "1979-80"})) == [] and not any("loadResults" in u for u in a.requests_made))
+a = fresh_past()
+ok("a season answered with another season's games (the filter ignored): nothing, not those games",
+   list(a.discover("x", {"stage": "regular", "season": "2022-23"})) == [])
+a = fresh_past()
+ok("the season being played, asked for by name, is still the calendar's 180",
+   len(list(a.discover("x", {"stage": "regular", "season": "2026-27"}))) == 180)
+ok("the commonest meeting count is the round robin's; a tie goes to the smaller",
+   K.regular_meetings([{"home": "a", "away": "b"}] * 3 + [{"home": "a", "away": "c"}] * 4) == 3)
+
+print("\n-- a past game with a box and no plays (2021-22 to 2023-24): a result")
+g10886 = game("10886")
+raw = K.box_only_raw(g10886["boxscore"], g10886["game-score"], {}, "10886")
+gs = g10886["boxscore"]["gameStatistics"]
+ok("10886: home is Pieno žvaigždės (7) 71, away Žalgiris (3) 98, the quarters the league's own",
+   raw and (raw["lkl"]["homeTeamId"], raw["lkl"]["awayTeamId"], raw["tm"]["1"]["score"], raw["tm"]["2"]["score"]) == ("7", "3", 71, 98)
+   and all(raw["tm"]["1"][f"p{q}_score"] == gs["7"]["quarter_scores"][str(q)] for q in range(1, 5))
+   and sum(raw["tm"]["2"][f"p{q}_score"] for q in range(1, 5)) == 98, raw and raw["lkl"])
+box = g10886["boxscore"]["boxscore"]
+bad = [r["slug"] for s, side in (("1", "home"), ("2", "away")) for r in box[side]["players"]
+       if raw["tm"][s]["pl"][r["slug"]]["sPoints"] != (r["points"]["value"] or 0)]
+ok("10886: every player's points the league's, no play-by-play, nobody's points called the bench's",
+   not bad and raw["pbp"] == [] and raw["tm"]["1"]["tot_sBenchPoints"] == 0, bad)
+ok("a reply whose score is level (or missing) is not a result", K.box_only_raw(g10886["boxscore"], {"home": 71, "away": 71}) is None
+   and K.box_only_raw(g10886["boxscore"], {}) is None)
+
+
+a = fresh_past()
+K.LklAdapter._past_clubs["7"] = {"name": "Pieno žvaigždės", "code": "PIE", "logo": None}
+b = a.fetch("10886", {"_tipoff_at": "2024-03-01T16:00:00+00:00"})
+ok("fetch: published as a result - final, not translated, no stints, the league's names",
+   b is not None and (b.status, b.translate, b.stints, b.home_name, b.away_name) == ("final", False, [], "Pieno žvaigždės", "Žalgiris"),
+   b and (b.status, b.translate, len(b.stints), b.home_name, b.away_name))
+from datetime import datetime, timedelta, timezone  # noqa: E402
+recent = (datetime.now(timezone.utc) - timedelta(hours=3)).isoformat()
+ok("fetch: the same game three hours old is left alone (its plays may yet come)", fresh_past().fetch("10886", {"_tipoff_at": recent}) is None)
+
+print("\n-- a 2020-21 game whose box has no away side (9714: the plays and the results list say 79-68)")
+b = fresh_past().fetch("9714", {"_tipoff_at": "2021-03-03T16:00:00+00:00"})
+ok("9714: 79-68 from the plays, not the empty box's (and the score reply's) 79-0; each quarter the plays'",
+   b is not None and (b.raw["tm"]["1"]["score"], b.raw["tm"]["2"]["score"]) == (79, 68)
+   and [b.raw["tm"]["2"][f"p{q}_score"] for q in range(1, 5)] == [12, 14, 16, 26],
+   b and (b.raw["tm"]["1"]["score"], b.raw["tm"]["2"]["score"]))
+ok("9714: a result - final, not translated, no stints (the away five cannot be put on court)",
+   b is not None and (b.status, b.translate, b.stints) == ("final", False, []), b and (b.status, b.translate, len(b.stints)))
 
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

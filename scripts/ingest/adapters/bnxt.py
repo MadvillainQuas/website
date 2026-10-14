@@ -16,9 +16,16 @@ stored one is ever refused). robots.txt on the API host disallows nothing; the s
 THE API NUMBERS A SEASON BY ITS END YEAR: 2027 is "BNXT League 2026 - 2027" (competition 25). The
 platform's season is its start year, so 2026-27 asks for 2027.
 
-STAGES. "Regular season 2026-27" is the regular source; the national play-offs ("Playoffs Belgium",
-"Playoffs Netherlands") are play-off sources of their own (config phase_match), and a Supercup
-phase is never read as the league's.
+STAGES. Every phase is one of three kinds, read from its name: a play-off ("playoff" in it), a cup
+(never read as the league's), or the regular season (everything else with a name). The names have
+changed every season - 2021-22 to 2023-24 had a "Domestic Belgium" and "Domestic Netherlands" phase
+and an "Elite Gold" / "Elite Silver" one, all regular season, then "BNXT Playoffs" (the cross-border
+title), "Belgium Playoffs" and "Dutch Playoffs"; 2024-25 had "Regular Season" and "BNXT Playoff";
+2025-26 on, "Regular season 2026-27", "Playoffs Belgium", "Playoffs Netherlands". The regular source
+takes every regular phase; a play-off source takes the play-off phases its phase_match names
+("belgium", "netherlands" - which also reads "Dutch" - or "^bnxt" for the cross-border play-offs).
+Matching "regular" or a country alone, as this did, read no 2021-22..2023-24 regular season and
+filed its domestic phases under the national play-offs.
 
 THE PLAY-BY-PLAY ("film") is translated into the FIBA LiveStats shape the platform reads, on the
 event decoding the scraper validated in July 2026 by matching film counts to the box, 20 of 20
@@ -28,8 +35,12 @@ games exact (LINEUPDATASCRAPE, parse_bnxt_api_game):
     1006 foul drawn (the mirror of the foul: a foulon here); 1007 foul; 1008 assist; 1009 block;
     1011 substitution (player = in, player2 = out); codes from 1100 are team/period markers.
     The clock counts UP within a period (minute:second to 10:00); `order` is the chronological key.
-The league PURGES a season's film once it is over (every 2025-26 game had none by August 2026), so
-only a game with film is fetched: a game without one returns nothing and stays a fixture.
+The league PURGES a season's film once it is over (every 2025-26 game had none by August 2026). The
+BOX stays: 2024-25 and 2025-26 still have every game's (October 2026). A finished game with no film
+is published as a result from its box (translate False: no log to replay) once it is two days old -
+a recent one may still get its film. 2022-23 and 2023-24 have lost the box as well: their games
+carry the score and the quarters and nothing else, and are not published (a club line with only
+points in it would be read as a game of no shots). 2021-22 still has film and box.
 NOT YET SEEN ON A REAL 2026-27 GAME (the season opens 2 October 2026): shot positions are not
 read (the film's coordinate fields, if it has any, are unverified), and team events are skipped
 as the scraper skips them. Check the first round before trusting more than the box.
@@ -53,7 +64,10 @@ TOKEN = "BWSyE7sgg9QAurh2JX9cpjzjGc652BWLuNUS"
 LIVE_GUARD_S = 3 * 3600
 FETCH_LEAD_S = 30 * 60
 CUP = re.compile(r"super\s*cup|\bcup\b", re.I)
-REGULAR = re.compile(r"regular", re.I)
+PLAYOFF = re.compile(r"play-?offs?", re.I)
+#: a phase_match that names a country: the names the league has used for it
+COUNTRY = {"belgium": r"belgi", "netherlands": r"netherlands|dutch"}
+BOX_ONLY_AFTER_S = 2 * 86400
 FINISHED = {"finished", "complete", "closed", "played", "confirmed"}
 SHOT2 = {1: "jumpshot", 2: "layup", 5: "tipin"}      # a two's subcode; any other names no kind of shot
 
@@ -64,6 +78,14 @@ def _start_year(season) -> int:
         return int(m.group(1))
     now = time.gmtime()
     return now.tm_year if now.tm_mon >= 8 else now.tm_year - 1
+
+
+def phase_stage(name: str) -> Optional[str]:
+    """'regular', 'playoffs', or None for a phase that is not the league's (a cup, or one with no name)."""
+    name = (name or "").strip()
+    if not name or CUP.search(name):
+        return None
+    return "playoffs" if PLAYOFF.search(name) else "regular"
 
 
 def club_name(name: str) -> str:
@@ -85,12 +107,17 @@ def _pname(pl: Optional[dict]):
     return (pl.get("first_name") or "").strip(), (pl.get("last_name") or "").strip()
 
 
-def raw_from_bnxt(box: list, film: list, finished: bool, meta: Optional[dict] = None) -> Optional[dict]:
+def raw_from_bnxt(box: list, film: list, finished: bool, meta: Optional[dict] = None,
+                  periods: Optional[Dict[int, Dict[int, int]]] = None) -> Optional[dict]:
     """One game's box + film -> FIBA LiveStats data.json shape (as plk.raw_from_game writes it):
     play-by-play oldest first, actionNumber 1..n, periods opened and closed once each, drawn fouls
-    linked, the final whistle on a finished game. None without film or without both clubs."""
+    linked, the final whistle on a finished game. None without both clubs.
+
+    WITHOUT FILM (purged): a finished game is the box alone - every line, the quarters from `periods`
+    ({club 1/2: {period: points}}, the schedule's period_scores) - and no play-by-play; meta boxOnly.
+    An unfinished one is None."""
     teams = {1 if t.get("is_home") else 2: t for t in box or []}
-    if set(teams) != {1, 2} or not film:
+    if set(teams) != {1, 2} or not (film or finished):
         return None
     people: Dict[str, dict] = {}
     tm: Dict[str, dict] = {}
@@ -137,6 +164,8 @@ def raw_from_bnxt(box: list, film: list, finished: bool, meta: Optional[dict] = 
         if logo.startswith("https://"):
             tm[str(tno)]["logoT"] = {"url": logo}
             tm[str(tno)]["logoS"] = {"url": logo}
+    if not film:
+        return _box_only(tm, periods or {}, meta)
 
     score = [0, 0]
     chrono: List[dict] = []
@@ -275,6 +304,25 @@ def raw_from_bnxt(box: list, film: list, finished: bool, meta: Optional[dict] = 
     return raw
 
 
+def _box_only(tm: Dict[str, dict], periods: Dict[int, Dict[int, int]], meta: Optional[dict]) -> Optional[dict]:
+    """A finished game whose film is purged: its box, its quarters, no play-by-play."""
+    if not all(tm[s]["pl"] for s in ("1", "2")):
+        return None
+    last_q = 4
+    for s in ("1", "2"):
+        qs = periods.get(int(s)) or {}
+        if qs and sum(qs.values()) != tm[s]["score"]:
+            qs = {}                              # quarters that do not add up to the score are not shown
+        for q, v in sorted(qs.items()):
+            tm[s][f"p{q}_score"] = v
+        last_q = max([last_q] + list(qs))
+        tm[s]["full_score"] = tm[s]["score"]
+        tm[s]["ot_score"] = sum(v for q, v in qs.items() if q > 4)
+    return {"tm": tm, "pbp": [], "period": last_q, "periodType": "REGULAR" if last_q <= 4 else "OVERTIME",
+            "inOT": 1 if last_q > 4 else 0, "clock": "00:00",
+            "bnxt": {**(meta or {}), "unknown": [], "boxOnly": True}}
+
+
 class BnxtAdapter(FibaLiveStatsAdapter):
     """BNXT League. FibaLiveStatsAdapter for bundle_from_raw and nothing else."""
 
@@ -289,7 +337,8 @@ class BnxtAdapter(FibaLiveStatsAdapter):
         if stage not in ("", "regular", "playoffs"):
             raise ValueError(f"bnxt: stage must be 'regular' or 'playoffs', not {stage!r}")
         season = _start_year(config.get("season")) + 1         # the API's end-year season
-        match = re.compile(config.get("phase_match") or ("regular" if stage == "regular" else "playoff"), re.I)
+        pm = (config.get("phase_match") or "").strip()
+        match = re.compile(COUNTRY.get(pm.lower(), pm), re.I) if pm else None
         blocks = self._get(f"/phase/season/{season}") or []
         out, seen = [], set()
         now = datetime.now(timezone.utc)
@@ -297,7 +346,8 @@ class BnxtAdapter(FibaLiveStatsAdapter):
             comp_id = str((block.get("competition") or {}).get("id") or "")
             for ph in block.get("phases") or []:
                 name = ph.get("name") or ""
-                if CUP.search(name) or not match.search(name):
+                kind = phase_stage(name)
+                if kind is None or (stage and kind != stage) or (match and not match.search(name)):
                     continue
                 for g in self._get(f"/schedule/club/{season}", {"clubs[0]": 1, "clubs[1]": 2,
                                                                   "phase_id": ph["id"], "month": -1}) or []:
@@ -324,7 +374,7 @@ class BnxtAdapter(FibaLiveStatsAdapter):
                         extra={"home_code": str(ct[0].get("id") or ""), "away_code": str(ct[1].get("id") or ""),
                                "home_logo": logo(ct[0]), "away_logo": logo(ct[1]),
                                "venue": ((g.get("arena") or {}).get("name") or None), "round": name.strip(),
-                               "stage": "regular" if REGULAR.search(name) else "playoffs"}))
+                               "stage": kind}))
         print(f"     BNXT {season - 1}/{season} {stage or 'all stages'}: {len(out)} games "
               f"({sum(1 for g in out if g.status == 'final')} final)")
         return out
@@ -338,19 +388,44 @@ class BnxtAdapter(FibaLiveStatsAdapter):
         if not comp_id:
             return None
         film = self._get(f"/film/game/{comp_id}/{gid}") or []
-        if not film:
-            return None                          # not started, or purged: nothing to show but the fixture
-        box = self._get(f"/boxscore/game/{comp_id}/{gid}") or []
         finished = (info.get("status") or "").lower() in FINISHED
+        tip = config.get("_tipoff_at") or local_to_utc(info.get("game_time"))
+        if not film and not (finished and self._long_over(tip)):
+            return None                          # not started, or too recent to give up on its film
+        box = self._get(f"/boxscore/game/{comp_id}/{gid}") or []
+        # the schedule's quarters, for a game with no film to count them from (side 1 is the home club)
+        periods = {c.get("side"): {int(q["period_id"]): int(q.get("score") or 0) for q in c.get("period_scores") or []
+                                   if q.get("period_id")} for c in info.get("competitors") or []}
         raw = raw_from_bnxt(box, film, finished, {"gameId": gid, "competition": comp_id,
-                                                  "date": local_to_utc(info.get("game_time"))})
+                                                  "date": local_to_utc(info.get("game_time"))}, periods)
         if raw is None:
             return None
+        if raw["bnxt"].get("boxOnly"):
+            print(f"     BNXT {gid}: its film is purged - published as a result, from the league's box")
+            b = self.bundle_from_raw(raw, gid, config)
+            b.translate = False
+            b.status = "final"
+            b.stints, b.lineups = [], {}
+            b.tipoff_at = tip
+            return b
         if raw["bnxt"]["unknown"]:
             print(f"     BNXT {gid}: event codes the adapter does not know, left out: {raw['bnxt']['unknown'][:6]}")
         b = self.bundle_from_raw(raw, gid, config)
         b.tipoff_at = config.get("_tipoff_at") or raw["bnxt"]["date"]
         return b
+
+    @staticmethod
+    def _long_over(tip, now: Optional[datetime] = None) -> bool:
+        """Tipped off long enough ago that a game with no film will not get one."""
+        try:
+            t = datetime.fromisoformat(str(tip).replace("Z", "+00:00")) if tip else None
+        except ValueError:
+            return False
+        if t is None:
+            return False
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=timezone.utc)
+        return ((now or datetime.now(timezone.utc)) - t).total_seconds() >= BOX_ONLY_AFTER_S
 
     @staticmethod
     def _too_early(tip, now: Optional[datetime] = None) -> bool:

@@ -333,5 +333,98 @@ ok("the scoreboard's clock and period onto the payload, overtime as OVERTIME 1",
    board == {"clock": "09:49", "period": 2, "periodType": "REGULAR"} and ot == {"clock": "00:00", "period": 1, "periodType": "OVERTIME"},
    (board, ot))
 
+# ============================================================================ a season before the EUI
+print("\n-- older seasons (a backfill): FIBA LiveStats before 2024-25")
+# TorneoPal's rows as 2022-23 and 2023-24 have them (captured 14 Oct 2026, cut to the fields read): every game
+# linked to a FIBA LiveStats id. The payload is a genuine LiveStats data.json from another league's test
+# (data/cebl/fiba-2798717.json, Edmonton Stingers 75-77 Winnipeg Sea Bears) standing in for the game.
+with open(os.path.join(HERE, "data", "cebl", "fiba-2798717.json"), encoding="utf-8") as _f:
+    STANDIN = _f.read()
+
+
+def tp(mid, ext, a, b, date, status="Played", gt="group_stage", mt="single", fa="75", fb="77", group="Runkosarja",
+       cat_name="Korisliiga", cat_ext="36328"):
+    return {"match_id": mid, "match_external_id": ext, "team_A_name": a, "team_B_name": b, "date": date,
+            "time": "18:30:00", "time_zone_offset": "+0300", "status": status, "group_type": gt, "match_type": mt,
+            "fs_A": fa, "fs_B": fb, "group_name": group, "category_name": cat_name, "category_external_id": cat_ext,
+            "venue_name": "Kouvola-halli", "club_A_crest": "https://cdn.torneopal.net/logo/koripallo/1x.png"}
+
+
+OLD = {("2023-2024", 4): [
+    tp("873001", "2306036", "Edmonton Stingers", "Winnipeg Sea Bears", "2023-09-30"),
+    tp("873002", "2306037", "Kouvot", "Lahti Basketball", "2023-10-03", fa="90", fb="80"),
+    tp("873003", "2306038", "Kouvot", "BC Nokia", "2024-04-05", gt="knockout_final", group="Pudotuspelit"),
+    # a play-off series' summary line, a result carried into a later group (2022-23's loppusarja: the original's
+    # link again), and a fixture the season never played
+    tp("873004", "", "Kouvot", "BC Nokia", "2024-04-12", gt="knockout_final", mt="series", fa="4", fb="1", group="Pudotuspelit"),
+    tp("873005", "2306036", "Edmonton Stingers", "Winnipeg Sea Bears", "2024-01-20", mt="transfer_result", group="1. Ylempi loppusarja"),
+    tp("873006", "2306039", "Kouvot", "Kobrat", "2024-03-01", status="Fixture", fa="", fb="")],
+    ("2023-2024", 2): [tp(str(880945 + i), str(4924138 + i), "HBA-Märsky", "Torpan Pojat", "2023-10-%02d" % (6 + i),
+                          cat_name="Miesten I divisioona A", cat_ext="36874") for i in range(6)]}
+
+
+class Archive(Offline):
+    """TorneoPal's older seasons from OLD; data.json answering for Korisliiga's ids and refusing (403 -> None) the rest."""
+
+    def __init__(self):
+        super().__init__()
+        self.feed = []
+
+    def _req(self, method, url, **kw):
+        p = kw.get("params") or {}
+        key = (p.get("competition_id"), int(p.get("category_id") or 0))
+        if "torneopal" in url and key in OLD:
+            self.asked.append((url.rsplit("/", 1)[-1], *key))
+            return {"matches": OLD[key]} if url.endswith("getMatches") else {}
+        return super()._req(method, url, **kw)
+
+    def _get(self, url):
+        self.feed.append(url)
+        return json.loads(STANDIN) if "/23060" in url else None
+
+    def _get_meta(self, url):
+        return self._get(url), {"lm_ms": None, "etag": None, "recv_ms": 0}
+
+
+F.BasketFiAdapter._livestats_ok = {}
+ok("TorneoPal's links before the EUI are FIBA LiveStats ids; an EUI season has none",
+   F.livestats_ids(OLD[("2023-2024", 4)])[:2] == ["2306036", "2306037"]
+   and F.livestats_ids([{"match_external_id": "5a6adfd7-9bb6-11f1-9fef-97a68955b80f"}, {"match_external_id": ""}]) == [])
+old = Archive()
+reg24 = list(old.discover("", {"season": "2023-24", "category": 4, "stage": "regular", "_backfill": True}))
+po24 = list(old.discover("", {"season": "2023-24", "category": 4, "stage": "playoffs", "_backfill": True}))
+ok("Korisliiga 2023-24 is read off LiveStats: its two played regular-season games and its one play-off game, keyed "
+   "by the LiveStats id",
+   [g.external_id for g in reg24] == ["2306036", "2306037"] and [g.external_id for g in po24] == ["2306038"],
+   ([g.external_id for g in reg24], [g.external_id for g in po24]))
+ok("...a series line, a result carried into a later group, and a game never played are not games",
+   not ({"873004", "873005", "873006"} & {g.extra["torneopal"] for g in reg24 + po24}))
+ok("...final, the tip-off in UTC, no club code (LiveStats' codes are not the EUI's), the feed named",
+   all(g.status == "final" and g.extra["home_code"] == g.extra["away_code"] == "" and g.extra["feed"] == "livestats"
+       for g in reg24 + po24) and reg24[0].tipoff_at == "2023-09-30T15:30:00Z", reg24[0])
+ok("...data.json was asked once to find out it holds the season, and the play-off source did not ask again",
+   len(old.feed) == 1 and old.feed[0].endswith("/data/2306036/data.json"), old.feed)
+b = old.fetch("2306036", {"season": "2023-24", "category": 4, "_tipoff_at": reg24[0].tipoff_at})
+ok("the game: data.json read whole, the clubs uncoded so they are found by name, the box and the stints there",
+   b is not None and b.status == "final" and (b.home_name, b.away_name) == ("Edmonton Stingers", "Winnipeg Sea Bears")
+   and b.raw["tm"]["1"]["code"] == b.raw["tm"]["2"]["code"] == "" and len(b.box["home"]) >= 5 and b.stints
+   and b.tipoff_at == "2023-09-30T15:30:00Z" and old.feed[-1].endswith("/data/2306036/data.json"),
+   b and (b.home_name, b.raw["tm"]["1"]["code"], len(b.box["home"]), len(b.stints)))
+cold = Archive()
+ok("...held to TorneoPal's official result like an EUI game, fetched cold (no discovery): 2306037's 90-80 is not "
+   "the feed's 75-77",
+   cold.fetch("2306037", {"season": "2023-24", "category": 4}) is None and cold.fetch("2306036", {"season": "2023-24", "category": 4}) is not None)
+F.BasketFiAdapter._livestats_ok = {}
+div = Archive()
+d24 = list(div.discover("", {"season": "2023-24", "category": 2, "stage": "regular", "_backfill": True}))
+d24p = list(div.discover("", {"season": "2023-24", "category": 2, "stage": "playoffs", "_backfill": True}))
+ok("I divisioona A 2023-24: data.json refuses its links (4924138 ...), so nothing is read - after three tries "
+   "(first, middle, last), not one per game, and not again for the play-off source",
+   d24 == [] and d24p == [] and len(div.feed) == 3
+   and [u.split("/data/")[1].split("/")[0] for u in div.feed] == ["4924138", "4924140", "4924143"], div.feed)
+none = Archive()
+ok("2021-22: TorneoPal has the competition and not one game - nothing", list(none.discover(
+   "", {"season": "2021-22", "category": 4, "stage": "regular", "_backfill": True})) == [] and not none.feed)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

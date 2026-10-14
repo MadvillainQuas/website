@@ -133,6 +133,9 @@ ok("the key carries both uuids (season_fixture), which the game feed needs",
 a = fresh()
 ok("2026-27 is refused while the feed is still on 2025-26 - never read as the current season",
    list(a.discover("x", {"season": "2026-27"})) == [])
+a = fresh()
+ok("2024-25, from before the league was on the embed, is refused before a single request",
+   list(a.discover("x", {"season": "2024-25"})) == [] and ASKED == [], ASKED)
 for bad, cfg in (("a season token that is not a season", {"season": "twenty"}),
                  ("a stage that is neither regular nor playoffs", {"stage": "cup"})):
     try:

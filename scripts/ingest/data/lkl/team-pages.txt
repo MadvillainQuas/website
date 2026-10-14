@@ -1,0 +1,3 @@
+wolves-twinsbet	wire:snapshot="{&quot;data&quot;:{&quot;teamId&quot;:9,&quot;paginators&quot;:[[],{&quot;s&quot;:&quot;arr&quot;}]},&quot;memo&quot;:{
+pieno-zvaigzdes	wire:snapshot="{&quot;data&quot;:{&quot;teamId&quot;:7,&quot;paginators&quot;:[[],{&quot;s&quot;:&quot;arr&quot;}]},&quot;memo&quot;:{
+m-basket-delamode	wire:snapshot="{&quot;data&quot;:{&quot;teamId&quot;:14,&quot;paginators&quot;:[[],{&quot;s&quot;:&quot;arr&quot;}]},&quot;memo&quot;:{

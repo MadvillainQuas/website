@@ -223,5 +223,78 @@ ok("a statistics-feed period list (no events) is never read as empty plays",
    P.LnbpAdapter._pbp_of_periods([{"periodId": 1, "started": True, "teamScore": {}}]) == {}
    and P.LnbpAdapter._pbp_of_periods(None) == {} and P.LnbpAdapter._pbp_of_periods({"teamScores": {}}) == {})
 
+# ============================================================================ a season before the EUI
+print("\n-- older seasons (a backfill): lnbp.mx's own site and FIBA LiveStats before 2025")
+# lnbp.mx's back end as it answers (14 Oct 2026), cut to the fields read. The payload is a genuine LiveStats
+# data.json from another league's test (data/cebl/fiba-2798717.json, Edmonton Stingers 75-77 Winnipeg Sea Bears)
+# standing in for every game.
+with open(os.path.join(HERE, "data", "cebl", "fiba-2798717.json"), encoding="utf-8") as _f:
+    STANDIN = _f.read()
+
+
+def site_game(gid, fiba, rnd, t1, t2, s1, s2, day="2021-10-02", at="20:00:00"):
+    return {"id": gid, "fiba_id": fiba, "id_round": rnd, "id_team_1": t1, "id_team_2": t2, "score_1": s1, "score_2": s2,
+            "name": "Abejas vs. Dorados", "event": {"date_start": day, "time_start": at, "venue": "Domo De La Feria"}}
+
+
+SITE = {"/sports/seasons/all": {"items": [{"id": 32, "name": "2024 Varonil"}, {"id": 31, "name": "2024 Femenil"},
+                                          {"id": 22, "name": "2021"}, {"id": 20, "name": "2019 - 2020"}]},
+        ("/sports/rounds/season", 22): {"items": [{"id": 500, "name": "Jornada 1"}, {"id": 530, "name": "Semifinal de Zona - Juego 1"}]},
+        ("/sports/rounds/season", 32): {"items": [{"id": 787, "name": "Jornada 26"}]},
+        ("/sports/games/dates", "2021-01-01"): {"items": [
+            site_game(2173, "1913643", 500, 1, 28, 75, 77),
+            site_game(2174, "1913644", 500, 28, 1, 77, 75, day="2021-10-09"),         # the same two, the other way round
+            site_game(2175, "1913645", 530, 1, 28, 75, 77, day="2021-11-02", at="19:30:00"),
+            site_game(2176, "", 500, 1, 28, 80, 70),                                   # no LiveStats id: no box score
+            site_game(2177, "1913646", 500, 1, 99, 60, 60),                            # a tie names nobody's side
+            site_game(1999, "1791160", 400, 1, 28, 91, 78, day="2021-02-01")]},       # 2019-20's round, not 2021's
+        ("/sports/games/dates", "2024-01-01"): {"items": [site_game(3198, "", 787, 47, 3, 82, 90, day="2024-09-27")]}}
+
+
+class OldSite(Offline):
+    def __init__(self):
+        super().__init__()
+        self.site, self.feed = [], []
+
+    def _site(self, path, data):
+        self.site.append(path)
+        return SITE.get(path) or SITE.get((path, data.get("id_season") or data.get("date_start"))) or {}
+
+    def _get(self, url):
+        self.feed.append(url)
+        return json.loads(STANDIN)
+
+    def _get_meta(self, url):
+        return self._get(url), {"lm_ms": None, "etag": None, "recv_ms": 0}
+
+
+P.LnbpAdapter._site_names = {}
+old = OldSite()
+r21 = list(old.discover("", {"season": "2021", "stage": "regular", "_backfill": True}))
+ok("2021 (before anything the EUI has of the league): read off lnbp.mx's own site, keyed by the LiveStats id",
+   [g.external_id for g in r21] == ["1913643", "1913644"] and old.site[0] == "/sports/seasons/all", ([g.external_id for g in r21], old.site))
+ok("...each club named as its games' data.json names it (never the site's 'Abejas'), the way round the score says",
+   [(g.home_name, g.away_name) for g in r21] == [("Edmonton Stingers", "Winnipeg Sea Bears"), ("Winnipeg Sea Bears", "Edmonton Stingers")],
+   [(g.home_name, g.away_name) for g in r21])
+ok("...20:00 in central Mexico (summer time in 2021) is 01:00 UTC; final; no club code",
+   r21[0].tipoff_at == "2021-10-03T01:00:00Z" and all(g.status == "final" and g.extra["home_code"] == "" for g in r21), r21[0])
+ok("...no LiveStats id, a club no game names, another season's round: not games",
+   not ({"", "1913646", "1791160"} & {g.external_id for g in r21}))
+ok("...the names cost one data.json per club, not one per game (a tie teaches nothing, so 99 cost one more)",
+   len(old.feed) == 2, old.feed)
+p21 = list(OldSite().discover("", {"season": "2021", "stage": "playoffs", "_backfill": True}))
+ok("the play-offs are the rounds the league calls finals and semi-finals",
+   [(g.external_id, g.extra["round"], g.extra["stage"]) for g in p21] == [("1913645", "Semifinal de Zona - Juego 1", "playoffs")], p21)
+b = OldSite().fetch("1913643", {"season": "2021", "_tipoff_at": r21[0].tipoff_at})
+ok("the game: data.json, uncoded clubs (LiveStats' GTO is not the EUI's LEO), box and stints",
+   b is not None and b.raw["tm"]["1"]["code"] == b.raw["tm"]["2"]["code"] == "" and len(b.box["home"]) >= 5 and b.stints
+   and b.tipoff_at == "2021-10-03T01:00:00Z", b and (b.raw["tm"]["1"]["code"], len(b.box["home"])))
+n24 = OldSite()
+ok("2024: the site has the season and no LiveStats id on any game - nothing, and no game feed asked",
+   list(n24.discover("", {"season": "2024", "stage": "regular", "_backfill": True})) == [] and not n24.feed, n24.site)
+n27 = OldSite()
+ok("2027 (after the EUI's first season, not published yet) is never looked for on the old site",
+   list(n27.discover("", {"season": "2027", "stage": "regular"})) == [] and not n27.site)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

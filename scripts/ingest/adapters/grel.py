@@ -43,6 +43,14 @@ A GAME IS FINAL when its last period has been closed, it has at least four, the 
 (a tie after Q4 is overtime still to come) and it tipped off hours ago: the page itself has no
 status.
 
+THE ELITE LEAGUE BEGINS IN 2022-23. It is the second tier renamed and reformed: until 2021-22 the
+federation ran that tier as the A2 (ΠΡΩΤΑΘΛΗΜΑ Α2 ΑΝΔΡΩΝ), which stats.basket.gr keeps under
+/{season}/a2-men/ with round links of another shape (/a2-men/gamelevel/1/gamedate/1, no section).
+/2021-2022/elite-league/... and /2020-2021/elite-league/... answer 404, the site's menu lists no
+elite-league for either season, and it lists no a2-men from 2022-23 on. Whether the A2 is this league's
+past is a decision about the league, not something to read into a URL, so a season before FIRST_SEASON
+is refused before a request, with that reason, rather than reported as "nothing published yet".
+
 ROUND PAGES ARE ~800 KB and a season is ~30 of them, so they are cached in
 data/feed/GREL/rounds.json (committed with the other feed caches): a round whose games are all
 final is never read again, and a round with nothing near today is re-read at most once a day.
@@ -74,6 +82,8 @@ PLAYED_AFTER = timedelta(hours=3)
 ROUND_TTL = timedelta(hours=24)            # a round with nothing near today, re-read at most daily
 NEAR = timedelta(days=3)
 FETCH_LEAD = timedelta(minutes=30)
+#: the Elite League's first season, 2022-23 (the A2 before it: see the module docstring)
+FIRST_SEASON = 2022
 
 CALL = re.compile(r'loadDoc\("((?:[^"\\]|\\.)*)",\s*"([^"]+)"\)', re.S)
 CARD_SPLIT = '<div class="row borderfull overflowHide">'
@@ -617,6 +627,11 @@ class GrelAdapter(FibaLiveStatsAdapter):
         stage = (config.get("stage") or "regular").strip().lower()
         if stage not in ("regular", "playoffs"):
             raise ValueError(f"grel: stage must be 'regular' or 'playoffs', not {stage!r}")
+        if y < FIRST_SEASON:
+            print(f"     Greek Elite League {season}: the league began in {FIRST_SEASON}-{str(FIRST_SEASON + 1)[2:]} "
+                  f"(the tier was the A2, a2-men on the site, before) - nothing read")
+            self.last_competitions = []
+            return []
         wanted = REGULAR if stage == "regular" else POSTSEASON
         cache = self._round_cache(config)
         seen_pages, pages = set(), [(path, sec, 1, 1) for sec in wanted]

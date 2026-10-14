@@ -14,8 +14,17 @@ Mexico, so the game side is inherited unchanged.
            29461 Miesten I divisioona B). The API answers only the site's own Origin, with the
            site's own Accept "key" (from its bundle).
 
-OLDER SEASONS (a console backfill): 2024-25 reads like any other. 2023-24 and before are on TorneoPal
-but not on the stats feed any more (feed_holds), so they are said so and read as nothing.
+OLDER SEASONS (a console backfill), checked 14 Oct 2026 for all four leagues:
+    2024-25 and on   the EUI, as above.
+    2022-23, 2023-24 the system before: FIBA LiveStats (Genius Sports). TorneoPal links every game to it
+                     (match_external_id 2306036 ...), and its public data.json still answers for
+                     Korisliiga's and Naisten Korisliiga's games with the whole box score and play-by-play
+                     - so those two seasons are read from it (livestats_ids, _discover_livestats). The two
+                     divisions' links (4813237 ..., 4924138 ...) are a different numbering that data.json
+                     answers 403 for, and the hosted pages that once mapped them are gone (HTTP 500):
+                     probed, said so, read as nothing.
+    2021-22          TorneoPal has the competition, its groups and its clubs, but not one game.
+    2020-21 and before  not on TorneoPal at all (getCompetitions starts at 2021-2022).
     GET embed-api.eui.connect.sportradar.com/v1/embed/322/fixtures?state=<{"l","s","z"}>
         -> the same season in the EUI's words: club codes (KTP, SEA) and each fixture's status
     GET .../322/fixture_detail?state=...&fixtureId=...   (LnbAdapter.fetch)
@@ -70,6 +79,7 @@ from datetime import date, datetime, timezone
 from typing import Iterable, Optional
 
 from .base import ScheduleGame
+from .fiba_livestats import FIBA_DATA_URL
 from .lnb import EUI_EMBED, FINAL_STATUS, LnbAdapter, _season_year, page_state
 
 TORNEOPAL = "https://koripallo-api.torneopal.net/taso/rest"
@@ -103,6 +113,22 @@ def feed_holds(season: str) -> bool:
     are the numbers of the system before, and its fixtures list comes back empty - TorneoPal still links every
     game to it, so without this a backfill would file 2023-24 as a season of games that can never be read."""
     return bool(re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", str(season or "").strip()))
+
+
+#: a FIBA LiveStats (Genius Sports) game id, which is what TorneoPal links a game to before 2024-25
+_LIVESTATS_ID = re.compile(r"\d{5,10}")
+#: TorneoPal rows that are not games: a play-off series' summary line, and a result CARRIED into a later
+#: group (Korisliiga 2022-23's upper and lower loppusarja repeat 60 regular-season games this way, with the
+#: original's link and no date) - read as games, they would be the same game twice
+NOT_GAMES = {"series", "transfer_result"}
+#: played games tried when finding out whether data.json answers for a season's links
+PROBES = 3
+
+
+def livestats_ids(matches: list) -> list:
+    """The FIBA LiveStats game ids a season's TorneoPal rows link to (empty for an EUI season)."""
+    return [str(m.get("match_external_id") or "").strip() for m in matches
+            if _LIVESTATS_ID.fullmatch(str(m.get("match_external_id") or "").strip())]
 
 
 def stage_of(m: dict) -> str:
@@ -289,6 +315,9 @@ class BasketFiAdapter(LnbAdapter):
             print(f"     basketfi {comp}/{cat}: no fixtures published")
             return []
         season = self._season_id(comp, cat, matches)
+        if not feed_holds(season) and livestats_ids(matches):
+            # a season from before the EUI: its games are FIBA LiveStats', where data.json still holds them
+            return self._discover_livestats(comp, cat, stage, matches)
         if season and not feed_holds(season):
             print(f"     basketfi {comp}/{cat}: the stats feed no longer serves this season (EUI season {season}, "
                   "from before 2024-25) - nothing to read")
@@ -329,28 +358,136 @@ class BasketFiAdapter(LnbAdapter):
               + (f"; {len(unlinked)} with no stats fixture yet: " + "; ".join(unlinked[:5]) if unlinked else ""))
         return out
 
+    # ------------------------------------------------- a season before the EUI ---
+    #: (competition, category) -> does data.json answer for the season's links; shared by a league's two
+    #: sources, so a pass asks once
+    _livestats_ok: dict = {}
+
+    def _livestats_readable(self, comp: str, cat: int, matches: list) -> bool:
+        """Does FIBA LiveStats' data.json hold this season's games? Asked of up to PROBES played games
+        spread over the season (one answer is enough). Korisliiga 2023-24's 2306036 answers with the
+        whole game; I divisioona A's 4924138 is refused (403), and so is every link of both divisions in
+        2022-23 and 2023-24: their numbers are the Genius hosted site's, not the stats feed's."""
+        key = (comp, cat)
+        if key not in BasketFiAdapter._livestats_ok:
+            played = [str(m.get("match_external_id")).strip() for m in matches
+                      if str(m.get("status") or "").lower() == "played" and str(m.get("match_type") or "").lower() not in NOT_GAMES
+                      and _LIVESTATS_ID.fullmatch(str(m.get("match_external_id") or "").strip())]
+            picks = list(dict.fromkeys(played[i * (len(played) - 1) // max(1, PROBES - 1)] for i in range(PROBES))) if played else []
+            got = unsure = False
+            for gid in picks:
+                try:
+                    raw = self._get(FIBA_DATA_URL.format(game_id=gid))    # None: refused (403) or unknown (404)
+                except Exception:
+                    unsure = True                  # the network, not an answer: not remembered as a no
+                    continue
+                if isinstance(raw, dict) and raw.get("tm"):
+                    got = True
+                    break
+            if got or not unsure:
+                BasketFiAdapter._livestats_ok[key] = got
+            return got
+        return BasketFiAdapter._livestats_ok[key]
+
+    def _discover_livestats(self, comp: str, cat: int, stage: str, matches: list) -> list:
+        """A season from before the EUI, read off FIBA LiveStats: a game is keyed by its LiveStats id (the
+        id data.json is read by, as every LiveStats league's is), and the season's links are first tried
+        against data.json - a season whose links it does not know is said so and read as nothing.
+
+        THE SEASON IS OVER, so only what TorneoPal calls played is a game: a row it never played (none in
+        Korisliiga's or Naisten Korisliiga's two seasons, one fixture in each division) would sit in an old
+        season as a fixture forever. No club code: TorneoPal has none, and LiveStats' own (Kataja KAT,
+        Kauhajoki KHJ, Vilpas SAL) are not the codes the EUI gives the same clubs now (KAB, KRB, VIL), so
+        the clubs are found by their names, which the two systems share (see fetch)."""
+        league = next((str(m.get("category_name") or "").strip() for m in matches if m.get("category_name")), "")
+        self.last_competitions = [league] if league else []
+        if not self._livestats_readable(comp, cat, matches):
+            print(f"     basketfi {league or cat} {comp}: TorneoPal links this season to FIBA LiveStats ids its data.json "
+                  "does not answer for (tried the season's first, middle and last played games) - no box score to read")
+            return []
+        by_fixture = self.__dict__.setdefault("_by_fixture", {})
+        out, unplayed = [], 0
+        for m in matches:
+            if str(m.get("match_type") or "").lower() in NOT_GAMES or stage_of(m) != stage:
+                continue
+            gid = str(m.get("match_external_id") or "").strip()
+            home, away = str(m.get("team_A_name") or "").strip(), str(m.get("team_B_name") or "").strip()
+            tip, tbc = tipoff(m)
+            if not (_LIVESTATS_ID.fullmatch(gid) and home and away and tip):
+                continue
+            if str(m.get("status") or "").strip().lower() != "played":
+                unplayed += 1
+                continue
+            by_fixture[gid] = m
+            extra = {"venue": str(m.get("venue_name") or "").strip() or None, "home_code": "", "away_code": "",
+                     "home_logo": str(m.get("club_A_crest") or "").strip() or None,
+                     "away_logo": str(m.get("club_B_crest") or "").strip() or None,
+                     "round": str(m.get("group_name") or "").strip() or None,
+                     "stage": stage, "competition": league, "torneopal": str(m.get("match_id")), "feed": "livestats"}
+            if tbc:
+                extra["time_tbc"] = True
+            out.append(ScheduleGame(external_id=gid, home_name=home, away_name=away, tipoff_at=tip,
+                                    status=status_of(m, {}), extra=extra))
+        out.sort(key=lambda g: (g.tipoff_at or "", g.external_id))
+        print(f"     basketfi {league or cat} {comp} {stage} (FIBA LiveStats): {len(out)} games "
+              f"({sum(1 for g in out if g.status == 'final')} final)"
+              + (f"; {unplayed} never played, left out" if unplayed else ""))
+        return out
+
+    def _fetch_livestats(self, gid: str, config: dict):
+        """One game of a season before the EUI: its data.json, as FibaLiveStatsAdapter.fetch reads it - but with
+        the clubs' codes taken off first (see _discover_livestats), so that an old season is filed against the
+        clubs by name and never re-codes the clubs the season being played is keyed on."""
+        raw, meta = self._get_meta(FIBA_DATA_URL.format(game_id=gid))
+        if not raw or "tm" not in raw:
+            return None
+        for k in ("1", "2"):
+            if isinstance(raw["tm"].get(k), dict):
+                raw["tm"][k]["code"] = ""
+        b = self.bundle_from_raw(raw, gid, config)
+        b.feed_lm_ms, b.feed_recv_ms = meta["lm_ms"], meta["recv_ms"]
+        if config.get("_tipoff_at"):
+            b.tipoff_at = config["_tipoff_at"]
+        return b
+
     # --------------------------------------------------------------------- game ---
-    def _official(self, season: str, fixture: str, config: dict) -> Optional[dict]:
-        """The TorneoPal match behind an EUI fixture: from this adapter's discovery, else read cold
-        (the live lane fetches with no discovery pass) when the row says which league it is."""
+    def _official(self, season: Optional[str], fixture: str, config: dict) -> Optional[dict]:
+        """The TorneoPal match behind an EUI fixture (season None: behind a LiveStats game): from this
+        adapter's discovery, else read cold (the live lane fetches with no discovery pass) when the row says
+        which league it is."""
         by_fixture = self.__dict__.setdefault("_by_fixture", {})
         if fixture not in by_fixture and config.get("category") not in (None, ""):
             comp, cat = competition_id(config), self._category(config)
             matches = self._matches(comp, cat)
+            if season is None:
+                # a LiveStats game (a season before the EUI): TorneoPal links it directly, and there is no
+                # EUI listing to join on
+                for m in matches:
+                    gid = str(m.get("match_external_id") or "").strip()
+                    if gid and str(m.get("match_type") or "").lower() not in NOT_GAMES:
+                        by_fixture.setdefault(gid, m)
+                return by_fixture.get(fixture)
             by_id = {str(m.get("match_id")): m for m in matches}
             for mid, fx in self.link(matches, self._listing(season)).items():
                 by_fixture.setdefault(fx, by_id.get(mid))
         return by_fixture.get(fixture)
 
     def fetch(self, external_id: str, config: dict):
-        m = re.match(r"([0-9a-f-]+)_([0-9a-f-]{20,})$", str(external_id))
-        if not m:
-            return None
-        season, fixture = m.group(1), m.group(2)
-        official = self._official(season, fixture, config)
-        if season not in self.__dict__.get("_eui_listing", {}):
-            self._listing(season)                  # the league's shared codes, before the clubs are named
-        b = super().fetch(external_id, config)
+        if _LIVESTATS_ID.fullmatch(str(external_id).strip()):
+            # a season before the EUI (_discover_livestats): the game is FIBA LiveStats', held to TorneoPal's
+            # official result exactly as an EUI game is
+            fixture = str(external_id).strip()
+            official = self._official(None, fixture, config)
+            b = self._fetch_livestats(fixture, config)
+        else:
+            m = re.match(r"([0-9a-f-]+)_([0-9a-f-]{20,})$", str(external_id))
+            if not m:
+                return None
+            season, fixture = m.group(1), m.group(2)
+            official = self._official(season, fixture, config)
+            if season not in self.__dict__.get("_eui_listing", {}):
+                self._listing(season)                  # the league's shared codes, before the clubs are named
+            b = super().fetch(external_id, config)
         if not b or not official:
             return b
         if str(official.get("status") or "").strip().lower() == "played" and b.status == "final":

@@ -5,6 +5,8 @@ TWO HOSTS, ONE ADAPTER, TWO CONFIG ROWS. The schedule lives on the league's own 
 centre renders. Elite and Elite 2 differ by exactly ONE query parameter — division_external_id —
 so `adapter_config.division` (1 or 2) is the whole difference between the two rows:
 
+    GET  lnb.fr/api/token
+         -> the visitor's bearer token every api-prod call now needs (api_token below)
     GET  api-prod.lnb.fr/competition/getDivisionCompetitionByYear?year=<YYYY>&division_external_id=<1|2>
          -> the season's competitions (league, Supercoupe, Leaders Cup, Play-In, Playoffs …),
             each with its own external_id AND its own season_id
@@ -77,6 +79,41 @@ from .fiba_livestats import FibaLiveStatsAdapter
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0 Safari/537.36",
            "Referer": "https://lnb.fr/", "Origin": "https://lnb.fr"}
 LNB_API = "https://api-prod.lnb.fr"
+#: THE BACKEND NOW WANTS A BEARER TOKEN, and lnb.fr hands one to every visitor. By 14 Oct 2026 every
+#: api-prod call without one was refused - 403 {"message":"Authorization header missing"} - for the
+#: season being played and every past one alike, so discovery found nothing at all. The site's own
+#: script asks its Next.js route /api/token for {"token": <JWT, client "website", 15 minutes>} and
+#: keeps it 840 s; this does the same. It is the anonymous visitor's token, not an account.
+TOKEN_URL = "https://lnb.fr/api/token"
+TOKEN_KEEP_S = 840
+_TOKEN = {"value": None, "until": 0.0}
+
+
+def api_token(fresh: bool = False) -> Optional[str]:
+    """lnb.fr's visitor token for api-prod.lnb.fr, kept as long as the site keeps it; None when the
+    site will not give one (the call then goes without, and its 403 is printed as before)."""
+    if not fresh and _TOKEN["value"] and time.time() < _TOKEN["until"]:
+        return _TOKEN["value"]
+    try:
+        r = requests.get(TOKEN_URL, headers=HEADERS, timeout=30)
+        tok = (r.json() or {}).get("token") if r.status_code == 200 else None
+    except (requests.RequestException, ValueError):
+        tok = None
+    if not tok:
+        print("   (lnb: lnb.fr gave no API token - the backend will refuse the call)")
+        _TOKEN.update(value=None, until=0.0)
+        return None
+    _TOKEN.update(value=tok, until=time.time() + TOKEN_KEEP_S)
+    return tok
+
+
+def api_headers(fresh: bool = False) -> dict:
+    """HEADERS plus the visitor token: what any reader of api-prod.lnb.fr has to send now (bio_sources'
+    LNB rosters included)."""
+    tok = api_token(fresh)
+    return {**HEADERS, "Authorization": f"Bearer {tok}"} if tok else dict(HEADERS)
+
+
 #: + /<website id>/<page>. lnb.fr is website 12; lnbp.py is the same embed as website 14.
 EUI_EMBED = "https://embed-api.eui.connect.sportradar.com/v1/embed"
 
@@ -112,6 +149,8 @@ FINAL_STATUS = {"CONFIRMED", "COMPLETE", "COMPLETED", "FINAL", "FINISHED"}
 PROVISIONAL_STATUS = {"UNCONFIRMED", "PROVISIONAL"}
 #: a fixture being played: the feed's own word, which is all a game has before its play-by-play exists
 LIVE_STATUS = {"IN_PROGRESS", "INPROGRESS", "LIVE", "STARTED", "HALFTIME", "BREAK", "INTERRUPTED"}
+#: lnb.fr's calendar word for a fixture that will never be played
+CANCELLED_STATUS = {"CANCELLED", "CANCELED"}
 
 
 def _season_year(config: dict) -> int:
@@ -182,11 +221,26 @@ class LnbAdapter(FibaLiveStatsAdapter):
 
     # ---------------------------------------------------------------- transport ---
     def _req(self, method: str, url: str, **kw):
-        gap = time.time() - getattr(self, "_last_api", 0)
-        if gap < self.min_request_gap_s:
-            time.sleep(self.min_request_gap_s - gap)
-        self._last_api = time.time()
-        r = requests.request(method, url, timeout=45, **kw)
+        own_api = url.startswith(LNB_API)
+        for attempt in (1, 2):
+            gap = time.time() - getattr(self, "_last_api", 0)
+            if gap < self.min_request_gap_s:
+                time.sleep(self.min_request_gap_s - gap)
+            self._last_api = time.time()
+            if own_api:
+                # only the league's own backend gets the token: the EUI embed (and the other leagues'
+                # hosts that inherit this transport) never asked for one and are not sent lnb.fr's
+                kw["headers"] = dict(kw.get("headers") or HEADERS)
+                kw["headers"].pop("Authorization", None)
+                tok = api_token(fresh=attempt == 2)
+                if tok:
+                    kw["headers"]["Authorization"] = f"Bearer {tok}"
+            r = requests.request(method, url, timeout=45, **kw)
+            # A TOKEN CAN LAPSE BEFORE ITS 840 s (a clock skew, the site rotating its key): one refused
+            # call is retried once with a new token before it is reported as refused
+            if own_api and attempt == 1 and r.status_code in (401, 403):
+                continue
+            break
         if r.status_code in (403, 404):
             # UNLIKE fiba_livestats.py's own 403/404-is-normal case (a game that has not tipped
             # off yet), there is no routine reason for LNB's OWN discovery calls -- listing a
@@ -239,7 +293,10 @@ class LnbAdapter(FibaLiveStatsAdapter):
         for group in cal.get("data") or []:
             for m in group.get("data") or []:
                 fixture = (m.get("match_id") or "").strip()
-                if not fixture:
+                # A CANCELLED FIXTURE IS NOT A GAME. Espoirs 2020-21's first phase was called off for
+                # covid and is still listed as a competition of its own: 204 fixtures, every one
+                # CANCELLED. Filed as "scheduled" they would be 204 games in the past that never end.
+                if not fixture or (m.get("match_status") or "").upper() in CANCELLED_STATUS:
                     continue
                 teams = m.get("teams") or []
                 home, away = (teams + [{}, {}])[0], (teams + [{}, {}])[1]
@@ -366,7 +423,32 @@ class LnbAdapter(FibaLiveStatsAdapter):
         # startTimeUTC is the venue-confirmed tip-off; the schedule's match_time_utc is the
         # announced one, so it is only the fallback.
         b.tipoff_at = self._utc(fixture.get("startTimeUTC")) or config.get("_tipoff_at")
+        if played and not events and self._long_over(b.tipoff_at):
+            # A FINISHED GAME THE FEED KEPT NO PLAYS FOR IS A RESULT, NOT A LOG. 2020-21 on lnb.fr's
+            # embed is like this - the game sampled in each of Elite, Elite 2 and Espoirs alike:
+            # liveDataAvailable false, periodData empty, the box and the final score and nothing else
+            # (Nanterre 97-84 Chalon, 17 Apr 2021); 2021-22 on has its plays. Handed on as it was, its
+            # "log" is the one game-end line S.game writes, which the pipeline would translate into a
+            # game of no plays and one empty stint. So it is published as what it is (translate False,
+            # as nbl.py does with NBL 2023-24's box-only games). Only once it is two days old: the feed
+            # can publish a game's plays after its box, and a result is closed to its log for good.
+            b.translate = False
+            b.stints, b.lineups = [], {}
         return b
+
+    #: a played game with no plays is a box-only result only once it is this old (see fetch)
+    BOX_ONLY_AFTER_S = 2 * 86400
+
+    @classmethod
+    def _long_over(cls, tip) -> bool:
+        try:
+            t = datetime.fromisoformat(str(tip).replace("Z", "+00:00")) if tip else None
+        except ValueError:
+            return False
+        if t is None:
+            return False
+        t = t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - t).total_seconds() >= cls.BOX_ONLY_AFTER_S
 
     @staticmethod
     def _scoreboard(raw: dict, summary: dict) -> None:
