@@ -11,6 +11,10 @@
    ON A DESKTOP THE BUTTONS ARE TABS (Louie, 2026-10-14): one group shows at a time, the tab remembered, and no folding
    (the tab is the fold). A phone keeps the jumps down one long page. An address naming a section (home/#leagues, the
    rail's ON THIS PAGE) opens the tab that holds it.
+
+   A PHONE CHOOSES (Louie, 2026-10-14): beside the buttons, TABS or SCROLL. Tabs is the desktop's way (one group at a time,
+   no folding); Scroll is the long page, each button a jump to its group. Remembered on the device (MODE_KEY); Scroll until
+   the reader chooses. A desktop is always tabs and shows no switch.
    ============================================================================ */
 (function () {
   const GROUPS = [
@@ -27,10 +31,19 @@
   if (!hero) return;
   const nav = el('nav', 'hg-nav');
   nav.setAttribute('aria-label', 'On this page');
+  /* the buttons wrap onto a second line and keep the phone's switch in view: xscroll.js would otherwise make a tab list a
+     one-line strip that swipes */
+  nav.dataset.xscrolled = '1';
   const desk = window.matchMedia ? window.matchMedia('(min-width: 721px)') : { matches: false };
-  const TAB_KEY = 'hm_tab';
+  const TAB_KEY = 'hm_tab', MODE_KEY = 'hm_phone_mode';
   let tab = null;
+  let phoneTabs = false;
+  try { phoneTabs = localStorage.getItem(MODE_KEY) === 'tabs'; } catch (_) { /* private mode */ }
+  const tabsOn = () => !!desk.matches || phoneTabs;
   try { tab = localStorage.getItem(TAB_KEY); } catch (_) { /* private mode */ }
+  /* the tab the reader chose (or an address asked for): kept while its group waits for its data, so a tab that shows
+     before it does is a stand-in, not the choice */
+  let want = tab;
   hero.after(nav);
   const built = [];
   GROUPS.forEach(([key, name, ids]) => {
@@ -60,21 +73,45 @@
     fold.addEventListener('click', () => { const f = !head.classList.contains('folded'); set(key, f); apply(f); });
     btn.addEventListener('click', e => {
       e.preventDefault();
-      if (desk.matches) { showTab(key, true); return; }
+      if (tabsOn()) { showTab(key, true); return; }
       if (head.classList.contains('folded')) { set(key, false); apply(false); }
       head.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     built.push({ key, head, btn, secs, apply });
   });
+  /* the phone's switch, after the group buttons: shown on a phone only (kit/home.css .hg-mode) */
+  const mode = el('div', 'hg-mode');
+  mode.setAttribute('role', 'group');
+  mode.setAttribute('aria-label', 'Show the groups as tabs or in one scrolling page');
+  const modeBtns = [['tabs', 'Tabs'], ['scroll', 'Scroll']].map(([k, label]) => {
+    const b = el('button', null, label);
+    b.type = 'button';
+    b.dataset.mode = k;
+    b.dataset.track = 'home-mode-' + k;
+    b.setAttribute('aria-pressed', String((k === 'tabs') === phoneTabs));
+    b.addEventListener('click', () => {
+      if ((k === 'tabs') === phoneTabs) return;
+      phoneTabs = k === 'tabs';
+      try { localStorage.setItem(MODE_KEY, k); } catch (_) { /* private mode: for this visit */ }
+      showTab(tab, true);
+      nav.scrollIntoView({ block: 'nearest' });
+    });
+    mode.appendChild(b);
+    return b;
+  });
+  nav.appendChild(mode);
   /* the desktop's tabs: the chosen group shows, the others step aside (classes only: the sections stay where other
      scripts find them); on a phone every group shows, folded as its reader left it */
   function showTab(k, save) {
+    if (save && k) want = k;
     const vis = built.filter(g => !g.btn.hidden);
     if (!vis.some(g => g.key === k)) k = vis.length ? vis[0].key : null;
     tab = k;
     if (save) { try { localStorage.setItem(TAB_KEY, k); } catch (_) { /* private mode */ } }
-    const on = !!desk.matches;
+    const on = tabsOn();
     document.documentElement.classList.toggle('hg-tabs', on);
+    document.documentElement.classList.toggle('hg-ptabs', on && !desk.matches);
+    modeBtns.forEach(b => b.setAttribute('aria-pressed', String((b.dataset.mode === 'tabs') === phoneTabs)));
     /* which tab is open, for what belongs to one tab only (the favourites' line: Games) */
     document.documentElement.setAttribute('data-hg-tab', on && k ? k : '');
     nav.setAttribute('role', on ? 'tablist' : 'navigation');
@@ -96,6 +133,7 @@
     if (!id) return false;
     const g = built.find(x => x.head.id === id || x.secs.some(s => s.id === id));
     if (!g) return false;
+    want = g.key;
     showTab(g.key, false);
     if (go) { const to = document.getElementById(id); if (to) setTimeout(() => to.scrollIntoView({ block: 'start' }), 0); }
     return true;
@@ -103,18 +141,18 @@
   /* a group with nothing showing (every section hidden) has no head and no button */
   const sync = () => {
     built.forEach(g => { const any = g.secs.some(s => !s.hidden); g.head.hidden = !any; g.btn.hidden = !any; });
-    showTab(tab, false);
+    showTab(want || tab, false);
   };
   sync();
-  if (!fromHash(true)) showTab(tab, false);
+  if (!fromHash(true)) showTab(want || tab, false);
   window.addEventListener('hashchange', () => fromHash(true));
   /* the rail's ON THIS PAGE glides to a section without changing the address first: open its tab on the way */
   document.addEventListener('click', e => {
     const a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
-    if (!a || !desk.matches || a.classList.contains('hg-btn')) return;
+    if (!a || !tabsOn() || a.classList.contains('hg-btn')) return;
     const id = a.getAttribute('href').slice(1);
     const g = id && built.find(x => x.head.id === id || x.secs.some(s => s.id === id));
-    if (g && g.key !== tab) showTab(g.key, false);
+    if (g && g.key !== tab) { want = g.key; showTab(g.key, false); }
   }, true);
   if (desk.addEventListener) desk.addEventListener('change', () => showTab(tab, false));
   const mo = new MutationObserver(sync);

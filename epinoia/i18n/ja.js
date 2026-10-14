@@ -1997,7 +1997,12 @@
       'The games to watch could not be loaded just now.': '注目試合を今は読み込めませんでした。',
       'Watch score: what is at stake and how much there is to say about it, out of 100': '注目度：試合の重要性と語るべき内容を100点満点で',
       'How much is at stake (how high both clubs sit, how close together and how tight the numbers make it), weighed by how much there is to say about it.': '試合の重要性（両クラブの順位の高さ、順位の近さ、数字が示す接戦度）を、語るべき内容の多さで重み付けしたもの。',
-      'Upset alert': '番狂わせ注意'
+      'Upset alert': '番狂わせ注意',
+      'The week’s biggest games, by watch score': '今週の注目度が高い試合',
+      'Tabs': 'タブ',
+      'Scroll': 'スクロール',
+      'Show the groups as tabs or in one scrolling page': 'グループをタブで表示するか、1ページにまとめてスクロール表示するか',
+      'Feed & video': 'フィードと動画'
     },
 
     ctx: {

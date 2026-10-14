@@ -823,6 +823,21 @@ html.vh-on .ft-panel{display:none !important}
 .hmf-news .pc-grid{padding:0 calc(var(--u)*3) calc(var(--u)*2)}
 @media (max-width:560px){ .hmf-news .pc-grid{padding:0 12px 12px} }
 
+/* A PHONE'S TABS OR SCROLL (home/groups.js MODE_KEY; Louie, 2026-10-14): the switch sits after the group buttons on a phone
+   only; in Tabs the phone does what a desktop does - one group at a time, no folding - with the buttons as one segmented bar */
+.hg-mode{display:none}
+@media (max-width:720px){
+  .hg-mode{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--rule-2);border-radius:999px;background:var(--panel)}
+  .hg-mode button{appearance:none;border:0;background:transparent;cursor:pointer;min-height:28px;padding:0 11px;border-radius:999px;
+    font-family:var(--f-micro);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .hg-mode button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
+  .hg-mode button:focus-visible{outline:2px solid var(--lume);outline-offset:1px}
+  html.hg-ptabs:not(.vh-on) .hg-off{display:none !important}
+  html.hg-ptabs .hg-fold{display:none}
+  html.hg-ptabs .hg-btn{border-color:transparent;box-shadow:none;background:var(--panel)}
+  html.hg-ptabs .hg-btn.on{color:var(--ink);background:color-mix(in oklch,var(--hg) 20%,var(--panel));border-color:var(--hg)}
+}
+
 /* THE FAVOURITES' LINE BELONGS TO THE GAMES TAB (groups.js data-hg-tab; 2026-10-14): on a desktop's other tabs it steps aside */
 html.hg-tabs:not([data-hg-tab="games"]) .hm #favourites, html.hg-tabs:not([data-hg-tab="games"]) #favourites{display:none !important}
 
@@ -873,6 +888,20 @@ a.gw-name:hover{text-decoration:underline;text-underline-offset:3px}
 .gw-pline{color:var(--ink-3)}
 .gw-go{align-self:flex-start}
 .gw-note{text-align:center;font-size:12px;color:var(--ink-3);margin:6px 0 0}
+/* GAMES TO WATCH AS A DROPDOWN ROW (watch-home.js): My followed's row, shut showing the week's games and their scores */
+.gw-acc{border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+.gw-acc>summary{padding:0 16px}
+.gw-acc[open]>summary{border-bottom:1px solid var(--rule)}
+.gw-sum-k{flex:none;font-family:var(--f-micro);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.gw-chips{flex:1 1 auto;display:flex;gap:8px;align-items:center;min-width:0;overflow:hidden}
+.gw-chip{display:inline-flex;align-items:center;gap:6px;flex:none;max-width:100%;padding:3px 9px 3px 3px;
+  border:1px solid var(--rule-2);border-radius:999px;font-family:var(--f-ui);font-weight:700;font-size:12px;color:var(--ink)}
+.gw-chip-m{display:grid;place-items:center;min-width:24px;height:22px;padding:0 4px;border-radius:999px;
+  background:color-mix(in oklch,var(--lume) 16%,transparent);color:var(--lume);font-family:var(--f-data);font-size:11px}
+.gw-chip-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gw-count{margin-left:auto}
+.gw-in{padding:12px 12px 4px}
+@media (max-width:640px){ .gw-acc>summary{padding:0 12px} .gw-chip ~ .gw-chip{display:none} .gw-in{padding:10px 8px 2px} }
 .gw-note:empty{display:none}
 
 /* the watch score: a ring filled to it, between the clubs (watch-home.js markOf) */

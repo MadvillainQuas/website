@@ -1999,7 +1999,12 @@
       'The games to watch could not be loaded just now.': 'No se pudieron cargar los partidos a seguir.',
       'Watch score: what is at stake and how much there is to say about it, out of 100': 'Interés: lo que está en juego y cuánto hay que contar, sobre 100',
       'How much is at stake (how high both clubs sit, how close together and how tight the numbers make it), weighed by how much there is to say about it.': 'Lo que está en juego (lo arriba que están los dos clubes, lo cerca que están y lo igualado que lo ven los números), ponderado por cuánto hay que contar.',
-      'Upset alert': 'Alerta de sorpresa'
+      'Upset alert': 'Alerta de sorpresa',
+      'The week’s biggest games, by watch score': 'Los partidos de la semana con más interés',
+      'Tabs': 'Pestañas',
+      'Scroll': 'Desplazar',
+      'Show the groups as tabs or in one scrolling page': 'Mostrar los grupos como pestañas o en una sola página desplazable',
+      'Feed & video': 'Feed y vídeo'
     },
 
     ctx: {

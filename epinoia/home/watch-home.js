@@ -18,11 +18,18 @@
 
    CHECK VIA LEAGUE (home/leaguepick.js, as Daily fixtures has it): continent, country, league, offering only the leagues
    with a game to watch; with a choice, every one of their games to watch is shown, not three.
+
+   A DROPDOWN ROW (Louie, 2026-10-14): the cards sit in one row on the kit's accordion (.ep-acc, as My followed's rows), open
+   or shut as the reader last left it on this device (OPEN_KEY; open until they shut it). Shut, the row still names the
+   week's games with their watch scores; choosing leagues opens it.
    ============================================================================ */
 (function () {
   const H = window.EpinoiaHome;
   if (!H) return;
-  const N = 3, MAX = 12, KEY = 'epinoia_home_watchpick';
+  const N = 3, MAX = 12, KEY = 'epinoia_home_watchpick', OPEN_KEY = 'epinoia_home_watch_open';
+  const wasOpen = () => { try { return localStorage.getItem(OPEN_KEY) !== '0'; } catch (_) { return true; } };
+  const keepOpen = on => { try { localStorage.setItem(OPEN_KEY, on ? '1' : '0'); } catch (_) { /* private mode: open each time */ } };
+  const shortName = s => (s && (s.short || s.name)) || '?';
   const DAY = 86400000;
   const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
   const hexOf = v => (/^#[0-9a-f]{3,8}$/i.test(String(v || '')) ? v : null);
@@ -181,18 +188,51 @@
     const host = ctx.host;
     const grid = el('div', 'gw-grid');
     const note = el('p', 'gw-note');
-    let pick = null;
+    /* the row: shut, it names the games and their watch scores; open, the cards */
+    const acc = el('details', 'ep-acc hmf-acc gw-acc');
+    const sum = el('summary');
+    const lead = el('span', 'gw-sum-k');
+    const chips = el('span', 't gw-chips');
+    const count = el('span', 'hmf-n gw-count');
+    sum.append(lead, chips, count);
+    const inner = el('div', 'gw-in');
+    inner.append(grid, note);
+    acc.append(sum, inner);
+    acc.open = wasOpen();
+    let pick = null, quiet = false;
+    function paintRow(shown) {
+      lead.textContent = acc.open ? 'The week\u2019s biggest games, by watch score' : 'This week';
+      chips.textContent = '';
+      if (!acc.open) shown.forEach(w => {
+        const c = el('span', 'gw-chip');
+        c.append(el('b', 'gw-chip-m', String(markOf(w))));
+        const nm = el('span', 'gw-chip-t', shortName(w.home) + ' v ' + shortName(w.away));
+        nm.setAttribute('translate', 'no');
+        c.appendChild(nm);
+        chips.appendChild(c);
+      });
+      count.textContent = shown.length === 1 ? '1 game' : shown.length + ' games';
+    }
+    let lastShown = [];
     function draw() {
       const list = pick ? all.filter(w => pick.has(String(w.league.id))) : all;
       const shown = list.slice(0, pick ? MAX : N);
+      lastShown = shown;
       grid.textContent = '';
       note.textContent = '';
+      paintRow(shown);
       if (!shown.length) { grid.appendChild(el('div', 'empty', 'No games to watch this week in the leagues you picked.')); return; }
       shown.forEach(w => grid.appendChild(card(w, ctx.base || '../', G)));
       if (pick && list.length > shown.length) note.textContent = shown.length + ' / ' + list.length;
     }
+    acc.addEventListener('toggle', () => {
+      paintRow(lastShown);
+      if (quiet) { quiet = false; return; }
+      keepOpen(acc.open);
+      try { if (window.EpinoiaTrack && window.EpinoiaTrack.action) window.EpinoiaTrack.action(acc.open ? 'watch-open' : 'watch-shut'); } catch (_) { /* a count is never in the way */ }
+    });
     host.textContent = '';
-    host.append(grid, note);
+    host.appendChild(acc);
     /* the dropdowns, offering only the leagues with a game to watch */
     const LP = window.EpinoiaLeaguePick;
     const h2 = sec && sec.querySelector('.sec-h h2');
@@ -200,7 +240,7 @@
     if (LP && h2) {
       const ctl = LP.mount({ id: 'gwPick', key: KEY, btnAfter: h2, barBefore: host, base: ctx.base || '../',
         leagues: () => Promise.resolve([...new Map(all.map(w => [String(w.league.id), w.league])).values()]),
-        onChange: ids => { pick = ids; draw(); } });
+        onChange: ids => { pick = ids; if (!acc.open) { quiet = true; acc.open = true; } draw(); } });
       if (ctl) pick = ctl.ids();
     }
     draw();
