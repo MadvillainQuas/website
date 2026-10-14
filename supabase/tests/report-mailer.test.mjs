@@ -62,7 +62,7 @@ const G = (id, h, a, hn, an, at, venue) => ({ id, home_team_id: h, away_team_id:
     !/Scouting report:/.test(onlyOwn.html) && /Tasmania JackJumpers, who has not played a game this season yet, so there is no scouting report this week/.test(onlyOwn.html), onlyOwn.html.slice(0, 300));
   const src = readFileSync(path.join(ROOT, 'scripts', 'report_mailer.mjs'), 'utf8');
   ok('the mailer asks hasPlayed of every opponent and of the club itself before its own report',
-    /if \(await hasPlayed\(o\.oid\)\) uniq\.push\(o\)/.test(src) && /> 13 \* 864e5 && await hasPlayed\(team\.id\)/.test(src) && /status=eq\.final&competition_id=in\./.test(src));
+    /if \(await hasPlayed\(o\.oid\)\) played\.push\(o\)/.test(src) && /const ownDue = choice\.own && await hasPlayed\(team\.id\)/.test(src) && /status=eq\.final&competition_id=in\./.test(src));
   ok('three or more opponents read as a list', M.listOf(['A', 'B', 'C']) === 'A, B and C' && M.possessive('Adelaide 36ers') === 'Adelaide 36ers’' && M.possessive('Cairns') === 'Cairns’');
   const g = Object.assign(G('9', 'T', 'A', 'Illawarra Hawks', 'Adelaide 36ers', '2026-10-02T09:30:00Z', 'WIN Entertainment Centre'), { home_score: 114, away_score: 94,
     competitions: { name: 'NBL', seasons: { leagues: { name: 'NBL' } } } });
@@ -146,6 +146,80 @@ console.log('\nan opponent playing on the Sunday: the email waits for it');
   const bare = [...src.matchAll(/=(?:gt|gte|lt|lte|eq)\.\$\{([^}]*(?:_at|tipoff)[^}]*)\}/g)].map(m => m[1])
     .filter(x => !/^encodeURIComponent\(/.test(x) && !/^[\w.]+\.toISOString\(\)$/.test(x) && x !== 'since');
   ok('no database timestamp goes into a query address unencoded', bare.length === 0, bare.join(' | '));
+}
+
+/* ---------------------------------------------------------------- 2026-10-14: what goes, and nothing missed --- */
+console.log('\nwhat goes: the address\'s kinds, the week\'s ticks, send-now\'s ticks (0263)');
+{
+  const o = id => ({ oid: id, oname: 'Club ' + id });
+  const opps = [o('a'), o('b'), o('c')];
+  const ids = c => c.opps.map(x => x.oid).join('');
+  let c = M.weekChoice({ sub: { player_zip: true }, opps, ownDue: true, pick: null });
+  ok('before 0263 (no kinds, no picks): every opponent, the own report when due, the players\' ZIP', ids(c) === 'abc' && c.own && c.players, c);
+  ok('...and before 0228 (no player_zip column) no ZIP, as then', !M.weekChoice({ sub: {}, opps, ownDue: true, pick: null }).players);
+  c = M.weekChoice({ sub: {}, opps, ownDue: false, pick: null });
+  ok('...the own report only when due', !c.own);
+  c = M.weekChoice({ sub: { send_opponents: false, send_own: false, player_zip: false }, opps, ownDue: true, pick: null });
+  ok('an address with its kinds unticked: no opponents, no own report, no ZIP', ids(c) === '' && !c.own && !c.players, c);
+  c = M.weekChoice({ sub: {}, opps, ownDue: true, pick: { skip: ['b'], own: false, players: false } });
+  ok('the week\'s ticks: an opponent left out, the own report held back, no ZIP', ids(c) === 'ac' && !c.own && !c.players, c);
+  c = M.weekChoice({ sub: { send_own: false }, opps, ownDue: false, pick: { own: true } });
+  ok('...the own report ticked goes even out of its fortnight and with the kind off', c.own);
+  c = M.weekChoice({ sub: { send_opponents: false }, opps, ownDue: false, pick: { opps: ['c', 'zz'] } });
+  ok('send-now\'s ticks: only the opponents ticked (one ticked by hand goes with the kind off; one not in the week is ignored)', ids(c) === 'c', c);
+  c = M.weekChoice({ sub: { player_zip: true }, opps, ownDue: true, pick: { opps: [], own: null, players: null } });
+  ok('...none ticked: no opponents, the own report and ZIP as the address has them', ids(c) === '' && c.own && c.players, c);
+}
+console.log('\nthe own report\'s fortnight, in Sundays');
+{
+  const L = (...refs) => refs.map(r => ({ kind: 'team', ref: r, sent_at: '2026-10-05T23:59:00Z' }));
+  ok('never sent: due', M.ownDueOn([], '2026-10-18'));
+  ok('sent for 4 Oct: not due 11 Oct, due 18 Oct', !M.ownDueOn(L('2026-10-04'), '2026-10-11') && M.ownDueOn(L('2026-10-04'), '2026-10-18'));
+  ok('a send-now for next Sunday counts as that Sunday\'s', !M.ownDueOn(L('2026-10-04', '2026-10-11'), '2026-10-18') && M.ownDueOn(L('2026-10-11'), '2026-10-25'));
+  ok('other kinds of row are not the own report', M.ownDueOn([{ kind: 'sunday', ref: '2026-10-11' }, { kind: 'game', ref: 'x' }], '2026-10-18'));
+}
+console.log('\na Sunday missed is caught up');
+{
+  const LON = 'Europe/London', sub = { created_at: '2026-09-01T00:00:00Z' };
+  const mon = new Date('2026-10-12T06:07:00Z');                                   // Monday 12 Oct, 07:07 in London
+  const C = M.catchUpWeek(LON, mon, sub, []);
+  ok('Monday with no email for Sunday 11 Oct: caught up, dated 11 Oct, for the week Mon 12 to Mon 19', C && C.day === '2026-10-11' &&
+    C.W.from.toISOString() === '2026-10-11T23:00:00.000Z' && C.W.to.toISOString() === '2026-10-18T23:00:00.000Z', C);
+  ok('...and on the Tuesday', (M.catchUpWeek(LON, new Date('2026-10-13T20:00:00Z'), sub, []) || {}).day === '2026-10-11');
+  ok('...not on the Wednesday (the week is half gone; the next Sunday has it)', M.catchUpWeek(LON, new Date('2026-10-14T09:00:00Z'), sub, []) === null);
+  ok('...not when the Sunday is in the log (sent, or nothing that week)', M.catchUpWeek(LON, mon, sub, [{ kind: 'sunday', ref: '2026-10-11' }]) === null);
+  ok('...not on a Sunday (the Sunday round has it)', M.catchUpWeek(LON, new Date('2026-10-11T22:30:00Z'), sub, []) === null);
+  ok('...not for an address added after that Sunday\'s 8 am', M.catchUpWeek(LON, mon, { created_at: '2026-10-11T09:00:00Z' }, []) === null &&
+    M.catchUpWeek(LON, mon, { created_at: '2026-10-11T06:00:00Z' }, []) !== null);
+  ok('...at the address\'s own time: just past midnight on Monday in Sydney is still Sunday in London', (M.catchUpWeek('Australia/Sydney', new Date('2026-10-11T13:30:00Z'), sub, []) || {}).day === '2026-10-11' &&
+    M.catchUpWeek(LON, new Date('2026-10-11T13:30:00Z'), sub, []) === null);
+  const src = readFileSync(path.join(ROOT, 'scripts', 'report_mailer.mjs'), 'utf8');
+  ok('the round sends it, dated by that Sunday, before the Sunday check', /const late = catchUpWeek\(tz, new Date\(\), sub, sent\);[\s\S]{0,200}sendWeek\(sub, team, tz, sent, late\.W, late\.day\)/.test(src) &&
+    src.indexOf('catchUpWeek(tz, new Date()') < src.indexOf("if (L.wd !== 'Sun'"));
+}
+console.log('\nthe Sunday hold, and the rest of the round');
+{
+  const src = readFileSync(path.join(ROOT, 'scripts', 'report_mailer.mjs'), 'utf8').replace(/\r\n/g, '\n');
+  ok('the opponents waited for are those from next Monday (an address\'s first Sunday does not wait for that day\'s own opponent)',
+    /const nextMon = weekAhead\(tz, new Date\(\), false\)\.from;/.test(src) && /tipoff_at=gte\.\$\{nextMon\.toISOString\(\)\}/.test(src));
+  ok('...and the club itself when its own report goes in the email (not on its first Sunday)', /const ownToday = !first && weekChoice/.test(src) && /concat\(ownToday \? \[team\.id\] : \[\]\)/.test(src));
+  ok('...the opponents unticked for the week are not waited for', /weekChoice\(\{ sub, opps: opponentsOf\(team, ahead\)\.uniq, ownDue: false, pick \}\)\.opps/.test(src));
+  ok('one game that cannot be drawn does not stop the rest: each in its own try, given up after 36 hours', /const side = g\.home_team_id === team\.id \? 0 : 1;\n    try \{/.test(src) &&
+    M.GAME_GIVE_UP_MS === 36 * 36e5 && /'not sent: '/.test(src));
+  ok('the game emails follow the address\'s kind', /sub\.send_games === false \? \[\] : games/.test(src));
+  ok('the log is written up to three times', /if \(i >= 2\) throw e;/.test(src));
+  ok('a zone that cannot be read: the league\'s, then UTC', M.okZone('Mars/Olympus', 'Europe/London') === 'Europe/London' && M.okZone('', null) === 'UTC' &&
+    M.okZone('Australia/Perth', 'Europe/London') === 'Australia/Perth');
+}
+console.log('\nthe email when an opponent is left out');
+{
+  const team = { id: 'T', name: 'Illawarra Hawks', colour: '#c00' }, tz = 'Australia/Sydney';
+  const G2 = (id, h, a, hn, an, t) => ({ id, home_team_id: h, away_team_id: a, home: { name: hn }, away: { name: an }, tipoff_at: t, venue: 'V' });
+  const games = [G2('1', 'T', 'A', 'Illawarra Hawks', 'Adelaide 36ers', '2026-10-06T08:30:00Z'), G2('2', 'B', 'T', 'Brisbane Bullets', 'Illawarra Hawks', '2026-10-09T09:30:00Z')];
+  const E = M.sundayEmail({ sub: { name: 'Sam' }, team, games, ownDue: false, tz, monday: new Date('2026-10-04T13:00:00Z'), noReport: [], picked: ['A'] });
+  ok('only the ticked opponent\'s report is named; both games are still in the fixtures', E.subject === 'Your week ahead: scouting report on Adelaide 36ers' && /Brisbane Bullets/.test(E.html) && !/Scouting report: Brisbane/.test(E.html), E.subject);
+  const O = M.sundayEmail({ sub: {}, team, games, ownDue: true, tz, monday: new Date('2026-10-04T13:00:00Z'), noReport: [], picked: [] });
+  ok('...none ticked, the own report alone, not said to be for want of games played', /team report only/.test(O.html) && !/not played a game/.test(O.html));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

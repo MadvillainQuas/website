@@ -69,6 +69,19 @@ console.log('\nthe console writes the same week');
   }
   ok('...in nine zones, every eleven hours across fifty days with three clock changes in them (' + n + ' times)', !bad.length, bad.slice(0, 2));
   ok('...and a zone it cannot read gives words, not an error', /Monday-to-Sunday week/.test(weekWords('Not/A_Zone')));
+  /* the ticks (0263): the console finds the week's opponents in the same instants the mailer sends for, and the own report due on the same Sundays */
+  const nw = /function nextWeekOf\(tz, now = new Date\(\)\) \{[\s\S]*?\n\}\n/.exec(src), od = /function ownDueFor\(refs, sunday\) \{[\s\S]*?\n\}\n/.exec(src);
+  ok('the console\'s nextWeekOf and ownDueFor can be read out of platform.js', !!nw && !!od);
+  const nextWeekOf = new Function(nw[0] + '; return nextWeekOf;')(), ownDueFor = new Function(od[0] + '; return ownDueFor;')();
+  const off = []; let m = 0;
+  for (const tz of zones) for (let h = 0; h < 24 * 50; h += 7) {
+    const now = new Date(Date.UTC(2026, 8, 25) + h * 36e5), A = M.nextWeek(tz, now), B = nextWeekOf(tz, now);
+    m++; if (A.from.getTime() !== B.from.getTime() || A.to.getTime() !== B.to.getTime() || A.sunday !== B.sunday) off.push([tz, now.toISOString(), B, A]);
+  }
+  ok('...the week is the mailer\'s to the millisecond, and its Sunday the same (' + m + ' times, three clock changes)', !off.length, off.slice(0, 2));
+  const refsOf = (...r) => r.map(ref => ({ kind: 'team', ref }));
+  const cases = [[[], '2026-10-18'], [['2026-10-04'], '2026-10-11'], [['2026-10-04'], '2026-10-18'], [['2026-10-04', '2026-10-11'], '2026-10-18'], [['bad'], '2026-10-18']];
+  ok('...and the own report is due on the Sundays the mailer sends it', cases.every(([r, d]) => ownDueFor(r, d) === M.ownDueOn(refsOf(...r), d)));
 }
 
 /* ---------------------------------------------------------------- the mailer, against PostgREST as it answers --- */
@@ -230,8 +243,8 @@ console.log('\n...and the other ways a request ends');
   ok('...which the run catches: the rounds go on without it, and that is not a failed run', /try \{ failed \+= await requests\(\); \} catch \(e\) \{ console\.warn\('send-now requests skipped:'/.test(src));
   ok('...the requests come before the rounds, so on a Sunday morning the request is already in the log when the Sunday round reads it',
      src.indexOf('failed += await requests()') < src.indexOf('await one(s, s.teams'));
-  ok('...and the Sunday round still skips a Sunday that is in the log (a request\'s date is the Sunday\'s)', /if \(L\.wd !== 'Sun' \|\| L\.hour \* 60 \+ L\.mi < SUNDAY_FROM_MIN \|\| has\('sunday', L\.date\)\) return;/.test(src));
-  ok('...it logs "nothing this week" for the Sunday itself, a request does not', /if \(!\(await sendWeek\(sub, team, tz, sent, W, L\.date\)\)\) await log\(sub, 'sunday', L\.date, 'nothing this week'\);/.test(src) &&
+  ok('...and the Sunday round still skips a Sunday that is in the log (a request\'s date is the Sunday\'s)', /if \(L\.wd !== 'Sun' \|\| L\.hour \* 60 \+ L\.mi < SUNDAY_FROM_MIN \|\| has\('sunday', L\.date\)\) return failed;/.test(src));
+  ok('...it logs "nothing this week" for the Sunday itself, a request does not', /if \(!\(await sendWeek\(sub, team, tz, sent, W, L\.date, pick\)\)\) await log\(sub, 'sunday', L\.date, 'nothing this week'\);/.test(src) &&
      !/sendWeek[^\n]*\n[^\n]*log\(s, 'sunday'/.test(src));
 }
 
@@ -312,6 +325,34 @@ console.log('\nthe database');
        /check constraint/.test(await dup(`update public.report_mail_requests set detail = '${'x'.repeat(401)}' where sub_id = '${S1}'`) || ''));
     await db.exec(`delete from public.report_mail_subs where id = '${S1}'`);
     ok('removing an address removes its requests', await n(`select count(*)::int n from public.report_mail_requests where sub_id = '${S1}'`) === 0);
+
+    /* 0263: what goes is ticked */
+    let ap = true;
+    try { for (let i = 0; i < 2; i++) await db.exec(read('supabase', 'migrations', '0263_report_picks.sql')); } catch (e) { ap = e.message; }
+    ok('0263 applies on 0226, twice', ap === true, ap);
+    ok('...every address takes every kind until it is unticked', (await asAdmin(`select bool_and(send_games and send_opponents and send_own) b from public.report_mail_subs`))[0].b === true);
+    await db.exec(`update public.report_mail_requests set state = 'sent' where state in ('queued','running')`);
+    ok('send now carries its ticks, for one address or for every address',
+       (await asAdmin(`select public.request_report_send('${S2}', '{"opps":["${T1}"],"own":false,"players":true}'::jsonb) n`))[0].n === 1 &&
+       (await asAdmin(`select pick->'opps'->>0 o, pick->>'own' w from public.report_mail_requests where sub_id = '${S2}' and state = 'queued'`)).every(r => r.o === T1 && r.w === 'false'));
+    ok('...without ticks it is the whole week, as before (one argument still works)', await (async () => {
+      await db.exec(`update public.report_mail_requests set state = 'sent' where state in ('queued','running')`);
+      return (await asAdmin(`select public.request_report_send('${S2}') n`))[0].n === 1 && (await asAdmin(`select pick from public.report_mail_requests where state = 'queued'`))[0].pick === null;
+    })());
+    ok('...a pick that is not an object is refused', /pick must be an object/.test(await err(ADMIN, `select public.request_report_send(null, '[1]'::jsonb)`, { padmin: 'yes' }) || ''));
+    ok('...and only by administrators; the old one-argument signature is gone',
+       /platform administrators only/.test(await err(FAN, `select public.request_report_send(null, '{}'::jsonb)`) || '') &&
+       (await asAdmin(`select count(*)::int n from pg_proc where proname = 'request_report_send'`))[0].n === 1 &&
+       (await asAdmin(`select has_function_privilege('anon', 'public.request_report_send(uuid, jsonb)', 'execute') a`))[0].a === false);
+    const SUN = '2026-10-18';
+    await asAdmin(`insert into public.report_mail_picks (sub_id, sunday, skip_opps, own, players) values ('${S2}', '${SUN}', array['${T1}']::uuid[], true, null)
+                   on conflict (sub_id, sunday) do update set skip_opps = excluded.skip_opps, own = excluded.own, players = excluded.players`);
+    ok('a week\'s ticks are kept by administrators, one row an address a Sunday', (await asAdmin(`select own, players, array_length(skip_opps, 1) k from public.report_mail_picks`)).length === 1 &&
+       (await asAdmin(`select own, players, array_length(skip_opps, 1) k from public.report_mail_picks`)).every(r => r.own === true && r.players === null && r.k === 1));
+    ok('...a reader who is not one can neither see nor write them', (await as(FAN, `select count(*)::int n from public.report_mail_picks`))[0].n === 0 &&
+       /row-level security/.test(await err(FAN, `insert into public.report_mail_picks (sub_id, sunday) values ('${S2}', '2026-10-25')`) || ''));
+    await db.exec(`delete from public.report_mail_subs where id = '${S2}'`);
+    ok('...removing an address removes its ticks', await n(`select count(*)::int n from public.report_mail_picks`) === 0);
   }
 }
 
@@ -381,9 +422,13 @@ console.log('\nthe console');
 {
   const js = read('epinoia', 'admin', 'platform', 'platform.js'), html = read('epinoia', 'admin', 'platform', 'index.html');
   ok('each active address has "send next week\'s reports now", and with more than one there is one for everyone above the list', /'send next week’s reports now'/.test(js) && /'send everyone next week’s reports now'/.test(js) && /if \(live\.length > 1\)/.test(js) && /if \(x\.active\) \{/.test(js));
-  ok('...it says what will go before it asks: the week in their time, what is in it, that it counts as the Sunday\'s, how long it takes (and asks again before everyone)',
-     /confirm\('Send ' \+ x\.email \+ ' next week’s reports now\?[\s\S]*weekWords\(x\.tz\)[\s\S]*That counts as that Sunday’s email, so Sunday morning will not send it again\. It takes a few minutes\./.test(js) &&
-     /confirm\('Send next week’s reports now to all ' \+ live\.length \+ ' active addresses\?/.test(js));
+  ok('...it says what will go before it asks, in tickboxes (0263): the week in their time, each opponent, the own report, the ZIP; that it counts as the Sunday\'s, how long it takes',
+     /const picks = await pickWeek\(\[x\], 'Send ' \+ x\.email \+ ' next week’s reports now'\)/.test(js) && /note: 'Week of ' \+ weekWords\(x\.tz\) \+ ', their time'/.test(js) &&
+     /label: 'scouting report: ' \+ o\.name/.test(js) && /label: 'own team report: ' \+ club/.test(js) && /It counts as that Sunday’s email, so Sunday morning will not send it again\. It takes a few minutes\./.test(js) &&
+     /sendNow\(x\.id, picks\.get\(x\.id\)\)/.test(js));
+  ok('...and for everyone, which kinds go', /const pick = await pickKinds\(live\.length\);/.test(js) && /sendNow\(null, pick\)/.test(js) && /'\.\.\.and where it is not its fortnight too'/.test(js));
+  ok('...the ticks go with the request (p_pick); before 0263 it asks before sending the whole week',
+     /sb\.rpc\('request_report_send', \{ p_sub: sub, p_pick: pick \}\)/.test(js) && /Ticking what goes needs migration 0263, which is not applied yet\. Send the whole week instead\?/.test(js));
   ok('...it queues through request_report_send, then starts the mailer (console-kick), and says which happened',
      /rpc\('request_report_send', \{ p_sub: sub \}\)/.test(js) && /window\.EpinoiaJobBar\.kick\(sb\)/.test(js) && /the mailer has been started: the reports go out in a few minutes/.test(js) &&
      /The mailer is started within a few minutes \(at most about an hour\); each address shows where it stands\./.test(js) && /Already on its way, or paused: nothing new was queued\./.test(js));

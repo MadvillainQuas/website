@@ -76,6 +76,9 @@ function style() {
 .rm-found li{ padding:5px 8px; cursor:pointer; font-size:13px } .rm-found li:hover{ background:var(--panel-2,#eef4f0) }
 .rm-found li small{ color:var(--ink-3,#666) }
 .rm-sel{ font-weight:700 } .rm-sel.none{ color:#b32433 }
+.rm-kinds{ display:flex; flex-wrap:wrap; gap:4px 12px; flex-basis:100%; font-size:12px } .rm-kinds label{ display:inline-flex; gap:5px; align-items:center; cursor:pointer }
+.rm-week{ grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; font-size:12px; padding:6px 8px; border-radius:8px; background:var(--panel-2,#eef4f0) }
+.rm-week label{ display:inline-flex; gap:5px; align-items:center; cursor:pointer } .rm-week label i{ font-style:normal; color:var(--ink-3,#666) }
 @media (max-width:640px){ .rm-club, .rm-syn{ grid-template-columns:1fr } .rm-club .acts{ justify-content:flex-start } }`;
   document.head.appendChild(s);
 }
@@ -130,9 +133,9 @@ async function draw() {
 }
 
 /* ------------------------------------------------------------------ the data --- */
+/* every column: the kinds the address takes are there once their migrations are (0228 player_zip, 0263 send_games / send_opponents / send_own) */
 async function subs() {
-  let q = await sb.from('report_mail_subs').select('id,email,name,tz,active,player_zip,created_at,team_id,teams(id,name,leagues(name,timezone))').order('email');
-  if (q.error && /player_zip/.test(q.error.message || '')) q = await sb.from('report_mail_subs').select('id,email,name,tz,active,created_at,team_id,teams(id,name,leagues(name,timezone))').order('email');
+  const q = await sb.from('report_mail_subs').select('*,teams(id,name,leagues(name,timezone))').order('email');
   if (q.error) throw q.error;
   return q.data || [];
 }
@@ -178,6 +181,12 @@ async function drawAddresses() {
     sb.from('report_mail_requests').select('sub_id,state,requested_at,dispatched_at,finished_at,detail').order('requested_at', { ascending: false }).limit(300)
   ]);
   const asked = new Map(); (rq || []).forEach(q => { if (!asked.has(q.sub_id)) asked.set(q.sub_id, q); });
+  /* THE WEEK'S TICKS (0263 report_mail_picks; none before it) and the Sundays the own report and the emails went for */
+  const [pk, { data: refs }] = await Promise.all([
+    sb.from('report_mail_picks').select('sub_id,sunday,skip_opps,own,players').gte('sunday', new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10)),
+    sb.from('report_mail_log').select('sub_id,kind,ref').in('kind', ['team', 'sunday']).gte('sent_at', new Date(Date.now() - 60 * 864e5).toISOString())
+  ]);
+  const picks = pk.error ? null : pk.data || [];
   body.textContent = '';
 
   /* AN ADDRESS, WITH ONE CLUB OR SEVERAL */
@@ -212,24 +221,35 @@ async function drawAddresses() {
     const first = list[0];
     h.appendChild(el('b', null, addr + (first.name ? ' (' + first.name + ')' : '')));
     h.appendChild(el('span', 'rm-mt', first.tz + ' · ' + list.length + (list.length === 1 ? ' club' : ' clubs')));
-    /* the players' reports in a ZIP, a reply to the Sunday email (0228); one switch for the address */
-    if ('player_zip' in first) {
-      const lab = el('label', 'rm-row'); const cb = el('input'); cb.type = 'checkbox'; cb.checked = list.every(r => r.player_zip !== false);
-      cb.addEventListener('change', async () => {
-        const { error } = await sb.from('report_mail_subs').update({ player_zip: cb.checked }).in('id', list.map(r => r.id));
-        if (error) { oops(error); cb.checked = !cb.checked; return; }
-        say(cb.checked ? 'Its clubs’ players’ reports will follow each Sunday email, in a ZIP.' : 'No players’ reports for ' + addr + '.', 'ok');
-      });
-      lab.append(cb, el('span', null, 'players’ reports (ZIP)'));
-      lab.title = 'After the Sunday email, a reply to it with the player report of every player of each club in it - not the released, nor those under 10 minutes a game';
-      h.appendChild(lab);
-    }
     const live = list.filter(r => r.active);
+    /* send now: the week's opponents, own reports and ZIP of each of its clubs, ticked (0263; platform.js pickWeek) */
     if (live.length && H.sendNow) h.appendChild(btn('send next week’s reports now', 'mini', async () => {
-      if (!confirm('Send ' + addr + ' next week’s reports now, for ' + live.length + (live.length === 1 ? ' club' : ' clubs') + '?')) return;
-      for (const r of live) await H.sendNow(r.id);
+      let picks = null;
+      if (H.pickWeek) { picks = await H.pickWeek(live, 'Send ' + addr + ' next week’s reports now').catch(e => { oops(e); return null; }); if (!picks) return; }
+      else if (!confirm('Send ' + addr + ' next week’s reports now, for ' + live.length + (live.length === 1 ? ' club' : ' clubs') + '?')) return;
+      for (const r of live) await H.sendNow(r.id, picks ? picks.get(r.id) : undefined);
       draw();
     }));
+    /* WHAT THE ADDRESS TAKES, ticked once for all its clubs: the game analyses, the opponents' scouting reports, the own report every
+       other Sunday (0263), the players' reports in a ZIP, a reply to the Sunday email (0228). A kind before its migration is not shown. */
+    const kinds = el('div', 'rm-kinds');
+    [['send_games', 'game analyses', 'After each game, its analysis'],
+     ['send_opponents', 'opponents’ scouting reports', 'In the Sunday email, a scouting report on each club its club plays that week'],
+     ['send_own', 'own report, fortnightly', 'In the Sunday email every other week, the club’s own team report'],
+     ['player_zip', 'players’ reports (ZIP)', 'After the Sunday email, a reply to it with the player report of every player of each club in it - not the released, nor those under 10 minutes a game']]
+      .filter(([k]) => k in first).forEach(([k, label, tip]) => {
+        const lab = el('label'), cb = el('input'); cb.type = 'checkbox'; cb.checked = list.every(r => r[k] !== false);
+        cb.addEventListener('change', async () => {
+          const { error } = await sb.from('report_mail_subs').update({ [k]: cb.checked }).in('id', list.map(r => r.id));
+          if (error) { oops(error); cb.checked = !cb.checked; return; }
+          list.forEach(r => { r[k] = cb.checked; });
+          say((cb.checked ? addr + ' will be sent ' : 'No more ') + label + (cb.checked ? '.' : ' for ' + addr + '.'), 'ok');
+          draw();
+        });
+        lab.append(cb, el('span', null, label)); lab.title = tip;
+        kinds.appendChild(lab);
+      });
+    if (kinds.childNodes.length) h.appendChild(kinds);
     box.appendChild(h);
     list.forEach(r => {
       const row = el('div', 'rm-club');
@@ -254,6 +274,7 @@ async function drawAddresses() {
       primes.appendChild(primeLink('own report: ' + (t.name || 'the club'), r.team_id, t.name || 'the club', stored.get('team:' + r.team_id)));
       primes.appendChild(primeAllBtn(r.team_id, t.name || 'the club', stored));
       row.append(nm, st, acts, primes);
+      if (r.active) row.appendChild(weekTicks(r, ahead.get(r.team_id) || [], picks, refs || []));
       box.appendChild(row);
     });
     /* another club for this address */
@@ -268,6 +289,38 @@ async function drawAddresses() {
     box.appendChild(more);
     body.appendChild(box);
   });
+}
+
+/* NEXT SUNDAY'S EMAIL, TICKED (0263, Louie 2026-10-14): the opponents of its week, the own report, the players' ZIP, kept for that Sunday
+   (report_mail_picks) and read by the mailer when it sends it. A tick is kept only where it differs from what the address takes. */
+function weekTicks(r, opps, picks, refs) {
+  const wrap = el('div', 'rm-week');
+  if (!H.weekOf) return wrap;
+  const W = H.weekOf(r.tz), t = r.teams || {};
+  const words = H.weekWords ? H.weekWords(r.tz) : W.sunday;
+  if (refs.some(x => x.sub_id === r.id && x.kind === 'sunday' && x.ref === W.sunday)) { wrap.appendChild(el('small', null, 'This Sunday’s email (week of ' + words + ') has gone.')); return wrap; }
+  wrap.appendChild(el('b', null, 'SUNDAY EMAIL, week of ' + words + ':'));
+  if (!picks) { wrap.appendChild(el('small', null, 'ticking a week arrives with migration 0263')); return wrap; }
+  const row = picks.find(p => p.sub_id === r.id && p.sunday === W.sunday) || { skip_opps: [], own: null, players: null };
+  const skip = new Set(row.skip_opps || []);
+  const due = H.ownDueFor(refs.filter(x => x.sub_id === r.id && x.kind === 'team').map(x => x.ref), W.sunday);
+  const ownDef = due && r.send_own !== false, zipDef = r.player_zip !== false;
+  const save = async () => {
+    const rec = { sub_id: r.id, sunday: W.sunday, skip_opps: [...skip], own: own.checked === ownDef ? null : own.checked, players: zip.checked === zipDef ? null : zip.checked };
+    const { error } = await sb.from('report_mail_picks').upsert(rec, { onConflict: 'sub_id,sunday' });
+    if (error) { oops(error); return; }
+    Object.assign(row, rec);
+    say('Kept: ' + (t.name || 'the club') + '’s email of Sunday ' + W.sunday + '.', 'ok');
+  };
+  const tick = (label, hint, on, fn) => { const lab = el('label'), cb = el('input'); cb.type = 'checkbox'; cb.checked = on; cb.addEventListener('change', () => { fn(cb.checked); save(); });
+    lab.append(cb, el('span', null, label)); if (hint) lab.append(el('i', null, hint)); wrap.appendChild(lab); return cb; };
+  const seen = new Set();
+  opps.filter(o => Date.parse(o.at) >= W.from.getTime() && Date.parse(o.at) < W.to.getTime() && !seen.has(o.id) && seen.add(o.id)).forEach(o =>
+    tick(o.name, dayOf(o.at), r.send_opponents !== false && !skip.has(o.id), on => { if (on) skip.delete(o.id); else skip.add(o.id); }));
+  if (!seen.size) wrap.appendChild(el('small', null, 'no games that week'));
+  const own = tick('own report', due ? 'fortnight up' : 'not its fortnight', row.own != null ? row.own : ownDef, () => {});
+  const zip = tick('players’ ZIP', '', row.players != null ? row.players : zipDef, () => {});
+  return wrap;
 }
 
 /* ------------------------------------------------------------------ the clubs the reports are on --- */

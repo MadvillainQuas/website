@@ -1065,9 +1065,122 @@ function sendLine(r) {
   /* the detail says what went ("Sent the week of …"), or why nothing did */
   return (r.state === 'failed' ? 'Failed ' : '') + fmtWhen(r.finished_at) + ' · ' + (r.detail || (r.state === 'sent' ? 'Sent.' : 'Nothing was sent.'));
 }
-/* one address (its id) or every active one (null) */
-async function sendNow(sub) {
-  const n = await rpc('request_report_send', { p_sub: sub });
+/* NEXT WEEK'S INSTANTS, as the mailer counts them (scripts/report_mailer.mjs nextWeek, the same sums): { from, to, sunday } at the
+   address's own time; the games in it are its opponents, and `sunday` is the Sunday its email counts as */
+function nextWeekOf(tz, now = new Date()) {
+  const parts = d => Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+    second: '2-digit', hourCycle: 'h23' }).formatToParts(d).map(x => [x.type, x.value]));
+  const off = ms => { const p = parts(new Date(ms)); return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(ms / 1000) * 1000; };
+  const mid = g => g - off(g - off(g));
+  const p = parts(now), base = Date.UTC(+p.year, +p.month - 1, +p.day);
+  const k = (8 - new Date(base).getUTCDay()) % 7 || 7;
+  return { from: new Date(mid(base + k * 864e5)), to: new Date(mid(base + (k + 7) * 864e5)), sunday: new Date(base + (k - 1) * 864e5).toISOString().slice(0, 10) };
+}
+const weekOf = (tz, now) => { try { return nextWeekOf(tz, now); } catch (_) { return nextWeekOf('UTC', now); } };
+/* THE CLUB'S OWN REPORT IS DUE every other Sunday (the mailer's ownDueOn): two Sundays since the last it went for */
+function ownDueFor(refs, sunday) {
+  const days = (refs || []).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r || '')).map(r => Date.parse(r + 'T00:00:00Z'));
+  return !days.length || Date.parse(sunday + 'T00:00:00Z') - Math.max.apply(null, days) >= 13 * 864e5;
+}
+
+/* TICK WHAT GOES (0263, Louie 2026-10-14): a pop-up of tickboxes in groups; answers key -> ticked, or null when it is closed.
+   groups: [{ head, note, items: [{ key, label, hint, on }] }] */
+function askPick({ title, lead, groups, go }) {
+  if (!document.getElementById('pk-style')) {
+    const s = el('style'); s.id = 'pk-style';
+    s.textContent = `.pk{ width:min(560px, 94vw); max-height:88vh; padding:0; border:1px solid var(--rule-2,#ccc); border-radius:14px; background:var(--panel,#fff); color:var(--ink,#111) }
+.pk[open]{ display:flex; flex-direction:column } .pk::backdrop{ background:rgba(6,14,10,.55) }
+.pk h3{ margin:0; padding:14px 16px 6px; font-size:17px } .pk-lead{ margin:0; padding:0 16px 8px; font-size:13px; color:var(--muted,#555) }
+.pk-b{ flex:1 1 auto; min-height:0; overflow:auto; padding:0 16px 8px }
+.pk-g{ border:1px solid var(--rule,#ddd); border-radius:10px; padding:8px 10px; margin:0 0 8px } .pk-g b{ display:block; font-size:13px; margin:0 0 4px }
+.pk-g small{ display:block; color:var(--muted,#555); margin:0 0 4px } .pk-g label{ display:flex; gap:8px; align-items:baseline; padding:3px 0; font-size:14px; cursor:pointer }
+.pk-g label i{ font-style:normal; font-size:12px; color:var(--muted,#555) } .pk-f{ display:flex; justify-content:flex-end; gap:8px; padding:10px 16px; border-top:1px solid var(--rule,#ddd) }`;
+    document.head.appendChild(s);
+  }
+  return new Promise(done => {
+    const d = el('dialog', 'pk'), box = el('div', 'pk-b'), boxes = new Map();
+    d.append(el('h3', null, title));
+    if (lead) d.append(el('p', 'pk-lead', lead));
+    groups.forEach(g => {
+      const gr = el('div', 'pk-g'); gr.append(el('b', null, g.head));
+      if (g.note) gr.append(el('small', null, g.note));
+      g.items.forEach(it => {
+        const lab = el('label'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !!it.on; boxes.set(it.key, cb);
+        lab.append(cb, el('span', null, it.label)); if (it.hint) lab.append(el('i', null, it.hint));
+        gr.append(lab);
+      });
+      box.append(gr);
+    });
+    let out = null;
+    const foot = el('div', 'pk-f');
+    const no = el('button', 'ep-btn mini', 'cancel'); no.type = 'button'; no.onclick = () => d.close();
+    const yes = el('button', 'ep-btn mini pri', go || 'send'); yes.type = 'button';
+    yes.onclick = () => { out = new Map([...boxes].map(([k, cb]) => [k, cb.checked])); d.close(); };
+    foot.append(no, yes); d.append(box, foot);
+    d.addEventListener('close', () => { d.remove(); done(out); });
+    d.addEventListener('click', e => { if (e.target === d) d.close(); });
+    document.body.appendChild(d);
+    if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+  });
+}
+/* WHAT NEXT WEEK'S EMAIL OF SOME ADDRESSES CAN CARRY, ticked for "send now": each club's opponents that week, its own report (ticked
+   when its fortnight is up), the players' ZIP. Answers sub id -> pick ({ opps, own, players }, the mailer's weekChoice), or null. */
+async function pickWeek(list, title) {
+  const ids = list.map(x => x.id);
+  const [{ data: lg }, { data: pk }] = await Promise.all([
+    sb.from('report_mail_log').select('sub_id,ref').eq('kind', 'team').in('sub_id', ids),
+    sb.from('report_mail_picks').select('sub_id,sunday,skip_opps,own,players').in('sub_id', ids)
+  ]);
+  const groups = [];
+  for (const x of list) {
+    const W = weekOf(x.tz), tid = x.team_id || (x.teams || {}).id, club = (x.teams || {}).name || 'the club';
+    const { data: gs } = await sb.from('games').select('home_team_id,away_team_id,tipoff_at,home:home_team_id(name),away:away_team_id(name)')
+      .or('home_team_id.eq.' + tid + ',away_team_id.eq.' + tid).in('status', ['scheduled', 'live'])
+      .gte('tipoff_at', W.from.toISOString()).lt('tipoff_at', W.to.toISOString()).order('tipoff_at');
+    const opps = new Map();
+    (gs || []).forEach(g => { const home = g.home_team_id === tid, o = home ? g.away_team_id : g.home_team_id;
+      if (!opps.has(o)) opps.set(o, { id: o, name: ((home ? g.away : g.home) || {}).name || 'opponent', at: g.tipoff_at }); });
+    const week = (pk || []).find(p => p.sub_id === x.id && p.sunday === W.sunday) || {};
+    const skip = new Set(week.skip_opps || []);
+    const due = ownDueFor((lg || []).filter(r => r.sub_id === x.id).map(r => r.ref), W.sunday);
+    const day = iso => new Date(iso).toLocaleDateString('en-GB', { timeZone: x.tz || 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
+    groups.push({ head: club, note: 'Week of ' + weekWords(x.tz) + ', their time',
+      items: [...opps.values()].map(o => ({ key: 'o:' + x.id + ':' + o.id, label: 'scouting report: ' + o.name, hint: day(o.at), on: x.send_opponents !== false && !skip.has(o.id) }))
+        .concat([{ key: 'own:' + x.id, label: 'own team report: ' + club, hint: due ? 'its fortnight is up' : 'not its fortnight', on: week.own != null ? week.own : due && x.send_own !== false },
+                 { key: 'zip:' + x.id, label: 'players’ reports (ZIP), a reply to the email', on: week.players != null ? week.players : x.player_zip !== false }]) });
+    if (!opps.size) groups[groups.length - 1].note += ': no games that week';
+  }
+  const t = await askPick({ title: title || 'Send next week’s reports now', lead: 'Tick what goes. It counts as that Sunday’s email, so Sunday morning will not send it again. It takes a few minutes.', groups, go: 'send now' });
+  if (!t) return null;
+  return new Map(list.map(x => [x.id, {
+    opps: [...t].filter(([k, v]) => v && k.startsWith('o:' + x.id + ':')).map(([k]) => k.split(':')[2]),
+    own: !!t.get('own:' + x.id), players: !!t.get('zip:' + x.id) }]));
+}
+/* "send everyone": which kinds go, for every address at once (each its own week and opponents) */
+async function pickKinds(n) {
+  const t = await askPick({ title: 'Send everyone next week’s reports now', go: 'send to all ' + n,
+    lead: 'Each of the ' + n + ' active addresses gets the week that begins next Monday at its own time, in one email. It counts as that Sunday’s email, so Sunday morning will not send it again. It takes a few minutes.',
+    groups: [{ head: 'What goes', items: [
+      { key: 'opps', label: 'scouting reports on the week’s opponents', hint: 'those each address takes', on: true },
+      { key: 'own', label: 'the club’s own team report', hint: 'where its fortnight is up', on: true },
+      { key: 'ownAll', label: '...and where it is not its fortnight too', on: false },
+      { key: 'zip', label: 'players’ reports (ZIP)', hint: 'to the addresses that take them', on: true }] }] });
+  if (!t) return null;
+  const pick = { opps: t.get('opps') ? null : [], own: !t.get('own') ? false : t.get('ownAll') ? true : null, players: t.get('zip') ? null : false };
+  return pick.opps === null && pick.own === null && pick.players === null ? {} : pick;
+}
+/* one address (its id) or every active one (null), with what is ticked (pick; none = all, as before 0263) */
+async function sendNow(sub, pick) {
+  let n;
+  if (pick && Object.keys(pick).length) {
+    const { data, error } = await sb.rpc('request_report_send', { p_sub: sub, p_pick: pick });
+    /* before 0263 the database has no p_pick: say so, and send the whole week only if asked to */
+    if (error && /p_pick|request_report_send|PGRST202/i.test((error.message || '') + ' ' + (error.code || ''))) {
+      if (!confirm('Ticking what goes needs migration 0263, which is not applied yet. Send the whole week instead?')) return;
+      n = await rpc('request_report_send', { p_sub: sub });
+    } else if (error) { oops({ code: error.code, message: 'request_report_send: ' + (error.message || String(error)) }); return; }
+    else n = data;
+  } else n = await rpc('request_report_send', { p_sub: sub });
   if (n == null) return;
   if (!n) { say('Already on its way, or paused: nothing new was queued.', 'warn'); loadMail(); return; }
   const k = window.EpinoiaJobBar && window.EpinoiaJobBar.kick ? await window.EpinoiaJobBar.kick(sb) : { started: false };
@@ -1111,7 +1224,7 @@ async function loadMail() {
     manage.dataset.wired = '1';
     manage.addEventListener('click', () => {
       if (!window.EpinoiaReportsManager) { say('The reports manager has not loaded: reload the page.', 'warn'); return; }
-      window.EpinoiaReportsManager.open(sb, { say, oops, sendNow, sendLine, reload: loadMail }).catch(oops);
+      window.EpinoiaReportsManager.open(sb, { say, oops, sendNow, sendLine, reload: loadMail, pickWeek, weekOf, ownDueFor, weekWords }).catch(oops);
     });
   }
   if (go && !go.dataset.wired) {
@@ -1128,7 +1241,8 @@ async function loadMail() {
       loadMail();
     });
   }
-  const { data, error } = await sb.from('report_mail_subs').select('id,email,name,tz,active,created_at,teams(name)').order('created_at', { ascending: false });
+  /* every column: the kinds the address takes (0228 player_zip, 0263 send_*) are there once applied */
+  const { data, error } = await sb.from('report_mail_subs').select('*,teams(id,name)').order('created_at', { ascending: false });
   host.textContent = '';
   if (error) { host.appendChild(el('p', 'lead', /report_mail_subs|schema cache|does not exist/i.test(error.message || '') ? 'Reports by email arrive with migration 0221: it has not been applied to this database yet.' : 'Could not read them: ' + error.message)); return; }
   if (!(data || []).length) { host.appendChild(el('p', 'mt', 'Nobody is sent reports yet.')); return; }
@@ -1143,10 +1257,10 @@ async function loadMail() {
     const every = el('button', 'ep-btn', 'send everyone next week’s reports now'); every.type = 'button';
     every.disabled = live.every(x => mailOpen(asked.get(x.id)));
     every.title = 'Email every active address the week-ahead reports now instead of on Sunday morning';
-    every.addEventListener('click', () => {
-      if (!confirm('Send next week’s reports now to all ' + live.length + ' active addresses?\n\nEach gets the week that begins next Monday at its own time: a scouting report on each club its club plays, plus the club’s own report if this is its fortnight, in one email. ' +
-        'That counts as that Sunday’s email, so Sunday morning will not send it again. It takes a few minutes.')) return;
-      every.disabled = true; sendNow(null);
+    every.addEventListener('click', async () => {
+      const pick = await pickKinds(live.length);
+      if (!pick) return;
+      every.disabled = true; sendNow(null, pick);
     });
     top.append(every, el('span', 'mt', live.length + ' active addresses'));
     host.appendChild(top);
@@ -1172,10 +1286,11 @@ async function loadMail() {
       const now = el('button', 'ep-btn mini', mailOpen(ask) ? (ask.state === 'running' ? 'sending…' : 'queued') : 'send next week’s reports now'); now.type = 'button';
       now.disabled = mailOpen(ask);
       now.title = 'Email them the week-ahead reports now instead of on Sunday morning';
-      now.addEventListener('click', () => {
-        if (!confirm('Send ' + x.email + ' next week’s reports now?\n\nNext week is ' + weekWords(x.tz) + ' at their time: a scouting report on each club ' + club + ' plays that week, plus the club’s own report if this is its fortnight, in one email. ' +
-          'That counts as that Sunday’s email, so Sunday morning will not send it again. It takes a few minutes.')) return;
-        now.disabled = true; sendNow(x.id);
+      /* the week's opponents, own report and ZIP, ticked (0263) */
+      now.addEventListener('click', async () => {
+        const picks = await pickWeek([x], 'Send ' + x.email + ' next week’s reports now').catch(e => { oops(e); return null; });
+        if (!picks) return;
+        now.disabled = true; sendNow(x.id, picks.get(x.id));
       });
       acts.appendChild(now);
     }
