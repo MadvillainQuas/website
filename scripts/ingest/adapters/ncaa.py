@@ -19,6 +19,8 @@ things with what it returns:
                                                        both teams' seoname and conferenceSeo
     GET ... NCAA_GetGamecenterPbpBasketballById_web {contestId}       -> play-by-play (text)
     GET ... NCAA_GetGamecenterBoxscoreBasketballById_web {contestId}  -> box score
+    GET ... NCAA_GetConferences_web {sportCode, division, seasonYear} -> the division's conferences: a game is
+                                                       listed only when BOTH teams play in one (outside_division)
 
 Measured 2026-10-01: a scoreboard is ~1 KB a game (180 KB for 182 games) with Cache-Control max-age=5,
 an ETag and Last-Modified; a game's two documents are ~175 KB together (46 captures). ncaa.com's robots.txt
@@ -96,6 +98,43 @@ CONFERENCES = {"ne-10": "Northeast-10", "empire-8": "Empire 8", "skyline": "Skyl
                "diii-independent": "Independent", "independent": "Independent"}
 
 
+#: ONLY A GAME BETWEEN TWO NCAA DIVISION II (or III) SCHOOLS IS THE LEAGUE'S. A division's scoreboard lists every
+#: game ONE of its schools plays: against an NAIA college (its conferenceSeo is null - Park, Rust, Corban), a Division
+#: I school (Arkansas St.'s 'sun-belt', Kent St.'s 'mac', and West Florida's 'asun' the season it moved up) or a
+#: Division III one (Azusa Pacific, 'sciac' / 'diii-independent' the season it moved down, Keene St.'s 'little-east')
+#: - 57 of the 1,602 lines on 25 of the 2025-26 D2 scoreboards (men's and women's), and 6 of the accuracy sample's 82.
+#: Which conferences ARE the division is ncaa.com's own answer: the persisted query behind its
+#: scoreboard's conference filter, NCAA_GetConferences_web {sportCode, division, seasonYear}. It names them
+#: ('CACC', 'Conference Carolinas', 'Mid-America Intercollegiate', 'DII Independent'); the same page's own server
+#: copy of that list carries each one's conferenceSeo too, and every one is its name lower-cased with hyphens for
+#: anything else (conference_seo). A game is the division's when BOTH teams' conferenceSeo is on that list.
+CONFERENCES_SHA = "6795d6b196a67ff7880cffab51e769a8784bc1646a9908276e0b787011df8c3f"
+#: the Division II list as ncaa.com's scoreboard served it for 2025-26 (men's and women's alike, but for the men's
+#: extra 'division-ii-independents'), kept only for when the query cannot be read: the list changes when a school
+#: moves conference, not from week to week, so last season's is far closer than no filter at all
+D2_CONFERENCES = frozenset({
+    "cacc", "ccaa", "ciaa", "conference-carolinas", "dii-independent", "division-ii-independents", "ecc", "g-mac",
+    "gac", "gliac", "glvc", "great-northwest", "gulf-south", "ind", "lone-star", "mec", "mid-america-intercollegiate",
+    "ne10", "nsic", "pacwest", "peach-belt", "psac", "rmac", "sac", "siac", "sunshine-state"})
+
+
+def conference_seo(name: Optional[str]) -> str:
+    """NCAA_GetConferences_web's conferenceName as the scoreboard's conferenceSeo ('Mid-America Intercollegiate' ->
+    'mid-america-intercollegiate', 'NE10' -> 'ne10', 'G-MAC' -> 'g-mac')."""
+    return re.sub(r"[^a-z0-9]+", "-", str(name or "").lower()).strip("-")
+
+
+def outside_division(c: dict, members) -> Optional[str]:
+    """Why this scoreboard line is NOT a game between two of the division's schools, or None when it is: each team's
+    conferenceSeo must be one of the division's conferences (members)."""
+    teams = c.get("teams") or []
+    if len(teams) != 2:
+        return "not two teams on the line"
+    out = [f"{t.get('nameShort') or t.get('seoname')} ({t.get('conferenceSeo') or 'no NCAA conference'})"
+           for t in teams if str(t.get("conferenceSeo") or "") not in members]
+    return ("not in the division: " + ", ".join(out)) if out else None
+
+
 def conference_name(seo: Optional[str]) -> Optional[str]:
     """The scoreboard's conferenceSeo as a name a table can head ('nescac' -> 'NESCAC')."""
     s = str(seo or "").strip().lower()
@@ -162,7 +201,7 @@ def gt(ms: int) -> str:
 
 
 _ACTION = re.compile(
-    r"^(?P<kind>2pt layup|2pt jump shot|3pt jump shot|Free Throw (?P<n1>\d+) of (?P<n2>\d+)|Defensive Rebound|"
+    r"^(?P<kind>2pt layup|2pt jump shot|3pt jump shot|2pt shot|3pt shot|Free Throw (?P<n1>\d+) of (?P<n2>\d+)|Defensive Rebound|"
     r"Offensive Rebound|Assist|Steal|Block|Turnover|Personal Foul|Substitution In|Substitution Out)"
     r"(?: (?P<res>made|missed))? by #(?P<pno>\d+)\b")
 
@@ -176,7 +215,10 @@ def action_of(text: str) -> Optional[dict]:
     k, made, pno = m.group("kind"), m.group("res") == "made", m.group("pno")
     a: dict = {"pno": int(pno)}
     if k.startswith(("2pt", "3pt")):
-        a.update(actionType=k[:3], subType="layup" if "layup" in k else "jumpshot", success=1 if made else 0)
+        # '2pt shot' / '3pt shot': a basket the scraper's parse added from the feed's score and the box, whose kind
+        # nobody wrote down - so it claims none (no subType: neither at the rim nor a jumper)
+        a.update(actionType=k[:3], subType="layup" if "layup" in k else "jumpshot" if "jump" in k else "",
+                 success=1 if made else 0)
     elif k.startswith("Free Throw"):
         a.update(actionType="freethrow", subType=f"{m.group('n1')}of{m.group('n2')}", success=1 if made else 0)
     elif k.endswith("Rebound"):
@@ -435,11 +477,15 @@ class NcaaAdapter(FibaLiveStatsAdapter):
     max_age_s = 90
     #: a scoreboard is read at most this often (it is cached for 5 s at ncaa.com's edge)
     board_every_s = 20
+    #: the division's conference list is read at most this often (it changes between seasons)
+    members_every_s = 6 * 3600
     _mod = None
     _mod_error = None
 
     def __init__(self):
         self._last = 0.0
+        self._members: dict = {}       # (sport, division, season) -> (read_at, frozenset of conferenceSeo)
+        self._left_out: set = set()    # contestIds said once to be outside the division
         self._boards: dict = {}        # (sport, division, MM/DD/YYYY) -> (read_at, {contestId: line})
         self._held: dict = {}          # contestId -> (line it was read at, read_at, GameBundle)
         self._line_of: dict = {}       # contestId -> (sport, division, date) it was discovered under
@@ -478,12 +524,42 @@ class NcaaAdapter(FibaLiveStatsAdapter):
         if gap < self.min_request_gap_s:
             time.sleep(self.min_request_gap_s - gap)
         self._last = time.time()
-        ext = json.dumps({"persistedQuery": {"version": 1, "sha256Hash": mod.SHAS[meta]}})
+        sha = (getattr(mod, "SHAS", None) or {}).get(meta) or {"NCAA_GetConferences_web": CONFERENCES_SHA}[meta]
+        ext = json.dumps({"persistedQuery": {"version": 1, "sha256Hash": sha}})
         url = (f"{GQL_HOST}?meta={meta}&extensions={urllib.parse.quote(ext)}"
                f"&variables={urllib.parse.quote(json.dumps(variables))}")
         r = requests.get(url, headers=HEADERS, timeout=(5, 30))
         r.raise_for_status()
         return r.json()
+
+    def members(self, sport: str, division: int, season: int) -> frozenset:
+        """The division's conferences (conferenceSeo) for one sport and season, as ncaa.com's own conference filter
+        lists them; read at most every members_every_s. If the query cannot be read: the last list read, else (for
+        Division II) the 2025-26 one, D2_CONFERENCES - and it says so."""
+        key = (sport, int(division), int(season))
+        held = self._members.get(key)
+        if held and time.time() - held[0] < self.members_every_s:
+            return held[1]
+        got = frozenset()
+        try:
+            d = self._gql("NCAA_GetConferences_web", {"sportCode": sport, "division": int(division), "seasonYear": int(season)})
+            got = frozenset(conference_seo(c.get("conferenceName")) for c in ((d.get("data") or {}).get("conferences") or [])
+                            if c.get("conferenceName")) - {"all-conf"}
+        except Exception as exc:
+            print(f"     NCAA {sport} D{division} {season}: conference list unreadable ({exc})")
+        if not got:
+            got = held[1] if held else (D2_CONFERENCES if int(division) == 2 else frozenset())
+            if got:
+                print(f"     NCAA {sport} D{division} {season}: using the conference list "
+                      f"{'read before' if held else 'of 2025-26'} ({len(got)})")
+        self._members[key] = (time.time(), got)
+        return got
+
+    def outside(self, c: dict, sport: str, division: int, day: date) -> Optional[str]:
+        """outside_division for one scoreboard line, against its own sport, division and season's list. A list that
+        could not be had at all (a division with no fallback) filters nothing rather than everything."""
+        members = self.members(sport, division, season_year({}, day))
+        return outside_division(c, members) if members else None
 
     def board(self, sport: str, division: int, day: date, max_age: Optional[float] = None) -> dict:
         """{contestId: scoreboard line} for one division and date, read at most every board_every_s."""
@@ -519,8 +595,8 @@ class NcaaAdapter(FibaLiveStatsAdapter):
             except (TypeError, ValueError):
                 return None
         line = self.board(sport, division, day).get(xid)
-        if not line:
-            return None
+        if not line or self.outside(line, sport, division, day):
+            return None                                # (a game outside the division: fetch refuses it too)
         teams = line.get("teams") or []
         home = next((t for t in teams if t.get("isHome")), None)
         away = next((t for t in teams if t is not home), None)
@@ -557,7 +633,7 @@ class NcaaAdapter(FibaLiveStatsAdapter):
                 lo = max(lo, today - timedelta(days=int(config.get("days_back", 3))))
                 hi = min(hi, today + timedelta(days=int(config.get("days_ahead", 14))))
             days = [lo + timedelta(days=i) for i in range((hi - lo).days + 1)]
-        out = []
+        out, left_out = [], 0
         for day in days:
             try:
                 lines = self.board(sport, division, day, max_age=3600)
@@ -565,11 +641,17 @@ class NcaaAdapter(FibaLiveStatsAdapter):
                 print(f"     NCAA {sport} D{division} {day}: scoreboard unreadable ({exc})")
                 continue
             for cid, c in lines.items():
+                # a game against a school outside the division is never listed, so never created, followed live or
+                # backfilled (the backfill is this discovery over the whole season)
+                if self.outside(c, sport, division, day):
+                    left_out += 1
+                    continue
                 g = self._game(c)
                 if g:
                     out.append(g)
         print(f"     NCAA {sport} D{division} {start_year}-{str(start_year + 1)[2:]}: {len(out)} games over {len(days)} day(s) "
-              f"({sum(1 for g in out if g.status == 'final')} final)")
+              f"({sum(1 for g in out if g.status == 'final')} final)"
+              + (f", {left_out} against a school outside Division {division} left out" if left_out else ""))
         return out
 
     @staticmethod
@@ -630,6 +712,23 @@ class NcaaAdapter(FibaLiveStatsAdapter):
             day = datetime.fromisoformat(str(tip).replace("Z", "+00:00")).astimezone(US_EASTERN).date() if tip else None
         except ValueError:
             day = None
+        # A GAME OUTSIDE THE DIVISION IS NEVER READ: discovery does not list one, and a game listed before this rule
+        # (or handed over by --ids) is refused here, from its scoreboard line (one board read covers the day)
+        key = self._line_of.get(xid)
+        d0 = datetime.strptime(key[2], "%m/%d/%Y").date() if key else day
+        if d0:
+            try:
+                # who plays in the game does not change: a board up to an hour old answers it (a backfill's
+                # discovery has just read every day's), so this costs no request of its own
+                line0 = self.board(sport, division, d0, max_age=3600).get(xid)
+                why = self.outside(line0, sport, division, d0) if line0 else None
+            except Exception:
+                why = None                             # a scoreboard blip decides nothing
+            if why:
+                if xid not in self._left_out:
+                    self._left_out.add(xid)
+                    print(f"     NCAA {xid}: not read - {why}")
+                return None
         if day and not config.get("_fresh") and xid in self._held:
             # US evening games tip after midnight UTC: the scoreboard is dated by the local day, so ask
             # for the line under whichever date it was discovered under first

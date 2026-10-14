@@ -139,7 +139,9 @@ def fetch(cid: str, cached_only: bool):
 # ------------------------------------------------------------------ the sample
 def discover(sports, dates, per_date) -> dict:
     """Pick games off each date's scoreboard: overtime and championship games first (they are where the
-    period arithmetic and the tournament feeds differ), then evenly across the rest, finals only."""
+    period arithmetic and the tournament feeds differ), then evenly across the rest, finals only - and only
+    games between two Division II schools, by the adapter's own rule (adapters/ncaa.py outside_division), each
+    entry keeping both teams' conferenceSeo so the rule can be checked again offline."""
     A = adapter()
     out = {}
     for sport in sports:
@@ -151,8 +153,8 @@ def discover(sports, dates, per_date) -> dict:
             except Exception as exc:
                 print(f"  {sport} {ds}: scoreboard unreadable ({exc})")
                 continue
-            fin = sorted((c for c in lines.values() if str(c.get("gameState")).upper() == "F"),
-                         key=lambda c: int(c["contestId"]))
+            fin = sorted((c for c in lines.values() if str(c.get("gameState")).upper() == "F"
+                          and not A.outside(c, sport, 2, day)), key=lambda c: int(c["contestId"]))
             ot = [c for c in fin if "OT" in str(c.get("currentPeriod") or "").upper()]
             ch = [c for c in fin if c.get("isChampionship") and c not in ot]
             rest = [c for c in fin if c not in ot and c not in ch]
@@ -167,7 +169,8 @@ def discover(sports, dates, per_date) -> dict:
                 a = next((x for x in t if not x.get("isHome")), {})
                 picked.append({"id": str(c["contestId"]), "date": ds, "ot": "OT" in str(c.get("currentPeriod") or "").upper(),
                                "champ": bool(c.get("isChampionship")),
-                               "game": f"{h.get('nameShort')} {h.get('score')}-{a.get('score')} {a.get('nameShort')}"})
+                               "game": f"{h.get('nameShort')} {h.get('score')}-{a.get('score')} {a.get('nameShort')}",
+                               "conferences": [h.get("conferenceSeo"), a.get("conferenceSeo")]})
             print(f"  {sport} {ds}: {len(fin)} final, took {len(take[:per_date + 1])} ({len(ot)} OT, {len(ch)} championship)")
         out[sport] = picked
     return out
@@ -457,7 +460,17 @@ def main(argv=None) -> int:
         todo = [(None, x) for x in a.ids]
     else:
         smp = json.loads(SAMPLE.read_text())
-        todo = [(s, g["id"]) for s in sports for g in smp.get(s, [])]
+        # the division's conferences as ncaa.com listed them for the sample's season (NCAA_GetConferences_web):
+        # a game whose two teams are not both on it is not the league's, and is not compared
+        listed = next((v for k, v in smp.items() if k.startswith("_d2_conferences")), {})
+        todo = []
+        for s in sports:
+            for g in smp.get(s, []):
+                confs = g.get("conferences")
+                if listed.get(s) and confs and any(c not in listed[s] for c in confs):
+                    print(f"[{s} {g['id']}] {g.get('game')}: outside Division II {confs} - left out")
+                    continue
+                todo.append((s, g["id"]))
 
     sites, datas, batch, results = {}, {}, {}, []
     for sport, cid in todo:

@@ -116,6 +116,64 @@ A._held["6511421"] = (N.NcaaAdapter._line_key(contest), 0, "held")
 ok("nothing moved but it is older than max_age_s: read it again", A.changed("6511421", "MBB", 3, date(2026, 2, 14)) is True)
 ok("a game never read in full is read", A.changed("999", "MBB", 3, date(2026, 2, 14)) is True)
 
+print("\nonly a game between two Division II schools is the league's")
+ok("ncaa.com's conference names read as the scoreboard's conferenceSeo",
+   [N.conference_seo(x) for x in ("CACC", "Conference Carolinas", "Mid-America Intercollegiate", "NE10", "G-MAC",
+                                  "DII Independent", "Division II Independents", "PacWest", "IND")]
+   == ["cacc", "conference-carolinas", "mid-america-intercollegiate", "ne10", "g-mac", "dii-independent",
+       "division-ii-independents", "pacwest", "ind"])
+
+
+def line(cid, home, away, state="F", day="11/15/2025"):
+    return {"contestId": int(cid), "gameState": state, "startDate": day, "startTimeEpoch": 1763236800, "currentPeriod": "FINAL",
+            "teams": [{"isHome": True, "seoname": home[0], "nameShort": home[1], "conferenceSeo": home[2], "score": 70},
+                      {"isHome": False, "seoname": away[0], "nameShort": away[1], "conferenceSeo": away[2], "score": 60}]}
+
+
+# real 2025-26 lines from the D2 scoreboards (contestId, both teams' seoname, name and conferenceSeo)
+D2_LINES = {
+    "6507589": line(6507589, ("st-cloud-st", "St. Cloud St.", "nsic"), ("minn-duluth", "Minn. Duluth", "nsic")),
+    "6538154": line(6538154, ("gannon", "Gannon", "psac"), ("charleston-wv", "Charleston (WV)", "mec")),
+    "6509044": line(6509044, ("biola", "Biola", "pacwest"), ("vanguard", "Vanguard", "pacwest")),
+    "6533137": line(6533137, ("lincoln-mo", "Lincoln (MO)", "glvc"), ("pr-rio-piedras", "UPR-Rio Piedras", "dii-independent")),
+    "6504938": line(6504938, ("arkansas-st", "Arkansas St.", "sun-belt"), ("christian-bros", "Christian Brothers", "gulf-south")),
+    "6507102": line(6507102, ("valdosta-st", "Valdosta St.", "gulf-south"), ("west-florida", "West Florida", "asun")),
+    "6529392": line(6529392, ("azusa-pacific", "Azusa Pacific", "diii-independent"), ("cal-poly-pomona", "Cal Poly Pomona", "ccaa")),
+    "6532079": line(6532079, ("st-anselm", "Saint Anselm", "ne10"), ("keene-st", "Keene St.", "little-east")),
+    "6521571": line(6521571, ("rockhurst", "Rockhurst", "glvc"), ("park", "Park (MO)", None)),
+}
+inside = {cid for cid, c in D2_LINES.items() if N.outside_division(c, N.D2_CONFERENCES) is None}
+ok("D2 against D2 (conference rivals, two conferences, a D2 independent) is in",
+   inside == {"6507589", "6538154", "6509044", "6533137"}, sorted(inside))
+ok("...against Division I (Arkansas St., West Florida in its first ASUN season), Division III (Azusa Pacific, "
+   "Keene St.) or the NAIA (Park: no NCAA conference) is out",
+   "Arkansas St. (sun-belt)" in N.outside_division(D2_LINES["6504938"], N.D2_CONFERENCES)
+   and "no NCAA conference" in N.outside_division(D2_LINES["6521571"], N.D2_CONFERENCES))
+B = N.NcaaAdapter()
+kb = ("MBB", 2, "11/15/2025")
+B._boards[kb] = (1e18, D2_LINES)                       # read "now": no request
+B._members[("MBB", 2, 2025)] = (1e18, N.D2_CONFERENCES)
+with contextlib.redirect_stdout(io.StringIO()) as said:
+    listed = B.discover("", {"sport": "MBB", "division": 2, "season": "2025-26", "dates": "2025-11-15"})
+ok("discovery lists only the games between two Division II schools (so nothing else is created, followed or "
+   "backfilled)", sorted(g.external_id for g in listed) == sorted(inside), sorted(g.external_id for g in listed))
+ok("...and says how many it left out", "5 against a school outside Division 2 left out" in said.getvalue(), said.getvalue())
+for cid in D2_LINES:
+    B._line_of[cid] = kb
+cfg = {"sport": "MBB", "division": 2, "_tipoff_at": "2025-11-15T20:00:00Z"}
+with contextlib.redirect_stdout(io.StringIO()) as said:
+    refused = B.fetch("6504938", cfg)
+ok("a game outside the division that was listed before the rule is not read (no request: it has its line)",
+   refused is None and "not read - not in the division: Arkansas St." in said.getvalue(), said.getvalue())
+ok("...and the on-demand scoreboard path hands nothing back for it", B.scoreline("6504938", cfg) is None
+   and B.scoreline("6507589", cfg) is not None)
+B2 = N.NcaaAdapter()
+B2._gql = lambda meta, v: (_ for _ in ()).throw(RuntimeError("offline"))
+with contextlib.redirect_stdout(io.StringIO()):
+    got = B2.members("WBB", 2, 2026)
+ok("the conference list unreadable: Division II falls back to the 2025-26 list rather than to no filter",
+   got == N.D2_CONFERENCES)
+
 # ------------------------------------------------------------------ a synthetic game in halves
 print("\na synthetic game in two halves and an overtime")
 

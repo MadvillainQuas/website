@@ -1,298 +1,490 @@
 {
+ "_d2_conferences_2025": {
+  "MBB": [
+   "cacc",
+   "ccaa",
+   "ciaa",
+   "conference-carolinas",
+   "dii-independent",
+   "division-ii-independents",
+   "ecc",
+   "g-mac",
+   "gac",
+   "gliac",
+   "glvc",
+   "great-northwest",
+   "gulf-south",
+   "ind",
+   "lone-star",
+   "mec",
+   "mid-america-intercollegiate",
+   "ne10",
+   "nsic",
+   "pacwest",
+   "peach-belt",
+   "psac",
+   "rmac",
+   "sac",
+   "siac",
+   "sunshine-state"
+  ],
+  "WBB": [
+   "cacc",
+   "ccaa",
+   "ciaa",
+   "conference-carolinas",
+   "dii-independent",
+   "ecc",
+   "g-mac",
+   "gac",
+   "gliac",
+   "glvc",
+   "great-northwest",
+   "gulf-south",
+   "ind",
+   "lone-star",
+   "mec",
+   "mid-america-intercollegiate",
+   "ne10",
+   "nsic",
+   "pacwest",
+   "peach-belt",
+   "psac",
+   "rmac",
+   "sac",
+   "siac",
+   "sunshine-state"
+  ]
+ },
  "MBB": [
   {
    "id": "6506743",
    "date": "2025-11-15",
    "ot": true,
    "champ": false,
-   "game": "Shorter 91-93 Middle Georgia"
+   "game": "Shorter 91-93 Middle Georgia",
+   "conferences": [
+    "conference-carolinas",
+    "peach-belt"
+   ]
   },
   {
    "id": "6507014",
    "date": "2025-11-15",
    "ot": true,
    "champ": false,
-   "game": "UAH 100-97 Barry"
-  },
-  {
-   "id": "6504938",
-   "date": "2025-11-15",
-   "ot": false,
-   "champ": false,
-   "game": "Arkansas St. 95-67 Christian Brothers"
+   "game": "UAH 100-97 Barry",
+   "conferences": [
+    "gulf-south",
+    "sunshine-state"
+   ]
   },
   {
    "id": "6507861",
    "date": "2025-11-15",
    "ot": false,
    "champ": false,
-   "game": "Northeastern St. 80-73 Minn.-Crookston"
+   "game": "Northeastern St. 80-73 Minn.-Crookston",
+   "conferences": [
+    "mid-america-intercollegiate",
+    "nsic"
+   ]
   },
   {
    "id": "6509182",
    "date": "2025-11-15",
    "ot": false,
    "champ": false,
-   "game": "Angelo St. 68-61 Adams St."
+   "game": "Angelo St. 68-61 Adams St.",
+   "conferences": [
+    "lone-star",
+    "rmac"
+   ]
   },
   {
    "id": "6507240",
    "date": "2025-12-06",
    "ot": true,
    "champ": false,
-   "game": "Jessup 81-84 Biola"
+   "game": "Jessup 81-84 Biola",
+   "conferences": [
+    "pacwest",
+    "pacwest"
+   ]
   },
   {
    "id": "6507320",
    "date": "2025-12-06",
    "ot": true,
    "champ": false,
-   "game": "Hillsdale 96-86 Lake Erie"
-  },
-  {
-   "id": "6505198",
-   "date": "2025-12-06",
-   "ot": false,
-   "champ": false,
-   "game": "Kent St. 111-68 Roberts Wesleyan"
+   "game": "Hillsdale 96-86 Lake Erie",
+   "conferences": [
+    "g-mac",
+    "g-mac"
+   ]
   },
   {
    "id": "6507828",
    "date": "2025-12-06",
    "ot": false,
    "champ": false,
-   "game": "Fla. Southern 93-88 Rollins"
+   "game": "Fla. Southern 93-88 Rollins",
+   "conferences": [
+    "sunshine-state",
+    "sunshine-state"
+   ]
   },
   {
    "id": "6509122",
    "date": "2025-12-06",
    "ot": false,
    "champ": false,
-   "game": "Eckerd 67-86 Lynn"
+   "game": "Eckerd 67-86 Lynn",
+   "conferences": [
+    "sunshine-state",
+    "sunshine-state"
+   ]
   },
   {
    "id": "6507351",
    "date": "2026-01-03",
    "ot": true,
    "champ": false,
-   "game": "Flagler 77-73 North Georgia"
+   "game": "Flagler 77-73 North Georgia",
+   "conferences": [
+    "peach-belt",
+    "peach-belt"
+   ]
   },
   {
    "id": "6509044",
    "date": "2026-01-03",
    "ot": true,
    "champ": false,
-   "game": "Biola 85-76 Vanguard"
+   "game": "Biola 85-76 Vanguard",
+   "conferences": [
+    "pacwest",
+    "pacwest"
+   ]
   },
   {
    "id": "6506458",
    "date": "2026-01-03",
    "ot": false,
    "champ": false,
-   "game": "Seattle Pacific 67-54 Western Ore."
+   "game": "Seattle Pacific 67-54 Western Ore.",
+   "conferences": [
+    "great-northwest",
+    "great-northwest"
+   ]
   },
   {
    "id": "6507811",
    "date": "2026-01-03",
    "ot": false,
    "champ": false,
-   "game": "Pitt.-Johnstown 62-66 Shepherd"
+   "game": "Pitt.-Johnstown 62-66 Shepherd",
+   "conferences": [
+    "psac",
+    "psac"
+   ]
   },
   {
    "id": "6509151",
    "date": "2026-01-03",
    "ot": false,
    "champ": false,
-   "game": "Cedarville 84-54 Ky. Wesleyan"
+   "game": "Cedarville 84-54 Ky. Wesleyan",
+   "conferences": [
+    "g-mac",
+    "g-mac"
+   ]
   },
   {
    "id": "6506812",
    "date": "2026-01-17",
    "ot": true,
    "champ": false,
-   "game": "Mercy 98-103 Staten Island"
+   "game": "Mercy 98-103 Staten Island",
+   "conferences": [
+    "ecc",
+    "ecc"
+   ]
   },
   {
    "id": "6507589",
    "date": "2026-01-17",
    "ot": true,
    "champ": false,
-   "game": "St. Cloud St. 92-87 Minn. Duluth"
+   "game": "St. Cloud St. 92-87 Minn. Duluth",
+   "conferences": [
+    "nsic",
+    "nsic"
+   ]
   },
   {
    "id": "6506462",
    "date": "2026-01-17",
    "ot": false,
    "champ": false,
-   "game": "Seattle Pacific 71-72 Northwest Nazarene"
+   "game": "Seattle Pacific 71-72 Northwest Nazarene",
+   "conferences": [
+    "great-northwest",
+    "great-northwest"
+   ]
   },
   {
    "id": "6507888",
    "date": "2026-01-17",
    "ot": false,
    "champ": false,
-   "game": "Purdue Northwest 82-61 Wis.-Parkside"
+   "game": "Purdue Northwest 82-61 Wis.-Parkside",
+   "conferences": [
+    "gliac",
+    "gliac"
+   ]
   },
   {
    "id": "6509329",
    "date": "2026-01-17",
    "ot": false,
    "champ": false,
-   "game": "Lee 82-72 Christian Brothers"
-  },
-  {
-   "id": "6507102",
-   "date": "2026-01-31",
-   "ot": true,
-   "champ": false,
-   "game": "Valdosta St. 103-100 West Florida"
+   "game": "Lee 82-72 Christian Brothers",
+   "conferences": [
+    "gulf-south",
+    "gulf-south"
+   ]
   },
   {
    "id": "6508288",
    "date": "2026-01-31",
    "ot": true,
    "champ": false,
-   "game": "Saint Anselm 77-75 Adelphi"
+   "game": "Saint Anselm 77-75 Adelphi",
+   "conferences": [
+    "ne10",
+    "ne10"
+   ]
   },
   {
    "id": "6506467",
    "date": "2026-01-31",
    "ot": false,
    "champ": false,
-   "game": "Saint Martin's 72-76 Seattle Pacific"
+   "game": "Saint Martin's 72-76 Seattle Pacific",
+   "conferences": [
+    "great-northwest",
+    "great-northwest"
+   ]
   },
   {
    "id": "6507902",
    "date": "2026-01-31",
    "ot": false,
    "champ": false,
-   "game": "CSUSB 79-82 Cal St. East Bay"
+   "game": "CSUSB 79-82 Cal St. East Bay",
+   "conferences": [
+    "ccaa",
+    "ccaa"
+   ]
   },
   {
    "id": "6509115",
    "date": "2026-01-31",
    "ot": false,
    "champ": false,
-   "game": "Jamestown 87-73 Sioux Falls"
+   "game": "Jamestown 87-73 Sioux Falls",
+   "conferences": [
+    "nsic",
+    "nsic"
+   ]
   },
   {
    "id": "6507128",
    "date": "2026-02-14",
    "ot": true,
    "champ": false,
-   "game": "UNC Pembroke 113-110 Southern Wesleyan"
+   "game": "UNC Pembroke 113-110 Southern Wesleyan",
+   "conferences": [
+    "conference-carolinas",
+    "conference-carolinas"
+   ]
   },
   {
    "id": "6507908",
    "date": "2026-02-14",
    "ot": true,
    "champ": false,
-   "game": "CSUSB 73-72 Stanislaus St."
+   "game": "CSUSB 73-72 Stanislaus St.",
+   "conferences": [
+    "ccaa",
+    "ccaa"
+   ]
   },
   {
    "id": "6506473",
    "date": "2026-02-14",
    "ot": false,
    "champ": false,
-   "game": "Central Wash. 86-60 Seattle Pacific"
+   "game": "Central Wash. 86-60 Seattle Pacific",
+   "conferences": [
+    "great-northwest",
+    "great-northwest"
+   ]
   },
   {
    "id": "6508005",
    "date": "2026-02-14",
    "ot": false,
    "champ": false,
-   "game": "Rockhurst 88-75 Drury"
+   "game": "Rockhurst 88-75 Drury",
+   "conferences": [
+    "glvc",
+    "glvc"
+   ]
   },
   {
    "id": "6509301",
    "date": "2026-02-14",
    "ot": false,
    "champ": false,
-   "game": "Embry-Riddle (FL) 82-87 Fla. Southern"
+   "game": "Embry-Riddle (FL) 82-87 Fla. Southern",
+   "conferences": [
+    "sunshine-state",
+    "sunshine-state"
+   ]
   },
   {
    "id": "6590794",
    "date": "2026-03-07",
    "ot": true,
    "champ": false,
-   "game": "Ouachita Baptist 78-81 Harding"
+   "game": "Ouachita Baptist 78-81 Harding",
+   "conferences": [
+    "gac",
+    "gac"
+   ]
   },
   {
    "id": "6590894",
    "date": "2026-03-07",
    "ot": true,
    "champ": false,
-   "game": "West Liberty 105-100 Glenville St."
+   "game": "West Liberty 105-100 Glenville St.",
+   "conferences": [
+    "mec",
+    "mec"
+   ]
   },
   {
    "id": "6590744",
    "date": "2026-03-07",
    "ot": false,
    "champ": false,
-   "game": "Cal St. East Bay 80-63 Cal Poly Humboldt"
+   "game": "Cal St. East Bay 80-63 Cal Poly Humboldt",
+   "conferences": [
+    "ccaa",
+    "ccaa"
+   ]
   },
   {
    "id": "6590855",
    "date": "2026-03-07",
    "ot": false,
    "champ": false,
-   "game": "UIndy 83-85 Drury"
+   "game": "UIndy 83-85 Drury",
+   "conferences": [
+    "glvc",
+    "glvc"
+   ]
   },
   {
    "id": "6591162",
    "date": "2026-03-07",
    "ot": false,
    "champ": false,
-   "game": "Black Hills St. 89-77 Colorado Mesa"
+   "game": "Black Hills St. 89-77 Colorado Mesa",
+   "conferences": [
+    "rmac",
+    "rmac"
+   ]
   },
   {
    "id": "6538180",
    "date": "2026-03-14",
    "ot": true,
    "champ": true,
-   "game": "Eastern N.M. 70-73 St. Mary's (TX)"
+   "game": "Eastern N.M. 70-73 St. Mary's (TX)",
+   "conferences": [
+    "lone-star",
+    "lone-star"
+   ]
   },
   {
    "id": "6538154",
    "date": "2026-03-14",
    "ot": false,
    "champ": true,
-   "game": "Gannon 83-58 Charleston (WV)"
+   "game": "Gannon 83-58 Charleston (WV)",
+   "conferences": [
+    "psac",
+    "mec"
+   ]
   },
   {
    "id": "6538155",
    "date": "2026-03-14",
    "ot": false,
    "champ": true,
-   "game": "California (PA) 96-83 Fayetteville St."
+   "game": "California (PA) 96-83 Fayetteville St.",
+   "conferences": [
+    "psac",
+    "ciaa"
+   ]
   },
   {
    "id": "6538209",
    "date": "2026-03-16",
    "ot": false,
    "champ": true,
-   "game": "Cal St. East Bay 73-58 Point Loma"
+   "game": "Cal St. East Bay 73-58 Point Loma",
+   "conferences": [
+    "ccaa",
+    "pacwest"
+   ]
   },
   {
    "id": "6538210",
    "date": "2026-03-25",
    "ot": false,
    "champ": true,
-   "game": "Black Hills St. 66-76 Nova Southeastern"
+   "game": "Black Hills St. 66-76 Nova Southeastern",
+   "conferences": [
+    "rmac",
+    "sunshine-state"
+   ]
   },
   {
    "id": "6538211",
    "date": "2026-03-25",
    "ot": false,
    "champ": true,
-   "game": "Lander 77-74 Daemen"
+   "game": "Lander 77-74 Daemen",
+   "conferences": [
+    "peach-belt",
+    "ecc"
+   ]
   },
   {
    "id": "6595515",
    "date": "2026-03-28",
    "ot": false,
    "champ": false,
-   "game": "Virginia St. 69-66 Bluefield St."
+   "game": "Virginia St. 69-66 Bluefield St.",
+   "conferences": [
+    "ciaa",
+    "ciaa"
+   ]
   }
  ],
  "WBB": [
@@ -301,280 +493,407 @@
    "date": "2025-11-15",
    "ot": true,
    "champ": false,
-   "game": "Shippensburg 59-55 Lincoln (PA)"
+   "game": "Shippensburg 59-55 Lincoln (PA)",
+   "conferences": [
+    "psac",
+    "ciaa"
+   ]
   },
   {
    "id": "6522890",
    "date": "2025-11-15",
    "ot": true,
    "champ": false,
-   "game": "Ky. Wesleyan 69-64 Lincoln (MO)"
-  },
-  {
-   "id": "6518783",
-   "date": "2025-11-15",
-   "ot": false,
-   "champ": false,
-   "game": "ETSU 69-31 Claflin"
+   "game": "Ky. Wesleyan 69-64 Lincoln (MO)",
+   "conferences": [
+    "g-mac",
+    "glvc"
+   ]
   },
   {
    "id": "6521542",
    "date": "2025-11-15",
    "ot": false,
    "champ": false,
-   "game": "West Va. Wesleyan 79-72 Pitt.-Johnstown"
+   "game": "West Va. Wesleyan 79-72 Pitt.-Johnstown",
+   "conferences": [
+    "mec",
+    "psac"
+   ]
   },
   {
    "id": "6522648",
    "date": "2025-11-15",
    "ot": false,
    "champ": false,
-   "game": "West Chester 68-71 Glenville St."
+   "game": "West Chester 68-71 Glenville St.",
+   "conferences": [
+    "psac",
+    "mec"
+   ]
   },
   {
    "id": "6521151",
    "date": "2025-12-06",
    "ot": true,
    "champ": false,
-   "game": "Florida Tech 70-73 Saint Leo"
+   "game": "Florida Tech 70-73 Saint Leo",
+   "conferences": [
+    "sunshine-state",
+    "sunshine-state"
+   ]
   },
   {
    "id": "6521477",
    "date": "2025-12-06",
    "ot": true,
    "champ": false,
-   "game": "Mount Olive 58-59 Ferrum"
+   "game": "Mount Olive 58-59 Ferrum",
+   "conferences": [
+    "conference-carolinas",
+    "conference-carolinas"
+   ]
   },
   {
    "id": "6520177",
    "date": "2025-12-06",
    "ot": false,
    "champ": false,
-   "game": "Northwest Nazarene 63-77 Central Wash."
+   "game": "Northwest Nazarene 63-77 Central Wash.",
+   "conferences": [
+    "great-northwest",
+    "great-northwest"
+   ]
   },
   {
    "id": "6521650",
    "date": "2025-12-06",
    "ot": false,
    "champ": false,
-   "game": "CSUSB 60-68 Cal State LA"
+   "game": "CSUSB 60-68 Cal State LA",
+   "conferences": [
+    "ccaa",
+    "ccaa"
+   ]
   },
   {
    "id": "6522977",
    "date": "2025-12-06",
    "ot": false,
    "champ": false,
-   "game": "Walsh 66-52 Ohio Dominican"
+   "game": "Walsh 66-52 Ohio Dominican",
+   "conferences": [
+    "g-mac",
+    "g-mac"
+   ]
   },
   {
    "id": "6522001",
    "date": "2026-01-03",
    "ot": true,
    "champ": false,
-   "game": "Newberry 75-71 Tusculum"
+   "game": "Newberry 75-71 Tusculum",
+   "conferences": [
+    "sac",
+    "sac"
+   ]
   },
   {
    "id": "6522288",
    "date": "2026-01-03",
    "ot": true,
    "champ": false,
-   "game": "Winona St. 85-87 Concordia-St. Paul"
-  },
-  {
-   "id": "6518135",
-   "date": "2026-01-03",
-   "ot": false,
-   "champ": false,
-   "game": "UNC Greensboro 94-39 Livingstone"
+   "game": "Winona St. 85-87 Concordia-St. Paul",
+   "conferences": [
+    "nsic",
+    "nsic"
+   ]
   },
   {
    "id": "6521331",
    "date": "2026-01-03",
    "ot": false,
    "champ": false,
-   "game": "Clayton St. 51-46 USC Beaufort"
+   "game": "Clayton St. 51-46 USC Beaufort",
+   "conferences": [
+    "peach-belt",
+    "peach-belt"
+   ]
   },
   {
    "id": "6522796",
    "date": "2026-01-03",
    "ot": false,
    "champ": false,
-   "game": "Young Harris 59-52 Barton"
+   "game": "Young Harris 59-52 Barton",
+   "conferences": [
+    "conference-carolinas",
+    "conference-carolinas"
+   ]
   },
   {
    "id": "6521368",
    "date": "2026-01-17",
    "ot": true,
    "champ": false,
-   "game": "St. Cloud St. 71-74 Minn. Duluth"
+   "game": "St. Cloud St. 71-74 Minn. Duluth",
+   "conferences": [
+    "nsic",
+    "nsic"
+   ]
   },
   {
    "id": "6521726",
    "date": "2026-01-17",
    "ot": true,
    "champ": false,
-   "game": "CSU Pueblo 82-78 Regis (CO)"
+   "game": "CSU Pueblo 82-78 Regis (CO)",
+   "conferences": [
+    "rmac",
+    "rmac"
+   ]
   },
   {
    "id": "6520185",
    "date": "2026-01-17",
    "ot": false,
    "champ": false,
-   "game": "Mont. St. Billings 57-91 Central Wash."
+   "game": "Mont. St. Billings 57-91 Central Wash.",
+   "conferences": [
+    "great-northwest",
+    "great-northwest"
+   ]
   },
   {
    "id": "6521673",
    "date": "2026-01-17",
    "ot": false,
    "champ": false,
-   "game": "CSUSB 55-65 Cal Poly Pomona"
+   "game": "CSUSB 55-65 Cal Poly Pomona",
+   "conferences": [
+    "ccaa",
+    "ccaa"
+   ]
   },
   {
    "id": "6523085",
    "date": "2026-01-17",
    "ot": false,
    "champ": false,
-   "game": "Hawaii Hilo 44-60 Vanguard"
-  },
-  {
-   "id": "6520898",
-   "date": "2026-01-31",
-   "ot": true,
-   "champ": false,
-   "game": "Valdosta St. 79-76 West Florida"
+   "game": "Hawaii Hilo 44-60 Vanguard",
+   "conferences": [
+    "pacwest",
+    "pacwest"
+   ]
   },
   {
    "id": "6521814",
    "date": "2026-01-31",
    "ot": true,
    "champ": false,
-   "game": "Northwestern Okla. 85-86 Arkansas Tech"
+   "game": "Northwestern Okla. 85-86 Arkansas Tech",
+   "conferences": [
+    "gac",
+    "gac"
+   ]
   },
   {
    "id": "6520189",
    "date": "2026-01-31",
    "ot": false,
    "champ": false,
-   "game": "Central Wash. 92-40 Alas. Fairbanks"
+   "game": "Central Wash. 92-40 Alas. Fairbanks",
+   "conferences": [
+    "great-northwest",
+    "great-northwest"
+   ]
   },
   {
    "id": "6521462",
    "date": "2026-01-31",
    "ot": false,
    "champ": false,
-   "game": "Cal St. Monterey Bay 82-49 Stanislaus St."
+   "game": "Cal St. Monterey Bay 82-49 Stanislaus St.",
+   "conferences": [
+    "ccaa",
+    "ccaa"
+   ]
   },
   {
    "id": "6522732",
    "date": "2026-01-31",
    "ot": false,
    "champ": false,
-   "game": "St. Mary's (TX) 64-60 UT Dallas "
+   "game": "St. Mary's (TX) 64-60 UT Dallas ",
+   "conferences": [
+    "lone-star",
+    "lone-star"
+   ]
   },
   {
    "id": "6520477",
    "date": "2026-02-14",
    "ot": true,
    "champ": false,
-   "game": "Erskine 81-84 Converse"
+   "game": "Erskine 81-84 Converse",
+   "conferences": [
+    "conference-carolinas",
+    "conference-carolinas"
+   ]
   },
   {
    "id": "6520902",
    "date": "2026-02-14",
    "ot": true,
    "champ": false,
-   "game": "Mississippi Christian 78-84 Valdosta St."
+   "game": "Mississippi Christian 78-84 Valdosta St.",
+   "conferences": [
+    "gulf-south",
+    "gulf-south"
+   ]
   },
   {
    "id": "6520193",
    "date": "2026-02-14",
    "ot": false,
    "champ": false,
-   "game": "Central Wash. 69-53 Seattle Pacific"
+   "game": "Central Wash. 69-53 Seattle Pacific",
+   "conferences": [
+    "great-northwest",
+    "great-northwest"
+   ]
   },
   {
    "id": "6521685",
    "date": "2026-02-14",
    "ot": false,
    "champ": false,
-   "game": "Western Colo. 59-57 Fort Lewis"
+   "game": "Western Colo. 59-57 Fort Lewis",
+   "conferences": [
+    "rmac",
+    "rmac"
+   ]
   },
   {
    "id": "6522969",
    "date": "2026-02-14",
    "ot": false,
    "champ": false,
-   "game": "Westminster (UT) 84-73 Adams St."
+   "game": "Westminster (UT) 84-73 Adams St.",
+   "conferences": [
+    "rmac",
+    "rmac"
+   ]
   },
   {
    "id": "6589392",
    "date": "2026-03-07",
    "ot": false,
    "champ": false,
-   "game": "Holy Family 67-59 Chestnut Hill"
+   "game": "Holy Family 67-59 Chestnut Hill",
+   "conferences": [
+    "cacc",
+    "cacc"
+   ]
   },
   {
    "id": "6589645",
    "date": "2026-03-07",
    "ot": false,
    "champ": false,
-   "game": "Miles 59-52 Lane"
+   "game": "Miles 59-52 Lane",
+   "conferences": [
+    "siac",
+    "siac"
+   ]
   },
   {
    "id": "6590132",
    "date": "2026-03-07",
    "ot": false,
    "champ": false,
-   "game": "Daemen 75-61 Staten Island"
+   "game": "Daemen 75-61 Staten Island",
+   "conferences": [
+    "ecc",
+    "ecc"
+   ]
   },
   {
    "id": "6591139",
    "date": "2026-03-07",
    "ot": false,
    "champ": false,
-   "game": "West Tex. A&M 67-61 UT Tyler"
+   "game": "West Tex. A&M 67-61 UT Tyler",
+   "conferences": [
+    "lone-star",
+    "lone-star"
+   ]
   },
   {
    "id": "6591345",
    "date": "2026-03-07",
    "ot": false,
    "champ": false,
-   "game": "Central Mo. 60-45 Mo. Southern St."
+   "game": "Central Mo. 60-45 Mo. Southern St.",
+   "conferences": [
+    "mid-america-intercollegiate",
+    "mid-america-intercollegiate"
+   ]
   },
   {
    "id": "6538016",
    "date": "2026-03-14",
    "ot": false,
    "champ": true,
-   "game": "Indiana (PA) 94-87 Seton Hill"
+   "game": "Indiana (PA) 94-87 Seton Hill",
+   "conferences": [
+    "psac",
+    "psac"
+   ]
   },
   {
    "id": "6538017",
    "date": "2026-03-14",
    "ot": false,
    "champ": true,
-   "game": "Gannon 48-67 Winston-Salem"
+   "game": "Gannon 48-67 Winston-Salem",
+   "conferences": [
+    "psac",
+    "ciaa"
+   ]
   },
   {
    "id": "6538042",
    "date": "2026-03-24",
    "ot": true,
    "champ": true,
-   "game": "Indiana (PA) 57-52 Holy Family"
+   "game": "Indiana (PA) 57-52 Holy Family",
+   "conferences": [
+    "psac",
+    "cacc"
+   ]
   },
   {
    "id": "6538040",
    "date": "2026-03-24",
    "ot": false,
    "champ": true,
-   "game": "Grand Valley St. 96-48 Carson-Newman"
+   "game": "Grand Valley St. 96-48 Carson-Newman",
+   "conferences": [
+    "gliac",
+    "sac"
+   ]
   },
   {
    "id": "6538041",
    "date": "2026-03-24",
    "ot": false,
    "champ": true,
-   "game": "Cal Poly Pomona 53-61 UAH"
+   "game": "Cal Poly Pomona 53-61 UAH",
+   "conferences": [
+    "ccaa",
+    "gulf-south"
+   ]
   }
  ]
 }
