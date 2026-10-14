@@ -90,11 +90,11 @@ const STATS = {
      MID% or 3PT%, the Synergy file being several seasons; the kind's break-even only where he has no such shot at all) - and the
      share of each side's drive shots of the kind. No words of comparison: the colour says it. */
   drv_rim_fg: { l: 'DRIVE L/R RIM FG%', dp: 1, rank: false, optional: true, pair: ['drv_l_rim_fg', 'drv_r_rim_fg'], ref: 'drv_all_rim_fg', refBE: 58, sc: 5 },
-  drv_rim_att: { l: 'DRIVE L/R RIM ATT%', dp: 0, rank: false, optional: true, pair: ['drv_l_rim_att', 'drv_r_rim_att'] },
+  drv_rim_att: { l: 'DRIVE L/R RIM ATT%', dp: 0, rank: false, optional: true, pair: ['drv_l_rim_att', 'drv_r_rim_att'], styleRef: 'drv_all_rim_att', sc: 8 },
   drv_mid_fg: { l: 'DRIVE L/R MID FG%', dp: 1, rank: false, optional: true, pair: ['drv_l_mid_fg', 'drv_r_mid_fg'], ref: 'drv_all_mid_fg', refBE: 40, sc: 5 },
-  drv_mid_att: { l: 'DRIVE L/R MID ATT%', dp: 0, rank: false, optional: true, pair: ['drv_l_mid_att', 'drv_r_mid_att'] },
+  drv_mid_att: { l: 'DRIVE L/R MID ATT%', dp: 0, rank: false, optional: true, pair: ['drv_l_mid_att', 'drv_r_mid_att'], styleRef: 'drv_all_mid_att', sc: 8 },
   drv_3_fg: { l: 'DRIVE L/R 3FG%', dp: 1, rank: false, optional: true, pair: ['drv_l_3_fg', 'drv_r_3_fg'], ref: 'drv_all_3_fg', refBE: 35, sc: 5 },
-  drv_3_att: { l: 'DRIVE L/R 3 ATT%', dp: 0, rank: false, optional: true, pair: ['drv_l_3_att', 'drv_r_3_att'] },
+  drv_3_att: { l: 'DRIVE L/R 3 ATT%', dp: 0, rank: false, optional: true, pair: ['drv_l_3_att', 'drv_r_3_att'], styleRef: 'drv_all_3_att', sc: 8 },
   badpass_pg: { l: 'BAD PASS TO / G', dp: 1, low: true, rank: false, feed: true }, handle_pg: { l: 'DRIBBLE TO / G', dp: 1, low: true, rank: false, feed: true }
 };
 
@@ -111,11 +111,11 @@ const DEFS = {
   pf_pg: ['Fouls conceded a game', 'Personal fouls they commit per game. Fewer is better.'],
   syn_fu_efg: ['Attacked face-up eFG% (Synergy)', 'What the player guarding them shot (effective field-goal %) when they were attacked face-up: every defensive isolation, and every drive at them (left, right or straight) outside one, from their Synergy file. Lower is better; drawn against the break-even 52.5%.'],
   drv_rim_fg: ['Drive left / right, rim FG% (Synergy)', 'Their field-goal percentage at the rim (to the basket) on drives going left, then right, from their Synergy file; each tinted against their rim FG% on drives in all directions (green above it, red below).'],
-  drv_rim_att: ['Drive left / right, rim attempts % (Synergy)', 'Of their shots on drives going left, then right, the share at the rim.'],
+  drv_rim_att: ['Drive left / right, rim attempts % (Synergy)', 'Of their shots on drives going left, then right, the share at the rim. A style: each side blue to purple against their share in every direction, deeper the more of their drives that way end at the rim.'],
   drv_mid_fg: ['Drive left / right, mid-range FG% (Synergy)', 'Their field-goal percentage on pull-up twos (dribble jumpers short of the arc) going left, then right; each tinted against their pull-up two FG% on drives in all directions.'],
-  drv_mid_att: ['Drive left / right, mid-range attempts % (Synergy)', 'Of their shots on drives going left, then right, the share that were pull-up twos.'],
+  drv_mid_att: ['Drive left / right, mid-range attempts % (Synergy)', 'Of their shots on drives going left, then right, the share that were pull-up twos. A style: each side blue to purple against their share in every direction, deeper the more of it.'],
   drv_3_fg: ['Drive left / right, 3FG% (Synergy)', 'Their three-point percentage on pull-up threes going left, then right; each tinted against their pull-up three FG% on drives in all directions.'],
-  drv_3_att: ['Drive left / right, three attempts % (Synergy)', 'Of their shots on drives going left, then right, the share that were pull-up threes.'],
+  drv_3_att: ['Drive left / right, three attempts % (Synergy)', 'Of their shots on drives going left, then right, the share that were pull-up threes. A style: each side blue to purple against their share in every direction, deeper the more of it.'],
   syn_post_efg: ['Post-D eFG% (Synergy)', 'What the player guarding them shot (effective field-goal %) posting them up: every defensive post-up in their Synergy file. Lower is better; drawn against the break-even 52.5%.'],
   syn_screen_efg: ['Screen D eFG% (Synergy)', 'What the ball handler shot (effective field-goal %) coming off a screen against them: every defensive pick-and-roll ball-handler play in their Synergy file. Lower is better; drawn against a league-typical 52.5%.'],
   badpass_pg: ['Bad-pass turnovers a game', 'Turnovers the feed typed as a bad pass, per game; only leagues whose feed types its turnovers have them.'],
@@ -548,13 +548,21 @@ function pairN(k, row) {
   const n = s.pair.map((x, i) => row[fg ? x.replace(/_fg$/, '_n') : 'drv_' + (i ? 'r' : 'l') + '_shots']);
   return n.some(isNum) ? n.map(v => (isNum(v) ? v : 0)).join(' \u00b7 ') + (fg ? ' att' : ' shots') : '';
 }
+/* A STYLE PAIR (the drives' ATT%, Louie 2026-10-14): neither side is better, so each is drawn on the style scale, blue to purple,
+   against his own share in every direction (styleRef): a step (sc) or more above it 8, above 7, below 6, a step or more below 5 */
+function styleVs(v, ref, scale) {
+  if (!isNum(v) || !isNum(ref)) return 0;
+  const g = +v - +ref, sc = scale || 5;
+  return g >= sc ? 8 : g >= 0 ? 7 : g > -sc ? 6 : 5;
+}
 function pairHTML(k, row) {
   const s = STATS[k], rv = refOf(s, row);
   const n = x => (row ? row[x.replace(/_fg$/, '_n')] : null);
   const tone = s.ref != null && s.pair.every(x => !/_fg$/.test(x) || (isNum(n(x)) && n(x) >= 3)) ? sideTone(row && row[s.pair[0]], row && row[s.pair[1]], s.low, 3) : ['', ''];
+  const sv = s.styleRef && row ? row[s.styleRef] : null;
   return s.pair.map((x, i) => {
     const v = row ? row[x] : null;
-    const b = isNum(v) && isNum(rv) ? bandVs(v, rv, s.sc || 3, s.low) : 0;
+    const b = s.styleRef ? styleVs(v, sv, s.sc) : isNum(v) && isNum(rv) ? bandVs(v, rv, s.sc || 3, s.low) : 0;
     return '<i data-b="' + b + '"' + (tone[i] ? ' class="' + tone[i] + '"' : '') + '><small>' + (i ? 'R' : 'L') + '</small>' + (isNum(v) ? (+v).toFixed(s.dp == null ? 1 : s.dp) : '\u2014') + '</i>';
   }).join('');
 }
@@ -1102,6 +1110,11 @@ function synergyOnRow(row, prof) {
     return { shots: sh, rimFg: pc(sh.rim.m, sh.rim.a), midFg: pc(sh.mid.m, sh.mid.a), threeFg: pc(sh.three.m, sh.three.a) };
   })());
   if (all) [['rim', 'rim'], ['mid', 'mid'], ['3', 'three']].forEach(([k, z]) => { if (all.shots[z].a > 0) row['drv_all_' + k + '_fg'] = r1(all[z + 'Fg']); });
+  /* and the share each kind is of all his drive shots, every direction: what the left and right shares are tinted against */
+  if (all) {
+    const tot = ['rim', 'mid', 'three'].reduce((n, z) => n + ((all.shots[z] && all.shots[z].a) || 0), 0);
+    if (tot > 0) [['rim', 'rim'], ['mid', 'mid'], ['3', 'three']].forEach(([k, z]) => { row['drv_all_' + k + '_att'] = r1(100 * ((all.shots[z] && all.shots[z].a) || 0) / tot); });
+  }
   [['l', dv && dv.left], ['r', dv && dv.right]].forEach(([sd, ln]) => {
     if (!ln || !ln.att) return;
     row['drv_' + sd + '_shots'] = ln.att;

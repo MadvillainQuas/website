@@ -253,6 +253,8 @@
 .rp-pcard{ display:grid; grid-template-columns:128px minmax(0,1fr); gap:10px; padding:7px 9px; border:1px solid var(--rule-2); border-radius:12px;
   border-left:5px solid var(--rp-a,#08603f) }
 .rp-pid{ display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center; min-width:0 }
+/* nothing in the column under the name gives way in height (the jersey circle stays round in the PDF's copy, where the column sizes itself) */
+.rp-pid > *{ flex-shrink:0 }
 .rp-ph{ width:46px; height:46px; border-radius:50%; overflow:hidden; display:grid; place-items:center; background:#e9f1ec; border:2px solid var(--rp-a,#08603f) }
 .rp-ph img{ width:100%; height:100%; object-fit:cover }
 .rp-ph b{ font-family:var(--f-score); font-weight:400; font-size:19px; color:var(--rp-a,#08603f) }
@@ -768,6 +770,9 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 .rp-cell2 i[data-b="4"], .rp-st2 i[data-b="4"]{ --b:var(--b4) } .rp-cell2 i[data-b="3"], .rp-st2 i[data-b="3"]{ --b:var(--b3) }
 .rp-cell2 i[data-b="2"], .rp-st2 i[data-b="2"]{ --b:var(--b2) } .rp-cell2 i[data-b="1"], .rp-st2 i[data-b="1"]{ --b:var(--b1) }
 .rp-cell2 i[data-b="0"], .rp-st2 i[data-b="0"]{ background:#eef2f0 }
+/* a style pair (the drives' ATT%): blue to purple, deeper the more of it, as the style tiles */
+.rp-cell2 i[data-b="5"], .rp-st2 i[data-b="5"]{ --b:var(--b5) } .rp-cell2 i[data-b="6"], .rp-st2 i[data-b="6"]{ --b:var(--b6) }
+.rp-cell2 i[data-b="7"], .rp-st2 i[data-b="7"]{ --b:var(--b7) } .rp-cell2 i[data-b="8"], .rp-st2 i[data-b="8"]{ --b:var(--b8) }
 .rp-cell2 .rp-cell-p{ font-size:5.5px }
 .rp-st2 .rp-st-v{ justify-content:flex-end }
 .rp-st2 .rp-st-v i{ font-size:10.5px; padding:0 3px }

@@ -759,6 +759,7 @@ function modules(ctx) {
         ['ASSISTED%', 'The share of their baskets in a zone that came off a pass. Coloured the other way round: a low share (green) means they create their own shots there.'],
         ['HALF-COURT FIGURES', 'Leave out fast breaks, second chances and shots off turnovers: how they do against a set defence.'],
         ['SHOT MIX', 'Where there is no Synergy file: bar length is how often they shoot from the rim, mid-range or three, the solid part how often it goes in.'],
+        ['DRIVES L/R', 'From their Synergy file, going left then right. FG% green or red against their own on drives in every direction; ATT% blue to purple against their own share in every direction, deeper the more of it.'],
         ['± (ON/OFF)', 'The team’s figure with them on the floor minus with them off it. Noisy for a player with few minutes.'],
         ['THE CORNER COURT', 'Orange: they shoot better than break-even from that zone. Blue: worse. Grey: too few shots.']]));
       return out;

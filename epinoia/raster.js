@@ -27,7 +27,12 @@
 
 const SVGNS = 'http://www.w3.org/2000/svg', XHTML = 'http://www.w3.org/1999/xhtml';
 /* the boxes whose height is their content's, never pinned in the copy (cloneStyled) */
-const GROW = '.rp-pgroups, .rp-pg2, .rp-cells, .rp-run, .rp-run-c, .rp-pcard';
+/* (2026-10-14, the PDF's cards) the block a card sits in, the column under the name (its position chips can wrap a line earlier
+   in the copy) and each tile (a three-line label or a footer can too): pinned, each spilled over what came after it */
+const GROW = '.rp-pgroups, .rp-pg2, .rp-cells, .rp-run, .rp-run-c, .rp-pcard, .rp-blk, .rp-pid, .rp-ppos, .rp-cell';
+/* ...and the boxes whose width is their content's (shrink-to-fit): pinned to the width the page measured, which is exactly as
+   wide as their cells, a cell laid out a hair wider in the copy wrapped onto a line of its own (DRIVE L/R 3 ATT%, 2026-10-14) */
+const SHRINK = '.rp-pg2, .rp-cells, .rp-run, .rp-run-c';
 
 /* the properties worth carrying: layout, box, text and paint. Everything else is left to the defaults */
 const PROPS = ['display', 'position', 'top', 'right', 'bottom', 'left', 'float', 'clear', 'z-index', 'box-sizing',
@@ -136,7 +141,9 @@ function cloneStyled(src) {
     /* BOXES THAT WRAP KEEP THEIR OWN HEIGHT (2026-10-06): a player card's groups and the cells in them are rows that wrap. Pinned
        to the height the page measured, a row the copy wraps one cell earlier (its text a hair wider) ran under the next group:
        the shot profile's THREE under DRIVES L/R. Left to grow, the copy is as tall as it needs to be. */
-    if (!svg && n.matches && n.matches(GROW)) st = st.replace(/(^|;)\s*height:[^;]*/g, '$1');
+    /* ...and its rows: a grid's rows come back as the pixel heights the page measured, which would hold a taller column in */
+    if (!svg && n.matches && n.matches(GROW)) st = st.replace(/(^|;)\s*height:[^;]*/g, '$1').replace(/(^|;)\s*grid-template-rows:[^;]*/g, '$1');
+    if (!svg && n.matches && n.matches(SHRINK)) st = st.replace(/(^|;)\s*width:[^;]*/g, '$1');
     c.setAttribute('style', st);
     /* A <col span=n>: its computed width is the TOTAL of its n columns, and inlined it would be given to each of them - n times
        too wide, the table run off the page (the zone table, 2026-10-04). Each column gets its share. */
