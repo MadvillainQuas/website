@@ -167,5 +167,34 @@ ok("a database without archived_at: the game is still read (14 Oct 2026: every l
 ok("...and the column is asked for once, not on every game", sum("archived_at" in q for q in db.asked) == 1 and rows2, db.asked)
 R._HAS_ARCHIVED["v"] = None
 
+print("\n-- a source that archives each game the moment it is final (NCAA)")
+
+
+class GameRow:
+    def __init__(self, row):
+        self.row, self.asked = row, []
+        self.url, self.key = "https://db.example", "k"
+
+    def select(self, table, q):
+        self.asked.append((table, q))
+        return [dict(self.row)] if table == "games" else []
+
+
+moved = []
+real_archive = A.archive_game
+A.archive_game = lambda sb, store, game, dry=False, log=print: (moved.append(game["id"]), "archived")[1]
+R._HAS_ARCHIVED["v"] = True
+ok("a final game, not yet archived: archived at once", R.archive_on_final(GameRow({"id": "g9", "status": "final", "archived_at": None}), "g9")
+   == "archived" and moved == ["g9"], moved)
+ok("...one already archived is left alone", R.archive_on_final(GameRow({"id": "g8", "status": "final", "archived_at": "2026-10-14"}), "g8")
+   is None and moved == ["g9"])
+ok("...and one that did not reach final (a finalise that failed) too", R.archive_on_final(GameRow({"id": "g7", "status": "live", "archived_at": None}), "g7")
+   is None and moved == ["g9"])
+R._HAS_ARCHIVED["v"] = False
+db = GameRow({"id": "g6", "status": "final", "archived_at": None})
+ok("a database without 0262: nothing is tried, not even a read", R.archive_on_final(db, "g6") is None and db.asked == [])
+R._HAS_ARCHIVED["v"] = None
+A.archive_game = real_archive
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

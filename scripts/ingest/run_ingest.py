@@ -1834,6 +1834,29 @@ def write_event_log(sb: Supabase, src: dict, b: GameBundle, game_id: str, pids: 
                 pass
         else:
             print("    = finalised")
+            if (src.get("adapter_config") or {}).get("archive_on_final"):
+                archive_on_final(sb, game_id)
+
+
+def archive_on_final(sb: Supabase, game_id: str) -> str | None:
+    """A FINISHED GAME INTO THE ARCHIVE TIER AT ONCE (adapter_config.archive_on_final: NCAA, 2026-10-14). Its lines,
+    stints and standings stay rows; its play-by-play rows go to its files (archive.py) the moment finalise-game has
+    built everything from them - so the database holds a league's play-by-play only while its games are being played,
+    and every finished one is rebuilt from its file in the reader's own session. A failure leaves an ordinary game.
+    Nothing is tried on a database without archived_at (0262 not pushed yet)."""
+    if _HAS_ARCHIVED["v"] is False:
+        return None
+    try:
+        import archive as AR                                    # here, not at the top: archive.py imports this module
+        g = sb.select("games", f"id=eq.{game_id}&select=id,status,finalised_at,archived_at,home_team_id,away_team_id,competition_id")
+        if not g or g[0].get("status") != "final" or g[0].get("archived_at"):
+            return None
+        what = AR.archive_game(sb, AR.Store(sb.url, sb.key), g[0], log=print)
+        print(f"    = archived on final ({what})")
+        return what
+    except Exception as exc:
+        print(f"    (archive on final: {exc})")
+        return None
 
 
 # ─────────────────────────────────────────────────────────── main loop

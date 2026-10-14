@@ -340,6 +340,20 @@ console.log('\nseason.js version(): which code summed a season, in every name it
 }
 
 {
+  /* AN ARCHIVED GAME'S FILE IS ITS LOG (0262, 2026-10-14): moving its rows into files marks event_files stale, and the
+     rebuild used to upload `rows: []` over the real log. No rows: the file is left, the game counted current. */
+  console.log('\nevent files and archived games');
+  const { readFileSync } = await import('node:fs');
+  const fnSrc = readFileSync(path.join(ROOT, 'supabase', 'functions', 'snapshots', 'index.ts'), 'utf8');
+  const ev = fnSrc.slice(fnSrc.indexOf('async function buildEventFiles('), fnSrc.indexOf('/* EACH FINISHED GAME\'S MINUTES'));
+  const skip = ev.indexOf('if (!rows.length) {'), up = ev.indexOf("upload('events/'");
+  ok('a game whose table holds no rows is never written over with an empty log', skip > 0 && up > skip
+     && /if \(!rows\.length\) \{[\s\S]*?continue;\s*\}/.test(ev.slice(skip, up)), skip + '/' + up);
+  ok('...and it is counted current (its event_files row takes the finalisation) so it is not asked again',
+     /from\('event_files'\)\.upsert\(\s*\{ game_id: id, finalised_at: finalisedAt, built_at/.test(ev.slice(skip, up)));
+}
+
+{
   /* 0216: EACH FINISHED GAME'S POSITIONS, AS A FILE. The function writes pos/<game>.json with the page's own depth.js
      (its generated copy) for the games it writes event logs for, indexes them in pos_files, rewrites one when its game
      is finalised again, and is not done while any is left; the index is the service role's alone. */

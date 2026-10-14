@@ -231,6 +231,16 @@ async function buildEventFiles(admin: any, D: any, finals: any[], started: numbe
       const id = todo[next++];
       const finalisedAt = want.get(id);
       const rows = await D.gameLog(id);
+      if (!rows.length) {
+        /* NO ROWS IS NOT AN EMPTY LOG. An archived game (0262, and every NCAA game the moment it is final) has had
+           its rows moved into its files - and moving them marks event_files stale (0156's trigger on the delete), so
+           this used to rebuild the game's file from the empty table and upload `rows: []` over the real log. The file
+           that is there is the log: it is left alone, and the game counted current so it is not asked again. */
+        const { error: keepErr } = await admin.from('event_files').upsert(
+          { game_id: id, finalised_at: finalisedAt, built_at: new Date().toISOString() }, { onConflict: 'game_id' });
+        if (keepErr) throw new Error('event_files ' + id + ': ' + keepErr.message);
+        continue;
+      }
       const { error } = await admin.storage.from(BUCKET).upload('events/' + id + '.json',
         JSON.stringify({ v: 1, game: id, finalised_at: finalisedAt, rows }),
         { contentType: 'application/json', upsert: true, cacheControl: '300' });
