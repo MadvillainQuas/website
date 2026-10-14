@@ -182,10 +182,14 @@ async function openClub(club) {
   A.loading('Reading ' + L.name + '…');
   A.lg = await site().league(L);
   await loadMine();
-  /* a season not started yet takes in every club of the league (a club missing from it before is added) */
-  if (club.status === 'active' && club.state && !club.state.fixtures.some(f => f.res != null)) {
+  /* A SEASON NOT STARTED YET takes in every club of the league (a club missing from it before is added) - only before its
+     first tip-off, and from its own start date: once a round is due it is played, never drawn away (season.redrawable) */
+  if (club.status === 'active' && club.state && Mgr.season.redrawable(club.state, Date.now())) {
     const want = ['me'].concat(A.realClubs());
-    if (want.join() !== club.state.clubs.join()) { club.state = Mgr.season.create({ clubs: want, start: new Date().toISOString().slice(0, 10), perWeek: club.per_week || 2, meetings: 3 }); try { await site().save(club.id, { state: club.state, summary: Mgr.season.summary(club.state, 0) }); } catch (_) { /* again next visit */ } }
+    if (want.join() !== club.state.clubs.join()) {
+      club.state = Mgr.season.create({ clubs: want, start: club.state.start || new Date().toISOString().slice(0, 10), perWeek: club.per_week || 2, meetings: 3 });
+      try { await site().save(club.id, { state: club.state, summary: Mgr.season.summary(club.state, 0) }); } catch (_) { /* again next visit */ }
+    }
   }
   if (club.status === 'active' && club.state) await catchUp();
 }
@@ -295,7 +299,14 @@ async function catchUp() {
     const teams = new Map();
     const ctx = { X: X(), me: 0, team: i => { if (!teams.has(i)) teams.set(i, A.teamObj(i, form)); return teams.get(i); } };
     const played = SE.play(S, r, ctx);
-    played.forEach(({ f, g }) => { if (f.h === 0 || f.a === 0) A.news.push(newsOf(r, f, g, form)); });
+    played.forEach(({ f, g, error }) => {
+      if (g && (f.h === 0 || f.a === 0)) A.news.push(newsOf(r, f, g, form));
+      if (error && root.console) console.warn('Manager: round ' + r + ', ' + f.h + ' v ' + f.a + ' not played:', error);
+    });
+    /* the reader's own game left unplayed (the squad's men could not all be read just now: a league file that did not
+       load): said so, and played on the next visit - never silently missing */
+    const mine = S.fixtures.find(f => f.r === r && (f.h === 0 || f.a === 0));
+    if (mine && mine.res == null) A.toast('Your round ' + r + ' game could not be played just now (your squad could not be read in full). It will be played on your next visit.', true);
     await new Promise(res => setTimeout(res, 0));     // a breath for the page between rounds
   }
   await saveSeason();

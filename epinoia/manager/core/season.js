@@ -62,6 +62,14 @@ function create(o) {
 }
 /* a round is due from TIP_UTC on its day */
 function dueAt(dateStr) { const d = dayOf(dateStr); d.setUTCHours(TIP_UTC); return d; }
+/* MAY THE SEASON STILL BE DRAWN AGAIN (a club of the real league added or dropped)? Only before its first tip-off: no
+   result yet AND no round due. It was redrawn whenever nothing had been played, from the day it was redrawn, so a
+   round whose tip-off had passed but which this browser had not played yet (the page opened after it) vanished from
+   the season (reported 2026-10-14: a Saturday game skipped). Redrawn, it keeps its own start date. */
+function redrawable(S, now) {
+  if (!S || !Array.isArray(S.fixtures) || S.fixtures.some(f => f.res != null)) return false;
+  return due(S, now).length === 0;
+}
 function due(S, now) {
   const t = (now ? new Date(now) : new Date()).getTime(), out = new Set();
   S.fixtures.forEach(f => { if (f.res == null && dueAt(f.d).getTime() <= t) out.add(f.r); });
@@ -86,10 +94,16 @@ function play(S, r, ctx) {
   const E = ENG(), out = [];
   roundOf(S, r).forEach(f => {
     if (f.res != null) return;
-    const H = ctx.team(f.h), A = ctx.team(f.a);
-    if (!H || !A || !H.segs || !H.segs.length || !A.segs || !A.segs.length) { f.res = null; return; }
-    const seed = SCH().hashOf(S.seed + ':' + r + ':' + f.h + ':' + f.a);
-    const g = E.play(H, A, Object.assign({}, ctx.X, { seed, home: 1 }));
+    /* EVERY GAME OF A ROUND ON ITS OWN (2026-10-14: "make sure all games on the fixture list today can be played"): a club
+       that cannot be put together, or a game the engine stops on, leaves that one game to the next visit and never the
+       round's others */
+    let H, A, g;
+    try {
+      H = ctx.team(f.h); A = ctx.team(f.a);
+      if (!H || !A || !H.segs || !H.segs.length || !A.segs || !A.segs.length) { f.res = null; out.push({ f, error: 'no team' }); return; }
+      const seed = SCH().hashOf(S.seed + ':' + r + ':' + f.h + ':' + f.a);
+      g = E.play(H, A, Object.assign({}, ctx.X, { seed, home: 1 }));
+    } catch (e) { f.res = null; out.push({ f, error: String(e && e.message || e) }); return; }
     f.res = [g.pts[0], g.pts[1], g.ot || 0];
     /* every man's line into his season; the clubs' totals; the user's games kept whole */
     [0, 1].forEach(s => {
@@ -174,5 +188,5 @@ function summary(S, me) {
     : { w: 0, l: 0, pf: 0, pa: 0, pos: null, gp: 0, of: S.clubs.length, rounds: S.fixtures.reduce((a, f) => Math.max(a, f.r), 0), played: S.played };
 }
 
-return { create, due, dueAt, play, table, next, results, lineOf, leaders, summary, matchDays, roundOf, encodeEvents, decodeEvents, LINE, TIP_UTC, DAYS, V };
+return { create, due, dueAt, redrawable, play, table, next, results, lineOf, leaders, summary, matchDays, roundOf, encodeEvents, decodeEvents, LINE, TIP_UTC, DAYS, V };
 }));

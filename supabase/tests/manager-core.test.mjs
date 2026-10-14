@@ -230,6 +230,10 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   ok('season: one a week is Saturdays', S1.fixtures.every(f => new Date(f.d + 'T00:00:00Z').getUTCDay() === 6));
   const first = S.fixtures[0].d;
   ok('season: nothing is due before the first tip-off, the first round after it', SE.due(S, first + 'T18:59:00Z').length === 0 && SE.due(S, first + 'T19:00:00Z')[0] === 1);
+  /* a Saturday game skipped (2026-10-14): the season was drawn again from the day the page opened whenever nothing had
+     been played, even after the first round's tip-off had passed - so that round was gone */
+  ok('season: it may be drawn again (a club of the league added) only before its first tip-off',
+    SE.redrawable(S, first + 'T18:59:00Z') && !SE.redrawable(S, first + 'T19:00:00Z') && !SE.redrawable(S, dayAfter(first, 3) + 'T12:00:00Z'));
   const mine = { id: 'me', segs: E.rotation([{ ids: teams[9].men.slice(0, 5).map(r => r.id), min: 28 }, { ids: teams[9].men.slice(5, 10).map(r => r.id), min: 12 }], 40), cards };
   const objs = clubs.map((c, i) => (i === 0 ? mine : teamObj(teams[i - 1])));
   const ctx = { X: { L, ref, G: 40 }, team: i => objs[i], me: 0 };
@@ -244,6 +248,17 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   SE.due(again, now).forEach(r => SE.play(again, r, ctx));
   ok('season: the same league played again gives the same results', JSON.stringify(again.fixtures) === JSON.stringify(S.fixtures));
   ok('season: a state small enough to keep', JSON.stringify(S).length < 300000, JSON.stringify(S).length);
+  /* one club that cannot be put together (or a game the engine stops on) leaves that game alone - the round's others are
+     played (2026-10-14: "make sure all games on the fixture list today can be played") */
+  {
+    const S2 = SE.create({ clubs, start: '2026-10-07', perWeek: 2, meetings: 3, seed: 5 });
+    const r0 = 1, broken = S2.fixtures.find(f => f.r === r0).h;
+    const ctx2 = { X: { L, ref, G: 40 }, me: 0, team: i => { if (i === broken) throw new Error('no squad'); return objs[i]; } };
+    const res = SE.play(S2, r0, ctx2), games = S2.fixtures.filter(f => f.r === r0);
+    ok('season: a club that cannot be put together leaves only its own game unplayed, with the reason',
+      games.filter(f => f.h === broken || f.a === broken).every(f => f.res == null) && games.filter(f => f.h !== broken && f.a !== broken).every(f => Array.isArray(f.res))
+        && res.some(x => x.error === 'no squad'), res.map(x => x.error || 'ok'));
+  }
   /* the play-by-play kept for the user's games: decoded, it replays to the score and to every man's points */
   const r1 = Object.keys(S.pbp)[0], ev = SE.decodeEvents(S, S.pbp[r1].e), f1 = S.fixtures.find(f => f.r === +r1 && (f.h === 0 || f.a === 0));
   const sc = [0, 0], pts = new Map();
