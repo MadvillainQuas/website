@@ -463,7 +463,7 @@ class NcaaAdapter(FibaLiveStatsAdapter):
 
     # ------------------------------------------------------------------ the scoreboard line alone
     def scoreline(self, external_id: str, config: dict) -> Optional[dict]:
-        """A game AS THE SCOREBOARD HAS IT, for a league followed on demand (0263): {status, period, clock_ms, running,
+        """A game AS THE SCOREBOARD HAS IT, for a league followed on demand (0264): {status, period, clock_ms, running,
         home, away}, from the one scoreboard read that covers every game of the division and day - no request of its
         own. Enough for every card and list; the full read (fetch) is kept for a game somebody is watching and for the
         final whistle. None when the game is on no board read yet."""

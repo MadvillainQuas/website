@@ -491,3 +491,34 @@ D2 rows use `"division": 2` and `/d2`. `repo_feed: false` keeps the payloads out
    Then decide the shards and the floors for the full season.
 6. **Widen.** All of D2 men, then D2 women, then D3. Raise `NCAA_SHARDS` and compute as the table in §2
    says.
+
+---
+
+## 8. D2 is followed live ON DEMAND (14 Oct 2026)
+
+Louie's decision: NCAA Division II, men and women, from the 2026-27 season (a season can be backfilled; 2025-26 has
+not been). Every game's full play-by-play is wanted - for its own page and for every player's and club's numbers -
+but nobody watches 280 games at once. So the live write load of §2 is not paid:
+
+| a D2 game that is | what is read | what is written |
+|---|---|---|
+| live, nobody watching | its line on the one scoreboard read that covers all of them (`ncaa.py scoreline`) | `game_state` (score, period, clock) when it changes, and `status = live` once |
+| live, somebody watching (`watch_game`, every 30 s from the game page) | in full, every pass | everything, as any league's live game: the play-by-play rows and the live stream |
+| at the final whistle (every game) | in full, once | everything; finalise-game; then **archived at once** (`archive_on_final`): its rows become its files |
+
+- **Migration 0264** (`supabase/tests/live-on-demand.test.mjs` on PGlite): `game_watch`, `watch_game(game)`,
+  `live_on_demand(game)`, and `live_frames_wanted` quiet for an unwatched on-demand game (no frames, no `status`
+  announcements to every HOME page; HOME reads the scores on its own poll).
+- **The lane** (`run_ingest.py` `scoreboard_only`, `on_demand`): which games are watched is one read a pass. A
+  database without 0264 reads every game as watched: everything in full, as before. `lane_pool_test.py` runs the
+  real loop: watched in full, unwatched at scoreboard level until its whistle, then in full.
+- **The rows**: a D2 game's play-by-play is a database row only while somebody watches it, and for the moment its
+  final is written. The season is files (the archive tier, 0262), rebuilt in the reader's session when opened.
+- **HOME**: one "NCAA D2" block, like a country (`config.js EPINOIA_LEAGUE_GROUPS`), Men's and Women's inside, the
+  conferences inside those like leagues, the games inside a conference only when it is opened.
+- **Load**: one lane (`NCAA_SHARDS = 1`) carries it - the scoreboard every 20 s, the watched games, and ~280 finals
+  spread over an evening (each two reads, one write, finalise, archive).
+
+**Before the first game (about 1 Nov):** `db push` (0261, 0262, 0264); deploy `snapshots`, `finalise-game` and
+`feeds`; set `NCAA_SHARDS = 1` and uncomment the schedule in `ingest-ncaa.yml`; decide the compute size (§5); and
+§4 item 4 on ncaa.com's terms still stands.

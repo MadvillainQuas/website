@@ -1,4 +1,4 @@
-// 0263 - a league followed live on demand (NCAA D2) on a REAL Postgres (PGlite), no network.
+// 0264 - a league followed live on demand (NCAA D2) on a REAL Postgres (PGlite), no network.
 //
 //   PGLITE_DIR=/path/to/node_modules/@electric-sql/pglite node supabase/tests/live-on-demand.test.mjs
 //
@@ -35,8 +35,8 @@ await db.exec(`
   create table public.external_games (id uuid primary key default gen_random_uuid(), game_id uuid references public.games);
   create function public.memberships_enabled() returns boolean language sql as $$ select false $$;
 `);
-await db.exec(mig('0263_live_on_demand.sql'));
-ok('0263 applies on a real Postgres', true);
+await db.exec(mig('0264_live_on_demand.sql'));
+ok('0264 applies on a real Postgres', true);
 
 const q = async (sql, params) => (await db.query(sql, params)).rows;
 const one = async (sql, params) => (await q(sql, params))[0];

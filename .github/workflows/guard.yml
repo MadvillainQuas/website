@@ -321,7 +321,7 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/video-clubs.test.mjs
 
-      - name: Live on demand - NCAA D2's games followed in full only while watched (0263)
+      - name: Live on demand - NCAA D2's games followed in full only while watched (0264)
         # on PGlite: watch_game marks a live (or due) game of an on-demand league watched and nothing else, a renewal within
         # 30 s writes nothing; live_frames_wanted is quiet for an unwatched on-demand game and unchanged for every other league
         run: |

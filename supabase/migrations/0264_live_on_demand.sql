@@ -1,4 +1,4 @@
--- 0263 LIVE ON DEMAND (2026-10-14)
+-- 0264 LIVE ON DEMAND (2026-10-14)
 --
 -- A league with hundreds of games a night (NCAA Division II: ~140 men's and ~140 women's on a Saturday) cannot have
 -- every game's play-by-play written as it happens: that is the database's whole write budget, and nobody is watching
@@ -17,7 +17,7 @@
 -- for an on-demand league's unwatched games, so a scoreboard pass over 300 games is not 300 frames and 300 "status"
 -- announcements to every open HOME page (which reads the scores on its own 15-second poll).
 --
--- Additive: a table, two functions, and live_frames_wanted re-stated with only the lines tagged 0263 added.
+-- Additive: a table, two functions, and live_frames_wanted re-stated with only the lines tagged 0264 added.
 
 create table if not exists public.game_watch (
   game_id uuid primary key references public.games (id) on delete cascade,
@@ -25,7 +25,7 @@ create table if not exists public.game_watch (
 );
 comment on table public.game_watch is
   'Live games somebody has open, for leagues followed on demand (leagues.rules->>''live'' = ''on_demand''): '
-  'kept by watch_game from the game page, read by the ingest (0263).';
+  'kept by watch_game from the game page, read by the ingest (0264).';
 alter table public.game_watch enable row level security;
 revoke all on table public.game_watch from public, anon, authenticated;
 grant all on table public.game_watch to service_role;
@@ -79,8 +79,8 @@ returns boolean language sql stable security definer set search_path = public as
               and l.visibility = 'public'
               and (l.access_mode = 'open' or not public.memberships_enabled())
               and (g.status = 'final' or (g.status = 'live' and coalesce(l.public_live, false)))
-              and (coalesce(l.rules->>'live', '') <> 'on_demand'                                              -- 0263
-                   or exists (select 1 from public.game_watch w where w.game_id = g.id and w.until > now())));  -- 0263
+              and (coalesce(l.rules->>'live', '') <> 'on_demand'                                              -- 0264
+                   or exists (select 1 from public.game_watch w where w.game_id = g.id and w.until > now())));  -- 0264
 $$;
 revoke all on function public.live_frames_wanted(uuid) from public, anon, authenticated;
 alter function public.live_frames_wanted(uuid) owner to postgres;

@@ -190,7 +190,7 @@ ok("every CDN game taken from the observer and written once", sorted(w) == sorte
 ok("never two threads inside the observer at once", not FakeObserver.overlap)
 ok("...and it kept looking at the CDN while the writes ran", FakeObserver.polls >= 2, FakeObserver.polls)
 
-print("\n-- live on demand (0263, NCAA D2): the full game only while watched, and at the final whistle")
+print("\n-- live on demand (0264, NCAA D2): the full game only while watched, and at the final whistle")
 
 
 class OnDemand(FakeAdapter):

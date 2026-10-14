@@ -3062,7 +3062,7 @@ function render() {
   const d = window.derive();
   renderHead(d);
   renderBody(d);
-  if (S.onDemand && (S.events || []).length) odNote(false);       // the full game has arrived (0263)
+  if (S.onDemand && (S.events || []).length) odNote(false);       // the full game has arrived (0264)
 }
 
 function setStatus(s) {
@@ -3071,11 +3071,11 @@ function setStatus(s) {
   txt($('#statusText'), s);
 }
 
-/* LIVE ON DEMAND (0263). A league with hundreds of games a night (NCAA D2) is followed in full only while somebody
+/* LIVE ON DEMAND (0264). A league with hundreds of games a night (NCAA D2) is followed in full only while somebody
    watches: every game's score and clock all the time, a game's play-by-play from the moment a reader opens it. This
    page is that reader. While it is open on a live game it says so every 30 s (watch_game), the ingest reads the game
    in full from its next pass, and the plays arrive through the live stream exactly as for any other league. Any other
-   league answers false and nothing more is asked; so does a database without 0263. */
+   league answers false and nothing more is asked; so does a database without 0264. */
 let watchTimer = null;
 async function keepWatched() {
   if (document.visibilityState !== 'visible' || statusVal === 'final') return;
