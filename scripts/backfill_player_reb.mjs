@@ -31,6 +31,7 @@ import { join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { mapEvents } from './backfill_situations.mjs';
+import { withArchive } from './lib/eventlog.mjs';          // an archived game's log (0262)
 
 const require = createRequire(import.meta.url);
 const E = require('../epinoia/engine.js');
@@ -121,7 +122,7 @@ async function main() {
       const playerRows = await get('player_game_stats?game_id=eq.' + g.id + '&select=player_id,team_idx,stats&order=player_id');
       const teamRows = await get('team_game_stats?game_id=eq.' + g.id + '&select=team_idx,stats&order=team_idx');
       const events = playerRows.length
-        ? mapEvents(await get('game_events?game_id=eq.' + g.id + '&select=seq,t,team,pid,period,clock,payload&order=seq')) : [];
+        ? mapEvents(await withArchive(URL_, g.id, get('game_events?game_id=eq.' + g.id + '&select=seq,t,team,pid,period,clock,payload&order=seq'))) : [];
       const plan = planGame({ game: g, events, playerRows, teamRows, force });
       if (plan.skip) {
         skipped[plan.skip] = (skipped[plan.skip] || 0) + 1;

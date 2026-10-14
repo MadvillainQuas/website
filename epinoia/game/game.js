@@ -125,10 +125,19 @@ function rowToEvent(r) {
 async function fileLog() {
   try {
     const r = await fetch(`${CFG.supabaseUrl}/storage/v1/object/public/snapshots/events/${encodeURIComponent(gameId)}.json`);
-    if (!r.ok) return null;
-    const j = await r.json();
-    return j && j.game === gameId && Array.isArray(j.rows) ? j.rows : null;
-  } catch (_) { return null; }
+    if (r.ok) {
+      const j = await r.json();
+      if (j && j.game === gameId && Array.isArray(j.rows)) return j.rows;
+    }
+  } catch (_) { /* the archive, below */ }
+  /* AN ARCHIVED GAME (0262): its rows are no longer in the database, and its whole game is in feed/archive -
+     rebuilt here, in this reader's session (data.js archive) */
+  const D = window.EpinoiaData;
+  if (D && D.archive) {
+    const a = await D.archive(gameId);
+    if (a) return D.archiveLog(a);
+  }
+  return null;
 }
 
 /* Page through the log. PostgREST caps a response and a game runs to ~800

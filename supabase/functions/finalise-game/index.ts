@@ -311,6 +311,12 @@ Deno.serve(async (req) => {
     admin.from('game_state').select('*').eq('game_id', gameId).maybeSingle()
   ]);
   if (log.error) return json({ error: 'the event log could not be read', detail: log.error }, 500);
+  /* AN ARCHIVED GAME (0262) HAS NO ROWS TO FINALISE FROM: its play-by-play is in feed/archive, and finalising it now
+     would rebuild every line from nothing. The database's own guard refuses the lock below as well; this says why. */
+  if (g && g.archived_at) {
+    return json({ error: 'this game is archived', detail: 'its play-by-play is in feed/archive/' + gameId +
+      '.json.gz - restore it (scripts/ingest/archive.py --restore) before finalising it again' }, 409);
+  }
   const rows = log.rows;
 
   /* THE SAME GAME, OR NOTHING IS PUBLISHED. Asked only when the scorer says what it holds (the ingest worker

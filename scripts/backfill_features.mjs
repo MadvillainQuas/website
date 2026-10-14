@@ -29,6 +29,7 @@ import { resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { mapEvents } from './backfill_situations.mjs';
+import { withArchive } from './lib/eventlog.mjs';          // an archived game's log (0262)
 
 const require = createRequire(import.meta.url);
 const E = require('../epinoia/engine.js');
@@ -123,7 +124,7 @@ async function main() {
     for (;;) {
       const page = await get('game_events?game_id=eq.' + q(gameId) + '&select=seq,t,team,pid,period,clock,payload&order=seq&seq=gt.' + after + '&limit=1000');
       out.push(...page);
-      if (page.length < 1000) return mapEvents(out);
+      if (page.length < 1000) return mapEvents(await withArchive(URL_, gameId, out));
       after = page[page.length - 1].seq;
     }
   }

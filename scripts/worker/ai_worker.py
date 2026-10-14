@@ -437,6 +437,9 @@ def pbp_for_game(db, game_id):
         return None
     r = requests.get(ref, timeout=60)
     r.raise_for_status()
+    if ref.endswith('.gz'):                 # an archived game's copy, gzipped beside itself (archive.py, 0262)
+        import gzip
+        return json.loads(gzip.decompress(r.content))
     return r.json()
 
 
@@ -559,6 +562,15 @@ def wall_hints(db, game_id, log_=None, context=None):
         rows = db.select('game_events', 'game_id=eq.%s&select=seq,t,period,clock,payload&order=seq' % game_id)
     except Exception:
         return []
+    if not rows:
+        # AN ARCHIVED GAME (0262) keeps its log as a file, not rows: the one every page reads
+        try:
+            r = requests.get('%s/storage/v1/object/public/snapshots/events/%s.json' % (db.url, game_id), timeout=60)
+            j = r.json() if r.status_code == 200 else None
+            if j and j.get('game') == game_id:
+                rows = sorted(j.get('rows') or [], key=lambda e: e.get('seq') or 0)
+        except Exception:
+            rows = []
 
     tip_wall = _num(v.get('tip_wall'))
     if tip_wall is None:

@@ -975,15 +975,50 @@ async function gameLog(id) {
   }
 }
 
-/* the file's rows, or null for anything but a file that names this game */
+/* the file's rows, or null for anything but a file that names this game. AN ARCHIVED GAME (0262) has the same file;
+   when it does not (a file removed, a reader's network refusing it) its archive answers instead - the same rows, from
+   the whole game held gzipped at feed/archive/<id>.json.gz */
 async function fileLog(id) {
   try {
     const c = CFG();
     const r = await fetch(`${c.supabaseUrl}/storage/v1/object/public/snapshots/events/${id}.json`);
-    if (!r.ok) return null;
-    const j = await r.json();
-    return j && j.game === id && Array.isArray(j.rows) ? j.rows : null;
-  } catch (_) { return null; }
+    if (r.ok) {
+      const j = await r.json();
+      if (j && j.game === id && Array.isArray(j.rows)) return j.rows;
+    }
+  } catch (_) { /* the archive, below */ }
+  const a = await archive(id);
+  return a ? archiveLog(a) : null;
+}
+
+/* ---- THE ARCHIVE TIER (0262, scripts/ingest/archive.py) ----
+   A season that is over keeps its lines, stints and standings in the database and its play-by-play as files: the
+   log above, and the whole game gzipped - every event row as stored, and every row the box score page reads for it
+   (`page`, by table) with the clubs, players and competition they name (`meta`). archive(id) fetches and unpacks
+   one game once per page session (the browser's own gzip, DecompressionStream; in Deno and Node alike), so the page
+   rebuilds the game in the reader's session and nothing is written anywhere. null for a game with no archive. */
+const ARCHIVES = new Map();
+function archive(id) {
+  if (!id) return Promise.resolve(null);
+  if (!ARCHIVES.has(id)) {
+    ARCHIVES.set(id, (async () => {
+      try {
+        if (typeof DecompressionStream === 'undefined' || typeof fetch !== 'function') return null;
+        const c = CFG();
+        const r = await fetch(`${c.supabaseUrl}/storage/v1/object/public/feed/archive/${id}.json.gz`);
+        if (!r.ok || !r.body) return null;
+        const text = await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).text();
+        const j = JSON.parse(text);
+        return j && j.game === id && Array.isArray(j.rows) ? j : null;
+      } catch (_) { return null; }
+    })());
+  }
+  return ARCHIVES.get(id);
+}
+/* an archive's events as the log reads them (gameLog's columns, in seq order) */
+function archiveLog(a) {
+  return (a.rows || []).slice().sort((x, y) => x.seq - y.seq).map(r => ({ game_id: r.game_id, seq: r.seq, t: r.t, team: r.team,
+    pid: r.pid, period: r.period, clock: r.clock, payload: r.payload, created_at: r.created_at }));
 }
 
 async function events(gameIds, opts) {
@@ -1136,7 +1171,7 @@ function pickSeason(seasons, ref) {
          seasons[0];
 }
 
-return { get, all, season, teamGames, TEAM_LINE_SELECT, statsForGames, stints, events, gameLog, posFiles, playerMeta, teamMeta,
+return { get, all, season, teamGames, TEAM_LINE_SELECT, statsForGames, stints, events, gameLog, archive, archiveLog, posFiles, playerMeta, teamMeta,
          releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken, snapFile, attachSit, sitLines,
          pack, unpack, packMap, unpackMap, packSeason, unpackSeason, BIG_GAMES, gamesIn, seasonUnits, latestSeason: bigSeason };
 }));

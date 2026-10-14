@@ -1105,7 +1105,7 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                                 **({"venue": venue} if venue else {})}, "id")
         game_id = g[0]["id"]
     else:
-        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,competition_id,venue,home_score,away_score")
+        cur = sb.select("games", f"id=eq.{game_id}&select=status,tipoff_at,competition_id,venue,home_score,away_score,archived_at")
         extra = {"tipoff_at": b.tipoff_at} if (b.tipoff_at and cur and not same_instant(cur[0].get("tipoff_at"), b.tipoff_at)) else {}
         if venue and cur and cur[0].get("venue") != venue:
             extra["venue"] = venue
@@ -1141,9 +1141,15 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                 # events), so a corrected translation - the players re-resolved by identity.py after the slot-cache
                 # fault - could never replace the wrong one, and finalise-game refuses a game that is already final.
                 # Reopened, the log is rewritten from the first play that differs and finalise-game rebuilds the box.
-                sb.patch("games", f"id=eq.{game_id}", {"status": "live", **scores, **extra})
+                # AN ARCHIVED GAME (0262) has no rows because they are in its archive file, and is written in full again
+                # from this payload: archived_at is cleared in the same write, which is the one change 0262's guard lets
+                # through, and finalise-game then rebuilds it from the new log as for any reopened game
+                sb.patch("games", f"id=eq.{game_id}", {"status": "live", **scores, **extra,
+                                                       **({"archived_at": None} if cur[0].get("archived_at") else {})})
                 if n_ev:
                     print("    = reopened for the refresh")
+                elif cur[0].get("archived_at"):
+                    print("    = an archived game, written in full again from its feed")
             elif extra:
                 sb.patch("games", f"id=eq.{game_id}", extra)
         elif cur and cur[0].get("status") == "final":
@@ -1785,8 +1791,14 @@ def gate_json(url: str) -> dict | None:
     """An archived raw payload, for rotationgate.judge (None when it cannot be read)."""
     try:
         r = requests.get(url, timeout=60)
-        return r.json() if r.status_code == 200 else None
-    except (requests.RequestException, ValueError):
+        if r.status_code != 200:
+            return None
+        # an archived game's raw copy is gzipped beside itself (archive.py, 0262)
+        if url.endswith(".gz"):
+            import gzip
+            return json.loads(gzip.decompress(r.content))
+        return r.json()
+    except (requests.RequestException, ValueError, OSError):
         return None
 
 
@@ -3488,6 +3500,18 @@ def main() -> int:
                 error = (f"{bad} of {tot['seen']} games could not be read (the first: {first[:160]}); "
                          "the games that were read are in - ask for the season again to retry the rest")
         backfill_finish(queue, job, state, len(sources), tot["seen"], tot["written"], error)
+        # A SEASON THAT IS OVER GOES STRAIGHT INTO THE ARCHIVE TIER (0262, archive.py): its lines, stints and tables stay,
+        # its play-by-play rows become files - which every page already reads - so history costs the database a fifth
+        # of what it did. Only what was read cleanly, and never the season being played.
+        if sb and not args.dry_run and tot["written"] and not backfill_is_current(job["season"]):
+            try:
+                import archive as AR
+                todo = AR.due_games(sb, job.get("league_slug"), job["season"], 0)
+                if todo:
+                    print(f"archiving {len(todo)} finished game(s) of {job['season']} (the archive tier)")
+                    print(f"archive: {AR.run(sb, AR.Store(sb.url, sb.key), todo)}")
+            except Exception as exc:
+                print(f"(archive skipped: {str(exc)[:200]})")
         return exit_code            # an old season has no live games - never chain the live lane
     # discovery is done - if a game is live or tips soon, ask the workflow to start the live lane
     if sb and not args.dry_run and not args.ids and not args.catch_up:

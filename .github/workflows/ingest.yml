@@ -213,6 +213,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run ingest.yml --ref "$GITHUB_REF_NAME" -f live=true || echo "dispatch failed (a pass is probably already queued)"
+      # THE ARCHIVE TIER (0262, scripts/ingest/archive.py): each night the finished games of every season that is over -
+      # at the August turn the season just ended, a calendar league's last year in January - keep their lines, stints
+      # and tables and move their play-by-play rows into files the pages already read. A few hundred a night; a game
+      # the archive cannot read back exactly is left as it was. Before 0262 is applied it says so and does nothing.
+      - name: Archive the seasons that are over (nightly)
+        if: ${{ github.event.schedule == '15 3 * * *' }}
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          PYTHONPATH: ${{ github.workspace }}/scraper
+        run: python scripts/ingest/archive.py --due --limit 400 || echo "archive pass ended with an error (the games it could not do are left as they were)"
       - name: Shrink newly copied crests (nightly / on request)
         # snapshots copies each club's crest at the size its own site serves it (up to 3 MB); pages draw
         # them at 32-128 px and no longer use Storage's resizing (Pro includes 100 a month). This makes

@@ -39,6 +39,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { archivedLog } from '../scripts/lib/eventlog.mjs';       // an archived game's log (0262)
 
 const require = createRequire(import.meta.url);
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -654,6 +655,8 @@ export async function local(opts) {
           ev = [];
           let after = -1;
           for (;;) { const page = await api.rest(`game_events?game_id=eq.${g.id}&select=seq,t,team,pid,period,clock,payload&order=seq&seq=gt.${after}&limit=1000`); ev.push(...(page || [])); if (!page || page.length < 1000) break; after = page[page.length - 1].seq; }
+          /* an archived game (0262) has its log in files, not rows */
+          if (!ev.length) ev = (await archivedLog(url, g.id)) || [];
           fs.writeFileSync(cf, JSON.stringify(ev));
         }
         const p = planFeatures({ row: g, events: mapEvents(ev), meta: { league_id: lg.id, season_id: pick.id } });

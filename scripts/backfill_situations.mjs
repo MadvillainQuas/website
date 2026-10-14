@@ -46,6 +46,7 @@
    when this file is the one node was asked to execute.
    ============================================================================ */
 import { readFileSync } from 'node:fs';
+import { withArchive } from './lib/eventlog.mjs';          // an archived game's log (0262)
 import { join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -182,7 +183,7 @@ async function main() {
         const teamRows = await get('team_game_stats?game_id=eq.' + g.id + '&select=team_idx,stats&order=team_idx');
         /* the log is only worth reading for a game that has rows to write to */
         const events = (playerRows.length || teamRows.length)
-          ? mapEvents(await get('game_events?game_id=eq.' + g.id + '&select=seq,t,team,pid,period,clock,payload&order=seq'))
+          ? mapEvents(await withArchive(URL_, g.id, get('game_events?game_id=eq.' + g.id + '&select=seq,t,team,pid,period,clock,payload&order=seq')))
           : [];
         plan = planGame({ game: g, events, playerRows, teamRows, force });
       }

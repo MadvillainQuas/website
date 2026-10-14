@@ -20,6 +20,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
+import { withArchive } from './lib/eventlog.mjs';          // an archived game's log (0262)
 
 const require = createRequire(import.meta.url);
 const E = require('../epinoia/engine.js');
@@ -51,7 +52,7 @@ let touched = 0, players = 0;
 for (const g of games) {
   const snap = g.roster_snapshot;
   if (!snap || !snap.teams) { console.log('  skip ' + g.id.slice(0, 8) + ': no snapshot'); continue; }
-  const rows = await get('game_events?game_id=eq.' + g.id + '&select=seq,t,team,pid,period,clock,payload&order=seq');
+  const rows = await withArchive(URL_, g.id, get('game_events?game_id=eq.' + g.id + '&select=seq,t,team,pid,period,clock,payload&order=seq'));
   const events = rows.map(r => Object.assign({ t: r.t, id: r.seq, seq: r.seq, period: r.period, clock: r.clock }, r.payload || {},
                                              r.team != null ? { team: r.team } : {}, r.pid != null ? { pid: r.pid } : {}));
   const game = { teams: snap.teams, starters: g.starters || [[], []], events, tip_winner: g.tip_winner, arrow_init: g.arrow_init };

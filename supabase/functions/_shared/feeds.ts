@@ -71,6 +71,25 @@ export async function loadGame(admin: any, gameId: string, want: Record<string, 
     const { data } = await admin.from('game_events')
       .select('seq,t,team,pid,period,clock,payload').eq('game_id', gameId).order('seq');
     events = data || [];
+    /* AN ARCHIVED GAME (0262): no rows - the log is a file (snapshots/events), and the whole game is gzipped in
+       feed/archive; either answers with the same rows */
+    if (!events.length && g.status === 'final') {           // (asked by status, not archived_at: deployable before 0262)
+      const cols = (r: any) => ({ seq: r.seq, t: r.t, team: r.team, pid: r.pid, period: r.period, clock: r.clock, payload: r.payload });
+      try {
+        const { data: f } = await admin.storage.from('snapshots').download('events/' + gameId + '.json');
+        const j = f ? JSON.parse(await f.text()) : null;
+        if (j && j.game === gameId && Array.isArray(j.rows)) events = j.rows.map(cols);
+      } catch (_) { /* the archive, below */ }
+      if (!events.length) {
+        try {
+          const { data: z } = await admin.storage.from('feed').download('archive/' + gameId + '.json.gz');
+          if (z) {
+            const j = JSON.parse(await new Response(z.stream().pipeThrough(new DecompressionStream('gzip'))).text());
+            if (j && j.game === gameId && Array.isArray(j.rows)) events = j.rows.slice().sort((a: any, b: any) => a.seq - b.seq).map(cols);
+          }
+        } catch (_) { /* nothing archived */ }
+      }
+    }
   }
 
   let standings: any[] | null = null;

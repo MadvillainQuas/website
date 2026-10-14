@@ -53,9 +53,18 @@
   async function fileLog() {
     try {
       const r = await fetch(CFG.supabaseUrl + '/storage/v1/object/public/snapshots/events/' + encodeURIComponent(gameId) + '.json');
-      if (!r.ok) return null;
-      const j = await r.json();
-      return j && j.game === gameId && Array.isArray(j.rows) ? j.rows : null;
+      if (r.ok) {
+        const j = await r.json();
+        if (j && j.game === gameId && Array.isArray(j.rows)) return j.rows;
+      }
+    } catch (_) { /* the archive, below */ }
+    /* AN ARCHIVED GAME (0262): the whole game, gzipped, at feed/archive/<id>.json.gz (data.js archive) */
+    try {
+      if (typeof DecompressionStream === 'undefined') return null;
+      const r = await fetch(CFG.supabaseUrl + '/storage/v1/object/public/feed/archive/' + encodeURIComponent(gameId) + '.json.gz');
+      if (!r.ok || !r.body) return null;
+      const j = JSON.parse(await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).text());
+      return j && j.game === gameId && Array.isArray(j.rows) ? j.rows.slice().sort((a, b) => a.seq - b.seq) : null;
     } catch (_) { return null; }
   }
   async function readLog(after) {
