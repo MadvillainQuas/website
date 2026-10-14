@@ -1722,7 +1722,6 @@
       'other profiles': '他のプロフィール',
       'the same player in other competitions': '他の大会での同じ選手',
       'no club yet': 'まだクラブはありません',
-      'youth': 'ユース',
       'a youth team': 'ユースチーム',
       'the same club in other leagues and competitions': 'このクラブの他のリーグ・大会',
       'What decided it, in points': '勝敗を分けた要素（点数換算）',

@@ -294,6 +294,25 @@ body.nav-drawer-open{ overflow:hidden }
   padding:2px 3px 1px; margin-left:auto; color:var(--ink-3); border:1px solid color-mix(in srgb,var(--ink-3) 55%,transparent);
   opacity:.8; user-select:none }
 .ep-nav .lrow.on .wtag{ color:inherit; border-color:color-mix(in srgb,currentColor 55%,transparent) }
+/* A LEAGUE'S TIER under its name, and ALL / MEN / WOMEN above a country's leagues (nav.js drawLeagues, 2026-10-14).
+   The wide rail and the phone's sheet only: the phone's bar keeps its one-line rows and every league. */
+.ep-nav .ltx{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1 }
+.ep-nav .ltx > .marq{ flex:none }
+.ep-nav .ltier{ font-family:var(--f-micro); font-size:7px; line-height:1.2; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-3); white-space:nowrap }
+.ep-nav .lrow.on .ltier{ color:inherit; opacity:.75 }
+.ep-nav .ltabs{ display:flex; gap:4px; padding:0 8px 8px }
+.ep-nav .ltab{ flex:1 1 0; min-width:0; padding:6px 0 5px; border:1px solid color-mix(in oklch,var(--lume) 32%,transparent);
+  background:transparent; color:var(--ink-2); font-family:var(--f-micro); font-size:8px; line-height:1; letter-spacing:.1em;
+  text-transform:uppercase; cursor:pointer; transition:background .15s, color .15s, border-color .15s }
+.ep-nav .ltab:hover{ border-color:var(--lume); color:var(--ink) }
+.ep-nav .ltab[aria-pressed="true"]{ background:var(--lume); border-color:var(--lume); color:var(--on-accent,#04100b) }
+.ep-nav .ltab:focus-visible{ outline:2px solid var(--lume); outline-offset:2px }
+@media (min-width:821px){
+  .ep-nav .leagues[data-pick="men"] > .lrow[data-side="women"], .ep-nav .leagues[data-pick="women"] > .lrow[data-side="men"]{ display:none }
+}
+.ep-nav.drawer-open .leagues[data-pick="men"] > .lrow[data-side="women"], .ep-nav.drawer-open .leagues[data-pick="women"] > .lrow[data-side="men"]{ display:none }
+@media (max-width:820px){ .ep-nav:not(.drawer-open) .ltabs, .ep-nav:not(.drawer-open) .ltier{ display:none } }
 .ep-nav .lrow.on{ color:var(--lume); border-left-color:var(--lume);
   background:color-mix(in oklch,var(--lume) 11%,transparent) }
 

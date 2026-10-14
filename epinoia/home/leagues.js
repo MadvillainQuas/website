@@ -37,6 +37,9 @@
   const MINT = '#93f2bf';
   const LEAGUE_COLS = 'id,slug,name,country,colour_a,colour_b,colour_source,logo_path,access_mode,access_fixtures_public';
   const HOUR = 3600 * 1000;
+  /* a league's tier and side (config.js epinoiaLeagueTier, 2026-10-14), or just its side on a config.js without them */
+  const tierOf = l => (typeof window.epinoiaLeagueTier === 'function' ? window.epinoiaLeagueTier(l)
+    : { tier: null, side: l && l.gender === 'women' ? 'women' : 'men', label: '' });
 
   function el(tag, cls, text) {
     const n = document.createElement(tag);
@@ -147,7 +150,7 @@
   }
 
   /* ---------------------------------------------------------------- a card --- */
-  function card(l, i, total, ctx, clubs, season) {
+  function card(l, ctx, clubs, season) {
     const a = el('a', 'club lgc');
     a.href = ctx.base + '?l=' + encodeURIComponent(l.slug || '');
     a.setAttribute('role', 'listitem');
@@ -176,7 +179,10 @@
     plate.appendChild(band);
     plate.appendChild(el('div', 'club-grain'));
     if (l.access_mode === 'members') plate.appendChild(el('span', 'lgc-tag', 'members'));
-    if (l.gender === 'women') {
+    /* ITS TIER (config.js epinoiaLeagueTier, 2026-10-14): a country's cards run tier 1 first (country.js group), each
+       saying its tier above its clubs; its side from its own gender, else from the same research */
+    const tier = tierOf(l);
+    if (tier.side === 'women') {
       const w = el('span', 'lgc-tag lgc-w', 'W');
       w.title = 'Women\u2019s league';
       w.setAttribute('aria-hidden', 'true');
@@ -184,10 +190,15 @@
     }
 
     const foot = el('div', 'club-foot lgc-foot');
-    foot.append(el('span', 'club-name lgc-name', l.name || l.slug || 'League'),
-                el('span', 'club-ed', 'no ' + String(i + 1).padStart(2, '0') + '/' + String(total).padStart(2, '0')));
+    const name = el('span', 'club-name lgc-name', l.name || l.slug || 'League');
+    /* a name, never a word to translate; its full form kept for the fitting below (the section, once drawn) */
+    name.setAttribute('translate', 'no');
+    if (l.name) name.setAttribute('data-full', l.name);
+    /* no "no 04/07" beside it any more (Louie, 2026-10-14): the name has the whole width */
+    foot.appendChild(name);
 
     const meta = el('div', 'lgc-meta');
+    if (tier.label) meta.appendChild(el('span', 'lgc-tier', tier.label));
     meta.appendChild(el('span', 'lgc-clubs', clubs == null ? '' : clubs + (clubs === 1 ? ' club' : ' clubs')));
 
     const next = el('div', 'lgc-next is-pending');
@@ -196,7 +207,7 @@
     next.appendChild(el('span', 'v', ' '));
 
     a.append(plate, foot, meta, next);
-    a.setAttribute('aria-label', (l.name || l.slug) + (l.gender === 'women' ? ', women\u2019s league' : '') +
+    a.setAttribute('aria-label', (l.name || l.slug) + (tier.label ? ', ' + tier.label : '') + (tier.side === 'women' ? ', women\u2019s league' : '') +
       (clubs != null ? ', ' + clubs + (clubs === 1 ? ' club' : ' clubs') : ''));
     return { a, next };
   }
@@ -233,9 +244,9 @@
     node.setAttribute('role', 'list');
     if (o.label) node.setAttribute('aria-label', o.label);
     const pending = [];
-    ls.forEach((l, i) => {
+    ls.forEach(l => {
       const clubs = counts ? (counts.get(l.id) || 0) : null;
-      const c = card(l, i, ls.length, ctx, clubs, seasons.get(l.id));
+      const c = card(l, ctx, clubs, seasons.get(l.id));
       node.appendChild(c.a);
       const label = c.a.getAttribute('aria-label');
       pending.push(Promise.resolve().then(() => next(l.id)).then(
@@ -309,14 +320,46 @@
         el('span', 'starrow-s lgc-n', grp.leagues.length + (grp.leagues.length === 1 ? ' league' : ' leagues')));
       box.appendChild(head);
 
-      const g = grid(grp.leagues, ctx, { counts, seasons, label: 'Leagues in ' + grp.name });
-      pending.push.apply(pending, g.pending);
-      box.appendChild(g.node);
+      /* TIER BY TIER (Louie, 2026-10-14: "card grouping of tiers ... tier 1 leagues in that country grouped in one colour
+         with visual distinction"). The country's leagues come in tier order (country.js group); each tier is a panel of its
+         own colour (home/leagues.css: tier 1 gold, 2 silver, 3 bronze, youth aqua, university violet) headed by its tier */
+      const tiers = el('div', 'lgc-tiers');
+      const runs = [];
+      grp.leagues.forEach(l => {
+        const t = tierOf(l), key = t.tier == null ? 'none' : String(t.tier), last = runs[runs.length - 1];
+        if (last && last.key === key) last.ls.push(l); else runs.push({ key, label: t.label, ls: [l] });
+      });
+      runs.forEach(r => {
+        const panel = el('section', 'lgc-tg');
+        panel.setAttribute('data-tier', r.key);
+        if (r.label) {
+          const h = el('h4', 'lgc-tg-h');
+          h.append(el('span', 'lgc-tg-k', r.label), el('span', 'lgc-tg-n', r.ls.length + (r.ls.length === 1 ? ' league' : ' leagues')));
+          panel.appendChild(h);
+        }
+        const g = grid(r.ls, ctx, { counts, seasons, label: 'Leagues in ' + grp.name });
+        pending.push.apply(pending, g.pending);
+        panel.appendChild(g.node);
+        tiers.appendChild(panel);
+      });
+      box.appendChild(tiers);
       wrap.appendChild(box);
     });
 
     host.appendChild(wrap);
     ctx.fadeIn(wrap);
+    /* THE NAMES FIT THEIR CARDS (config.js epinoiaFitLeagueNames, 2026-10-14): "Super League Basketball..." was the men's
+       league and the women's alike. Measured when a country opens, the window changes size or the fonts come in; a pair
+       in one country reads alike ("SLB Men", "SLB Women") */
+    if (typeof window.epinoiaFitLeagueNames === 'function') {
+      let pend = 0;
+      const fit = force => { pend = 0; window.epinoiaFitLeagueNames(wrap, force); };
+      const soon = () => { if (!pend) pend = (window.requestAnimationFrame || setTimeout)(() => fit(false)); };
+      wrap.addEventListener('toggle', soon, true);
+      window.addEventListener('resize', soon, { passive: true });
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fit(true));
+      soon();
+    }
     await Promise.all(pending);
   });
 

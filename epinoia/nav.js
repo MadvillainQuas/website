@@ -2354,23 +2354,65 @@
     });
   }
 
+  /* A COUNTRY'S LEAGUES BY TIER, AND ALL / MEN / WOMEN (Louie, 2026-10-14). The rows run tier 1 first (config.js
+     epinoiaLeagueOrder: at each tier the men's league, then the women's), each with its tier under its name. A country
+     with both men's and women's leagues gets three tabs above them; the one picked is kept for the next page. The tabs
+     and what they hide are the wide rail's and the phone's sheet's: the phone's bar keeps every league, in order. */
+  const SIDE_KEY = 'ep-rail-side';
+  let sidePick = 'all';
+  try { sidePick = localStorage.getItem(SIDE_KEY) || 'all'; } catch (_) { /* private mode */ }
+  const tierOf = l => (typeof window.epinoiaLeagueTier === 'function' ? window.epinoiaLeagueTier(l)
+    : { side: isWomen(l) ? 'women' : 'men', label: '' });
+  function sideTabs() {
+    const box = el('div', 'ltabs');
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', 'Show leagues');
+    /* its own words' context (i18n ctx.side): "Men" here is a filter, not a phrase anywhere else */
+    box.setAttribute('data-i18n-ctx', 'side');
+    [['all', 'All'], ['men', 'Men'], ['women', 'Women']].forEach(([k, t]) => {
+      const b = el('button', 'ltab', t);
+      b.type = 'button';
+      b.dataset.side = k;
+      b.setAttribute('aria-pressed', String(sidePick === k));
+      b.addEventListener('click', () => {
+        sidePick = k;
+        try { localStorage.setItem(SIDE_KEY, k); } catch (_) { /* kept for this page only */ }
+        list.dataset.pick = k;
+        box.querySelectorAll('.ltab').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.side === k)));
+        sizeDeck(false);
+      });
+      box.appendChild(b);
+    });
+    return box;
+  }
+
   function drawLeagues() {
     list.textContent = '';
-    const inCountry = country === null
+    const inCountry = (country === null
       ? leagues
-      : leagues.filter(l => groupKey(l) === country);
+      : leagues.filter(l => groupKey(l) === country)).slice();
+    if (typeof window.epinoiaLeagueOrder === 'function') inCountry.sort(window.epinoiaLeagueOrder);
     if (!inCountry.length) {
       list.appendChild(el('div', 'gempty', 'none yet'));
       sizeDeck(false);
       return;
     }
+    const both = new Set(inCountry.map(l => tierOf(l).side)).size > 1;
+    if (both) { list.appendChild(sideTabs()); list.dataset.pick = sidePick; }
+    else delete list.dataset.pick;
     inCountry.forEach(l => {
       const a = el('a', 'item lrow' + (lg && l.slug === lg ? ' on' : ''));
       a.href = root + '?l=' + encodeURIComponent(l.slug);
       a.dataset.leagueSlug = l.slug;
       a.title = l.name;
-      a.append(crest(l), marquee(l.name));
-      if (isWomen(l)) { a.appendChild(wtag()); a.title = l.name + ' · women’s league'; }
+      const tier = tierOf(l);
+      a.dataset.side = tier.side;
+      const txt = el('span', 'ltx');
+      txt.appendChild(marquee(l.name));
+      if (tier.label) txt.appendChild(el('span', 'ltier', tier.label));
+      a.append(crest(l), txt);
+      if (tier.label) a.title = l.name + ' · ' + tier.label;
+      if (tier.side === 'women') { a.appendChild(wtag()); a.title += ' · women’s league'; }
 
       a.addEventListener('click', (e) => {
         /* Let a middle click, a modified click or a right click do what the

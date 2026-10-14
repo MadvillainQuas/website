@@ -1660,7 +1660,6 @@
       'other profiles': 'Otros perfiles',
       'the same player in other competitions': 'El mismo jugador en otras competiciones',
       'no club yet': 'Aún sin club',
-      'youth': 'juvenil',
       'a youth team': 'equipo juvenil',
       'the same club in other leagues and competitions': 'El mismo club en otras ligas y competiciones',
       'What decided it, in points': 'Lo que lo decidió, en puntos',

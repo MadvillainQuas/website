@@ -260,10 +260,12 @@ window.epinoiaFitLeagueNames = function (root, force) {
     if (n.textContent !== t) n.textContent = t;
     const short = t !== f.full, badge = n.parentNode;
     if (short) n.setAttribute('aria-label', f.full); else n.removeAttribute('aria-label');
-    if (badge && badge.classList && badge.classList.contains('lgb')) { if (short) badge.setAttribute('title', f.full); else badge.removeAttribute('title'); }
+    const titled = badge && badge.classList && badge.classList.contains('lgb') ? badge : n;
+    if (short) titled.setAttribute('title', f.full); else titled.removeAttribute('title');
   };
   const grids = new Map();
-  scope.querySelectorAll('.lgb-name[data-full]').forEach(n => {
+  /* a badge's name, and a league card's on HOME (home/leagues.js) */
+  scope.querySelectorAll('.lgb-name[data-full], .lgc-name[data-full]').forEach(n => {
     const host = (n.closest && n.closest('summary')) || (n.parentNode && n.parentNode.parentNode);
     const room = host ? host.clientWidth : 0;
     if (!room || !n.getClientRects().length) return;
@@ -295,6 +297,70 @@ window.epinoiaFitLeagueNames = function (root, force) {
     const most = Math.max.apply(null, list.map(n => n._fit.level));
     list.forEach(n => say(n, Math.min(most, n._fit.forms.length - 1)));
   }));
+};
+/* A LEAGUE'S TIER (Louie, 2026-10-14: "a 'TIER' denotation from which all leagues in their countries are sorted ... SLB =
+   Tier 1, BCB = Tier 2, NBL D1 = Tier 3"). Where a league stands in its country's pyramid, the men's and the women's counted
+   apart (the top women's league is tier 1 too), so a country's leagues read top division first: in the rail (with ALL / MEN
+   / WOMEN), on HOME, and wherever leagues are listed by country (country.js group). Researched league by league on
+   2026-10-14. A competition across borders counts in its own pyramid (EuroLeague 1; EuroCup and the Champions League 2;
+   the Europe Cup 3; ABA League 1, ABA League 2 2). AN UNDER-AGE LEAGUE HAS A YOUTH TIER of its own ('y1', 'y2': the
+   academies, the espoirs, the U19 and U22 leagues; Louie, 2026-10-14: "a YOUTH tier sorting system too"), the top one
+   for its side 'y1' (Espoirs ELITE 'y1', Espoirs ELITE 2 'y2'); 'uni' is a university league. Youth tiers come after the
+   senior ones, university after those, and a league not listed last. Keyed by slug:
+   [tier, side], side 'm' or 'w', which counts only where the league's own gender (0131) is not set. CIBACOPA is a pro
+   league of its own (no promotion, no relegation) but the LNBP is Mexico's national top flight: tier 2 (Louie).
+   A NEW LEAGUE IS ADDED HERE (its federation's own account of its level), or it lists last with no tier. */
+window.EPINOIA_LEAGUE_TIERS = {
+  /* Albania */ 'kkm-albania': [1, 'm'], 'kkf-albania': [1, 'w'],
+  /* Australia */ 'nbl': [1, 'm'], 'nbl1-men': [2, 'm'], 'wnbl': [1, 'w'], 'nbl1-women': [2, 'w'],
+  /* Azerbaijan */ 'azerbaijan-basketball-league': [1, 'm'],
+  /* Belgium + Netherlands */ 'bnxt-league': [1, 'm'],
+  /* Bulgaria */ 'nbl-bulgaria': [1, 'm'],
+  /* Brazil */ 'nbb': [1, 'm'], 'liga-ouro': [2, 'm'],
+  /* Canada */ 'cebl': [1, 'm'], 'u-sports': ['uni', 'm'],
+  /* Switzerland */ 'sb-league': [1, 'm'], 'nlb-men': [2, 'm'], 'sb-league-women': [1, 'w'], 'nlb-women': [2, 'w'],
+  /* Czechia */ 'czech-nbl': [1, 'm'], 'czech-1-liga': [2, 'm'], 'czech-zbl': [1, 'w'],
+  /* Germany */ 'bbl': [1, 'm'], 'proa': [2, 'm'], 'prob': [3, 'm'],
+  /* Denmark */ 'basketligaen': [1, 'm'], 'kvinde-basketligaen': [1, 'w'],
+  /* Estonia + Latvia */ 'estonian-latvian-basketball-league': [1, 'm'],
+  /* Spain */ 'liga-endesa': [1, 'm'], 'primera-feb': [2, 'm'], 'segunda-feb': [3, 'm'], 'liga-u': ['y1', 'm'],
+               'liga-femenina-endesa': [1, 'w'], 'liga-femenina-challenge': [2, 'w'], 'liga-femenina-2': [3, 'w'],
+  /* Europe */ 'euroleague': [1, 'm'], 'eurocup': [2, 'm'], 'basketball-champions-league': [2, 'm'], 'fiba-europe-cup': [3, 'm'],
+  /* Finland */ 'korisliiga': [1, 'm'], 'i-divisioona-a': [2, 'm'], 'i-divisioona-b': [3, 'm'], 'naisten-korisliiga': [1, 'w'],
+  /* France */ 'lnb-elite': [1, 'm'], 'lnb-elite-2': [2, 'm'], 'lnb-espoirs-elite': ['y1', 'm'], 'lnb-espoirs-elite-2': ['y2', 'm'],
+  /* Great Britain */ 'slb-men': [1, 'm'], 'bcb': [2, 'm'], 'nbl-d1': [3, 'm'], 'eabl': ['y1', 'm'],
+                     'slb-women': [1, 'w'], 'wnbl-d1': [2, 'w'], 'weabl': ['y1', 'w'],
+  /* Greece */ 'greek-elite-league': [2, 'm'],
+  /* Israel */ 'winner-league': [1, 'm'],
+  /* Italy */ 'lega-basket-serie-a': [1, 'm'], 'serie-a1-femminile': [1, 'w'], 'serie-a2-femminile': [2, 'w'],
+  /* Japan */ 'b-league-premier': [1, 'm'], 'b-league-one': [2, 'm'], 'w-league-premier': [1, 'w'], 'w-league-future': [2, 'w'],
+  /* South Korea */ 'kbl': [1, 'm'],
+  /* Lithuania */ 'lkl': [1, 'm'], 'nkl': [2, 'm'],
+  /* North Macedonia */ 'macedonian-super-league': [1, 'm'],
+  /* Mexico */ 'lnbp': [1, 'm'], 'cibacopa': [2, 'm'],
+  /* Poland */ 'orlen-basket-liga': [1, 'm'], '1-liga-mezczyzn': [2, 'm'], '1-liga-kobiet': [2, 'w'],
+  /* Romania */ 'lnbm': [1, 'm'], 'lnbf': [1, 'w'],
+  /* Sweden */ 'basketligan': [1, 'm'], 'basketligan-dam': [1, 'w'],
+  /* Slovakia */ 'slovak-sbl': [1, 'm'],
+  /* Adriatic */ 'aba-league': [1, 'm'], 'aba-league-2': [2, 'm'], 'aba-u19-league': ['y1', 'm'],
+  /* Kosovo */ 'kosovo-superliga': [1, 'm']
+};
+/* { tier, side ('men' | 'women'), youth (an under-age league), rank (the order: 1, 2, 3 ..., then youth tiers 51, 52 ...,
+   university 60, none 90), label ('Tier 1', 'Youth Tier 1', 'University' or '') } */
+window.epinoiaLeagueTier = function (league) {
+  const l = league || {};
+  const t = (window.EPINOIA_LEAGUE_TIERS || {})[l.slug] || null;
+  const tier = t ? t[0] : null;
+  const side = l.gender === 'women' ? 'women' : l.gender === 'men' ? 'men' : t && t[1] === 'w' ? 'women' : 'men';
+  const num = typeof tier === 'number', y = /^y(\d)$/.exec(String(tier || ''));
+  return { tier, side, youth: !!y, rank: num ? tier : y ? 50 + Number(y[1]) : tier === 'uni' ? 60 : 90,
+           label: num ? 'Tier ' + tier : y ? 'Youth Tier ' + y[1] : tier === 'uni' ? 'University' : '' };
+};
+/* A COUNTRY'S LEAGUES IN ORDER: tier 1 first, and at each tier the men's league before the women's, then by name */
+window.epinoiaLeagueOrder = function (a, b) {
+  const A = window.epinoiaLeagueTier(a), B = window.epinoiaLeagueTier(b);
+  return A.rank - B.rank || (A.side === 'women') - (B.side === 'women') ||
+    String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
 };
 window.epinoiaLeagueBadge = function (league, opts) {
   const o = opts || {}; const l = league || {};

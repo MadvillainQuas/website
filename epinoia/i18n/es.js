@@ -1986,7 +1986,10 @@
       'highlight': 'destacar',
       'highlight: on': 'destacar: sí',
       'clear highlights': 'quitar destacados',
-      'highlight columns: press this, then a column’s header to pin it beside the name (press it again to let it go)': 'destacar columnas: pulsa aquí y luego la cabecera de una columna para fijarla junto al nombre (púlsala otra vez para soltarla)'
+      'highlight columns: press this, then a column’s header to pin it beside the name (press it again to let it go)': 'destacar columnas: pulsa aquí y luego la cabecera de una columna para fijarla junto al nombre (púlsala otra vez para soltarla)',
+      'Youth': 'Juvenil',
+      'University': 'Universitaria',
+      'Show leagues': 'Mostrar ligas'
     },
 
     ctx: {
@@ -2791,6 +2794,11 @@
       },
       watch: {
         'Free': 'Gratis'
+      },
+      side: {
+        'All': 'Todas',
+        'Men': 'Masculino',
+        'Women': 'Femenino'
       }
     },
 
@@ -2889,6 +2897,9 @@
     },
 
     patterns: [
+      /* a league's tier in its country's pyramid (config.js epinoiaLeagueTier): "Primera FEB, segunda categoría" */
+      [/^Tier (\d+)$/, '$1.ª categoría'],
+      [/^Youth Tier (\d+)$/, '$1.ª categoría juvenil'],
       /* the shot chart's key and the zone table's (shotchart.js): a zone under the attempt floor */
       [/^fewer than (\d+) attempts$/, 'menos de $1 intentos'],
       /* why EPINOIΛ leans (winprob.js, the ⓘ) */

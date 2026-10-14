@@ -1984,7 +1984,10 @@
       'highlight': 'ハイライト',
       'highlight: on': 'ハイライト: オン',
       'clear highlights': 'ハイライトを解除',
-      'highlight columns: press this, then a column’s header to pin it beside the name (press it again to let it go)': '列のハイライト：これを押してから列の見出しを押すと、名前の横に固定されます（もう一度押すと解除）'
+      'highlight columns: press this, then a column’s header to pin it beside the name (press it again to let it go)': '列のハイライト：これを押してから列の見出しを押すと、名前の横に固定されます（もう一度押すと解除）',
+      'Youth': 'ユース',
+      'University': '大学',
+      'Show leagues': 'リーグを表示'
     },
 
     ctx: {
@@ -2790,6 +2793,11 @@
       },
       watch: {
         'Free': '無料'
+      },
+      side: {
+        'All': 'すべて',
+        'Men': '男子',
+        'Women': '女子'
       }
     },
 
@@ -2888,6 +2896,9 @@
     },
 
     patterns: [
+      /* a league's tier in its country's pyramid (config.js epinoiaLeagueTier): B.LEAGUE's 1部, 2部 */
+      [/^Tier (\d+)$/, '$1部'],
+      [/^Youth Tier (\d+)$/, 'ユース$1部'],
       /* the shot chart's key and the zone table's (shotchart.js): a zone under the attempt floor */
       [/^fewer than (\d+) attempts$/, '試投$1本未満'],
       /* why EPINOIΛ leans (winprob.js, the ⓘ) */

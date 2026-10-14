@@ -483,8 +483,11 @@ console.log('\n-- the foot\'s way back, and the platform tabs land somewhere');
   const nav = rd('epinoia', 'nav.js');
   ok('the rail asks for gender and asks again without it on a 400',
      /visibility,gender&order=name'/.test(nav) && /urlNoGender = url\.replace\(',gender&', '&'\)/.test(nav) && /if \(r\.status === 400\) r = await fetch\(urlNoGender/.test(nav));
-  ok('only a league whose gender is women is marked',
-     /const isWomen = \(l\) => !!l && l\.gender === 'women';/.test(nav) && /if \(isWomen\(l\)\) \{ a\.appendChild\(wtag\(\)\)/.test(nav));
+  /* since 2026-10-14 (league tiers) the rail's row reads the side from config.js epinoiaLeagueTier: the league's own
+     gender first, and only where none is set the researched side (1 Liga Kobiet, Basketligan Dam had none) */
+  ok('only a women\'s league is marked: its gender, or where none is stated the researched side',
+     /const isWomen = \(l\) => !!l && l\.gender === 'women';/.test(nav) && /if \(tier\.side === 'women'\) \{ a\.appendChild\(wtag\(\)\)/.test(nav) &&
+     /side: isWomen\(l\) \? 'women' : 'men'/.test(nav));
   ok('the league tab of the phone bar is marked, and repainted when the list arrives or changes',
      /t\.key === 'home' && pageWomen/.test(nav) && (nav.match(/syncWomen\(\);/g) || []).length === 2);
   ok('the tags are styled quietly in nav.css',

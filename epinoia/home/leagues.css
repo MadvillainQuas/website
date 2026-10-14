@@ -69,12 +69,36 @@
    long ("Super League Basketball Women") and the distinguishing word is last. */
 .lgc .lgc-name{white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;
   -webkit-line-clamp:2;line-clamp:2;overflow:hidden;line-height:1.2;min-height:2.4em;
-  overflow-wrap:anywhere}
+  overflow-wrap:normal}
+/* fitted to the card (home/leagues.js): never cut mid-word, unless no form of the name is short enough */
+.lgc .lgc-name.lgb-tight{overflow-wrap:anywhere}
 .lgc .lgc-foot{align-items:flex-start}
 
 .lgc-meta{display:flex;gap:8px;padding:4px 2px 0;font-family:var(--f-micro);font-size:8.5px;
   letter-spacing:.08em;color:var(--ink-3);min-height:1.4em}
 .lgc-clubs{white-space:nowrap}
+/* ITS TIER (2026-10-14), first on the line and in the league's own ink: "TIER 1  12 clubs" */
+.lgc-tier{white-space:nowrap;text-transform:uppercase;letter-spacing:.14em;color:var(--ink-t,var(--lume))}
+:root[data-theme="light"] .lgc-mint .lgc-tier{color:var(--lume)}
+
+/* A COUNTRY TIER BY TIER (home/leagues.js, Louie 2026-10-14: "tier 1 leagues in that country grouped in one colour with
+   visual distinction"). Each tier a panel in its own colour, a heading chip with its name, its cards inside: tier 1 gold,
+   2 silver, 3 bronze, the youth tiers aqua, university violet. The card's tier line takes the panel's colour. */
+.lgc-tiers{display:flex;flex-direction:column;gap:calc(var(--u)*2.5);padding:calc(var(--u)*2.5) calc(var(--u)*3) calc(var(--u)*3)}
+.lgc-tg{--tg:var(--ink-3);border:1px solid color-mix(in oklch,var(--tg) 40%,transparent);border-left:4px solid var(--tg);
+  border-radius:14px;background:color-mix(in oklch,var(--tg) 9%,transparent)}
+.lgc-tg[data-tier="1"]{--tg:#d9a521}
+.lgc-tg[data-tier="2"]{--tg:#98a4b6}
+.lgc-tg[data-tier="3"]{--tg:#c27a45}
+.lgc-tg[data-tier="y1"]{--tg:#27b2a1}
+.lgc-tg[data-tier="y2"]{--tg:#6cc4ba}
+.lgc-tg[data-tier="uni"]{--tg:#8e72d8}
+.lgc-tg-h{display:flex;align-items:center;gap:10px;margin:0;padding:calc(var(--u)*2.5) calc(var(--u)*3) 0;
+  font-family:var(--f-micro);font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+.lgc-tg-k{padding:4px 9px 3px;border-radius:3px;background:var(--tg);color:#10131a;line-height:1}
+.lgc-tg-n{color:var(--ink-3);font-weight:600;letter-spacing:.1em}
+.lgc-tg > .lgc-grid{padding:calc(var(--u)*2.5) calc(var(--u)*3) calc(var(--u)*3)}
+.lgc-tg .lgc-tier{color:color-mix(in oklch,var(--tg) 78%,var(--ink))}
 
 /* THE NEXT FIXTURE: two lines, their height held from the first paint so the
    line filling in moves nothing below it */
@@ -110,6 +134,11 @@
   .lgc-next{font-size:8.5px}
   .lgc-next .k{font-size:8px}
   .lgc-tile{border-radius:4px}
+  /* a tier's panel is a sideways rail of its own */
+  .lgc-tiers{gap:calc(var(--u)*1.5);padding:calc(var(--u)*1.5) calc(var(--u)*1.5) calc(var(--u)*2)}
+  .lgc-tg{border-radius:10px;border-left-width:3px}
+  .lgc-tg-h{padding:calc(var(--u)*2) calc(var(--u)*2) 0}
+  .lgc-tg > .lgc-grid{padding:calc(var(--u)*1.5) calc(var(--u)*2) calc(var(--u)*2)}
 }
 
 /* THE COUNTRY ROW STARTS WHERE THE CARDS UNDER IT START. The kit's accordion row is inset 48px each side,

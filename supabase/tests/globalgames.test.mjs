@@ -497,6 +497,63 @@ section('the league badge (config.js)');
   ok('...on a phone a shut tile puts its logo or flag above the name, and the name runs on under the chevron',
      /@media \(max-width:640px\)\{\s*details\.gm-cont:not\(\[open\]\) > summary \.t, details\.gm-cty:not\(\[open\]\) > summary \.t,\s*\.gm-cbody > details\.gm-acc:not\(\[open\]\) > summary \.lgb\{flex-direction:column/.test(gh) &&
      /> summary \.t\{max-width:calc\(100% \+ 24px\);margin-right:-24px\}/.test(gh));
+
+  /* LEAGUE TIERS (2026-10-14): "SLB = Tier 1, BCB = Tier 2, NBL D1 = Tier 3", tier 1 first, ALL / MEN / WOMEN on the rail */
+  const TI = sandbox.epinoiaLeagueTier, ORD = sandbox.epinoiaLeagueOrder, MAP = sandbox.EPINOIA_LEAGUE_TIERS;
+  ok('config.js knows every league\'s tier by slug', typeof TI === 'function' && typeof ORD === 'function' && Object.keys(MAP).length >= 79);
+  ok('...Britain as Louie gave it: SLB 1, BCB 2, NBL Division One 3; SLB Women 1, WNBL Division One 2; the academies youth',
+     TI({ slug: 'slb-men' }).label === 'Tier 1' && TI({ slug: 'bcb' }).label === 'Tier 2' && TI({ slug: 'nbl-d1' }).label === 'Tier 3' &&
+     TI({ slug: 'slb-women' }).label === 'Tier 1' && TI({ slug: 'wnbl-d1' }).label === 'Tier 2' && TI({ slug: 'eabl' }).label === 'Youth Tier 1' &&
+     TI({ slug: 'weabl' }).side === 'women');
+  ok('...CIBACOPA is tier 2 below the LNBP (Louie); the Europe Cup 3; U SPORTS university',
+     TI({ slug: 'cibacopa' }).tier === 2 && TI({ slug: 'lnbp' }).tier === 1 && TI({ slug: 'fiba-europe-cup' }).tier === 3 && TI({ slug: 'u-sports' }).label === 'University');
+  ok('...every entry is a tier 1-3, a youth tier y1-y2 or uni, on a side m or w',
+     Object.values(MAP).every(t => [1, 2, 3, 'y1', 'y2', 'uni'].includes(t[0]) && (t[1] === 'm' || t[1] === 'w') && t.length === 2));
+  ok('...a league\'s own gender wins; with none set the researched side; a league not listed is a men\'s with no tier, last',
+     TI({ slug: '1-liga-kobiet' }).side === 'women' && TI({ slug: 'slb-men', gender: 'women' }).side === 'women' &&
+     TI({ slug: 'nowhere' }).label === '' && TI({ slug: 'nowhere' }).rank === 90 && TI({ slug: 'nowhere', gender: 'women' }).side === 'women');
+  const gb = ['weabl', 'nbl-d1', 'slb-women', 'eabl', 'bcb', 'wnbl-d1', 'slb-men', 'mine'].map(s => ({ slug: s, name: s }));
+  ok('a country\'s leagues in order: each tier\'s men\'s league then its women\'s, then youth, then any untiered',
+     gb.slice().sort(ORD).map(l => l.slug).join(' ') === 'slb-men slb-women bcb wnbl-d1 nbl-d1 eabl weabl mine', gb.slice().sort(ORD).map(l => l.slug).join(' '));
+  /* "for leagues such as Liga U and Espoirs ... a YOUTH tier sorting system too" (Louie, 2026-10-14) */
+  const fr = ['lnb-espoirs-elite-2', 'lnb-elite-2', 'lnb-espoirs-elite', 'lnb-elite'].map(s => ({ slug: s, name: s }));
+  ok('an under-age league has a youth tier of its own, and youth tiers follow the senior ones in their order',
+     TI({ slug: 'lnb-espoirs-elite' }).label === 'Youth Tier 1' && TI({ slug: 'lnb-espoirs-elite-2' }).label === 'Youth Tier 2' &&
+     TI({ slug: 'liga-u' }).label === 'Youth Tier 1' && TI({ slug: 'aba-u19-league' }).youth && !TI({ slug: 'lnb-elite' }).youth &&
+     fr.sort(ORD).map(l => l.slug).join(' ') === 'lnb-elite lnb-elite-2 lnb-espoirs-elite lnb-espoirs-elite-2' &&
+     TI({ slug: 'lnb-espoirs-elite-2' }).rank < TI({ slug: 'u-sports' }).rank, fr.map(l => l.slug).join(' '));
+  const CTY = require(path.join(ROOT, 'epinoia', 'country.js'));
+  const grouped = () => CTY.group([{ slug: 'proa', name: 'ProA', country: 'DE' }, { slug: 'bbl', name: 'Zz BBL', country: 'DE' },
+    { slug: 'prob', name: 'ProB', country: 'DE' }])[0].leagues.map(l => l.slug).join(' ');
+  const plain = grouped();
+  globalThis.epinoiaLeagueOrder = ORD;
+  const tiered = grouped();
+  delete globalThis.epinoiaLeagueOrder;
+  ok('country.js group orders each country\'s leagues by tier where the page has the order, by name where it has not',
+     tiered === 'bbl proa prob' && plain === 'proa prob bbl', tiered + ' | ' + plain);
+  const nv = rd('epinoia', 'nav.js'), nc = rd('epinoia', 'kit', 'nav.css');
+  ok('the rail sorts a country\'s leagues by tier and says each one\'s tier under its name',
+     /if \(typeof window\.epinoiaLeagueOrder === 'function'\) inCountry\.sort\(window\.epinoiaLeagueOrder\)/.test(nv) &&
+     /if \(tier\.label\) txt\.appendChild\(el\('span', 'ltier', tier\.label\)\)/.test(nv) && /a\.dataset\.side = tier\.side/.test(nv));
+  ok('...ALL / MEN / WOMEN above a country that has both, the pick kept for the next page',
+     /\[\['all', 'All'\], \['men', 'Men'\], \['women', 'Women'\]\]/.test(nv) && /localStorage\.setItem\(SIDE_KEY, k\)/.test(nv) &&
+     /if \(both\) \{ list\.appendChild\(sideTabs\(\)\); list\.dataset\.pick = sidePick; \}/.test(nv) && /box\.setAttribute\('data-i18n-ctx', 'side'\)/.test(nv));
+  ok('...the pick hides only on the wide rail and in the phone\'s sheet; the phone\'s bar keeps every league and no tabs',
+     /@media \(min-width:821px\)\{\s*\.ep-nav \.leagues\[data-pick="men"\] > \.lrow\[data-side="women"\]/.test(nc) &&
+     /\.ep-nav\.drawer-open \.leagues\[data-pick="men"\] > \.lrow\[data-side="women"\]/.test(nc) &&
+     /@media \(max-width:820px\)\{ \.ep-nav:not\(\.drawer-open\) \.ltabs, \.ep-nav:not\(\.drawer-open\) \.ltier\{ display:none \} \}/.test(nc));
+  const hl = rd('epinoia', 'home', 'leagues.js');
+  const hc = rd('epinoia', 'home', 'leagues.css');
+  ok('HOME shows a country tier by tier: one panel per tier, in order, headed by its tier, its cards inside',
+     /const tiers = el\('div', 'lgc-tiers'\)/.test(hl) && /if \(last && last\.key === key\) last\.ls\.push\(l\); else runs\.push/.test(hl) &&
+     /panel\.setAttribute\('data-tier', r\.key\)/.test(hl) && /el\('span', 'lgc-tg-k', r\.label\)/.test(hl) && /const g = grid\(r\.ls, ctx/.test(hl));
+  ok('...each tier its own colour: 1 gold, 2 silver, 3 bronze, youth aqua, university violet',
+     /\.lgc-tg\[data-tier="1"\]\{--tg:#d9a521\}/.test(hc) && /\.lgc-tg\[data-tier="2"\]\{--tg:#98a4b6\}/.test(hc) && /\.lgc-tg\[data-tier="3"\]\{--tg:#c27a45\}/.test(hc) &&
+     /\.lgc-tg\[data-tier="y1"\]/.test(hc) && /\.lgc-tg\[data-tier="uni"\]\{--tg:#8e72d8\}/.test(hc) && /border-left:4px solid var\(--tg\)/.test(hc));
+  ok('...and a card no longer counts "no 04/07" beside its name', !/club-ed/.test(hl) && /foot\.appendChild\(name\)/.test(hl));
+  ok('HOME\'s league cards say their tier, and their names fit the card',
+     /if \(tier\.label\) meta\.appendChild\(el\('span', 'lgc-tier', tier\.label\)\)/.test(hl) && /name\.setAttribute\('data-full', l\.name\)/.test(hl) &&
+     /window\.epinoiaFitLeagueNames\(wrap, force\)/.test(hl) && /wrap\.addEventListener\('toggle', soon, true\)/.test(hl));
 }
 
 /* ------------------------------------------------------------------------- */

@@ -133,7 +133,13 @@ const byName = (a, b) => String((a && a.name) || '').localeCompare(String((b && 
    COUNTRY IS NOT DROPPED: it goes in a group of its own, code '', at the end.
    A competition nobody has filed is still one somebody needs to reach.
 
-   Leagues inside a group by name. The input is never reordered. */
+   Leagues inside a group by TIER where the page has config.js's epinoiaLeagueOrder (2026-10-14: tier 1 first,
+   the men's league before the women's at each tier, then by name), else by name. The input is never reordered. */
+const inGroup = (a, b) => {
+  const g = typeof globalThis !== 'undefined' ? globalThis : null;
+  const order = g && typeof g.epinoiaLeagueOrder === 'function' ? g.epinoiaLeagueOrder : null;
+  return (order ? order(a, b) : 0) || byName(a, b);
+};
 function group(leagues) {
   const map = new Map();
   (Array.isArray(leagues) ? leagues : []).forEach(l => {
@@ -143,7 +149,7 @@ function group(leagues) {
     map.get(k).push(l);
   });
   return [...map.keys()]
-    .map(code => ({ code, name: countryName(code), flag: flagOf(code), leagues: map.get(code).slice().sort(byName) }))
+    .map(code => ({ code, name: countryName(code), flag: flagOf(code), leagues: map.get(code).slice().sort(inGroup) }))
     .sort((a, b) => (a.code === '') - (b.code === '') || a.name.localeCompare(b.name) ||
       (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
 }
