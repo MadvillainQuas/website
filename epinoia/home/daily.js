@@ -148,6 +148,7 @@
   let pick = null, sel = { cont: [], cty: [], lg: [] };
   try { const v = JSON.parse(sessionStorage.getItem(PICK_KEY) || 'null'); if (v && v.sel) { sel = v.sel; pick = v.ids && v.ids.length ? new Set(v.ids) : null; } } catch (_) { /* private mode */ }
   const pickedHeld = new Map();
+  let pickSeq = 0;
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   /* the picked leagues' games of one kind: the newest finals, or the next scheduled games (a minute's keep); the filter
      is the one globalgames.js uses, on the inner-embedded season's league */
@@ -833,7 +834,9 @@
       lastKey = null;
       clearTimeout(timer);
       host.setAttribute('aria-busy', 'true');
-      read(mode).then(d => { applyTab(d); draw(d, true); }).catch(() => {}).finally(() => { host.removeAttribute('aria-busy'); schedule(); });
+      /* a tab picked, or another box ticked, while this read runs wins: its answer is dropped */
+      const cur = mode, seq = ++pickSeq;
+      read(cur).then(d => { if (mode === cur && seq === pickSeq) { applyTab(d); draw(d, true); } }).catch(() => {}).finally(() => { if (seq === pickSeq) { host.removeAttribute('aria-busy'); schedule(); } });
     }
     clear.addEventListener('click', () => { sel = { cont: [], cty: [], lg: [] }; paint(); apply(); });
     btn.addEventListener('click', async () => {
