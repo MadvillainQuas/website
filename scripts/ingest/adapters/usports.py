@@ -1729,6 +1729,13 @@ class USportsAdapter(FibaLiveStatsAdapter):
                 return None
             if r.status_code == 403:
                 raise RuntimeError(f"usports: 403 from {url} (User-Agent refused?)")
+            # 405 IS THE WAF REFUSING THE MACHINE, not a rate limit: GitHub's runners get it on their first request
+            # (15 Oct 2026, three pages, 330 s of waiting each) while a home connection is served the same pages.
+            # Said at once, so a run that cannot read the site does not sit out minutes per page - and a live lane on
+            # such a machine does not hold a thread. U SPORTS is read from home (scripts/ingest/home_sources.bat).
+            if r.status_code == 405:
+                raise RuntimeError(f"usports: 405 from {url} - the site refuses this machine (GitHub's runners); "
+                                   f"U SPORTS is read from home_sources.bat")
             USportsAdapter._pace = min(max(USportsAdapter._pace * 1.5, 4.0), 10.0)
             if waited >= max_wait_s:
                 raise RuntimeError(f"usports: HTTP {r.status_code} for {waited}s from {url} - the site's "

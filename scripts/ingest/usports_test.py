@@ -583,6 +583,32 @@ U.USportsAdapter._boards = {k: (v[0] - 61, v[1]) for k, v in U.USportsAdapter._b
 ok("...while a board read before stands in for it when the next read is refused",
    r.scoreline("u8xvsotcgoe6c0oq", tip)["home"] == 34 and len(Refused.calls) == 2, Refused.calls)
 
+print("\n-- a machine the site refuses (GitHub's runners: 405 from the first request, 15 Oct 2026)")
+
+
+class _Resp:
+    status_code, content = 405, b""
+
+
+slept, asked = [], []
+real_get, real_sleep = U.requests.get, U.time.sleep
+U.requests.get = lambda url, **k: asked.append(url) or _Resp()
+U.time.sleep = lambda s: slept.append(s)
+try:
+    U.USportsAdapter()._get_text(U.SITE + "/sports/mbkb/2026-27/schedule")
+    msg = None
+except RuntimeError as exc:
+    msg = str(exc)
+finally:
+    U.requests.get, U.time.sleep = real_get, real_sleep
+ok("405 is said at once - one request, no waiting (it is not the rate limit; 330 s a page were waited on 15 Oct)",
+   msg is not None and "405" in msg and "home_sources.bat" in msg and len(asked) == 1 and sum(slept) < 10,
+   (msg, asked, slept))
+with open(os.path.join(HERE, "home_sources.bat"), encoding="utf-8") as f:
+    bat = f.read()
+ok("...and U SPORTS is read from home (home_sources.bat, daily from Task Scheduler)",
+   re.search(r"--source \S*\bUSPORTS\b", bat) is not None)
+
 print("\n-- the source rows: U SPORTS followed as NCAA Division II is (Louie, 2026-10-15)")
 with open(os.path.join(HERE, "..", "..", "config", "ingest-sources.json"), encoding="utf-8") as f:
     rows = json.load(f)["sources"]

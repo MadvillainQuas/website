@@ -1,10 +1,12 @@
 @echo off
 title Epinoia home sources (the leagues GitHub's runners cannot read)
-REM Brazil's NBB and Liga Ouro, from lnb.com.br.
+REM Brazil's NBB and Liga Ouro, from lnb.com.br, and U SPORTS (Canada), from en.usports.ca.
 REM
 REM WHY THIS RUNS HERE AND NOT ON GITHUB. lnb.com.br answers this machine and returns 403 Forbidden to GitHub's
 REM runners (the first run from Actions read no fixture at all), as lnb.fr does for the French leagues
-REM (live_lane.bat). So these sources are read from here: the schedule, then every game whose report is out.
+REM (live_lane.bat). en.usports.ca answers GitHub's runners 405 from the first request (15 Oct 2026: the run that was
+REM to list the 2026-27 season read nothing) and serves this machine. So these sources are read from here: the
+REM schedule, then every game whose report is out.
 REM It is an ordinary ingest pass for those sources only, written straight to Supabase; nothing is committed.
 REM The live lane (live_lane.bat) follows a game from here once its fixture is on the schedule.
 REM
@@ -21,4 +23,4 @@ REM     scripts\ingest\home_sources.bat --refresh
 
 REM the repository's root, so the adapters' caches (data\feed\NBB, data\feed\LOURO) sit where the workflow keeps its own
 cd /d "%~dp0..\.."
-python -u scripts\ingest\run_ingest.py --worker-config --config --source NBB,LOURO --feed-out "" %*
+python -u scripts\ingest\run_ingest.py --worker-config --config --source NBB,LOURO,USPORTS --feed-out "" %*
