@@ -184,6 +184,10 @@ function cardOf(r, ref, o) {
   const posRim = isNum(atPos(ref, pos, 'rimsh')) && ref.zones ? atPos(ref, pos, 'rimsh') : ref.mix.rim, posThree = atPos(ref, pos, 'p3sh');
   const prior3 = isNum(posThree) ? posThree : ref.mix.three, priorRim = Math.min(1 - prior3, posRim), priorMid = Math.max(0.01, 1 - prior3 - priorRim);
   let mix = { rim: shr(rimAll, fga, priorRim, K.mix), mid: shr(midAll, fga, priorMid, K.mix), three: shr(p3a, fga, prior3, K.mix) };
+  /* A MAN WHO DOES NOT SHOOT THREES (Louie, 2026-10-16: "a non-shooting 5man set to be a rim rolling C just scored on a step
+     back 3"): his position's share is no prior for him - bigs shoot them or they do not - so a season with none keeps only
+     a sliver of it, the less the more shots he took (0 of 80: 1.3% of his shots, not 5.5%) */
+  if (p3a === 0 && fga >= 20) mix.three *= 1 / (1 + fga / 15);
   { const t = mix.rim + mix.mid + mix.three; mix = { rim: mix.rim / t, mid: mix.mid / t, three: mix.three / t }; }
   /* THE PRIORS FALL WITH THE VOLUME: a man who rarely shoots threes (or rarely gets to the rim) is not a league-average
      shooter (or finisher) who happens not to - the ones who can, do. His prior sits below the league's by up to PRIOR_DROP
@@ -200,7 +204,9 @@ function cardOf(r, ref, o) {
   /* HOW HE GETS HIS SHOTS: the share of his makes at each zone that came off no pass (his own creation), shrunk toward
      the league's by his makes there - the less a volume change will cost him (engine.js) */
   const unOf = (k, made, lg) => { const a = num(r['ev_' + k + '_astp']); const m = ev && isNum(a) ? made : 0; return clamp(shr(m * (1 - (isNum(a) ? a : 0) / 100), m, lg, K.un), 0, 1); };
-  const un = { rim: unOf('rim', rimM, ref.un.rim), mid: unOf('mid', midM, ref.un.mid), three: unOf('p3', p3m, ref.un.three) };
+  /* a man who rarely shoots threes makes fewer still of his own: the league's unassisted share for his threes falls with his
+     share of them (a non-shooter's rare three is a catch-and-shoot off a pop, not a step-back) */
+  const un = { rim: unOf('rim', rimM, ref.un.rim), mid: unOf('mid', midM, ref.un.mid), three: unOf('p3', p3m, ref.un.three * (0.2 + 0.8 * relSh(p3a, ref.mix.three))) };
   /* the creator: the unassisted share of his points where the play-by-play covers him, else how far his usage stands
      above a role player's (squad.js creatorOf) */
   const usgRaw = num(r.usg), usg = clamp(shr(isNum(usgRaw) ? usgRaw * min : 0, isNum(usgRaw) ? min : 0, atPos(ref, pos, 'usg') || 20, K.usg) + SHIFT.usg * shift, 5, 45);

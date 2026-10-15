@@ -152,6 +152,11 @@ const ref = C.refOf(rows);
   ok('cards: on/off counts lightly, more with more possessions', Math.abs(lo.onoff.vsOreb) < Math.abs(hi.onoff.vsOreb) && Math.abs(hi.onoff.vsOreb) <= 10 * C.ONOFF_MAX, [lo.onoff.vsOreb, hi.onoff.vsOreb]);
   const never = C.cardOf(Object.assign({}, r, { p3a: 0, p3m: 0 }), ref, {});
   ok('cards: a man who never shoots threes is not a league-average shooter', never.p3Rel < 0.9, never.p3Rel);
+  /* ...nor a man who takes his position's share of them (Louie, 2026-10-16: a non-shooting rim-rolling centre "just scored on
+     a step back 3"): a season with none keeps him well under 2% of his shots there, and any he takes are off a pass */
+  const big = rows.filter(x => x.fga >= 60).map(x => Object.assign({}, x, { pos: 5, bpm_pos: 5, p3a: 0, p3m: 0 }))[0];
+  const nb = C.cardOf(big, ref, {});
+  ok('cards: a big with no threes in his season keeps them under 2% of his shots, and creates almost none himself', nb.mix.three < 0.02 && nb.un.three < 0.05, [nb.mix.three, nb.un.three]);
   const up = C.cardOf(r, ref, { shift: 0.5 }), dn = C.cardOf(r, ref, { shift: -0.5 });
   ok('cards: a stronger league\'s man is better in a weaker one, and the other way round', up.off.d3 > c.off.d3 && dn.off.d3 < c.off.d3 && up.usg > dn.usg);
   ok('cards: the shift from two value ranges', near(C.shiftOf({ min: 100000, max: 900000 }, { min: 10000, max: 90000 }), 1, 1e-9) && C.shiftOf(null, null) === 0);
@@ -213,6 +218,20 @@ const cards = new Map(rows.map(r => [r.id, C.cardOf(r, ref, {})]));
   const wing = real[2].card.id;
   const gG = pps(sideWith(null, ins1(wing, ['green']), good)) - pps(sideWith(null, null, good)), gP = pps(sideWith(null, ins1(wing, ['green']), poor)) - pps(sideWith(null, null, poor));
   ok('instructions: a green light pays for a shooter and costs for a poor shooter', gG > gP && gP < 0, [gG, gP]);
+  /* HIS TENDENCIES BEND THE ROLE (Louie, 2026-10-16: "get a low volume 3pt shooter playing in a shooting role and he'll be
+     more tentative and looking to slash more often than another player playing in that role"): a slasher by his own game
+     put in a shooting role takes its extra threes only as far as his comfort out there goes, the rest of his shots stay
+     drives; a shooter put in the same role from a slashing game takes more of them */
+  {
+    const RLm = Mgr.roles, rimmy = c => ({ p3Rel: 0.8, mixRel: Object.assign({}, c.mixRel, { three: 0.3, rim: 1.7, mid: 0.9 }) });
+    const slasher = withCard(2, rimmy), card = slasher[2].card, nat = RLm.bestFor(2, card, ref);
+    const asRole = (five, key) => five.map((x, j) => Object.assign({}, x, { role: j === 2 ? key : null }));
+    const m0 = sideWith(null, null, asRole(slasher, nat.key)).men[2].m, mR = sideWith(null, null, asRole(slasher, 'sf-moveshoot')).men[2].m;
+    const T = RLm.profile(RLm.BY.get('sf-moveshoot')).mix, N = RLm.profile(nat).mix, asked = RLm.BY.get('sf-moveshoot').rho * (T.three - N.three);
+    ok('roles: a slasher in a shooting role is tentative - he takes only part of the threes it asks (his comfort), and keeps driving',
+      nat.key !== 'sf-moveshoot' && asked > 0 && (mR.three - m0.three) > 0 && (mR.three - m0.three) < 0.65 * asked && mR.rim > 0.6 * m0.rim,
+      { nat: nat.key, asked: +asked.toFixed(3), got: +(mR.three - m0.three).toFixed(3), rim: [+m0.rim.toFixed(3), +mR.rim.toFixed(3)] });
+  }
   const run = withCard(0, c => ({ off: Object.assign({}, c.off, { tr: { ppp: ref.trPpp + 0.25, hcPpp: ref.hcPpp, share: ref.trShare * 1.8, ev: true } }) }));
   const walk = withCard(0, c => ({ off: Object.assign({}, c.off, { tr: { ppp: ref.trPpp - 0.15, hcPpp: ref.hcPpp, share: ref.trShare * 0.25, ev: true } }) }));
   const pg = real[0].card.id, pr = sideWith(null, ins1(pg, ['push']), run), pw = sideWith(null, ins1(pg, ['push']), walk);
@@ -391,6 +410,18 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   let M = null, err = null, steps = 0;
   try { M = MT.create(H, teamObj(teams[1]), { L, ref, G: 40 }, { seed: 9, home: 1 }); while (!M.g.over && steps < 3000) { MT.step(M); steps++; } } catch (e) { err = e; }
   ok('match: a painted lineup holding a man with no card does not stop the game', !err && M && M.g.over && !M.sides[0].floor.includes('ghost'), err && err.message);
+}
+/* NO EVENT AFTER THE ENGINE'S CLOCK (Louie, 2026-10-16: "Happened after a missed shot on x2 speed"): the live screen shows
+   the events up to the engine's clock before it asks for the next possession, so one timed after it (a late miss's board
+   rounded up past the possession's end) froze the game - and the events never run backwards */
+{
+  let ahead = 0, back = 0, n = 0;
+  for (let sd = 1; sd <= 20; sd++) {
+    const M = MT.create(teamObj(teams[sd % 6]), teamObj(teams[(sd + 3) % 6]), { L, ref, G: 40 }, { seed: sd, home: 1 });
+    while (!M.g.over) { const n0 = M.events.length; MT.step(M); n++; if (M.events.slice(n0).some(e => e.t > M.g.t + 1e-6)) ahead++; }
+    M.events.forEach((e, k) => { if (k && e.t < M.events[k - 1].t) back++; });
+  }
+  ok('match: no event is ever timed after the engine clock, and none runs backwards (20 games)', ahead === 0 && back === 0 && n > 2000, { ahead, back, n });
 }
 /* ---------------------------------------------------------------- the match, possession by possession --- */
 /* core/match.js (Louie, 2026-10-14: live games "where the user can change team instructions, make subs etc. to change the
@@ -728,7 +759,7 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   ok('plays: a trip to the line stops the clock: the shooter at the line, two of his men on the lane', !!st && Math.abs(mid.off[1][0]) < 0.5 && Math.abs(mid.off[1][1] - 20.1) < 0.5
     && mid.off.filter(p => Math.abs(Math.abs(p[0]) - 9.4) < 0.5 && p[1] < 13).length === 2, st && mid.off);
   /* whole games: every possession drawn, everybody on the court, the shot from the engine's spot, nobody faster than a man */
-  let poss = 0, bad = 0, off = 0, shots = 0, there = 0, fastest = 0, called = 0, half = 0;
+  let poss = 0, bad = 0, off = 0, shots = 0, there = 0, fastest = 0, called = 0, half = 0, hcP = 0, passes = 0, onePass = 0, brought = 0, byPrimary = 0, jumpers = 0, crowded = 0;
   for (let g = 0; g < 3; g++) {
     const M = MT.create(teamObj(teams[2 * g]), teamObj(teams[2 * g + 1]), { L, ref, G: 40 }, { seed: 400 + g, home: 1 });
     MT.finish(M);
@@ -744,6 +775,14 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
       poss++;
       const first = evs.find(x => x.k === 'S' || x.k === 'T' || x.k === 'F');
       if (first && first.k === 'S' && !first.tr && first.t - e.t >= 8) { half++; if (pl.calls.length) called++; }
+      /* the half court (Louie, 2026-10-16): the ball brought up by the five's primary handler, and moved before the shot */
+      if (first && !first.tr && first.t - e.t >= 10 && !evs.some(x => x.k === 'O')) {
+        hcP++;
+        const np = pl.frames.filter(f => f.ball && f.ball.fly && f.ball.fly.from !== 'rim' && f.ball.fly.to !== 'rim' && f.ball.fly.from <= 4 && f.ball.fly.to <= 4).length;
+        passes += np; if (np <= 1) onePass++;
+        const rs = o5.map((id, k) => RO.bestFor(k, cards.get(id), ref)), iw = rs.map((r, k) => (r.init || 0) + (k === 0 ? 0.04 : 0)), prim = iw.indexOf(Math.max(...iw));
+        for (let t = e.t; t <= first.t; t += 0.2) { const mm = PL.at(pl, t); if (mm.hold != null && mm.hold <= 4 && mm.off[mm.hold][1] < 46) { brought++; if (mm.hold === prim) byPrimary++; break; } }
+      }
       let last = null;
       const tEnd = j < ev.length ? ev[j].t : e.t + 20;
       for (let t = e.t; t <= tEnd; t += 0.25) {
@@ -758,6 +797,7 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
         shots++;
         const F = spot(x), m = PL.at(pl, x.t - 0.02);
         if (Math.hypot(m.off[k][0] - F[0], m.off[k][1] - F[1]) <= 1.5) there++;
+        if (x.z !== 0) { jumpers++; if (m.off.some((q, j2) => j2 !== k && Math.hypot(q[0] - m.off[k][0], q[1] - m.off[k][1]) < 6)) crowded++; }
       });
     });
   }
@@ -765,6 +805,9 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   ok('plays: the shooter is at the engine\'s spot as the ball leaves his hand (nine shots in ten: a break too quick for the floor is the rest)', there / shots >= 0.9, [there, shots]);
   ok('plays: nobody faster than a sprinting man, outside the dead-ball stops', fastest <= 42, fastest.toFixed(1));
   ok('plays: a half-court possession has its set called', called / half >= 0.95, [called, half]);
+  ok('plays: the five’s primary handler brings the ball up (not whoever runs the set)', brought > 100 && byPrimary / brought >= 0.9, [byPrimary, brought]);
+  ok('plays: the half court moves the ball - about three passes a possession, few with one or none', hcP > 100 && passes / hcP >= 2.5 && onePass / hcP <= 0.22, [+(passes / hcP).toFixed(2), onePass, hcP]);
+  ok('plays: nobody stands where the shooter shoots from (a teammate within 6 ft of a jump shot one time in twenty at most)', jumpers > 100 && crowded / jumpers <= 0.05, [crowded, jumpers]);
 }
 function dayAfter(d, n) { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
 

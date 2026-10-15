@@ -225,7 +225,10 @@ const CL = 91.86, CW = 49.21, HW = CW / 2, APRON = 3.4, BASKET = 5.17;
 const toW = (p, right) => [right ? CL - p[1] : p[1], HW + p[0]];
 const toF = (w, right) => [w[1] - HW, right ? CL - w[0] : w[0]];
 /* where a shot was taken: its zone and two draws from the game's seed (the live court and the shot chart agree) */
-const shotFeet = (seed, x) => PL().shotSpot(x.z, u01(seed + ':a:' + x.t + ':' + x.p), u01(seed + ':b:' + x.t + ':' + x.p));
+/* the shot's spot (core/plays.js shotSpot): a three off a pass may be in a corner, a pull-up is above the break - a make
+   knows (its assist), a miss is a catch-and-shoot four times in five (about the league's share of threes) */
+const offPass = (seed, x) => (x.m ? !!x.a : u01(seed + ':c:' + x.t + ':' + x.p) < 0.8);
+const shotFeet = (seed, x) => PL().shotSpot(x.z, u01(seed + ':a:' + x.t + ':' + x.p), u01(seed + ':b:' + x.t + ':' + x.p), x.z === 2 ? offPass(seed, x) : undefined);
 const HEX = /^#[0-9a-f]{6}$/i;
 const hexRgb = hex => { const n = HEX.test(String(hex || '').trim()) ? parseInt(String(hex).trim().slice(1), 16) : 0x8a93a6; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
 const rgbHex = c => '#' + c.map(v => clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0')).join('');
@@ -712,7 +715,7 @@ function screen(host, o) {
   bar.appendChild(simBtn);
 
   /* ---- the state of the screen ---- */
-  let vt = 0, evI = 0, speed = +A.stored('mgr_speed') || 4, paused = true, brk = null, done = false, ended = false, lastFrame = 0, raf = 0, halt = null;
+  let paintErr = false, vt = 0, evI = 0, speed = +A.stored('mgr_speed') || 4, paused = true, brk = null, done = false, ended = false, lastFrame = 0, raf = 0, halt = null;
   if (!SPEEDS.includes(speed)) speed = 4;
   let feed = [], latest = null, dirty = { men: true, tab: true, flow: true, sb: true, shots: -1 }, lastSlow = 0, savedAt = 0, hardAt = Date.now(), dragging = false, pressing = false;
   const onUp = () => { pressing = false; };
@@ -823,7 +826,10 @@ function screen(host, o) {
     const L = lastEnd;
     const prev = !L || L.k === 'Q' || L.k === 'q' ? { how: 'start' } : L.k === 'D' ? { how: 'dreb', by: idx(L.p) } : L.k === 'T' ? (L.st ? { how: 'steal', by: idx(L.st) } : { how: 'dead' })
       : (L.k === 'S' && L.m) || (L.k === 'F' && L.m) ? { how: 'make' } : { how: 'dead' };
-    court.poss(Object.assign({ evs: [e].concat(events.slice(evI, j)), idx, roles: rolesFor(s, off, e.t), prev, spot: x => shotFeet(seed, x), seed }, defenceOf(s ^ 1, def, e.t)), s, right, fl);
+    /* the drawing never stops the game (Louie, 2026-10-16: "Game keeps on freezing"): a possession the court cannot draw
+       is left undrawn - the men hold where they are - and the game goes on */
+    try { court.poss(Object.assign({ evs: [e].concat(events.slice(evI, j)), idx, roles: rolesFor(s, off, e.t), prev, spot: x => shotFeet(seed, x), seed }, defenceOf(s ^ 1, def, e.t)), s, right, fl); }
+    catch (err) { if (root.console) console.warn('Manager: this possession could not be drawn', err); }
   }
 
   /* ---- the clock moves ---- */
@@ -855,11 +861,12 @@ function screen(host, o) {
           }
           if (n) { dirty.men = true; if (Date.now() - savedAt > 2000) { savedAt = Date.now(); keep(false); } }
           if (Date.now() - hardAt > 60000) { hardAt = Date.now(); keep(true); }
-          if (!brk && !paused) vt = Math.min(vt, M.g.t);
+          /* the clock never held below an event still to be shown (it would wait for it for ever) */
+          if (!brk && !paused) vt = Math.min(vt, Math.max(M.g.t, evI < events.length ? events[evI].t : 0));
         } else { vt = Math.min(vt, endOf()); reveal(); }
       }
     } catch (e) { fail(e); return; }
-    paint(now);
+    try { paint(now); } catch (err) { if (!paintErr) { paintErr = true; if (root.console) console.warn('Manager: the court could not be drawn', err); } }
     raf = root.requestAnimationFrame(frame);
   }
   /* the events up to the clock; a period's start stops the clock at the break, the reader's own timeout stops it for

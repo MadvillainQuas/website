@@ -146,6 +146,17 @@ but only the chosen league is simulated.
   real starters (`adapters/epinoia.js` `starts`, recent games counting most), but only among its eight most-used men:
   a late signing or a man who lost his place is not made to start. Without that guard, CEBL's summer roster churn
   wrecked its players-only mark (0.26).
+- **No event after the engine's clock** (2026-10-16, the freeze "after a missed shot on x2 speed"): event times round to
+  whole seconds, and a late miss's board could round past its possession's end; the live screen shows events up to the
+  engine's clock before it asks for the next possession, so at low speeds it waited for ever (16x usually jumped the
+  gap: the "little weird pauses"). Events are now clamped to the possession, the screen never holds its clock below an
+  event still to show, and a possession the court cannot draw is skipped rather than stopping the game (core test).
+- **Shot tendencies bend a role** (`engine.sideOf`, Louie 2026-10-16): what a role asks MORE of at a zone, a man takes
+  only as far as his comfort there goes (the square root of his aptitude: volume x make rate) - a slasher in a shooting
+  role takes part of its threes and keeps driving; a shooter takes them all.
+- **A man with no threes in his season** keeps them under 2% of his shots (bigs shoot them or they do not: his position's
+  share is no prior for him), and the league's unassisted share for his threes falls with his volume - a non-shooting
+  centre's rare three is off a pass, never a step-back (`cards.js`).
 - **A signing with no minutes yet** has no card from his league's file (cards come from minutes played): he plays as
   a replacement-level man at his listed position (`app.js` `loadMine`), and the engine only ever sends on a man with a
   card (2026-10-15: a game froze when a painted lineup held one with none - "a five is missing a player").
@@ -361,6 +372,13 @@ rendering".
        instruction this game, else his own game's coverage.
      - **The team's out of possession:** no paint touches packs the lane, funnel leaves the shooters' men home and the
        centre at the rim; men told to gamble play tighter, stay solid looser; rim protectors help harder on a drive.
+  5. **Basketball logic in the movement** (Louie, 2026-10-16): the five's primary handler brings the ball up, enters
+     it to the man who runs the set and, with time, swings it first (about three passes a half-court possession, under
+     one in five with one or none); a point or combo guard runs the middle ball screens, a secondary handler or point
+     forward the side pick-and-roll, off-ball scorers are run off screens (`roleW`); a drive or cut to the rim attacks a
+     gap and turns the corner (a waypoint off the straight line, baseline from the corner) and a beaten defender goes
+     hip to hip instead of standing in the driver's path; a teammate where the shooter is going lifts or drifts
+     (`makeRoom`); a pull-up three goes up above the break - a corner three is a catch-and-shoot (`shotSpot`).
   5. **A trip to the line stops the clock** while it is shown (the shooter at the line, two of his men on the lane's
      second places, the defence on the first, the rest behind the arc; each free throw in the air), as a whistle does.
 - Checked over whole simulated games (the core tests and a harness): every possession planned, nobody off the court,

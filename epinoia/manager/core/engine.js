@@ -629,7 +629,14 @@ function sideOf(five, X) {
   P.forEach(p => {
     if (!p.R || !p.nat) return;
     const T = p.RP.mix, N = p.NP.mix, rho = p.rho, m0 = p.m0;
-    let m = { rim: Math.max(0.01, m0.rim + rho * (T.rim - N.rim)), mid: Math.max(0.01, m0.mid + rho * (T.mid - N.mid)), three: Math.max(0.005, m0.three + rho * (T.three - N.three)) };
+    /* HIS TENDENCIES BEND THE ROLE (Louie, 2026-10-16: "get a low volume 3pt shooter playing in a shooting role and he'll be
+       more tentative and looking to slash more often than another player playing in that role"): what the role asks MORE
+       of at a zone he goes there for as far as his own game takes him there - his comfort, the square root of his aptitude
+       at it (volume x make rate against his league's: a shooter in full, a man who rarely shoots threes a third of the way
+       or less); what he does not take there stays with the shots he likes */
+    const comfort = { three: clamp(Math.sqrt(p.threeApt), 0.2, 1.15), rim: clamp(Math.sqrt(p.rimApt), 0.25, 1.15), mid: clamp(Math.sqrt(Math.max(0.05, p.c.mixRel.mid)), 0.3, 1.15) };
+    const ask = z => { const d = rho * (T[z] - N[z]); return d > 0 ? d * comfort[z] : d; };
+    let m = { rim: Math.max(0.01, m0.rim + ask('rim')), mid: Math.max(0.01, m0.mid + ask('mid')), three: Math.max(0.005, m0.three + ask('three')) };
     { const t = m.rim + m.mid + m.three; m = { rim: m.rim / t, mid: m.mid / t, three: m.three / t }; }
     p.extra.pull += Math.max(0, m.three - m0.three) * p.RP.un.three;
     p.extra.drive += Math.max(0, m.rim - m0.rim) * p.RP.un.rim;

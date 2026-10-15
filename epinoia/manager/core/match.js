@@ -575,7 +575,11 @@ function step(M) {
     list.push({ ev, at: Math.min(at, t0 + dur - 0.05) });
   }));
   if (!fouled && R() < M.fRate) { const f = foulBy(); if (f) list.push({ ev: { k: 'f', s: def, p: f }, at: t0 + Math.max(0.3, ((times[0] != null ? times[0] : t0 + dur) - t0) * (0.25 + 0.5 * RT())) }); }
-  list.map((x, i) => [x, i]).sort((a, b) => (a[0].at - b[0].at) || (a[1] - b[1])).forEach(([x]) => push(M, x.ev, x.at));
+  /* never after the possession's own end: the board just after a late miss rounded up past it (137.95 -> 138 with the
+     clock at 137.92), and the live screen, which shows the events up to the engine's clock before it asks for the next
+     possession, waited for it for ever - the freeze after a missed shot (Louie, 2026-10-16) */
+  const endT = Math.floor(t0 + dur + 1e-9);
+  list.map((x, i) => [x, i]).sort((a, b) => (a[0].at - b[0].at) || (a[1] - b[1])).forEach(([x]) => { const e2 = push(M, x.ev, x.at); if (e2.t > t0 + dur + 1e-9) e2.t = Math.max(endT, e2.t - 1); });
   /* the run, for the coaches' timeouts */
   if (pts > 0) { O.runFor += pts; O.runAg = 0; D.runAg += pts; D.runFor = 0; }
   /* the clock moves; the legs of the men on the floor go, the bench's come back */

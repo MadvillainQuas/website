@@ -72,11 +72,16 @@ function spot(name, dir) {
 }
 const kindOfSpot = name => String(name).replace(/^([RL]|left|right) /, '');
 /* THE ENGINE'S SHOT SPOT: a zone (rim, mid-range, three) and two draws -> feet. At the rim within 4.5 ft of the basket;
-   a mid-range shot 9-20 ft out, inside the arc; a three in a corner (beyond 21.65 ft, under 10 ft up) or above the break */
-function shotSpot(z, a, b) {
+   a mid-range shot 9-20 ft out, inside the arc; a three in a corner (beyond 21.65 ft, under 10 ft up) or above the break.
+   A three nobody passed him is a pull-up, and pull-ups go up above the break: a corner three is a catch-and-shoot nineteen
+   times in twenty (Louie, 2026-10-16: "dribble to the corner where a teammate was and attempt a three") - so unassisted
+   (ast === false) the corners take 5% of them, not 32% */
+function shotSpot(z, a, b, ast) {
   if (z === 0) { const ang = (a - 0.5) * 2.2, r = 1.4 + 3 * b; return [r * Math.sin(ang), COURT.basket + r * Math.cos(ang)]; }
   if (z === 1) { const ang = (a - 0.5) * 2.5, r = 9 + 11 * b; return [r * Math.sin(ang), COURT.basket + r * Math.cos(ang)]; }
-  if (a < 0.16 || a > 0.84) return [(a < 0.16 ? -1 : 1) * (22.5 + 1.1 * b), 2 + 7.5 * b];
+  const cw = ast === false ? 0.025 : 0.16;
+  if (a < cw || a > 1 - cw) return [(a < cw ? -1 : 1) * (22.5 + 1.1 * b), 2 + 7.5 * b];
+  if (ast === false) a = 0.16 + (a - cw) / (1 - 2 * cw) * 0.68;
   const ang = (a - 0.5) / 0.34 * 0.95, r = 23.4 + 2.6 * b;
   return [r * Math.sin(ang), COURT.basket + r * Math.cos(ang)];
 }
@@ -483,6 +488,24 @@ function cast(set, c, fx) {
   return m;
 }
 const fitOf = (set, m, c) => Object.keys(set.places).reduce((f, pl) => { const t = set.places[pl]; return t === 'any' || t === 'shoot' ? f : f * (0.2 + 0.8 * c.P.suit(t, m[pl])); }, 1);
+/* THE SET SUITS THE ROLES (Louie, 2026-10-16: "Plays that more correspond with their role (i.e. for secondary ball handlers
+   more side PNR or spot up or off-screen plays, for combos and PGs more middle PNR etc.)"): the man with the ball in the
+   set's action - a point guard or a combo guard runs the middle and high ball screens, a secondary handler or a point
+   forward the side pick-and-roll; a shooter whose role lives off the ball is run off screens */
+const MIDDLE = new Set(['spread', 'horns', 'spain', 'drag', 'pistol', 'short', 'pop']);
+const OFFSCREEN = new Set(['zipper', 'floppy', 'stagger', 'elevator', 'chicago', 'flare', 'iverson', 'hammer']);
+function roleW(set, m, c) {
+  let w = 1;
+  const k = m.h, r = k != null && c.roles ? c.roles[k] : null;
+  if (r) {
+    const primary = r.slot === 0 || r.cat === 'Combo', second = r.cat === 'Secondary handler' || r.cat === 'Point forward' || r.cat === 'Playmaking forward';
+    if (MIDDLE.has(set.id)) w *= primary ? 1.5 : second ? 0.35 : 0.6;
+    else if (set.id === 'side') w *= second ? 2.2 : primary ? 0.8 : 1;
+  }
+  const rx = c.roles ? c.roles[c.X] : null;
+  if (rx && OFFSCREEN.has(set.id) && /Off-ball scorer|Secondary handler|3&D|Stretch/.test(rx.cat)) w *= 1.4;
+  return w;
+}
 function choose(R, c) {
   for (const anyKind of [false, true]) {
     const cand = [];
@@ -492,7 +515,7 @@ function choose(R, c) {
         if (!fits(fx, c, anyKind)) return;
         const m = cast(set, c, fx);
         if (!m) return;
-        const w = set.base * (fx[5] || 1) * fitOf(set, m, c) * (c.late && set.late ? set.late : 1) * (c.hurry && set.early ? 4 : 1);
+        const w = set.base * (fx[5] || 1) * fitOf(set, m, c) * roleW(set, m, c) * (c.late && set.late ? set.late : 1) * (c.hurry && set.early ? 4 : 1);
         if (w > 0) cand.push({ set, fx, m, w });
       });
     });
@@ -531,6 +554,26 @@ function alignOf(set, c, m) {
    start, by (0-9)}: how the ball changed hands, spot(e) -> the shot's spot in feet, seed, dins (the defending five's
    instruction keys by place: their bigs' coverage on the ball screen, gambling, rim protection), dtac (the defending
    team's instructions: scheme, gamble)} */
+/* ROOM FOR THE SHOT (Louie, 2026-10-16: "needs to be real to basketball logic"): a teammate standing where the shooter
+   is going lifts or drifts to the most open spot outside (a spacer never shares a corner with the man shooting from it).
+   Where each man will be at the shot is read from the steps (his last move, else where he is); one within 9 ft of the
+   spot moves in the last step, to the perimeter spot furthest from everybody else and the shot */
+const ROOM = ['L corner', 'R corner', 'L wing', 'R wing', 'L slot', 'R slot', 'top'];
+function makeRoom(steps, X, F, pos) {
+  if (!steps.length) return;
+  const at = FIVE.map(k => { let p = pos[k]; steps.forEach(s => { if (s.mv && s.mv[k]) p = s.mv[k]; }); return p; });
+  at[X] = F;
+  const last = steps[steps.length - 1], passer = last.pass ? last.pass[0] : null;
+  FIVE.forEach(k => {
+    if (k === X || k === passer || !at[k] || Math.hypot(at[k][0] - F[0], at[k][1] - F[1]) >= 9) return;
+    const best = ROOM.map(n => spot(n, 1)).filter(q => Math.hypot(q[0] - F[0], q[1] - F[1]) >= 12)
+      .map(q => ({ q, d: Math.min(...FIVE.filter(j => j !== k).map(j => Math.hypot(q[0] - at[j][0], q[1] - at[j][1]))) }))
+      .sort((a, b) => b.d - a.d)[0];
+    if (!best) return;
+    last.mv = Object.assign({}, last.mv || {}, { [k]: best.q });
+    at[k] = best.q;
+  });
+}
 function plan(o) {
   const evs = o.evs, P0 = evs[0], t0 = P0.t;
   const R = rng(hashOf(String(o.seed) + ':' + t0 + ':' + (P0.s || 0)));
@@ -590,12 +633,35 @@ function plan(o) {
       /* nobody faster than a man can run: the men in the action (the ball, the pass, the screen, the finisher) at a
          sprint, the others at a hard jog - a spacer short of time gets as far as he can and trails into the next step */
       const key = new Set([s.hold, s.pick, s.pass && s.pass[0], s.pass && s.pass[1], s.scr && s.scr[0], fin].filter(k => k != null));
+      const was = copy(pos);
       Object.keys(s.mv || {}).forEach(k => {
         const p = s.mv[k];
         if (!p || +k < 0 || +k > 4) return;
         const np = onCourt(p), d = dist(pos[+k], np), cap = (key.has(+k) ? 26 : 17) * Math.max(dt, 0.05);
         pos[+k] = d > cap && d > 1e-6 ? lerp(pos[+k], np, cap / d) : np;
       });
+      /* A DRIVE OR A CUT TO THE RIM IS NOT A STRAIGHT LINE (Louie, 2026-10-16: "a player not just linearly driving straight to
+         the rim at an odd angle through defenders"): he attacks a gap - his man's shoulder, middle or baseline - and turns
+         the corner to the basket; a man in the corner or low on the wing goes baseline. A waypoint at 45% of the way, set
+         4.5 ft off the straight line (where his man stands), the speed carried through it (vel below). Only in a step
+         with no pass in it, so the ball's flights keep their timing */
+      if (!(s.pass && s.pass[0] !== s.pass[1]) && s.pick == null && dt > 0.35) {
+        const mid = copy(pos).map((q, j) => lerp(was[j], q, 0.45));
+        let bent = false;
+        FIVE.forEach(k => {
+          const p0 = was[k], q = pos[k], d = dist(p0, q);
+          if (d < 12 || dist(q, RIM) > 9 || p0[1] > 47) return;
+          const u = [(q[0] - p0[0]) / d, (q[1] - p0[1]) / d], n = [-u[1], u[0]];
+          const h = ((Math.round(t * 1000) * 2654435761 + k * 97) >>> 0) % 1000 / 1000;
+          let side;
+          if (Math.abs(p0[0]) > 11) { const base = p0[1] < 17 || h < 0.45, wantX = (base ? 1 : -1) * Math.sign(p0[0]); side = Math.sign(n[0]) === wantX || n[0] === 0 ? 1 : -1; }
+          else side = h < 0.5 ? 1 : -1;
+          const m = lerp(p0, q, 0.45);
+          mid[k] = onCourt([m[0] + n[0] * side * 4.5, m[1] + n[1] * side * 4.5]);
+          bent = true;
+        });
+        if (bent) add({ t: t + dt * 0.45, pos: mid, ball: ballSpec(), hint: s.hint || null });
+      }
       let b;
       if (s.pass && s.pass[0] !== s.pass[1] && s.pass[0] != null && s.pass[1] != null) {
         b = { fly: { from: s.pass[0], to: s.pass[1], arc: s.lob ? 0.9 : 0.12, dur: Math.max(0.15, Math.min(s.dho ? 0.25 : 0.65, dt * 0.85)) } };
@@ -652,7 +718,9 @@ function plan(o) {
     const F = end.k === 'S' ? onCourt(o.spot(end)) : end.k === 'F' ? [(R() - 0.5) * 7, 6.4 + R() * 3] : [(R() - 0.5) * 24, 17 + R() * 10];
     const tStart = Math.max(ch.t0, frames[frames.length - 1].t), quick = te - ch.t0;
     fin = X;
-    const assisted = end.k === 'S' && end.m ? A != null : null;
+    /* off a pass or not: a make says (its assist); a missed three from a corner was a catch-and-shoot (a pull-up goes up
+       above the break: shotSpot) */
+    const assisted = end.k === 'S' && end.m ? A != null : end.k === 'S' && z === 2 && Math.abs(F[0]) > 20 && F[1] < 11 ? true : null;
     const tShot = end.k === 'S' ? te - 0.5 : end.k === 'F' ? te - 0.1 : te;
     const rebK = ch.from ? o.idx(ch.from.p) : -1;
     const putback = ch.from && rebK === X && end.k === 'S' && end.z === 0 && quick <= 4;
@@ -715,10 +783,21 @@ function plan(o) {
              spots), the ball brought over the top by its handler; the play called as they set up (as FM names a set
              piece when it starts) */
           const first = steps.find(s => s.hold != null || s.pass), H = first ? (first.pass ? first.pass[0] : first.hold) : H0;
+          /* THE BALL IS BROUGHT UP BY THE FIVE'S PRIMARY HANDLER, whoever runs the set (Louie, 2026-10-16: a secondary
+             handler SF "bringing the ball up every 3rd or so play"): he enters it to the set's man - and with the time for
+             it, the ball goes side to side first (a reversal through a man outside), so a possession is not one pass */
+          const Hb = H0 != null ? H0 : H;
           const adv = Object.assign({}, c.al);
-          adv[H] = [(c.al[H] ? c.al[H][0] : 0) * 0.35, 32];
+          adv[Hb] = [(c.al[Hb] ? c.al[Hb][0] : 0) * 0.35, 32];
           steps[0] = Object.assign({}, steps[0], { w: 0.4 });
-          steps = startSteps(H).concat([step(2.2, { mv: adv, hold: H })], steps);
+          const out = k => k != null && k !== Hb && k !== H && k !== X && c.al[k] && dist(c.al[k], RIM) >= 18;
+          const R1 = quick >= 12 ? FIVE.filter(out).sort((a, b) => Math.abs(c.al[b][0]) - Math.abs(c.al[a][0]))[0] : undefined;
+          const home = c.al[Hb] ? { [Hb]: c.al[Hb] } : null, entry = [];
+          if (H != null && H !== Hb) {
+            if (R1 != null) entry.push(step(0.8, { pass: [Hb, R1], mv: home }), step(0.8, { pass: [R1, H] }));
+            else entry.push(step(0.8, { pass: [Hb, H], mv: home }));
+          } else if (R1 != null && R() < 0.7) entry.push(step(0.8, { pass: [Hb, R1] }), step(0.8, { pass: [R1, Hb] }));
+          steps = startSteps(Hb).concat([step(2.2, { mv: adv, hold: Hb })], entry, steps);
         } else if (ci === 0) {
           steps = startSteps(m.h != null ? m.h : H0).concat(steps);
         } else if (rebK >= 0 && rebK <= 4) {
@@ -731,6 +810,7 @@ function plan(o) {
       /* a possession squeezed by the buzzer: no set, the shot from where it was taken */
       if (tShot - tSet < 2.2) steps = A != null && A !== X ? [step(1, { mv: { [X]: F }, pass: [A, X] })] : [step(1, { mv: { [X]: F }, hold: X })];
     }
+    if (end.k === 'S' && z !== 0) makeRoom(steps, X, F, pos);
     pushSteps(steps, tSet, Math.max(tSet + 0.3, tShot), steps.vAvg);
     /* the end: the shot, the trip to the line, the ball lost */
     if (end.k === 'S') {
@@ -833,12 +913,22 @@ function defOf(o) {
     tac: { scheme: clamp(+tac.scheme || 0, -1, 1), gamble: clamp(+tac.gamble || 0, 0, 1) }
   };
 }
-function defence(off, ball, hold, hint, prog, D) {
+function defence(off, ball, hold, hint, prog, D, hv) {
   D = D || NO_D;
   const fl = j => D.flags[j] || {}, scheme = D.tac.scheme || 0, teamGam = (D.tac.gamble || 0) >= 0.5;
   const out = off.map((p, k) => {
     const f = fl(k), gam = f.gam || teamGam, toR = [RIM[0] - p[0], RIM[1] - p[1]], dr = Math.hypot(toR[0], toR[1]) || 1;
     if (k === hold) {
+      /* BEATEN ON A DRIVE: a man attacking the rim at speed has his defender hip to hip - beside him on the middle's side,
+         half a step behind - not standing in his path for him to run through (Louie, 2026-10-16); the help comes from
+         the others (below) */
+      if (hv && p[1] <= 40 && dr > 4) {
+        const sp = Math.hypot(hv[0], hv[1]), toward = sp > 0 ? (hv[0] * toR[0] + hv[1] * toR[1]) / (sp * dr) : 0;
+        if (sp > 9 && toward > 0.5) {
+          const u = [hv[0] / sp, hv[1] / sp], n = [-u[1], u[0]], side = n[0] * -p[0] >= 0 ? 1 : -1;
+          return [p[0] + n[0] * side * 2.1 - u[0] * 0.6, p[1] + n[1] * side * 2.1 - u[1] * 0.6];
+        }
+      }
       let gap = p[1] > 47 ? Math.min(14, p[1] - 38) : dr < 8 ? 1.8 : 3.3;
       if (p[1] <= 47 && dr >= 8) gap += (gam ? -0.9 : 0) + (f.sol ? 0.4 : 0) + 1.2 * Math.max(0, scheme);
       return [p[0] + toR[0] / dr * gap, p[1] + toR[1] / dr * gap];
@@ -921,7 +1011,10 @@ function at(pl, t, hp) {
   const lagT = Math.max(F[0].t, t - 0.3), off2 = offAt(F, lagT);
   const bAt = hold != null && hold <= 4 ? off2[hold] : ball;
   const hint = b ? b.hint : a.hint, prog = b ? clamp((t - a.t) / Math.max(1e-6, b.t - a.t), 0, 1) : 1;
-  const def = defence(off2, bAt, hold != null && hold <= 4 ? hold : null, hint, prog, pl.D);
+  /* the handler's speed, a moment back (the defence sees what he was doing) */
+  let hv = null;
+  if (hold != null && hold <= 4) { const tp = Math.max(F[0].t, lagT - 0.25); if (lagT - tp > 0.05) { const q = offAt(F, tp)[hold]; hv = [(off2[hold][0] - q[0]) / (lagT - tp), (off2[hold][1] - q[1]) / (lagT - tp)]; } }
+  const def = defence(off2, bAt, hold != null && hold <= 4 ? hold : null, hint, prog, pl.D, hv);
   const ds = (b && b.dset) || (!b && a.dset) || null;
   if (ds) Object.keys(ds).forEach(j => { def[+j] = ds[j].slice(); });
   const call = pl.calls.filter(c => c.t <= t + 1e-6).slice(-1)[0] || null;
