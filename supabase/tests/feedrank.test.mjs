@@ -6,8 +6,10 @@
 //   * the official-partner boost: only while UNREAD, in full for a week, gone two days after; a read one is ordinary
 //   * the tiers: a publisher's story = a creator's piece > a league's own article > a match report; a game's significance
 //     lifts its report (a cup final can outrank an ordinary story; a fresh report for a followed league can surface)
-//   * variety: never more than two in a row from one source; no more than two boosted partner items in the first six
-//   * the country, from a time zone or a language, unknown included; a league in it counts in full, a region-mate's less
+//   * variety: never more than two in a row from one source, nor more than two of six about one league the reader does not
+//     follow; no more than two partner items LIFTED BY THE BOOST in the first six (one that would be there anyway is not counted)
+//   * the country, from a time zone or a language, unknown included; a league in it counts in full, a region-mate's less;
+//     a pan-European competition ('EU') is never home; home and followed leagues lead (2026-10-15)
 //   * dwell, with an injected clock: only while visible and active, never idle, per-league session cap, flushed on hide
 //   * storage that is blocked, throws, or is missing: everything still works
 //   * personalisation off: the newest first, nothing recorded, the profile untouched; a reset clears the profile only
@@ -58,8 +60,10 @@ ok('normalised by a saturating curve: never above 1, ever slower', FR.sat(1e9, W
   hooked.l.nbl = [1e6, NOW]; hooked.p['source:eurohoops'] = [1e6, NOW];
   const obsessed = article({ h: 72, league_slug: 'nbl' });                 // three days old, a league they cannot get enough of
   const fresh = story({ h: 0.5, source_slug: 'other', source_name: 'Other' });
-  const max = 1 + W.W_LEAGUE + W.W_COUNTRY + W.W_PUB;
-  ok('the whole personal multiplier is capped: one obsession is 1 + the three caps, at most', S(story({ h: 1, leagues: [{ slug: 'nbl', name: 'NBL' }] }), Object.assign({}, hooked, { country: 'AU', leagueCountry: { nbl: 'AU' } })).personal <= max + 1e-9);
+  const max = 1 + W.W_LEAGUE + W.W_COUNTRY + W.W_PUB + W.W_FOLLOW;
+  ok('the whole personal multiplier is capped: one obsession is 1 + the four caps, at most (followed included)',
+     S(story({ h: 1, leagues: [{ slug: 'nbl', name: 'NBL' }] }), Object.assign({}, hooked, { country: 'AU', leagueCountry: { nbl: 'AU' } })).personal <= max - W.W_FOLLOW + 1e-9 &&
+     S(story({ h: 1, leagues: [{ slug: 'nbl', name: 'NBL' }] }), Object.assign({}, hooked, { country: 'AU', leagueCountry: { nbl: 'AU' }, followedLeagues: ['nbl'] })).personal <= max + 1e-9);
   ok('...so an obsession cannot bury what is fresh: a 3-day-old story of their favourite league is under a fresh one from nowhere',
      R([obsessed, fresh], hooked)[0].id === fresh.id);
 }
@@ -144,9 +148,35 @@ console.log('\nvariety');
   const b = []; for (let i = 0; i < 8; i++) b.push(story({ h: 4 + i, source_slug: 'x', source_name: 'X' }));
   const out = R(a.concat(b), p);
   const top6 = out.slice(0, 6);
-  ok('no more than two boosted partner items in the first six', top6.filter(x => x.boosted).length <= 2 && top6.filter(x => x.source_slug === 'eurohoops').length <= 3, top6.map(x => x.source_slug));
-  ok('...and no more than two partner stories in the whole feed (2026-10-07): the rest wait for a place', out.filter(x => x.source_slug === 'eurohoops').length === W.PARTNER_SHOWN_MAX
-     && out.length === 2 + b.length, out.map(x => x.source_slug));
+  /* 2026-10-15: these six partner stories are the six freshest - each would be in the first six WITHOUT the boost - so none
+     is there because of it: none is lifted, none counts against the limits, none is taken out */
+  ok('partner stories that would be in the first six without the boost are not lifted: they are not counted, and none is taken out',
+     out.filter(x => x.lifted).length === 0 && out.length === a.length + b.length && top6.filter(x => x.source_slug === 'eurohoops').length <= 4, out.map(x => x.source_slug + (x.lifted ? '^' : '')));
+  /* partner stories the boost lifts: older than everything else, from three partners */
+  const three = new Set(['source:eurohoops', 'source:cv', 'source:pp']);
+  const olds = [story({ h: 20, id: 'pE' }), story({ h: 22, id: 'pC', source_slug: 'cv', source_name: 'CV' }), story({ h: 24, id: 'pP', source_slug: 'pp', source_name: 'PP' })];
+  const fresh = []; for (let i = 0; i < 8; i++) fresh.push(story({ h: 1 + i * 0.5, source_slug: 'y' + (i % 4), source_name: 'Y' + (i % 4) }));
+  const lo = R(olds.concat(fresh), { partners: three });
+  ok('no more than two partner items LIFTED BY THE BOOST in the first six', lo.slice(0, 6).filter(x => x.lifted).length === W.PARTNER_TOP_MAX, lo.map(x => x.id + (x.lifted ? '^' : '')));
+  ok('...and no more than two keep the boost in the whole feed: the third is not taken out (2026-10-15) but loses its boost and stands where its own score puts it, after every fresher story',
+     lo.length === olds.length + fresh.length && lo.filter(x => x.boosted).length === W.PARTNER_SHOWN_MAX && lo.slice(0, 2).map(x => x.id).join() === 'pE,pC' &&
+     (() => { const t = lo.find(x => x.id === 'pP'); return t && t.partner === true && t.boosted === false && t.lifted === false && t.why !== 'Official partner' && lo.indexOf(t) === lo.length - 1; })(),
+     lo.map(x => x.id + (x.boosted ? '*' : '')));
+  /* Louie's case: more than two partners' stories that get onto the feed naturally */
+  const nat3 = [story({ h: 1, id: 'nE' }), story({ h: 1.2, id: 'nC', source_slug: 'cv', source_name: 'CV' }), story({ h: 1.4, id: 'nP', source_slug: 'pp', source_name: 'PP' })];
+  const older = []; for (let i = 0; i < 8; i++) older.push(story({ h: 6 + i, source_slug: 'z' + (i % 4), source_name: 'Z' + (i % 4) }));
+  const no = R(nat3.concat(older), { partners: three });
+  ok('three partners\' stories that would be in the first six anyway are all there, boosted, and none of them is lifted (more than two partners when they get there naturally)',
+     no.slice(0, 3).map(x => x.id).sort().join() === 'nC,nE,nP' && no.slice(0, 3).every(x => x.boosted && !x.lifted && x.why === 'Official partner'), no.map(x => x.id + (x.boosted ? '*' : '') + (x.lifted ? '^' : '')));
+  const mixed = R(nat3.slice(0, 2).concat(olds.slice(0, 2), older), { partners: three });
+  ok('...and they do not take the lifted ones\' places: two natural and two lifted partner stories are all four in the first six',
+     mixed.slice(0, 6).filter(x => x.boosted).length === 4 && mixed.slice(0, 6).filter(x => x.lifted).length === 2, mixed.map(x => x.id + (x.boosted ? '*' : '') + (x.lifted ? '^' : '')));
+  ok('the bar is the sixth-best score with the boost taken off: a partner story that is itself the sixth best without it is natural, the next one down lifted', (() => {
+    const pool = []; for (let i = 0; i < 6; i++) pool.push(story({ h: 2 + i, source_slug: 'q' + i, source_name: 'Q' + i }));
+    const above = story({ h: 6.5, id: 'ab', source_slug: 'cv', source_name: 'CV' }), under = story({ h: 7.5, id: 'un', source_slug: 'pp', source_name: 'PP' });
+    const r = R(pool.concat(above, under), { partners: three });
+    return r.find(x => x.id === 'ab').lifted === false && r.find(x => x.id === 'un').lifted === true;
+  })());
   const runs = rows => { let worst = 1, cur = 1; for (let i = 1; i < rows.length; i++) { cur = rows[i].source_slug === rows[i - 1].source_slug ? cur + 1 : 1; worst = Math.max(worst, cur); } return worst; };
   const many = []; for (let i = 0; i < 12; i++) many.push(story({ h: 1 + i })); for (let i = 0; i < 12; i++) many.push(story({ h: 6 + i, source_slug: 'y' + (i % 3), source_name: 'Y' }));
   ok('never more than two in a row from one source', runs(R(many, {})) <= 2, R(many, {}).map(x => x.source_slug).join(' '));
@@ -170,9 +200,10 @@ console.log('\nthe tiers: a publisher\'s story, a creator\'s piece, the league\'
   ok('with no interest in the league, a fresh report is under a publisher story six hours old', R([freshReport, pub6], {})[0].id === pub6.id);
   ok('...but for a league the reader follows, a fresh report surfaces above it', R([freshReport, pub6], { followedLeagues: ['nbl'] })[0].id === freshReport.id && R([freshReport, pub6], { followedLeagues: ['nbl'] })[0].why === 'You follow NBL');
   const dw = state(); dw.l.nbl = [30, NOW];
-  const pub14 = story({ h: 14, source_slug: 'z', source_name: 'Z' });
-  ok('...and for a league they spend time on it surfaces above a story of half a day, though not above a fresh one',
-     R([freshReport, pub14], dw)[0].id === freshReport.id && /Because you read a lot about NBL/.test(R([freshReport, pub14], dw)[0].why) && R([freshReport, pub6], dw)[0].id === pub6.id);
+  /* (2026-10-15: time on a league counts for a little less, W_LEAGUE 1.2 -> 0.9, so the story it passes is 16 hours old, was 14) */
+  const pub16 = story({ h: 16, source_slug: 'z', source_name: 'Z' });
+  ok('...and for a league they spend time on it surfaces above a story of most of a day, though not above a fresh one',
+     R([freshReport, pub16], dw)[0].id === freshReport.id && /Because you read a lot about NBL/.test(R([freshReport, pub16], dw)[0].why) && R([freshReport, pub6], dw)[0].id === pub6.id);
   ok('...but a report a day old for the same league is not (fresh matters)', R([report({ h: 26, league_slug: 'nbl', league_name: 'NBL' }), pub6], dw)[0].id === pub6.id);
   /* significance */
   const cup = report({ h: 5, league_slug: 'nbl', league_name: 'NBL' }), plain = report({ h: 5, league_slug: 'nbl', league_name: 'NBL' });
@@ -542,7 +573,10 @@ console.log('\nan official partner shown four times and never opened keeps a qua
        near(S(a, { partners: both }).score - sc(a.id), 0) && near(S(b2, { partners: both }).score - sc(b2.id), W.PARTNER_BOOST * 0.5, 1e-6) &&
        near(S(c3, { partners: both }).score - sc(c3.id), W.PARTNER_BOOST * 0.75, 1e-6), out.map(r => r.id + ':' + r.score.toFixed(2)));
     ok('...so two partners\' best stories lead before either\'s second', out.slice(0, 2).map(r => r.id).sort().join() === [a.id, x.id].sort().join(), out.map(r => r.id));
-    ok('...and with two places, those two are the feed\'s partners: the others wait', R([a, b2, c3, x], Object.assign(state(), { partners: both })).map(r => r.id).sort().join() === [a.id, x.id].sort().join());
+    /* (2026-10-15: in a feed of four every story is in the first six without any boost, so none is lifted and none waits;
+       the places are for what the boost lifts - tested under 'variety') */
+    ok('...and in a feed of four, where every story would be in the first six anyway, all four stay and the two best partners lead',
+       (() => { const r = R([a, b2, c3, x], Object.assign(state(), { partners: both })); return r.length === 4 && r.slice(0, 2).map(q => q.id).sort().join() === [a.id, x.id].sort().join() && r.every(q => !q.lifted); })());
   }
 }
 
@@ -568,6 +602,89 @@ console.log('\na league away from the reader is less likely to lead (2026-10-06)
   ok('...and the same story at home keeps all of it', near(S(pAu, Object.assign({}, pr, { country: 'AU' })).boost, W.PARTNER_BOOST));
   ok('...so an ordinary story of the reader\'s own country leads it', R([pAu, gb], pr)[0].id === gb.id, order(R([pAu, gb], pr)));
   ok('...unless the reader has shown interest in that league: then it leads again', R([pAu, gb], Object.assign({}, pr, { l: { nbl: [60, NOW] } }))[0].id === pAu.id);
+}
+
+console.log('\nhome and followed leagues lead (2026-10-15)');
+{
+  const lc = { slb: 'GB', acb: 'ES', euroleague: 'EU', nbl: 'AU', kbl: 'KR', lkl: 'LT', bbl: 'DE', lnb: 'FR' };
+  const prof = o => Object.assign(state(), { country: 'GB', leagueCountry: lc }, o || {});
+  const about = (lg, o) => story(Object.assign({ h: 3, source_slug: 's-' + lg, source_name: 'S ' + lg, leagues: [{ slug: lg, name: lg.toUpperCase() }] }, o || {}));
+  ok('the weights say so: the reader\'s country and a follow each count for more than time on a league can', W.W_COUNTRY > W.W_LEAGUE && W.W_FOLLOW > W.W_LEAGUE);
+  /* the league the reader reads most: its points and its publisher's at their caps */
+  const hooked = o => { const p = prof(o); p.l.euroleague = [1e6, NOW]; p.p['source:s-euroleague'] = [1e6, NOW]; return p; };
+  const fol = about('acb', { id: 'F' }), fol4 = about('acb', { id: 'F4', h: 4 }), el = about('euroleague', { id: 'E' });
+  ok('a followed league beats an unfollowed one of the same age, however much the reader reads of that one (its league and its publisher at their caps)',
+     order(R([el, fol], hooked({ followedLeagues: ['acb'] })))[0] === 'F' && order(R([el, fol4], hooked({ followedLeagues: ['acb'] })))[0] === 'F4',
+     R([el, fol], hooked({ followedLeagues: ['acb'] })).map(x => x.id + ':' + x.score.toFixed(2)));
+  const home = about('slb', { id: 'H' }), au = about('nbl', { id: 'A' });
+  const dw = prof(); dw.l.nbl = [1e6, NOW]; dw.l.euroleague = [1e6, NOW];
+  ok('a home league beats a league abroad of the same age, even one the reader spends all their time on, and says why',
+     order(R([au, home], dw))[0] === 'H' && order(R([el, home], dw))[0] === 'H' && R([au, home], dw)[0].why === 'Popular where you are', R([au, el, home], dw).map(x => x.id + ':' + x.score.toFixed(2)));
+  const homeF = about('slb', { id: 'HF', h: 12 }), elFresh = about('euroleague', { id: 'EF', h: 2 });
+  ok('...and a followed home league\'s half-day-old story beats a fresh one of the league they read most',
+     order(R([elFresh, homeF], hooked({ followedLeagues: ['slb'] })))[0] === 'HF');
+  ok('not a wall: a much fresher story elsewhere still comes first - over a home story of a day and a quarter, and over a followed one of two and a half days',
+     order(R([about('slb', { id: 'H30', h: 30 }), about('euroleague', { id: 'E0', h: 0.5 })], prof()))[0] === 'E0' &&
+     order(R([about('slb', { id: 'H60', h: 60 }), about('euroleague', { id: 'E0b', h: 0.5 })], prof({ followedLeagues: ['slb'] })))[0] === 'E0b');
+  ok('the follow term is in the score\'s parts, and "why" names the league', S(fol, prof({ followedLeagues: ['acb'] })).terms.follow === W.W_FOLLOW && R([fol], prof({ followedLeagues: ['acb'] }))[0].why === 'You follow ACB');
+
+  console.log('\na pan-European competition is never home (2026-10-15)');
+  ok('a competition filed as EU counts as COUNTRY_CONTINENT for a reader anywhere in Europe - less than a neighbour\'s league - and a continent is nobody\'s country',
+     FR.CONTINENTS.EU.every(r => FR.countryMatch(r, 'EU') === W.COUNTRY_CONTINENT) && W.COUNTRY_CONTINENT < W.COUNTRY_NEAR && W.COUNTRY_CONTINENT < W.COUNTRY_HOME && FR.countryMatch('EU', 'EU') === 0 &&
+     ['GB', 'IL', 'TR', 'RS', 'LT'].every(r => FR.CONTINENTS.EU.indexOf(r) >= 0));
+  const el0 = about('euroleague', { id: 'E1' });
+  ok('...so for a reader in Britain with no interest in it, EuroLeague is neither home nor away: no country boost, no away cut, never "Popular where you are"',
+     S(el0, prof()).C === W.COUNTRY_CONTINENT && S(el0, prof()).away === false && S(el0, prof()).awayMul === 1 && R([el0], prof())[0].why !== 'Popular where you are');
+  ok('...for a reader outside Europe it is away like any league abroad', S(el0, prof({ country: 'US' })).away === true && S(el0, prof({ country: 'JP' })).awayMul === W.AWAY_FACTOR);
+  ok('...and a British league\'s story of the same age is above it', order(R([el0, about('slb', { id: 'H1' })], prof()))[0] === 'H1');
+  ok('followed, or read about, it climbs like any league', R([el0], prof({ followedLeagues: ['euroleague'] }))[0].why === 'You follow EUROLEAGUE' &&
+     S(el0, (() => { const p = prof(); p.l.euroleague = [40, NOW]; return p; })()).score > S(el0, prof()).score * 1.5);
+
+  console.log('\na league away is lifted gradually as the reader shows an interest (2026-10-15)');
+  const ax = about('nbl', { id: 'AX' }), axP = about('nbl', { id: 'AXP', source_slug: 'eurohoops', source_name: 'Eurohoops' });
+  const pts = (row, n, extra) => { const p = prof(extra); if (n) p.l.nbl = [n, NOW]; return S(row, p); };
+  ok('no points: held back by AWAY_FACTOR', pts(ax, 0).away === true && near(pts(ax, 0).awayMul, W.AWAY_FACTOR));
+  ok('one story of it opened (OPEN_LEAGUE_PTS) lifts it only a little - before, it lifted it all at once', pts(ax, W.OPEN_LEAGUE_PTS).awayMul > W.AWAY_FACTOR && pts(ax, W.OPEN_LEAGUE_PTS).awayMul < W.AWAY_FACTOR + 0.15, pts(ax, W.OPEN_LEAGUE_PTS).awayMul);
+  ok('...more with more, smoothly, and none of it at AWAY_FULL_L (about six points)', (() => { let prev = 0; for (let n = 0; n <= 8; n += 0.25) { const m = pts(ax, n).awayMul; if (m < prev - 1e-12) return false; prev = m; } return true; })() &&
+     pts(ax, 6).away === false && pts(ax, 6).awayMul === 1);
+  ok('a partner\'s boost there is lifted the same way: a share of it with nothing, more with points, all of it once lifted',
+     near(pts(axP, 0, { partners }).boost, W.PARTNER_BOOST * W.AWAY_BOOST_SHARE) && pts(axP, 3, { partners }).boost > pts(axP, 0, { partners }).boost &&
+     pts(axP, 3, { partners }).boost < W.PARTNER_BOOST && near(pts(axP, 6, { partners }).boost, W.PARTNER_BOOST));
+
+  console.log('\nno more than two of six about one league the reader does not follow (2026-10-15)');
+  const many = [];
+  ['a', 'b', 'c', 'd', 'e'].forEach((s, i) => { many.push(about('euroleague', { h: 0.5 + i * 0.2, source_slug: 'el' + s, source_name: 'EL ' + s })); many.push(about('euroleague', { h: 0.6 + i * 0.2, source_slug: 'el' + s, source_name: 'EL ' + s })); });
+  const others = ['acb', 'nbl', 'kbl', 'lkl', 'bbl', 'lnb'].map((lg, i) => about(lg, { h: 5 + i }));
+  const keen = (() => { const p = prof(); p.l.euroleague = [60, NOW]; return p; })();
+  const sp = R(many.concat(others), keen);
+  const isEl = x => FR.leaguesOf(x)[0].slug === 'euroleague';
+  const elAt = sp.map((x, i) => (isEl(x) ? i : -1)).filter(i => i >= 0);
+  ok('ten fresh EuroLeague stories from five publishers, for a reader who reads it a lot: two in the first six, the next two only after four others',
+     sp.slice(0, 6).filter(isEl).length === 2 && elAt[2] >= 6 && elAt[3] >= 6, sp.map(x => FR.leaguesOf(x)[0].slug).join(' '));
+  ok('...nothing is taken out: when the other leagues run out, it runs on (and still never three from one source)',
+     sp.length === many.length + others.length && sp.slice(-3).every(isEl) && (() => { for (let i = 2; i < sp.length; i++) if (sp[i].source_slug === sp[i - 1].source_slug && sp[i].source_slug === sp[i - 2].source_slug) return false; return true; })());
+  ok('a league the reader follows may run on: it is what they asked for', R(many.concat(others), Object.assign({}, keen, { followedLeagues: ['euroleague'] })).slice(0, 6).filter(isEl).length >= 4);
+  ok('...and so may a league that is nearly the whole pool (a league\'s own front page): nothing to vary it with',
+     R(many.concat(others.slice(0, 2)), keen).slice(0, 6).filter(isEl).length >= 4);
+  ok('stories about no league are never held by it', R([0, 1, 2, 3, 4, 5].map(i => story({ h: 1 + i * 0.1, source_slug: 'u' + i, source_name: 'U' })), prof()).length === 6);
+
+  console.log('\nthe partner limits are on the boost: a feed that is not ranked keeps every partner story (2026-10-15)');
+  const ps2 = new Set(['source:eurohoops', 'source:cv']);
+  const prs = [story({ h: 1, id: 'q1' }), story({ h: 2, id: 'q2', source_slug: 'cv', source_name: 'CV' }), story({ h: 3, id: 'q3' }), story({ h: 4, id: 'q4', source_slug: 'cv', source_name: 'CV' }), story({ h: 5, id: 'q5', source_slug: 'o', source_name: 'O' })];
+  ok('Newest and Followed (tidy): four partners\' stories, all stay - nothing is boosted there, every story is there by its date',
+     FR.tidy(prs, { partners: ps2, store: { enabled: () => false } }).length === 5);
+  ok('...also with personalisation on and nothing read', FR.tidy(prs, { partners: ps2, store: FR.createStore({ local: FR.memoryStorage(), session: FR.memoryStorage(), now: () => NOW }), now: NOW }).length === 5);
+  ok('personalisation off: the newest first, every partner story in it', order(FR.rank(prs, { off: true, partners: ps2 }, NOW)).join() === 'q1,q2,q3,q4,q5');
+  const ranked = R(prs.concat([0, 1, 2, 3, 4, 5].map(i => story({ h: 0.2 + i * 0.1, source_slug: 'f' + i, source_name: 'F' }))), { partners: ps2 });
+  ok('a ranked feed passed through tidy (feedview.js does) keeps every row: its limits are kept already', FR.tidy(ranked, { partners: ps2, store: { enabled: () => false } }).length === ranked.length && ranked.length === 11);
+
+  console.log('\nthe partner boost is still above everything else');
+  ok('PARTNER_BOOST is more than any other story can score, follows and the reader\'s country counted (scoreMax)', W.PARTNER_BOOST > FR.scoreMax() && W.PARTNER_BOOST / FR.scoreMax() < 1.2, [W.PARTNER_BOOST, FR.scoreMax()]);
+  ok('...and away from home a partner keeps the 0.8 it always kept', near(W.PARTNER_BOOST * W.AWAY_BOOST_SHARE, 0.8, 0.01));
+  ok('...so a fresh partner piece still leads the most-loved, followed, home story of the same age', (() => {
+    const loved = about('slb', { id: 'L' }); const pp = prof({ partners, followedLeagues: ['slb'] }); pp.l.slb = [1e6, NOW]; pp.p['source:s-slb'] = [1e6, NOW];
+    return order(R([loved, story({ h: 3, id: 'PP' })], pp))[0] === 'PP';
+  })());
 }
 
 console.log('\na series: its newest episode alone on a front page');

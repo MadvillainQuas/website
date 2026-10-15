@@ -14,7 +14,9 @@
                  while the tab is visible and the reader has touched, scrolled or typed in the last 30 s, flushed
                  when the tab is hidden or closed, capped per league per session. A point a minute.
      b  LOCATION the reader's country from their time zone, else their language's region: no permission, no IP,
-                 no geolocation. A league in that country is boosted, a neighbour's (a region's) less.
+                 no geolocation. A league in that country is boosted, a neighbour's (a region's) less. A pan-European
+                 competition (EuroLeague, EuroCup, the Champions League, the FIBA Europe Cup: country 'EU') is never
+                 anybody's home: for a reader in Europe it is neither home nor away (COUNTRY_CONTINENT, CONTINENTS).
      c  AFFINITY each story or piece opened, each publisher's or outlet's page visited, each follow: points to that
                  publisher or outlet, and a little to the story's leagues.
      d  READS    the ids of what they opened (capped, forgotten after 60 days), and impressions (what was shown)
@@ -27,20 +29,51 @@
    THE SCORE of a candidate, all of it in the constants below (W):
        recency   =  floor + (1 - floor) * 2^(-age / 18 h)               smooth, never zero
        personal  =  1 + W_LEAGUE * L + W_COUNTRY * C + W_PUB * P        each of L, C, P in [0, 1]: a saturating
-                                                                        curve, so one obsession cannot bury the rest
+                      + W_FOLLOW * F                                    curve, so one obsession cannot bury the rest;
+                                                                        F is 1 for what they follow, else 0
        base      =  TIER[tier] (+ what a match report's game is worth)  publisher = creator > league-written > report
        score     =  base * recency * personal * (impressions: a little less when shown and never opened)
                     * language factor           when the story is in a language the reader does not read
                     * the group's weight        the group the reader opens more often climbs (below)
+                    * the away factor           a league far from the reader they have shown no interest in (below)
                     + FOLLOW_BONUS * sqrt(recency)      when it comes from something they follow
                     + PARTNER_BOOST * fade(age)         when it is an official partner's and UNREAD
+   HOME AND FOLLOWED LEAD (2026-10-15). L is the reader's time on and opens of the story's league, C where it is (1 their
+   country, 0.4 a neighbour's, 0 anywhere else - a pan-European competition included), P their reading of its publisher.
+   W_COUNTRY 1.5 and W_FOLLOW 1.5 each outweigh the most W_LEAGUE (0.9) can add, and a followed home league has both: a story
+   of a league in the reader's country beats one of the same age from a league abroad however much time they spend on
+   that one, and a followed league's story beats an unfollowed one of the same age even with that one's league and
+   publisher at their caps (2.5 against 2.7, plus the follow's own FOLLOW_BONUS). A weight, not a wall: freshness still
+   matters most, so a fresh story from elsewhere still passes an unfollowed home one more than a day old, and a followed
+   one of two and a half days. (Before: W_LEAGUE 1.2, W_COUNTRY 0.6, no W_FOLLOW - a league the reader had spent half an
+   hour on counted for twice their own country, and a follow added only FOLLOW_BONUS: in a test pool, a British reader
+   with half an hour of EuroLeague pages saw it fill seventeen of the first twenty, all of the first six.)
    The partner boost is full for a week from publication and gone two days after, and it is more than any other story
-   can score at all (scoreMax: 11.7 against 12.5, salience at its cap counted), so an unread partner piece of the last week leads. Then the order is
-   made to vary: never more than two in a row from one source, and no more than two boosted partner items in the first six.
+   can score at all (scoreMax: 18.3 against 19.5, salience at its cap and a followed home league counted), so an unread
+   partner piece of the last week leads.
    A PARTNER'S STORY SHOWN FOUR TIMES AND NEVER OPENED keeps only a quarter of its boost (PARTNER_DROP_AT, PARTNER_WEAK), and only ONE
    STORY PER PARTNER takes the whole boost: each further one of the same source half of the one before (PARTNER_REPEAT). And any story about a LEAGUE AWAY
-   from the reader (a country that is not theirs nor a neighbour's, a league they have not followed and have next to no points for)
-   is multiplied by AWAY_FACTOR, a partner's boost there cut to a twelfth: far from home, only what they have shown an interest in leads.
+   from the reader (a country that is not theirs nor a neighbour's nor, for a pan-European competition, their continent; a
+   league they have not followed and have next to no points for) is multiplied by AWAY_FACTOR, a partner's boost there cut
+   to 0.8: far from home, only what they have shown an interest in leads. Their points for it lift both in a straight line
+   from AWAY_MIN_L to AWAY_FULL_L (about six minutes on its pages, or four of its stories opened), not at the first open.
+
+   THE ORDER is then made to vary (greedy: the best that breaks no rule):
+     * never more than two in a row from one source (MAX_RUN);
+     * never more than two of any six places in a row about one league the reader does not follow (LEAGUE_SPREAD_*;
+       2026-10-15): a dozen publishers writing about one competition no longer fill the first six with it. A followed
+       league may run on, and so may a league that is most of the pool (a league's own front page). When nothing else is
+       left, it gives way first, then the source's run;
+     * no more than two partner items LIFTED BY THE BOOST in the first six (PARTNER_TOP_MAX), below.
+   THE PARTNERS (2026-10-15): the limits are on what the boost LIFTS, never on a partner's story that gets there on its own.
+   The bar is the score of the sixth-best story (PARTNER_TOP_N) with every boost taken off. A boosted story whose own score,
+   boost taken off, clears the bar would be in the first six anyway: it keeps its boost (it leads), and is not counted
+   against either limit nor pushed down by them. One under the bar is there BECAUSE OF the boost - lifted - and only those
+   count: at most PARTNER_TOP_MAX of them in the first six, and at most PARTNER_SHOWN_MAX of them keep the boost in the
+   whole feed (the best that have not timed out first); a further lifted one is NOT taken out, as it was from 2026-10-07: it
+   loses its boost and stands where its own score puts it. So a feed can hold more than two partners' stories when they
+   get there naturally. A feed that is not ranked (Newest, Followed, personalisation off: tidy and the newest order) lifts
+   nothing, so every partner story in it stays where its date puts it.
 
    THE THREE GROUPS, in the order a reader sees them unless they show otherwise: an official PARTNER's piece (the boost),
    then the PRESS (a publisher's story = a creator's piece or post, base 1; a league's own article, 0.8), then AUTO, the
@@ -115,9 +148,19 @@ const W = Object.freeze({
   FOLLOW_PTS: 6, FOLLOW_LEAGUE_PTS: 6, // a follow
   LEAGUE_SCALE: 20, PUB_SCALE: 10,     // points at which L or P reaches 63% of its cap (1 - e^-1)
 
-  /* scoring */
-  W_LEAGUE: 1.2, W_COUNTRY: 0.6, W_PUB: 0.8,       // each's cap on the multiplier: 1 + at most 2.6
+  /* scoring. HOME AND FOLLOWED LEAD (2026-10-15): a league in the reader's country (W_COUNTRY) and a league they follow
+     (W_FOLLOW) each count for more than the most that time on a league (W_LEAGUE) or a publisher read (W_PUB) can add, so a
+     followed or home league's story beats an unfollowed one of a similar age, however much the reader has read of that
+     one; before, a league they spent time on (1.2) counted for twice their own country (0.6) and a follow only added a little */
+  W_LEAGUE: 0.9, W_COUNTRY: 1.5, W_PUB: 0.8,       // was 1.2 / 0.6 / 0.8: each's cap on the multiplier
+  W_FOLLOW: 1.5,                                   // a story of what the reader follows (a league, a club, a publisher, a creator)
   COUNTRY_HOME: 1, COUNTRY_NEAR: 0.4,              // a league in the reader's country / in a neighbour's or region's
+  /* A PAN-EUROPEAN COMPETITION (country 'EU': EuroLeague, EuroCup, the Champions League, the FIBA Europe Cup) is never
+     anybody's home: for a reader in Europe it counts COUNTRY_CONTINENT - the region at most, under a neighbour's league
+     (CONTINENTS below) - and is never away; for a reader elsewhere it is away. At 0 it is neither home nor away: no
+     boost for where the reader is, no cut. Followed, or read about, it climbs like any league. (Before 2026-10-15 'EU'
+     matched no reader, so it was "away" for everyone in Europe until one story opened lifted that all at once.) */
+  COUNTRY_CONTINENT: 0,
   FOLLOW_BONUS: 0.5,
   /* the base of each tier, before the personal terms: a publisher's story = a creator's piece, then a league's own
      article, then a match report (the site's own, one per game), which a significant game lifts (below) */
@@ -126,7 +169,7 @@ const W = Object.freeze({
   REPORT_SIG_GAIN: 0.85,               // ...and lift a report's base by this much: 0.35 -> 1.2 at most
   SIG_WHY_MIN: 10,                     // a game worth this many says why
   AUTO_AUTHOR: 'Epinoia match report', // how finalise-game signs a report: the low tier
-  PARTNER_BOOST: 12.5,                 // an official partner's unread story: more than any other story can score (scoreMax, 11.7 with salience), so it leads
+  PARTNER_BOOST: 19.5,                 // an official partner's unread story: more than any other story can score (scoreMax, 18.3 with salience), so it leads (12.5 against 11.7 before 2026-10-15)
   PARTNER_FULL_H: 168,                 // ...in full for a week from publication
   PARTNER_END_H: 216,                  // ...and fading until nothing is left, two days after
   /* language: a story in a language the reader does not read is multiplied by LANG_PENALTY, less as they engage with it */
@@ -149,9 +192,12 @@ const W = Object.freeze({
   PARTNER_WEAK: 0.25, PARTNER_REPEAT: 0.5,
   /* A LEAGUE AWAY FROM THE READER (2026-10-06): a story about a league in a country that is not the reader's (nor a neighbour's),
      which the reader has never followed and has next to no points for, is multiplied by AWAY_FACTOR; an official partner's boost
-     there is cut to AWAY_BOOST_SHARE of itself, so it no longer leads the feed by itself. Opening the league (its points reach
-     AWAY_MIN_L), following it, or being in its country lifts it entirely. A league whose country is not known is never "away". */
-  AWAY_FACTOR: 0.5, AWAY_BOOST_SHARE: 0.064, AWAY_MIN_L: 0.05,   // 0.064 x 12.5 = 0.8, the share it was at a boost of 10
+     there is cut to AWAY_BOOST_SHARE of itself, so it no longer leads the feed by itself. Following it, or being in its country
+     (or its region), lifts it entirely. A league whose country is not known is never "away".
+     ...LIFTED GRADUALLY (2026-10-15): the reader's points for the league lift it from AWAY_MIN_L, in a straight line, to all of
+     it at AWAY_FULL_L (about six minutes on its pages, or four of its stories opened). Before, one story opened (1.5 points)
+     lifted it all at once, doubling every story of that league and giving its partners' stories their whole boost. */
+  AWAY_FACTOR: 0.5, AWAY_BOOST_SHARE: 0.041, AWAY_MIN_L: 0.05, AWAY_FULL_L: 0.25,   // 0.041 x 19.5 = 0.8, the share it was at a boost of 10
 
   /* THE GROUPS THE READER OPENS (THE THREE GROUPS, in the file's head): partner, press (a publisher's story, a creator's
      piece or post, a league's own article) or auto (a match report). Each first open is a click for its group; the clicks
@@ -175,10 +221,18 @@ const W = Object.freeze({
 
   /* variety */
   MAX_RUN: 2,                          // never more than two in a row from one source
-  PARTNER_TOP_N: 6, PARTNER_TOP_MAX: 2,   // and no more than two boosted partner items in the first six
-  /* AT MOST TWO OFFICIAL PARTNERS' STORIES IN A FEED AT ONCE (2026-10-07), anywhere in it: the best two that have not timed
-     out (shown PARTNER_DROP_AT times, never opened), the timed-out ones only when nothing fresher waits. One read (it leaves
-     the feed) or timed out gives its place to the next partner's story. */
+  /* ...AND NO MORE THAN TWO OF ANY SIX PLACES IN A ROW ABOUT ONE LEAGUE THE READER DOES NOT FOLLOW (2026-10-15): many
+     publishers write about the same competition (EuroLeague above all), and "one source" alone let five of them fill the first
+     six with it. A league they follow may run on (it is what they asked for); so may a league that is nearly the whole pool
+     (LEAGUE_SPREAD_POOL of it: a league's own front page), where there is nothing to vary it with */
+  LEAGUE_SPREAD_N: 6, LEAGUE_SPREAD_MAX: 2, LEAGUE_SPREAD_POOL: 0.8,
+  PARTNER_TOP_N: 6, PARTNER_TOP_MAX: 2,   // and no more than two partner items LIFTED BY THE BOOST in the first six
+  /* AT MOST TWO OFFICIAL PARTNERS' STORIES LIFTED BY THE BOOST IN A FEED AT ONCE (2026-10-07; 2026-10-15 only the lifted ones):
+     the best two that have not timed out (shown PARTNER_DROP_AT times, never opened), the timed-out ones only when nothing
+     fresher waits. One read (it leaves the feed) or timed out gives its place to the next partner's story. A further partner's
+     story is not taken out: it stays without the boost, where its own score puts it. A partner's story that would be in the
+     first six WITHOUT the boost (THE PARTNERS, in the file's head) is there on its own merit: it keeps its boost and counts
+     against neither number. */
   PARTNER_SHOWN_MAX: 2,
 
   /* the profile's size */
@@ -278,6 +332,15 @@ function neighbours(code) {
   REGIONS.forEach(g => { if (g.indexOf(c) >= 0) g.forEach(x => { if (x !== c) out.add(x); }); });
   return out;
 }
+/* THE CONTINENTS: a competition filed under a continent's code ('EU': EuroLeague, EuroCup, the Champions League, the FIBA
+   Europe Cup) is the region, at most, for a reader in one of its countries (COUNTRY_CONTINENT, under a neighbour's
+   COUNTRY_NEAR), and never their home; for a reader anywhere else it is as far as any other country. Europe here is
+   basketball's: FIBA Europe's members, so Israel, Turkey and the Caucasus are in it. */
+const CONTINENTS = Object.freeze({
+  EU: Object.freeze(['GB', 'IE', 'FR', 'DE', 'ES', 'PT', 'IT', 'NL', 'BE', 'LU', 'CH', 'AT', 'LI', 'DK', 'SE', 'NO', 'FI', 'IS',
+    'EE', 'LV', 'LT', 'PL', 'CZ', 'SK', 'HU', 'SI', 'HR', 'BA', 'RS', 'ME', 'MK', 'AL', 'XK', 'XB', 'GR', 'BG', 'RO', 'MD', 'UA', 'BY',
+    'RU', 'TR', 'CY', 'MT', 'MC', 'AD', 'SM', 'GE', 'AM', 'AZ', 'IL'])
+});
 
 /* the country: from the time zone, else from the region of the first language that has one ('en-GB' -> GB). null when
    neither says: then nothing is boosted for where the reader is. No prompt, no network, no geolocation. */
@@ -297,16 +360,24 @@ function countryCodes(value) {
   const parts = String(value == null ? '' : value).split('+').map(s => s.trim().toUpperCase());
   return parts.length && parts.length <= 4 && parts.every(p => /^[A-Z]{2}$/.test(p)) ? parts : [];
 }
-/* how much a league's country counts for a reader in `reader`: COUNTRY_HOME (their own), COUNTRY_NEAR (a region-mate), or 0 */
+/* whether a league's country value is a continent the reader is in ('EU' for a reader in GB) */
+function inContinent(reader, leagueCountry) {
+  const r = String(reader || '').toUpperCase();
+  return /^[A-Z]{2}$/.test(r) && countryCodes(leagueCountry).some(x => CONTINENTS[x] && CONTINENTS[x].indexOf(r) >= 0);
+}
+/* how much a league's country counts for a reader in `reader`: COUNTRY_HOME (their own), COUNTRY_NEAR (a region-mate),
+   COUNTRY_CONTINENT (a competition of their continent: 'EU' for a reader in Europe), or 0. A continent's code is never
+   anybody's own country, so a pan-European competition is never home. */
 function countryMatch(reader, leagueCountry, w) {
   const c = w || W;
   const r = String(reader || '').toUpperCase();
-  if (!/^[A-Z]{2}$/.test(r)) return 0;
+  if (!/^[A-Z]{2}$/.test(r) || CONTINENTS[r]) return 0;
   const codes = countryCodes(leagueCountry);
   if (!codes.length) return 0;
   if (codes.indexOf(r) >= 0) return c.COUNTRY_HOME;
   const n = neighbours(r);
-  return codes.some(x => n.has(x)) ? c.COUNTRY_NEAR : 0;
+  if (codes.some(x => n.has(x))) return c.COUNTRY_NEAR;
+  return inContinent(r, leagueCountry) ? (c.COUNTRY_CONTINENT || 0) : 0;
 }
 
 /* ============================================================================================ the items === */
@@ -448,7 +519,7 @@ function groupWeights(profile, now, w) {
 function scoreMax(w) {
   const c = w || W;
   const base = Math.max(c.TIER.publisher, c.TIER.creator, c.TIER.league, c.TIER.report + c.REPORT_SIG_GAIN);
-  return base * (c.SAL_MAX || 1) * c.KIND_MAX * (1 + c.W_LEAGUE + c.W_COUNTRY + c.W_PUB) + c.FOLLOW_BONUS;
+  return base * (c.SAL_MAX || 1) * c.KIND_MAX * (1 + c.W_LEAGUE + c.W_COUNTRY + c.W_PUB + (c.W_FOLLOW || 0)) + c.FOLLOW_BONUS;
 }
 
 /* ============================================================================== the click-through model === */
@@ -553,7 +624,11 @@ function scoreOf(it, profile, now, w) {
   if (P.country && P.leagueCountry) lgs.forEach(l => { C = Math.max(C, countryMatch(P.country, P.leagueCountry[l.slug], c)); });
   const pkey = pkeyOf(it);
   const Pp = pkey ? sat(decay(P.p && P.p[pkey], now, c), c.PUB_SCALE) : 0;
-  const personal = 1 + c.W_LEAGUE * L + c.W_COUNTRY * C + c.W_PUB * Pp;
+  /* what the reader follows: the story is in their own feed (followedIds), or about a league they follow */
+  const followSet = asSet(P.followedIds), followLeagues = asSet(P.followedLeagues);
+  const followed = followSet.has(it && it.id) || lgs.some(l => followLeagues.has(l.slug));
+  const F = followed ? 1 : 0;
+  const personal = 1 + c.W_LEAGUE * L + c.W_COUNTRY * C + c.W_PUB * Pp + (c.W_FOLLOW || 0) * F;
 
   /* the tier, and what a match report's game is worth */
   let base = c.TIER[tier] != null ? c.TIER[tier] : 1;
@@ -572,8 +647,6 @@ function scoreOf(it, profile, now, w) {
     else if (num(ie[0]) >= c.IMPRESSION_SOFT_AT) imp = c.IMPRESSION_SOFT;
   }
 
-  const followSet = asSet(P.followedIds), followLeagues = asSet(P.followedLeagues);
-  const followed = followSet.has(it && it.id) || lgs.some(l => followLeagues.has(l.slug));
   const follow = followed ? c.FOLLOW_BONUS * Math.sqrt(rec) : 0;
 
   const partner = !!pkey && partnerSet(P.partners).has(pkey);
@@ -581,13 +654,19 @@ function scoreOf(it, profile, now, w) {
   const shown = Array.isArray(ie) && num(now) - num(ie[1]) < c.PARTNER_DROP_KEEP_DAYS * DAY ? num(ie[0]) : 0;
   const weakened = partner && !read && shown >= c.PARTNER_DROP_AT;
   const dropped = false;   // since 2026-10-06 a much-shown partner story is weakened, never dropped
-  /* a league away from the reader, which they have not engaged with */
-  let away = false;
-  if (P.country && P.leagueCountry && lgs.length && !followed && C === 0 && L < c.AWAY_MIN_L) {
-    away = lgs.every(l => P.leagueCountry[l.slug] != null && String(P.leagueCountry[l.slug]) !== '');
+  /* a league away from the reader, which they have not engaged with: held back in full under AWAY_MIN_L of its points, lifted
+     in a straight line to nothing at AWAY_FULL_L */
+  const fullL = c.AWAY_FULL_L != null ? c.AWAY_FULL_L : c.AWAY_MIN_L;
+  let away = false, lift = 0;
+  if (P.country && P.leagueCountry && lgs.length && !followed && C === 0 && L < fullL) {
+    /* a league of the reader's continent (a pan-European competition for a reader in Europe) is never away, whatever
+       COUNTRY_CONTINENT gives it */
+    away = lgs.every(l => P.leagueCountry[l.slug] != null && String(P.leagueCountry[l.slug]) !== '' && !inContinent(P.country, P.leagueCountry[l.slug]));
+    lift = fullL > c.AWAY_MIN_L ? Math.max(0, Math.min(1, (L - c.AWAY_MIN_L) / (fullL - c.AWAY_MIN_L))) : 0;
   }
-  const awayMul = away ? c.AWAY_FACTOR : 1;
-  const boost = partner && !read ? c.PARTNER_BOOST * partnerFade(age, c) * (away ? c.AWAY_BOOST_SHARE : 1) * (weakened ? c.PARTNER_WEAK : 1) : 0;
+  const awayMul = away ? c.AWAY_FACTOR + (1 - c.AWAY_FACTOR) * lift : 1;
+  const boostShare = away ? c.AWAY_BOOST_SHARE + (1 - c.AWAY_BOOST_SHARE) * lift : 1;
+  const boost = partner && !read ? c.PARTNER_BOOST * partnerFade(age, c) * boostShare * (weakened ? c.PARTNER_WEAK : 1) : 0;
 
   /* the language: a story in one the reader does not read is held back, less as they engage with it */
   const lang = langOf(it, P.langMap);
@@ -610,9 +689,9 @@ function scoreOf(it, profile, now, w) {
   const vk = it && it.video_kind && c.VIDEO_KIND ? (c.VIDEO_KIND[it.video_kind] || 1)
     * (it.video_kind === 'highlights' && it.game ? (c.VIDEO_GAME_HL || 1) : 1) : 1;
   const score = base * kindMul * rec * personal * imp * langFactor * awayMul * vk + follow + boost;
-  return { score, vk, away, dropped, weakened, shown, group, kindMul, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
+  return { score, vk, away, awayMul, dropped, weakened, shown, group, kindMul, lang, foreign, langFactor, langRelief, tier, base, rec, personal, L, Lleague: Lslug, C, P: Pp, pkey, partner, read, boost, follow, followed,
            sigPoints, sigReasons: tier === 'report' && sig && Array.isArray(sig.reasons) ? sig.reasons : [], imp,
-           terms: { league: c.W_LEAGUE * L, country: c.W_COUNTRY * C, pub: c.W_PUB * Pp } };
+           terms: { league: c.W_LEAGUE * L, country: c.W_COUNTRY * C, pub: c.W_PUB * Pp, follow: (c.W_FOLLOW || 0) * F } };
 }
 
 /* THE WORDS BESIDE A CARD ("Why am I seeing this?"): the biggest thing that put it here */
@@ -632,7 +711,8 @@ function whyOf(it, s, profile, w) {
   const cand = [];
   if (t.league >= c.WHY_LEAGUE_MIN && s.Lleague) cand.push([t.league, 'Because you read a lot about ' + (s.Lleague.name || s.Lleague.slug.toUpperCase())]);
   if (t.pub >= c.WHY_PUB_MIN && it.source_name) cand.push([t.pub, 'Because you read ' + it.source_name]);
-  if (t.country >= c.WHY_COUNTRY_MIN) cand.push([t.country, 'Popular where you are']);
+  /* "where you are" is the reader's country or a neighbour's, never a continent's competition */
+  if (t.country >= c.WHY_COUNTRY_MIN && s.C >= c.COUNTRY_NEAR) cand.push([t.country, 'Popular where you are']);
   if (s.kindMul - 1 >= c.WHY_KIND_MIN && s.group !== 'partner') cand.push([s.kindMul - 1, s.group === 'auto' ? 'Because you open match reports' : 'Because you open stories like this']);
   if (cand.length) return cand.sort((a, b) => b[0] - a[0])[0][1];
   if (s.tier === 'publisher') return 'From a publisher';
@@ -641,9 +721,10 @@ function whyOf(it, s, profile, w) {
   return 'League news';
 }
 
-/* THE PARTNERS' PLACES: at most c.PARTNER_SHOWN_MAX of the list's partner stories stay - those that have not timed out
-   first, in the list's own order, then the timed-out ones - and the rest wait outside it until a place frees (one read, one
-   timed out). Everything else keeps its place. */
+/* THE PARTNERS' PLACES: at most c.PARTNER_SHOWN_MAX of the list's items that `isPartner` picks stay - those that have not
+   timed out first, in the list's own order, then the timed-out ones - and the rest wait outside it until a place frees (one
+   read, one timed out). Everything else keeps its place. Since 2026-10-15 the feed's own callers pick only the stories LIFTED
+   by the boost (rank() keeps a further one in the feed without its boost instead; see THE PARTNERS in the file's head). */
 function partnerSlots(list, isPartner, timedOut, w) {
   const c = w || W;
   const ps = list.filter(isPartner);
@@ -654,7 +735,10 @@ function partnerSlots(list, isPartner, timedOut, w) {
 
 /* THE SAME TWO RULES FOR A FEED THAT IS NOT RANKED (Newest, Followed, a league's front page in its newest order): what the
    reader has opened leaves it (when personalisation is on: off, nothing of the reader is kept), and at most
-   PARTNER_SHOWN_MAX partners' stories stay in it, the newest that have not timed out first. o: { partners, store, now } */
+   PARTNER_SHOWN_MAX stories LIFTED BY THE BOOST stay in it, the newest that have not timed out first. A feed that is not
+   ranked lifts nothing - every story in it is there by its date, on its own merit - so since 2026-10-15 its partners'
+   stories all stay (before, any beyond two were taken out); a ranked feed passed through here (feedview.js does) has kept
+   its limit already, and keeps every row. o: { partners (accepted, no longer needed), store, now } */
 /* A YOUTUBE SHORT IS ALWAYS LAST (2026-10-07). The readers take none (a feed's /shorts/ link, the channel's Shorts
    playlist) and the half-hourly reader takes the ones read before away (scripts/news/videos.py: a vertical video of
    three minutes at most); what is still about - a title tagged #shorts, a /shorts/ address - goes to the end of every
@@ -678,32 +762,33 @@ function tidyOrder(rows, o) {
   const t = opts.now || Date.now();
   let P = null;
   try { P = st.enabled() ? st.profile() : null; } catch (_) { P = null; }
-  const ps = partnerSet(opts.partners);
   let list = (Array.isArray(rows) ? rows : []).filter(Boolean);
   if (P) list = list.filter(it => !readKeys(it).some(k => isRead(P, k, t, c)));
   const shownOf = it => {
     const e = P && P.i && P.i[it && it.id];
     return Array.isArray(e) && t - num(e[1]) < c.PARTNER_DROP_KEEP_DAYS * DAY ? num(e[0]) : 0;
   };
-  return partnerSlots(list, it => !!pkeyOf(it) && ps.has(pkeyOf(it)), it => shownOf(it) >= c.PARTNER_DROP_AT, c);
+  return partnerSlots(list, it => it.lifted === true, it => shownOf(it) >= c.PARTNER_DROP_AT, c);
 }
 
 /* THE ORDER. items: the feed's rows, any number; profile: what the reader is (see the file's head: l, p, r, i as
    stored, and country, leagueCountry, partners, followedIds, followedLeagues, sig as fetched); now: ms. Returns COPIES
-   of the rows with { why, score, tier, partner, boosted, read }, best first. Personalisation off (profile.off), or no
-   profile: the newest first and no why. */
+   of the rows with { why, score, tier, partner, boosted, lifted, read }, best first (boosted: it carries a partner's
+   boost; lifted: it is where it is BECAUSE OF the boost, THE PARTNERS in the file's head). Personalisation off
+   (profile.off), or no profile: the newest first and no why. */
 function rank(items, profile, now, w) {
   return shortsLast(rankOrder(items, profile, now, w));
 }
+/* the league a row is first about (the one "never more than two in a row about one league" reads), or null */
+const leagueKeyOf = it => { const l = leaguesOf(it)[0]; return l ? l.slug : null; };
 function rankOrder(items, profile, now, w) {
   const c = w || W;
   const list = (Array.isArray(items) ? items : []).filter(Boolean);
   const t = num(now) || Date.now();
   if (!profile || profile.off) {
-    /* personalisation off: the newest first, nothing of the reader read; the partners still two at a time */
-    const ps = partnerSet(profile && profile.partners);
-    return partnerSlots(list.slice().sort(newestFirst), it => !!pkeyOf(it) && ps.has(pkeyOf(it)), () => false, c)
-      .map(it => Object.assign({}, it, { why: '', score: 0 }));
+    /* personalisation off: the newest first, nothing of the reader read. Nothing is boosted, so nothing is lifted: the
+       partners' stories stand by their dates like the rest (before 2026-10-15, two at a time) */
+    return list.slice().sort(newestFirst).map(it => Object.assign({}, it, { why: '', score: 0 }));
   }
 
   /* a slow pool: freshness against the pool's own median age (never quicker than RECENCY_HALF_LIFE_H) */
@@ -711,9 +796,9 @@ function rankOrder(items, profile, now, w) {
   const median = ages.length ? ages[Math.floor((ages.length - 1) / 2)] : 0;
   const cs = median * c.RECENCY_STRETCH > c.RECENCY_HALF_LIFE_H ? Object.assign({}, c, { RECENCY_HALF_LIFE_H: median * c.RECENCY_STRETCH }) : c;
   const prof = Object.assign({}, profile, { groupW: groupWeights(profile, t, c) });
-  let scored = list.map(it => {
+  const scored = list.map(it => {
     const s = scoreOf(it, prof, t, cs);
-    return { it, s, source: sourceOf(it), at: dateOf(it) };
+    return { it, s, source: sourceOf(it), lg: leagueKeyOf(it), at: dateOf(it) };
   /* A STORY THE READER HAS OPENED LEAVES THE FEED (2026-10-07): read is done with; what they read has already taught the
      feed what they like (noteOpen). A much-shown partner's story is weakened, not dropped (dropped is never set now). */
   }).filter(x => !x.s.dropped && !x.s.read);
@@ -730,23 +815,50 @@ function rankOrder(items, profile, now, w) {
       }
     });
   }
-  scored.sort((a, b) => b.s.score - a.s.score || b.at - a.at || String(a.it.id || '').localeCompare(String(b.it.id || '')));
-  /* at most PARTNER_SHOWN_MAX partners' stories in the whole feed: the best two not timed out, then the timed-out ones */
-  scored = partnerSlots(scored, x => x.s.partner, x => x.s.weakened, c);
+  const byScore = (a, b) => b.s.score - a.s.score || b.at - a.at || String(a.it.id || '').localeCompare(String(b.it.id || ''));
+  scored.sort(byScore);
+  /* WHAT THE BOOST LIFTS (2026-10-15). The bar is the score of the PARTNER_TOP_N-th (sixth) best story with every boost taken
+     off. A boosted story whose own score clears it would be in the first six without the boost: it is there on its own merit,
+     keeps its boost and counts against neither partner limit. One under the bar is LIFTED - there because of the boost - and
+     the limits are on those: at most PARTNER_SHOWN_MAX keep the boost in the whole feed (the best not timed out, then the
+     timed-out ones); a further one is not taken out but loses its boost and stands where its own score puts it. */
+  const natural = x => x.s.score - x.s.boost;
+  const nat = scored.map(natural).sort((a, b) => b - a);
+  const bar = nat.length ? nat[Math.min(c.PARTNER_TOP_N, nat.length) - 1] : 0;
+  scored.forEach(x => { x.lifted = x.s.boost > 0 && natural(x) < bar; });
+  const lifted = scored.filter(x => x.lifted);
+  if (lifted.length > c.PARTNER_SHOWN_MAX) {
+    const keep = new Set(lifted.filter(x => !x.s.weakened).concat(lifted.filter(x => x.s.weakened)).slice(0, c.PARTNER_SHOWN_MAX));
+    lifted.forEach(x => {
+      if (keep.has(x)) return;
+      x.s = Object.assign({}, x.s, { score: natural(x), boost: 0, unboosted: true });
+      x.lifted = false;
+    });
+    scored.sort(byScore);
+  }
 
-  /* variety: greedy, the best that breaks neither rule; if nothing can honour both (a feed of two sources), the best that
-     keeps the partner cap, and if not even that, the best */
+  /* variety: greedy, the best that breaks no rule - two in a row from one source, two of six about one league the reader
+     does not follow, the partner cap; if nothing can honour them all, the league's spread gives way first, then the
+     source's run, and if not even the cap can be kept, the best */
   const out = [];
   let boosted = 0;
   const rest = scored.slice();
+  const followL = asSet(profile.followedLeagues);
+  const inPool = new Map();
+  scored.forEach(x => { if (x.lg) inPool.set(x.lg, (inPool.get(x.lg) || 0) + 1); });
+  const spreadOn = lg => !!lg && !followL.has(lg) && inPool.get(lg) < (c.LEAGUE_SPREAD_POOL || 1) * scored.length;
   const runOf = x => out.length >= c.MAX_RUN && out.slice(-c.MAX_RUN).every(y => y.source === x.source);
-  const capOf = x => x.s.boost > 0 && out.length < c.PARTNER_TOP_N && boosted >= c.PARTNER_TOP_MAX;
+  const leagueRunOf = x => c.LEAGUE_SPREAD_MAX > 0 && spreadOn(x.lg) &&
+    out.slice(-(c.LEAGUE_SPREAD_N - 1)).filter(y => y.lg === x.lg).length >= c.LEAGUE_SPREAD_MAX;
+  /* the cap counts only what the boost lifted: no more than PARTNER_TOP_MAX of those in the first PARTNER_TOP_N */
+  const capOf = x => x.lifted && out.length < c.PARTNER_TOP_N && boosted >= c.PARTNER_TOP_MAX;
   while (rest.length) {
-    let pick = rest.findIndex(x => !runOf(x) && !capOf(x));
+    let pick = rest.findIndex(x => !runOf(x) && !leagueRunOf(x) && !capOf(x));
+    if (pick < 0) pick = rest.findIndex(x => !runOf(x) && !capOf(x));
     if (pick < 0) pick = rest.findIndex(x => !capOf(x));
     if (pick < 0) pick = 0;
     const x = rest.splice(pick, 1)[0];
-    if (x.s.boost > 0 && out.length < c.PARTNER_TOP_N) boosted++;
+    if (x.lifted && out.length < c.PARTNER_TOP_N) boosted++;
     out.push(x);
   }
   /* THE EXPLORATION FLOOR: a kind in the pool with no card in the first EXPLORE_N gets its best one at the last of those
@@ -758,7 +870,7 @@ function rankOrder(items, profile, now, w) {
   picks.forEach((x, i) => out.splice(Math.max(0, N - picks.length + i), 0, x));
   return out.map(x => Object.assign({}, x.it, {
     why: whyOf(x.it, x.s, profile, c), score: x.s.score, lang: x.s.lang || x.it.lang || undefined, tier: x.s.tier, group: x.s.group, partner: x.s.partner,
-    boosted: x.s.boost > 0, read: x.s.read, explore: !!x.explore
+    boosted: x.s.boost > 0, lifted: !!x.lifted, read: x.s.read, explore: !!x.explore
   }));
 }
 
@@ -1405,7 +1517,7 @@ return {
   seriesKey, latestEpisodes, partnerSlots, tidy, isShort, shortsLast,
   recency, decay, sat, partnerFade, scoreOf, whyOf, rank, rankRows, GROUPS, groupOf, groupWeights, scoreMax,
   langCode, langOf, langOfKey, siteLang, readerLangs, SOURCE_LANG, LANG_CACHE,
-  detectCountry, countryMatch, countryCodes, neighbours, country, TZ, REGIONS,
+  detectCountry, countryMatch, countryCodes, neighbours, country, TZ, REGIONS, CONTINENTS,
   tierOf, isReport, pkeyOf, sourceOf, leaguesOf, readKeys, partnerSet, isRead,
   ctrKey, ctrFeatures, ctrPredict, ctrFit, salienceOf, ctr,
   emptyState, sane, addPoints, addDwell, noteOpen, noteVisit, noteFollow, noteShown, prune,

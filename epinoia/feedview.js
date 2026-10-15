@@ -191,8 +191,8 @@ async function mount(opts) {
     if (mine !== gen) return;
     /* A SERIES IS ITS NEWEST EPISODE on a front page (feedrank.js latestEpisodes): a podcast's weekly show once, not
        every week of it; the others stay on its page and the news page */
-    /* what the reader has opened leaves the feed, and at most two official partners' stories are in it (feedrank.js tidy,
-       for Newest and Followed as For you ranks them) */
+    /* what the reader has opened leaves the feed (feedrank.js tidy, for Newest and Followed as For you ranks them); the
+       partner limits are on what the boost lifts, so a feed that is not ranked keeps every partner story (2026-10-15) */
     if (rows && FR && typeof FR.tidy === 'function') rows = FR.tidy(rows, { partners });
     if (rows && FR && typeof FR.latestEpisodes === 'function') rows = FR.latestEpisodes(rows);
     box.textContent = '';
