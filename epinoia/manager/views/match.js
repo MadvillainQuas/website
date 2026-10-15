@@ -6,14 +6,15 @@
    play the game anytime on that day", and "create a new 'live play' feature where the user manages in real time with
    subs, tactics changes, individual instructions etc. in a full screen display with football manager like screens".
 
-   MATCH DAY. The reader's game is theirs to start any time on its day (their own midnight to midnight: core/season.js
-   matchday): live, managing it here, or straight to the result. Started, the round's other games are played with it
-   and the game in hand is kept (app.js S.live) - left, it waits where it was, and the day over, the assistant plays it
-   out. Nothing is played at a set hour any more.
+   MATCH DAY. The reader's game is theirs to start any time in its week (Monday to Sunday by their own clock, the week's
+   games in their order - Louie, 2026-10-15; core/season.js matchday): live, managing it here, or straight to the
+   result. Started, the round's other games are played with it and the game in hand is kept (app.js S.live) - left, it
+   waits where it was, and the week over, the assistant plays it out. Nothing is played at a set hour any more.
 
    THE SCREEN, FM's: the scoreboard and the speed along the top; the reader's five down the left (each man's legs, fouls,
-   line and match rating; his bench under it); the court in the middle - the ten men in their places, the ball, every
-   shot - with the commentary and the game's flow under it; the match's numbers down the right (the team comparison,
+   line and match rating; his bench under it); the court in the middle, in 2D as FM draws its pitch - each possession the
+   set from the playbook it was (core/plays.js), every shot on the shot chart - with the commentary and the game's flow
+   under it; the match's numbers down the right (the team comparison,
    the box score, the play-by-play, the assistant's notes, the opposition); the touchline's buttons along the foot (the
    team's instructions, a player's, a timeout, the assistant's substitutions, the rest of the game now).
 
@@ -208,126 +209,361 @@ function say(e, ctx) {
 }
 
 /* ------------------------------------------------------------------ the court --- */
-/* the court in feet x10 (94 by 50), the right basket 5.25 feet from its baseline. Spots for the five attacking the right
-   basket (the point, the wings, the elbow, the block); the defence between each man and the rim; the other way, mirrored */
-const BX = 887.5, BY = 250;
-const OFF = [[632, 250], [712, 88], [712, 412], [802, 348], [846, 162]];
-const DEF = OFF.map(([x, y]) => [x + 0.36 * (BX - x), y + 0.28 * (BY - y)]);
-const mir = (pt, right) => (right ? pt : [940 - pt[0], pt[1]]);
-/* where a shot from a zone was taken (rim, mid-range, three: the corner or above the break), attacking right */
-function shotSpot(z, a, b) {
-  if (z === 0) { const ang = (a - 0.5) * 2.2, r = 14 + 30 * b; return [BX - r * Math.cos(ang), BY + r * Math.sin(ang)]; }
-  if (z === 1) { const ang = (a - 0.5) * 2.5, r = 90 + 115 * b; return [BX - r * Math.cos(ang), BY + r * Math.sin(ang)]; }
-  if (a < 0.16 || a > 0.84) return [812 + 68 * b, a < 0.16 ? 22 : 478];
-  const ang = (a - 0.5) / 0.34 * 0.95, r = 252 + 24 * b;
-  return [BX - r * Math.cos(ang), BY + r * Math.sin(ang)];
+/* THE COURT IN 2D, FOOTBALL MANAGER'S WAY (Louie, 2026-10-15: "Instead of being an SVG can it instead be rendered in 2D?"
+   and "Use football manager precedence for rendering"): a canvas drawn frame by frame, top-down with the whole court in
+   view as FM's 2D pitch is. A FIBA court (28 m by 15 m) in hardwood, the home club's colour in the keys and the centre
+   circle, white lines; each man a disc in his club's kit - its colour, its second colour round the edge and on his
+   number - with his name under it when there is room; the man with the ball ringed in gold; the ball with its shadow,
+   bigger and higher in the air; a screen marked as it is set; the play called shown as it starts, the way FM's 2D shows
+   a set piece. Where the men go is core/plays.js's: the possession the engine played, drawn as a set from the playbook.
+   Feet: the court 91.86 by 49.21. */
+const PL = () => Mgr.plays;
+/* the court's own words (a canvas is beyond the page's translation): the site's languages through its own engine; names never */
+const tx = x => (root.EpinoiaI18n && root.EpinoiaI18n.t ? root.EpinoiaI18n.t(x, 'manager') : x);
+const CL = 91.86, CW = 49.21, HW = CW / 2, APRON = 3.4, BASKET = 5.17;
+/* a point of an attacking half (u across, v up from its end line) on the court, the side attacking right or left; and back */
+const toW = (p, right) => [right ? CL - p[1] : p[1], HW + p[0]];
+const toF = (w, right) => [w[1] - HW, right ? CL - w[0] : w[0]];
+/* where a shot was taken: its zone and two draws from the game's seed (the live court and the shot chart agree) */
+const shotFeet = (seed, x) => PL().shotSpot(x.z, u01(seed + ':a:' + x.t + ':' + x.p), u01(seed + ':b:' + x.t + ':' + x.p));
+const HEX = /^#[0-9a-f]{6}$/i;
+const hexRgb = hex => { const n = HEX.test(String(hex || '').trim()) ? parseInt(String(hex).trim().slice(1), 16) : 0x8a93a6; return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const rgbHex = c => '#' + c.map(v => clamp(Math.round(v), 0, 255).toString(16).padStart(2, '0')).join('');
+const mixHex = (a, b, x) => { const p = hexRgb(a), q = hexRgb(b); return rgbHex(p.map((v, i) => v + (q[i] - v) * x)); };
+const lumOf = hex => { const [r, g, b] = hexRgb(hex).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const colDist = (a, b) => { const p = hexRgb(a), q = hexRgb(b), rm = (p[0] + q[0]) / 2; return Math.sqrt((2 + rm / 256) * (p[0] - q[0]) ** 2 + 4 * (p[1] - q[1]) ** 2 + (2 + (255 - rm) / 256) * (p[2] - q[2]) ** 2); };
+/* KITS, FM's way - each club in its own colours: the reader's badge (its first colour the shirt, its second the trim and
+   the number), a real club's colour (white or navy on it, whichever reads). Two kits too alike, the home side changes
+   into white with its colour as the trim: FIBA's rule (the home side in light shirts) and FM's change of kit on a clash */
+function kitFrom(fill, trim) {
+  const f = HEX.test(String(fill || '')) ? fill : '#8a93a6', lf = lumOf(f);
+  let t = HEX.test(String(trim || '')) ? trim : null;
+  if (!t || Math.abs(lumOf(t) - lf) < 0.2) t = lf > 0.42 ? '#0b1846' : '#ffffff';
+  return { fill: f, ring: t, text: t };
 }
-function courtLines(g) {
-  g.appendChild(sv('rect', { x: 4, y: 4, width: 932, height: 492, rx: 8, class: 'ln' }));
-  g.appendChild(sv('line', { x1: 470, y1: 4, x2: 470, y2: 496, class: 'ln' }));
-  g.appendChild(sv('circle', { cx: 470, cy: 250, r: 60, class: 'ln' }));
-  [true, false].forEach(right => {
-    const X = x => (right ? 940 - x : x), sweep = right ? 0 : 1;
-    g.appendChild(sv('path', { class: 'ln', d: 'M' + X(4) + ' 170 L' + X(190) + ' 170 L' + X(190) + ' 330 L' + X(4) + ' 330' }));
-    g.appendChild(sv('path', { class: 'ln', d: 'M' + X(190) + ' 190 A60 60 0 0 ' + sweep + ' ' + X(190) + ' 310' }));
-    g.appendChild(sv('path', { class: 'ln', d: 'M' + X(4) + ' 30 L' + X(142) + ' 30 A237.5 237.5 0 0 ' + sweep + ' ' + X(142) + ' 470 L' + X(4) + ' 470' }));
-    g.appendChild(sv('path', { class: 'ln', d: 'M' + X(52.5) + ' 210 A40 40 0 0 ' + sweep + ' ' + X(52.5) + ' 290' }));
-    g.appendChild(sv('line', { x1: X(40), y1: 220, x2: X(40), y2: 280, class: 'ln' }));
-    g.appendChild(sv('circle', { cx: X(52.5), cy: 250, r: 7.5, class: 'hoop' }));
-  });
+function kitsOf(home, away) {
+  if (colDist(home.fill, away.fill) < 150) {
+    const trim = lumOf(home.fill) < 0.55 ? home.fill : lumOf(home.ring) < 0.55 ? home.ring : '#0b1846';
+    home = { fill: '#f3f5fa', ring: trim, text: trim, light: true };
+  }
+  return [home, away];
 }
-/* THE COURT: the ten men in their places (the five attacking, the five between them and the rim), the ball with the
-   man who has it, a shot's result over the rim; or every shot so far (the shot chart view) */
+/* a kit's colour on the screen's own bars, lists and pops: its shirt, or its trim when the shirt is white; lifted on the
+   navy when too dark, deepened on the sky when too pale */
+function uiOf(kit, lightTheme) {
+  let c = kit.light ? kit.ring : kit.fill;
+  const L = lumOf(c);
+  if (!lightTheme && L < 0.13) c = mixHex(c, '#ffffff', 0.5);
+  if (lightTheme && L > 0.55) c = mixHex(c, '#0b1846', 0.5);
+  return c;
+}
 function makeCourt(wrap, ctx) {
-  const s = sv('svg', { viewBox: '0 0 940 500', preserveAspectRatio: 'xMidYMid meet', role: 'img', 'aria-label': 'The court' });
-  const lines = sv('g'), shots = sv('g'), men = sv('g'), fx = sv('g');
-  courtLines(lines);
-  s.appendChild(lines); s.appendChild(shots); s.appendChild(men); s.appendChild(fx);
-  const ball = sv('circle', { r: 7, class: 'ball' });
-  const dots = [0, 1].map(side => [0, 1, 2, 3, 4].map(k => {
-    const g = sv('g', { class: 'pl ' + (side === ctx.me ? 'me' : 'op') });
-    const c = sv('circle', { r: 17 }), t = sv('text', { x: 0, y: 0 }), lab = sv('text', { x: 0, y: 32, class: 'lab' });
-    g.appendChild(c); g.appendChild(t); g.appendChild(lab);
-    men.appendChild(g);
-    return { g, t, lab, id: null, x: 470, y: 250 };
-  }));
-  men.appendChild(ball);
-  wrap.appendChild(s);
-  let view = 'live', hand = null;
-  const put = (d, x, y) => { d.x = x; d.y = y; d.g.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)'; };
-  const putBall = (x, y) => { ball.style.transform = 'translate(' + (x + 13).toFixed(1) + 'px,' + (y - 13).toFixed(1) + 'px)'; };
-  const holder = (side, k) => { if (hand) hand.g.classList.remove('hand'); hand = side == null ? null : dots[side][k]; if (hand) { hand.g.classList.add('hand'); putBall(hand.x, hand.y); } };
-  const names = fl => [0, 1].forEach(side => fl[side].forEach((id, k) => { const d = dots[side][k]; if (!d || d.id === id) return; d.id = id; d.t.textContent = tagOf(id); d.lab.textContent = surname(id); }));
-  const slotOf = (fl, side, id) => fl[side].indexOf(id);
-  /* the five attacking `side`'s way: in their places, the defence with them */
-  const set = (fl, side, right) => {
-    names(fl);
-    [0, 1, 2, 3, 4].forEach(k => {
-      const o = mir(OFF[k], right), d = mir(DEF[k], right), j = (u01(ctx.seed + ':' + k + ':' + side + ':' + Math.round(o[0])) - 0.5) * 24;
-      put(dots[side][k], o[0] + j, o[1] + j / 2); put(dots[side ^ 1][k], d[0] - j / 3, d[1]);
+  const cv = doc.createElement('canvas');
+  cv.className = 'mg-mx-cv';
+  cv.setAttribute('role', 'img');
+  cv.setAttribute('aria-label', 'The court');
+  wrap.insertBefore(cv, wrap.firstChild);
+  const g = cv.getContext('2d');
+  const font = (root.getComputedStyle(wrap).getPropertyValue('--mg-f') || '').trim() || "'Archivo',system-ui,sans-serif";
+  const still = !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const kits = ctx.kits, homeCol = ctx.homeCol;
+  let W = 0, H = 0, dpr = 1, k = 1, ox = 0, oy = 0, bg = null, bgKey = '', dirty = true, needFit = true;
+  let view = 'live', shotList = [];
+  const men = [0, 1].map(() => [0, 1, 2, 3, 4].map(() => ({ id: null, tag: '', name: '', w: [CL / 2, HW] })));
+  const ball = { w: [CL / 2, HW], air: 0, hold: null };
+  let pl = null, lastVt = null, lastNow = 0, tween = null, call = null, scr = null;
+  const fx = [];
+  const ro = root.ResizeObserver ? new root.ResizeObserver(() => { needFit = true; }) : null;
+  if (ro) ro.observe(wrap);
+  const X = x => ox + x * k, Y = y => oy + y * k;
+  function fit(now) {
+    const d = Math.min(2, root.devicePixelRatio || 1);
+    if (!needFit && d === dpr && (ro || now - (fit.at || 0) < 500)) return;
+    fit.at = now; needFit = false;
+    const r = wrap.getBoundingClientRect(), w = Math.max(1, Math.round(r.width)), h2 = Math.max(1, Math.round(r.height));
+    if (w === W && h2 === H && d === dpr) return;
+    W = w; H = h2; dpr = d;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    const ww = CL + 2 * APRON, wh = CW + 2 * APRON;
+    k = Math.min(W / ww, H / wh);
+    ox = (W - ww * k) / 2 + APRON * k; oy = (H - wh * k) / 2 + APRON * k;
+    dirty = true;
+  }
+  /* ---- the floor, drawn once for each size and theme ---- */
+  const seg2 = (c, x1, y1, x2, y2) => { c.beginPath(); c.moveTo(X(x1), Y(y1)); c.lineTo(X(x2), Y(y2)); c.stroke(); };
+  /* one end's three-point line: the corner line, the arc round the basket, the other corner line */
+  function arc3(c, e) {
+    const f = x => (e ? CL - x : x), xj = BASKET + Math.sqrt(22.15 * 22.15 - 21.65 * 21.65), th = Math.atan2(21.65, xj - BASKET);
+    c.moveTo(X(f(0)), Y(HW - 21.65)); c.lineTo(X(f(xj)), Y(HW - 21.65));
+    if (e) c.arc(X(f(BASKET)), Y(HW), 22.15 * k, Math.PI + th, Math.PI - th, true);
+    else c.arc(X(BASKET), Y(HW), 22.15 * k, -th, th, false);
+    c.lineTo(X(f(0)), Y(HW + 21.65));
+  }
+  function floor() {
+    const lt = doc.documentElement.getAttribute('data-theme') === 'light', key = W + 'x' + H + '@' + dpr + (lt ? 'l' : 'd') + homeCol;
+    if (bg && bgKey === key) return bg;
+    bgKey = key;
+    bg = bg || doc.createElement('canvas');
+    bg.width = Math.round(W * dpr); bg.height = Math.round(H * dpr);
+    const c = bg.getContext('2d');
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, W, H);
+    const wood = lt ? [228, 189, 138] : [186, 140, 92], wc = (f, a) => 'rgba(' + wood.map(v => Math.round(v * f)).join(',') + ',' + (a == null ? 1 : a) + ')';
+    /* the floor beyond the lines a shade darker (to the canvas's edges: the arena); the court in boards along its length,
+       each a touch lighter or darker */
+    c.fillStyle = wc(0.74); c.fillRect(0, 0, W, H);
+    c.save();
+    c.beginPath(); c.rect(X(0), Y(0), CL * k, CW * k); c.clip();
+    c.fillStyle = wc(1); c.fillRect(X(0), Y(0), CL * k, CW * k);
+    const bw = 1.55;
+    for (let y = 0, i = 0; y < CW; y += bw, i++) { c.fillStyle = wc(0.95 + 0.1 * u01('board' + i), 0.6); c.fillRect(X(0), Y(y), CL * k, bw * k + 0.6); }
+    if (bw * k > 5) { c.strokeStyle = 'rgba(70,40,10,.1)'; c.lineWidth = 1; for (let y = bw; y < CW; y += bw) seg2(c, 0, y, CL, y); }
+    /* the arena's lights on it */
+    const gr = c.createRadialGradient(X(CL / 2), Y(HW), 0, X(CL / 2), Y(HW), CL * k * 0.62);
+    gr.addColorStop(0, 'rgba(255,250,238,' + (lt ? 0.18 : 0.13) + ')'); gr.addColorStop(1, 'rgba(255,250,238,0)');
+    c.fillStyle = gr; c.fillRect(X(0), Y(0), CL * k, CW * k);
+    /* the darker stain inside each arc; the keys and the centre circle in the home colour */
+    [0, 1].forEach(e => { c.fillStyle = 'rgba(80,45,10,.08)'; c.beginPath(); arc3(c, e); c.closePath(); c.fill(); });
+    c.globalAlpha = 0.86; c.fillStyle = homeCol;
+    c.fillRect(X(0), Y(HW - 8.04), 19.03 * k, 16.08 * k);
+    c.fillRect(X(CL - 19.03), Y(HW - 8.04), 19.03 * k, 16.08 * k);
+    c.beginPath(); c.arc(X(CL / 2), Y(HW), 5.91 * k, 0, 2 * Math.PI); c.fill();
+    c.globalAlpha = 1;
+    c.restore();
+    /* the lines */
+    const lw = Math.max(1.2, 0.17 * k);
+    c.strokeStyle = 'rgba(255,255,255,.94)'; c.lineWidth = lw;
+    c.strokeRect(X(0), Y(0), CL * k, CW * k);
+    seg2(c, CL / 2, 0, CL / 2, CW);
+    c.beginPath(); c.arc(X(CL / 2), Y(HW), 5.91 * k, 0, 2 * Math.PI); c.stroke();
+    [0, 1].forEach(e => {
+      const f = x => (e ? CL - x : x), cy = Y(HW);
+      c.strokeRect(Math.min(X(f(0)), X(f(19.03))), Y(HW - 8.04), 19.03 * k, 16.08 * k);
+      /* the free-throw circle: solid outside the lane, dashed in it */
+      c.beginPath(); c.arc(X(f(19.03)), cy, 5.91 * k, -Math.PI / 2, Math.PI / 2, e === 1); c.stroke();
+      c.setLineDash([lw * 3, lw * 3]); c.beginPath(); c.arc(X(f(19.03)), cy, 5.91 * k, -Math.PI / 2, Math.PI / 2, e === 0); c.stroke(); c.setLineDash([]);
+      c.beginPath(); arc3(c, e); c.stroke();
+      /* the no-charge semicircle, the backboard, the rim */
+      c.beginPath(); c.arc(X(f(BASKET)), cy, 4.1 * k, -Math.PI / 2, Math.PI / 2, e === 1); c.stroke();
+      seg2(c, f(BASKET), HW - 4.1, f(4.25), HW - 4.1); seg2(c, f(BASKET), HW + 4.1, f(4.25), HW + 4.1);
+      c.lineWidth = Math.max(2.2, 0.32 * k); seg2(c, f(3.94), HW - 2.95, f(3.94), HW + 2.95);
+      c.lineWidth = Math.max(1.4, 0.14 * k); c.strokeStyle = '#ff7a1a';
+      seg2(c, f(3.94), HW, f(BASKET - 0.75), HW);
+      c.beginPath(); c.arc(X(f(BASKET)), cy, 0.75 * k, 0, 2 * Math.PI); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,.94)'; c.lineWidth = lw;
     });
-    holder(side, 0);
+    return bg;
+  }
+  /* ---- the men, the ball, the screens, the call ---- */
+  const radius = () => Math.max(9.5, 1.7 * k);
+  function drawMan(m, s, j, r) {
+    if (!m.id) return;
+    const x = X(m.w[0]), y = Y(m.w[1]), kit = kits[s], carrier = !!(ball.hold && ball.hold[0] === s && ball.hold[1] === j);
+    g.fillStyle = 'rgba(8,10,20,.3)';
+    g.beginPath(); g.ellipse(x + r * 0.16, y + r * 0.3, r * 1.02, r * 0.82, 0, 0, 2 * Math.PI); g.fill();
+    if (carrier) { g.lineWidth = Math.max(2.4, r * 0.2); g.strokeStyle = '#ffd66b'; g.beginPath(); g.arc(x, y, r + g.lineWidth * 0.9, 0, 2 * Math.PI); g.stroke(); }
+    g.fillStyle = kit.fill; g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.fill();
+    const lw = Math.max(1.6, r * 0.17);
+    g.lineWidth = lw; g.strokeStyle = kit.ring; g.beginPath(); g.arc(x, y, r - lw / 2, 0, 2 * Math.PI); g.stroke();
+    g.lineWidth = 1; g.strokeStyle = 'rgba(6,10,28,.6)'; g.beginPath(); g.arc(x, y, r + 0.5, 0, 2 * Math.PI); g.stroke();
+    g.fillStyle = kit.text; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '800 ' + Math.round(r * (m.tag.length > 1 ? 0.9 : 1.02)) + 'px ' + font;
+    g.fillText(m.tag, x, y + r * 0.05);
+  }
+  /* THE NAMES, FM's way under each disc: the man with the ball first, then the attackers, then the defenders, each under
+     his disc or, with no room there, over it - and left off rather than written over another (on a phone only the man
+     with the ball's) */
+  function drawNames(r, att) {
+    const fs = clamp(Math.round(r * 0.78), 10, 13), placed = [], list = [];
+    [att, att ^ 1].forEach(s => men[s].forEach((m, j) => { if (m.id) list.push({ m, s, j, c: !!(ball.hold && ball.hold[0] === s && ball.hold[1] === j) }); }));
+    list.sort((a, b) => b.c - a.c);
+    g.font = '700 ' + fs + 'px ' + font; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+    const discs = list.map(o => [X(o.m.w[0]), Y(o.m.w[1])]);
+    list.forEach(o => {
+      if (W < 600 && !o.c) return;
+      const y = Y(o.m.w[1]), w = g.measureText(o.m.name).width + 4, h2 = fs + 2, x = clamp(X(o.m.w[0]), w / 2 + 2, W - w / 2 - 2);
+      const fits = cy => !placed.some(b => Math.abs(b[0] - x) < (b[2] + w) / 2 && Math.abs(b[1] - cy) < (b[3] + h2) / 2)
+        && !discs.some(d => Math.abs(d[0] - x) < w / 2 + r * 0.7 && Math.abs(d[1] - cy) < h2 / 2 + r * 0.7);
+      const cy = [y + r + 9, y - r - 9].find(fits);
+      if (cy == null) return;
+      placed.push([x, cy, w, h2]);
+      g.lineWidth = 3; g.strokeStyle = 'rgba(6,10,28,.8)'; g.strokeText(o.m.name, x, cy);
+      g.fillStyle = '#f4f7ff'; g.fillText(o.m.name, x, cy);
+    });
+  }
+  function ballAt(r) {
+    if (!ball.hold) return ball.w;
+    const m = men[ball.hold[0]][ball.hold[1]], dir = pl ? ((ball.hold[0] === pl.side) === pl.right ? 1 : -1) : 1;
+    return [m.w[0] + dir * r / k * 0.8, m.w[1] - r / k * 0.6];
+  }
+  function drawBall(r) {
+    const w = ballAt(r), air = ball.hold ? 0 : clamp(ball.air || 0, 0, 1.2);
+    const x = X(w[0]), y = Y(w[1]), rb = Math.max(4.2, 0.62 * k) * (1 + 0.55 * air), by = y - air * Math.max(16, 2.6 * k);
+    g.fillStyle = 'rgba(8,10,20,' + (0.34 - 0.18 * Math.min(1, air)).toFixed(2) + ')';
+    g.beginPath(); g.ellipse(x + 1, y + 1.5, rb * (1 - 0.25 * Math.min(1, air)), rb * 0.7 * (1 - 0.25 * Math.min(1, air)), 0, 0, 2 * Math.PI); g.fill();
+    g.fillStyle = '#ef7d2d'; g.beginPath(); g.arc(x, by, rb, 0, 2 * Math.PI); g.fill();
+    g.lineWidth = 1; g.strokeStyle = '#4a1d00'; g.stroke();
+    g.lineWidth = 0.8; g.strokeStyle = 'rgba(60,20,0,.7)';
+    g.beginPath(); g.moveTo(x - rb, by); g.lineTo(x + rb, by); g.moveTo(x, by - rb); g.lineTo(x, by + rb); g.stroke();
+  }
+  /* a screen: a bar across the screener's front, facing the ball */
+  function drawScreen(m, r) {
+    const b = ballAt(r), dx = b[0] - m.w[0], dy = b[1] - m.w[1], d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+    const cx = X(m.w[0]) + ux * r * 1.2, cy = Y(m.w[1]) + uy * r * 1.2, L = r * 1.15;
+    g.lineCap = 'round';
+    [[Math.max(4.5, r * 0.42), 'rgba(6,10,28,.55)'], [Math.max(2.4, r * 0.24), '#ffffff']].forEach(([lw, col]) => {
+      g.lineWidth = lw; g.strokeStyle = col;
+      g.beginPath(); g.moveTo(cx - uy * L, cy + ux * L); g.lineTo(cx + uy * L, cy - ux * L); g.stroke();
+    });
+    g.lineCap = 'butt';
+  }
+  const rrect = (x, y, w, h2, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h2, r); else g.rect(x, y, w, h2); };
+  /* THE CALL: the set's name and the men in it, top left, as FM shows a set piece */
+  function drawCall(now) {
+    const age = now - call.at, life = 3200;
+    if (age > life) return;
+    const a = age < 200 ? age / 200 : age > life - 500 ? (life - age) / 500 : 1;
+    const title = tx(call.c.text).toUpperCase(), sub = call.c.ks.map(j => (men[call.side][j] || {}).name).filter(Boolean).join(' · ');
+    const small = W < 520, f1 = small ? 11 : 12.5, f2 = small ? 10 : 11.5;
+    g.save();
+    g.globalAlpha = clamp(a, 0, 1);
+    if ('letterSpacing' in g) g.letterSpacing = '0.06em';
+    g.font = '900 ' + f1 + 'px ' + font;
+    const tw = g.measureText(title).width;
+    if ('letterSpacing' in g) g.letterSpacing = '0px';
+    g.font = '600 ' + f2 + 'px ' + font;
+    const sw = sub ? g.measureText(sub).width : 0, pw = Math.max(tw, sw) + 26, ph = sub ? f1 + f2 + 16 : f1 + 12, x0 = 10, y0 = 10;
+    g.fillStyle = 'rgba(6,12,40,.8)'; rrect(x0, y0, pw, ph, 8); g.fill();
+    g.fillStyle = uiOf(kits[call.side], false); rrect(x0, y0, 5, ph, 3); g.fill();
+    g.textAlign = 'left'; g.textBaseline = 'top'; g.fillStyle = '#ffffff';
+    if ('letterSpacing' in g) g.letterSpacing = '0.06em';
+    g.font = '900 ' + f1 + 'px ' + font; g.fillText(title, x0 + 15, y0 + 6);
+    if ('letterSpacing' in g) g.letterSpacing = '0px';
+    if (sub) { g.fillStyle = 'rgba(225,233,255,.86)'; g.font = '600 ' + f2 + 'px ' + font; g.fillText(sub, x0 + 15, y0 + f1 + 10); }
+    g.restore();
+  }
+  function drawFx(now) {
+    for (let i = fx.length - 1; i >= 0; i--) {
+      const f = fx[i], age = now - f.t0;
+      if (f.k === 'pop') {
+        if (age > 1300) { fx.splice(i, 1); continue; }
+        const x = age / 1300, a = x < 0.15 ? x / 0.15 : x > 0.75 ? (1 - x) / 0.25 : 1, dy = still ? 0 : x < 0.15 ? 8 * (1 - x / 0.15) : x > 0.75 ? -16 * (x - 0.75) / 0.25 : 0;
+        const big = W < 600 ? 22 : 30;
+        g.save(); g.globalAlpha = clamp(a, 0, 1); g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.font = '900 ' + (f.miss ? Math.round(big * 0.8) : big) + 'px ' + font;
+        g.lineJoin = 'round'; g.lineWidth = 5; g.strokeStyle = 'rgba(4,10,40,.72)'; g.strokeText(f.text, X(f.w[0]), Y(f.w[1]) + dy);
+        g.fillStyle = f.col; g.fillText(f.text, X(f.w[0]), Y(f.w[1]) + dy);
+        g.restore();
+      } else {
+        if (age > 2200) { fx.splice(i, 1); continue; }
+        const a = age > 1800 ? (2200 - age) / 400 : 1;
+        g.save(); g.globalAlpha = 0.92 * clamp(a, 0, 1); g.textAlign = 'center'; g.textBaseline = 'middle';
+        if ('letterSpacing' in g) g.letterSpacing = '0.2em';
+        g.font = '900 ' + (W < 600 ? 24 : 34) + 'px ' + font;
+        g.lineJoin = 'round'; g.lineWidth = 6; g.strokeStyle = 'rgba(4,10,40,.62)'; g.strokeText(f.text, W / 2, H / 2);
+        g.fillStyle = '#ffffff'; g.fillText(f.text, W / 2, H / 2);
+        g.restore();
+      }
+    }
+  }
+  /* every shot so far: each club at the end it attacks first (the home side the right) */
+  function drawShots() {
+    const r = Math.max(4.5, 0.72 * k);
+    shotList.forEach(x => {
+      const w = toW(shotFeet(ctx.seed, x), x.s === 0), px = X(w[0]), py = Y(w[1]), col = kits[x.s].light ? kits[x.s].ring : kits[x.s].fill;
+      g.lineWidth = 2.5;
+      if (x.m) { g.fillStyle = col; g.beginPath(); g.arc(px, py, r, 0, 2 * Math.PI); g.fill(); g.strokeStyle = 'rgba(255,255,255,.8)'; g.stroke(); }
+      else { g.strokeStyle = 'rgba(6,10,28,.55)'; g.lineWidth = 4.5; cross(px, py, r * 0.85); g.strokeStyle = col; g.lineWidth = 2.5; cross(px, py, r * 0.85); }
+    });
+  }
+  const cross = (x, y, d) => { g.beginPath(); g.moveTo(x - d, y - d); g.lineTo(x + d, y + d); g.moveTo(x + d, y - d); g.lineTo(x - d, y + d); g.stroke(); };
+  function draw(now) {
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    const b = floor();
+    if (b) g.drawImage(b, 0, 0, W, H);
+    if (view === 'shots') { drawShots(); return; }
+    const r = radius(), att = pl ? pl.side : 0;
+    if (scr) drawScreen(scr, r);
+    [att ^ 1, att].forEach(s => men[s].forEach((m, j) => drawMan(m, s, j, r)));
+    drawNames(r, att);
+    drawBall(r);
+    if (call) drawCall(now);
+    drawFx(now);
+  }
+  /* ---- the men on the floor ---- */
+  const names = fl => [0, 1].forEach(s => fl[s].forEach((id, j) => { const m = men[s][j]; if (!m || m.id === id) return; m.id = id; m.tag = tagOf(id); m.name = surname(id); dirty = true; }));
+  /* the five attacking `side`'s way set in a half court, the defence with them (a game opened in the middle) */
+  const set = (fl, side, right) => {
+    names(fl); pl = null; tween = null; call = null; scr = null;
+    ['top', 'right wing', 'left wing', 'right corner', 'left block'].forEach((n, j) => {
+      const p = PL().spot(n);
+      men[side][j].w = toW(p, right);
+      men[side ^ 1][j].w = toW([p[0] * 0.75, p[1] + (BASKET - p[1]) * 0.32], right);
+    });
+    ball.hold = [side, 0]; ball.air = 0; dirty = true;
   };
-  const pop = (x, y, text, cls) => {
-    const t = sv('text', { x: x.toFixed(1), y: y.toFixed(1), class: 'pop ' + cls });
-    t.textContent = text; fx.appendChild(t);
-    setTimeout(() => t.remove(), 1300);
+  /* the jump: the centres in the circle, the others round it, each side in the half it defends */
+  const jump = (fl, homeRight) => {
+    names(fl); pl = null; call = null; scr = null;
+    const list = [], at = [[13, -7], [13, 7], [7.5, -10.5], [7.5, 10.5], [1.4, 0]];
+    [0, 1].forEach(s => { const sg = (s === 0) === homeRight ? -1 : 1; men[s].forEach((m, j) => list.push([m, m.w.slice(), [CL / 2 + sg * at[j][0], HW + at[j][1]]])); });
+    tween = { t0: root.performance.now(), ms: 700, list };
+    ball.hold = null; ball.w = [CL / 2, HW]; ball.air = 0.5; dirty = true;
   };
-  const banner = text => {
-    fx.querySelectorAll('.banner').forEach(b => b.remove());
-    const t = sv('text', { x: 470, y: 262, class: 'banner' }); t.textContent = text; fx.appendChild(t);
-    setTimeout(() => t.remove(), 2200);
-  };
-  const jump = fl => {
+  /* a possession: its plan from where everybody is (core/plays.js) */
+  const poss = (o, side, right, fl) => {
     names(fl);
-    [0, 1].forEach(side => [0, 1, 2, 3, 4].map(k => put(dots[side][k], 470 + (side ? 1 : -1) * (40 + 60 * (k % 3)), 110 + 70 * k)));
-    holder(null); putBall(457, 237);
+    const from = { pos: men[side].map(m => toF(m.w, right)).concat(men[side ^ 1].map(m => toF(m.w, right))), hold: null, ball: toF(ball.w, right) };
+    if (ball.hold) from.hold = ball.hold[0] === side ? ball.hold[1] : 5 + ball.hold[1];
+    tween = null; scr = null;
+    try { pl = { p: PL().plan(Object.assign({}, o, { from })), side, right }; }
+    catch (e) { pl = null; if (root.console) console.warn('plays', e); }
   };
-  /* one event on the court, the five attacking `right` or not */
-  const play = (e, fl, right, cls) => {
-    if (view !== 'live') return;
-    const B = mir([BX, BY], right);
-    if (e.k === 'P') { set(fl, e.s, right); return; }
-    if (e.k === 'Q' || e.k === 'q') { jump(fl); banner(e.k === 'Q' ? (e.p ? 'OVERTIME' : 'TIP-OFF') : ['', 'Q2', 'HALF 2', 'Q4'][e.p] || ''); return; }
+  /* the dead-ball stop (the free throws) between two clock readings, if the possession has one */
+  const stopIn = (t0, t1) => (pl ? pl.p.stops.find(s => s.t > t0 + 1e-6 && s.t <= t1 + 1e-6) || null : null);
+  /* ---- the frame: the men where the play has them, the defence after them as fast as a man runs ---- */
+  const tick = (vt, hp, now) => {
+    fit(now);
+    const dtg = lastVt == null ? 0 : vt - lastVt, dtr = lastNow ? Math.min(0.25, (now - lastNow) / 1000) : 0;
+    const moving = vt !== lastVt || hp != null || !!tween;
+    lastVt = vt; lastNow = now;
+    if (tween) {
+      const x = Math.min(1, (now - tween.t0) / tween.ms), e = x < 0.5 ? 2 * x * x : 1 - 2 * (1 - x) * (1 - x);
+      tween.list.forEach(([m, a, b]) => { m.w = [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e]; });
+      if (x >= 1) tween = null;
+    } else if (pl) {
+      const m = PL().at(pl.p, vt, hp), side = pl.side, right = pl.right;
+      m.off.forEach((p, j) => { men[side][j].w = toW(p, right); });
+      const run = dtg < 0 || dtg > 3 ? Infinity : 24 * (dtg > 0 ? dtg : hp != null ? 1.5 * dtr : 0);
+      m.def.forEach((p, j) => {
+        const d = men[side ^ 1][j], t = toW(p, right), e = Math.hypot(t[0] - d.w[0], t[1] - d.w[1]);
+        d.w = e > run ? [d.w[0] + (t[0] - d.w[0]) * run / e, d.w[1] + (t[1] - d.w[1]) * run / e] : t;
+      });
+      if (m.hold != null) { ball.hold = m.hold <= 4 ? [side, m.hold] : [side ^ 1, m.hold - 5]; ball.air = 0; }
+      else { ball.hold = null; if (m.ball) ball.w = toW(m.ball, right); ball.air = m.air || 0; }
+      scr = m.scr ? men[side][m.scr.k] : null;
+      if (m.call && (!call || call.c !== m.call)) call = { c: m.call, at: now, side };
+    }
+    if (moving || dirty || fx.length || (call && now - call.at < 3300)) { dirty = false; draw(now); }
+  };
+  /* ---- one event's marks: the points over the rim, a block, a steal, the breaks ---- */
+  const pop = (w, text, col, miss) => { fx.push({ k: 'pop', w, text: tx(text), col, miss: !!miss, t0: root.performance.now() }); };
+  const banner = text => { for (let i = fx.length - 1; i >= 0; i--) if (fx[i].k === 'ban') fx.splice(i, 1); fx.push({ k: 'ban', text: tx(text), t0: root.performance.now() }); };
+  const MISS = '#ff8a9a';
+  const popCol = s => mixHex(uiOf(kits[s], false), '#ffffff', 0.38);
+  const play = (e, fl, right) => {
+    if (e.k === 'Q' || e.k === 'q') { banner(e.k === 'Q' ? (e.p ? 'OVERTIME' : 'TIP-OFF') : ['', 'Q2', 'HALF 2', 'Q4'][e.p] || ''); return; }
     if (e.k === 'Y') { banner('TIMEOUT'); return; }
     if (e.k === 'U') { names(fl); return; }
-    const k = slotOf(fl, e.s, e.p), d = k >= 0 ? dots[e.s][k] : null;
-    if (e.k === 'S') {
-      const sp = mir(shotSpot(e.z, u01(ctx.seed + ':a:' + e.t + ':' + e.p), u01(ctx.seed + ':b:' + e.t + ':' + e.p)), right);
-      if (d) { put(d, sp[0], sp[1]); holder(e.s, k); }
-      setTimeout(() => putBall(B[0] - 13, B[1] + 13), 90);
-      if (e.m) pop(B[0] + (right ? -40 : 40), B[1] - 30, '+' + (e.z === 2 ? 3 : 2), cls(e.s));
-      else if (e.b) pop(B[0] + (right ? -46 : 46), B[1] - 30, 'BLOCK', 'miss');
-      else pop(B[0] + (right ? -34 : 34), B[1] - 30, '✕', 'miss');
-      return;
-    }
-    if (e.k === 'O' || e.k === 'D') {
-      if (d) { put(d, B[0] + (right ? -1 : 1) * (36 + 50 * u01(e.t + 'r' + e.p)), B[1] + (u01(e.t + 'y' + e.p) - 0.5) * 150); holder(e.s, k); }
-      return;
-    }
-    if (e.k === 'F') {
-      if (d) { put(d, right ? 742 : 198, 250); holder(e.s, k); }
-      if (e.m) pop(B[0] + (right ? -40 : 40), B[1] - 30, '+' + e.m, cls(e.s));
-      return;
-    }
-    if (e.k === 'T') {
-      if (e.st) { const j = slotOf(fl, e.s ^ 1, e.st); if (j >= 0 && hand) { put(dots[e.s ^ 1][j], hand.x + 10, hand.y + 6); holder(e.s ^ 1, j); } pop(470, 70, 'STEAL', cls(e.s ^ 1)); }
-      else pop(470, 70, 'TURNOVER', 'miss');
-    }
+    const B = right ? CL - BASKET : BASKET, toward = right ? -1 : 1, at = (dx, dy) => [B + toward * dx, HW + dy];
+    if (e.k === 'S') { if (e.m) pop(at(7, -6), '+' + (e.z === 2 ? 3 : 2), popCol(e.s)); else if (e.b) pop(at(7.5, -6), 'BLOCK', MISS, true); else pop(at(6, -6), '✕', MISS, true); return; }
+    if (e.k === 'F') { if (e.m) pop(at(7, -6), '+' + e.m, popCol(e.s)); return; }
+    if (e.k === 'T') pop([CL / 2, 7], e.st ? 'STEAL' : 'TURNOVER', e.st ? popCol(e.s ^ 1) : MISS, !e.st);
   };
-  /* every shot so far: each club at the end it attacks first (the home side the right) */
-  const chart = list => {
-    shots.textContent = '';
-    if (view !== 'shots') return;
-    list.forEach(x => {
-      const sp = mir(shotSpot(x.z, u01(ctx.seed + ':a:' + x.t + ':' + x.p), u01(ctx.seed + ':b:' + x.t + ':' + x.p)), x.s === 0);
-      const cls = 'shot ' + (x.s === ctx.me ? 'me' : 'op') + (x.m ? ' m' : ' x');
-      if (x.m) shots.appendChild(sv('circle', { cx: sp[0].toFixed(1), cy: sp[1].toFixed(1), r: 7, class: cls }));
-      else { const p = 'M' + (sp[0] - 6) + ' ' + (sp[1] - 6) + ' L' + (sp[0] + 6) + ' ' + (sp[1] + 6) + ' M' + (sp[0] + 6) + ' ' + (sp[1] - 6) + ' L' + (sp[0] - 6) + ' ' + (sp[1] + 6); shots.appendChild(sv('path', { d: p, class: cls })); }
-    });
-  };
-  const setView = (v, list) => { view = v; men.style.display = v === 'live' ? '' : 'none'; fx.style.display = v === 'live' ? '' : 'none'; chart(list || []); };
-  return { set, jump, play, names, chart, setView, view: () => view, speed: x => s.style.setProperty('--mx-t', clamp(0.6 / x, 0.08, 0.6).toFixed(2) + 's') };
+  const chart = list => { shotList = list || []; dirty = true; };
+  const setView = (v, list) => { view = v; chart(list); };
+  return { set, jump, play, names, chart, setView, view: () => view, speed: () => {}, poss, tick, stopIn, stop: () => { if (ro) ro.disconnect(); } };
 }
 
 /* the margin's path: the reader's lead above the line, the other club's below; the quarters marked */
@@ -350,18 +586,6 @@ function flowSvg(flow, endT, G, me, now) {
   s.appendChild(sv('path', { d: area, fill: 'var(--mx-op)', 'fill-opacity': '.35', 'clip-path': 'url(#mxDn)' }));
   s.appendChild(sv('path', { d, fill: 'none', stroke: 'var(--mg-ink-2)', 'stroke-width': '1.6', 'vector-effect': 'non-scaling-stroke' }));
   return s;
-}
-
-/* a club's colour on the court, kept apart from the reader's royal blue (a blue club plays in orange) */
-function opColour(hex) {
-  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
-  if (!m) return '#ff9f43';
-  const n = parseInt(m[1], 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
-  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
-  if (d < 0.18 || l < 0.2 || l > 0.85) return '#ff9f43';
-  let hue = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  hue = (hue * 60 + 360) % 360;
-  return hue > 185 && hue < 265 ? '#ff9f43' : '#' + m[1];
 }
 
 /* ------------------------------------------------------------------ THE SCREEN --- */
@@ -388,7 +612,13 @@ function screen(host, o) {
   const r = f.r, clubs = [f.h, f.a], me = f.h === 0 ? 0 : 1, op = me ^ 1;
   const club = s => A.clubAt(clubs[s]);
   const clubName = s => club(s).short || club(s).name;
-  const colOp = opColour(club(op).colour);
+  /* the kits on the court (each club's colours; white for the home side on a clash) and the screen's two colours */
+  const lightTheme = doc.documentElement.getAttribute('data-theme') === 'light';
+  const kitAt = s => { const c = club(s); if (c.me) { const b = A.club.badge || {}; return kitFrom(b.c1, b.c2); } return kitFrom(c.colour, null); };
+  const kits = kitsOf(kitAt(0), kitAt(1));
+  const uiMe = uiOf(kits[me], lightTheme);
+  let uiOp = uiOf(kits[op], lightTheme);
+  if (colDist(uiMe, uiOp) < 150) uiOp = colDist(uiMe, '#ff9f43') < 150 ? '#3ee6a8' : '#ff9f43';
   /* the game's end: the live game's clock as far as it has been played; a game played, its last buzzer */
   const endOf = () => (live ? M.g.t : G * 60 + (f.res[2] || 0) * Tot);
   const tr = tracker(G, Tot, limit);
@@ -424,7 +654,8 @@ function screen(host, o) {
   /* ---- the frame ---- */
   doc.body.classList.add('mg-full');
   const el = h('div.mg-match' + (live ? '.live' : '.replay'));
-  el.style.setProperty('--mx-op', colOp);
+  el.style.setProperty('--mx-me', uiMe);
+  el.style.setProperty('--mx-op', uiOp);
   el.style.setProperty('--mx-h', me === 0 ? 'var(--mx-me)' : 'var(--mx-op)');
   el.style.setProperty('--mx-v', me === 1 ? 'var(--mx-me)' : 'var(--mx-op)');
   host.appendChild(el);
@@ -446,7 +677,7 @@ function screen(host, o) {
   L.appendChild(fiveCard); L.appendChild(benchCard);
   const courtWrap = h('div.mg-mx-courtwrap'), overEl = h('div.mg-mx-over', { hidden: true });
   const viewTabs = h('div.mg-tabs', { role: 'group', 'aria-label': 'Court view' });
-  const court = makeCourt(courtWrap, { me, seed });
+  const court = makeCourt(courtWrap, { me, seed, kits, homeCol: kits[0].light ? kits[0].ring : kits[0].fill });
   [['live', 'Court'], ['shots', 'Shot chart']].forEach(([k, l]) => viewTabs.appendChild(h('button', { type: 'button', 'aria-pressed': String(k === 'live'), onclick: () => { court.setView(k, tr.shots); viewTabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.textContent === l))); } }, l)));
   courtWrap.appendChild(h('div.mg-mx-view', viewTabs));
   courtWrap.appendChild(overEl);
@@ -472,7 +703,7 @@ function screen(host, o) {
   bar.appendChild(simBtn);
 
   /* ---- the state of the screen ---- */
-  let vt = 0, evI = 0, speed = +A.stored('mgr_speed') || 4, paused = true, brk = null, done = false, ended = false, lastFrame = 0, raf = 0;
+  let vt = 0, evI = 0, speed = +A.stored('mgr_speed') || 4, paused = true, brk = null, done = false, ended = false, lastFrame = 0, raf = 0, halt = null;
   if (!SPEEDS.includes(speed)) speed = 4;
   let feed = [], latest = null, dirty = { men: true, tab: true, flow: true, sb: true, shots: -1 }, lastSlow = 0, savedAt = 0, hardAt = Date.now(), dragging = false, pressing = false;
   const onUp = () => { pressing = false; };
@@ -486,8 +717,14 @@ function screen(host, o) {
   function show(e, quiet) {
     const fl = floorAt(e.t);
     const extra = tr.on(e, fl);
-    /* the basket: the one the side with the ball attacks (a defensive board or a steal belongs to its possession) */
-    if (!quiet) court.play(e, fl, attacksRight(tr.poss ? tr.poss.s : (e.s || 0), e.t), cls);
+    /* the basket: the one the side with the ball attacks (a defensive board or a steal belongs to its possession); a
+       possession starting, its play on the court */
+    if (!quiet) {
+      if (e.k === 'Q' || e.k === 'q') court.jump(fl, attacksRight(0, e.t + 1));
+      court.play(e, fl, attacksRight(tr.poss ? tr.poss.s : (e.s || 0), e.t));
+      if (e.k === 'P') planFor(e, fl);
+    }
+    if (e.k === 'S' || e.k === 'F' || e.k === 'T' || e.k === 'D' || e.k === 'Q' || e.k === 'q') lastEnd = e;
     const pf = e.k === 'f' || (e.k === 'T' && e.of) ? (tr.box[e.s].get(e.p) || {}).pf : 0;
     const w = say(e, { clubName, pf });
     if (w && w.x) {
@@ -502,6 +739,34 @@ function screen(host, o) {
   }
   /* which basket a side attacks: the home side the right one in the first half, the left in the second (and in overtime) */
   const attacksRight = (s, t) => (s === 0) === (clockAt(t, G, Tot).p < 2);
+  /* ---- the possession on the court: its plan (core/plays.js) from the events it ends in (the engine has played the
+     whole possession by the time its start is shown), its men's roles and how the ball changed hands ---- */
+  let lastEnd = null;
+  const cardFor = (s, id) => (live && M.sides[s].T.cards && M.sides[s].T.cards.get(String(id))) || A.cardOf(id);
+  function rolesFor(s, ids, t) {
+    let keys = null;
+    try {
+      if (live) {
+        const sd = M.sides[s], ks = MT().rolesAt(sd, t / 60, G);
+        if (ks) { const by = new Map(sd.floor.map((id, k) => [String(id), ks[k]])); keys = ids.map(id => by.get(String(id)) || null); }
+      } else if (s === me) {
+        const lu = (A.lineups({ all: true }) || []).find(l => l.ids.map(String).join('|') === ids.map(String).join('|'));
+        keys = lu ? A.rolesOf(lu) : null;
+      }
+    } catch (e) { keys = null; }
+    const RO = Mgr.roles, ref = A.lg && A.lg.ref;
+    return ids.map((id, k) => { try { const c = cardFor(s, id), key = keys ? keys[k] : null; return key ? RO.resolve(key, k, c, ref) : RO.bestFor(k, c, ref); } catch (e) { return null; } });
+  }
+  function planFor(e, fl) {
+    let j = evI;
+    while (j < events.length && !['P', 'Q', 'q'].includes(events[j].k)) j++;
+    const s = e.s, off = fl[s], def = fl[s ^ 1], right = attacksRight(s, e.t);
+    const idx = id => { const a = off.indexOf(id); if (a >= 0) return a; const b = def.indexOf(id); return b >= 0 ? 5 + b : -1; };
+    const L = lastEnd;
+    const prev = !L || L.k === 'Q' || L.k === 'q' ? { how: 'start' } : L.k === 'D' ? { how: 'dreb', by: idx(L.p) } : L.k === 'T' ? (L.st ? { how: 'steal', by: idx(L.st) } : { how: 'dead' })
+      : (L.k === 'S' && L.m) || (L.k === 'F' && L.m) ? { how: 'make' } : { how: 'dead' };
+    court.poss({ evs: [e].concat(events.slice(evI, j)), idx, roles: rolesFor(s, off, e.t), prev, spot: x => shotFeet(seed, x), seed }, s, right, fl);
+  }
 
   /* ---- the clock moves ---- */
   /* THE ENGINE NEVER RUNS AHEAD OF WHAT IS SHOWN BY MORE THAN A POSSESSION: the next one is played only when everything so
@@ -515,7 +780,14 @@ function screen(host, o) {
     try {
       if (brk && !paused && brk.until && Date.now() >= brk.until) endBreak();
       if (!paused && !brk && !done) {
-        vt += dt * speed;
+        /* a dead ball on the court (the free throws): the clock stops while it is shown */
+        if (halt) { halt.left -= dt * 1000; if (halt.left <= 0) halt = null; }
+        if (!halt) {
+          let nv = vt + dt * speed;
+          const st = court.stopIn(vt, nv);
+          if (st) { nv = st.t; const ms = 1000 * st.d / Math.sqrt(speed); halt = { left: ms, total: ms }; }
+          vt = nv;
+        }
         if (live) {
           let n = 0;
           for (;;) {
@@ -598,6 +870,8 @@ function screen(host, o) {
 
   /* ---- what the screen shows ---- */
   function paint(now) {
+    /* the court, every frame (it draws only what moved) */
+    court.tick(Math.min(vt, endOf()), halt ? clamp(1 - halt.left / halt.total, 0, 1) : null, now);
     /* the clock, every frame */
     const c = clockAt(Math.min(vt, endOf()), G, Tot);
     if (done) { perEl.textContent = 'FINAL'; clkEl.textContent = (M ? M.g.ot : 0) ? 'OT' : '0:00'; }
@@ -910,7 +1184,7 @@ function screen(host, o) {
     if (live && !root.confirm('Play the rest of the game now? Your assistant takes the decisions from here.')) return;
     try {
       if (live) { MT().act(M, me, { type: 'auto', on: true }); MT().finish(M); }
-      overlay(null); brk = null;
+      overlay(null); brk = null; halt = null;
       vt = endOf();
       reveal(true);
       final();
@@ -944,6 +1218,7 @@ function screen(host, o) {
     if (gone) return;
     gone = true;
     if (raf) root.cancelAnimationFrame(raf);
+    court.stop();
     doc.body.classList.remove('mg-full');
     doc.removeEventListener('keydown', onKey);
     doc.removeEventListener('visibilitychange', onVis);
@@ -957,7 +1232,7 @@ function screen(host, o) {
     }
   }
   function leaveScreen() {
-    if (live && !done) { pause(); A.toast('Your game is kept where it is: carry on any time today.'); A.go('/'); }
+    if (live && !done) { pause(); A.toast('Your game is kept where it is: carry on any time this week.'); A.go('/'); }
     else A.go(live ? '/' : '/game/' + r);
   }
   doc.addEventListener('keydown', onKey);
@@ -966,9 +1241,11 @@ function screen(host, o) {
 
   /* ---- start: the game as far as it has gone ---- */
   if (live) vt = M.g.t;
-  reveal(true);
+  /* a game opened part of the way through: everything up to its clock at once (at 0:00 nothing - the first possession is
+     shown, and drawn, as it is played) */
+  if (vt > 0) reveal(true);
   const fl0 = floorAt(vt);
-  if (evI === 0 || vt === 0) court.jump(fl0);
+  if (evI === 0 || vt === 0) court.jump(fl0, attacksRight(0, Math.max(0, vt) + 1));
   else if (tr.poss) court.set(fl0, tr.poss.s, attacksRight(tr.poss.s, vt));
   latest = feed.slice().reverse().find(x => !x.quiet) || null;
   drawSpeed(); drawBoard(); drawBar();
@@ -989,19 +1266,21 @@ function screen(host, o) {
 }
 
 /* ------------------------------------------------------------------ MATCH DAY: before the game --- */
+/* THE WEEK'S WINDOW in words: the last day it can be played (Louie, 2026-10-15: any time in its week) */
+const byWhen = md => { const d = new Date(md.closes - 1); return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }); };
 function prematch(host, md) {
   const f = md.f, home = f.h === 0, opp = home ? f.a : f.h;
-  host.appendChild(h('div.mg-top', A.badge(A.club.badge, 56), h('div.who', h('h1', 'Match day'), h('div.meta', h('span', 'Round ' + f.r), h('span', home ? 'At home' : 'Away'), h('span', 'Play it any time today')))));
+  host.appendChild(h('div.mg-top', A.badge(A.club.badge, 56), h('div.who', h('h1', 'Match day'), h('div.meta', h('span', 'Round ' + f.r), h('span', home ? 'At home' : 'Away'), h('span', 'Play it any time until the end of ' + byWhen(md))))));
   const meter = h('div.mg-meter', h('i', { style: { width: '50%' } })), chance = h('b', '…');
   const go = h('div.go');
   const p = h('div.mg-panel.glow.mg-pre',
-    h('div.mg-next', h('div.side', A.crest(f.h, 72), f.h === 0 ? A.nm(A.club.name, 'b') : A.clubLink(f.h)), h('div.vs', h('span.mg-cap', 'Today'), h('span.big', 'v')),
+    h('div.mg-next', h('div.side', A.crest(f.h, 72), f.h === 0 ? A.nm(A.club.name, 'b') : A.clubLink(f.h)), h('div.vs', h('span.mg-cap', 'This week'), h('span.big', 'v')),
       h('div.side', A.crest(f.a, 72), f.a === 0 ? A.nm(A.club.name, 'b') : A.clubLink(f.a))),
     meter, h('p.mg-sub', { style: { textAlign: 'center', margin: '8px 0 0' } }, 'Your chance, simulated with your lineups, tactics and instructions: ', chance), go);
   go.appendChild(h('button.mg-btn.primary.big', { type: 'button', onclick: () => start('live') }, '▶ Play it live'));
   go.appendChild(h('button.mg-btn.big', { type: 'button', onclick: () => start('quick') }, '⏩ Straight to the result'));
   go.appendChild(h('a.mg-btn.big.ghost', { href: '#/tactics' }, 'Tactics'));
-  p.appendChild(h('p.mg-sub', { style: { textAlign: 'center', margin: '12px 0 0' } }, 'Live, you make the substitutions, the team’s instructions and each man’s as it happens, and can stop and come back to it today. If you have not played it by midnight, your assistant plays it for you.'));
+  p.appendChild(h('p.mg-sub', { style: { textAlign: 'center', margin: '12px 0 0' } }, 'Live, you make the substitutions, the roles, the team’s instructions and each man’s as it happens, and can stop and come back to it later in the week. Any time this week (both of the week’s games, in their order); if you have not played it by the end of ' + byWhen(md) + ', your assistant plays it for you.'));
   host.appendChild(p);
   /* the two fives */
   try {
@@ -1046,19 +1325,19 @@ A.livePanel = host => {
         h('div.vs', h('span.mg-cap', where), h('span.big', g ? g.score[0] + ' – ' + g.score[1] : 'v')), h('div.side', A.crest(f.a, 56), f.a === 0 ? A.nm(A.club.name, 'b') : A.clubLink(f.a))),
       h('div.go', h('a.mg-btn.primary.big', { href: '#/match' }, '▶ Carry on'),
         h('button.mg-btn', { type: 'button', onclick: async ev => { ev.currentTarget.disabled = true; try { await A.finishLive(); A.go('/game/' + r); } catch (e) { A.toast('It could not be finished just now: ' + (e && e.message || e), true); } } }, 'Let your assistant finish it')),
-      h('p.mg-sub.note', 'It waits for you where you left it. If it is still going at midnight, your assistant plays it out.'));
+      h('p.mg-sub.note', 'It waits for you where you left it. If it is still going when the week ends (Sunday night), your assistant plays it out.'));
   } else {
     const meter = h('div.mg-meter', h('i', { style: { width: '50%' } })), chance = h('b', '…');
     p = h('div.mg-panel.glow.mg-md',
       h('div.mg-row.between', h('span.mg-chip.royal', '★ MATCH DAY'), h('span.mg-sub', 'Round ' + r + ' · ' + (f.h === 0 ? 'at home' : 'away'))),
-      h('div.mg-next', { style: { marginTop: '8px' } }, h('div.side', A.crest(f.h, 64), f.h === 0 ? A.nm(A.club.name, 'b') : A.clubLink(f.h)), h('div.vs', h('span.mg-cap', 'Today'), h('span.big', 'v')),
+      h('div.mg-next', { style: { marginTop: '8px' } }, h('div.side', A.crest(f.h, 64), f.h === 0 ? A.nm(A.club.name, 'b') : A.clubLink(f.h)), h('div.vs', h('span.mg-cap', 'This week'), h('span.big', 'v')),
         h('div.side', A.crest(f.a, 64), f.a === 0 ? A.nm(A.club.name, 'b') : A.clubLink(f.a))),
       meter, h('p.mg-sub', { style: { textAlign: 'center', margin: '8px 0 0' } }, 'Your chance, simulated: ', chance),
       h('div.go', h('a.mg-btn.primary.big', { href: '#/match' }, '▶ Play it live'), h('button.mg-btn.big', { type: 'button', onclick: async ev => {
         ev.currentTarget.disabled = true;
         try { const out = await A.startMatch('quick'); if (out === 'done') A.go('/game/' + r); else A.route_(); } catch (e) { A.toast('The game could not be played: ' + (e && e.message || e), true); A.route_(); }
       } }, '⏩ Straight to the result'), h('a.mg-btn.big.ghost', { href: '#/tactics' }, 'Tactics')),
-      h('p.mg-sub.note', 'Play it whenever you like today. If you have not by midnight, your assistant plays it for you.'));
+      h('p.mg-sub.note', 'Play it whenever you like this week. If you have not by the end of ' + byWhen(md) + ', your assistant plays it for you.'));
     setTimeout(() => {
       try {
         const pv = Mgr.engine.preview(A.teamObj(0, null), A.teamObj(opp, null), Object.assign({}, A.X(), { home: f.h === 0 ? 1 : -1, seed: 17 }), 300);
@@ -1078,7 +1357,7 @@ function renderMatch(host) {
   const md = A.matchday();
   if (md) return prematch(host, md);
   const S = A.club.state, nx = S ? SE().next(S, 0) : null;
-  host.appendChild(h('div.mg-panel', h('h2', 'No game today'), h('p.mg-sub', nx ? 'Your next game is round ' + nx.r + ', on ' + SE().dayStart(nx.d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + ': play it any time that day.' : 'Your season’s games are all played.'),
+  host.appendChild(h('div.mg-panel', h('h2', 'No game to play just now'), h('p.mg-sub', nx ? 'Your next game is round ' + nx.r + ', in the week from ' + SE().weekStart(nx.d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + ': play it any time that week.' : 'Your season’s games are all played.'),
     h('a.mg-btn', { href: '#/' }, '← Back to the club')));
 }
 /* #/live/<round>: a game played, again (the game in hand is the match screen's) */

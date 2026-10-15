@@ -1,5 +1,5 @@
 {
- "built": "2026-10-14",
+ "built": "2026-10-15",
  "reps": 6,
  "leagues": [
   {
@@ -8,11 +8,11 @@
    "clubs": 16,
    "realGames": 240,
    "simGames": 1440,
-   "r": 0.952,
-   "rPlayers": 0.731,
-   "ppgSim": 85.5,
+   "r": 0.945,
+   "rPlayers": 0.713,
+   "ppgSim": 85.6,
    "ppgReal": 85.5,
-   "homeSim": 0.623,
+   "homeSim": 0.622,
    "homeReal": 0.604,
    "p3rSim": 40.8,
    "p3rReal": 41.2
@@ -23,13 +23,13 @@
    "clubs": 17,
    "realGames": 272,
    "simGames": 1632,
-   "r": 0.986,
-   "rPlayers": 0.932,
-   "ppgSim": 82.7,
+   "r": 0.985,
+   "rPlayers": 0.915,
+   "ppgSim": 81.6,
    "ppgReal": 80.9,
-   "homeSim": 0.597,
+   "homeSim": 0.575,
    "homeReal": 0.607,
-   "p3rSim": 43.9,
+   "p3rSim": 42.8,
    "p3rReal": 43.5
   },
   {
@@ -38,11 +38,11 @@
    "clubs": 22,
    "realGames": 222,
    "simGames": 2772,
-   "r": 0.976,
-   "rPlayers": 0.801,
-   "ppgSim": 75.2,
+   "r": 0.973,
+   "rPlayers": 0.789,
+   "ppgSim": 75.1,
    "ppgReal": 75.9,
-   "homeSim": 0.585,
+   "homeSim": 0.582,
    "homeReal": 0.581,
    "p3rSim": 36.7,
    "p3rReal": 37.3
@@ -53,11 +53,11 @@
    "clubs": 10,
    "realGames": 120,
    "simGames": 540,
-   "r": 0.851,
-   "rPlayers": 0.694,
+   "r": 0.894,
+   "rPlayers": 0.656,
    "ppgSim": 93.9,
    "ppgReal": 92.7,
-   "homeSim": 0.62,
+   "homeSim": 0.631,
    "homeReal": 0.608,
    "p3rSim": 39.7,
    "p3rReal": 39.8
@@ -66,8 +66,8 @@
  "summary": {
   "leagues": 4,
   "games": 6384,
-  "r": 0.941,
-  "rPlayers": 0.789,
-  "ppgGap": 0.9
+  "r": 0.949,
+  "rPlayers": 0.768,
+  "ppgGap": 0.7
  }
 }

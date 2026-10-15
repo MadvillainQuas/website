@@ -9,7 +9,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..',
 globalThis.EpinoiaWinStats = require(path.join(ROOT, 'winstats.js'));
 const Sim = require(path.join(ROOT, 'winsim.js'));
 const Mgr = {};
-['value', 'ratings', 'schedule', 'names', 'badge', 'cards', 'roles', 'engine', 'season', 'instruct', 'match'].forEach(n => { Mgr[n] = require(path.join(ROOT, 'manager', 'core', n + '.js')); });
+['value', 'ratings', 'schedule', 'names', 'badge', 'cards', 'roles', 'engine', 'season', 'instruct', 'match', 'plays'].forEach(n => { Mgr[n] = require(path.join(ROOT, 'manager', 'core', n + '.js')); });
 globalThis.Mgr = Mgr;
 const { value: V, ratings: R, schedule: SC, names: N, badge: B, cards: C, engine: E, season: SE, instruct: IN, match: MT, roles: RO } = Mgr;
 E.use(Sim);
@@ -284,8 +284,15 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
    plays it - its instructions kept to what it allows, a club left at the defaults playing its own men's games */
 {
   const per = [0, 1, 2, 3, 4].map(k => RO.forSlot(k).length);
-  ok('roles: every position has its roles (7, 12, 11, 14, 10), each diet a whole, each shot mix a whole', JSON.stringify(per) === '[7,12,11,14,10]'
+  ok('roles: every position has its roles (13 with the combos at the point, 12, 11, 14, 10), each diet a whole, each shot mix a whole', JSON.stringify(per) === '[13,12,11,14,10]'
     && RO.ROLES.every(r => near(Object.values(r.diet).reduce((a, v) => a + v, 0), 1, 1e-9) && near((p => p.mix.rim + p.mix.mid + p.mix.three)(RO.profile(r)), 1, 1e-6) && 'gwb'.includes(r.family)), per);
+  ok('roles: each in one of its position\'s categories, every label ending in its position', RO.ROLES.every(r => RO.CATS[r.slot].includes(r.cat) && r.label.endsWith(' ' + RO.SLOTS[r.slot]))
+    && RO.forSlot(0).filter(r => r.cat === 'Combo').length === 6 && RO.forSlot(1).filter(r => r.cat === 'Combo').length === 6);
+  ok('roles: the five\'s roles make its alignment - a post four beside a rim roller 3-out 2-in, two popping bigs 5-out',
+    RO.layout(['pg-slashpass', 'sg-moveshoot', 'sf-3d', 'pf-dualpost', 'c-roller']).label === '3-out 2-in' && RO.layout(['pg-euro', 'sg-3d', 'sf-3d', 'pf-dualspot', 'c-spot']).label === '5-out'
+    && RO.layout(['pg-mixed', 'sg-combomixed', 'sf-3d', 'pf-3d', 'c-roller']).label === '4-out 1-in' && new Set(RO.layout(['pg-mixed', 'sg-comboiso', 'sf-iso', 'pf-iso', 'c-post']).spots).size === 5);
+  ok('roles: one position from his own costs nothing (a shooting guard at small forward), two or more cost (at power forward, more at centre)',
+    RO.posGap(2.2, 2) === 0 && RO.posGap(2, 2) === 0 && RO.posGap(2, 3) > 0.9 && RO.posGap(2, 4) > RO.posGap(2, 3), [RO.posGap(2, 2), RO.posGap(2, 3), RO.posGap(2, 4)]);
   const T0 = teams[0], cardAt = k => cards.get(T0.men[k].id);
   ok('roles: the defaults - the general role at the guards, the best fit at the forwards and the centre, never another position\'s',
     RO.resolve(null, 0, cardAt(0), ref).key === 'pg-mixed' && RO.resolve(null, 1, cardAt(1), ref).key === 'sg-combomixed' && RO.resolve(null, 4, cardAt(4), ref).key === RO.bestFor(4, cardAt(4), ref).key
@@ -446,11 +453,21 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   const S1 = SE.create({ clubs, start: '2026-10-07', perWeek: 1, meetings: 3, seed: 5 });
   ok('season: one a week is Saturdays', S1.fixtures.every(f => new Date(f.d + 'T00:00:00Z').getUTCDay() === 6));
   const first = S.fixtures[0].d;
-  /* ANY TIME ON ITS DAY (Louie, 2026-10-14): the reader's own day; theirs to play during it, the assistant's after it */
+  /* ANY TIME IN ITS WEEK (Louie, 2026-10-15: "play the two weekly games whenever they want, but has to be within the
+     week (otherwise auto simmed)"): the round's week, Monday to Sunday; the reader's to play in it, the assistant's after */
   const at = (d, h) => { const x = SE.dayStart(d); x.setHours(h); return x; };
-  ok('season: a match day is the reader\'s game to play all day, and played for them once it is over',
-    SE.due(S, at(first, 0)).length === 0 && SE.matchday(S, at(first, 0), 0).r === 1 && SE.matchday(S, at(first, 23), 0).r === 1 && SE.due(S, at(first, 23)).length === 0
-      && SE.matchday(S, SE.dayEnd(first), 0) === null && SE.due(S, SE.dayEnd(first))[0] === 1 && SE.matchday(S, at(dayAfter(first, -1), 23), 0) === null);
+  const wk = SE.weekStart(first), monday = d => d.getDay() === 1;
+  ok('season: a round is the reader\'s to play any time in its week (Monday to Sunday), and played for them once the week is over',
+    monday(wk) && SE.due(S, at(first, 0)).length === 0 && SE.matchday(S, at(first, 23), 0).r === 1 && SE.matchday(S, wk, 0).r === 1
+      && SE.matchday(S, at(dayAfter(first, -1), 23), 0).r === 1 && SE.due(S, at(first, 23)).length === 0
+      && SE.matchday(S, SE.weekEnd(first), 0) === null && SE.due(S, SE.weekEnd(first))[0] === 1 && SE.matchday(S, new Date(wk.getTime() - 1), 0) === null);
+  /* both of a week's games, in their order: the second once the first is played, the same week */
+  const S2 = JSON.parse(JSON.stringify(S)), r2 = S2.fixtures.find(f => f.r === 2 && (f.h === 0 || f.a === 0)), r3 = S2.fixtures.find(f => f.r === 3 && (f.h === 0 || f.a === 0));
+  S2.fixtures.filter(f => f.r === 1).forEach(f => { f.res = [80, 70, 0]; });
+  const wk2 = SE.weekStart(r2.d), twoInOne = r3 && SE.weekStart(r3.d).getTime() === wk2.getTime();
+  const firstOf2 = SE.matchday(S2, wk2, 0);
+  S2.fixtures.filter(f => f.r === 2).forEach(f => { f.res = [80, 70, 0]; });
+  ok('season: the week\'s two games in their order, both the reader\'s to play that week', twoInOne && firstOf2 && firstOf2.r === 2 && SE.matchday(S2, wk2, 0).r === 3, [r2.d, r3 && r3.d]);
   /* a round without the reader's club is played when its day begins */
   {
     const odd = SE.create({ clubs: ['me'].concat(teams.slice(0, 4).map(t => t.id)), start: '2026-10-07', perWeek: 2, meetings: 1, seed: 3 });
@@ -550,6 +567,89 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   ok('clock: a set play\'s first shot comes 8 s or more after the ball changed hands, nine times in ten', sets > 100 && late / sets >= 0.9, [late, sets]);
   ok('clock: both boxes\' minutes agree, to the tenth', minsOk);
   console.log('      (transition points: box ' + fast + ', breaks ' + trPts + '; set plays late ' + late + '/' + sets + ')');
+}
+/* ---------------------------------------------------------------- the plays on the live court --- */
+/* core/plays.js (Louie, 2026-10-15: "a good visual representation of how the team would play in real life with the set
+   roles", "real life plays from playbooks ... assign them properly according to the player roles, position and what the
+   playing engine needs"): every possession of a game drawn as a set from the playbook, ending where the engine ended it */
+{
+  const PL = Mgr.plays;
+  ok('plays: every set\'s finishes and alignment name its own places', PL.BOOK.every(st => st.fin.every(f => st.places[f[0]] && (f[3] === '-' || st.places[f[3]])) && Object.keys(st.align).every(p => st.places[p])));
+  ok('plays: the playbook holds the sets the research found (ball screens, handoffs, off-ball screens, cuts, the post, the isolation)',
+    ['spread', 'side', 'horns', 'pop', 'short', 'spain', 'drag', 'pistol', 'hornsdho', 'chicago', 'delay', 'flare', 'zipper', 'floppy', 'stagger', 'elevator', 'hammer', 'iverson', 'ucla', 'chin', 'flex', 'split', 'highlow', 'iso', 'clear', 'swing'].every(id => PL.BOOK.some(s => s.id === id)));
+  /* the kind of play behind a finish follows the finisher's role */
+  const draw = (key, c, n) => { const R = SC.rng(7), out = {}; for (let i = 0; i < (n || 400); i++) { const k = PL.kindOf(R, RO.BY.get(key), c); out[k] = (out[k] || 0) + 1; } return out; };
+  const share = (o, ks) => ks.reduce((a, k) => a + (o[k] || 0), 0) / Object.values(o).reduce((a, v) => a + v, 0);
+  const roller = draw('c-roller', { end: 'S', z: 0, assisted: true }), mover = draw('sg-moveshoot', { end: 'S', z: 2, assisted: true });
+  const post = draw('c-post', { end: 'S', z: 1, assisted: false }), euro = draw('pg-euro', { end: 'S', z: 1, assisted: false });
+  ok('plays: a rim roller\'s assisted finish at the rim is a roll or a cut to the dunker spot', share(roller, ['roll', 'cut']) >= 0.85, roller);
+  ok('plays: a movement shooter\'s assisted three comes off screens or a spot-up, mostly off screens', share(mover, ['offs', 'spot']) >= 0.9 && share(mover, ['offs']) >= 0.35, mover);
+  ok('plays: a post scorer\'s own mid-range shot is a post-up', share(post, ['post']) >= 0.5, post);
+  ok('plays: a Euro PG\'s own pull-up comes out of the pick-and-roll', share(euro, ['pnr']) >= 0.7, euro);
+  /* one possession: the five's roles, a finish from the engine; the set drawn ends in it, the engine's passer passing */
+  const five = ['p0', 'p1', 'p2', 'p3', 'p4'], d5 = ['d0', 'd1', 'd2', 'd3', 'd4'];
+  const idx = id => { const a = five.indexOf(id); if (a >= 0) return a; const b = d5.indexOf(id); return b >= 0 ? 5 + b : -1; };
+  const from = { pos: [[0, 60], [15, 62], [-15, 62], [8, 70], [-8, 72], [0, 50], [12, 50], [-12, 50], [6, 40], [-6, 40]], hold: 0, ball: null };
+  const onePoss = (keys, end, seed) => PL.plan({ evs: [{ k: 'P', t: 100, s: 0, st: 0 }, Object.assign({ t: 114, s: 0 }, end)], idx, roles: keys.map(k => RO.BY.get(k)), from, prev: { how: 'make' },
+    spot: x => PL.shotSpot(x.z, 0.5, 0.4), seed });
+  const SCREENS = new Set(['High pick-and-roll', 'Side pick-and-roll (ram)', 'Horns', 'Pick-and-pop', 'Spain pick-and-roll', 'Drag screen', 'Pistol', 'Zipper', 'Iverson cut', 'Short roll', 'Horns elbow handoff', 'Chicago', 'Delay', 'UCLA cut']);
+  const five1 = ['pg-euro', 'sg-3d', 'sf-3d', 'pf-dualspot', 'c-roller'];
+  let inSet = 0, fromPG = 0;
+  for (let i = 0; i < 40; i++) {
+    const pl = onePoss(five1, { k: 'S', z: 0, m: 1, p: 'p4', a: 'p0' }, 'roll' + i);
+    if (pl.calls.some(c => SCREENS.has(c.text))) inSet++;
+    const catches = pl.frames.filter(f => f.ball && f.ball.fly && f.ball.fly.to === 4 && f.t <= 114);
+    if (catches.length && catches[catches.length - 1].ball.fly.from === 0) fromPG++;
+  }
+  /* (the rest: drop-offs from drives - an isolation, a clear-out, attacking a closeout, Hammer - the research's other
+     source of a big's finish at the dunker spot) */
+  ok('plays: a rim roller\'s dunk off the Euro PG\'s pass is drawn mostly as a ball-screen or handoff set, the PG always making the pass', inSet >= 24 && fromPG === 40, [inSet, fromPG]);
+  const posts = ['pg-mixed', 'sg-3d', 'sf-3d', 'pf-dualspot', 'c-post'];
+  let split = 0;
+  for (let i = 0; i < 40; i++) { const pl = onePoss(posts, { k: 'S', z: 1, m: 1, p: 'p4', a: null }, 'post' + i); if (pl.calls.some(c => /Post split|High-low|Isolation|Clear-out/.test(c.text))) split++; }
+  ok('plays: a post scorer\'s own hook comes out of a post entry (or an isolation)', split >= 24, split);
+  const trip = onePoss(five1, { k: 'F', kind: 1, n: 2, m: 1, p: 'p1', f: 'd1' }, 'ft');
+  const st = trip.stops[0], mid = st ? PL.at(trip, st.t, 0.6) : null;
+  ok('plays: a trip to the line stops the clock: the shooter at the line, two of his men on the lane', !!st && Math.abs(mid.off[1][0]) < 0.5 && Math.abs(mid.off[1][1] - 20.1) < 0.5
+    && mid.off.filter(p => Math.abs(Math.abs(p[0]) - 9.4) < 0.5 && p[1] < 13).length === 2, st && mid.off);
+  /* whole games: every possession drawn, everybody on the court, the shot from the engine's spot, nobody faster than a man */
+  let poss = 0, bad = 0, off = 0, shots = 0, there = 0, fastest = 0, called = 0, half = 0;
+  for (let g = 0; g < 3; g++) {
+    const M = MT.create(teamObj(teams[2 * g]), teamObj(teams[2 * g + 1]), { L, ref, G: 40 }, { seed: 400 + g, home: 1 });
+    MT.finish(M);
+    const ev = M.events, segs = M.lineups, floorAt = t => { let s = segs[0]; for (const x of segs) if (x.t0 * 60 <= t + 1e-6) s = x; return [s.h, s.a]; };
+    ev.forEach((e, i) => {
+      if (e.k !== 'P') return;
+      let j = i + 1; while (j < ev.length && !['P', 'Q', 'q'].includes(ev[j].k)) j++;
+      const evs = ev.slice(i, j), fl = floorAt(e.t), o5 = fl[e.s], d = fl[e.s ^ 1];
+      const ix = id => { const a = o5.indexOf(id); if (a >= 0) return a; const b = d.indexOf(id); return b >= 0 ? 5 + b : -1; };
+      const spot = x => PL.shotSpot(x.z, ((x.t * 7919) % 1000) / 1000, ((x.t * 104729) % 1000) / 1000);
+      const pl = PL.plan({ evs, idx: ix, roles: o5.map((id, k) => RO.bestFor(k, cards.get(id), ref)), from: { pos: o5.concat(d).map((_, k) => [((k % 5) - 2) * 9, 70 + (k >= 5 ? -8 : 0)]), hold: 0, ball: null },
+        prev: { how: 'dreb', by: 0 }, spot, seed: 'g' + g });
+      poss++;
+      const first = evs.find(x => x.k === 'S' || x.k === 'T' || x.k === 'F');
+      if (first && first.k === 'S' && !first.tr && first.t - e.t >= 8) { half++; if (pl.calls.length) called++; }
+      let last = null;
+      const tEnd = j < ev.length ? ev[j].t : e.t + 20;
+      for (let t = e.t; t <= tEnd; t += 0.25) {
+        const m = PL.at(pl, t), all = m.off.concat(m.def);
+        if (all.some(p => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))) bad++;
+        if (m.off.some(p => Math.abs(p[0]) > 25.5 || p[1] < 0 || p[1] > 93)) off++;
+        if (last && !pl.stops.some(s => Math.abs(s.t - t) < 0.3)) m.off.forEach((p, k) => { fastest = Math.max(fastest, Math.hypot(p[0] - last.off[k][0], p[1] - last.off[k][1]) / 0.25); });
+        last = m;
+      }
+      evs.filter(x => x.k === 'S').forEach(x => {
+        const k = ix(x.p); if (k < 0 || k > 4) return;
+        shots++;
+        const F = spot(x), m = PL.at(pl, x.t - 0.02);
+        if (Math.hypot(m.off[k][0] - F[0], m.off[k][1] - F[1]) <= 1.5) there++;
+      });
+    });
+  }
+  ok('plays: every possession of three games drawn, nobody off the court, no number lost', poss > 400 && bad === 0 && off === 0, [poss, bad, off]);
+  ok('plays: the shooter is at the engine\'s spot as the ball leaves his hand (nine shots in ten: a break too quick for the floor is the rest)', there / shots >= 0.9, [there, shots]);
+  ok('plays: nobody faster than a sprinting man, outside the dead-ball stops', fastest <= 42, fastest.toFixed(1));
+  ok('plays: a half-court possession has its set called', called / half >= 0.95, [called, half]);
 }
 function dayAfter(d, n) { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
 

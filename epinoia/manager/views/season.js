@@ -8,7 +8,7 @@
 const Mgr = root.Mgr, A = Mgr.app, h = A.h;
 const SE = () => Mgr.season;
 const LINE = () => Mgr.season.LINE;
-/* a match day: the reader's own day (core/season.js dayStart) - its games are played any time on it */
+/* a match day: the reader's own day (core/season.js dayStart) - its game is played any time in its week (weekStart) */
 const when = (d, o) => Mgr.season.dayStart(d).toLocaleDateString(undefined, o || { weekday: 'short', day: 'numeric', month: 'short' });
 const form = list => h('span.mg-form', list.map(x => h('i.' + x, x)));
 const resultOf = (f, i) => { const home = f.h === i, us = home ? f.res[0] : f.res[1], them = home ? f.res[1] : f.res[0]; return { won: us > them, us, them, home, opp: home ? f.a : f.h }; };
@@ -55,7 +55,7 @@ function home(host) {
     const opp = nx.h === 0 ? nx.a : nx.h, homeGame = nx.h === 0;
     const meter = h('div.mg-meter', h('i', { style: { width: '50%' } })), chance = h('b', '…');
     left.appendChild(h('div.mg-panel' + (mdPanel ? '' : '.glow'), h('div.mg-h', h('h2', 'Next game'), h('span.mg-sub', 'Round ' + nx.r + ' · ' + when(nx.d, { weekday: 'long', day: 'numeric', month: 'long' }))),
-      h('p.mg-sub', { style: { margin: '-4px 0 12px' } }, '⏱ Play it any time on its day: live, managing every change as it happens, or straight to the result. If you have not by midnight, your assistant plays it. Real-life form counts: how your players do in their real games before it moves how they play in this one.'),
+      h('p.mg-sub', { style: { margin: '-4px 0 12px' } }, '⏱ Play it any time in its week (Monday to Sunday, the week\u2019s games in their order): live, managing every change as it happens, or straight to the result. If you have not by the end of Sunday, your assistant plays it. Real-life form counts: how your players did in their real games in the week before it moves how they play in this one.'),
       h('div.mg-next', h('div.side', A.crest(homeGame ? 0 : opp, 64), homeGame ? A.nm(A.club.name, 'b') : A.clubLink(opp)), h('div.vs', h('span.mg-cap', homeGame ? 'Home' : 'Away'), h('span.big', 'v')),
         h('div.side', A.crest(homeGame ? opp : 0, 64), homeGame ? A.clubLink(opp) : A.nm(A.club.name, 'b'))),
       meter, h('div.mg-row.between', { style: { marginTop: '8px' } }, h('span.mg-sub', 'Your chance, simulated with your lineups and tactics: ', chance), h('a.mg-btn', { href: '#/tactics' }, 'Tactics')), countdown(nx)));
@@ -82,13 +82,13 @@ function home(host) {
       lead('ast', 'Assists', L => L.ast / L.gp), lead('stl', 'Steals', L => L.stl / L.gp), lead('blk', 'Blocks', L => L.blk / L.gp)));
   }
 }
-/* MATCH DAY COMING: within six hours of its start (the reader's midnight), a countdown; at midnight the day's other
-   rounds are played and the game is the reader's to play */
+/* ITS WEEK COMING: within six hours of the week's start (the reader's Monday midnight), a countdown; then the game is
+   the reader's to play, any time that week */
 function countdown(nx) {
-  const tip = Mgr.season.dayStart(nx.d).getTime(), box = h('div.mg-row', { style: { justifyContent: 'center', marginTop: '10px' } });
+  const tip = Mgr.season.weekStart(nx.d).getTime(), box = h('div.mg-row', { style: { justifyContent: 'center', marginTop: '10px' } });
   if (tip - Date.now() > 6 * 3600 * 1000 || tip <= Date.now()) return box;
   const out = h('b', { style: { fontVariantNumeric: 'tabular-nums' } });
-  box.appendChild(h('span.mg-chip.royal', 'Match day in ', out));
+  box.appendChild(h('span.mg-chip.royal', 'Playable in ', out));
   const tick = async () => {
     if (!box.isConnected) return;
     const left = Math.round((tip - Date.now()) / 1000);

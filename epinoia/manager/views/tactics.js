@@ -21,7 +21,6 @@
 const Mgr = root.Mgr, A = Mgr.app, h = A.h;
 const E = () => Mgr.engine, IN = () => Mgr.instruct, RO = () => Mgr.roles;
 /* the five spots on the half court (the basket at the foot): x, y in % */
-const SPOT = [[50, 17], [84, 37], [16, 37], [70, 66], [31, 72]];
 const MAXL = 4, G = 40;
 /* each lineup's colour on the chart and its tab */
 const LC = ['var(--mg-l0)', 'var(--mg-l1)', 'var(--mg-l2)', 'var(--mg-l3)'];
@@ -83,7 +82,7 @@ async function render(host) {
   function drawTabs() {
     tabs.textContent = '';
     lineups.forEach((l, i) => tabs.appendChild(h('button', { type: 'button', 'aria-pressed': String(i === cur), style: { '--lc': LC[i] }, onclick: () => { cur = i; brush = i; sel = null; A.ui.close(); draw(); } },
-      h('b', h('i.sw', { 'aria-hidden': 'true' }), 'Lineup ' + (i + 1)), h('span', Math.round(l.min) + ' min' + (l.roles.some(r => !r) ? ' · roles to choose' : '')))));
+      h('b', h('i.sw', { 'aria-hidden': 'true' }), (i + 1) + ' · ', h('span', { translate: 'no' }, nameOf(i))), h('span', Math.round(l.min) + ' min' + (l.roles.some(r => !r) ? ' · roles to choose' : '')))));
     if (lineups.length < MAXL) tabs.appendChild(h('button.add', { type: 'button', onclick: addLineup }, h('b', '+ Lineup'), h('span', 'up to four')));
     if (lineups.length > 1) tabs.appendChild(h('button.rm', { type: 'button', onclick: removeLineup }, h('b', '− Remove'), h('span', 'this lineup')));
   }
@@ -93,9 +92,11 @@ async function render(host) {
     const n = lineups.length - 1;
     /* it starts with the middle of each half (four minutes: two a half), taken from whoever had them */
     [[8, 10], [28, 30]].forEach(([a, b]) => paint(n, a, b));
+    hist.length = 0;
     cur = n; brush = n; changed(); draw();
   }
   function removeLineup() {
+    hist.length = 0;
     const gone = lineups.splice(cur, 1)[0];
     /* its minutes to lineup 1 */
     (gone.when || []).forEach(([a, b]) => { lineups[0].when.push([a, b]); });
@@ -120,15 +121,22 @@ async function render(host) {
   /* ---- the court: the five as circles ---- */
   function drawCourt() {
     courtPanel.textContent = '';
-    courtPanel.appendChild(h('div.mg-h', h('h3', h('i.sw', { style: { '--lc': LC[cur] }, 'aria-hidden': 'true' }), 'Lineup ' + (cur + 1)),
+    /* the lineup's name, the reader's to change (Starters, Bench, Closers...) */
+    const nameIn = h('input.mg-lname', { type: 'text', value: nameOf(cur), maxlength: '20', 'aria-label': 'Name of lineup ' + (cur + 1), translate: 'no' });
+    nameIn.addEventListener('change', () => { const v = nameIn.value.trim().slice(0, 20); if (v) L().name = v; else delete L().name; nameIn.value = nameOf(cur); changed(); drawTabs(); drawRot(); });
+    courtPanel.appendChild(h('div.mg-h', h('h3', h('i.sw', { style: { '--lc': LC[cur] }, 'aria-hidden': 'true' }), (cur + 1) + ' · ', nameIn),
       h('span.mg-sub', sel ? 'Now press a place or a bench player to swap' : 'Press a player for his role and instructions; drag one from the bench onto a place to bring him in')));
     const court = h('div.mg-court.big.dots');
     court.innerHTML = '<svg class="lines" viewBox="0 0 500 420" preserveAspectRatio="none" aria-hidden="true"><rect x="10" y="10" width="480" height="400" rx="6"/>' +
       '<rect x="180" y="250" width="140" height="160"/><path d="M180 250 A70 70 0 0 1 320 250"/><path d="M45 410 L45 300 A210 210 0 0 1 455 300 L455 410"/>' +
       '<circle cx="250" cy="375" r="9"/><path d="M225 392 L275 392"/><path d="M190 10 A60 60 0 0 0 310 10"/></svg>';
     const l = L();
+    /* THE ALIGNMENT the roles make (roles.layout: each role's home spot - Louie: "player roles imply team spacing"): the
+       circles stand where their roles play when the ball is not theirs */
+    const lay = RO().layout(l.roles, l.ids.map(id => A.cardOf(id)), A.lg.ref);
+    courtPanel.querySelector('.mg-h').appendChild(h('span.mg-chip.royal.mg-align', { title: 'Where the roles stand when the ball is not theirs: ' + lay.out + ' around the arc, ' + lay.inn + ' inside' }, lay.label));
     l.ids.forEach((id, k) => {
-      const c = A.cardOf(id), oop = c && Math.abs(k + 1 - c.pos) > 1.05, m = side ? side.men[k] : null, R = roleOfAt(k, id), chosen = !!l.roles[k];
+      const c = A.cardOf(id), oop = c && RO().posGap(c.pos, k) > 0, m = side ? side.men[k] : null, R = roleOfAt(k, id), chosen = !!l.roles[k];
       const fit = RO().fit(R, c, A.lg.ref), u = m ? m.u2 : (c ? c.usg : 18), onb = m && m.onb != null ? m.onb : 0;
       const ringPct = Math.max(0, Math.min(100, 100 * onb / 0.5));
       const name = A.nameOf(id);
@@ -137,7 +145,7 @@ async function render(host) {
         'aria-label': E().SLOTS[k] + ': ' + name + ', ' + R.label + (chosen ? '' : ' (default)') + '. Role and instructions' },
         h('span.in', h('b', initials(name)), h('small', Math.round(u) + '%')));
       const badges = [];
-      if (oop) badges.push(h('i.bd.oop', { title: 'Out of his position: it costs both ends' }, '!'));
+      if (oop) badges.push(h('i.bd.oop', { title: 'Two or more positions from his own: it costs both ends' }, '!'));
       if (m && m.lost > 0.02) badges.push(h('i.bd.warn', { title: 'He wants the ball more than this five can give him' }, '⚠'));
       if (m && m.forced > 0.02) badges.push(h('i.bd.warn', { title: 'Nobody else runs the offence: he has to' }, '⚑'));
       const mix = m ? m.m : null;
@@ -145,14 +153,17 @@ async function render(host) {
         h('i.rim', { style: { width: (100 * mix.rim).toFixed(1) + '%' } }), h('i.mid', { style: { width: (100 * mix.mid).toFixed(1) + '%' } }), h('i.three', { style: { width: (100 * mix.three).toFixed(1) + '%' } })) : null;
       const lab = h('div.lab', A.nm(surname(name), 'b'),
         h('button.mg-rolechip.' + fit.band + (chosen ? '' : '.dflt'), { type: 'button', title: chosen ? R.desc : 'No role chosen: he plays the default (' + R.label + '). Press to choose', onclick: ev => { ev.stopPropagation(); openPlayer(id, dot, k); } },
-          h('i.mg-fit.' + fit.band, { 'aria-hidden': 'true' }), h('span', R.short), chosen ? null : h('em', ' ▾')),
+          h('i.mg-fit.' + fit.band, { 'aria-hidden': 'true' }), h('span', R.label), chosen ? null : h('em', ' ▾')),
         bar);
       dot.addEventListener('dragstart', ev => { ev.dataTransfer.setData('text/plain', JSON.stringify({ from: 'spot', k })); unhint(); });
       dot.addEventListener('click', () => { if (sel) return place(sel, k); openPlayer(id, dot, k); });
       dot.addEventListener('mouseenter', ev => hint(id, ev.currentTarget, R.label + (chosen ? '' : ' (default)')));
       dot.addEventListener('mouseleave', unhint);
       dot.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); if (sel) place(sel, k); else openPlayer(id, dot, k); } });
-      const spot = h('div.mg-spot.c', { style: { left: SPOT[k][0] + '%', top: SPOT[k][1] + '%' } }, h('span.tag', { 'data-i18n-ctx': 'pos' }, E().SLOTS[k]), h('div.dotwrap', dot, badges), lab);
+      /* his spot on this court (the basket at the foot, ten pixels of the drawing a foot); near the baseline his name goes
+         above him */
+      const [su, sv] = lay.at[k], x = 50 + 1.92 * su, y = Math.max(8, Math.min(92, (427.5 - 10 * sv) / 4.2));
+      const spot = h('div.mg-spot.c' + (y > 70 ? '.low' : ''), { style: { left: x.toFixed(1) + '%', top: y.toFixed(1) + '%' }, title: lay.spots[k] }, h('span.tag', { 'data-i18n-ctx': 'pos' }, E().SLOTS[k]), h('div.dotwrap', dot, badges), lab);
       spot.addEventListener('dragover', ev => { ev.preventDefault(); spot.classList.add('over'); });
       spot.addEventListener('dragleave', () => spot.classList.remove('over'));
       spot.addEventListener('drop', ev => { ev.preventDefault(); spot.classList.remove('over'); try { place(JSON.parse(ev.dataTransfer.getData('text/plain')), k); } catch (_) { /* not ours */ } });
@@ -245,7 +256,7 @@ async function render(host) {
     const tb = h('tbody');
     side.men.forEach((m, k) => {
       const R = roleOfAt(k, m.id);
-      tb.appendChild(h('tr', h('td.l', h('span.mg-pos', E().SLOTS[k]), ' ', A.nm(surname(A.nameOf(m.id)))), h('td.l', R.short + (L().roles[k] ? '' : ' (default)')),
+      tb.appendChild(h('tr', h('td.l', h('span.mg-pos', E().SLOTS[k]), ' ', A.nm(surname(A.nameOf(m.id)))), h('td.l', R.label + (L().roles[k] ? '' : ' (default)')),
         h('td', Math.round(m.u2) + '%'), h('td', Math.round(m.tusg || m.u2) + '%'), h('td', m.onb != null ? Math.round(100 * m.onb) + '%' : '–'),
         h('td', Math.round(100 * m.m.rim) + ' · ' + Math.round(100 * m.m.mid) + ' · ' + Math.round(100 * m.m.three))));
     });
@@ -254,15 +265,21 @@ async function render(host) {
   }
   const listNames = ids => { const n = (ids || []).map(id => surname(A.nameOf(id))); return n.length <= 1 ? (n[0] || 'He') : n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; };
 
-  /* ---- THE ROTATION: the game's minutes, painted a lineup at a time ---- */
+  /* ---- THE ROTATION: the game's minutes, a lineup at a time ----
+     Louie, 2026-10-15: "Please can the rotation editor look nicer and be more intuitive. There needs to be typical
+     basketball presets (i.e. lineup 1 [implied to be starting unit] plays 5 minutes in the 1st then gets subbed out, has
+     to close out the game in the 4th etc.)". Lineup 1 is the starting unit; each lineup has a name (Starters, Bench...);
+     the game's four quarters, a cell a minute, each stretch labelled with its lineup; the patterns a coach uses; an undo. */
+  const NAMES = ['Starters', 'Bench', 'Second unit', 'Closers'];
+  const nameOf = i => ((lineups[i] && lineups[i].name) || NAMES[i] || 'Lineup ' + (i + 1));
   /* the minutes [a, b) to lineup n, taken from whoever had them */
   function paint(n, a, b) {
-    lineups.forEach((l, i) => {
+    lineups.forEach(l => {
       const out = [];
       (l.when || []).forEach(([x, y]) => { if (y <= a || x >= b) out.push([x, y]); else { if (x < a) out.push([x, a]); if (y > b) out.push([b, y]); } });
       l.when = out;
     });
-    lineups[n].when = merge(lineups[n].when.concat([[a, b]]));
+    lineups[n].when = merge((lineups[n].when || []).concat([[a, b]]));
     tally();
   }
   function merge(ws) {
@@ -271,56 +288,112 @@ async function render(host) {
     return out;
   }
   const whoAt = m => lineups.findIndex(l => (l.when || []).some(([a, b]) => a <= m + 0.5 && m + 0.5 < b));
+  /* the undo: each stroke, pattern and removal kept before it happens */
+  const hist = [];
+  const keep = () => { hist.push(JSON.stringify(lineups.map(l => l.when || []))); if (hist.length > 40) hist.shift(); };
+  const undo = () => { const s = hist.pop(); if (!s) return; const w = JSON.parse(s); lineups.forEach((l, i) => { l.when = w[i] || []; }); tally(); changed(); afterMins(); };
+  /* THE PATTERNS: [lineup, from, to] in a 40-minute game, for n lineups. The bench minutes go to the bench units in turn
+     (lineup 2, then 3, then 4); a closing unit is the last lineup */
+  const BU = (n, i) => (n <= 1 ? 0 : 1 + (i % (n - 1)));
+  const PATTERNS = [
+    { k: 'classic', label: 'Classic', how: 'The starters open each half (6 and 7 minutes), the bench bridges the quarter breaks, and the starters come back to close each half.',
+      build: n => [[0, 0, 6], [BU(n, 0), 6, 10], [BU(n, 1), 10, 14], [0, 14, 20], [0, 20, 27], [BU(n, 2), 27, 30], [BU(n, 3), 30, 34], [0, 34, 40]] },
+    { k: 'five', label: 'Five-minute starters', how: 'The starters play the first five minutes of the game, sub out, come back for the end of each half and close the game in the fourth.',
+      build: n => [[0, 0, 5], [BU(n, 0), 5, 10], [BU(n, 1), 10, 15], [0, 15, 20], [0, 20, 25], [BU(n, 2), 25, 30], [BU(n, 3), 30, 34], [0, 34, 40]] },
+    { k: 'ride', label: 'Ride the starters', how: 'The starters play about 31 minutes: short bench stints around the quarter breaks, the starters on for everything that matters.',
+      build: n => [[0, 0, 7], [BU(n, 0), 7, 10], [BU(n, 1), 10, 12], [0, 12, 20], [0, 20, 28], [BU(n, 2), 28, 30], [BU(n, 3), 30, 32], [0, 32, 40]] },
+    { k: 'platoon', label: 'Platoon', how: 'Five-minute shifts, every lineup in turn: the minutes spread evenly - a deep bench, or legs to save.',
+      build: n => [0, 1, 2, 3, 4, 5, 6, 7].map(i => [i % n, 5 * i, 5 * i + 5]) },
+    { k: 'closers', label: 'Closing unit', need: 2, how: 'As Classic, but your last lineup closes both halves (the last four minutes of the second and fourth quarters): your best five for the end of games.',
+      build: n => { const c = n - 1, b = i => (n <= 2 ? 1 : 1 + (i % (n - 2))); return [[0, 0, 6], [b(0), 6, 10], [b(1), 10, 16], [c, 16, 20], [0, 20, 27], [b(2), 27, 30], [0, 30, 36], [c, 36, 40]]; } }
+  ];
+  function applyPattern(p) {
+    keep();
+    const n = lineups.length;
+    lineups.forEach(l => { l.when = []; });
+    p.build(n).forEach(([i, a, b]) => { lineups[Math.min(i, n - 1)].when.push([a, b]); });
+    lineups.forEach(l => { l.when = merge(l.when); });
+    tally(); changed(); afterMins();
+    A.toast(p.label + ': ' + lineups.map((l, i) => nameOf(i) + ' ' + Math.round(l.min) + '′').join(', ') + '.');
+  }
+  /* a pattern drawn small: its forty minutes in the lineups' colours */
+  const preview = p => h('span.mg-pat-bar', { 'aria-hidden': 'true' }, p.build(lineups.length).map(([i, a, b]) => h('i', { style: { '--lc': LC[Math.min(i, lineups.length - 1)], flexGrow: String(b - a) } })));
+  /* the clock of a minute: its quarter, and the game clock it runs from and to */
+  const clockOf = m => { const q = Math.floor(m / 10), w = m % 10; return 'Q' + (q + 1) + ' ' + (10 - w) + ':00–' + (9 - w) + ':00'; };
   let painting = false;
   function drawRot() {
     rotPanel.textContent = '';
-    rotPanel.appendChild(h('div.mg-h', h('h3', 'Rotation'), h('span.mg-sub', 'Choose a lineup, then press or drag across the minutes to give it them')));
+    rotPanel.appendChild(h('div.mg-h', h('h3', 'Rotation'), h('span.mg-sub', 'Who plays when. Start from a pattern, then paint: choose a lineup and drag across the minutes')));
+    /* the patterns */
+    const pats = h('div.mg-pats');
+    PATTERNS.forEach(p => {
+      const off = p.need && lineups.length < p.need;
+      pats.appendChild(h('button.mg-pat', { type: 'button', disabled: off ? true : null, title: off ? 'Needs two lineups or more' : p.how, onclick: () => applyPattern(p) },
+        h('b', p.label), preview(p), h('span', p.how)));
+    });
+    rotPanel.appendChild(pats);
+    /* the brushes: each lineup, its name, its minutes */
     const brushes = h('div.mg-brushes', lineups.map((l, i) => h('button.mg-brush', { type: 'button', 'aria-pressed': String(i === brush), style: { '--lc': LC[i] }, onclick: () => { brush = i; drawRot(); } },
-      h('i.sw', { 'aria-hidden': 'true' }), 'Lineup ' + (i + 1), h('span', Math.round(l.min) + '′'))));
-    const presets = h('div.mg-row.mg-presets',
-      h('button.mg-btn.ghost.sm', { type: 'button', title: 'Lineup 1 opens and closes every quarter, the others play the middle, by the minutes they have now', onclick: () => { const w = E().paintOf(lineups.map(l => Object.assign({}, l, { when: null, min: Math.max(1, l.min) })), G); lineups.forEach((l, i) => { l.when = w[i]; }); tally(); changed(); afterMins(); } }, 'Starters open and close'),
-      h('button.mg-btn.ghost.sm', { type: 'button', title: 'The same minutes for every lineup', onclick: () => { const w = E().paintOf(lineups.map(l => Object.assign({}, l, { when: null, min: G / lineups.length })), G); lineups.forEach((l, i) => { l.when = w[i]; }); tally(); changed(); afterMins(); } }, 'Share evenly'),
-      h('button.mg-btn.ghost.sm', { type: 'button', title: 'Every quarter as the first one is', onclick: () => { const q = G / 4; for (let m = 0; m < q; m++) { const n = whoAt(m); if (n >= 0) for (let k = 1; k < 4; k++) paint(n, m + k * q, m + k * q + 1); } changed(); afterMins(); } }, 'Every quarter as the first'));
-    rotPanel.appendChild(h('div.mg-row.between.mg-rothead', brushes, presets));
-    /* the lineups' strip: a cell a minute */
-    const strip = h('div.mg-rot-strip', { role: 'group', 'aria-label': 'The game’s minutes: press to give a minute to the chosen lineup' });
-    for (let m = 0; m < G; m++) {
-      const n = whoAt(m);
-      const c = h('button.c' + (m % (G / 4) === 0 && m ? '.q' : ''), { type: 'button', style: { '--lc': n >= 0 ? LC[n] : 'transparent' }, 'aria-label': 'Minute ' + (m + 1) + ': lineup ' + (n + 1), title: 'Minute ' + (m + 1) + ' · lineup ' + (n + 1) });
-      c.addEventListener('pointerdown', ev => { ev.preventDefault(); painting = true; give(m); });
-      c.addEventListener('pointerenter', () => { if (painting) give(m); });
-      c.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); give(m); afterMins(); } });
-      strip.appendChild(c);
-    }
+      h('i.sw', { 'aria-hidden': 'true' }), h('b', nameOf(i)), h('span', Math.round(l.min) + '′'))));
+    const tools = h('div.mg-row.mg-rottools', h('span.mg-sub', 'Painting with ', h('b', { style: { color: LC[brush] } }, nameOf(brush))),
+      h('button.mg-btn.ghost.sm', { type: 'button', disabled: hist.length ? null : true, onclick: undo }, '↶ Undo'));
+    rotPanel.appendChild(h('div.mg-row.between.mg-rothead', brushes, tools));
+    /* the timeline: four quarters, ten minutes each; the stretches labelled */
+    const grid = h('div.mg-rot2');
+    grid.appendChild(h('span.nm'));
+    [0, 1, 2, 3].forEach(q => grid.appendChild(h('div.mg-rq-h', h('b', 'Q' + (q + 1)), h('span', '10:00'), h('span', '5:00'), h('span', '0:00'))));
+    grid.appendChild(h('span.nm.lu', h('b', 'Lineup')));
+    const cellsAll = [];
+    [0, 1, 2, 3].forEach(q => {
+      const box = h('div.mg-rq', { role: 'group', 'aria-label': 'Quarter ' + (q + 1) + ': press or drag to give minutes to ' + nameOf(brush) });
+      for (let w = 0; w < 10; w++) {
+        const m = q * 10 + w, n = whoAt(m);
+        const c = h('button.c', { type: 'button', 'data-m': String(m), style: { '--lc': n >= 0 ? LC[n] : 'transparent', gridColumn: String(w + 1) }, 'aria-label': clockOf(m) + ': ' + (n >= 0 ? nameOf(n) : 'nobody'), title: clockOf(m) + ' · ' + (n >= 0 ? nameOf(n) : '–') });
+        c.addEventListener('pointerdown', ev => { ev.preventDefault(); keep(); painting = true; give(m); });
+        c.addEventListener('pointerenter', () => { if (painting) give(m); });
+        c.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); keep(); give(m); afterMins(); } });
+        box.appendChild(c); cellsAll[m] = c;
+      }
+      /* each stretch of this quarter's minutes, its lineup's name over it */
+      let w0 = 0;
+      for (let w = 1; w <= 10; w++) {
+        const a = whoAt(q * 10 + w0), b = w < 10 ? whoAt(q * 10 + w) : -2;
+        if (b !== a) {
+          const len = w - w0;
+          if (a >= 0) box.appendChild(h('span.run', { style: { gridColumn: (w0 + 1) + ' / span ' + len }, 'aria-hidden': 'true' }, len >= 3 ? nameOf(a) + ' ' + len + '′' : len + '′'));
+          w0 = w;
+        }
+      }
+      grid.appendChild(box);
+    });
     const stopPaint = () => { if (painting) { painting = false; afterMins(); } };
-    strip.addEventListener('pointerup', stopPaint);
-    strip.addEventListener('pointerleave', stopPaint);
+    grid.addEventListener('pointerup', stopPaint);
+    grid.addEventListener('pointerleave', stopPaint);
     /* touch: the finger's cell, as it moves */
-    strip.addEventListener('pointermove', ev => {
+    grid.addEventListener('pointermove', ev => {
       if (!painting || ev.pointerType === 'mouse') return;
-      const t = root.document.elementFromPoint(ev.clientX, ev.clientY);
-      if (t && t.parentNode === strip) { const m = [...strip.children].indexOf(t); if (m >= 0) give(m); }
+      const t = root.document.elementFromPoint(ev.clientX, ev.clientY), c = t && t.closest ? t.closest('[data-m]') : null;
+      if (c && grid.contains(c)) give(+c.dataset.m);
     });
     function give(m) {
       if (whoAt(m) === brush) return;
       paint(brush, m, m + 1);
       changed();
-      const cell = strip.children[m]; if (cell) cell.style.setProperty('--lc', LC[brush]);
+      const cell = cellsAll[m]; if (cell) cell.style.setProperty('--lc', LC[brush]);
     }
-    const axis = h('div.mg-rot-ax', ['Q1', 'Q2', 'Q3', 'Q4'].map(q => h('span', q)));
-    const grid = h('div.mg-rot');
-    grid.appendChild(h('div.mg-rot-row.strip', h('span.nm', h('b', 'Lineup')), strip));
     /* the men's rows, the box score's way: who is on the floor, minute by minute */
     const mins = E().minutesOf(E().rotation(lineups, G));
-    const men = [...mins.entries()].sort((a, b) => b[1] - a[1]);
-    men.forEach(([id, mm]) => {
+    const starters = new Set(lineups[0] ? lineups[0].ids.map(String) : []);
+    [...mins.entries()].sort((a, b) => (starters.has(b[0]) - starters.has(a[0])) || (b[1] - a[1])).forEach(([id, mm]) => {
       const c = A.cardOf(id), load = c ? E().fatigueLoad(mm, c.usg, G) - E().fatigueLoad(c.mpg, c.usg, G) : 0;
-      const cells = h('span.cells');
-      for (let m = 0; m < G; m++) { const n = whoAt(m), on = n >= 0 && lineups[n].ids.includes(id); cells.appendChild(h('i' + (on ? '' : '.off') + (m % (G / 4) === 0 && m ? '.q' : ''), on ? { style: { '--lc': LC[n] } } : null)); }
-      grid.appendChild(h('div.mg-rot-row', h('span.nm', A.nm(surname(A.nameOf(id)), 'b'), h('small', Math.round(mm) + '′'),
-        load > 1 ? h('i.legs.bad', { title: 'Too many minutes for his legs: he tires' }, 'Tired') : load > 0.2 ? h('i.legs.warn', { title: 'More minutes than he is used to' }, 'Heavy') : null), cells));
+      grid.appendChild(h('span.nm', starters.has(id) ? h('i.st', { title: 'Starter' }, 'S') : null, A.nm(surname(A.nameOf(id)), 'b'), h('small', Math.round(mm) + '′'),
+        load > 1 ? h('i.legs.bad', { title: 'Too many minutes for his legs: he tires' }, 'Tired') : load > 0.2 ? h('i.legs.warn', { title: 'More minutes than he is used to' }, 'Heavy') : null));
+      [0, 1, 2, 3].forEach(q => {
+        const box = h('div.mg-rq.men');
+        for (let w = 0; w < 10; w++) { const m = q * 10 + w, n = whoAt(m), on = n >= 0 && lineups[n].ids.includes(id); box.appendChild(h('i' + (on ? '' : '.off'), on ? { style: { '--lc': LC[n] } } : null)); }
+        grid.appendChild(box);
+      });
     });
-    grid.appendChild(h('div.mg-rot-row.axis', h('span.nm'), axis));
     rotPanel.appendChild(h('div.mg-rot-wrap', grid));
   }
   /* minutes changed: the tabs, the bench's minutes, the reading (legs) and the chart */

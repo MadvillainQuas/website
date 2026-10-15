@@ -298,17 +298,18 @@ A.X = X;
 
 /* ------------------------------------------------------------------ the season on this visit --- */
 const dateOfRound = (S, r) => (S.fixtures.find(f => f.r === r) || {}).d;
-/* THE FORM BEFORE A ROUND (the fantasy part: real games move the players): his real games from the end of the round
-   before (a week before the first) to the moment the round is played - never past its own day */
-const formLo = (S, r) => (r > 1 ? Mgr.season.dayEnd(dateOfRound(S, r - 1)) : new Date(Mgr.season.dayStart(dateOfRound(S, r)).getTime() - 7 * 86400000));
-const formHi = (S, r, now) => new Date(Math.min(now, Mgr.season.dayEnd(dateOfRound(S, r)).getTime()));
+/* THE FORM BEFORE A ROUND (the fantasy part: real games move the players): his real games in the seven days before the
+   moment the round is played - never past the end of its week (a round may be played any time in its week: Louie,
+   2026-10-15) */
+const formHi = (S, r, now) => new Date(Math.min(now, Mgr.season.weekEnd(dateOfRound(S, r)).getTime()));
+const formLo = (S, r, now) => new Date(formHi(S, r, now).getTime() - 7 * 86400000);
 async function formLines(S, rounds, now) {
-  const from = formLo(S, rounds[0]).toISOString(), to = formHi(S, rounds[rounds.length - 1], now).toISOString();
+  const from = formLo(S, rounds[0], now).toISOString(), to = formHi(S, rounds[rounds.length - 1], now).toISOString();
   const abroad = [...A.mine.league.entries()].filter(([, l]) => l !== A.lg.L.id).map(([id]) => id);
   try { return await site().formFor(A.lg.L, from, to, abroad); } catch (_) { return new Map(); }
 }
 function formOfRound(S, r, lines, now) {
-  const lo = formLo(S, r).toISOString(), hi = formHi(S, r, now).toISOString(), form = new Map();
+  const lo = formLo(S, r, now).toISOString(), hi = formHi(S, r, now).toISOString(), form = new Map();
   lines.forEach((games, id) => {
     const g = games.filter(x => x.t > lo && x.t <= hi), row = A.rowOf(id);
     if (g.length && row) { const z = Mgr.cards.formOf(row, g); if (z) form.set(id, z); }
@@ -318,9 +319,9 @@ function formOfRound(S, r, lines, now) {
 const ctxOf = (form, skip) => { const teams = new Map(); return { X: X(), me: 0, skip, team: i => { if (!teams.has(i)) teams.set(i, A.teamObj(i, form)); return teams.get(i); } }; };
 async function catchUp() {
   const S = A.club.state, SE = Mgr.season, now = Date.now();
-  /* a live game whose day is over: the assistant plays it out. One that cannot be taken up again (a man of either side no
-     longer to hand) is let go, and played from the start below with the clubs as they are - never left unplayed */
-  if (S.live && SE.dayEnd(dateOfRound(S, S.live.r)).getTime() <= now) {
+  /* a live game whose week is over: the assistant plays it out. One that cannot be taken up again (a man of either side
+     no longer to hand) is let go, and played from the start below with the clubs as they are - never left unplayed */
+  if (S.live && SE.weekEnd(dateOfRound(S, S.live.r)).getTime() <= now) {
     try { await finishLive(); }
     catch (e) { if (root.console) console.warn('Manager: the live game could not be finished; playing it again', e); delete S.live; A._live = null; A.store(LKEY(), null); }
   }
@@ -565,7 +566,10 @@ function door(main) {
 
 /* ------------------------------------------------------------------ start --- */
 async function start() {
-  root.addEventListener('hashchange', () => route());
+  /* a page changed while the club is still opening waits for it: the first route below reads the hash as it is then
+     (a replay opened during the load drew before its league was read) */
+  let ready = false;
+  root.addEventListener('hashchange', () => { if (ready) route(); });
   try { A.signedIn = await site().signedIn(); } catch (_) { A.signedIn = false; }
   if (A.signedIn) {
     try { A.uid = await site().userId(); } catch (_) { A.uid = null; }
@@ -577,6 +581,7 @@ async function start() {
     const c = (want === 'pending' && p2) || A.clubs.find(x => x.id === want) || p2 || A.clubs[A.clubs.length - 1] || null;
     if (c) { try { await openClub(c); } catch (e) { A.lgError = 'This club’s league could not be read just now: ' + (e && e.message || e); } }
   }
+  ready = true;
   await route();
   setTimeout(() => { const app = doc.getElementById('mgApp'); if (app) app.classList.remove('mg-enter'); }, 900);
 }

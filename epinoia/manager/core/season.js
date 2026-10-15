@@ -15,10 +15,13 @@
    like - live (core/match.js, views/match.js), or straight to the result; the round's other games are played with it.
    A day over with the game not played, the assistant plays it (the whole round at once); a round without the reader's
    club is played when its day begins.
+   ANY TIME IN ITS WEEK (Louie, 2026-10-15: "play the two weekly games whenever they want, but has to be within the week
+   (otherwise auto simmed)"): the window is now the round's week, Monday to Sunday by the reader's clock - both of a
+   week's games, in their order, whenever the reader likes; a week over with a game unplayed, the assistant plays it.
 
      create(o)            {clubs: ['me', ...], start: 'YYYY-MM-DD', perWeek, meetings, seed} -> a state
      due(S, now, me)      the rounds to play now, nobody choosing: their day over (or, without the reader's club, begun)
-     matchday(S, now, me) the reader's game today, still to play: {r, f, opens, closes} or null
+     matchday(S, now, me) the reader's game to play now (its week under way): {r, f, opens, closes} or null
      play(S, round, ctx)  play a round's games (ctx.skip(f): one left for the reader): ctx.team(i) -> the engine's team
      record(S, f, g, me)  a game's result into the season (play does it; a live game's end does it)
      table(S)             the standings;  leaders(S, k)  the league's leaders;  next(S, i)  a club's next game
@@ -70,8 +73,13 @@ function create(o) {
 /* A MATCH DAY: the reader's own day (their browser's midnight to midnight) */
 function dayStart(dateStr) { const [y, m, d] = String(dateStr).split('-').map(Number); return new Date(y, m - 1, d, 0, 0, 0, 0); }
 function dayEnd(dateStr) { const x = dayStart(dateStr); x.setDate(x.getDate() + 1); return x; }
-/* when a round is played with nobody choosing: its day over (the assistant plays the reader's game) */
-function dueAt(dateStr) { return dayEnd(dateStr); }
+/* ITS WEEK (Louie, 2026-10-15: "Can the user please have the option to play the two weekly games whenever they want, but
+   has to be within the week (otherwise auto simmed)?"): the reader's week, Monday's midnight to the next Monday's, that a
+   round's day falls in - the reader plays their game in it when they like, the week's games in their order */
+function weekStart(dateStr) { const x = dayStart(dateStr); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+function weekEnd(dateStr) { const x = weekStart(dateStr); x.setDate(x.getDate() + 7); return x; }
+/* when a round is played with nobody choosing: its week over (the assistant plays the reader's game) */
+function dueAt(dateStr) { return weekEnd(dateStr); }
 const tOf = now => (now != null ? new Date(now) : new Date()).getTime();
 const mineIn = (S, r, me) => S.fixtures.find(f => f.r === r && (f.h === me || f.a === me)) || null;
 /* MAY THE SEASON STILL BE DRAWN AGAIN (a club of the real league added or dropped)? Only before its first match day: no
@@ -83,23 +91,25 @@ function redrawable(S, now) {
   const first = S.fixtures.reduce((a, f) => (a == null || f.d < a ? f.d : a), null);
   return first == null || tOf(now) < dayStart(first).getTime();
 }
-/* THE ROUNDS TO PLAY NOW, nobody choosing: any game unplayed in a round whose day is over; a round without the
-   reader's club (me; null: none) once its day has begun */
+/* THE ROUNDS TO PLAY NOW, nobody choosing: any game unplayed in a round of the reader's whose week is over; a round
+   without the reader's club (me; null: none) once its day has begun - never ahead of a round before it still waiting for
+   the reader (the rounds are played in their order) */
 function due(S, now, me) {
-  const t = tOf(now), out = new Set(), m = me == null ? 0 : me;
-  S.fixtures.forEach(f => {
-    if (f.res != null) return;
-    if (dayEnd(f.d).getTime() <= t) out.add(f.r);
-    else if (dayStart(f.d).getTime() <= t && !mineIn(S, f.r, m)) out.add(f.r);
-  });
-  return [...out].sort((a, b) => a - b);
+  const t = tOf(now), out = [], m = me == null ? 0 : me;
+  const rounds = [...new Set(S.fixtures.filter(f => f.res == null).map(f => f.r))].sort((a, b) => a - b);
+  for (const r of rounds) {
+    const fs = roundOf(S, r), d = fs[0].d, mine = mineIn(S, r, m);
+    if (mine ? weekEnd(d).getTime() <= t : dayStart(d).getTime() <= t) out.push(r);
+    else break;
+  }
+  return out;
 }
-/* THE READER'S GAME TODAY: the match day under way with their game unplayed */
+/* THE READER'S GAME TO PLAY: their first unplayed one, while its week is under way */
 function matchday(S, now, me) {
   const t = tOf(now), m = me == null ? 0 : me;
   const f = S.fixtures.filter(x => x.res == null && (x.h === m || x.a === m)).sort((a, b) => a.r - b.r)[0];
   if (!f) return null;
-  const opens = dayStart(f.d).getTime(), closes = dayEnd(f.d).getTime();
+  const opens = weekStart(f.d).getTime(), closes = weekEnd(f.d).getTime();
   return opens <= t && t < closes ? { r: f.r, f, opens, closes } : null;
 }
 function roundOf(S, r) { return S.fixtures.filter(f => f.r === r); }
@@ -235,5 +245,5 @@ function summary(S, me) {
     : { w: 0, l: 0, pf: 0, pa: 0, pos: null, gp: 0, of: S.clubs.length, rounds: S.fixtures.reduce((a, f) => Math.max(a, f.r), 0), played: S.played };
 }
 
-return { create, due, dueAt, dayStart, dayEnd, matchday, redrawable, play, record, gameSeed, table, next, results, lineOf, leaders, summary, matchDays, roundOf, encodeEvents, decodeEvents, LINE, TIP_UTC, DAYS, V };
+return { create, due, dueAt, dayStart, dayEnd, weekStart, weekEnd, matchday, redrawable, play, record, gameSeed, table, next, results, lineOf, leaders, summary, matchDays, roundOf, encodeEvents, decodeEvents, LINE, TIP_UTC, DAYS, V };
 }));

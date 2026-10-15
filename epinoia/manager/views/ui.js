@@ -250,13 +250,22 @@ function playerPanel(id, o) {
     /* HIS ROLE AT THIS PLACE (core/roles.js): the position's roles, how well each suits him; the one chosen, else the
        position's default (what he plays if nothing is chosen) */
     if (slot != null && RO()) {
-      const sec = h('div.mg-pi-sec.mg-rolesec'), list = h('div.mg-roles');
+      /* the position's roles in their categories (Louie, 2026-10-15: "grouped in categories (i.e. all combo roles grouped
+         in 'combo' for SG)"), the best fits first in each, every one by its full name ("Slashing Passer PG") */
+      const sec = h('div.mg-pi-sec.mg-rolesec'), list = h('div.mg-rolecats');
       const dflt = RO().resolve(null, slot, card, ref);
-      RO().forSlot(slot).map(r => ({ r, f: RO().fit(r, card, ref) })).sort((a, b) => b.f.s - a.f.s).forEach(({ r, f }) => {
-        const on = roleKey ? r.key === roleKey : false, isD = r.key === dflt.key;
-        list.appendChild(h('button.mg-role' + (on ? '.on' : '') + (!roleKey && isD ? '.dflt' : ''), { type: 'button', 'aria-pressed': String(on), title: r.desc,
-          onclick: () => { roleKey = r.key; if (o.onRole) o.onRole(r.key); draw(); } },
-          h('b', r.short), h('span.st.' + f.band, stars(f.stars)), h('span.w', f.word + (isD ? ' · default' : ''))));
+      const all = RO().forSlot(slot).map(r => ({ r, f: RO().fit(r, card, ref) }));
+      RO().CATS[slot].forEach(cat => {
+        const inCat = all.filter(x => x.r.cat === cat).sort((a, b) => b.f.s - a.f.s);
+        if (!inCat.length) return;
+        const grid = h('div.mg-roles');
+        inCat.forEach(({ r, f }) => {
+          const on = roleKey ? r.key === roleKey : false, isD = r.key === dflt.key;
+          grid.appendChild(h('button.mg-role' + (on ? '.on' : '') + (!roleKey && isD ? '.dflt' : ''), { type: 'button', 'aria-pressed': String(on), title: r.desc,
+            onclick: () => { roleKey = r.key; if (o.onRole) o.onRole(r.key); draw(); } },
+            h('b', r.label), h('span.st.' + f.band, stars(f.stars)), h('span.w', f.word + (isD ? ' · default' : ''))));
+        });
+        list.appendChild(h('div.mg-rolecat', h('div.mg-rolecat-h', h('span', cat), h('i', inCat.length)), grid));
       });
       const shown = R || dflt, ff = RO().fit(shown, card, ref);
       sec.appendChild(h('div.mg-cap', 'Role at ' + E().SLOTS[slot] + (roleKey ? '' : ' · none chosen: he plays the default')));

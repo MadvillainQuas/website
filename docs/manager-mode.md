@@ -3,8 +3,9 @@
 A Football Manager-style game on EPINOIA. The reader takes a club into a real league: they name it and its manager,
 draw or upload a badge, choose the country and league, and draft a squad of real players within a budget. Then they set
 lineups, team instructions and each player's instructions, and play the league's real clubs on the real calendar, every
-club three times: live (managing the game as it happens, full screen) or straight to the result, any time on the match
-day. Real form moves the players during the season (the fantasy element).
+club three times: live (managing the game as it happens, full screen, on a 2D court where every possession is drawn as
+a set from a real playbook) or straight to the result, any time in its week. Real form moves the players during the
+season (the fantasy element).
 
 **Modes.** Individual mode is built. Friends mode (shared leagues, a creator who starts the league, join requests) is
 next. Global mode was scrapped (Louie, 2026-10-09).
@@ -15,13 +16,13 @@ next. Global mode was scrapped (Louie, 2026-10-09).
 | The way in | HOME's third strip tab, MANAGER (`home/index.html`, `kit/home.css` `.mg-warp`, `home/vhmode.js` `toManager`): a royal-blue wipe, then `manager/` |
 | The page | `manager/index.html`, `boot.js`, `app.js` (router, rail, shared builders, catch-up, saving, the game in hand), `manager.css` (the royal blue, soft-glass skin; dark navy and light sky-blue) |
 | The screens | `manager/views/`: `onboard.js` (login, black transition, team name, manager name, badge, country and league, mode); `squad.js` (draft pool, filters, shortlist, hover cards, 1–20 attributes, confirm); `tactics.js` (the court, drag and drop, up to 4 lineups, minutes to 40, the team's instructions in a pop-up at the top, a player's on a press); `ui.js` (the two pop-ups the tactics and the live game share); `match.js` (match day, the live game full screen, a game played again); `season.js` (home with the match-day panel, fixtures, table, statistics); `pages.js` (player pages with Real season / Manager season tabs, each with Scouting and Simple views; team pages); `trade.js`; `game.js`; `boards.js` (leaderboards, club settings) |
-| The game itself | `manager/core/` (UMD, no DOM, no site: `root.Mgr.*`): `value.js`, `ratings.js`, `schedule.js`, `names.js`, `badge.js`, `cards.js`, `engine.js`, `instruct.js` (player instructions, roles, fit), `match.js` (the possession engine), `season.js`, `scorer.js` |
+| The game itself | `manager/core/` (UMD, no DOM, no site: `root.Mgr.*`): `value.js`, `ratings.js`, `schedule.js`, `names.js`, `badge.js`, `cards.js`, `roles.js` (the positional roles, their categories, alignment and fit), `engine.js`, `instruct.js` (player instructions, roles, fit), `match.js` (the possession engine), `plays.js` (each possession drawn as a playbook set for the live court), `season.js`, `scorer.js` |
 | The site, from the game | `manager/adapters/epinoia.js` (`Mgr.site`): the **only** file that knows EPINOIA. It provides the leagues, the season files, the values and boosts, form windows, each real club's starting fives (`starts`), the clubs (`manager_*` RPCs) and badges. Swap it and the game runs elsewhere. |
 | EPINOIA GO | `go/leaderboards/` `#manager` and a teaser on GO's home (`leaderboards/managerboard.js`, `kit/mgboard.css`): the promise, the realism marks, your clubs, and the boards (global and league by league) |
 | The platform console | the Manager tab (`admin/platform/manager-ui.js`): each league's value range and continental boost |
 | The marks | `tools/manager-validate.mjs` writes `manager/validation.json` |
 | The database | `supabase/migrations/0259_manager.sql` |
-| Tests | `supabase/tests/manager-core.test.mjs` (117), `manager-db.test.mjs` (35, PGlite: `PGLITE_DIR=<…>/node_modules/@electric-sql/pglite`); both in guard.yml |
+| Tests | `supabase/tests/manager-core.test.mjs` (151), `manager-db.test.mjs` (35, PGlite: `PGLITE_DIR=<…>/node_modules/@electric-sql/pglite`); both in guard.yml |
 | Languages | the `manager` pack (`i18n/ja/manager.js`, `i18n/es/manager.js`) exists but is empty: the Manager is English only for now |
 
 ## Everything is played in the reader's browser
@@ -39,9 +40,13 @@ are read, so real form moves the players. The database keeps only what has to ou
 A **scouting network** widens the draft and trade pool. The reader adds leagues to it, and their players can be signed,
 but only the chosen league is simulated.
 
-## Match day (Louie, 2026-10-14: "can the user choose to play the game anytime on that day")
-- A match day is the reader's own day, midnight to midnight in their browser (`season.dayStart` / `dayEnd`).
-  `season.matchday(S, now, me)` is their unplayed game whose day is under way.
+## Match week (Louie, 2026-10-14: "can the user choose to play the game anytime on that day"; 2026-10-15: "play the two weekly games whenever they want, but has to be within the week (otherwise auto simmed)")
+- A game is the reader's to play any time in its week, Monday 00:00 to the next Monday 00:00 in their browser
+  (`season.weekStart` / `weekEnd`). `season.matchday(S, now, me)` is their first unplayed game whose week is under way:
+  the week's two games are played in their order, never the second before the first.
+- `season.due` plays the rounds in order and stops at the first that is not due: a round of the reader's once its week
+  is over, any other once its day has begun. The form window is the seven days before the game is played, capped at the
+  end of its week.
 - On that day HOME's match-day panel (`views/match.js` `A.livePanel`) and `#/match` offer **Play it live** or
   **Straight to the result**. Either one plays the round's other games at that moment
   (`app.js` `A.startMatch(mode)`); their results stay hidden (`A.view()`) until the reader's own game ends.
@@ -113,8 +118,22 @@ but only the chosen league is simulated.
 
 ## Roles (core/roles.js, engine.js `ROLEK`; Louie, 2026-10-14)
 "For each position set ... force the user to select their role [which is applied regardless if one is selected - if not
-it just goes to default] ... similar to player roles in football manager". 54 roles: PG 7, SG 12, SF 11, PF 14, C 10,
-Louie's own list and descriptions.
+it just goes to default] ... similar to player roles in football manager". 60 roles: PG 13, SG 12, SF 11, PF 14, C 10,
+Louie's own list.
+- **Grouped by category at each position** (`roles.CATS`; Louie, 2026-10-15): PG Floor general · Scorer · Combo ·
+  All-round; SG Combo · Secondary handler · Off-ball scorer · 3&D; SF Point forward · Secondary handler · Shot creator ·
+  Off-ball scorer · Role player; PF Playmaking forward · Secondary handler · Shot creator · Stretch & glue · Dual big;
+  C Stretch five · Post · Roll man · Playmaking big. The PG has the six combo roles too. Every label ends with its
+  position ("Slashing Passer PG").
+- **The descriptions** say what the player does in scouting language: the actions he lives in, where his shots come
+  from, what he does off the ball and what he needs from the others ("an isolation scorer: little pick-and-roll, he
+  scores in space one-on-one").
+- **Secondary ball handlers** handle more (their `init` 0.22–0.29, their pick-and-roll share up); **shooting roles ask
+  for volume** as well as accuracy: `traits.vol3P`, his three-point share against his own position's, counts in the
+  spot-up, off-screen and pop fits.
+- **Position** (Louie: "position itself not have much of a docking of stats unless it's a position 2 positions up from
+  them or more"): within a position and a quarter of his own, nothing (`roles.posGap`, `engine.oopGap`); past it
+  (d − 1.25) × 1.33 positions of cost, so an SG at PF pays and an SG at SF does not.
 
 - **A role is a play-type diet** (the share of the plays he finishes from each kind of play: pick-and-roll handler,
   isolation, post-up, handoff, transition, spot-up, off screens, cut, roll, pop, short roll, put-back) **and loads**:
@@ -173,16 +192,24 @@ Louie's own list and descriptions.
   2026-27: rip 0.55 above green 0.52 before, green 0.74 Natural, rip 0.45 Workable after).
 
 ## The tactics screen (views/tactics.js, `#/tactics`)
-- The five as **circles** on the court: the colour his share of the plays (cool few, hot many), the ring his time on the
-  ball, the bar where his shots come from (rim · other twos · threes), badges for out of position, wanting the ball more
-  than the five can give, being forced to run it. His role under him (dashed: none chosen, the default plays). Hover:
-  his 1-20 attributes. Press: his role at that place (the position's roles by fit, stars, what it asks, why he suits it,
-  an animated demonstration from `roles.SCENES`) and his instructions.
+- The five as **circles** on the court, **standing where their roles put them** (`roles.layout`, Louie: "player roles
+  imply team spacing"): each role has a home off the ball (the top, a slot, a wing, a corner outside; an elbow, a block,
+  the dunker spot inside) and the five's homes are its alignment, named in the court's header: 5-out, 4-out 1-in,
+  3-out 2-in (two post or rolling bigs: 3-out 2-in; two perimeter bigs: 5-out). The colour is his share of the plays
+  (cool few, hot many), the ring his time on the ball, the bar where his shots come from (rim · other twos · threes),
+  badges for out of position (two positions away or more), wanting the ball more than the five can give, being forced
+  to run it. His role under him (dashed: none chosen, the default plays). Hover: his 1-20 attributes. Press: his role
+  at that place (the position's roles by category, each with its fit stars; what it asks, why he suits it, an animated
+  demonstration from `roles.SCENES`) and his instructions.
 - The **bench beside the court**: drag a man onto a place (the role stays with the place, FM's way), or press.
 - **How this five plays**: gauges (time on the ball, pressure on the rim, spacing, screens, passing) and the notes; each
   man's plays, true usage, time on the ball and shot mix.
-- **The rotation**, a box-score rotation chart at lineup granularity: a cell a minute, painted with a lineup brush;
-  presets (lineup 1 opens and closes, share evenly, every quarter as the first); each man's minutes and legs. A lineup's
+- **The rotation**, a box-score rotation chart at lineup granularity, by quarter (10:00 → 0:00), a cell a minute,
+  painted with a lineup brush (named lineups: Starters, Bench, Second unit, Closers - each renamable), with Undo.
+  **Patterns** a coach would use (Louie: "lineup 1 plays 5 minutes in the 1st then gets subbed out, has to close out
+  the game in the 4th"), each previewed as a bar: *Classic* (the starters open each half for 6, come back at 14 and 34
+  and close), *Five-minute stints*, *Ride the starters* (about 31 minutes), *Platoon* (every lineup in turn) and
+  *Closers* (the last lineup takes the end of each half). Each man's minutes, a starter marker and his legs. A lineup's
   `when` holds its painted minutes (`engine.rotation` plays them; a minute nobody was given is lineup 1's); a plan from
   before the chart is painted as it was played (`engine.paintOf`).
 - The Simulated panel is gone (Louie, 2026-10-14).
@@ -199,8 +226,7 @@ FM's match screen, full screen (the rail and tab bar hidden):
   Under it, the bench.
   - Press a man for his instructions (for this game, from the next possession) and his substitution (at the next dead
     ball); dragging a bench man onto a man also works.
-- **In the middle:** the court, with the ten men in their places, the ball, and every shot's result (or the shot
-  chart). Under it the commentary and the margin's path.
+- **In the middle:** the court in 2D (below), or the shot chart. Under it the commentary and the margin's path.
 - **Down the right:** Match (the clubs compared: shooting, boards, paint, fast break, second chance, off turnovers,
   biggest lead), Box score, Plays, Assistant (his notes on legs, foul trouble, runs, hot hands, the glass, plus the
   assistant-subs switch), Opposition.
@@ -213,6 +239,71 @@ then counts in it. Quarter breaks pause briefly; half-time and the reader's time
 game goes into the season (`A.endLive`).
 
 `#/live/<round>` plays a game already played again, on the same screen, from its kept play-by-play.
+
+### The court in 2D (views/match.js `makeCourt`, core/plays.js; Louie, 2026-10-15)
+"Watching the game, it gives a good visual representation of how the team would play in real life with the set roles",
+"use real life plays from playbooks ... assign them properly according to the player roles, position and what the
+playing engine needs", "instead of being an SVG can it instead be rendered in 2D", "use football manager precedence for
+rendering".
+
+- **FM's 2D pitch, as a basketball court:** a canvas drawn frame by frame, top-down with the whole court in view. A FIBA
+  court (28 × 15 m: the three-point arc 6.75 m, 6.60 m in the corners; the lane 4.90 m; the no-charge semicircle) in
+  hardwood, the home club's colour in the keys and the centre circle. Each man is a disc in his club's **kit** (the
+  reader's badge colours, a real club's colour with white or navy on it) with his number, his name under it (moved over
+  it, or left off, rather than written over another; on a phone only the man with the ball's). On a colour clash the
+  home side changes into white with its colour as the trim (FIBA's light-shirt rule and FM's change of kit). The screen's
+  own colours (the comparison bars, the plays list) follow the kits. The ball carrier is ringed in gold; the ball has
+  its shadow and grows as it rises (passes low, lobs and shots high); a screen is a bar at the screener's front as it is
+  set; the play called is shown top left as the set starts (FM's set-piece label), with the men in it.
+- **The engine has already played the possession** (`core/match.js`, a whole possession a step), so when its start is
+  shown its end is known: who finished it and how (the zone, the shot's spot - the same as the shot chart's - the pass
+  that made it, a break, an offensive board, a turnover, a trip to the line). `core/plays.js` draws backwards from it:
+  1. **The kind of play** behind the finish, from the finisher's role: its play-type diet × each kind's measured shot
+     mix (bent by the role's shooting style) × its assisted share (a turnover by each kind's turnover rate, a trip by its
+     foul rate). A rim roller's assisted dunk is a roll or a dunker-spot cut; a movement shooter's assisted three comes
+     off screens; a post scorer's own hook is a post-up; a Euro PG's pull-up comes out of the pick-and-roll (tests).
+  2. **A set from the playbook** with a finish of that kind, zone and pass (`plays.BOOK`, 26 sets): high pick-and-roll
+     (4-out 1-in), side pick-and-roll with a ram screen, Horns, pick-and-pop, the short roll against a trap, Spain,
+     the drag screen and Pistol (early offence only), the Horns elbow handoff with its high-low, Chicago (pin-down into
+     a handoff), Delay (the big at the top: handoff or backdoor), Horns flare, the zipper, Floppy, stagger screens,
+     elevator doors, Hammer (the baseline drive, the skip to the weak corner), the Iverson cut, the UCLA cut, Chin,
+     Flex, the post entry and split, high-low, the isolation and the clear-out, swing-and-attack-the-closeout; and the
+     break (outlet, wide lanes, rim runner, trailer), the put-back, the kick-out off an offensive board, the foul to stop
+     the clock. Each set is **cast** from the five: the finisher and the engine's passer where the finish puts them, the
+     rest each to the place that suits him (ball handler, screener, hub big, post, shooter); weighed by how often a FIBA
+     side runs it × how well the men suit its places × the clock (the drag and Pistol in the first seconds, an isolation
+     and a side pick-and-roll late in the clock). A man not in the action keeps his role's own kind of spot, so the
+     spacing is the roles'.
+  3. **Its frames** from where everybody is: the inbound under the basket after a make (from out of bounds), the outlet
+     after a board (the defence's guards leak out for it), the throw-in from the side; the advance straight into the
+     set's alignment; the screens, cuts, passes and handoffs; the shot from the engine's spot. Each step takes at least
+     the time its busiest man needs at a jog, and nobody runs faster than a sprint (a spacer short of time trails; in a
+     break too quick for the floor the shot goes up from where the shooter got to - about 6% of shots, the shot chart
+     keeping the engine's spot). The men carry their speed through gentle turns and stop and go on sharp cuts.
+  4. **The defence** each moment, a step behind the offence: on the ball a yard off, between him and the basket
+     (picked up near half court in the backcourt); one pass away up the line; two passes away the help "i" (the top man
+     toward the nail, the low man on the weak-side block); on a drive the nail man digs and the low man meets it at the
+     rim; drop coverage on the pick-and-roll with the low man tagging the roller; a trap with the weak-side big taking
+     the short roll at the nail. Defenders run at a man's speed.
+  5. **A trip to the line stops the clock** while it is shown (the shooter at the line, two of his men on the lane's
+     second places, the defence on the first, the rest behind the arc; each free throw in the air), as a whistle does.
+- Checked over whole simulated games (the core tests and a harness): every possession planned, nobody off the court,
+  no number lost, the shooter at the engine's spot as the ball leaves his hand nine times in ten, nobody faster than a
+  sprinting man; the calls' mix about a third from the pick-and-roll family and 8% post-ups, as the research's
+  European shares.
+
+**The research behind the plays** (2026-10-15; sources here, never in the shipped files). Set mechanics and options
+from coaching sources and film breakdowns: The Hoops Geek, HoopStudent, Hooper University, Basketball For Coaches,
+Breakthrough Basketball, Coach's Clipboard, Slappin' Glass, Squared2020, FastModel playbook diagrams, NBC Sports'
+glossary, NBA.com film study, NABC clinic notes, team blogs (Denver Stiffs, Raptors Republic, CelticsBlog). Spacing:
+Breakthrough (5-out), The Hoops Geek (4-out), Hooper University and HoopStudent (the dunker spot). Help defence: Low
+Man Help, Slappin' Glass (the tag), Del Harris's pick-and-roll defence, Human Kinetics (the closeout), Hooper University
+(drop coverage). Frequencies: NBA.com/Synergy play types 2024-25 summed over the 30 teams; ESPN's GeniusIQ tracking
+(picks, handoffs, isolations, post-ups per 100 half-court possessions); EuroLeague/Sportradar and Eurohoops stats
+reviews (ball screens about 39% of possessions, post-ups about 7%, transition about 10%); Nunes et al. 2022 (ACB ball
+screens: side 48%, a second screener 15%, coverages), Amatria et al. 2025 (Final Four ball screens), Foteinakis et al.
+2024 (end of close games), Akinci 2023, Gómez et al. 2015, Morillo-Baro 2021. No public source counts individual sets:
+the set weights are fitted to those shares.
 
 ## The economy (core/value.js)
 1. A player's index weighs points most, values minutes, and weights bigs (and athletic, shot-blocking bigs most).
@@ -241,10 +332,13 @@ times (6,384 games). Each club was built the way the Manager builds it, with its
 
 | League | r (identity) | r (players alone) | Points a game, sim (real) | Home wins, sim (real) |
 |---|---|---|---|---|
-| ORLEN Basket Liga 2025-26 | 0.95 | 0.73 | 85.5 (85.5) | 62% (60%) |
-| Primera FEB 2025-26 | 0.99 | 0.93 | 82.7 (80.9) | 60% (61%) |
-| NBL Division One 2025-26 | 0.98 | 0.80 | 75.2 (75.9) | 59% (58%) |
-| CEBL 2026 | 0.85 | 0.69 | 93.9 (92.7) | 62% (61%) |
+| ORLEN Basket Liga 2025-26 | 0.95 | 0.71 | 85.6 (85.5) | 62% (60%) |
+| Primera FEB 2025-26 | 0.99 | 0.92 | 81.6 (80.9) | 58% (61%) |
+| NBL Division One 2025-26 | 0.97 | 0.79 | 75.1 (75.9) | 58% (58%) |
+| CEBL 2026 | 0.89 | 0.66 | 93.9 (92.7) | 63% (61%) |
+
+Re-run on 2026-10-15 after the position rule (no cost within one position): r 0.949 (0.941 before), points a game
+0.7 from real (0.9), players alone 0.768 (0.789).
 
 "r" is the correlation of each club's simulated margin with its real point difference. Run the tool again
 (`node tools/manager-validate.mjs`) whenever the engine changes, and commit the file.

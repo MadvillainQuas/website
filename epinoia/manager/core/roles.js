@@ -89,133 +89,154 @@ const RIP_SPOT = [0.40, 0.16, 0.44];
    passing stay his own, and his instructions shape it)} */
 const ROLES = [], BY = new Map();
 const S_RIM = { rim: 1.6, mid: 1.05, three: 0.5 }, S_3 = { rim: 0.6, mid: 1.2, three: 1.6 }, S_MID = { rim: 0.85, mid: 1.4, three: 1.05 }, S_MIX = { rim: 1.1, mid: 1.1, three: 1.1 };
-function R(key, slot, label, family, diet, o, desc, scenes) {
+function R(key, slot, label, family, cat, diet, o, desc, scenes) {
   const t = PTK.reduce((a, k) => a + (diet[k] || 0), 0) || 1, d = {};
   PTK.forEach(k => { if (diet[k]) d[k] = diet[k] / t; });
-  const r = Object.assign({ key, slot, label, family, diet: d, desc, scenes: scenes || [] },
+  const r = Object.assign({ key, slot, label, family, cat, diet: d, desc, scenes: scenes || [] },
     { init: 0, use: 0, pass: 0, screen: 0, crash: 0, run: 0, def: 0, hub: 0, rip: 0, st: null, rho: 0.5 }, o);
   r.short = label.replace(/\s+(PG|SG|SF|PF|C)$/, '');
   ROLES.push(r); BY.set(key, r);
   return r;
 }
+/* THE CATEGORIES, in the order the panel shows them (Louie, 2026-10-15: "Can each role please be grouped in categories
+   (i.e. all combo roles grouped in 'combo' for SG)?") */
+const CATS = [
+  ['Floor general', 'Scorer', 'Combo', 'All-round'],
+  ['Combo', 'Secondary handler', 'Off-ball scorer', '3&D'],
+  ['Point forward', 'Secondary handler', 'Shot creator', 'Off-ball scorer', 'Role player'],
+  ['Playmaking forward', 'Secondary handler', 'Shot creator', 'Stretch & glue', 'Dual big'],
+  ['Stretch five', 'Post', 'Roll man', 'Playmaking big']
+];
 /* THE NUMBERS (docs/manager-mode.md, Roles, for the sources): each diet is the measured play-type mix of the archetype
    nearest the role (a league's tracked players grouped by role, 2025-26), moved toward what the role's description asks;
    init is the archetype's time on the ball as a share of a five's (a primary ball handler about 22% of his minutes, a
    median rotation player 8%, a rim runner 5%: shares of a five's 57% that adds to); use and pass place it on the
-   archetype's usage and assist rate against its position's. */
+   archetype's usage and assist rate against its position's. Each role in a category (CATS: how the panel groups them). */
 /* ---- POINT GUARDS ---- */
-R('pg-passspace', 0, 'Pass + Space PG', 'g', { pnr: 0.30, spot: 0.30, tr: 0.15, dho: 0.08, cut: 0.05, iso: 0.04, offs: 0.06, put: 0.02 }, { init: 0.30, use: -0.45, pass: 0.65, st: S_3 },
-  'A pass-first point guard who starts the offence, then gets off the ball: relocates for spot-up threes, spaces the floor for others and attacks off the catch rather than living on the dribble.', ['pnr-kick', 'relocate']);
-R('pg-slashpass', 0, 'Slashing Passer PG', 'g', { pnr: 0.42, iso: 0.10, tr: 0.20, dho: 0.05, spot: 0.12, cut: 0.07, put: 0.04 }, { init: 0.39, use: 0, pass: 0.7, st: { rim: 1.5, mid: 1.25, three: 0.5 } },
-  'On the ball and downhill: attacks the paint to create for others - the dump-off, the kick-out - and finishes at the rim or in the mid-range when the defence gives it to him.', ['pnr-dump', 'pnr-drive']);
-R('pg-euro', 0, 'Euro PG', 'g', { pnr: 0.45, iso: 0.05, dho: 0.07, tr: 0.15, spot: 0.22, offs: 0.03, cut: 0.03 }, { init: 0.45, use: -0.1, pass: 0.8, st: S_MID },
-  'A pass-first point guard with the ball in his hands: more penetrating than a pass-and-space guard, but probing for the pull-up in the mid-range or from three rather than living at the rim.', ['pnr-pullmid', 'pnr-kick']);
-R('pg-mixed', 0, 'Mixed PG', 'g', { pnr: 0.36, iso: 0.12, dho: 0.06, tr: 0.18, spot: 0.17, offs: 0.04, cut: 0.04, post: 0.01, put: 0.02 }, { init: 0.36, use: 0, pass: 0.2, rho: 0.25, gen: true },
-  'A point guard who both passes and scores, as the play asks: the general role, which his own instructions shape the most.', ['pnr-kick', 'pnr-drive']);
-R('pg-shoot', 0, 'Pure Shooting PG', 'g', { pnr: 0.27, iso: 0.12, dho: 0.13, tr: 0.14, spot: 0.12, offs: 0.14, cut: 0.05, post: 0.02, put: 0.01 }, { init: 0.33, use: 0.6, pass: -0.1, st: S_3 },
-  'A scoring point guard who pulls up from distance whenever he gets space behind the arc, works his defender for mid-range looks, relocates into deep shots and plays two-man games with his bigs (gets and handoffs). His playmaking comes second.', ['pnr-pull3', 'dho-shoot']);
-R('pg-slash', 0, 'Pure Slashing PG', 'g', { pnr: 0.36, iso: 0.14, tr: 0.24, cut: 0.08, spot: 0.10, dho: 0.04, put: 0.04 }, { init: 0.38, use: 0.6, pass: -0.1, run: 0.5, st: S_RIM },
-  'A slashing scorer who drives downhill at speed: he can hit a dump-off or kick out to a shooter, but he is mostly looking to finish.', ['pnr-drive', 'trans-push']);
-R('pg-mixscore', 0, 'Mixed Scoring PG', 'g', { pnr: 0.31, iso: 0.25, post: 0.04, dho: 0.04, tr: 0.14, spot: 0.12, offs: 0.05, cut: 0.03, put: 0.02 }, { init: 0.40, use: 0.7, pass: 0, st: S_MIX },
-  'A three-level scorer who uses his threat from deep to open the way to the basket, and fills in as the playmaker when he is needed.', ['pnr-pull3', 'pnr-drive']);
+R('pg-passspace', 0, 'Pass + Space PG', 'g', 'Floor general', { pnr: 0.30, spot: 0.30, tr: 0.15, dho: 0.08, cut: 0.05, iso: 0.04, offs: 0.06, put: 0.02 }, { init: 0.30, use: -0.45, pass: 0.65, st: S_3 },
+  'A pass-first initiator who gets the offence into its action and then plays off the ball. He brings it up and runs the first pick-and-roll or swing, then relocates - lifting, drifting, filling the corner - for catch-and-shoot threes, and attacks closeouts rather than creating from a standstill. Low usage and few turnovers: the creation he gives up has to come from a second handler or a hub big.', ['pnr-kick', 'relocate']);
+R('pg-slashpass', 0, 'Slashing Passer PG', 'g', 'Floor general', { pnr: 0.42, iso: 0.10, tr: 0.20, dho: 0.05, spot: 0.12, cut: 0.07, put: 0.04 }, { init: 0.39, use: 0, pass: 0.7, st: { rim: 1.5, mid: 1.25, three: 0.5 } },
+  'A downhill initiator who creates by getting into the paint. He lives in the high pick-and-roll, turns the corner to collapse the defence, then hits the roller, the dump-off to the dunker spot or the kick-out to the corner, and finishes at the rim or with a floater when the help never comes. His assists come from the help he draws: he needs shooters spotted up around him and a roll threat.', ['pnr-dump', 'pnr-drive']);
+R('pg-euro', 0, 'Euro PG', 'g', 'Floor general', { pnr: 0.45, iso: 0.05, dho: 0.07, tr: 0.15, spot: 0.22, offs: 0.03, cut: 0.03 }, { init: 0.45, use: -0.1, pass: 0.8, st: S_MID },
+  'A pass-first pick-and-roll orchestrator in the European mould. He plays with pace: probes with patient dribbles, snakes back to keep his man in jail, reads the low man, and takes the mid-range or three-point pull-up when the big drops. The offence runs on his decisions - the most time on the ball of any role, modest usage, a lot of assists.', ['pnr-pullmid', 'pnr-kick']);
+R('pg-mixed', 0, 'Mixed PG', 'g', 'All-round', { pnr: 0.36, iso: 0.12, dho: 0.06, tr: 0.18, spot: 0.17, offs: 0.04, cut: 0.04, post: 0.01, put: 0.02 }, { init: 0.36, use: 0, pass: 0.2, rho: 0.25, gen: true },
+  'The all-round point guard: runs the offence and takes what the defence gives, scoring or passing as the play asks. His own game decides the balance between the two, and his player instructions shape it.', ['pnr-kick', 'pnr-drive']);
+R('pg-shoot', 0, 'Pure Shooting PG', 'g', 'Scorer', { pnr: 0.27, iso: 0.12, dho: 0.13, tr: 0.14, spot: 0.12, offs: 0.14, cut: 0.05, post: 0.02, put: 0.01 }, { init: 0.33, use: 0.6, pass: -0.1, st: S_3 },
+  'A scoring guard built on the pull-up three. A defender going under a screen or a big dropping is punished from deep; off the ball he relocates and comes off screens into threes, and he plays two-man game with his big (gets and handoffs). Playmaking comes second: he needs a big who screens for him and a second passer beside him.', ['pnr-pull3', 'dho-shoot']);
+R('pg-slash', 0, 'Pure Slashing PG', 'g', 'Scorer', { pnr: 0.36, iso: 0.14, tr: 0.24, cut: 0.08, spot: 0.10, dho: 0.04, put: 0.04 }, { init: 0.38, use: 0.6, pass: -0.1, run: 0.5, st: S_RIM },
+  'A downhill scoring guard who gets to the rim at speed - out of the pick-and-roll, in isolation and above all in transition, where he pushes the pace. Lives on rim pressure and free throws; he will hit the dump-off or the kick-out when the help comes early, but he is looking to score. Shooters around him keep his lanes open.', ['pnr-drive', 'trans-push']);
+R('pg-mixscore', 0, 'Mixed Scoring PG', 'g', 'Scorer', { pnr: 0.31, iso: 0.25, post: 0.04, dho: 0.04, tr: 0.14, spot: 0.12, offs: 0.05, cut: 0.03, put: 0.02 }, { init: 0.40, use: 0.7, pass: 0, st: S_MIX },
+  'A three-level scoring guard: the pull-up three keeps his man high, which opens the drive to the rim and the mid-range pull-up. Heavy on-ball usage in the pick-and-roll and in isolation; he fills in as the playmaker when he is needed, but the shot is his first read.', ['pnr-pull3', 'pnr-drive']);
+R('pg-combospacepass', 0, 'Combo Spacing Passing PG', 'g', 'Combo', { pnr: 0.28, spot: 0.26, dho: 0.08, offs: 0.06, tr: 0.18, cut: 0.06, iso: 0.05, put: 0.03 }, { init: 0.30, use: -0.2, pass: 0.45, st: S_3 },
+  'A point guard who shares the ball with a second handler. On the ball he makes the quick, simple read - the swing, the pocket pass, the kick-out - rather than probing deep; off it he spaces the floor for catch-and-shoot threes. Fits beside a ball-dominant wing or a point forward.', ['relocate', 'pnr-kick']);
+R('pg-comboslashpass', 0, 'Combo Slashing Passing PG', 'g', 'Combo', { pnr: 0.30, iso: 0.08, cut: 0.09, spot: 0.15, dho: 0.06, tr: 0.20, put: 0.04, offs: 0.03, post: 0.05 }, { init: 0.31, use: 0, pass: 0.45, rip: 1, st: S_RIM },
+  'A point guard who splits the handling and attacks downhill with a passer\'s eye: rim finishes, floaters and dump-offs out of the pick-and-roll, and off the ball he rips through closeouts and cuts into the gaps.', ['pnr-dump', 'rip']);
+R('pg-combomixed', 0, 'Combo Mixed PG', 'g', 'Combo', { pnr: 0.30, iso: 0.12, dho: 0.07, tr: 0.18, spot: 0.19, offs: 0.06, cut: 0.04, put: 0.02, post: 0.02 }, { init: 0.30, use: 0.1, pass: 0.1 },
+  'A combo point guard who shares the ball-handling: some pick-and-roll and handoffs, some spot-ups, scoring or passing as the play asks, with a second handler beside him.', ['pnr-pull3', 'relocate']);
+R('pg-comboslashscore', 0, 'Combo Slashing Scoring PG', 'g', 'Combo', { pnr: 0.28, iso: 0.16, cut: 0.11, spot: 0.10, tr: 0.22, dho: 0.06, put: 0.05, post: 0.02 }, { init: 0.31, use: 0.6, pass: -0.2, rip: 1, st: S_RIM },
+  'A scoring point guard who shares the handling and attacks the rim: gets downhill in the pick-and-roll, rips through closeouts, gets to the line and fills the lanes in transition. Less of a floor spacer.', ['rip', 'pnr-drive']);
+R('pg-comboshootscore', 0, 'Combo Shooting Scoring PG', 'g', 'Combo', { pnr: 0.28, dho: 0.12, offs: 0.10, spot: 0.20, iso: 0.10, tr: 0.17, cut: 0.03 }, { init: 0.30, use: 0.6, pass: -0.1, st: S_3 },
+  'A shooting point guard who shares the handling: pull-up threes off screens and handoffs, catch-and-shoot threes off the ball, and two-man game with the bigs.', ['dho-shoot', 'pnr-pull3']);
+R('pg-comboiso', 0, 'Combo Iso Scoring PG', 'g', 'Combo', { iso: 0.30, pnr: 0.28, spot: 0.10, tr: 0.15, dho: 0.06, offs: 0.05, post: 0.03, cut: 0.02, put: 0.01 }, { init: 0.38, use: 0.8, pass: -0.3, st: S_MID },
+  'A shot-creating point guard who shares the handling: he gets his own shot one-on-one - jab series, step-backs, side-steps and drives against a set defender - rather than running the offence. High usage, few assists; the floor has to be cleared for him.', ['iso-step', 'iso-drive']);
 /* ---- SHOOTING GUARDS ---- */
-R('sg-combospacepass', 1, 'Combo Spacing Passing SG', 'g', { pnr: 0.24, spot: 0.28, dho: 0.08, offs: 0.06, tr: 0.18, cut: 0.06, iso: 0.06, put: 0.04 }, { init: 0.26, use: -0.2, pass: 0.45, st: S_3 },
-  'A combo guard who shares the ball-handling with the point guard: spaces the floor off the ball, and on it looks to pass rather than to get deep into the paint.', ['relocate', 'pnr-kick']);
-R('sg-comboslashpass', 1, 'Combo Slashing Passing SG', 'g', { pnr: 0.26, iso: 0.08, cut: 0.10, spot: 0.18, dho: 0.06, tr: 0.20, put: 0.04, offs: 0.03, post: 0.05 }, { init: 0.27, use: 0, pass: 0.45, rip: 1, st: S_RIM },
-  'A combo guard who shares the ball-handling: slashes downhill on the ball with a passer’s eye, finishing at the rim or from mid-range when it is there, and off the ball rips through the close-out to score or pass.', ['pnr-dump', 'rip']);
-R('sg-combomixed', 1, 'Combo Mixed SG', 'g', { pnr: 0.26, iso: 0.12, dho: 0.07, tr: 0.18, spot: 0.23, offs: 0.06, cut: 0.04, put: 0.02, post: 0.02 }, { init: 0.26, use: 0.1, pass: 0.1, rho: 0.25, gen: true },
-  'The general combo guard: mixes scoring with playmaking when the ball is in his hands.', ['pnr-pull3', 'relocate']);
-R('sg-comboslashscore', 1, 'Combo Slashing Scoring SG', 'g', { pnr: 0.24, iso: 0.16, cut: 0.12, spot: 0.12, tr: 0.22, dho: 0.06, put: 0.05, post: 0.03 }, { init: 0.27, use: 0.6, pass: -0.2, rip: 1, st: S_RIM },
-  'Less of a floor spacer: rips through off the ball to get to the rim, and on the ball gets downhill to score, while sharing the ball-handling.', ['rip', 'pnr-drive']);
-R('sg-comboshootscore', 1, 'Combo Shooting Scoring SG', 'g', { pnr: 0.24, dho: 0.12, offs: 0.10, spot: 0.24, iso: 0.10, tr: 0.17, cut: 0.03 }, { init: 0.26, use: 0.6, pass: -0.1, st: S_3 },
-  'A floor spacer who scores on the ball too: smart two-man play with the bigs (gets, handoffs), pulling up from deep, while sharing the ball-handling.', ['dho-shoot', 'pnr-pull3']);
-R('sg-comboiso', 1, 'Combo Iso Scoring SG', 'g', { iso: 0.28, pnr: 0.26, spot: 0.12, tr: 0.15, dho: 0.06, offs: 0.05, post: 0.04, cut: 0.02, put: 0.02 }, { init: 0.36, use: 0.8, pass: -0.3, st: S_MID },
-  'A pure scorer who shakes his defender on the ball to get to his own shot off the dribble, rather than being a catch-and-shoot shooter.', ['iso-step', 'iso-drive']);
-R('sg-moveshoot', 1, 'Movement Shooting SG', 'g', { offs: 0.30, spot: 0.30, tr: 0.17, dho: 0.12, pnr: 0.06, cut: 0.04, put: 0.01 }, { init: 0.11, use: 0.3, pass: -0.2 },
-  'Very little ball-handling: runs off screens to pull up from deep (mostly) or curls into the mid-range. Mostly a floor spacer, and a scorer without the ball.', ['offscreen-3', 'offscreen-curl']);
-R('sg-secslash', 1, 'Secondary BH Slashing SG', 'g', { pnr: 0.24, cut: 0.14, spot: 0.22, tr: 0.18, dho: 0.07, iso: 0.08, put: 0.04, offs: 0.03 }, { init: 0.24, use: 0.1, pass: 0.15, rip: 1, st: S_RIM },
-  'Takes the ball in the half-court pick-and-roll once the point guard has started the play, threatening downhill to finish at the rim or kick out. Cuts often.', ['pnr-drive', 'cut']);
-R('sg-secshoot', 1, 'Secondary BH Shooting SG', 'g', { pnr: 0.24, spot: 0.28, offs: 0.10, dho: 0.08, tr: 0.17, iso: 0.06, cut: 0.04, put: 0.03 }, { init: 0.23, use: 0.15, pass: 0.1, st: S_3 },
-  'Takes the ball in the half-court pick-and-roll once the point guard has started the play: shoots behind the screen, hits the screener, or makes a mid-range or three off the dribble. Otherwise spaces the floor or comes off screens.', ['pnr-pull3', 'relocate']);
-R('sg-offscreen', 1, 'Off-Screens Scoring SG', 'g', { offs: 0.26, spot: 0.18, iso: 0.14, dho: 0.12, pnr: 0.12, tr: 0.14, cut: 0.04 }, { init: 0.18, use: 0.6, pass: -0.2, st: S_MID },
-  'A smart operator off screens: shoots the three or curls into the rim or the mid-range. More on-ball reps than a movement shooter, with isolations of his own.', ['offscreen-curl', 'offscreen-3']);
-R('sg-3d', 1, '3&D SG', 'g', { spot: 0.55, tr: 0.20, cut: 0.07, pnr: 0.06, offs: 0.04, dho: 0.03, put: 0.05 }, { init: 0.12, use: -0.6, pass: -0.2, def: 1 },
-  'A low-usage guard tasked with spot-up threes and good defence.', ['spot-3', 'defend']);
-R('sg-offslash', 1, 'Off-Ball Slashing SG', 'g', { spot: 0.30, cut: 0.25, tr: 0.22, put: 0.10, offs: 0.05, dho: 0.04, iso: 0.04 }, { init: 0.13, use: 0.2, pass: -0.1, rip: 1 },
-  'Attacks without the ball: rips through, attacks off the catch to the rim, or shoots the three.', ['rip', 'cut']);
+R('sg-combospacepass', 1, 'Combo Spacing Passing SG', 'g', 'Combo', { pnr: 0.24, spot: 0.28, dho: 0.08, offs: 0.06, tr: 0.18, cut: 0.06, iso: 0.06, put: 0.04 }, { init: 0.26, use: -0.2, pass: 0.45, st: S_3 },
+  'A combo guard who shares the ball-handling with the point guard. Off the ball he spaces the floor for catch-and-shoot threes; on it he makes quick, simple reads - the swing, the kick-out, the hit to the roller - rather than probing deep into the paint.', ['relocate', 'pnr-kick']);
+R('sg-comboslashpass', 1, 'Combo Slashing Passing SG', 'g', 'Combo', { pnr: 0.26, iso: 0.08, cut: 0.10, spot: 0.18, dho: 0.06, tr: 0.20, put: 0.04, offs: 0.03, post: 0.05 }, { init: 0.27, use: 0, pass: 0.45, rip: 1, st: S_RIM },
+  'A combo guard who shares the ball-handling and gets downhill with a passer\'s eye: drives the pick-and-roll for rim finishes, floaters and dump-offs, and off the ball rips through closeouts to score or to pass.', ['pnr-dump', 'rip']);
+R('sg-combomixed', 1, 'Combo Mixed SG', 'g', 'Combo', { pnr: 0.26, iso: 0.12, dho: 0.07, tr: 0.18, spot: 0.23, offs: 0.06, cut: 0.04, put: 0.02, post: 0.02 }, { init: 0.26, use: 0.1, pass: 0.1, rho: 0.25, gen: true },
+  'The general combo guard: some pick-and-roll and handoffs, some spot-ups, scoring or passing as the play asks. His own game decides the balance, and his instructions shape it.', ['pnr-pull3', 'relocate']);
+R('sg-comboslashscore', 1, 'Combo Slashing Scoring SG', 'g', 'Combo', { pnr: 0.24, iso: 0.16, cut: 0.12, spot: 0.12, tr: 0.22, dho: 0.06, put: 0.05, post: 0.03 }, { init: 0.27, use: 0.6, pass: -0.2, rip: 1, st: S_RIM },
+  'A scoring combo guard who attacks the rim: drives the pick-and-roll and rips through closeouts to score, gets to the line and fills the lanes in transition. Less of a floor spacer.', ['rip', 'pnr-drive']);
+R('sg-comboshootscore', 1, 'Combo Shooting Scoring SG', 'g', 'Combo', { pnr: 0.24, dho: 0.12, offs: 0.10, spot: 0.24, iso: 0.10, tr: 0.17, cut: 0.03 }, { init: 0.26, use: 0.6, pass: -0.1, st: S_3 },
+  'A shooting combo guard: two-man game with the bigs (gets and handoffs) into pull-up threes, catch-and-shoot threes off the ball, and his share of the ball-handling.', ['dho-shoot', 'pnr-pull3']);
+R('sg-comboiso', 1, 'Combo Iso Scoring SG', 'g', 'Combo', { iso: 0.28, pnr: 0.26, spot: 0.12, tr: 0.15, dho: 0.06, offs: 0.05, post: 0.04, cut: 0.02, put: 0.02 }, { init: 0.36, use: 0.8, pass: -0.3, st: S_MID },
+  'A shot creator who gets his own look one-on-one rather than in the pick-and-roll: jab series, step-backs and mid-range pull-ups, drives against a set defender. High usage and few assists; he needs the floor cleared for him.', ['iso-step', 'iso-drive']);
+R('sg-secslash', 1, 'Secondary BH Slashing SG', 'g', 'Secondary handler', { pnr: 0.28, cut: 0.12, spot: 0.20, tr: 0.18, dho: 0.07, iso: 0.08, put: 0.04, offs: 0.03 }, { init: 0.29, use: 0.1, pass: 0.15, rip: 1, st: S_RIM },
+  'The second ball handler: once the point guard has started the possession, he takes the ball in a side pick-and-roll or attacks the tilted defence downhill - finishing at the rim or kicking out. Off the ball he cuts and attacks closeouts. Real on-ball reps without running the offence.', ['pnr-drive', 'cut']);
+R('sg-secshoot', 1, 'Secondary BH Shooting SG', 'g', 'Secondary handler', { pnr: 0.28, spot: 0.26, offs: 0.08, dho: 0.08, tr: 0.17, iso: 0.06, cut: 0.04, put: 0.03 }, { init: 0.28, use: 0.15, pass: 0.1, st: S_3 },
+  'The second ball handler with a jumper: takes the side pick-and-roll after the first action - shooting behind the screen, hitting the screener, or pulling up for the mid-range or three. Otherwise he spaces the floor or comes off screens.', ['pnr-pull3', 'relocate']);
+R('sg-moveshoot', 1, 'Movement Shooting SG', 'g', 'Off-ball scorer', { offs: 0.30, spot: 0.30, tr: 0.17, dho: 0.12, pnr: 0.06, cut: 0.04, put: 0.01 }, { init: 0.11, use: 0.3, pass: -0.2 },
+  'A movement shooter: barely dribbles but never stops moving - runs off pin-downs, staggers and floppy screens to catch and shoot from deep, or curls into the mid-range. He needs screeners and a passer who finds him on the move; his gravity bends the defence even when he never touches the ball.', ['offscreen-3', 'offscreen-curl']);
+R('sg-offscreen', 1, 'Off-Screens Scoring SG', 'g', 'Off-ball scorer', { offs: 0.26, spot: 0.18, iso: 0.14, dho: 0.12, pnr: 0.12, tr: 0.14, cut: 0.04 }, { init: 0.18, use: 0.6, pass: -0.2, st: S_MID },
+  'A scorer off screens with more on-ball game than a pure movement shooter: comes off pin-downs and handoffs to shoot the three or curl to the rim and the mid-range, and gets a few isolations of his own.', ['offscreen-curl', 'offscreen-3']);
+R('sg-offslash', 1, 'Off-Ball Slashing SG', 'g', 'Off-ball scorer', { spot: 0.30, cut: 0.25, tr: 0.22, put: 0.10, offs: 0.05, dho: 0.04, iso: 0.04 }, { init: 0.13, use: 0.2, pass: -0.1, rip: 1 },
+  'A closeout attacker and cutter: rarely creates from a standstill but punishes a tilted defence - rips through closeouts to the rim, cuts backdoor when he is overplayed, runs the floor and takes the open three.', ['rip', 'cut']);
+R('sg-3d', 1, '3&D SG', 'g', '3&D', { spot: 0.55, tr: 0.20, cut: 0.07, pnr: 0.06, offs: 0.04, dho: 0.03, put: 0.05 }, { init: 0.12, use: -0.6, pass: -0.2, def: 1 },
+  'Spots up for catch-and-shoot threes (the corners first) and guards the other side\'s best perimeter player. Low usage and few dribbles: his value is spacing and point-of-attack defence.', ['spot-3', 'defend']);
 /* ---- SMALL FORWARDS ---- */
-R('sf-slashpoint', 2, 'Slashing Point SF', 'w', { pnr: 0.20, iso: 0.12, post: 0.06, cut: 0.10, spot: 0.14, tr: 0.24, dho: 0.06, put: 0.05, offs: 0.03 }, { init: 0.26, use: 0.3, pass: 0.35, rip: 1, st: S_RIM },
-  'A forward who shares the ball-handling with the point guard, like a combo guard: slashes downhill to drive and kick or finish at the rim, and rips through off the ball.', ['pnr-drive', 'rip']);
-R('sf-shootpoint', 2, 'Shooting Point SF', 'w', { pnr: 0.20, spot: 0.28, dho: 0.08, offs: 0.08, tr: 0.20, iso: 0.08, cut: 0.05, post: 0.03 }, { init: 0.25, use: -0.1, pass: 0.45, st: S_3 },
-  'A forward who shares the ball-handling: spaces the floor off the ball and on it looks to pass rather than to get deep into the paint.', ['relocate', 'pnr-kick']);
-R('sf-secshoot', 2, 'Secondary BH Shooting SF', 'w', { spot: 0.36, pnr: 0.12, offs: 0.10, dho: 0.08, tr: 0.20, cut: 0.06, iso: 0.05, put: 0.03 }, { init: 0.19, use: 0, pass: 0.15, st: S_3 },
-  'A floor-spacing forward who sometimes takes the half-court pick-and-roll after the point guard starts it: a quick look from deep, or a quick pass to the screener.', ['spot-3', 'pnr-pull3']);
-R('sf-secslash', 2, 'Secondary BH Slashing SF', 'w', { cut: 0.16, spot: 0.18, pnr: 0.15, tr: 0.22, iso: 0.10, dho: 0.07, put: 0.07, post: 0.05 }, { init: 0.20, use: 0.2, pass: 0.15, rip: 1, st: S_RIM },
-  'A slashing, cutting forward who, given the ball in the pick-and-roll, gets to the rim to finish or drives and kicks as the second option.', ['cut', 'pnr-drive']);
-R('sf-iso', 2, 'Iso Scoring SF', 'w', { iso: 0.26, pnr: 0.18, post: 0.08, dho: 0.06, tr: 0.15, spot: 0.14, offs: 0.08, cut: 0.03, put: 0.02 }, { init: 0.30, use: 0.9, pass: -0.3, st: { rim: 1.05, mid: 1.35, three: 1.0 } },
-  'Carries the individual scoring: asked to create points one-on-one in space rather than being handed the pick-and-roll or the playmaking.', ['iso-step', 'iso-drive']);
-R('sf-moveshoot', 2, 'Movement Shooting SF', 'w', { offs: 0.28, spot: 0.32, tr: 0.18, dho: 0.12, pnr: 0.05, cut: 0.04, put: 0.01 }, { init: 0.11, use: 0.3, pass: -0.2 },
-  'Very little ball-handling: runs off screens to pull up from deep (mostly) or curls into the mid-range. Mostly a floor spacer.', ['offscreen-3', 'offscreen-curl']);
-R('sf-3d', 2, '3&D SF', 'w', { spot: 0.55, tr: 0.20, cut: 0.08, pnr: 0.05, offs: 0.04, dho: 0.03, put: 0.05 }, { init: 0.12, use: -0.6, pass: -0.2, def: 1 },
-  'Little to no ball-handling: spot-up threes and good defence.', ['spot-3', 'defend']);
-R('sf-dualthreat', 2, 'Dual Threat Off-Ball SF', 'w', { spot: 0.38, cut: 0.14, tr: 0.22, offs: 0.08, iso: 0.06, put: 0.07, dho: 0.03, pnr: 0.02 }, { init: 0.13, use: 0.1, pass: 0, rip: 1, rho: 0.35 },
-  'Little to no ball-handling, but aggressive: rips through the close-out or takes the spot-up three, and now and then attacks in open space.', ['rip', 'spot-3']);
-R('sf-slashoff', 2, 'Slashing Off-Ball SF', 'w', { cut: 0.25, spot: 0.22, tr: 0.25, put: 0.12, iso: 0.06, dho: 0.04, offs: 0.03, pnr: 0.03 }, { init: 0.13, use: 0.2, pass: -0.1, rip: 1, run: 0.4 },
-  'Little to no ball-handling, but aggressive: rips through and cuts.', ['cut', 'rip']);
-R('sf-cuthustle', 2, 'Cuts & Hustle SF', 'w', { cut: 0.26, put: 0.18, spot: 0.24, tr: 0.20, roll: 0.05, post: 0.02, pnr: 0.02, dho: 0.03 }, { init: 0.11, use: -0.3, pass: -0.1, crash: 1, screen: 0.4 },
-  'Little to no ball-handling, and less aggressive attacking the close-out: lives off cuts and the offensive glass, and sets screens as an extra big.', ['cut', 'crash']);
-R('sf-hub', 2, 'Connective Passing Hub SF', 'w', { spot: 0.32, cut: 0.14, tr: 0.22, short: 0.05, dho: 0.08, offs: 0.04, pnr: 0.07, put: 0.05, iso: 0.03 }, { init: 0.18, use: -0.4, pass: 0.8, screen: 0.4, hub: 1 },
-  'Little to no ball-handling, but the connector: on the wing or as an extra screener he moves the ball - finding cutters, making the extra pass around the arc.', ['hub-pass', 'relocate']);
+R('sf-slashpoint', 2, 'Slashing Point SF', 'w', 'Point forward', { pnr: 0.20, iso: 0.12, post: 0.06, cut: 0.10, spot: 0.14, tr: 0.24, dho: 0.06, put: 0.05, offs: 0.03 }, { init: 0.27, use: 0.3, pass: 0.35, rip: 1, st: S_RIM },
+  'A point forward who shares the ball-handling: grabs and goes in transition, runs the pick-and-roll and drives downhill to finish or kick out, and attacks closeouts off the ball. Turns the wing spot into a second creator.', ['pnr-drive', 'rip']);
+R('sf-shootpoint', 2, 'Shooting Point SF', 'w', 'Point forward', { pnr: 0.20, spot: 0.28, dho: 0.08, offs: 0.08, tr: 0.20, iso: 0.08, cut: 0.05, post: 0.03 }, { init: 0.25, use: -0.1, pass: 0.45, st: S_3 },
+  'A point forward who shares the ball-handling and plays with the pass and the jumper: quick reads on the ball, spot-up and relocation threes off it.', ['relocate', 'pnr-kick']);
+R('sf-secshoot', 2, 'Secondary BH Shooting SF', 'w', 'Secondary handler', { spot: 0.32, pnr: 0.18, offs: 0.08, dho: 0.08, tr: 0.20, cut: 0.06, iso: 0.05, put: 0.03 }, { init: 0.24, use: 0, pass: 0.15, st: S_3 },
+  'A floor-spacing forward who takes the second-side pick-and-roll after the guard starts the play: a quick look from deep or a quick pass to the screener. Otherwise he spots up.', ['spot-3', 'pnr-pull3']);
+R('sf-secslash', 2, 'Secondary BH Slashing SF', 'w', 'Secondary handler', { cut: 0.14, spot: 0.18, pnr: 0.20, tr: 0.19, iso: 0.10, dho: 0.07, put: 0.07, post: 0.05 }, { init: 0.25, use: 0.2, pass: 0.15, rip: 1, st: S_RIM },
+  'A slashing forward used as the second handler: attacks a scrambled defence downhill in a side pick-and-roll or off the catch, cuts often and finishes at the rim.', ['cut', 'pnr-drive']);
+R('sf-iso', 2, 'Iso Scoring SF', 'w', 'Shot creator', { iso: 0.26, pnr: 0.18, post: 0.08, dho: 0.06, tr: 0.15, spot: 0.14, offs: 0.08, cut: 0.03, put: 0.02 }, { init: 0.30, use: 0.9, pass: -0.3, st: { rim: 1.05, mid: 1.35, three: 1.0 } },
+  'The designated one-on-one scorer. He is not handed the pick-and-roll: the floor is cleared and he goes to work in space - jab series, step-backs and mid-range pull-ups, drives against a set defender, mid-post touches. High-usage, tough-shot-making possessions that matter late in the clock; he needs shooters around him so the help cannot load up.', ['iso-step', 'iso-drive']);
+R('sf-moveshoot', 2, 'Movement Shooting SF', 'w', 'Off-ball scorer', { offs: 0.28, spot: 0.32, tr: 0.18, dho: 0.12, pnr: 0.05, cut: 0.04, put: 0.01 }, { init: 0.11, use: 0.3, pass: -0.2 },
+  'A movement shooter at the forward spot: runs off pin-downs and staggers to catch and shoot, curls into the mid-range. Very little ball-handling and a lot of gravity.', ['offscreen-3', 'offscreen-curl']);
+R('sf-dualthreat', 2, 'Dual Threat Off-Ball SF', 'w', 'Off-ball scorer', { spot: 0.38, cut: 0.14, tr: 0.22, offs: 0.08, iso: 0.06, put: 0.07, dho: 0.03, pnr: 0.02 }, { init: 0.13, use: 0.1, pass: 0, rip: 1, rho: 0.35 },
+  'An off-ball forward who is a spot-up shooter and a closeout attacker at once: a short closeout and he shoots, a hard one and he rips through to the rim. Runs the floor in transition.', ['rip', 'spot-3']);
+R('sf-slashoff', 2, 'Slashing Off-Ball SF', 'w', 'Off-ball scorer', { cut: 0.25, spot: 0.22, tr: 0.25, put: 0.12, iso: 0.06, dho: 0.04, offs: 0.03, pnr: 0.03 }, { init: 0.13, use: 0.2, pass: -0.1, rip: 1, run: 0.4 },
+  'An off-ball slasher: 45 cuts and backdoors, runs the lanes in transition and attacks closeouts to the rim. He lives on the passes of others, so he needs a passer who finds him.', ['cut', 'rip']);
+R('sf-3d', 2, '3&D SF', 'w', 'Role player', { spot: 0.55, tr: 0.20, cut: 0.08, pnr: 0.05, offs: 0.04, dho: 0.03, put: 0.05 }, { init: 0.12, use: -0.6, pass: -0.2, def: 1 },
+  'Spots up in the corners for catch-and-shoot threes and guards the other side\'s best wing. Minimal ball-handling: the classic complementary wing.', ['spot-3', 'defend']);
+R('sf-cuthustle', 2, 'Cuts & Hustle SF', 'w', 'Role player', { cut: 0.26, put: 0.18, spot: 0.24, tr: 0.20, roll: 0.05, post: 0.02, pnr: 0.02, dho: 0.03 }, { init: 0.11, use: -0.3, pass: -0.1, crash: 1, screen: 0.4 },
+  'A glue forward: cuts, crashes the offensive glass, sets screens as an extra big and plays without needing touches. Little ball-handling; he scores on put-backs and cuts.', ['cut', 'crash']);
+R('sf-hub', 2, 'Connective Passing Hub SF', 'w', 'Role player', { spot: 0.32, cut: 0.14, tr: 0.22, short: 0.05, dho: 0.08, offs: 0.04, pnr: 0.07, put: 0.05, iso: 0.03 }, { init: 0.18, use: -0.4, pass: 0.8, screen: 0.4, hub: 1 },
+  'A connector: makes the 0.5-second decision - the swing, the extra pass, the hit to the cutter, the handoff - and keeps the advantage alive without holding the ball. Low usage, a lot of touches; he also screens as an extra big.', ['hub-pass', 'relocate']);
 /* ---- POWER FORWARDS ---- */
-R('pf-slashpoint', 3, 'Slashing Point PF', 'w', { pnr: 0.16, iso: 0.12, post: 0.11, cut: 0.08, spot: 0.13, tr: 0.23, dho: 0.04, put: 0.06, roll: 0.04, offs: 0.03 }, { init: 0.26, use: 0.3, pass: 0.35, rip: 1, st: S_RIM },
-  'A forward who shares the ball-handling with the point guard: slashes downhill to drive and kick or finish at the rim, and rips through off the ball.', ['pnr-drive', 'rip']);
-R('pf-shootpoint', 3, 'Shooting Point PF', 'w', { pnr: 0.18, spot: 0.28, dho: 0.08, offs: 0.06, tr: 0.20, iso: 0.08, post: 0.05, cut: 0.04, pop: 0.03 }, { init: 0.24, use: -0.1, pass: 0.45, st: S_3 },
-  'A forward who shares the ball-handling: spaces the floor off the ball and on it looks to pass rather than to get deep into the paint.', ['relocate', 'pnr-kick']);
-R('pf-secshoot', 3, 'Secondary BH Shooting PF', 'w', { spot: 0.34, pnr: 0.10, offs: 0.06, pop: 0.12, dho: 0.08, tr: 0.18, cut: 0.05, put: 0.04, post: 0.03 }, { init: 0.17, use: 0, pass: 0.15, screen: 0.3, st: S_3 },
-  'A floor-spacing forward who sometimes takes the half-court pick-and-roll after the point guard starts it: a quick look from deep, or a quick pass to the screener.', ['spot-3', 'pop']);
-R('pf-secslash', 3, 'Secondary BH Slashing PF', 'w', { cut: 0.18, spot: 0.14, pnr: 0.14, tr: 0.20, iso: 0.10, put: 0.12, post: 0.06, roll: 0.04, dho: 0.02 }, { init: 0.18, use: 0.2, pass: 0.15, rip: 1, st: S_RIM },
-  'A slashing, cutting forward who, given the ball in the pick-and-roll, gets to the rim to finish or drives and kicks as the second option.', ['cut', 'pnr-drive']);
-R('pf-iso', 3, 'Iso Scoring PF', 'w', { iso: 0.22, post: 0.20, pop: 0.08, roll: 0.05, spot: 0.14, tr: 0.14, pnr: 0.08, put: 0.06, cut: 0.03 }, { init: 0.29, use: 0.9, pass: -0.3, screen: 0.3, st: S_MID },
-  'Carries the individual scoring: creates one-on-one, sometimes in the post or after setting a screen, sometimes out on the perimeter, rather than being handed the pick-and-roll or the playmaking.', ['post-score', 'iso-drive']);
-R('pf-moveshoot', 3, 'Movement Shooting PF', 'w', { offs: 0.25, spot: 0.32, pop: 0.10, tr: 0.16, dho: 0.10, cut: 0.05, put: 0.02 }, { init: 0.10, use: 0.3, pass: -0.2, screen: 0.2 },
-  'Very little ball-handling: runs off screens to pull up from deep or curls into the mid-range. Mostly a floor spacer.', ['offscreen-3', 'pop']);
-R('pf-3d', 3, '3&D PF', 'w', { spot: 0.48, pop: 0.12, cut: 0.08, tr: 0.18, put: 0.08, pnr: 0.03, post: 0.03 }, { init: 0.11, use: -0.5, pass: -0.2, screen: 0.5, def: 1 },
-  'Little to no ball-handling: spot-up threes, screens and good defence.', ['spot-3', 'pop']);
-R('pf-cuthustle', 3, 'Cuts & Hustle PF', 'w', { cut: 0.26, put: 0.22, roll: 0.14, spot: 0.12, tr: 0.20, post: 0.04, pop: 0.02 }, { init: 0.10, use: -0.3, pass: -0.1, crash: 1, screen: 0.6 },
-  'Little to no ball-handling: lives off cuts and attacking the offensive glass.', ['cut', 'crash']);
-R('pf-hub', 3, 'Connective Passing Hub PF', 'w', { spot: 0.28, cut: 0.14, short: 0.12, dho: 0.10, put: 0.07, tr: 0.20, post: 0.04, pnr: 0.05 }, { init: 0.18, use: -0.4, pass: 0.8, screen: 0.5, hub: 1 },
-  'Little to no ball-handling, but the connector: moves the ball to cutters and makes the extra pass around the arc.', ['hub-pass', 'short-pass']);
-R('pf-dualspot', 3, 'Dual-Big Spot-Up PF', 'b', { pop: 0.30, spot: 0.32, post: 0.10, put: 0.05, tr: 0.12, cut: 0.06, iso: 0.02, dho: 0.03 }, { init: 0.09, use: 0, pass: 0, screen: 0.8 },
-  'The stretch four in a two-big lineup: screens and pops, spots up for catch-and-shoot threes, and now and then takes his man into the post.', ['pop', 'spot-3']);
-R('pf-dualthreat', 3, 'Dual-Big Dual Threat PF', 'b', { pop: 0.22, spot: 0.22, post: 0.12, roll: 0.10, iso: 0.06, put: 0.07, tr: 0.14, cut: 0.07 }, { init: 0.12, use: 0.3, pass: 0, screen: 0.7, rip: 1 },
-  'The stretch four in a two-big lineup who screens and pops, then shoots the three or attacks downhill; spots up to shoot or slash, or plays out of the post.', ['pop', 'rip']);
-R('pf-dualpost', 3, 'Dual-Big Post PF', 'b', { post: 0.38, put: 0.14, roll: 0.12, spot: 0.06, cut: 0.13, iso: 0.06, tr: 0.06, dho: 0.02, pop: 0.03 }, { init: 0.18, use: 0.5, pass: 0, screen: 0.5 },
-  'Lives on post touches: attacks out of the post rather than stretching the floor.', ['post-score', 'crash']);
-R('pf-dualroll', 3, 'Dual-Big Roller PF', 'b', { roll: 0.30, cut: 0.26, put: 0.18, tr: 0.12, post: 0.06, spot: 0.04, pop: 0.04 }, { init: 0.09, use: -0.2, pass: -0.1, screen: 0.9, crash: 0.6 },
-  'A finisher with few post touches and plenty of screens: rolls hard to the rim to finish rather than stretching the floor.', ['roll', 'crash']);
-R('pf-playslash', 3, 'Playmaking Slashing PF', 'w', { dho: 0.16, pnr: 0.12, iso: 0.10, cut: 0.10, spot: 0.14, tr: 0.16, short: 0.12, post: 0.05, put: 0.05 }, { init: 0.22, use: 0.2, pass: 0.55, screen: 0.3, hub: 1, st: S_RIM },
-  'Handles the ball on the perimeter for handoffs and the like: finds cutters, or slashes downhill for shots at the rim.', ['dho-give', 'iso-drive']);
+R('pf-slashpoint', 3, 'Slashing Point PF', 'w', 'Playmaking forward', { pnr: 0.16, iso: 0.12, post: 0.11, cut: 0.08, spot: 0.13, tr: 0.23, dho: 0.04, put: 0.06, roll: 0.04, offs: 0.03 }, { init: 0.26, use: 0.3, pass: 0.35, rip: 1, st: S_RIM },
+  'A point forward at the four: grabs and goes in transition, runs the pick-and-roll and attacks downhill to finish or kick out - a mismatch the other side\'s big has to guard in space.', ['pnr-drive', 'rip']);
+R('pf-shootpoint', 3, 'Shooting Point PF', 'w', 'Playmaking forward', { pnr: 0.18, spot: 0.28, dho: 0.08, offs: 0.06, tr: 0.20, iso: 0.08, post: 0.05, cut: 0.04, pop: 0.03 }, { init: 0.24, use: -0.1, pass: 0.45, st: S_3 },
+  'A point forward at the four who plays with the pass and the jumper: quick reads on the ball, pick-and-pop and spot-up threes off it.', ['relocate', 'pnr-kick']);
+R('pf-playslash', 3, 'Playmaking Slashing PF', 'w', 'Playmaking forward', { dho: 0.16, pnr: 0.12, iso: 0.10, cut: 0.10, spot: 0.14, tr: 0.16, short: 0.12, post: 0.05, put: 0.05 }, { init: 0.22, use: 0.2, pass: 0.55, screen: 0.3, hub: 1, st: S_RIM },
+  'A perimeter-playmaking four: runs handoffs and short rolls from the top, finds the cutters, and attacks downhill himself for shots at the rim.', ['dho-give', 'iso-drive']);
+R('pf-secshoot', 3, 'Secondary BH Shooting PF', 'w', 'Secondary handler', { spot: 0.31, pnr: 0.15, offs: 0.04, pop: 0.12, dho: 0.08, tr: 0.18, cut: 0.05, put: 0.04, post: 0.03 }, { init: 0.22, use: 0, pass: 0.15, screen: 0.3, st: S_3 },
+  'A floor-spacing four who sometimes takes the second-side pick-and-roll: a quick three or a quick pass to the screener. He screens and pops otherwise.', ['spot-3', 'pop']);
+R('pf-secslash', 3, 'Secondary BH Slashing PF', 'w', 'Secondary handler', { cut: 0.16, spot: 0.14, pnr: 0.18, tr: 0.20, iso: 0.10, put: 0.10, post: 0.06, roll: 0.04, dho: 0.02 }, { init: 0.23, use: 0.2, pass: 0.15, rip: 1, st: S_RIM },
+  'A slashing four used as a second handler: attacks a tilted defence downhill, cuts and crashes for put-backs.', ['cut', 'pnr-drive']);
+R('pf-iso', 3, 'Iso Scoring PF', 'w', 'Shot creator', { iso: 0.22, post: 0.20, pop: 0.08, roll: 0.05, spot: 0.14, tr: 0.14, pnr: 0.08, put: 0.06, cut: 0.03 }, { init: 0.29, use: 0.9, pass: -0.3, screen: 0.3, st: S_MID },
+  'A scoring four who creates one-on-one: faces up from the elbow, posts mismatches, pops and attacks, gets to his mid-range spots. He carries scoring load rather than running the offence.', ['post-score', 'iso-drive']);
+R('pf-moveshoot', 3, 'Movement Shooting PF', 'w', 'Stretch & glue', { offs: 0.25, spot: 0.32, pop: 0.10, tr: 0.16, dho: 0.10, cut: 0.05, put: 0.02 }, { init: 0.10, use: 0.3, pass: -0.2, screen: 0.2 },
+  'A shooting four who moves: runs off screens and pops after his own screens for catch-and-shoot threes. Very little ball-handling.', ['offscreen-3', 'pop']);
+R('pf-3d', 3, '3&D PF', 'w', 'Stretch & glue', { spot: 0.48, pop: 0.12, cut: 0.08, tr: 0.18, put: 0.08, pnr: 0.03, post: 0.03 }, { init: 0.11, use: -0.5, pass: -0.2, screen: 0.5, def: 1 },
+  'A stretch four who spots up, screens and pops, and defends more than one position. Low usage.', ['spot-3', 'pop']);
+R('pf-cuthustle', 3, 'Cuts & Hustle PF', 'w', 'Stretch & glue', { cut: 0.26, put: 0.22, roll: 0.14, spot: 0.12, tr: 0.20, post: 0.04, pop: 0.02 }, { init: 0.10, use: -0.3, pass: -0.1, crash: 1, screen: 0.6 },
+  'A glue four: cuts, rolls, crashes the offensive glass and finishes what others create. Little ball-handling.', ['cut', 'crash']);
+R('pf-hub', 3, 'Connective Passing Hub PF', 'w', 'Stretch & glue', { spot: 0.28, cut: 0.14, short: 0.12, dho: 0.10, put: 0.07, tr: 0.20, post: 0.04, pnr: 0.05 }, { init: 0.18, use: -0.4, pass: 0.8, screen: 0.5, hub: 1 },
+  'A connector at the four: handoffs, short-roll passes and the extra pass around the arc; he keeps the ball moving without holding it.', ['hub-pass', 'short-pass']);
+R('pf-dualspot', 3, 'Dual-Big Spot-Up PF', 'b', 'Dual big', { pop: 0.30, spot: 0.32, post: 0.10, put: 0.05, tr: 0.12, cut: 0.06, iso: 0.02, dho: 0.03 }, { init: 0.09, use: 0, pass: 0, screen: 0.8 },
+  'The stretch four beside a centre: screens and pops, spots up for catch-and-shoot threes and now and then punishes a smaller defender in the post. He pulls the second big away from the rim.', ['pop', 'spot-3']);
+R('pf-dualthreat', 3, 'Dual-Big Dual Threat PF', 'b', 'Dual big', { pop: 0.22, spot: 0.22, post: 0.12, roll: 0.10, iso: 0.06, put: 0.07, tr: 0.14, cut: 0.07 }, { init: 0.12, use: 0.3, pass: 0, screen: 0.7, rip: 1 },
+  'A four in a two-big lineup who screens and pops, then shoots the three or attacks the closeout downhill; he spots up, slashes and posts mismatches.', ['pop', 'rip']);
+R('pf-dualpost', 3, 'Dual-Big Post PF', 'b', 'Dual big', { post: 0.38, put: 0.14, roll: 0.12, spot: 0.06, cut: 0.13, iso: 0.06, tr: 0.06, dho: 0.02, pop: 0.03 }, { init: 0.18, use: 0.5, pass: 0, screen: 0.5 },
+  'A back-to-the-basket four: lives on post touches on the block and the mid-post, scores with footwork and draws fouls. He plays inside beside the centre (3-out 2-in), so he needs shooters around him.', ['post-score', 'crash']);
+R('pf-dualroll', 3, 'Dual-Big Roller PF', 'b', 'Dual big', { roll: 0.30, cut: 0.26, put: 0.18, tr: 0.12, post: 0.06, spot: 0.04, pop: 0.04 }, { init: 0.09, use: -0.2, pass: -0.1, screen: 0.9, crash: 0.6 },
+  'A rim-running four: sets screens and dives hard, catches lobs and dump-offs at the dunker spot and crashes the glass. Few post touches and little spacing.', ['roll', 'crash']);
 /* ---- CENTRES ---- */
-R('c-spot', 4, 'Spot-Up C', 'b', { pop: 0.34, spot: 0.30, post: 0.10, put: 0.05, tr: 0.12, cut: 0.06, iso: 0.02, dho: 0.01 }, { init: 0.09, use: 0, pass: 0, screen: 0.9 },
-  'Screens and pops, spots up for catch-and-shoot threes, and now and then takes his man into the post.', ['pop', 'spot-3']);
-R('c-dualpnp', 4, 'Dual Threat PNP C', 'b', { pop: 0.24, roll: 0.14, spot: 0.18, post: 0.12, put: 0.08, iso: 0.05, tr: 0.12, cut: 0.07 }, { init: 0.11, use: 0.3, pass: 0, screen: 0.9, rip: 1 },
-  'Screens and pops to shoot the three or attack downhill, and sometimes rolls to the rim; spots up to shoot or slash, or plays out of the post.', ['pop', 'roll']);
-R('c-slashpnp', 4, 'Slashing PNP C', 'b', { pop: 0.22, spot: 0.14, roll: 0.14, put: 0.12, post: 0.08, iso: 0.10, tr: 0.12, cut: 0.08 }, { init: 0.12, use: 0.3, pass: 0, screen: 0.9, rip: 1, st: S_RIM },
-  'Pops out after the screen, then slashes downhill off the catch rather than threatening as a shooter.', ['pop', 'rip']);
-R('c-post', 4, 'Post C', 'b', { post: 0.30, roll: 0.20, put: 0.15, cut: 0.14, iso: 0.06, spot: 0.06, tr: 0.06, dho: 0.03 }, { init: 0.18, use: 0.6, pass: -0.1, screen: 0.6 },
-  'Lives on post touches: attacks out of the post rather than screening hard or rolling - most of his screens become post possessions.', ['post-score', 'crash']);
-R('c-postplay', 4, 'Post Playmaker C', 'b', { post: 0.24, dho: 0.08, roll: 0.16, put: 0.10, cut: 0.12, iso: 0.06, spot: 0.10, tr: 0.10, short: 0.04 }, { init: 0.22, use: 0.1, pass: 0.7, screen: 0.6, hub: 1 },
-  'Lives on post touches, but to pass as much as to score: his screens become post possessions where he scores or finds the cutter and the open shooter.', ['post-pass', 'post-score']);
-R('c-roller', 4, 'Rim Roller C', 'b', { roll: 0.35, cut: 0.30, put: 0.20, tr: 0.10, post: 0.05 }, { init: 0.09, use: -0.5, pass: -0.1, screen: 1, crash: 0.6 },
-  'Few touches: sets the screen and rolls to the rim to finish.', ['roll', 'crash']);
-R('c-shortplay', 4, 'Short Roll Playmaking C', 'b', { short: 0.35, roll: 0.15, put: 0.10, cut: 0.12, spot: 0.14, tr: 0.10, pop: 0.04 }, { init: 0.16, use: -0.2, pass: 0.7, screen: 1, hub: 1 },
-  'Plays out of the short roll rather than diving to the rim: quick passes out to shooters or to backdoor cutters, a floater, or a dribble to finish as the last option.', ['short-pass', 'roll']);
-R('c-shortattack', 4, 'Short Roll Attacking C', 'b', { short: 0.35, roll: 0.22, put: 0.14, cut: 0.12, post: 0.05, tr: 0.08, spot: 0.04 }, { init: 0.14, use: 0.3, pass: 0.1, screen: 1, st: { rim: 1.35, mid: 1.15, three: 0.3 } },
-  'Plays out of the short roll, but to attack: downhill toward the rim from the short roll rather than passing, or the mid-range shot.', ['short-attack', 'roll']);
-R('c-playslash', 4, 'Playmaking Slashing C', 'b', { dho: 0.14, iso: 0.10, short: 0.15, roll: 0.10, cut: 0.10, put: 0.10, spot: 0.12, tr: 0.10, post: 0.05, pnr: 0.04 }, { init: 0.22, use: 0.2, pass: 0.6, screen: 0.6, hub: 1, st: S_RIM },
-  'Handles the ball on the perimeter for handoffs: finds the cutters, or slashes downhill for shots at the rim.', ['dho-give', 'iso-drive']);
-R('c-playscreen', 4, 'Playmaking Screener C', 'b', { roll: 0.22, short: 0.20, cut: 0.15, put: 0.12, dho: 0.12, spot: 0.08, tr: 0.08, post: 0.03 }, { init: 0.20, use: 0, pass: 0.6, screen: 1, hub: 1 },
-  'Handles the ball on the perimeter for handoffs: finds the cutters, or slips and screens and rolls to the rim for assisted looks.', ['dho-give', 'roll']);
+R('c-spot', 4, 'Spot-Up C', 'b', 'Stretch five', { pop: 0.34, spot: 0.30, post: 0.10, put: 0.05, tr: 0.12, cut: 0.06, iso: 0.02, dho: 0.01 }, { init: 0.09, use: 0, pass: 0, screen: 0.9 },
+  'A stretch five: screens and pops for catch-and-shoot threes and spots up on the weak side, pulling the other side\'s rim protector out of the paint; now and then he posts a smaller man.', ['pop', 'spot-3']);
+R('c-dualpnp', 4, 'Dual Threat PNP C', 'b', 'Stretch five', { pop: 0.24, roll: 0.14, spot: 0.18, post: 0.12, put: 0.08, iso: 0.05, tr: 0.12, cut: 0.07 }, { init: 0.11, use: 0.3, pass: 0, screen: 0.9, rip: 1 },
+  'A pick-and-pop centre who is a threat both ways: pops to shoot, attacks a hard closeout downhill, sometimes rolls; he also scores from the post.', ['pop', 'roll']);
+R('c-slashpnp', 4, 'Slashing PNP C', 'b', 'Stretch five', { pop: 0.22, spot: 0.14, roll: 0.14, put: 0.12, post: 0.08, iso: 0.10, tr: 0.12, cut: 0.08 }, { init: 0.12, use: 0.3, pass: 0, screen: 0.9, rip: 1, st: S_RIM },
+  'A face-up five: pops out after the screen, then attacks the closeout off the dribble rather than shooting - a driver from the top of the key.', ['pop', 'rip']);
+R('c-post', 4, 'Post C', 'b', 'Post', { post: 0.30, roll: 0.20, put: 0.15, cut: 0.14, iso: 0.06, spot: 0.06, tr: 0.06, dho: 0.03 }, { init: 0.18, use: 0.6, pass: -0.1, screen: 0.6 },
+  'A back-to-the-basket centre: his screens turn into post seals and his touches come on the block - drop steps, hooks and fouls drawn. He needs shooters around him and slows the game down.', ['post-score', 'crash']);
+R('c-postplay', 4, 'Post Playmaker C', 'b', 'Post', { post: 0.24, dho: 0.08, roll: 0.16, put: 0.10, cut: 0.12, iso: 0.06, spot: 0.10, tr: 0.10, short: 0.04 }, { init: 0.22, use: 0.1, pass: 0.7, screen: 0.6, hub: 1 },
+  'A post hub: the ball goes into him on the block or the elbow and the offence plays off him - he scores against single coverage and passes out of the double to the cutters and the shooters (split cuts, kick-outs).', ['post-pass', 'post-score']);
+R('c-roller', 4, 'Rim Roller C', 'b', 'Roll man', { roll: 0.35, cut: 0.30, put: 0.20, tr: 0.10, post: 0.05 }, { init: 0.09, use: -0.5, pass: -0.1, screen: 1, crash: 0.6 },
+  'A rim runner and vertical spacer: sets the screen and dives hard to the rim, catches lobs and dump-offs at the dunker spot, runs the floor and crashes the glass. Few touches at high efficiency; he needs a handler who can find him.', ['roll', 'crash']);
+R('c-shortplay', 4, 'Short Roll Playmaking C', 'b', 'Roll man', { short: 0.35, roll: 0.15, put: 0.10, cut: 0.12, spot: 0.14, tr: 0.10, pop: 0.04 }, { init: 0.16, use: -0.2, pass: 0.7, screen: 1, hub: 1 },
+  'A short-roll playmaker: catches in the middle of the floor when the defence traps the ball handler and plays four-on-three - passes to the weak-side shooter and the backdoor cutter, the floater, or a dribble to finish.', ['short-pass', 'roll']);
+R('c-shortattack', 4, 'Short Roll Attacking C', 'b', 'Roll man', { short: 0.35, roll: 0.22, put: 0.14, cut: 0.12, post: 0.05, tr: 0.08, spot: 0.04 }, { init: 0.14, use: 0.3, pass: 0.1, screen: 1, st: { rim: 1.35, mid: 1.15, three: 0.3 } },
+  'Catches on the short roll and attacks: drives to the rim or takes the floater and the mid-range jumper rather than passing.', ['short-attack', 'roll']);
+R('c-playslash', 4, 'Playmaking Slashing C', 'b', 'Playmaking big', { dho: 0.14, iso: 0.10, short: 0.15, roll: 0.10, cut: 0.10, put: 0.10, spot: 0.12, tr: 0.10, post: 0.05, pnr: 0.04 }, { init: 0.22, use: 0.2, pass: 0.6, screen: 0.6, hub: 1, st: S_RIM },
+  'A delay hub who handles at the top of the key: runs the handoffs, finds the cutters and attacks downhill himself.', ['dho-give', 'iso-drive']);
+R('c-playscreen', 4, 'Playmaking Screener C', 'b', 'Playmaking big', { roll: 0.22, short: 0.20, cut: 0.15, put: 0.12, dho: 0.12, spot: 0.08, tr: 0.08, post: 0.03 }, { init: 0.20, use: 0, pass: 0.6, screen: 1, hub: 1 },
+  'A screening hub: runs handoffs at the top, slips and rolls to the rim and makes the read from the short roll - the big the offence flows through without being a post scorer.', ['dho-give', 'roll']);
 
 const forSlot = k => ROLES.filter(r => r.slot === k);
 const DEFAULT = { 0: 'pg-mixed', 1: 'sg-combomixed' };
@@ -260,7 +281,13 @@ function traits(c, ref) {
     run: trShare, trEff: ref && isNum(tr.ppp) ? tr.ppp - ref.trPpp : 0, stl: rel(c.def && c.def.stl, 'stl_pct', 1),
     blk: rel(c.def && c.def.blk, 'blk_pct', 1), orb: rel(c.off && c.off.orb, 'oreb_pct', 1), hands: c.off && isNum(c.off.dTov) ? -c.off.dTov : 0,
     fta: c.off && isNum(c.off.rFta) ? c.off.rFta : 1, pos: isNum(c.pos) ? c.pos : 3,
-    lg3: ref && isNum(ref.p3) ? ref.p3 : 0.34, lgMid: ref && isNum(ref.mid) ? ref.mid : 0.4
+    lg3: ref && isNum(ref.p3) ? ref.p3 : 0.34, lgMid: ref && isNum(ref.mid) ? ref.mid : 0.4,
+    /* his three-point VOLUME against his own position's (a centre who takes a third of his shots from three is a volume
+       shooter for a centre): what a shooting role needs besides the percentage */
+    vol3P: (() => {
+      const P = ref && ref.byPos ? ref.byPos[clamp(Math.round(isNum(c.pos) ? c.pos : 3), 1, 5) - 1] : null, sh = c.mix && isNum(c.mix.three) ? c.mix.three : null;
+      return P && isNum(P.p3sh) && P.p3sh > 0.02 && isNum(sh) ? clamp(sh / P.p3sh, 0, 3) : (c.mixRel ? c.mixRel.three : 1);
+    })()
   };
 }
 /* ATTACKING THE CLOSE-OUT against his open three (core/instruct.js, rip through: a tracked league's drives - a shot on
@@ -283,17 +310,23 @@ function ptFit(k, t, st) {
     case 'post': return 0.5 + 0.5 * (t.create - 0.35) + 0.45 * (t.rim - 1) + 0.25 * t.mid + 0.15 * (t.fta - 1) + 0.12 * (t.pos - 4);
     case 'dho': return 0.5 + 0.35 * (t.create - 0.35) + 0.5 * (t.shoot - 1) + 0.25 * (t.rim - 1) + style * 0.5;
     case 'tr': return 0.5 + 0.35 * (t.run - 1) + 1.0 * t.trEff;
-    case 'spot': return 0.5 + 1.4 * (t.shoot - 1) + 0.15 * (t.vol3 - 1);
-    case 'offs': return 0.5 + 1.3 * (t.shoot - 1) + 0.3 * (t.pull - 0.12) + 0.2 * t.mid + 0.1 * (t.vol3 - 1);
+    /* the shooting plays need the volume as well as the percentage (Louie, 2026-10-15: "Can movement shooters need more 3PT
+       volume") - most of all the movement shooter, whose job is to take them */
+    case 'spot': return 0.5 + 1.2 * (t.shoot - 1) + 0.3 * (clamp(t.vol3P, 0, 2.5) - 1);
+    case 'offs': return 0.5 + 1.1 * (t.shoot - 1) + 0.45 * (clamp(t.vol3P, 0, 2.5) - 1) + 0.2 * (t.pull - 0.12) + 0.15 * t.mid;
     case 'cut': return 0.5 + 0.9 * (t.rim - 1) + 0.2 * (t.volRim - 1);
     case 'roll': return 0.5 + 0.9 * (t.rim - 1) + 0.2 * (t.orb - 1) + 0.2 * (t.volRim - 1) + 0.08 * (t.pos - 4);
-    case 'pop': return 0.5 + 1.5 * (t.shoot - 1) + 0.25 * (t.vol3 - 1);
+    case 'pop': return 0.5 + 1.3 * (t.shoot - 1) + 0.35 * (clamp(t.vol3P, 0, 2.5) - 1);
     case 'short': return 0.5 + 0.5 * (t.pass - 1) + 0.3 * t.mid + 0.1 * t.hands;
     case 'put': return 0.5 + 0.5 * (t.orb - 1) + 0.3 * (t.rim - 1);
     default: return 0.5;
   }
 }
 const WORDS = [[0.7, 'Natural fit', 'a4'], [0.52, 'Good fit', 'a3'], [0.36, 'Workable', 'a2'], [-1, 'Poor fit', 'a1']];
+/* HOW FAR OUT OF POSITION (Louie, 2026-10-15: "not have much of a docking of stats unless it's a position 2 positions up
+   from them or more"): nothing within one position of his own (a shooting guard at small forward, a power forward at
+   centre), then a unit for each position past one and a quarter - a shooting guard at power forward 1, at centre 2.3 */
+const posGap = (pos, slot) => { const d = Math.abs((isNum(pos) ? pos : 3) - (slot + 1)); return d <= 1.25 ? 0 : (d - 1.25) * 1.33; };
 const howVs = r => (r >= 1.3 ? 'much more often than' : r >= 1.1 ? 'a bit more often than' : r > 0.9 ? 'about as often as' : r > 0.75 ? 'a bit less often than' : 'much less often than');
 const pct0 = v => Math.round(100 * v) + '%';
 /* THE WORDS FOR WHY, IN PLAIN TERMS (Louie: "needs to make more intuitive sense for a layman"): what he does, against
@@ -321,11 +354,13 @@ function fit(role, c, ref) {
   let s = 0;
   /* a role that rips through plays half its spot-ups as drives past the close-out */
   Object.keys(r.diet).forEach(k => { s += r.diet[k] * (k === 'spot' && r.rip ? 0.5 * ptFit(k, t) + 0.5 * ripFit(t) : ptFit(k, t, STYLED.has(k) ? r.st : null)); });
-  /* what the role asks beyond its plays: the passing, the glass, the defence, the screens (size), the ball (handling) */
+  /* what the role asks beyond its plays: the passing, the glass, the defence, the screens (size), the ball (handling: a
+     role with real time on the ball needs a handle that holds up and some creation), the scoring load, the connector's
+     sure hands */
   s += 0.18 * r.pass * (t.pass - 1) + 0.15 * r.crash * (t.orb - 1) + 0.15 * r.def * ((t.stl - 1) + 0.5 * (t.shoot - 1)) + 0.04 * r.screen * (t.pos - 3.5)
-    + 0.1 * clamp(r.init - 0.3, 0, 1) * (t.create - 0.35 + 0.1 * t.hands) + 0.08 * r.use * (t.usg - 1);
-  /* a position far from his own costs (a centre asked to be a point guard) */
-  s -= 0.08 * Math.max(0, Math.abs(t.pos - (r.slot + 1)) - 1);
+    + 0.25 * clamp(r.init - 0.2, 0, 1) * (t.create - 0.35 + 0.15 * t.hands) + 0.08 * r.use * (t.usg - 1) + 0.08 * r.hub * t.hands;
+  /* a position two or more from his own costs (a shooting guard at power forward); one either way does not */
+  s -= 0.1 * Math.max(0, posGap(t.pos, r.slot));
   s = clamp(s, 0, 1);
   const w = WORDS.find(x => s >= x[0]);
   return { s, stars: Math.max(1, Math.min(5, Math.round(1 + 4 * s))), word: w[1], band: w[2], why: whyOf(r, c, ref) };
@@ -348,6 +383,50 @@ function resolve(key, k, c, ref) {
   if (r && r.slot === k) return r;
   if (DEFAULT[k]) return BY.get(DEFAULT[k]);
   return bestFor(k, c, ref);
+}
+
+/* ------------------------------------------------------------------ where he stands: the five's spacing --- */
+/* Louie, 2026-10-15: "Can player roles imply team spacing (i.e. dual-big post PF implies 3-out 2-in spacing, having two
+   perimeter-based roles on the PF and C implies 5-out)?" Each role has a home on the floor when the ball is not his -
+   the top, a slot, a wing, a corner (out), an elbow, a block, the dunker spot (in) - and a five's homes laid out side by
+   side are its alignment: 5-out, 4-out 1-in, 3-out 2-in. The tactics screen stands the circles there; the live court
+   starts each half-court possession from it. SPOTS: feet across (u, + to the right as the offence faces the basket)
+   and up from the baseline (v); the basket at (0, 5.25). */
+const SPOTS = { top: [0, 30.5], 'left slot': [-10.5, 28], 'right slot': [10.5, 28], 'left wing': [-18.5, 22], 'right wing': [18.5, 22],
+  'left corner': [-22.5, 3.5], 'right corner': [22.5, 3.5], 'left elbow': [-7, 19], 'right elbow': [7, 19], nail: [0, 19],
+  'left block': [-7.5, 7.5], 'right block': [7.5, 7.5], 'left dunker': [-9.5, 2.5], 'right dunker': [9.5, 2.5],
+  'left short corner': [-15, 5], 'right short corner': [15, 5], rim: [0, 5.25] };
+const INSIDE = new Set(['elbow', 'block', 'dunker']);
+function home(role) {
+  const r = typeof role === 'string' ? BY.get(role) : role;
+  if (!r) return 'wing';
+  const d = r.diet;
+  if (r.init >= 0.33 || (r.slot === 0 && r.init >= 0.25) || (r.gen && r.slot === 0)) return 'top';
+  if ((d.post || 0) >= 0.22) return 'block';
+  if (r.family !== 'g' && (d.roll || 0) + (d.put || 0) + 0.5 * (d.cut || 0) >= 0.45) return 'dunker';
+  if (r.family === 'b' && ((d.short || 0) >= 0.2 || (d.dho || 0) >= 0.1)) return 'elbow';
+  if ((d.pop || 0) >= 0.2 || r.init >= 0.2) return 'slot';
+  if ((d.spot || 0) >= 0.45 || r.def) return 'corner';
+  return 'wing';
+}
+/* the five's alignment: each place's man to the first free spot his home allows, on his side of the floor (the point guard
+   in the middle, the two and the four on the right, the three and the five on the left), the handlers and the bigs first */
+const SIDE = [0, 1, -1, 1, -1];
+const CHAIN = { top: ['top', 'S slot', 'O slot', 'S wing'], slot: ['S slot', 'O slot', 'top', 'S wing', 'O wing'], wing: ['S wing', 'O wing', 'S corner', 'O corner', 'S slot'],
+  corner: ['S corner', 'O corner', 'S wing', 'O wing'], elbow: ['S elbow', 'O elbow', 'nail', 'S slot'], block: ['S block', 'O block', 'S short corner', 'O short corner'],
+  dunker: ['S dunker', 'O dunker', 'S short corner', 'O short corner', 'S block'] };
+const PRIO = { top: 0, block: 1, dunker: 1, elbow: 1, slot: 2, wing: 3, corner: 3 };
+function layout(roles, cards, ref) {
+  const R5 = [0, 1, 2, 3, 4].map(k => { const x = roles ? roles[k] : null, r = typeof x === 'string' ? BY.get(x) : x; return r && r.slot === k ? r : resolve(null, k, cards ? cards[k] : null, ref); });
+  const homes = R5.map(home), taken = new Set(), spots = [];
+  [0, 1, 2, 3, 4].sort((a, b) => (PRIO[homes[a]] - PRIO[homes[b]]) || (a - b)).forEach(k => {
+    const S = SIDE[k] >= 0 ? 'right' : 'left', O = S === 'right' ? 'left' : 'right';
+    const chain = CHAIN[homes[k]].map(x => x.replace(/^S /, S + ' ').replace(/^O /, O + ' '));
+    const spot = chain.find(x => !taken.has(x)) || Object.keys(SPOTS).find(x => x !== 'rim' && !taken.has(x));
+    taken.add(spot); spots[k] = spot;
+  });
+  const inn = homes.filter(x => INSIDE.has(x)).length;
+  return { roles: R5, homes, spots, at: spots.map(s => SPOTS[s]), inn, out: 5 - inn, label: inn ? (5 - inn) + '-out ' + inn + '-in' : '5-out' };
 }
 
 /* ------------------------------------------------------------------ what a role rules out --- */
@@ -422,5 +501,5 @@ function demo(role) {
   return r ? r.scenes.map(k => ({ key: k, frames: SCENES[k] || [] })).filter(s => s.frames.length) : [];
 }
 
-return { PT, ROLES, BY, SLOTS, POS_PLURAL, DEFAULT, forSlot, profile, traits, fit, bestFor, resolve, locks, family, demo, SCENES, SPOT, WORDS };
+return { PT, ROLES, BY, CATS, SLOTS, POS_PLURAL, DEFAULT, forSlot, profile, traits, fit, bestFor, resolve, locks, family, demo, SCENES, SPOT, WORDS, SPOTS, home, layout, posGap };
 }));

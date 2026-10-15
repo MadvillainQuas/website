@@ -89,8 +89,12 @@ const FAT_LOGIT = FATIGUE.ppp / PPP_LOGIT;
 const fatigueLoad = (mins, usg, G) => { const over = Math.max(0, mins - FATIGUE.start * G) / (0.1 * G); return over * over * clamp((isNum(usg) ? usg : 20) / 20, 0.5, 2); };
 /* form: a man's real games before the round, as a z-score (capped at 2 either way): his makes, his usage, his work */
 const FORM = { make: 0.05, usg: 1.0, rate: 0.04 };
-/* out of position: e = positions past the first away from his own; costs grow with e squared */
+/* out of position: e = how far past one position away from his own (roles.posGap: nothing within a position and a quarter -
+   a shooting guard at small forward plays as himself - then a unit a position: a shooting guard at power forward 1, at
+   centre 2.3; Louie, 2026-10-15: "not have much of a docking of stats unless it's a position 2 positions up from them or
+   more"); costs grow with e squared */
 const OOP = { make: 0.06, tov: 0.08, rim: 0.10, three: 0.06 };
+const oopGap = (k, pos) => { const d = Math.abs(k + 1 - (isNum(pos) ? pos : k + 1)); return d <= 1.25 ? 0 : (d - 1.25) * 1.33; };
 /* the five together */
 /* SPACING (Louie, 2026-10-09: "spacing (as an accumulative lineup stat) affects rim efficiency (less shooters = more able
    to easily pack the paint)"): the five's shooting threat - each man's three-point share against the league's times his
@@ -388,17 +392,17 @@ const ROLEK = {
      five's drives, rolls, post-ups and cuts, each at its man's finishing - a ball handler's on his time on the ball
      (pOn), everybody's on the plays he ends; around pRef nothing, short of it the catch-and-shoot threes are contested,
      past it they are open (press3 on the make logit a unit, his assisted share of his threes) */
-  pRef: 0.94, press3: 0.1, pOn: 0.5,
+  pRef: 0.93, press3: 0.1, pOn: 0.5,
   /* ...and well short of it (pLow under pRef: a five with no paint touches) every possession suffers - the threes
      contested, the twos too (half), the clock run down into turnovers: a half-court possession with no paint touch and
      no ball reversal scores about 0.7 a play, with one 1.06 */
   pLow: 0.2, pressLow: 0.35, pressTov: 0.3,
   /* SCREENS: a pick-and-roll and an off-screen shooter need somebody setting them (each role's screens at his size) */
-  sRef: 1.24, screenMake: 0.12,
+  sRef: 1.20, screenMake: 0.12,
   /* THE PICK-AND-ROLL'S PARTNERS: a roller, a popper, a short roller need a handler running it (lRef of the five's on-ball
      time spent in it); without one their touches dry up */
   lRef: 0.19, partnerTilt: 0.6, partnerMake: 0.08,
-  postSpace: 0.12, hubMake: 0.025, hRef: 0.24,   // the post needs space, the extra pass a better look
+  postSpace: 0.12, hubMake: 0.025, hRef: 0.33,   // the post needs space, the extra pass a better look
   /* the cut needs a passer: the five's passing decides how many cuts are found (a cutter's touches), not how well they
      finish (team assist rate goes with cut frequency, r .5, and not with cut efficiency, r 0) */
   cutVol: 0.8,
@@ -432,7 +436,7 @@ function sideOf(five, X) {
   const lg = { tov: logit(mu.tov), rim: logit(mu.pRim), mid: logit(mu.pMid), three: logit(mu.p3), p2: logit(mu.p2), ft: logit(mu.ft) };
   const isGuard = k => k <= 1, isWing = k => k === 2, isBig = k => k >= 3;
   const P = five.map(({ card: c, k, role }) => {
-    const e = Math.max(0, Math.abs(k + 1 - c.pos) - 1);
+    const e = oopGap(k, c.pos);
     const mins = X.mins && X.mins.has(c.id) ? X.mins.get(c.id) : c.mpg;
     const z = X.form && X.form.has(c.id) ? clamp(+X.form.get(c.id) || 0, -2, 2) : 0;
     const dLoad = fatigueLoad(mins, c.usg, G) - fatigueLoad(c.mpg, c.usg, G);
