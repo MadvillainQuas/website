@@ -317,6 +317,7 @@ window.epinoiaFitLeagueNames = function (root, force) {
 window.EPINOIA_LEAGUE_TIERS = {
   /* Albania */ 'kkm-albania': [1, 'm'], 'kkf-albania': [1, 'w'],
   /* Australia */ 'nbl': [1, 'm'], 'nbl1-men': [2, 'm'], 'wnbl': [1, 'w'], 'nbl1-women': [2, 'w'],
+  /* Austria */ 'basketball-superliga': [1, 'm'], 'basketball-zweite-liga': [2, 'm'], 'damen-superliga': [1, 'w'],
   /* Azerbaijan */ 'azerbaijan-basketball-league': [1, 'm'],
   /* Belgium + Netherlands */ 'bnxt-league': [1, 'm'],
   /* Bulgaria */ 'nbl-bulgaria': [1, 'm'],
