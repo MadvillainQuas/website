@@ -372,6 +372,26 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   const tot = ws => ws.reduce((a, x) => a + x[1] - x[0], 0);
   ok('rotation: a plan from before the chart, painted to the minute as it was played', tot(w[0]) + tot(w[1]) === 40 && Math.abs(tot(w[0]) - 24) <= 1 && w[0][0][0] === 0, w);
 }
+/* A SIGNING WITH NO CARD (no minutes yet; Louie, 2026-10-15: "Game froze at the 6:51 minute mark ... seth wylie (who
+   hasn't played a minute yet) was in the game"): on the bench he is never sent on, and the game plays to the end */
+{
+  const C2 = new Map(cards); C2.set('ghost', undefined);
+  const H = teamObj(teams[0], { cards: C2, bench: teams[0].men.map(r => r.id).concat(['ghost']) });
+  let g = null, err = null;
+  try { g = MT.play(H, teamObj(teams[1]), { L, ref, G: 40 }, { seed: 77, home: 1 }); } catch (e) { err = e; }
+  ok('match: a man with no card on the bench is never sent on, and the game plays to the end', !err && g && g.pts[0] > 0 && g.pts[1] > 0
+    && !g.events.some(e => e.p === 'ghost' || e.in === 'ghost' || e.out === 'ghost') && g.box[0].every(x => x.id !== 'ghost' || !(x.min > 0)), err && err.message);
+}
+/* ...and in a painted lineup, where the freeze came from: the plan's five with him in it would have been a man short
+   ("a five is missing a player") - the assistant keeps the five he has and the game goes on */
+{
+  const ids = teams[0].men.slice(0, 5).map(r => r.id), ids2 = teams[0].men.slice(5, 9).map(r => r.id).concat(['ghost']);
+  const C2 = new Map(cards); C2.set('ghost', undefined);
+  const H = teamObj(teams[0], { cards: C2, segs: E.rotation([{ ids, min: 30 }, { ids: ids2, min: 10 }], 40), bench: teams[0].men.map(r => r.id).concat(['ghost']) });
+  let M = null, err = null, steps = 0;
+  try { M = MT.create(H, teamObj(teams[1]), { L, ref, G: 40 }, { seed: 9, home: 1 }); while (!M.g.over && steps < 3000) { MT.step(M); steps++; } } catch (e) { err = e; }
+  ok('match: a painted lineup holding a man with no card does not stop the game', !err && M && M.g.over && !M.sides[0].floor.includes('ghost'), err && err.message);
+}
 /* ---------------------------------------------------------------- the match, possession by possession --- */
 /* core/match.js (Louie, 2026-10-14: live games "where the user can change team instructions, make subs etc. to change the
    game"): every game is played by the men on the floor at that moment, and every change is the game's from then on */

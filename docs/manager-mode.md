@@ -146,7 +146,10 @@ but only the chosen league is simulated.
   real starters (`adapters/epinoia.js` `starts`, recent games counting most), but only among its eight most-used men:
   a late signing or a man who lost his place is not made to start. Without that guard, CEBL's summer roster churn
   wrecked its players-only mark (0.26).
-- **The play-by-play's clock.** Fast breaks shoot 2–6 s in, put-backs 2–5 s after the board, set plays late. The
+- **A signing with no minutes yet** has no card from his league's file (cards come from minutes played): he plays as
+  a replacement-level man at his listed position (`app.js` `loadMine`), and the engine only ever sends on a man with a
+  card (2026-10-15: a game froze when a painted lineup held one with none - "a five is missing a player").
+- **The play-by-play's clock.** Fast breaks shoot 3.5–7 s in (the length of the floor to cover: at 2 s the live court drew shots from half court), put-backs 2–5 s after the board, set plays late. The
   transition and shot-clock tabs of the box score read it.
 
 ## Roles (core/roles.js, engine.js `ROLEK`; Louie, 2026-10-14)

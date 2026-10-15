@@ -214,7 +214,13 @@ async function loadMine() {
     const row = L ? L.byId.get(id) : null;
     if (!row) continue;
     A.mine.rows.set(id, row);
-    A.mine.cards.set(id, L === A.lg ? L.cards.get(id) : site().card(row, L, A.lg));
+    /* A MAN WITH NO MINUTES YET has no card of his own (his league's file makes cards from minutes played): he plays as a
+       replacement-level man at his listed position until his games give him one (Louie, 2026-10-15: a game froze when the
+       assistant sent on a signing who had not played a minute - an empty card left his five a man short) */
+    let c = null;
+    try { c = L === A.lg ? L.cards.get(id) : site().card(row, L, A.lg); } catch (_) { c = null; }
+    if (!c) { const k = A.slotIn(L, id, null); c = Mgr.cards.fillerCard(A.lg.ref, k != null && k >= 0 && k <= 4 ? k : 2, id); c.noMinutes = true; }
+    A.mine.cards.set(id, c);
   }
 }
 A.loadLeagueFor = async lid => {
@@ -387,7 +393,7 @@ function liveTeams(S) {
   const lv = S.live, f = S.fixtures.find(x => x.r === lv.r && (x.h === 0 || x.a === 0)), form = new Map(lv.form || []);
   const build = (i, plan) => {
     const base = A.teamObj(i, form);
-    return Object.assign({}, base, { segs: plan.segs, identity: plan.identity, bench: (plan.bench || base.bench || []).filter(id => base.cards.has(id)) });
+    return Object.assign({}, base, { segs: plan.segs, identity: plan.identity, bench: (plan.bench || base.bench || []).filter(id => !!base.cards.get(id)) });
   };
   return { f, H: build(f.h, lv.plan.h), A: build(f.a, lv.plan.a), form };
 }

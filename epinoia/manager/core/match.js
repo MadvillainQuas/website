@@ -133,7 +133,7 @@ function rolesAt(sd, min, G) {
 function rosterOf(T) {
   const ids = new Set();
   (T.segs || []).forEach(s => s.ids.forEach(id => ids.add(String(id))));
-  (T.bench || []).forEach(id => { if (T.cards.has(String(id))) ids.add(String(id)); });
+  (T.bench || []).forEach(id => { if (T.cards.get(String(id))) ids.add(String(id)); });
   return [...ids];
 }
 
@@ -231,7 +231,7 @@ function benchScore(M, sd, id, k) {
 }
 const troubleAt = M => (M.g.per < 3 ? TROUBLE[M.g.per] + (M.limit - 5) : M.limit);
 /* who may come on: not on the floor, not fouled out */
-const available = (M, sd) => sd.roster.filter(id => !sd.floor.includes(id) && sd.pf[id] < M.limit && sd.T.cards.has(id));
+const available = (M, sd) => sd.roster.filter(id => !sd.floor.includes(id) && sd.pf[id] < M.limit && !!sd.T.cards.get(id));
 function swap(M, sd, outId, inId, why) {
   const k = sd.floor.indexOf(outId);
   if (k < 0 || sd.floor.includes(inId)) return false;
@@ -259,7 +259,7 @@ function coach(M, sd, forced) {
   const plan = planAt(sd.T.segs, min, G), margin = M.g.score[sd.s] - M.g.score[sd.s ^ 1];
   const blowout = M.g.per === 3 && ((M.g.left <= 300 && Math.abs(margin) >= 20) || (M.g.left <= 480 && Math.abs(margin) >= 28));
   const late = M.g.per >= 3 && M.g.left <= 240 && Math.abs(margin) <= 10;
-  const bad = x => !sd.T.cards.has(x) || sd.pf[x] >= M.limit || (sd.pf[x] >= troubleAt(M) && !late) || (sd.en[x] || 0) < 38;
+  const bad = x => !sd.T.cards.get(x) || sd.pf[x] >= M.limit || (sd.pf[x] >= troubleAt(M) && !late) || (sd.en[x] || 0) < 38;
   let want = plan.ids.map(String);
   if (blowout) {
     const starters = new Set(planAt(sd.T.segs, 0, G).ids.map(String));
@@ -274,7 +274,7 @@ function coach(M, sd, forced) {
   const used = new Set();
   const five = want.map((id, k) => {
     if (!bad(id) && !used.has(id)) { used.add(id); return id; }
-    const cands = sd.roster.filter(x => !used.has(x) && !want.includes(x) && !bad(x) && sd.T.cards.has(x));
+    const cands = sd.roster.filter(x => !used.has(x) && !want.includes(x) && !bad(x) && !!sd.T.cards.get(x));
     /* the man on the floor at this place, if he is fine, before anybody from the bench */
     const cur = sd.floor[k];
     if (cur && !bad(cur) && !used.has(cur) && !want.includes(cur)) { used.add(cur); return cur; }
@@ -342,7 +342,7 @@ function deadBall(M, dead) {
        change in it is in that possession */
     if (dead && sd.wantTO) { sd.wantTO = false; if (timeout(M, sd, 'called by the coach')) M.g.halt = true; }
     if (dead && sd.pend.length) {
-      sd.pend.splice(0).forEach(p => { if (sd.floor.includes(p.out) && !sd.floor.includes(p.in) && sd.pf[p.in] < M.limit && sd.T.cards.has(p.in)) swap(M, sd, p.out, p.in, 'coach'); });
+      sd.pend.splice(0).forEach(p => { if (sd.floor.includes(p.out) && !sd.floor.includes(p.in) && sd.pf[p.in] < M.limit && !!sd.T.cards.get(p.in)) swap(M, sd, p.out, p.in, 'coach'); });
       /* the reader's five stands until the next quarter, unless something forces a change */
       sd.hold = Infinity;
     }
@@ -533,7 +533,8 @@ function step(M) {
     if (R() < r.orb) { const rb = pickBy(R, men, x => x.orb); rebound(M, off, rb.id, true); ch.ev.push({ k: 'O', s: off, p: rb.id }); prevReb = rb.id; cont = true; }
     else { const rb = pickBy(R, dmen, x => x.drb); rebound(M, def, rb.id, false); ch.ev.push({ k: 'D', s: def, p: rb.id }); next = 1; }
   }
-  /* THE CLOCK OF THE POSSESSION (engine.js clockOf, one possession at a time): a break 2-6 s to its first shot, a
+  /* THE CLOCK OF THE POSSESSION (engine.js clockOf, one possession at a time): a break 3.5-7 s to its first shot (the
+     length of the floor to cover: at 2 s the live court had men shooting from half court - Louie, 2026-10-15), a
      put-back 2-5 s after its board, a set play's last chance late in its possession; its length the five's pace (d, the
      matchup's: both fives) on the game's pace, a set play's share of the time the breaks save */
   /* DUR_K: the last possession of each quarter is cut short by the buzzer (winsim fits its possessions to the period), so
@@ -542,13 +543,13 @@ function step(M) {
   /* a possession that might have been a break (it started from a board or a steal) and was not takes the time the
      breaks save, so the side's possessions last d on average whatever its transition rate (winsim's possessions do): a
      break lasts TR_DUR on average */
-  const TR_DUR = 6.2, pTr = g.start !== 0 && !fouled ? clamp(r.tr, 0, 0.9) : 0;
+  const TR_DUR = 7.45, pTr = g.start !== 0 && !fouled ? clamp(r.tr, 0, 0.9) : 0;
   const hcMean = pTr > 0 ? Math.max(0.5 * dEff, (dEff - pTr * TR_DUR) / (1 - pTr)) : dEff;
   let dur, times = [];
   const n = chances.length;
   if (fouled) { dur = 3; let tt = t0 + Math.min(1.5, 0.8 + RT()); chances.forEach(() => { times.push(tt); tt += 1.5; }); }
   else if (trans) {
-    let tt = t0 + 2 + 4 * RT();
+    let tt = t0 + 3.5 + 3.5 * RT();
     chances.forEach((_, j) => { if (j) tt += 2 + 3 * RT(); times.push(tt); });
     dur = times[times.length - 1] - t0 + 1 + RT();
   } else {
@@ -682,8 +683,8 @@ function restore(snap, H, A, X) {
     const sd = M.sides[s];
     if (x.ins) { sd.T = Object.assign({}, sd.T, { ins: insMap(x.ins) }); sd.sideFor = sidesOf(sd.T, X); }
     const roster = new Set(sd.roster.concat(x.roster || []));
-    sd.roster = [...roster].filter(id => sd.T.cards.has(id));
-    Object.assign(sd, { floor: x.floor.filter(id => sd.T.cards.has(id)), tac: x.tac, pf: Object.assign({}, sd.pf, x.pf), en: Object.assign({}, sd.en, x.en), sec: Object.assign({}, sd.sec, x.sec), tf: x.tf.slice(), to: x.to,
+    sd.roster = [...roster].filter(id => !!sd.T.cards.get(id));
+    Object.assign(sd, { floor: x.floor.filter(id => !!sd.T.cards.get(id)), tac: x.tac, pf: Object.assign({}, sd.pf, x.pf), en: Object.assign({}, sd.en, x.en), sec: Object.assign({}, sd.sec, x.sec), tf: x.tf.slice(), to: x.to,
       auto: x.auto, hold: x.hold >= 1e9 ? Infinity : x.hold, runFor: x.runFor, runAg: x.runAg, pend: (x.pend || []).slice(), wantTO: !!x.wantTO, roleOv: x.roleOv ? Object.assign({}, x.roleOv) : null });
     /* a man of the five no longer to hand (a league file that changed): the coach fills the place */
     while (sd.floor.length < 5) { const av = available(M, sd); if (!av.length) break; sd.floor.push(av[0]); }
