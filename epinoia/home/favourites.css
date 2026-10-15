@@ -296,3 +296,123 @@
 
 /* the tag is always there, not only on hover (Louie, 2026-10-10); the line still grows under the pointer */
 .fav-rule-tab{opacity:1;transform:translate(-50%,0)}
+
+/* ===== WHO'S YOUR FAVOURITE?, IN THE PAGE'S OWN DRESS (Louie, 2026-10-16: "do the same" as the fans' vote). The panel was a
+   black teletext screen (kit/ttpanel.css) inside HOME's cream Games card; it is now a card of the page, as a league's
+   MAKE YOUR VOICE HEARD is (kit/fanvote.css): the group card's edge and head band, the question as a section title (the
+   pixel face over the page's mosaic), the strip on a well, the page's pills and round keys. HOME wears no league, so the
+   colour is the platform's: lume (the accent every HOME button is filled with) and aqua. Theme tokens throughout, so the
+   dark theme follows; the panel no longer flips white in the dark. The deck, the unrolling and every class are as they were. ===== */
+.fav-anchor,.fav{--fav-a:var(--lume);--fav-b:var(--aqua,var(--lume));--fav-on:var(--on-accent,var(--ground));
+  --fav-bg:var(--panel);--fav-fg:var(--ink);--fav-dim:var(--ink-3);--fav-edge:var(--rule-2);--fav-r:18px;--fav-band:58px}
+:root[data-theme="light"] .fav-anchor{--fav-bg:var(--panel);--fav-fg:var(--ink);--fav-dim:var(--ink-3);--fav-edge:var(--rule-2)}
+.fav::before{background:linear-gradient(90deg,transparent,var(--fav-a) 45%,var(--fav-a) 55%,transparent)}
+.fav .fav-body{color:var(--ink);margin:6px 0 14px;padding:0 0 calc(var(--u)*2.25);border:1px solid var(--rule-2);border-radius:var(--fav-r);
+  background:color-mix(in oklch,var(--fav-a) 3%,var(--panel));background-image:none;box-shadow:0 10px 30px rgba(0,0,0,.07)}
+.fav .fav-body::before,.fav .fav-body::after{content:none}
+
+/* the head: a band (the square and the name, the step beside them, the close key at the end), then the question */
+.fav .fav-head{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:var(--fav-band) auto;align-items:center;column-gap:14px;
+  padding:0 62px 0 18px;text-align:left;border-radius:calc(var(--fav-r) - 1px) calc(var(--fav-r) - 1px) 0 0;
+  background:linear-gradient(var(--rule-2),var(--rule-2)) 0 calc(var(--fav-band) - 1px)/100% 1px no-repeat,
+             linear-gradient(90deg,color-mix(in oklch,var(--fav-a) 20%,var(--panel)),var(--panel) 62%) 0 0/100% var(--fav-band) no-repeat}
+.fav .fav-title{grid-row:1;grid-column:1;display:flex;align-items:center;gap:10px;min-width:0;margin:0;
+  font:400 12px/1.2 var(--f-micro);letter-spacing:.16em;text-transform:uppercase;color:var(--ink);text-shadow:none}
+.fav .fav-title::before{content:"";flex:none;width:10px;height:10px;border-radius:3px;
+  background:linear-gradient(135deg,var(--fav-a) 0 60%,var(--fav-b) 60%)}
+.fav .fav-title::after{content:none}
+.fav .fav-step{grid-row:1;grid-column:2;margin:0;padding:5px 11px;border-radius:999px;background:var(--panel);border:1px solid var(--rule-2);
+  color:var(--ink-2);font:400 9.5px/1.2 var(--f-micro);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.fav .fav-sub{grid-row:2;grid-column:1 / -1;margin:calc(var(--u)*3) -44px 0 0;text-align:center;
+  font-family:var(--f-score);font-weight:400;font-size:clamp(22px,3.2vw,28px);line-height:1.05;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink)}
+.fav .fav-sub::after{content:"";display:block;width:66px;height:12px;margin:12px auto 0;
+  background:linear-gradient(90deg,var(--tt-m1,var(--fav-a)) 0 36%,var(--tt-m2,var(--fav-b)) 36% 68%,var(--tt-m3,var(--amber,var(--fav-a))) 68%);
+  -webkit-mask:var(--tt-mosaic) center/66px 12px no-repeat;mask:var(--tt-mosaic) center/66px 12px no-repeat}
+.fav .fav-x{top:11px;right:10px;width:36px;height:36px;border-radius:50%;border:1px solid var(--rule-2);background:var(--panel);color:var(--ink);
+  font:400 22px/1 var(--f-ui);box-shadow:0 2px 8px rgba(0,0,0,.08);transition:background .15s ease,color .15s ease,border-color .15s ease}
+.fav .fav-x:hover{transform:none;background:var(--fav-a);border-color:var(--fav-a);color:var(--fav-on)}
+
+/* the deck: the strip on a well, as the page's cards sit on a group */
+.fav .fav-deck{margin-top:calc(var(--u)*2.25);padding:0 calc(var(--u)*2.5)}
+.fav .fav-rail{padding:6px 10px;border-radius:14px;background:var(--panel);border:1px solid var(--rule);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 50%,transparent)}
+.fav .fav-crumb{margin:0 0 10px}
+.fav .fav-crumb-name{color:var(--ink)}
+.fav .fav-crumb-n{color:var(--ink-3)}
+.fav .fav-crumb-flag .fav-tile{box-shadow:0 0 0 1px var(--rule-2)}
+
+/* round keys: the strip's ends, the way back */
+.fav .fav-nav,.fav .fav-back{width:36px;height:36px;border-radius:50%;border:1px solid var(--rule-2);background:var(--panel);color:var(--ink);
+  font:400 22px/1 var(--f-ui);padding:0 0 2px;box-shadow:0 2px 8px rgba(0,0,0,.08);
+  transition:background .15s ease,color .15s ease,border-color .15s ease,opacity .15s ease}
+.fav .fav-nav:not(:disabled):hover,.fav .fav-back:hover{transform:none;background:var(--fav-a);border-color:var(--fav-a);color:var(--fav-on)}
+.fav .fav-nav:disabled{opacity:.3;box-shadow:none}
+
+/* the cards: paper tiles with soft corners, a ring and a tick in the accent when picked */
+.fav .fav-card{border-radius:10px;border:1px solid var(--rule);
+  box-shadow:0 1px 0 color-mix(in srgb,#000 6%,transparent),0 6px 16px rgba(0,0,0,.08)}
+.fav .fav-card:hover{transform:translateY(-3px);box-shadow:0 0 0 2px var(--fav-a),0 12px 24px rgba(0,0,0,.12)}
+.fav .fav-card .club-plate{border-radius:6px;overflow:hidden}
+.fav .fav-card.on{border-color:var(--fav-a);box-shadow:0 0 0 2.5px var(--fav-a),0 10px 22px color-mix(in srgb,var(--fav-a) 24%,transparent)}
+.fav .fav-tick{background:var(--fav-a);color:var(--fav-on);box-shadow:0 0 0 2px var(--panel),0 2px 6px rgba(0,0,0,.2)}
+.fav .fav-tile{border-radius:6px}
+
+/* actions: the page's pills, the one that counts filled in the accent */
+.fav .fav-acts{margin-top:calc(var(--u)*2)}
+.fav .fav-hint{color:var(--ink-3)}
+.fav .fav-hint b{color:var(--ink)}
+.fav .fav-hint.shake{color:var(--fav-a)}
+.fav .fav-go,.fav .fav-skip,.fav .fav-alt,.fav .fav-retry{min-height:42px;padding:0 22px;border-radius:999px;font:700 11px/1 var(--f-ui);
+  letter-spacing:.1em;text-transform:uppercase;transition:transform .15s ease,background .15s ease,color .15s ease,box-shadow .15s ease}
+.fav .fav-go{background:var(--fav-a);color:var(--fav-on);border:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 5px rgba(0,0,0,.16),0 6px 16px color-mix(in srgb,var(--fav-a) 30%,transparent)}
+.fav .fav-go:not(:disabled):hover{transform:translateY(-1px);filter:brightness(1.06)}
+.fav .fav-skip,.fav .fav-alt,.fav .fav-retry{background:var(--panel);color:var(--ink);border:0;box-shadow:inset 0 0 0 1px var(--rule-2)}
+.fav .fav-skip:hover,.fav .fav-alt:hover,.fav .fav-retry:hover{transform:none;box-shadow:inset 0 0 0 1.5px var(--fav-a)}
+.fav :is(.fav-go,.fav-skip,.fav-alt,.fav-retry,.fav-card,.fav-nav,.fav-back,.fav-x,.fav-later,.fav-never):focus-visible{outline:2px solid var(--fav-a);outline-offset:3px}
+.fav .fav-empty{color:var(--ink-3)}
+
+/* the two quiet ways out: small pills under a hairline */
+.fav .fav-links{margin:calc(var(--u)*2) calc(var(--u)*2.5) 0;padding-top:calc(var(--u)*1.5);border-top:1px solid var(--rule);background:none;gap:10px}
+.fav .fav-later,.fav .fav-never{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:999px;text-decoration:none;
+  border:1px solid var(--rule-2);color:var(--ink-2);font:400 9.5px/1 var(--f-micro);letter-spacing:.08em;opacity:1;
+  transition:border-color .15s ease,color .15s ease}
+.fav .fav-later:hover,.fav .fav-never:hover{border-color:var(--fav-a);color:var(--ink)}
+
+/* done: the stamp in the accent's ink, what they follow as a small table */
+.fav .fav-stamp{color:var(--fav-a);border:3px solid currentColor;border-radius:10px;padding:8px 18px 4px;font-size:clamp(26px,3.6vw,38px);
+  background:color-mix(in oklch,var(--fav-a) 8%,var(--panel))}
+.fav .fav-said{padding:12px 18px;border-radius:12px;background:var(--panel);border:1px solid var(--rule);margin-bottom:12px}
+.fav .fav-said:empty{display:none}
+.fav .fav-said-k{color:var(--fav-a)}
+.fav .fav-said-v{color:var(--ink)}
+.fav .fav-how{color:var(--ink-3)}
+
+/* the way in: the line under the fixtures in the platform's two colours, its tag a pill of the page's */
+.fav-rule::before{height:3px;background:linear-gradient(90deg,var(--fav-a) 0 72%,var(--fav-b) 72% 88%,var(--fav-a) 88%)}
+.fav-rule-tab{display:inline-flex;align-items:center;gap:8px;bottom:6px;padding:7px 14px;border-radius:999px;
+  background:var(--panel);color:var(--ink);border:1px solid var(--rule-2);box-shadow:0 6px 18px rgba(0,0,0,.12);
+  font:400 10px/1 var(--f-micro);letter-spacing:.08em}
+.fav-rule-tab::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--fav-a)}
+.fav-rule-tab::after{content:" \25be";margin-left:-4px}
+.fav-rule:focus-visible{outline:2px solid var(--fav-a);outline-offset:-2px}
+
+@media (max-width:620px){
+  .fav-anchor,.fav{--fav-r:16px;--fav-band:auto}
+  .fav .fav-body{padding-bottom:calc(var(--u)*1.75)}
+  .fav .fav-head{grid-template-rows:auto auto;row-gap:6px;padding:10px 54px 0 14px;
+    background:linear-gradient(180deg,color-mix(in oklch,var(--fav-a) 14%,var(--panel)),var(--panel) 52px)}
+  .fav .fav-step{grid-row:2;grid-column:1;justify-self:start;padding:0;border:0;background:none;font-size:9px;color:var(--ink-3)}
+  .fav .fav-sub{grid-row:3;margin:calc(var(--u)*2) -40px 0 0}
+  .fav .fav-x{top:8px;right:8px}
+  .fav .fav-deck{padding:0 calc(var(--u)*1.25)}
+  .fav .fav-rail{padding:4px 6px}
+  .fav .fav-go,.fav .fav-skip,.fav .fav-alt{min-height:46px}
+  .fav .fav-links{margin:calc(var(--u)*1.5) calc(var(--u)*1.25) 0}
+  .fav .fav-later,.fav .fav-never{min-height:36px;padding:0 10px;font-size:8.5px;letter-spacing:.05em}
+}
+@media (prefers-reduced-motion:reduce){
+  .fav .fav-x,.fav .fav-nav,.fav .fav-back,.fav .fav-go,.fav .fav-skip,.fav .fav-alt,.fav .fav-later,.fav .fav-never{transition:none}
+  .fav .fav-card:hover,.fav .fav-go:not(:disabled):hover{transform:none}
+}

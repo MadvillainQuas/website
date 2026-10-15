@@ -1,195 +1,22 @@
 /* ============================================================================
-   THE TELETEXT PANELS (2026-09-30): the panels that unroll out of a rule on a page, drawn as
-   screens of the broadcast layer (kit/teletext.css) instead of blocks of flat colour.
+   THE WEEKLY WINNERS PAGE IN TELETEXT (votes/: .fvh*, .vt-*).
 
-     WHO'S YOUR FAVOURITE?   HOME's onboarding (home/favourites.js, home/favourites.css: .fav*)
-     the weekly winners page (.fvh*, votes/)
+   This sheet (2026-09-30) drew the panels that unroll out of a rule on a page - HOME's WHO'S YOUR FAVOURITE? and a
+   league's MAKE YOUR VOICE HEARD - as black screens of the broadcast layer (kit/teletext.css). On 2026-10-16 Louie
+   asked for both "more in line with the website style": they are cards of their pages now, dressed in the last
+   sections of home/favourites.css and kit/fanvote.css, and nothing here names them. What stays is the weekly
+   winners page's teletext touches: the week rows' Fastext edge, the page keys, the chips.
 
-   A league's fans' vote (MAKE YOUR VOICE HEARD, .fv* / .fvw*) wore this too until 2026-10-16, when Louie asked for
-   it "more in line with the website style": it is a card of the league page now, dressed in kit/fanvote.css's last
-   section, and nothing here names it.
-
-   Presentation only. Every class, attribute and behaviour is the ones those files already draw; this sheet
-   restyles them and adds nothing to the markup. It is loaded AFTER favourites.css / fanvote.css and BEFORE
-   kit/legibility.css, which stays last.
-
-   THE IDEA. A panel is a teletext SCREEN: black in either theme (the tube does not follow the ground), a
-   Fastext bar of four colours along its top edge, HUD corner brackets, scanlines, a page label in a yellow
-   block, the title in white pixel letters with a teletext-blue-cyan split, a mosaic trim under it, keys
-   at the foot. The colour a page is wearing (the league's) washes the screen and lights its brackets and
-   buttons; HOME's, having none, uses the platform's lume and aqua. The cards on it stay paper tiles
-   (the kit's club plates), so a club's or a league's own colour is what shows on them.
-
-   Pixel-face letter-spacing here never goes past .2em (kit/legibility.css). Focus is a yellow outline, drawn
-   on black, so it reads in both themes.
+   Presentation only, loaded after fanvote.css and before kit/legibility.css, which stays last. Pixel-face
+   letter-spacing never goes past .2em (kit/legibility.css).
    ============================================================================ */
 
-/* ---- 0. the screen's own values -------------------------------------------------------------------------- */
-.fav-anchor, .fav{
-  --tp-scr:var(--tt-scr,#050706);
-  --tp-scr-2:var(--tt-scr-2,#101614);
-  --tp-fg:var(--tt-white,#f2f6f4);
-  --tp-dim:rgba(242,246,244,.72);
-  --tp-edge:rgba(242,246,244,.2);
-  --tp-red:var(--tt-red,#ff4b4b); --tp-green:var(--tt-green,#35ff78); --tp-yellow:var(--tt-yellow,#ffe44d);
-  --tp-cyan:var(--tt-cyan,#3ff0ff);
-  /* the accent the brackets, keys and blocks are lit in */
-  --tp-acc:#93f2bf; --tp-acc-2:#8ff5ff; --tp-acc-3:#ffd166;
-  --tp-key:linear-gradient(100deg,#93f2bf,#8ff5ff);
-  --tp-fast:linear-gradient(90deg,var(--tp-red) 0 25%,var(--tp-green) 25% 50%,var(--tp-yellow) 50% 75%,var(--tp-cyan) 75%);
-}
-/* a league's vote wears the league's colours: lifted toward white so a near-black club or league still shows on black */
-/* the three teletext blocks of a title's mosaic (kit/teletext.css 4) */
-.fav-body{ --tp-m1:var(--tp-acc); --tp-m2:var(--tp-acc-2); --tp-m3:var(--tp-acc-3) }
-
-/* ---- 1. the handle: the rule under the fixtures / the hero, as a row of blocks ------------------------------------------ */
-.fav-rule::before{
-  height:4px; background:var(--tp-fast);
-  -webkit-mask:repeating-linear-gradient(90deg,#000 0 22px,transparent 22px 25px);
-          mask:repeating-linear-gradient(90deg,#000 0 22px,transparent 22px 25px) }
-.fav-rule:hover::before, .fav-rule:focus-visible::before{ transform:scaleY(1.75) }
-.fav-rule-tab{
-  background:var(--tt-scr,#050706); color:var(--tt-yellow,#ffe44d); padding:6px 12px 5px;
-  font:400 9px/1.2 var(--f-micro); letter-spacing:.08em;
-  box-shadow:0 0 0 1px rgba(255,255,255,.22),0 6px 16px rgba(0,0,0,.3) }
-.fav-rule-tab::before{ content:""; display:inline-block; width:8px; height:8px; margin-right:8px;
-  background:var(--tt-red,#ff4b4b); vertical-align:-1px }
-.fav-rule:focus-visible{ outline:3px solid var(--tt-yellow,#ffe44d); outline-offset:-3px }
-
-/* ---- 2. the screen ------------------------------------------------------------------------------------------ */
-.fav-body{
-  background-color:var(--tp-scr); color:var(--tp-fg);
-  /* Fastext along the top (four blocks, gaps between), a run of small blocks along the foot, and the colour on the screen */
-  background-image:
-    linear-gradient(var(--tp-red),var(--tp-red)),
-    linear-gradient(var(--tp-green),var(--tp-green)),
-    linear-gradient(var(--tp-yellow),var(--tp-yellow)),
-    linear-gradient(var(--tp-cyan),var(--tp-cyan)),
-    repeating-linear-gradient(90deg,var(--tp-acc) 0 10px,transparent 10px 14px),
-    radial-gradient(110% 90% at 12% 0%,color-mix(in srgb,var(--tp-acc) 18%,transparent),transparent 62%),
-    radial-gradient(90% 80% at 100% 100%,color-mix(in srgb,var(--tp-acc-2) 12%,transparent),transparent 65%);
-  background-repeat:no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat;
-  background-size:calc(25% - 4px) 5px,calc(25% - 4px) 5px,calc(25% - 4px) 5px,calc(25% - 4px) 5px,100% 3px,100% 100%,100% 100%;
-  background-position:0 0,calc(100%/3) 0,calc(200%/3) 0,100% 0,0 100%,0 0,0 0;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 -26px 30px -20px rgba(0,0,0,.45);
-  padding-top:calc(var(--u)*3.5);
-}
-/* the tube's scanlines, where the halftone was */
-.fav-body::after{
-  inset:0; opacity:1; transform:none; background-size:auto;
-  background-image:repeating-linear-gradient(180deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px) }
-/* HUD corner brackets, drawn in gradients as kit/teletext.css 8 does around a photo */
-.fav-body::before{
-  content:""; position:absolute; inset:14px 10px 12px; z-index:2; pointer-events:none;
-  background:
-    linear-gradient(var(--tp-acc),var(--tp-acc)) 0 0/16px 2px no-repeat, linear-gradient(var(--tp-acc),var(--tp-acc)) 0 0/2px 16px no-repeat,
-    linear-gradient(var(--tp-acc),var(--tp-acc)) 100% 0/16px 2px no-repeat, linear-gradient(var(--tp-acc),var(--tp-acc)) 100% 0/2px 16px no-repeat,
-    linear-gradient(var(--tp-acc),var(--tp-acc)) 0 100%/16px 2px no-repeat, linear-gradient(var(--tp-acc),var(--tp-acc)) 0 100%/2px 16px no-repeat,
-    linear-gradient(var(--tp-acc),var(--tp-acc)) 100% 100%/16px 2px no-repeat, linear-gradient(var(--tp-acc),var(--tp-acc)) 100% 100%/2px 16px no-repeat;
-  opacity:.9 }
-/* the light along the seam as it opens is the platform's accent */
-.fav::before{ background:linear-gradient(90deg,transparent,var(--tp-acc) 45%,var(--tp-acc) 55%,transparent) }
-
-/* ---- 3. heading: page label, title, mosaic, question --------------------------------------------------------------- */
-/* "STEP 1 OF 2 · LEAGUES" is teletext's page label: a small block of yellow on the black */
-.fav-step{
-  display:inline-block; margin:0 auto 12px; padding:4px 9px 3px; background:var(--tp-yellow); color:#050706;
-  font:400 9px/1.2 var(--f-micro); letter-spacing:.08em; text-transform:uppercase }
-.fav-step:empty{ display:none }
-.fav-title{
-  color:var(--tp-fg);
-  text-shadow:2px 0 color-mix(in srgb,var(--tp-red) 55%,transparent),-2px 0 color-mix(in srgb,var(--tp-cyan) 55%,transparent),
-              0 0 22px color-mix(in srgb,var(--tp-acc) 34%,transparent) }
-/* the mosaic under a title (the page's three colours, cut into separated blocks) */
-.fav-title::after{
-  content:""; display:block; width:66px; height:12px; margin:14px auto 0;
-  background:linear-gradient(90deg,var(--tp-m1) 0 36%,var(--tp-m2) 36% 68%,var(--tp-m3) 68%);
-  -webkit-mask:var(--tt-mosaic) center/66px 12px no-repeat; mask:var(--tt-mosaic) center/66px 12px no-repeat;
-  text-shadow:none }
-.fav-title, .fav-title::after{ animation:none }
-.fav-sub{ color:var(--tp-fg) }
-.fav-sub{ margin-top:14px }
-.fav-crumb-name{ color:var(--tp-fg) }
-.fav-crumb-n{ color:var(--tp-cyan) }
-.fav-hint{ color:var(--tp-dim) }
-.fav-hint b{ color:var(--tp-yellow) }
-.fav-hint.shake{ color:var(--tp-yellow) }
-.fav-empty{ color:var(--tp-dim) }
-.fav-said-k{ color:var(--tp-cyan); opacity:1 }
-.fav-said-v{ color:var(--tp-fg) }
-.fav-how{ color:var(--tp-dim) }
-
-/* ---- 4. keys: close, back, the strip's two arrows ------------------------------------------------------------------- */
-.fav-x, .fav-nav, .fav-back{
-  border-radius:0; background:var(--tp-scr); color:var(--tp-fg);
-  border:2px solid var(--tp-acc); box-shadow:0 0 14px color-mix(in srgb,var(--tp-acc) 30%,transparent);
-  transition:background .12s ease,color .12s ease,transform .15s ease,opacity .15s ease }
-.fav-x{ width:44px; height:44px; top:16px; right:14px; font-size:24px }
-.fav-nav, .fav-back{ width:40px; height:40px; padding:0 0 2px; font-size:24px }
-.fav-x:hover{ transform:none; background:var(--tp-acc); color:#050706 }
-.fav-nav:not(:disabled):hover, .fav-back:hover{ transform:none; background:var(--tp-acc); color:#050706 }
-.fav-nav:disabled{ opacity:.3; box-shadow:none; border-color:var(--tp-edge) }
-.fav :is(button,a):focus-visible, .fav-rail button:focus-visible{
-  outline:3px solid var(--tp-yellow); outline-offset:3px }
-.fav-x:focus-visible, .fav-nav:focus-visible, .fav-back:focus-visible{ outline-offset:2px }
-
-/* ---- 5. buttons: primary is the glossy brand key, secondary is a keyline ----------------------------------------------- */
-.fav-go{
-  position:relative; isolation:isolate; overflow:hidden; border:0; border-radius:0; min-height:46px;
-  font:400 11px/1.1 var(--f-micro); letter-spacing:.1em; text-transform:uppercase;
-  background:var(--y2k-gloss,linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0) 50%)),var(--tp-key);
-  color:#04100b; box-shadow:0 0 0 1px rgba(255,255,255,.28),0 0 18px color-mix(in srgb,var(--tp-acc) 34%,transparent);
-  transition:transform .15s ease,filter .15s ease,box-shadow .15s ease }
-.fav-go:not(:disabled):hover{ transform:translateY(-2px); filter:brightness(1.08) }
-.fav-skip, .fav-alt, .fav-retry{
-  border-radius:0; min-height:46px; background:transparent; color:var(--tp-fg);
-  font:400 11px/1.1 var(--f-micro); letter-spacing:.1em; text-transform:uppercase;
-  box-shadow:inset 0 0 0 2px var(--tp-acc); transition:background .12s ease,color .12s ease,transform .15s ease }
-.fav-skip:hover, .fav-alt:hover, .fav-retry:hover{ transform:none; background:var(--tp-acc); color:#050706 }
-.fav-go:focus-visible, .fav-skip:focus-visible, .fav-alt:focus-visible{
-  outline-offset:3px }
-
-/* ---- 6. the cards ---------------------------------------------------------------------------------------------- */
-.fav-card{
-  box-shadow:0 0 0 1px rgba(255,255,255,.2),0 8px 20px rgba(0,0,0,.45);
-  transition:box-shadow .15s ease,transform .18s cubic-bezier(.2,.8,.3,1),opacity .2s ease,filter .2s ease }
-.fav-card:hover{ transform:translateY(-3px); box-shadow:0 0 0 2px var(--tp-acc),0 12px 24px rgba(0,0,0,.5) }
-/* PICKED: a green teletext ring and a green square tick, whatever colour the plate is */
-.fav-card.on{ box-shadow:0 0 0 3px var(--tp-green),0 0 22px color-mix(in srgb,var(--tp-green) 42%,transparent),0 10px 22px rgba(0,0,0,.45) }
-.fav-tick{ border-radius:0; background:var(--tp-green); color:#050706; box-shadow:0 0 0 2px #050706 }
-.fav-strip{ padding-top:14px }
-/* the strip's paper tile for a country's flag keeps a hard block shadow, as the club plates do */
-.fav-tile{ border-radius:0 }
-
-/* ---- 8. the done screen --------------------------------------------------------------------------------------- */
-.fav-stamp{ color:var(--tp-green); border-color:var(--tp-green); border-radius:0; border-width:3px;
-  text-shadow:0 0 18px color-mix(in srgb,var(--tp-green) 50%,transparent);
-  box-shadow:0 0 22px color-mix(in srgb,var(--tp-green) 24%,transparent),inset 0 0 14px color-mix(in srgb,var(--tp-green) 16%,transparent) }
-
-/* ---- 9. the foot: "remind me later" and "don't show this again" are Fastext keys ------------------------------------------- */
-.fav-links{
-  border-top:0; padding-top:calc(var(--u)*1.25);
-  background:repeating-linear-gradient(90deg,var(--tp-edge) 0 4px,transparent 4px 6px) top/100% 2px no-repeat }
-.fav-later, .fav-never{
-  display:inline-flex; align-items:center; gap:9px; min-height:40px; padding:6px 10px 5px; text-decoration:none; opacity:1;
-  color:var(--tp-fg); font:400 9px/1.25 var(--f-micro); letter-spacing:.07em; text-transform:uppercase;
-  transition:background .12s ease,color .12s ease }
-.fav-later::before, .fav-never::before{
-  content:""; flex:none; width:10px; height:10px; background:var(--k,var(--tp-red)); box-shadow:0 0 10px color-mix(in srgb,var(--k,var(--tp-red)) 60%,transparent) }
-.fav-never::before{ --k:var(--tp-cyan) }
-.fav-later:hover, .fav-never:hover{ background:var(--k,var(--tp-red)); color:#050706 }
-.fav-later:hover::before, .fav-never:hover::before{ background:#050706; box-shadow:none }
-.fav-never{ --k:var(--tp-cyan) }
-.fav-later{ --k:var(--tp-red) }
-.fav-later:focus-visible, .fav-never:focus-visible{ outline:3px solid var(--tp-yellow); outline-offset:2px }
-
-/* ---- 11. the weekly winners page ---------------------------------------------------------------------------------- */
 .vt-lede{
   font-family:var(--f-ui) !important; font-size:13px !important; line-height:1.6 !important; letter-spacing:.005em !important;
   color:var(--ink-2) !important; text-transform:none !important; max-width:none;
   position:relative; padding-left:calc(var(--u)*3 + 14px) }
 .vt-lede::before{ content:""; position:absolute; left:calc(var(--u)*3); top:calc(var(--u)*1.75); bottom:calc(var(--u)*1.75); width:6px;
-  background:var(--tp-fast,var(--lume)) }
+  background:var(--lume) }
 .vt-count{
   padding:4px 9px 3px; background:var(--tt-scr,#050706); color:var(--tt-yellow,#ffe44d); letter-spacing:.06em }
 .fvh-week{ position:relative; transition:background .15s ease }
@@ -216,26 +43,9 @@
 .fvh-chip b{ color:var(--ink); font-family:var(--f-score); font-weight:400; font-size:13px; letter-spacing:.03em }
 .fvh-s{ color:var(--ink-2) }
 
-/* ---- 12. a phone: a sheet, with thumb-sized keys ------------------------------------------------------------------------ */
 @media (max-width:620px){
-  .fav-body{ padding:calc(var(--u)*4) calc(var(--u)*2.25) calc(var(--u)*2.25) }
-  /* the grab bar of a sheet, in blocks */
-  .fav-head::before{
-    content:""; display:block; width:44px; height:4px; margin:-14px auto 12px;
-    background:repeating-linear-gradient(90deg,var(--tp-edge) 0 8px,transparent 8px 10px) }
-  .fav-x{ top:14px; right:10px; width:44px; height:44px; font-size:22px }
-  .fav-nav, .fav-back{ width:40px; height:40px }
-  .fav-go, .fav-skip, .fav-alt{ min-height:50px }
-  .fav-links{ justify-content:space-between; flex-wrap:nowrap; gap:4px }
-  .fav-later, .fav-never{ min-height:44px; padding:6px 4px 5px; gap:7px; font-size:8px; letter-spacing:.04em }
   .fvh-week::before{ top:8px; bottom:8px }
   .vt-lede{ padding-left:calc(var(--u)*2 + 14px) }
   .vt-lede::before{ left:calc(var(--u)*2) }
   .fvh-when b{ font-size:18px }
-}
-@media (max-width:420px){ .fav-title{ font-size:clamp(24px,8.2vw,34px) } }
-
-@media (prefers-reduced-motion:reduce){
-  .fav-go, .fav-x, .fav-nav, .fav-back{ transition:none }
-  .fav-card:hover{ transform:none }
 }
