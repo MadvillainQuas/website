@@ -57,7 +57,9 @@ class Q:
             raise RuntimeError('relation "report_mail_requests" does not exist')
         if self.no_column and "dispatched_at" in query:
             raise RuntimeError("column season_backfills.dispatched_at does not exist")
-        return [dict(r) for r in self.rows[table]]
+        # by state, as PostgREST would: a row with none is a queued one (the rows these tests were written with)
+        want = "running" if "state=eq.running" in query else "queued"
+        return [dict(r) for r in self.rows[table] if r.get("state", "queued") == want]
 
     def patch(self, table, query, body):
         if self.no_column:
@@ -327,6 +329,38 @@ ok("out of time, the request goes back in the queue (only while still running), 
 ok("...the pass stops between games and between sources, and is put back rather than closed",
    'if out_of_time():\n                    tot["paused"] = len(todo) - g_i' in SRC.replace("\r\n", "\n") and 'if tot.get("paused"):\n            break' in SRC.replace("\r\n", "\n") and
    'if job and tot.get("paused"):\n        backfill_requeue(queue, job, tot["paused"], tot["written"])\n    elif job:' in SRC.replace("\r\n", "\n"))
+
+# 2026-10-15: a worker killed at its time limit left NBL1 2026 "running" for hours; --queued said no every run
+print("\nthe lease that ran out")
+import console_kick as KK  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
+
+
+class Lease:
+    def __init__(self, rows):
+        self.rows, self.asked = rows, []
+
+    def select(self, table, query):
+        self.asked.append((table, query))
+        if "state=eq.running" in query:
+            cut = query.split("heartbeat_at.lt.")[1].split(",")[0]
+            return [r for r in self.rows.get(table, []) if r["state"] == "running" and (r.get("heartbeat_at") or r.get("claimed_at")) < cut]
+        return [r for r in self.rows.get(table, []) if r["state"] == "queued"]
+
+
+now = datetime(2026, 10, 15, 16, 49, tzinfo=timezone.utc)
+lq = Lease({"season_backfills": [{"id": "nbl1", "state": "running", "heartbeat_at": "2026-10-15T12:27:47Z", "requested_at": "a"},
+                                 {"id": "busy", "state": "running", "heartbeat_at": "2026-10-15T16:48:00Z", "requested_at": "b"}],
+            "league_resets": []})
+got = KK.stale(lq, "backfill", now)
+ok("a running request quiet past the lease counts as work (stale); one heard from a minute ago does not",
+   [r["id"] for r in got] == ["nbl1"] and got[0]["_stale"] and got[0]["_kind"] == "backfill", got)
+ok("...the cut is the lease and five minutes to spare, by the heartbeat or (none yet) the claim",
+   KK.LEASE_MIN == 95 and "state=eq.running&or=(heartbeat_at.lt.2026-10-15T15:14:00Z,and(heartbeat_at.is.null,claimed_at.lt.2026-10-15T15:14:00Z))" in lq.asked[0][1], lq.asked)
+ok("...so --queued answers yes for it, and the worker's claim puts it back and takes it",
+   any(r.get("_stale") for r in KK.queued(Lease({"season_backfills": [{"id": "nbl1", "state": "running", "heartbeat_at": "2000-01-01T00:00:00Z", "requested_at": "a"}],
+                                                 "league_resets": []}), ("backfill",))))
+ok("...for resets too (the same 90-minute lease); a report request is not leased", KK.LEASED == ("backfill", "reset"))
 RS = open(os.path.join(HERE, "reset_league.py")).read()
 ok("a reset says when it is taken, with its run's log", 'send("taken by the worker", {"pct": 0.5, "run_url":' in RS)
 

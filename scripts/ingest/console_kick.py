@@ -53,8 +53,30 @@ def _at(iso) -> float | None:
         return None
 
 
+# A LEASE THAT RAN OUT IS WORK TOO (2026-10-15). 0135/0187 put a running request back in the queue once its worker has been
+# quiet for 90 minutes - but only inside the claim, and the claim only runs when this says something is queued. A worker
+# killed at its time limit (NBL1 2026, cancelled at 12:27 UTC) left its row "running" for good: every run after asked
+# --queued, heard no, and stopped in fifteen seconds while the season sat at 653 of 716 games. A running row past the
+# lease (with five minutes to spare, so the database's own clock agrees) now counts, and the claim re-queues and takes it.
+LEASE_MIN = 95
+LEASED = ("backfill", "reset")
+
+
+def stale(q, kind, now=None) -> list[dict]:
+    """Running rows of a leased kind whose worker has not been heard from for LEASE_MIN minutes."""
+    from datetime import datetime, timedelta, timezone
+    cut = ((now or datetime.now(timezone.utc)) - timedelta(minutes=LEASE_MIN)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        rows = q.select(TABLES[kind], f"state=eq.running&or=(heartbeat_at.lt.{cut},and(heartbeat_at.is.null,claimed_at.lt.{cut}))"
+                                      "&select=id,requested_at")
+    except Exception:
+        return []
+    return [dict(r, _kind=kind, _stale=True) for r in rows or []]
+
+
 def queued(q, kinds=("backfill", "reset")) -> list[dict]:
-    """The queued rows of each kind, with when the worker was last started for them (None before 0217)."""
+    """The queued rows of each kind, with when the worker was last started for them (None before 0217), and any running
+    row whose lease has run out (stale: the claim puts it back and takes it)."""
     out = []
     for kind in kinds:
         table = TABLES[kind]
@@ -69,6 +91,8 @@ def queued(q, kinds=("backfill", "reset")) -> list[dict]:
                     continue        # 0226 is not applied: no such table, nothing asked for, and the others are not held up
                 raise
         out += [dict(r, _kind=kind) for r in rows or []]
+        if kind in LEASED:
+            out += stale(q, kind)
     return out
 
 
