@@ -51,6 +51,11 @@ HOST_GAP_S: Dict[str, float] = {
     "fibalivestats.dcd.shared.geniussports.com": 0.1,
     # the Genius hosted pages (schedules, competition lists): somebody's web server, not a CDN
     "hosted.wh.geniussports.com": 1.0,
+    # Hungary (adapters/mkosz.py): the federation's own web server for the season's programme, and the
+    # netcasting server the federation's live pages (and other leagues') read every few seconds - one
+    # storage file per game, a second apart, is nothing beside that
+    "mkosz.hu": 1.0,
+    "webpont.com": 1.0,
 }
 #: our own services - the database and storage, GitHub, this machine: a host is exempt when it is one of these
 #: or ends in ".<one of these>"

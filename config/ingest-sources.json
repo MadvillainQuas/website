@@ -4073,6 +4073,188 @@
       ]
     },
     {
+      "code": "HUNM",
+      "label": "NB I/A",
+      "adapter": "mkosz",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        12,
+        23
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "hungarian-nb-i-a",
+      "league_name": "NB I/A",
+      "league_country": "HU",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "HUNM",
+        "nat": "hun",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hunbasket.hu/menetrend/ferfi"
+      ]
+    },
+    {
+      "code": "HUNM",
+      "label": "NB I/A",
+      "adapter": "mkosz",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        12,
+        23
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "hungarian-nb-i-a",
+      "league_name": "NB I/A",
+      "league_country": "HU",
+      "league_gender": "men",
+      "competition_label": "NB I/A Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "HUNM",
+        "nat": "hun_ply",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hunbasket.hu/menetrend/ferfi#playoffs"
+      ]
+    },
+    {
+      "code": "HUNM",
+      "label": "NB I/A",
+      "adapter": "mkosz",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        12,
+        23
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "hungarian-nb-i-a",
+      "league_name": "NB I/A",
+      "league_country": "HU",
+      "league_gender": "men",
+      "competition_label": "NB I/A Play-out",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "HUNM",
+        "nat": "hun_plo",
+        "stage": "playout",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hunbasket.hu/menetrend/ferfi#playout"
+      ]
+    },
+    {
+      "code": "HUNW",
+      "label": "NB I/A Women",
+      "adapter": "mkosz",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        12,
+        23
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "hungarian-nb-i-a-women",
+      "league_name": "NB I/A Women",
+      "league_country": "HU",
+      "league_gender": "women",
+      "adapter_config": {
+        "code": "HUNW",
+        "nat": "whun",
+        "stage": "regular",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hunbasket.hu/menetrend/noi"
+      ]
+    },
+    {
+      "code": "HUNW",
+      "label": "NB I/A Women",
+      "adapter": "mkosz",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        12,
+        23
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "hungarian-nb-i-a-women",
+      "league_name": "NB I/A Women",
+      "league_country": "HU",
+      "league_gender": "women",
+      "competition_label": "NB I/A Women Playoffs",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "HUNW",
+        "nat": "whun_ply",
+        "stage": "playoffs",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hunbasket.hu/menetrend/noi#playoffs"
+      ]
+    },
+    {
+      "code": "HUNW",
+      "label": "NB I/A Women",
+      "adapter": "mkosz",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 30,
+      "active_window": [
+        12,
+        23
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "hungarian-nb-i-a-women",
+      "league_name": "NB I/A Women",
+      "league_country": "HU",
+      "league_gender": "women",
+      "competition_label": "NB I/A Women Play-out",
+      "competition_kind": "playoff",
+      "adapter_config": {
+        "code": "HUNW",
+        "nat": "whun_plya",
+        "stage": "playout",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://hunbasket.hu/menetrend/noi#playout"
+      ]
+    },
+    {
       "code": "CEBL",
       "label": "CEBL",
       "adapter": "fiba_site_schedule",
