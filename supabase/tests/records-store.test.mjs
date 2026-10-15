@@ -27,6 +27,7 @@ let pass = 0, fail = 0;
 const ok = (what, cond, saw) => { if (cond) { pass++; console.log('  PASS  ' + what); } else { fail++; console.log('  FAIL  ' + what + (saw === undefined ? '' : '  -- saw ' + JSON.stringify(saw).slice(0, 600))); } };
 const M = readFileSync(path.join(here, '..', 'migrations', '0215_records.sql'), 'utf8');
 const RJ = readFileSync(path.join(ROOT, 'epinoia', 'records.js'), 'utf8');
+const M267 = readFileSync(path.join(here, '..', 'migrations', '0267_records_board_fast.sql'), 'utf8');
 
 /* ------------------------------------------------------------------------- the files (no database) --- */
 console.log('the files');
@@ -42,6 +43,14 @@ ok('the board is read as the reader (security invoker) and the writers are not c
      .every(f => new RegExp('revoke execute on function public\\.' + f + '\\(').test(M)));
 ok('a line is read exactly as its box score is (0151\'s policy on player_game_stats)',
    /create policy record_lines_read[\s\S]*?game_rows_public p where p\.id = record_lines\.game_id\), false\)\s+or public\.can_read_game_rows\(record_lines\.game_id\)/.test(M));
+ok('0267: the board finds each candidate line\'s player by primary key (a LATERAL probe fenced with OFFSET 0) and the photo by media\'s, never a join over every player; still as the reader, same signature',
+   /cross join lateral \(\s*select p\.slug,[\s\S]*?from public\.players p\s+where p\.id = c\.puid\s+offset 0\s+\) pp/.test(M267) &&
+   /\(select m\.storage_path from public\.media m where m\.id = p\.photo_media_id\) as photo_path/.test(M267) &&
+   !/join public\.players p\s+on p\.id = case/.test(M267) && /create or replace function public\.records_board\(p_comps text default null, p_filter text default 'all'\)\s+returns table \(board jsonb\)\s+language sql stable security invoker/.test(M267));
+ok('a board that is there and fails (a 500, a timeout) leaves the section out: never the twenty old reads on top of it; only a missing or unbuilt board falls back',
+   /if \(\/\^\(404\|400\)\\b\/\.test\(String\(e && e\.message\)\)\) \{ boardMissing = true; return null; \}\s*return FAILED;/.test(RJ) &&
+   /const b = await board\(D, comps, 'all'\);\s*if \(b === FAILED\) return null;/.test(RJ) &&
+   /const b = await board\(D, null, filter === 'u22' \? 'all' : filter\);\s*if \(b === FAILED\) return null;/.test(RJ));
 ok('the store never reads the situations line', !/'sit'|->\s*'sit'|stats->sit/.test(M.replace(/--.*$/gm, '')));
 ok('records.js asks the board first and keeps the old reads only as its fallback',
    /const b = await board\(D, comps, 'all'\);/.test(RJ) && /const b = await board\(D, null, filter === 'u22' \? 'all' : filter\);/.test(RJ) &&
@@ -281,6 +290,10 @@ const diff = (a, b) => { if (!a || !b) return [a, b]; const out = [];
 console.log('\nthe migration');
 await db.exec(M);
 await db.exec(M);    // a push stopped half way can be pushed again
+/* the board as it is now (0267: its players and photos found by primary key, not by reading every player): every check
+   on the board below reads it, so who is named and who is passed over is held to 0215's rule */
+await db.exec(M267);
+await db.exec(M267);
 ok('it loads (twice: every statement can be run again)', true);
 ok('a browser may read the board and nothing it may write',
    (await one(`select has_function_privilege('anon', 'public.records_board(text, text)', 'execute') as b,

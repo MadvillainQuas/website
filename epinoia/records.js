@@ -129,6 +129,10 @@ function settle(rows, shown) {
    has no such function (404, asked once a page) or has not finished its
    backfill (ready false); the caller then works them out the old way. */
 let boardMissing = false;
+/* THE BOARD IS THERE AND FAILED (a statement timeout under load, a 500; 2026-10-15): the old way is about twenty
+   heavier reads of the same tables - the ones the board replaced, which timed out themselves - so a failed board is
+   not a reason to start them. The section is left out for the visit instead; the next visit asks the board again. */
+const FAILED = Object.freeze({ failed: true });
 async function board(D, comps, filter) {
   if (boardMissing || !D || typeof D.get !== 'function') return null;
   const q = 'rpc/records_board?' + (comps && comps.length ? 'p_comps=' + comps.join(',') + '&' : '') +
@@ -138,8 +142,8 @@ async function board(D, comps, filter) {
     const b = rows && rows[0] && rows[0].board;
     return b && b.ready ? b : null;
   } catch (e) {
-    if (/^(404|400)\b/.test(String(e && e.message))) boardMissing = true;
-    return null;
+    if (/^(404|400)\b/.test(String(e && e.message))) { boardMissing = true; return null; }
+    return FAILED;
   }
 }
 /* a holder's photograph, as playerRecords reads one: an approved upload, else a pasted
@@ -203,6 +207,7 @@ async function load(opts) {
   /* THE KEPT RECORDS (0215), in one read, whenever the database has them */
   if (!u22 && opts.board !== false) {
     const b = await board(D, comps, 'all');
+    if (b === FAILED) return null;               // not the twenty old reads on top of a failed one (board, above)
     if (b) {
       if (!b.games) return null;
       const out = fromBoard(b);
@@ -529,6 +534,7 @@ async function global(opts) {
      the names and the clubs, as this reader. Men's and women's are the board's own filter;
      U22 takes the board's seasons and reads the lines itself (an age is not kept). */
   const b = await board(D, null, filter === 'u22' ? 'all' : filter);
+  if (b === FAILED) return null;                 // not every league's games read on top of a failed board (board, above)
   if (b) {
     if (filter !== 'u22') {
       if (!b.games) return null;
