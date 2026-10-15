@@ -316,6 +316,8 @@ window.epinoiaFitLeagueNames = function (root, force) {
    A NEW LEAGUE IS ADDED HERE (its federation's own account of its level), or it lists last with no tier. */
 window.EPINOIA_LEAGUE_TIERS = {
   /* Albania */ 'kkm-albania': [1, 'm'], 'kkf-albania': [1, 'w'],
+  /* Argentina */ 'la-liga-nacional': [1, 'm'], 'la-liga-argentina': [2, 'm'], 'la-liga-femenina': [1, 'w'],
+                 'liga-desarrollo': ['y1', 'm'],
   /* Australia */ 'nbl': [1, 'm'], 'nbl1-men': [2, 'm'], 'wnbl': [1, 'w'], 'nbl1-women': [2, 'w'],
   /* Azerbaijan */ 'azerbaijan-basketball-league': [1, 'm'],
   /* Belgium + Netherlands */ 'bnxt-league': [1, 'm'],

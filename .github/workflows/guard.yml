@@ -1100,6 +1100,11 @@ jobs:
         # adapters/kbl.py: the league's English names (Hangul by rule where it has none), the play-by-play's announcements
         run: python scripts/ingest/kbl_test.py
 
+      - name: Argentina's four leagues from laliganacional.com.ar
+        # adapters/lnbar.py: ids that survive the site's per-view link tokens, each period's announcement of the five as
+        # one change, fouls paired (a missing foul line put back), box = log re-counted, minutes replayed to the box's
+        run: python scripts/ingest/lnbar_test.py
+
       - name: Basketligaen and Kvinde Basketligaen on FIBA LiveStats
         # men: fiba_site_schedule site "basketligaen" (the site's JSON API names every game's LiveStats id, kept once,
         # the site's club codes over the operator's); women: the Genius-hosted schedule on tenant DAM

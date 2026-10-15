@@ -1257,3 +1257,36 @@ row, a play-off row and a pre-season row (Open Match Day, a friendly); slug `kbl
 - No shot chart: `match-chart.shootLog` gives pixels on an unspecified court drawing.
 - Bio: each player's profile on the league's statistics service (kbl-api.sports2i.com, Referer kbl.or.kr),
   by pcode: date of birth and height, no weight.
+
+## Argentina: La Liga Nacional, La Liga Argentina, La Liga Femenina, Liga Desarrollo (laliganacional.com.ar)
+
+Added 2026-10-15. Adapter `lnbar` (`scripts/ingest/adapters/lnbar.py`, its docstring has the detail), test
+`scripts/ingest/lnbar_test.py`. One row a league, no stages (the site does not separate them): `ARLLN` La Liga Nacional
+(`la-liga-nacional`, tier 1 men), `ARLLA` La Liga Argentina (`la-liga-argentina`, tier 2 men), `ARLFB` La Liga Femenina
+(`la-liga-femenina`, tier 1 women), `ARLDD` Liga Desarrollo (`liga-desarrollo`, youth tier 1 men); country AR
+(`brand/flags/ar.svg`). `adapter_config.league` is the site's key for the league: laliga, laligaargentina, lfb, ligaproximo.
+
+- **Schedule:** `/<key>/fixture?handler=ProximosPartidos&fechaInicio=YYYY-08-01&fechaFin=YYYY+1-07-31` - the XHR behind
+  the fixture page's two date inputs, an HTML table, the whole season in one request. Clubs as `/equipo/<IdClub>/<IdEquipo>/`,
+  the score (0-0 until played; no status), "dd/mm/yyyy HH:MM" Argentina time (UTC-3, no summer time; 00:00 = time not
+  set), the arena, and the game's link.
+- **Ids:** the link's token (`/partido/<token>/<slug>`) is encrypted afresh on every view and the page has no numeric id,
+  so the external id is `<key>-<home IdEquipo>-<away IdEquipo>-<n>` (n = that ordered pair's game by date). IdEquipo is
+  a club's entry in one league's season. fetch() finds the token again in the game's day's fixture.
+- **Game:** `/<key>/partido/<token>/x`, all in the HTML: the box score's rows carry the record as JSON in
+  `onclick="EstadisticasComponente({...})"` (IdJugador, NombreCompleto "FRANCHINO, MARTIN", CincoInicial, TiempoJuego),
+  the team totals the same with IdClub 0; the play-by-play is `<li class="accion local|visitante CODE accion-N">`,
+  newest first, "Cuarto N - HH:MM:SS" remaining, "home - away" on scoring lines, `/fotos/<IdJugador>` naming the player.
+- **Habits, handled:** each period opens with ten ENTRA lines (the five a side on court) before INICIO-PERIODO and no
+  period ends with players taken off - the first period's is the box's starters, later ones one balanced change; the
+  list's order is kept over the typed action numbers (late-entered changes sort right only by the list); FALTA-RECIBIDA
+  is paired to its FALTA-COMETIDA at the same clock, and a foul line the site leaves out (about one in forty) is put
+  back on the one player of the other side on court whose box fouls the log is short of, else on the team.
+- Checked on four games (La Liga, a double-overtime La Liga game, La Liga Femenina, Liga Desarrollo): every player's
+  shots, rebounds, assists, steals, blocks and turnovers re-counted from the log equal the box; minutes replayed through
+  translate.fiba_events within 3 s of TiempoJuego (the box clocks tenths, the log whole seconds); five a side throughout.
+- **No past seasons:** the fixture answers nothing for an earlier date and nothing links to a past season's games, so the
+  adapter is in `run_ingest.NO_PAST`; a source pinned to another season discovers nothing. Seasons are split years
+  (2026-27) for all four - La Liga Femenina's own format page says 2026/27.
+- **No shot chart** (the site's shot map is zones and percentages), and the fixture does not tell the regular season
+  from the play-offs or La Liga Femenina's Torneo Apertura from its Liga Nacional Femenina.
