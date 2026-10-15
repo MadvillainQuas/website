@@ -374,7 +374,7 @@ function draw(panel) {
   /* WITH THE WORKER'S OWN PROGRESS (0187): step and detail.pct, drawn by jobbar.js - the same bar as a league
      reset. A database without 0187 has neither column; the list is then read without them, and a request shows
      its words alone, as before. */
-  let busy = false, cols = 'id,season,state,step,detail,requested_at,dispatched_at,claimed_at,finished_at,sources_run,games_seen,games_written,error';
+  let busy = false, cols = 'id,season,state,step,detail,requested_at,dispatched_at,claimed_at,heartbeat_at,finished_at,sources_run,games_seen,games_written,error';
   const ahead = new Map();          // a queued request's place in the queue (0217 season_backfill_queue)
   async function load() {
     let { data, error } = await opts.sb.from('season_backfills').select(cols)
@@ -439,6 +439,28 @@ function draw(panel) {
     item.appendChild(left);
 
     const sp = el('div', 'sp');
+    /* A RUN THAT STOPPED (0266): its worker quiet for ten minutes - killed at its time limit, cancelled, lost - and the
+       request can be continued now rather than after 0135's ninety; the next run goes on from the games already written */
+    const quiet = r.state === 'running' && r.heartbeat_at ? (Date.now() - Date.parse(r.heartbeat_at)) / 1000 : 0;
+    if (quiet > 600) {
+      const c = el('button', 'ep-btn mini pri', 'continue from where it stopped');
+      c.type = 'button';
+      c.title = 'The worker has not reported for ' + Math.round(quiet / 60) + ' min: put the request back in the queue and start the worker';
+      c.addEventListener('click', async () => {
+        c.disabled = true;
+        const { error } = await opts.sb.rpc('resume_season_backfill', { p_id: r.id });
+        if (error) {
+          c.disabled = false;
+          return opts.say(/resume_season_backfill|PGRST202|does not exist/i.test((error.message || '') + ' ' + (error.code || ''))
+            ? 'Continuing by hand needs migration 0266, which is not applied yet. The request goes back in the queue by itself 90 minutes after its worker went quiet.'
+            : error.message, 'err');
+        }
+        if (window.EpinoiaJobBar && window.EpinoiaJobBar.kick) await window.EpinoiaJobBar.kick(opts.sb);
+        opts.say(r.season + ' is back in the queue: the worker goes on from the games already written.', 'ok');
+        restart();
+      });
+      sp.appendChild(c);
+    }
     if (r.state === 'queued') {
       /* Only a queued request may be taken back — 0135's delete policy says the
          same, because a running row is the worker's lease and removing it would

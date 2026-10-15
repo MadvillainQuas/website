@@ -43,6 +43,9 @@ const nameOf = id => (BYID.get(id) || {}).name || 'a league';
 /* QUIET FOR LONG: the worker writes at least once a minute while it runs; 0135 puts a request back in the queue after
    90 minutes without a word. Past five minutes the tab says so, plainly. */
 const QUIET_S = 300;
+/* CONTINUED BY HAND (0266 resume_season_backfill): a request its worker has not spoken for in ten minutes can be put back in
+   the queue at once, rather than after 0135's ninety; the next run goes on from the games already written */
+const RESUME_S = 600;
 
 /* WHAT THE WORKER IS DOING, AS LINES (pure, for the test): from a running row's step and detail */
 function details(r, now) {
@@ -218,7 +221,9 @@ function drawNow(running, queued, counts) {
     card.appendChild(dl);
     const q = r.heartbeat_at ? (Date.now() - Date.parse(r.heartbeat_at)) / 1000 : 0;
     if (q > QUIET_S) card.appendChild(el('p', 'bfw-cov', 'The worker has not reported for ' + span(q) + '. It may have stopped: ' +
-      '90 minutes after its last word the request goes back in the queue by itself, and the next run goes on from the games already written.'));
+      '90 minutes after its last word the request goes back in the queue by itself, and the next run goes on from the games already written.' +
+      (q > RESUME_S ? ' Or continue it now:' : ' After ten minutes of silence it can be continued from here.')));
+    if (q > RESUME_S) card.appendChild(btn('continue from where it stopped', 'mini pri', e => resume(r, e.target)));
     box.appendChild(card);
   });
 }
@@ -350,6 +355,22 @@ async function queue(league, seasons) {
     say(nameOf(league) + ': ' + ok.join(', ') + ' queued' + (k.started || k.why === 'already started' ? ', and the worker has been started.' : '. The worker starts within a few minutes.') +
       (bad.length ? ' Not queued: ' + bad.join('; ') : ''), bad.length ? 'warn' : 'ok');
   } else if (bad.length) say(nameOf(league) + ': ' + bad.join('; '), 'err');
+  restart();
+}
+
+/* a stopped request back in the queue (0266), and the worker started */
+async function resume(r, b) {
+  if (b) b.disabled = true;
+  const { error } = await sb.rpc('resume_season_backfill', { p_id: r.id });
+  if (error) {
+    if (b) b.disabled = false;
+    const missing = /resume_season_backfill|PGRST202|does not exist/i.test((error.message || '') + ' ' + (error.code || ''));
+    return say(missing ? 'Continuing by hand needs migration 0266, which is not applied yet. The request goes back in the queue by itself 90 minutes after its worker went quiet.'
+      : nameOf(r.league_id) + ' ' + r.season + ': ' + error.message, 'err');
+  }
+  const k = JB() && JB().kick ? await JB().kick(sb) : { started: false };
+  say(nameOf(r.league_id) + ' ' + r.season + ' is back in the queue' + (k.started || k.why === 'already started'
+    ? ' and the worker has been started: it goes on from the games already written.' : '. The worker starts within a few minutes and goes on from the games already written.'), 'ok');
   restart();
 }
 

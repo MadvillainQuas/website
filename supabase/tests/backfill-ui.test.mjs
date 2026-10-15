@@ -272,5 +272,51 @@ console.log('\nthe backfill worker tab (epinoia/admin/platform/backfill-worker-u
      /"phase": "games"/.test(py) && /"per_game_s":/.test(py) && /"eta_s":/.test(py) && /"last": last_game/.test(py) && /"phase": "fixtures"/.test(py));
 }
 
+/* ---------------------------------------------------------------- continue a run that stopped (0266, 2026-10-15) --- */
+console.log('\ncontinue a backfill that stopped (0266 resume_season_backfill)');
+{
+  const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
+  const sql = read('supabase', 'migrations', '0266_resume_season_backfill.sql');
+  const W = read('epinoia', 'admin', 'platform', 'backfill-worker-ui.js'), P = read('epinoia', 'admin', 'backfill-ui.js');
+  ok('both panels offer "continue from where it stopped" on a request quiet for ten minutes, through resume_season_backfill, then start the worker',
+     /const RESUME_S = 600;/.test(W) && /if \(q > RESUME_S\) card\.appendChild\(btn\('continue from where it stopped'/.test(W) &&
+     /sb\.rpc\('resume_season_backfill', \{ p_id: r\.id \}\)/.test(W) && /if \(quiet > 600\)/.test(P) && /opts\.sb\.rpc\('resume_season_backfill', \{ p_id: r\.id \}\)/.test(P) &&
+     /heartbeat_at,finished_at/.test(P));
+  ok('...and before 0266 they say so, and that the request comes back by itself after 90 minutes',
+     /Continuing by hand needs migration 0266/.test(W) && /Continuing by hand needs migration 0266/.test(P));
+  let PGlite;
+  try { ({ PGlite } = await import(process.env.PGLITE_DIR ? new URL('file:///' + path.join(process.env.PGLITE_DIR, 'dist', 'index.js').replace(/\\/g, '/')).href : '@electric-sql/pglite')); }
+  catch { console.log('  SKIP  the database part: @electric-sql/pglite is not installed'); PGlite = null; }
+  if (PGlite) {
+    const db = new PGlite();
+    await db.exec(`
+      create role anon; create role authenticated;
+      create schema auth;
+      create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
+      create function public.is_league_admin(p uuid) returns boolean language sql stable as $$ select coalesce(current_setting('test.admin', true), 'no') = 'yes' $$;
+      create table public.audit_log (actor uuid, action text, subject text, subject_id text, detail jsonb);
+      create table public.season_backfills (id uuid primary key, league_id uuid, season text, state text, worker text, requested_at timestamptz default now(),
+        claimed_at timestamptz, heartbeat_at timestamptz, dispatched_at timestamptz, step text);
+      insert into public.season_backfills (id, league_id, season, state, worker, claimed_at, heartbeat_at, step) values
+        ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000000aa', '2026', 'running', 'gha:1', now() - interval '5 hours', now() - interval '4 hours', 'NBL1 Men: game 400 of 716'),
+        ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-0000000000aa', '2025', 'running', 'gha:2', now() - interval '1 hour', now() - interval '1 minute', 'game 3 of 9'),
+        ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-0000000000aa', '2024', 'done', null, now() - interval '9 hours', now() - interval '8 hours', 'done');
+    `);
+    await db.exec(sql);
+    const call = async (id, admin) => {
+      await db.exec(`set test.admin = '${admin ? 'yes' : 'no'}'; set test.uid = '00000000-0000-0000-0000-0000000000ff';`);
+      try { const r = await db.query(`select * from public.resume_season_backfill('${id}')`); return r.rows[0]; } catch (e) { return { err: e.message }; }
+    };
+    ok('only an administrator of the league', /do not administer/.test((await call('00000000-0000-0000-0000-000000000001', false)).err || ''));
+    ok('...a run still reporting is refused (two workers on one season), and a finished one is asked for again instead',
+       /heard from in the last ten minutes/.test((await call('00000000-0000-0000-0000-000000000002', true)).err || '') &&
+       /only a request that was being read/.test((await call('00000000-0000-0000-0000-000000000003', true)).err || ''));
+    const back = await call('00000000-0000-0000-0000-000000000001', true);
+    ok('a run quiet for hours goes back in the queue, its lease cleared and its line saying so, and the audit log has it',
+       back.state === 'queued' && back.worker === null && back.claimed_at === null && back.heartbeat_at === null && /continued by hand/.test(back.step) &&
+       (await db.query(`select count(*)::int n from public.audit_log where action = 'resume_season_backfill'`)).rows[0].n === 1, JSON.stringify(back));
+  }
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
