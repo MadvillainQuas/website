@@ -601,6 +601,9 @@ function leaders(o) {
    beside it (`secs`). `rows` = [{ name, team (a club row with crestUrl), value, secs: [text…] }], in the table's own order:
    the rank is the row's place in it. `sub` says what the table covers (the season, a phase, its filters). */
 const SB_MIN = 3, SB_MAX = 20, SB_SECS = 4;
+/* the silhouette a row asks for, 'men' or 'women', from its own league where the caller knew it (a board or a head to
+   head across leagues); null leaves it to the graphic's league */
+const figureOf = g => (g === 'women' || g === 'men' ? g : null);
 function statboard(o) {
   const st = o.stat || {};
   const secs = (o.secs || []).filter(x => x && x.key && x.key !== st.key).slice(0, SB_SECS)
@@ -608,7 +611,7 @@ function statboard(o) {
   const txt = v => (v == null || v === '' ? '—' : String(v));
   const photo = v => (typeof v === 'string' && /^https:\/\//i.test(v) ? v : null);
   const rows = (o.rows || []).slice(0, SB_MAX).map((r, i) => ({ rank: r.rank != null ? n0(r.rank) : i + 1, name: r.name || '?', team: side(r.team, 0),
-    photoUrl: photo(r.photoUrl), value: txt(r.value), secs: secs.map((x, j) => txt((r.secs || [])[j])) }));
+    photoUrl: photo(r.photoUrl), value: txt(r.value), secs: secs.map((x, j) => txt((r.secs || [])[j])), gender: figureOf(r.gender) }));
   return { kind: 'statboard', key: 'top-' + rows.length + '-' + slug(st.key || st.label || 'stat'), league: o.league || {}, comp: o.comp || '', range: o.range || '',
            title: o.title || (String(st.label || 'Stat') + ' leaders'), sub: o.sub || '',
            stat: { key: String(st.key || ''), label: String(st.label || st.key || '').toUpperCase() }, secs, rows, tz: leagueZone(o.league) };
@@ -619,7 +622,7 @@ function statboard(o) {
    players = [{ name, team, colour }]; stats = [{ key, label, signed, cells: [{ text, pct }] }] (the cell's `v` is the value). */
 const CMP_COLOURS = ['#93f2bf', '#8ff5ff', '#ffd166', '#b7a8ff', '#e6fff1'];
 function compare(o) {
-  const players = (o.players || []).slice(0, 5).map((p, i) => ({ name: p.name || 'Player', team: side(p.team, 0),
+  const players = (o.players || []).slice(0, 5).map((p, i) => ({ name: p.name || 'Player', team: side(p.team, 0), gender: figureOf(p.gender),
     photoUrl: typeof p.photoUrl === 'string' && /^https:\/\//i.test(p.photoUrl) ? p.photoUrl : null,
     colour: /^#[0-9a-f]{6}$/i.test(p.colour || '') ? p.colour : CMP_COLOURS[i % CMP_COLOURS.length] }));
   const fin = v => typeof v === 'number' && isFinite(v);
@@ -1295,7 +1298,7 @@ function drawDay(ctx, m, th, S, M) {
      five   a starting five: two on the top row, three below, cards of equal weight
    Each player is a disc in his club's colour (initials, or the shirt number is never guessed) with the club's crest on its
    edge; names are fitted and cut, and the room a shape has is shared out by the rows it holds. */
-function starDisc(ctx, th, r, cx, cy, rad, accent) {
+function starDisc(ctx, th, r, cx, cy, rad, accent, league) {
   const u = U();
   if (MOD.discs === 'team') { crest(ctx, th, r.team, cx, cy, rad); return; }     // the crest alone, at the disc's size and place (initials on the club colour when it has none)
   const col = u.rgb(r.team.colour) ? r.team.colour : accent;
@@ -1321,7 +1324,9 @@ function starDisc(ctx, th, r, cx, cy, rad, accent) {
     ctx.save();
     ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.clip();
     const light = SIL.contrast(th.ground, '#000000') > 10.5;
-    SIL.draw(ctx, cx - rad, cy - rad, 2 * rad, 2 * rad, { seed: r.seed || r.name, teamColour: col,
+    /* the men's or the women's figure: the row's own league where it says (a head to head across leagues), else the graphic's */
+    const gender = r.gender === 'women' || r.gender === 'men' ? r.gender : SIL.genderOf ? SIL.genderOf(league) : 'men';
+    SIL.draw(ctx, cx - rad, cy - rad, 2 * rad, 2 * rad, { seed: r.seed || r.name, teamColour: col, gender,
       theme: light ? 'light' : 'dark', shape: 'square', res: rad >= 70 ? 30 : 20 });
     ctx.restore();
     ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2);
@@ -1388,7 +1393,7 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
     ctx.fillStyle = accent; ctx.fillRect(M, y + 14, 8, h - 28);
     numeral(r, W - M - 20, y + h - 18, h * 0.8, 'right');
     const rad = Math.min(54, h * 0.2), cx = M + 40 + rad, cy = y + 30 + rad, head = 30 + 2 * rad + 8;
-    starDisc(ctx, th, r, cx, cy, rad, accent);
+    starDisc(ctx, th, r, cx, cy, rad, accent, m.league);
     const tx = cx + rad + 26, tw = W - M - tx - 24;
     u.font(ctx, 18, u.F.micro); ctx.fillStyle = accent; ctx.fillText(monthly ? 'STAR OF THE MONTH' : 'STAR OF THE WEEK', tx, y + 34);
     const nb = u.nameBlock(ctx, r.name.toUpperCase(), tw, 64, 34, u.F.score);
@@ -1426,7 +1431,7 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
     if (tier) { u.roundRect(ctx, M, y, W - 2 * M, h - 6, 14); ctx.fill(); }
     numeral(r, M + 14, y + h * 0.78, h * 0.9);
     const rad = Math.min(38, (h - 6) * 0.36), cx = M + 100 + rad, cy = y + (h - 6) / 2;
-    starDisc(ctx, th, r, cx, cy, rad, accent);
+    starDisc(ctx, th, r, cx, cy, rad, accent, m.league);
     const tx = cx + rad + 24, right = W - M - 22;
     const sw = (right - tx) * 0.58, sl0 = statLines(ctx, r, keys, sw, Math.min(22, h * 0.2), 13, Math.max(1, Math.min(3, Math.floor((h - 14) / 22))), 600);
     const lw = Math.max(...sl0.lines.map(l => ctx.measureText(l).width)), lh = sl0.size + 5;
@@ -1451,7 +1456,7 @@ function drawWeekStars(ctx, m, th, S, M, accent) {
         ctx.fillStyle = i === 0 && r.rank === 1 ? accent : u.accentOn(r.team.colour || accent, th); ctx.fillRect(x + 14, y, cw - 28, 5);
         numeral(r, x + cw - 14, y + h * 0.42, h * 0.42, 'right');
         const rad = Math.min(52, h * 0.19);
-        starDisc(ctx, th, r, cx, y + 20 + rad, rad, accent);
+        starDisc(ctx, th, r, cx, y + 20 + rad, rad, accent, m.league);
         u.fit(ctx, r.name, cw - 24, Math.min(28, h * 0.1), 17, u.F.ui, 800);
         ctx.textAlign = 'center'; ctx.fillStyle = th.ink;
         ctx.fillText(u.ellipsis(ctx, r.name, cw - 24), cx, y + 20 + 2 * rad + 40);
@@ -1647,7 +1652,7 @@ function drawStatBoard(ctx, m, th, S, M, accent) {
   /* narrower figures as more stats stand beside the board's, so the name keeps a third of the row */
   const pw = secs.length >= 3 ? 136 : 170, sw = secs.length >= 4 ? 86 : secs.length === 3 ? 96 : 112;
   const secRight = (box, j) => box.x + box.w - 20 - pw - 10 - (secs.length - 1 - j) * sw;
-  const disc = (r, cx, cy, rad) => starDisc(ctx, th, { name: r.name, team: r.team, photo: r.photo }, cx, cy, rad, accent);
+  const disc = (r, cx, cy, rad) => starDisc(ctx, th, { name: r.name, team: r.team, photo: r.photo, gender: r.gender }, cx, cy, rad, accent, m.league);
   const row = (r, i, box) => {
     const { x, w, h } = box, y = box.y, cy = y + (h - 6) / 2, first = i === 0;
     if (i % 2 === 0 || first) { ctx.fillStyle = th.panel; u.roundRect(ctx, x, y, w, h - 6, 12); ctx.fill(); }
@@ -1765,7 +1770,7 @@ function drawCompare(ctx, m, th, S, M, accent) {
       ctx.fillStyle = th.panel; u.roundRect(ctx, x, py, cw, 72, 12); ctx.fill();
       ctx.fillStyle = col[i]; ctx.fillRect(x, py + 8, 6, 56);
       const rad = 28, cx = x + 22 + rad, cy = py + 36;
-      starDisc(ctx, th, { name: p.name, team: p.team, photo: p.photo }, cx, cy, rad, col[i]);
+      starDisc(ctx, th, { name: p.name, team: p.team, photo: p.photo, gender: p.gender }, cx, cy, rad, col[i], m.league);
       u.font(ctx, 18, NUMF, 700);
       const tag = String(i + 1);
       const tx = cx + rad + 16, tw = cw - (tx - x) - 16;

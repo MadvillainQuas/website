@@ -919,7 +919,7 @@ async function stars() {
   }));
 
   sec.classList.remove('hide');
-  ST.render(sec.querySelector('#stars'), rows, { base: '' });
+  ST.render(sec.querySelector('#stars'), rows, { base: '', pageLeague: LEAGUE });   // its league: the men's or the women's figure
 
   /* The month's winner, handed to the merchandise section. It is the same row
      that just drew the first card on the podium, so the shop cannot end up

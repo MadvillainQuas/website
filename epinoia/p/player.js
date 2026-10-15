@@ -240,11 +240,13 @@ function paintIdentity(pl, entry, team) {
   const stored = pl.__photoPath
     ? window.EpinoiaUpload.publicUrl(CFG, pl.__photoPath) : null;
   /* NO PHOTOGRAPH YET: a pixel figure in the club's colours on a small screen (silhouette.js),
-     the same one for him every time; the initials only where that module is missing */
+     the same one for him every time; the women's figure where the league is a women's league (the
+     league decides it, never the name); the initials only where that module is missing */
   const standIn = () => {
     const SIL = window.EpinoiaSilhouette;
     if (SIL) {
       SIL.mount(box, { seed: pl.id, teamColour: team && team.colour,
+        gender: SIL.genderOf ? SIL.genderOf(team && team.leagues) : 'men',
         theme: 'auto', shape: 'portrait', label: SIL.label(name) });
       return;
     }
@@ -2041,7 +2043,7 @@ async function seasonLog(ids, sn) {
         .catch(() => [])                              // an unapproved or withdrawn photo simply does not show
         : Promise.resolve([]),
       api(`roster_entries?player_id=eq.${pl.id}` +
-        `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name,logo_path,colour_a))&order=created_at.desc&limit=1`)
+        `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name,logo_path,colour_a,gender))&order=created_at.desc&limit=1`)
     ]);
     if (md.length) pl.__photoPath = md[0].storage_path;
     const entry = re[0] || {};

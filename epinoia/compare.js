@@ -928,7 +928,9 @@ function exportModel(o, extra) {
       const t = p.team || {};
       const m = o.adjust && o.adjust.marks ? o.adjust.marks[p.id] : null;
       const tag = m && !m.same ? (m.ok ? ' ≈' + (m.estimated ? ' est.' : '') : ' · as played') : '';
-      return { name: (p.name || 'Player') + (p.league ? ' · ' + p.league : '') + tag, colour: (x.colours || [])[i] || null, photoUrl: p.photo || null,
+      /* his silhouette, the men's or the women's, by his own league (a head to head can cross leagues) */
+      const SIL = root.EpinoiaSilhouette, gender = p.leagueSlug && SIL && SIL.genderOf ? SIL.genderOf({ slug: p.leagueSlug }) : null;
+      return { name: (p.name || 'Player') + (p.league ? ' · ' + p.league : '') + tag, colour: (x.colours || [])[i] || null, photoUrl: p.photo || null, gender,
                team: { name: t.name || '', short_name: t.short_name || '', colour: t.colour || null, crestUrl: crestOf(t.logo) } };
     }),
     stats: S.map(st => ({ key: st.key, label: String(st.label || st.key), signed: isSigned(st.key, st),

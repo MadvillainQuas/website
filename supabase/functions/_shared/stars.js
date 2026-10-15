@@ -282,7 +282,8 @@ function initials(name) {
    below; and the club's crest at the bottom right (in the plate on the small cards, where the foot has
    no room for it). `small` is the size ranks four to ten are drawn at under the podium. opts.base is the
    path from the page to /epinoia/ ('' on the league page, '../' on HOME); opts.league adds the league
-   to the club line, 'Club · League'. */
+   to the club line, 'Club · League'; opts.pageLeague is the league the page is about, which chooses the
+   men's or the women's figure where the row has no league of its own. */
 function card(r, p, i, small, opts) {
       const o = opts || {};
       const league = o.league || null;
@@ -307,9 +308,11 @@ function card(r, p, i, small, opts) {
       /* the player: a photo where the site has one, else the initials on the club's colour */
       const disc = el('div', 'star-disc');
       disc.appendChild(el('span', 'star-ini', initials(name)));
-      /* no photograph yet: his pixel figure in the club's colours (silhouette.js, where the page has it) */
+      /* no photograph yet: his pixel figure in the club's colours (silhouette.js, where the page has it),
+         the women's figure in a women's league (his row's league, else the page's) */
       const SIL = root.EpinoiaSilhouette;
       if (SIL && root.document) SIL.mount(disc, { seed: p.id, teamColour: ink,
+        gender: SIL.genderOf ? SIL.genderOf(league || o.pageLeague) : 'men',
         theme: 'auto', shape: 'square', res: 30, label: SIL.label(name) });
       const photo = m.photo_url && /^https:\/\//i.test(m.photo_url) ? m.photo_url : null;
       if (photo) disc.appendChild(pic('star-photo', photo));
@@ -358,7 +361,7 @@ function card(r, p, i, small, opts) {
 }
 
 /* ------------------------------------------------------------ the rows ---
-   render(host, rows, {base}): each row is { w, top, meta, teamOf?, teamsById,
+   render(host, rows, {base, pageLeague?}): each row is { w, top, meta, teamOf?, teamsById,
    games, span, leagues? } and draws a head, the podium, and ranks four to ten
    behind the toggle. Replaces whatever the host held. */
 function render(host, rows, opts) {
@@ -381,7 +384,7 @@ function render(host, rows, opts) {
     if (more) head.appendChild(xb);
     host.appendChild(head);
 
-    const cardOpts = p => ({ base: o.base || '', league: p._league || null });
+    const cardOpts = p => ({ base: o.base || '', league: p._league || null, pageLeague: o.pageLeague || null });
     const grid = el('div', 'stargrid');
     r.top.slice(0, 3).forEach((p, i) => grid.appendChild(card(r, p, i, false, cardOpts(p))));
     host.appendChild(grid);
