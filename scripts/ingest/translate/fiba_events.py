@@ -279,6 +279,16 @@ def translate(raw: dict, pid_for: Callable[[int, str], str] = default_pid) -> di
             team, period, clock = key
             g = pending_subs[key]
             outs, ins = g["out"], g["in"]
+            # THE SAME PLAYER OFF AND ON AT ONE INSTANT HAS NOT MOVED (2026-10-15). A feed that logs "Gorosito out" and
+            # "Gorosito in" at one clock (Argentina's La Liga, Argentino 82-79 San Martin, P1 01:26 - a correction, or
+            # a change undone) had both halves paired with other players' and left him off the floor until his next
+            # real change: 4:43 of his 13:45 lost. The two halves cancel before anything is paired - which is also the
+            # chain the merge below exists for (A off for B, then B off for C: B both on and off, so A off, C on).
+            for pid in [p for p in outs if p in ins]:
+                if pid in outs and pid in ins:
+                    oi, ii = outs.index(pid), ins.index(pid)
+                    del outs[oi], g["out_an"][oi]
+                    del ins[ii], g["in_an"][ii]
             if len(outs) != len(ins) and not final:
                 continue
             for o, i, ao, ai in zip(outs, ins, g["out_an"], g["in_an"]):

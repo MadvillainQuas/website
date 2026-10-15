@@ -109,6 +109,16 @@ T = translate(game(start + [("substitution", "out", 1, 2, 1, "05:00"), ("substit
                             ("substitution", "in", 1, 6, 1, "05:00"), ("substitution", "in", 1, 7, 1, "05:00")]),
               lambda t, p: "%d:%s" % (t, p))
 ok("inside one group too: 2 and 6 off, 6 and 7 on, is 2 off for 7", subs(T) == [(1, 300000, pid(2), pid(7))], subs(T))
+# 2026-10-15, La Liga (Argentino 82-79 San Martin, P1 01:26): one player logged off AND on at one clock beside a real
+# change; paired with the other change's halves, he was left off the floor and lost 4:43
+T = translate(game(start + [("substitution", "out", 1, 3, 1, "01:26"), ("substitution", "in", 1, 3, 1, "01:26"),
+                            ("substitution", "out", 1, 2, 1, "01:26"), ("substitution", "in", 1, 6, 1, "01:26")]),
+              lambda t, p: "%d:%s" % (t, p))
+ok("the same player off and on at one instant has not moved: only the real change is made",
+   subs(T) == [(1, 86000, pid(2), pid(6))] and not T["report"]["warnings"], (subs(T), T["report"]["warnings"]))
+T = translate(game(start + [("substitution", "in", 1, 3, 1, "01:26"), ("substitution", "out", 1, 3, 1, "01:26")]),
+              lambda t, p: "%d:%s" % (t, p))
+ok("...however the two halves are ordered, and alone they make no change at all", subs(T) == [] and not T["report"]["warnings"], subs(T))
 T = translate(game(start + [("substitution", "out", 1, 2, 1, "05:00"), ("substitution", "in", 1, 6, 1, "05:00"),
                             ("2pt", "layup", 1, 1, 1, "04:00"),
                             ("substitution", "out", 1, 6, 1, "04:00"), ("substitution", "in", 1, 7, 1, "04:00")]),
