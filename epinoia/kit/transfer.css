@@ -1,0 +1,154 @@
+/* ============================================================================
+   THE TRANSFER MATRIX (epinoia/scouting/transfer/). Only what the kit lacks: the page borrows What wins' pickers, notes,
+   status line, block bar and tables (kit/winning.css, .ww-*), the switch (.pg-seg), the table with heat (kit/table.css,
+   table.ft td.heat) and the chart kit (kit/vizkit.css). Loaded after winning.css and before sectitle.css, as the page
+   standard orders a page's own sheet.
+   ============================================================================ */
+.tm .tm-n{font-family:var(--f-data);font-weight:700;color:var(--ink)}
+.tm .tm-line{line-height:1.7}
+.tm .tm-up{color:var(--good)}
+.tm .tm-dn{color:var(--bad)}
+.tm .tm-neu{color:var(--ink-3)}
+
+/* ---- the data: the leagues left out ---- */
+.tm-toggles{gap:18px}
+.tm-ex{max-width:900px}
+.tm-ex summary b{font-family:var(--f-data);font-weight:700;color:var(--ink)}
+.tm-ex .pg-row{margin:6px 0 10px}
+.tm-exlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 14px;text-align:left}
+.tm-exlist .ww-check{min-height:30px;font-size:12.5px}
+.tm-exlist .ww-check.tm-off span{text-decoration:line-through;color:var(--ink-3)}
+
+/* ---- translate a player ---- */
+.tm-route{align-items:flex-end}
+.tm-swap{min-height:40px;min-width:48px;padding:8px 12px;font-size:16px;line-height:1}
+.tm-find{position:relative;max-width:440px;margin:4px auto 0;text-align:left}
+.tm-find .tm-search{display:flex;width:100%}
+.tm-find .ep-input{max-width:none;width:100%;min-height:40px;font-family:var(--f-ui);font-size:14px}
+.tm-res{position:absolute;left:0;right:0;top:100%;z-index:30;max-height:340px;overflow-y:auto;margin-top:4px;background:var(--panel);
+  border:1px solid var(--rule-2);box-shadow:0 12px 32px rgba(0,0,0,.35)}
+.tm-res[hidden]{display:none}
+.tm-hit{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center;width:100%;padding:8px 12px;margin:0;border:0;
+  border-bottom:1px solid var(--rule);background:none;color:var(--ink);text-align:left;cursor:pointer;font-family:var(--f-ui);font-size:14px}
+.tm-hit:hover,.tm-hit:focus-visible{background:color-mix(in oklch,var(--lume) 10%,transparent);outline:none}
+.tm-hit b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm-hitm{grid-column:1;font-size:11.5px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm-hitb{grid-column:2;grid-row:1 / span 2;font-family:var(--f-data);font-size:12px;color:var(--ink-2);white-space:nowrap}
+.tm-none{margin:0;padding:10px 12px;font-family:var(--f-ui);font-size:13px;color:var(--ink-3)}
+.tm-loaded{margin:8px auto 0;text-align:center}
+.tm-loaded .ep-chip{display:inline-block;cursor:default;text-transform:none;font-family:var(--f-ui);font-size:12.5px;letter-spacing:0;max-width:100%;overflow-wrap:anywhere}
+.tm-mins{align-items:flex-end;margin-top:10px}
+.tm-num .ep-input{width:130px;min-height:40px;font-family:var(--f-data)}
+.tm-hint{min-height:2.6em}
+.tm .pg-seg button:disabled{opacity:.4;cursor:not-allowed}
+.tm .pg-seg button:disabled:hover{background:none;color:var(--ink-2,var(--ink-3))}
+
+/* the route: both leagues, the step between them, the projected BPM, how sure */
+.tm-sum{max-width:900px;margin:10px auto 6px}
+.tm-legs{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,auto) minmax(0,1fr);gap:10px;align-items:stretch}
+.tm-leg{display:flex;flex-direction:column;gap:5px;padding:12px 14px;border:1px solid var(--rule-2);background:var(--panel);text-align:left;min-width:0}
+.tm-lg{font-family:var(--f-ui);font-size:15px;font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+.tm-bar{display:block;height:8px;background:color-mix(in oklch,var(--ink) 10%,transparent);overflow:hidden}
+.tm-bar i{display:block;height:100%;background:var(--vz-s1)}
+.tm-b .tm-bar i{background:var(--vz-s2)}
+.tm-gr{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-2)}
+.tm-gr b{font-family:var(--f-data);color:var(--ink)}
+.tm-gap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 6px;text-align:center}
+.tm-arrow{font-size:24px;line-height:1;color:var(--ink-3)}
+.tm-gap[data-dir="up"] .tm-arrow{color:var(--bad)}
+.tm-gap[data-dir="down"] .tm-arrow{color:var(--good)}
+.tm-gapw{font-family:var(--f-ui);font-size:14px;font-weight:700;color:var(--ink)}
+.tm-gapw b{font-family:var(--f-data)}
+.tm-gapc{font-family:var(--f-ui);font-size:12px;line-height:1.4;color:var(--ink-2);max-width:24ch}
+.tm-hero{display:flex;flex-direction:column;align-items:center;gap:2px;margin:16px auto 6px}
+.tm-big{font-family:var(--f-score);font-weight:400;font-size:clamp(46px,9vw,68px);line-height:1;color:var(--ink)}
+.tm-big[data-tone="good"]{color:var(--good)}
+.tm-big[data-tone="ok"]{color:var(--vz-s1)}
+.tm-big[data-tone="warn"]{color:var(--amber)}
+.tm-big[data-tone="bad"]{color:var(--bad)}
+.tm-big[data-tone="none"]{color:var(--ink-3)}
+.tm-from{font-family:var(--f-ui);font-size:12.5px;color:var(--ink-3)}
+.tm-from b{font-family:var(--f-data);color:var(--ink-2)}
+.tm-conf,.tm-basis{margin:6px auto 0;max-width:72ch;font-family:var(--f-ui);font-size:13px;line-height:1.55;color:var(--ink-2);text-align:center}
+.tm-basis b{font-family:var(--f-data);color:var(--ink)}
+.tm-lvl{margin-right:4px}
+.tm-lvl[data-tone="good"]{color:var(--good)}
+.tm-lvl[data-tone="ok"]{color:var(--vz-s1)}
+.tm-lvl[data-tone="warn"]{color:var(--amber)}
+.tm-lvl[data-tone="bad"]{color:var(--bad)}
+
+/* every stat: his numbers, projected, the change; narrow enough for a phone without scrolling */
+.tm .tm-stats{min-width:0;max-width:640px;margin:0 auto}
+.tm .ep-tw:has(.tm-stats){max-width:640px}
+.tm-stats th[scope="row"] abbr{text-decoration:none;border-bottom:1px dotted var(--rule-2);cursor:help}
+.tm-stats td{text-align:right}
+.tm-stats thead th:not(:first-child){text-align:right}
+.tm-in{width:96px;max-width:96px;min-height:36px;padding:6px 8px;text-align:right;font-family:var(--f-data);font-size:13px}
+.tm-out{font-weight:700;color:var(--ink)}
+.tm-bpm th,.tm-bpm td{background:color-mix(in oklch,var(--vz-s1) 8%,transparent)}
+.tm .tm-movers{min-width:620px}
+.tm .ep-tw:has(.tm-movers),.tm .ep-tw:has(.tm-ledger){max-width:1100px}
+.tm-movers td,.tm-movers th[scope="row"]{white-space:nowrap}
+.tm .tm-movers td.tm-club{white-space:normal;min-width:120px;max-width:200px;font-family:var(--f-ui)}
+.tm #moversB.ww-body,.tm #ledgerB.ww-body{max-width:1120px}
+
+/* ---- league strength over time ---- */
+.tm-picks{align-items:center;gap:6px;margin:4px auto 0;max-width:900px}
+.tm-pick{display:inline-flex;align-items:center;gap:6px;text-transform:none;font-family:var(--f-ui);font-size:12px;letter-spacing:0;background:none;min-height:32px}
+.tm-key{display:inline-block;width:16px;height:0;border-top:3px solid var(--vz-s1)}
+.tm-key[data-i="1"],.tm-key[data-i="4"]{border-top-color:var(--vz-s2)}
+.tm-key[data-i="2"],.tm-key[data-i="5"]{border-top-color:var(--vz-s3)}
+.tm-key[data-i="3"],.tm-key[data-i="4"],.tm-key[data-i="5"]{border-top-style:dashed}
+.tm-top{min-height:32px;padding:6px 12px;font-size:9.5px}
+
+/* ---- ranks by season (table.ft, the fulltable's look and heat) ---- */
+.tm .tm-ranks{max-width:1100px;margin:8px auto 0;text-align:left}
+table.ft.tm-rt tbody td{height:auto;padding:5px 6px;line-height:1.25;text-align:center}
+table.ft.tm-rt thead th{text-align:center}
+.tm-vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+table.ft.tm-rt th.c1,table.ft.tm-rt td.c1{width:200px;text-align:left;left:46px}
+table.ft.tm-rt th.c0,table.ft.tm-rt td.c0{width:46px;text-align:center}
+/* the league's cell is the row's header (a th, so the toggles beside it are read with its name): the sticky cell's ground
+   and rule, as table.ft gives its td.stick */
+table.ft.tm-rt tbody th.c1{padding:0 8px;font-weight:400;white-space:nowrap;overflow:hidden;background:var(--ground);border-bottom:1px solid var(--rule)}
+table.ft.tm-rt tbody tr:nth-child(even) th.c1{background:color-mix(in oklch,var(--ink) 3.2%,var(--ground))}
+:root[data-theme="light"] table.ft.tm-rt tbody th.c1{background:#ffffff}
+:root[data-theme="light"] table.ft.tm-rt tbody tr:nth-child(even) th.c1{background:color-mix(in oklch,var(--ink) 3.5%,#ffffff)}
+.tm-rk{display:block;font-family:var(--f-data);font-size:12.5px;font-weight:700;color:var(--ink)}
+.tm-rk span{margin-left:2px;font-size:9px}
+.tm-gd{display:block;font-family:var(--f-data);font-size:10px;color:var(--ink-2)}
+.tm-nil{color:var(--ink-3)}
+.tm-pk{background:none;border:0;padding:4px 8px;min-height:28px;min-width:32px;color:var(--vz-s1);cursor:pointer;font-size:14px}
+.tm-pk[aria-pressed="false"]{color:var(--ink-3)}
+.tm-lgb{background:none;border:0;padding:4px 0;margin:0;color:var(--ink);cursor:pointer;font-family:var(--f-ui);font-size:13px;font-weight:600;text-align:left;
+  max-width:146px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+.tm-lgb:hover,.tm-lgb:focus-visible{color:var(--lume);text-decoration:underline;text-underline-offset:3px}
+.tm-x{background:none;border:0;padding:2px 6px;margin-left:4px;color:var(--ink-3);cursor:pointer;font-size:11px;vertical-align:middle}
+.tm-x:hover,.tm-x:focus-visible{color:var(--bad)}
+.tm-rt tr.tm-sel td.c1,.tm-rt tr.tm-sel td.c0{box-shadow:inset 3px 0 0 var(--vz-s1)}
+
+/* ---- what sets a rating ---- */
+.tm-facts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:6px auto 4px;max-width:900px;padding:0}
+.tm-facts div{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border:1px solid var(--rule);background:var(--panel);min-width:120px;text-align:left}
+.tm-facts dt{font-family:var(--f-micro);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.tm-facts dd{margin:0;font-family:var(--f-data);font-size:13.5px;color:var(--ink)}
+.tm .tm-ledger{min-width:720px}
+.tm-ledger td{text-align:right}
+
+.tm-method dd .ww-chip{white-space:nowrap}
+
+@media (max-width:720px){
+  .tm-legs{grid-template-columns:1fr}
+  .tm-gap{flex-direction:row;flex-wrap:wrap;gap:4px 8px}
+  .tm-gapc{max-width:none;flex-basis:100%}
+  .tm-route{flex-direction:column;align-items:stretch}
+  .tm-swap{align-self:center}
+  .tm-num{flex:1 1 40%}
+  .tm-num .ep-input{width:100%}
+  .tm-in{width:80px;max-width:80px}
+  .tm-stats th,.tm-stats td{padding:6px 5px}
+  .tm-exlist{grid-template-columns:1fr}
+  table.ft.tm-rt th.c1,table.ft.tm-rt td.c1{width:150px}
+  .tm-lgb{max-width:98px}
+  .tm-toggles .ww-field .pg-seg{align-self:center}
+}

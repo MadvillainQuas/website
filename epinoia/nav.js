@@ -596,7 +596,8 @@
   };
   const fixturesRow = platformRow('▥', 'fixtures', 'games/', /\/epinoia\/games\//,
                 'global fixtures: every league’s games on one page');
-  const scoutingRow = platformRow('⌕', 'scouting', 'scouting/', /\/epinoia\/scouting\//,
+  /* global scouting's own page only: scouting/transfer/ (below) is a page of its own and lights its own row */
+  const scoutingRow = platformRow('⌕', 'scouting', 'scouting/', /\/epinoia\/scouting\/(index\.html)?$/,
                 'global scouting: every league in one table');
   const homeLink = platformRow('⌂', 'home', 'home/', /\/epinoia\/home\/$/,
                 'HOME — every league, today’s fixtures, the best players');
@@ -610,6 +611,9 @@
                               'news: every league, the publishers that cover them and the leagues’ creators, newest first');
   const winsRow = platformRow('∿', 'what wins', 'winning/', /\/epinoia\/winning\//,
                               'what wins: the numbers that go with winning, measured on every finished game');
+  /* THE TRANSFER MATRIX (2026-10-15), in scouting's layer after what wins: how a player's numbers travel between leagues */
+  const transferRow = platformRow('⇄', 'transfer matrix', 'scouting/transfer/', /\/epinoia\/scouting\/transfer\//,
+                                  'transfer matrix: how a player’s numbers change when he moves from one league to another');
   hlist.append(newsRow);
 
   /* and on, into the leagues. A row rather than a bare chevron, because this is
@@ -706,7 +710,7 @@
   const scoutMove = el('a', 'item' + (onScout ? ' on' : ''));
   scoutMove.href = root + 'scouting/';
   scoutMove.append(el('span', 'ic', '⌕'), el('span', 'tx', 'scouting'), el('span', 'lgo', '›'));
-  scoutMove.title = 'scouting, the injury report and what wins';
+  scoutMove.title = 'scouting, the injury report, what wins and the transfer matrix';
   scoutMove.dataset.railMove = '1';
   scoutMove.addEventListener('click', e => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -722,7 +726,7 @@
   scoutback.addEventListener('click', () => setView('home', true));
   scouthead.append(scoutback, el('span', 'lname', 'Scouting'));
   const scoutlist = el('div', 'pages');
-  scoutlist.append(scoutingRow, injuriesRow, winsRow);
+  scoutlist.append(scoutingRow, injuriesRow, winsRow, transferRow);
   scoutPanel.append(scouthead, scoutlist);
   /* BACK TO PROPHE(S)Y (2026-10-06): a small chevron beside the logotype, in the place every other panel keeps its back
      chevron, that leaves Epinoia for the site's front door (prophesyscouting.co.uk/). A link, not a rail move: it goes. */
@@ -2783,7 +2787,7 @@
     const KINDS = [[/^home\/$/, 'home'], [/^games\//, 'games'], [/^fixtures\//, 'fixtures'], [/^stats\/wowy\//, 'wowy'],
                    [/^stats\//, 'stats'], [/^l\//, 'table'], [/^injuries\//, 'injuries'], [/^news\//, q('a') ? 'article' : 'news'],
                    [/^votes\//, 'votes'], [/^video\//, 'video'], [/^game\//, 'game'], [/^p\//, 'player'], [/^t\//, 'team'],
-                   [/^scouting\//, 'scouting'], [/^me\//, 'me']];
+                   [/^scouting\/$/, 'scouting'], [/^me\//, 'me']];      // scouting/transfer/ is a page of the standard (std)
     const hit = KINDS.find(k => k[0].test(s));
     if (hit) return { kind: hit[1] };
     /* A PAGE BUILT TO THE PAGE STANDARD (docs/page-standard.md) says so on its frame (data-std): it gets the line,

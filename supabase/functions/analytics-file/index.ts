@@ -1,7 +1,9 @@
 // ============================================================================
 // analytics-file — HANDS OUT ONE WHAT WINS FILE, IF THE DATABASE SAYS SO (docs/what-wins-model.md §10.1, A.2).
 //
-//   POST {scope: 'wins'|'fo'|'club'|'pos'|'mix', league?, season?, team?, refresh?}
+//   POST {scope: 'wins'|'fo'|'club'|'pos'|'mix'|'transfer'|'tscale', league?, season?, team?, refresh?}
+//   ('transfer' and 'tscale', migration 0265: the Transfer matrix's player data and league scale, no league; an account
+//   always, then the 'transferMatrix' gate)
 //     -> {url (signed, 120 s), token, bytes, built_at, layout, expires_in, n_games, pending, ci_at}
 //
 // Deployed with --no-verify-jwt (supabase/config.toml): the site's publishable key is not a JWT, so the gateway

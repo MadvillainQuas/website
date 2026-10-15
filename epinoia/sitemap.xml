@@ -49,6 +49,12 @@
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>
+  <!-- the transfer matrix (2026-10-15): members' analysis, but its head and its method are public -->
+  <url>
+    <loc>https://prophesyscouting.co.uk/epinoia/scouting/transfer/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
   <url>
     <loc>https://prophesyscouting.co.uk/epinoia/video/</loc>
     <changefreq>weekly</changefreq>

@@ -649,5 +649,131 @@ console.log('\n12. adjust for position (2026-10-08)');
      /\.cmp-grabg\{[^}]*touch-action:none/.test(css) && /\.cmp-drop\{/.test(css) && /\.cmp-chip-pos\{/.test(css));
 }
 
+/* --------------------------------------------- 13. adjust for league --- */
+console.log('\n13. adjust for league (2026-10-15)');
+{
+  const TA = require(path.join(ROOT, 'epinoia', 'transferadjust.js'));
+  const T = require(path.join(ROOT, 'epinoia', 'fulltable.js'));
+  const cols = T.PLAYER_COLS;
+  const N = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const scale = { version: 1, stats: ['BPM', 'TS_pct', 'USG_pct', 'ORB_pct', 'DRB_pct', 'AST_pct', 'TOV_pct', 'STL_pct', 'BLK_pct'],
+    settings: { kBlend: 30 }, pairs: {},
+    leagues: { 'Spanish ACB': { net: N }, 'Spanish Primera FEB': { net: [-2, -2, -1, 0, 0, -1, 0.6, 0, 0] },
+               'Spanish Segunda FEB': { net: [-4, -3.5, -2, 0, 0, -2, 1.2, 0, 0] }, 'Lithuanian LKL': { net: [-1.5, -1, -0.8, 0, 0, -0.6, 0.4, 0, 0] } } };
+  const site = [{ slug: 'liga-endesa', name: 'Liga Endesa', country: 'ES' }, { slug: 'lkl', name: 'LKL', country: 'LT' },
+    { slug: 'nkl', name: 'NKL', country: 'LT' }, { slug: 'slb-women', name: 'Super League Basketball Women', country: 'GB', gender: 'women' }];
+  const X = TA.create(scale, site, { 'liga-endesa': [1, 'm'], lkl: [1, 'm'], nkl: [2, 'm'], 'slb-women': [1, 'w'] });
+
+  const picks = [
+    { id: 'L1:a', name: 'Ada', leagueShort: 'LE', leagueSlug: 'liga-endesa', bpm: 3.0, ts: 60, ppg: 15, gp: 20 },
+    { id: 'L2:b', name: 'Bo', leagueShort: 'LKL', leagueSlug: 'lkl', bpm: 5.0, ts: 62, ppg: 18, gp: 20 },
+    { id: 'L3:c', name: 'Cy', leagueShort: 'SLB W', leagueSlug: 'slb-women', bpm: 6.0, ts: 61, ppg: 20, gp: 20 }
+  ];
+  const o = C.fromTable({ picks, statKeys: ['bpm', 'ts', 'ppg'], cols, ranks: new Map() });
+  ok('each player carries the league\'s slug', o.players.map(p => p.leagueSlug).join() === 'liga-endesa,lkl,slb-women');
+  ok('a league\'s own table gives every player its league; a line handed over as no league stays none',
+     C.fromTable({ picks: [{ id: 'x', name: 'X' }], cols, league: { slug: 'bbl' } }).players[0].leagueSlug === 'bbl' &&
+     C.fromTable({ picks: [{ id: 'x', name: 'X', leagueSlug: '' }], cols, league: { slug: 'bbl' } }).players[0].leagueSlug === '');
+  ok('the choices: each player\'s own league the matrix can place, never a women\'s league',
+     C.adjustChoices(o, X).map(c => c.slug).join() === 'liga-endesa,lkl');
+  ok('one league between them: nothing to adjust', C.adjustChoices(Object.assign({}, o, { players: o.players.slice(0, 1) }), X).length === 0 &&
+     C.adjustChoices(Object.assign({}, o, { players: [o.players[0], Object.assign({}, o.players[0], { id: 'z' })] }), X).length === 0);
+  ok('no matrix: nothing offered', C.adjustChoices(o, null).length === 0);
+
+  /* a host of its own each time (a copy made with Object.assign would lose the innerHTML setter) */
+  const freshHost = () => {
+    const ch = { clientWidth: 900, innerHTML: '' };
+    return { clientWidth: 900, _html: '', listeners: {}, chart: ch,
+      set innerHTML(v) { this._html = v; }, get innerHTML() { return this._html; },
+      querySelector: sel => (sel === '.cmp-chart' ? ch : null), contains: () => true,
+      addEventListener(t, fn) { (this.listeners[t] = this.listeners[t] || []).push(fn); },
+      removeEventListener(t, fn) { this.listeners[t] = (this.listeners[t] || []).filter(f => f !== fn); } };
+  };
+  const host = freshHost(), chart = host.chart;
+  const click = (attrName, value) => {
+    const b = { getAttribute: k => (k === attrName ? value : null) };
+    b.closest = sel => (sel === '[' + attrName + ']' ? b : null);
+    (host.listeners.click || []).forEach(fn => fn({ target: b }));
+  };
+  const choose = value => {
+    const s = { value, getAttribute: () => null };
+    s.closest = sel => (sel === '[data-cmp-adj]' ? s : null);
+    (host.listeners.change || []).forEach(fn => fn({ target: s }));
+  };
+  const seen = [];
+  const api = C.render(host, Object.assign({}, o, { transfer: X, adjustLocked: false, onChange: c => seen.push(c),
+    stats: o.stats.filter(s => s.key === 'bpm' || s.key === 'ts' || s.key === 'ppg') }));
+  ok('offered beside the scale, as played to begin with, one line per league (names, not translated)',
+     /<label class="cmp-adjbox"><span class="cmp-adj-l">adjust for league<\/span><select class="cmp-adjsel" data-cmp-adj="1"/.test(host.innerHTML) &&
+     /<option value="" selected>as played<\/option><option value="liga-endesa">Liga Endesa<\/option><option value="lkl">LKL<\/option><\/select>/.test(host.innerHTML),
+     host.innerHTML.slice(host.innerHTML.indexOf('cmp-adjbox') - 20, host.innerHTML.indexOf('cmp-adjbox') + 400));
+  ok('as played: percentiles, no ≈ anywhere, no note', api.state.mode === 'pct' && !/≈/.test(chart.innerHTML) && !/cmp-adjnote/.test(host.innerHTML));
+  choose('liga-endesa');
+  ok('choosing a league turns the values on (a percentile is already within each player\'s league)',
+     api.state.mode === 'value' && api.state.adjTo === 'liga-endesa' && seen[seen.length - 1].adjustTo === 'liga-endesa' && seen[seen.length - 1].mode === 'value');
+  const cur = api.current();
+  ok('the LKL player\'s BPM and TS% are moved (5.0 - 1.5 = 3.5; 62 - 1 = 61); points a game are not',
+     cur.values['L2:b'].bpm === 3.5 && cur.values['L2:b'].ts === 61 && cur.values['L2:b'].ppg === 18);
+  ok('the Liga Endesa player is as played (the league chosen is his own)', cur.values['L1:a'].bpm === 3 && !cur.adjust.marks['L1:a'].keys.bpm);
+  ok('the women\'s league player is as played, and says so', cur.values['L3:c'].bpm === 6 && /<span class="cmp-chip-adj cmp-chip-noadj">not adjusted<\/span>/.test(host.innerHTML));
+  ok('each moved figure carries an ≈, leaning (cmp-val-adj)', /<text class="cmp-val cmp-val-adj"[^>]*>≈\+3\.5<\/text>/.test(chart.innerHTML) ||
+     /<text class="cmp-val cmp-val-adj"[^>]*>≈3\.5<\/text>/.test(chart.innerHTML), (chart.innerHTML.match(/<text class="cmp-val[^>]*>[^<]*<\/text>/g) || []).join(' '));
+  ok('...and only those: two (BPM and TS% of one player)', (chart.innerHTML.match(/cmp-val-adj/g) || []).length === 2);
+  ok('its bar\'s title says what it was as played', /adjusted from \+?5\.0/.test(chart.innerHTML));
+  ok('the moved player\'s chip carries an ≈', /cmp-chip cmp-s1">[\s\S]*?<span class="cmp-chip-adj" title="adjusted">≈<\/span>/.test(host.innerHTML));
+  ok('a line under the legend says to which league, and that only the nine rates move',
+     /<p class="cmp-note cmp-adjnote"><b class="cmp-adjnote-h">Adjusted to<\/b> <span class="cmp-adjnote-lg" translate="no">Liga Endesa<\/span>/.test(host.innerHTML) &&
+     /Only BPM, TS%, USG%, OREB%, DREB%, AST%, TOV%, STL% and BLK% are moved\./.test(host.innerHTML) && !/cmp-adjnote-est/.test(host.innerHTML));
+  ok('the select shows the league chosen', /<option value="liga-endesa" selected>Liga Endesa<\/option>/.test(host.innerHTML) && /cmp-adjbox on/.test(host.innerHTML));
+  const m = C.exportModel(api.current());
+  ok('the picture says it: the subtitle, the moved player, the ≈ on his figures',
+     /^Values adjusted to Liga Endesa · ≈ moved, the rest as played$/.test(m.sub) && / ≈$/.test(m.players[1].name) && /as played$/.test(m.players[2].name) &&
+     m.stats.find(s => s.key === 'bpm').cells[1].text === '≈+3.5' && m.stats.find(s => s.key === 'bpm').cells[0].text === '+3.0', m.sub + ' | ' + m.players.map(p => p.name).join(' / '));
+  click('data-cmp-mode', 'pct');
+  ok('back to percentiles: the adjustment goes', api.state.adjTo === '' && !/cmp-adjnote/.test(host.innerHTML) && !/≈/.test(chart.innerHTML));
+  choose('lkl');
+  ok('every player read in the LKL: the Liga Endesa line moves the other way (3.0 + 1.5)', api.current().values['L1:a'].bpm === 4.5 && api.current().values['L2:b'].bpm === 5);
+  choose('');
+  ok('as played again: the values as they were, still on the value scale', api.state.adjTo === '' && api.state.mode === 'value' && api.current().values['L2:b'].bpm === 5 && !api.current().adjust);
+  api.update({ adjustTo: 'liga-endesa' });
+  ok('a caller can set it (update): on, on values', api.state.adjTo === 'liga-endesa' && api.state.mode === 'value' && !!api.current().adjust);
+  api.destroy();
+
+  /* an estimated league says so */
+  const est = C.fromTable({ picks: [picks[0], Object.assign({}, picks[1], { id: 'L4:d', leagueSlug: 'nkl', leagueShort: 'NKL' })], statKeys: ['bpm'], cols, ranks: new Map() });
+  const h2 = freshHost();
+  const a2 = C.render(h2, Object.assign({}, est, { transfer: X, adjustLocked: false, adjustTo: 'liga-endesa', mode: 'value' }));
+  ok('a league with no measured moves: its option, its chip and the line all say estimated',
+     /<option value="nkl">NKL · estimated<\/option>/.test(h2._html) && /cmp-chip-est">estimated</.test(h2._html) &&
+     /cmp-adjnote-est">estimated</.test(h2._html) && /\(estimated\)/.test(C.exportModel(a2.current()).sub) &&
+     /<span class="cmp-adjnote-why"><span class="cmp-adjnote-lg" translate="no">NKL<\/span> <span>Estimated: no measured moves, so it is placed at Segunda FEB level\.<\/span><\/span>/.test(h2._html));
+  ok('NKL (rung 3) to Liga Endesa: Segunda FEB\'s step, -4 BPM', a2.current().values['L4:d'].bpm === 1);
+  a2.destroy();
+
+  /* members only */
+  const h3 = freshHost();
+  const a3 = C.render(h3, Object.assign({}, o, { transfer: X, adjustLocked: true, adjustTo: 'liga-endesa', mode: 'value' }));
+  ok('locked: shown, never hidden -- a button the lock draws, no dropdown', /<button type="button" class="cmp-mode-btn cmp-adj cmp-adjlock" data-cmp-adjlock="1">adjust for league<\/button>/.test(h3._html) &&
+     !/data-cmp-adj="1"/.test(h3._html));
+  ok('...and nothing is moved for a reader the lock keeps out, whatever was asked', !a3.current().adjust && a3.current().values['L2:b'].bpm === 5);
+  a3.destroy();
+  const h4 = freshHost();
+  C.render(h4, Object.assign({}, o, { players: o.players.slice(0, 1), transfer: X }));
+  ok('a comparison inside one league offers nothing', !/cmp-adj/.test(h4._html));
+  const h5 = freshHost();
+  C.render(h5, o);
+  ok('no matrix on the page: nothing offered, nothing breaks', !/cmp-adj/.test(h5._html) && /cmp-legend/.test(h5._html));
+
+  const css = rd('epinoia', 'kit', 'compare.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok('compare.css styles the dropdown, the moved figure, the chips\' marks and the line',
+     /\.cmp-adjsel\{/.test(css) && /\.cmp-val-adj\{/.test(css) && /\.cmp-chip-adj\{/.test(css) && /\.cmp-adjnote\{/.test(css));
+  const sc = rd('epinoia', 'scouting', 'scouting.js'), page = rd('epinoia', 'scouting', 'index.html');
+  ok('global scouting hands each player\'s league over, and the leagues it already read',
+     /r\.leagueSlug \? \{ leagueSlug: String\(r\.leagueSlug\) \} : \{\}/.test(sc) && /if \(catAll\) o\.leagues = catAll;/.test(sc));
+  ok('the scouting page loads the matching and the matrix before the chart',
+     page.indexOf('transferleagues.js') > -1 && page.indexOf('transferleagues.js') < page.indexOf('transferadjust.js') &&
+     page.indexOf('transferadjust.js') < page.indexOf('../compare.js'));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

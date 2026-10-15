@@ -243,6 +243,8 @@ function compareInput(picks, statKeys, cols, ranks, opt) {
   return {
     title: 'Compare ' + rows.length + ' players',
     players: rows.map(r => Object.assign({ id: String(r.id), name: r.name || 'Player', league: r.leagueShort || r.leagueName || '' },
+      /* the league's slug: the chart's "adjust for league" reads every player in one of their leagues (transferadjust.js) */
+      r.leagueSlug ? { leagueSlug: String(r.leagueSlug) } : {},
       ranksPos ? { pos: posOf(r) } : {})),
     stats: S.keys.map(k => statOf(S.byKey.get(k))),
     allStats: S.pool.map(k => statOf(S.byKey.get(k))),
@@ -341,6 +343,9 @@ function boot() {
   /* THE LIGHT READ, AT ONCE: the leagues, what this viewer may see, their seasons */
   const catP = typeof G.catalogue === 'function' ? G.catalogue() : Promise.resolve(null);
   catP.catch(() => {});
+  /* every league, with its country and gender: what the comparison's "adjust for league" matches against */
+  let catAll = null;
+  catP.then(c => { catAll = c && Array.isArray(c.all) && c.all.length ? c.all : null; }, () => {});
   /* the clubs per league, for the size estimate: one short read, after the catalogue */
   /* COUNTED BY THE DATABASE (PostgREST's embedded count): one row a league, not one a club - NCAA D2/D3
      alone adds ~1,460 clubs, and every club's row was paged through to be counted here */
@@ -564,6 +569,13 @@ function boot() {
       { locked, withinLeague: within, statGroups: groups,
         ranksPos: pos ? tbl.getRanks(S.every, true) : null, positionOf: pos ? tbl.positionOf : null,
         byPos: pos && typeof tbl.getByPos === 'function' ? tbl.getByPos() : false });
+    /* ADJUST FOR LEAGUE (compare.js, transferadjust.js): the leagues the catalogue already read, so the chart's matrix
+       read does not ask for them again; started here, on the press, rather than with the page */
+    if (catAll) o.leagues = catAll;
+    const TA = root.EpinoiaTransferAdjust;
+    if (TA && typeof TA.load === 'function' && new Set(picks.map(r => r.leagueSlug).filter(Boolean)).size > 1) {
+      try { TA.load({ leagues: catAll || undefined }); } catch (_) { /* the chart draws without the option */ }
+    }
     if (phone() || !panel) { closePanel(); C.open(o); return; }
     closePanel();
     panel.hidden = false;

@@ -29,6 +29,10 @@ node_modules/
 # Editor backups
 *.bak-*
 
+# the transfer matrix's built data (tools/build-transfer.mjs): members' files, uploaded to the private bucket by
+# tools/upload-transfer.mjs, never committed and never published
+transfermatrix/build/
+
 # ingest: raw feed payloads are archives, not source (bundles stay as fixtures)
 data/ingest-fixtures/*.raw.json
 data/ingest-raw/

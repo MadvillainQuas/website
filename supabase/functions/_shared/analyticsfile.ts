@@ -3,7 +3,8 @@
 // index.ts wires supabase-js and Deno.serve around handle(), and supabase/tests/ww-function.test.mjs drives it in node
 // (--experimental-strip-types) with stand-in clients.
 //
-//   POST {scope: 'wins'|'fo'|'club'|'pos'|'mix', league?, season?, team?, refresh?}   (≤ 1 KB) with apikey and, signed in,
+//   POST {scope: 'wins'|'fo'|'club'|'pos'|'mix'|'transfer'|'tscale', league?, season?, team?, refresh?}   (≤ 1 KB) with apikey
+//   and, signed in,
 //   Authorization: Bearer <JWT>
 //     200 {url (signed, 120 s), token, bytes, built_at, layout, expires_in: 120, n_games, pending, ci_at}
 //     400 bad_request · 401 signin | jwt · 403 members | league | scope · 404 none · 429 rate (+ Retry-After) · 405
@@ -24,8 +25,12 @@
 // Logs carry the scope, the league, signed or not and the bytes: never a token, a URL or an address.
 // ============================================================================
 
-/* mix (A.3, migration 0213): a league-season's lineup mixes file, gated as fo is */
-export const FILE_SCOPES = ['wins', 'fo', 'club', 'pos', 'mix'];
+/* mix (A.3, migration 0213): a league-season's lineup mixes file, gated as fo is.
+   transfer, tscale (migration 0265): the Transfer matrix's two files, one each for the whole platform (no league: the row
+   league_key 'all', team_key '', current), an account always and then the 'transferMatrix' gate (analytics_check). They
+   are built by tools/build-transfer.mjs, never by a refresh: RECALCULATE refuses them. */
+export const FILE_SCOPES = ['wins', 'fo', 'club', 'pos', 'mix', 'transfer', 'tscale'];
+export const PLATFORM_FILES = ['transfer', 'tscale'];
 export const FV = 1;                       // the feature layout the pending count is read at
 export const MAX_BODY = 1024;
 export const SIGNED_TTL = 120;
@@ -154,6 +159,8 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (verdict === 'signin') return reply(401, { reason: 'signin' });
   if (verdict === 'members' || verdict === 'league' || verdict === 'scope') return reply(403, { reason: verdict });
   if (verdict !== 'ok' || !FILE_SCOPES.includes(scope)) return reply(403, { reason: 'scope' });
+  /* the Transfer matrix's files are built offline: nothing for a refresh to do, and nothing counted for asking */
+  if (refresh && PLATFORM_FILES.includes(scope)) return reply(403, { reason: 'scope' });
 
   /* ---- 3. who to count it against ---- */
   const sub = jwt ? jwtSub(jwt) : '';
@@ -416,7 +423,7 @@ async function runUpdate(deps: Deps, league: string, season: string, now: () => 
     addMany('pos', res.files.pos);
     if (res.files.mix) out.push({ scope: 'mix', team: '', file: res.files.mix });
   } else if (res.file) {
-    out.push({ scope: res.file.scope && FILE_SCOPES.includes(res.file.scope) ? res.file.scope : 'wins', team: '', file: res.file });
+    out.push({ scope: res.file.scope && FILE_SCOPES.includes(res.file.scope) && !PLATFORM_FILES.includes(res.file.scope) ? res.file.scope : 'wins', team: '', file: res.file });
   }
   const todo = out.filter(o => !o.team || changed.has(o.team) || !old.has(o.scope + '|' + o.team));
 

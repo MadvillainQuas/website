@@ -203,6 +203,13 @@ table.ft tbody tr:hover td.stick{
 table.ft td.lead{ color:var(--ink,var(--ink)); font-weight:600 }
 table.ft td.pos{ color:var(--good,#63ffa0) }
 table.ft td.neg{ color:var(--bad,var(--flare)) }
+/* a figure adjusted to another league (fulltable.js r.__adj; the profile's "adjust to league"): an ≈ before it, leaning,
+   the figure as played in its title; an estimated one's mark in amber. The mark sits in the cell's left padding, out
+   of the flow: the column was measured for the figure alone, and a mark in the flow cut "65.5" to "6…" */
+table.ft td.ft-adj{ position:relative; font-style:italic }
+table.ft td.ft-adj::before{ content:"≈"; position:absolute; left:3px; top:50%; transform:translateY(-50%);
+  font-size:11px; line-height:1; color:var(--lume); font-style:normal; pointer-events:none }
+table.ft td.ft-adj-est::before{ color:var(--amber) }
 
 .ft-empty{
   padding:44px 20px; text-align:center;

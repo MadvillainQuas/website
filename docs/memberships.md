@@ -657,9 +657,24 @@ keys; `{league}` is the league's name and `{months}` the trial's length.
   (`events`, `splits`, `shotZones`, `wowy`), the box score's members' tabs (`gameAdvanced`, `gameFlow`,
   `gameConnections`, `events`, `shotClock`) and its video's runs (`videoRuns`), the tables, the chart lab and a league's
   zone read (`statColumns`), the video hub (`videoRuns`), WOWY (`wowy`), the CSV button (`csv`), What wins and the
-  Front office (`model`), the reports (`clubReport`, `playerReport`). Each teaser carries its key, so the console's words
-  for it are the ones shown.
-- Tests: `node supabase/tests/access-gates.test.mjs` (PGlite) and the wall block of `access.test.mjs`.
+  Front office (`model`), the reports (`clubReport`, `playerReport`), the Transfer matrix (`transferMatrix`, 0265:
+  scouting/transfer/, and the league adjustments compare and the player profile take from its scale). Each
+  teaser carries its key, so the console's words for it are the ones shown.
+- **The Transfer matrix is members only in fact (0265).** Its two files - the player store (`transfer`) and the league
+  scale (`tscale`), built by tools/build-transfer.mjs from the scraped player-stats files - are never published: they are
+  built into transfermatrix/build/ (never published, never committed), uploaded by tools/upload-transfer.mjs to the
+  private `analytics` bucket, and handed out only by the analytics-file function, as What wins' files are: it asks
+  `analytics_check` with the reader's own token, then answers with a two-minute signed URL. For the two scopes
+  `analytics_check` wants an account **always** - a signed-out request is `signin` even while memberships are switched
+  off (when `gate_open` opens every section) or the section is made `free` - and then `gate_open('transferMatrix', null)`
+  (else `members`); a league, season or team given is `scope`. The page and the adjustments get them through
+  epinoia/transferdata.js (`EpinoiaTransferData.load`), which asks nothing while signed out and keeps a member's copy on
+  the device by token (IndexedDB, deleted on sign-out; reused without asking for ten minutes after the function's last
+  yes, as What wins' files are). There is no preview of it (access.js `PEEK_NEVER`): a preview
+  could open the page but never fill it. Rebuilding and uploading: docs/transfer-matrix.md.
+- Tests: `node supabase/tests/access-gates.test.mjs` (PGlite) and the wall block of `access.test.mjs`; the Transfer
+  matrix's gate `transfer-gate.test.mjs` (PGlite), its function `ww-function.test.mjs`, its loader
+  `transfer-data.test.mjs`, its upload `transfer-upload.test.mjs`.
 
 ## 11. Free trials (0223)
 

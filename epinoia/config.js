@@ -514,6 +514,14 @@ window.epinoiaSignOut = async function (sb) {
     gone.forEach(k => sessionStorage.removeItem(k));
   } catch (_) { /* nothing kept, or storage blocked */ }
 
+  /* The Transfer matrix keeps a member's copy of its files in this browser's
+     IndexedDB, epinoia_transfer (transferdata.js). Signing out deletes it,
+     whichever page it happens on. */
+  try {
+    if (window.EpinoiaTransferData && window.EpinoiaTransferData.clear) window.EpinoiaTransferData.clear();
+    else if (window.indexedDB) window.indexedDB.deleteDatabase('epinoia_transfer');
+  } catch (_) { /* nothing kept, or storage blocked */ }
+
   /* Tell this tab. The browser's storage event only reaches OTHER tabs, so
      without this the rail in this one would wait for its next poll. */
   try { window.dispatchEvent(new Event('epinoia:auth')); } catch (_) {}

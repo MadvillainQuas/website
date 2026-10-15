@@ -75,7 +75,7 @@ ok('every crawler is asked to wait between requests', star && star.delay > 0, st
 ok('...between 5 and 30 seconds: slow, and the public section still gets read in a day or two', star.delay >= 5 && star.delay <= 30, star.delay);
 
 console.log('\npossible: the public pages are open');
-const open = ['/', '/epinoia/', '/epinoia/home/', '/epinoia/games/', '/epinoia/stats/', '/epinoia/stats/wowy/', '/epinoia/scouting/', '/epinoia/video/',
+const open = ['/', '/epinoia/', '/epinoia/home/', '/epinoia/games/', '/epinoia/stats/', '/epinoia/stats/wowy/', '/epinoia/scouting/', '/epinoia/scouting/transfer/', '/epinoia/video/',
   '/epinoia/learn/', '/epinoia/embed/', '/epinoia/api/', '/epinoia/l/?l=slb', '/epinoia/t/?t=brisbane-bullets', '/epinoia/game/?g=569d4acb-6a79-439f-95a0-1f208b63e557',
   '/epinoia/p/?p=someone', '/epinoia/news/', '/epinoia/privacy/', '/epinoia/sitemap.xml', '/epinoia/kit/home.css', '/epinoia/vendor/supabase.js', '/epinoia/i18n/ja.js'];
 for (const agent of ['Googlebot', 'bingbot', 'DuckDuckBot', 'SomeOtherCrawler/1.0']) {

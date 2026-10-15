@@ -250,6 +250,19 @@ const homeBtn = r => (r.nav ? byClass(r.nav, 'home-btn')[0] : null);
   eq('global scouting lights its own row', r.homeRows.filter(x => x.on).map(x => x.tx), ['scouting']);
 }
 {
+  /* THE TRANSFER MATRIX (2026-10-15): a row of scouting's own layer, after what wins; on its page that row is lit and
+     global scouting's is not, the layer's way in on HOME's panel is, and the bar stays the platform's with scouting lit */
+  const scoutRows = r => (byClass(r.nav, 'scoutpanel')[0] || { all: () => [] }).all().filter(n => n.tagName === 'A' && n.cls.has('item'))
+    .map(a => ({ href: a.href, tx: (byClass(a, 'tx')[0] || {}).textContent, on: a.cls.has('on') }));
+  const r = rail('/epinoia/scouting/transfer/');
+  eq('scouting\'s layer: scouting, the injury report, what wins, then the transfer matrix', scoutRows(r).map(x => x.tx), ['scouting', 'injury report', 'what wins', 'transfer matrix']);
+  eq('...the transfer matrix two folders down', scoutRows(r).map(x => x.href)[3], '../../scouting/transfer/');
+  eq('on the transfer matrix: its own row lit, global scouting\'s not', scoutRows(r).filter(x => x.on).map(x => x.tx), ['transfer matrix']);
+  eq('...HOME\'s panel lights its way into scouting', r.homeRows.filter(x => x.on).map(x => x.tx), ['scouting']);
+  eq('...and the bar is the platform\'s, scouting lit, even with ?l= in the address', (() => { const q = rail('/epinoia/scouting/transfer/?l=slb'); return [q.tabs.map(t => t.tx), q.tabs.filter(t => t.on).map(t => t.tx)]; })(), [PLATFORM, ['scouting']]);
+  eq('on global scouting: its own row lit, the transfer matrix\'s not', scoutRows(rail('/epinoia/scouting/')).filter(x => x.on).map(x => x.tx), ['scouting']);
+}
+{
   const r = rail('/epinoia/stats/wowy/?l=bcb');
   eq('two folders down, the rows in the home panel climb with it',
      r.homeRows.map(x => x.href),

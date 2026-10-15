@@ -233,6 +233,40 @@ for (const [verdict, status] of [['signin', 401], ['members', 403], ['league', 4
   ok('an index row whose object is gone is 404 too, not a broken URL', (await handle(post({ scope: 'wins', league: L }), w2.deps)).status === 404);
 }
 
+/* ======================================== 1b. the Transfer matrix's two files (0265) --- */
+console.log('\nthe transfer matrix\'s files: transfer and tscale');
+{
+  const TROW = { path: 'transfer/1a60e7d50205303dbd6c.bin.gz', token: '1a60e7d50205303dbd6c', bytes: 1848981, built_at: '2026-10-15T09:00:00Z',
+    layout: 2, fv: 0, n_games: null, ci_at: null, league_id: null, season_id: null };
+  for (const scope of ['transfer', 'tscale']) {
+    const w = world({ rows: [Object.assign({}, TROW, { path: scope + '/x.gz' })] });
+    const r = await handle(post({ scope }, { authorization: 'Bearer ' + JWT }), w.deps);
+    const b = await json(r);
+    const chk = w.calls.find(c => c.rpc === 'analytics_check'), take = w.calls.find(c => c.rpc === 'analytics_take'), files = w.calls.find(c => c.table === 'analytics_files');
+    ok(scope + ': asked as the caller with no league, counted against league all, the row league all, team \'\', current',
+       chk.who === 'caller:Bearer ' + JWT && JSON.stringify(chk.args) === JSON.stringify({ p_scope: scope, p_league: null, p_season: null, p_team: null }) &&
+       take.args.p_league === 'all' && take.args.p_scope === scope &&
+       ['scope:' + scope, 'league_key:all', 'team_key:'].every(s => files.filters.some(f => f[0] === 'eq' && f[1] + ':' + f[2] === s)) &&
+       files.filters.some(f => f[1] === 'is_current' && f[2] === true), [chk.args, take.args, files.filters]);
+    ok(scope + ': 200 with the signed URL (120 s), its token and bytes, no pending count (the token is a content hash)',
+       r.status === 200 && /token=SIGNED/.test(b.url) && b.token === TROW.token && b.bytes === TROW.bytes && b.layout === 2 && b.pending === null &&
+       w.calls.find(c => c.storage === 'sign').path === scope + '/x.gz' && !w.calls.some(c => c.table === 'game_features'), b);
+    const wr = world();
+    const rr = await handle(post({ scope, refresh: true }, { authorization: 'Bearer ' + JWT }), wr.deps);
+    ok(scope + ': RECALCULATE never applies (403 scope), and nothing is counted or built',
+       rr.status === 403 && (await json(rr)).reason === 'scope' && !wr.calls.some(c => c.rpc === 'analytics_take' || c.rpc === 'analytics_refresh_take' || c.storage));
+  }
+  for (const [verdict, status] of [['signin', 401], ['members', 403], ['scope', 403]]) {
+    const w = world({ check: verdict });
+    const r = await handle(post({ scope: 'transfer' }), w.deps);
+    ok(`transfer: '${verdict}' from the database is ${status}, and nothing is taken or signed`, r.status === status && (await json(r)).reason === verdict &&
+       !w.calls.some(c => c.rpc === 'analytics_take' || c.storage));
+  }
+  const { FILE_SCOPES, PLATFORM_FILES } = await import('../functions/_shared/analyticsfile.ts');
+  ok('FILE_SCOPES: What wins\' five, then transfer and tscale, which alone are platform files', FILE_SCOPES.join() === 'wins,fo,club,pos,mix,transfer,tscale' &&
+     PLATFORM_FILES.join() === 'transfer,tscale');
+}
+
 /* ============================================================ 2. RECALCULATE --- */
 console.log('\nRECALCULATE');
 const WM = { at: '2026-09-30T10:00:00Z', id: '00000000-0000-0000-0000-000000000000' };

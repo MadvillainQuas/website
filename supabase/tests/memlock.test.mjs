@@ -50,9 +50,9 @@ async function state(top, e) {
 const press = (el, ran) => { const a = el.fire('click', {}); el.fire('keydown', { key: 'Enter' }); el.fire('keydown', { key: ' ' }); return a; };
 
 console.log('\ncatalogue');
-ok('CATALOGUE.locks names events, csv, the What wins model, the reports (docs/what-wins-model.md §10.3, 0220; the game\'s its own, 0231) and every section the platform can move (0222)',
+ok('CATALOGUE.locks names events, csv, the What wins model, the reports (docs/what-wins-model.md §10.3, 0220; the game\'s its own, 0231), every section the platform can move (0222) and the transfer matrix (0265)',
    ['clubReport', 'csv', 'events', 'model', 'playerReport', 'gameReport', 'shotZones', 'shotClock', 'rotations', 'lineups', 'wowy', 'splits', 'statColumns',
-    'gameFlow', 'gameConnections', 'gameAdvanced', 'videoRuns'].sort().join() === Object.keys(A.CATALOGUE.locks).sort().join() &&
+    'gameFlow', 'gameConnections', 'gameAdvanced', 'videoRuns', 'transferMatrix'].sort().join() === Object.keys(A.CATALOGUE.locks).sort().join() &&
    Object.values(A.CATALOGUE.locks).every(l => l.gate && l.label && l.what) &&
    A.CATALOGUE.locks.model.gate === 'analytics' && A.CATALOGUE.locks.model.label === 'What wins model' &&
    A.CATALOGUE.locks.clubReport.gate === 'club_report' && A.CATALOGUE.locks.playerReport.gate === 'player_report');

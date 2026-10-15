@@ -451,22 +451,167 @@ function statBind(node, k, label, mine, rows, value) {
 }
 
 function paintTiles(s, field) {
+  LAST_TILES = [s, field];
   const host = $('#tiles'); host.textContent = '';
   if (!s) {
     host.appendChild(el('div', 'empty', 'No finalised games yet.'));
     return;
   }
   const rows = field && field.length ? statPool(s, field) : null;
+  /* ADJUSTED TO A LEAGUE (below): TS% and USG% as if played there, marked; the popup's chart stays the league's own */
+  const adj = adjTiles(s);
   [['games', s.gp, false, null], ['pts', n1(s.ppg), true, 'ppg'], ['reb', n1(s.rpg), true, 'rpg'],
    ['ast', n1(s.apg), true, 'apg'], ['mins', n1(s.mpg), false, 'mpg'],
    ['ts%', n1(s.ts), false, 'ts'], ['usg%', n1(s.usg), false, 'usg'],
    ['on-off', s.diff_net == null ? '—' : (s.diff_net > 0 ? '+' : '') + n1(s.diff_net), true, 'diff_net']]
     .forEach(([l, v, hi, k]) => {
-      const d = el('div', 'tile' + (hi ? ' hi' : ''));
-      d.append(el('div', 'v', v), el('div', 'l', l));
+      const moved = adj && k && k in adj.changed;
+      const d = el('div', 'tile' + (hi ? ' hi' : '') + (moved ? ' adj' : ''));
+      d.append(el('div', 'v', moved ? '≈' + n1(adj.values[k]) : v), el('div', 'l', l));
+      if (moved) d.title = 'unadjusted · ' + v + (adj.estimated ? ' · estimated' : '');
       if (k) statBind(d, k, l, s, rows);
       host.appendChild(d);
     });
+}
+
+/* ---------------------------------------------------------- adjust to league ---
+   ADJUST TO LEAGUE (2026-10-15; Louie: "on player profiles, there be an option to adjust stats to a covered league").
+   MEMBERS ONLY, MEN'S PLAYERS ONLY: offered where one of his leagues is one the league matrix can place
+   (transferadjust.js; the matrix measures men's leagues, so a women's league never is). A league chosen here reads
+   BPM, TS%, USG% and the rebound, assist, turnover, steal and block rates as if played in it, wherever the profile
+   shows them as figures: the hero's TS% and USG% tiles (the line shown, when it is one league's) and every row of the
+   career table, each row moved from its own league. Every moved figure is marked (≈, the figure as played on hover),
+   a line above the tiles says to which league and whether it is estimated, and the percentile bars are left alone --
+   they rank him within his own league, which no adjustment changes. The choice is kept on the device for the next
+   profile, as the position switch is. */
+let ADJ_TO = '';
+try { ADJ_TO = localStorage.getItem('epinoia_adj_league') || ''; } catch (_) { /* as played */ }
+let ADJ = null, ADJ_MENU = null, ADJ_FROM = '', ADJ_MSG = '', LAST_TILES = null, ADJ_UNDO = null;
+/* the one league a set of competitions was played in ('' for two or more, or none) */
+function scopeLeague(comps) {
+  const s = [...new Set((comps || []).map(c => (c && c.leagueRow && c.leagueRow.slug) || '').filter(Boolean))];
+  return s.length === 1 ? s[0] : '';
+}
+const adjLib = () => window.EpinoiaTransferAdjust || null;
+const adjLocked = () => { const X = adjLib(); return !!(X && typeof X.locked === 'function' && X.locked(ACCESS_LEAGUE.id)); };
+const adjOn = () => !!(ADJ_TO && ADJ && ADJ.ready && ADJ.canAdjust(ADJ_TO) && !adjLocked());
+/* the tiles' TS% and USG%, moved from the league of the line shown (null: nothing to move) */
+function adjTiles(s) {
+  if (!adjOn() || !ADJ_FROM || !s) return null;
+  const r = ADJ.adjust({ stats: { ts: s.ts, usg: s.usg }, from: ADJ_FROM, to: ADJ_TO });
+  return r.ok && !r.same ? r : null;
+}
+/* a career row moved from its own league: the moved figures replaced and marked for the table (fulltable.js __adj) */
+function adjRow(r) {
+  const res = ADJ.adjust({ stats: r, from: r._leagueSlug || '', to: ADJ_TO });
+  if (!res.ok || res.same) return r;
+  const marks = {};
+  Object.keys(res.changed).forEach(k => {
+    const v = r[k], was = v == null ? '—' : (k === 'bpm' && v > 0 ? '+' : '') + Number(v).toFixed(1);
+    marks[k] = { est: !!res.estimated, title: 'unadjusted · ' + was + (res.estimated ? ' · estimated' : '') };
+  });
+  return Object.assign({}, r, res.values, { __adj: marks });
+}
+/* the line above the tiles: the league chosen (or the lock), and what the choice does */
+function paintAdjust() {
+  const host = $('#padj'), X = adjLib(), menu = ADJ || ADJ_MENU;
+  if (!host) return;
+  if (ADJ_UNDO) { ADJ_UNDO(); ADJ_UNDO = null; }
+  host.textContent = '';
+  if (!X || !menu) { host.hidden = true; return; }
+  host.hidden = false;
+  const row = el('div', 'padj-row');
+  if (adjLocked()) {
+    /* members only: drawn, never hidden; a press asks the reader to sign in (or to join) */
+    const b = el('button', 'ep-btn padj-lock', 'adjust to league');
+    b.type = 'button';
+    row.appendChild(b);
+    const M = window.EpinoiaMemLock;
+    if (M && typeof M.lock === 'function') ADJ_UNDO = M.lock(b, { what: 'League adjustment', key: X.lockKey(), leagueSlug: ACCESS_LEAGUE.slug });
+    host.appendChild(row);
+    return;
+  }
+  const lab = el('label', 'padj-l', 'adjust to league');
+  lab.htmlFor = 'padjSel';
+  const sel = el('select', 'ep-input padj-s');
+  sel.id = 'padjSel';
+  const opt = (v, t, name) => { const o = el('option', null, t); o.value = v; if (name) o.setAttribute('translate', 'no'); sel.appendChild(o); return o; };
+  opt('', 'as played');
+  const list = menu.targets || [];
+  list.filter(e => !e.estimated).forEach(e => opt(e.slug, e.label, true));
+  const est = list.filter(e => e.estimated);
+  if (est.length) {
+    const h = opt('', 'estimated'); h.disabled = true; h.className = 'padj-sep';
+    /* an estimated league says so in its own line; a name is never translated, so the two are apart */
+    est.forEach(e => opt(e.slug, e.label + ' · ' + (e.extrapolated ? 'estimated · extrapolated' : 'estimated')));
+  }
+  sel.value = list.some(e => e.slug === ADJ_TO) ? ADJ_TO : '';
+  sel.addEventListener('change', () => chooseAdjust(sel.value));
+  row.append(lab, sel);
+  host.appendChild(row);
+  if (ADJ_MSG) { host.appendChild(el('div', 'padj-note', ADJ_MSG)); return; }
+  if (!adjOn()) return;
+  const e = ADJ.entry(ADJ_TO) || {};
+  const rows = (CAREER && CAREER.rows) || [];
+  const froms = [...new Set(rows.map(r => r._leagueSlug).filter(Boolean)).add(ADJ_FROM)].filter(Boolean);
+  const anyEst = !!e.estimated || froms.some(s => s !== ADJ_TO && ADJ.estimated(s));
+  const anyExtra = !!e.extrapolated || froms.some(s => s !== ADJ_TO && (ADJ.entry(s) || {}).extrapolated);
+  const unmoved = rows.some(r => !ADJ.canAdjust(r._leagueSlug || ''));
+  const note = el('div', 'padj-note');
+  note.setAttribute('role', 'status');
+  const name = el('span', 'padj-lg', e.label || '');
+  name.setAttribute('translate', 'no');
+  note.append(el('b', 'padj-h', 'Adjusted to'), document.createTextNode(' '), name);
+  const tags = [anyEst ? 'estimated' : '', anyExtra ? 'extrapolated' : ''].filter(Boolean).join(' · ');
+  if (tags) note.append(document.createTextNode(' '), el('span', 'padj-est', tags));
+  const say = t => { note.append(document.createTextNode(' '), el('span', null, t)); };
+  say('BPM, TS%, USG% and the rebound, assist, turnover, steal and block rates in the tiles and the career table, as if played there; ≈ marks a moved figure.');
+  say('The percentile bars stay within the player’s own league.');
+  if (!ADJ_FROM) say('The tiles’ line spans more than one league, so they are as played.');
+  else if (!ADJ.canAdjust(ADJ_FROM)) say('The tiles’ league cannot be placed, so they are as played.');
+  if (unmoved) say('Rows from a league that cannot be placed are as played.');
+  /* each estimated league, by name, with where the Spanish ladder puts it (transferleagues.js ladderNote) */
+  [...new Set(froms.concat(ADJ_TO))].filter(s => ADJ.estimated(s))
+    .forEach(s => {
+      const en = ADJ.entry(s) || {}, w = el('span', 'padj-why'), n = el('span', 'padj-lg', en.label || s);
+      n.setAttribute('translate', 'no');
+      w.append(n, document.createTextNode(' '), el('span', null, en.note || ''));
+      note.append(document.createTextNode(' '), w);
+    });
+  host.appendChild(note);
+}
+/* the tiles and the career table again, as they now read */
+function repaintAdjusted() {
+  if (LAST_TILES) paintTiles(LAST_TILES[0], LAST_TILES[1]);
+  redrawCareer();
+  paintAdjust();
+}
+async function chooseAdjust(slug) {
+  ADJ_TO = slug || '';
+  ADJ_MSG = '';
+  keep('epinoia_adj_league', ADJ_TO);
+  if (ADJ_TO && !(ADJ && ADJ.ready)) {
+    ADJ_MSG = 'loading…';
+    paintAdjust();
+    const X = adjLib();
+    ADJ = X ? await X.load() : null;
+    ADJ_MSG = ADJ ? '' : 'The league adjustment could not be loaded. Try again later.';
+  }
+  repaintAdjusted();
+}
+/* offered once his leagues are known: the menu from the leagues alone, the matrix itself read when a league is chosen
+   (or was chosen on an earlier profile) */
+async function setupAdjust(scopes) {
+  const X = adjLib(), host = $('#padj');
+  if (!X || !host) return;
+  let menu = null;
+  try { menu = await X.catalogue(); } catch (_) { menu = null; }
+  const his = [...new Set(((scopes && scopes.seasons) || []).flatMap(sn => sn.comps.map(c => (c.leagueRow && c.leagueRow.slug) || '')).filter(Boolean))];
+  if (!menu || !his.some(s => menu.canAdjust(s))) { host.hidden = true; return; }
+  ADJ_MENU = menu;
+  if (ADJ_TO && !menu.canAdjust(ADJ_TO)) ADJ_TO = '';
+  if (ADJ_TO && !adjLocked()) await chooseAdjust(ADJ_TO);
+  else paintAdjust();
 }
 
 /* ------------------------------------------------------------ percentile --- */
@@ -1361,7 +1506,7 @@ async function paintCareer(pl, team, scopes, hooks) {
           teamName: cl.length ? cl.map(t => t.short_name || t.name).join(' / ') : (row.teamName || ''),
           teamShort: top ? (top.short_name || '') : (row.teamShort || ''), teamFull: top ? (top.name || '') : (row.teamFull || ''),
           colour: top ? (top.colour || null) : (row.colour || null), teamLogo: top ? (top.logo_path || null) : (row.teamLogo || null),
-          compLabel: short, _comp: c.name || '', _league: c.league || '',
+          compLabel: short, _comp: c.name || '', _league: c.league || '', _leagueSlug: (c.leagueRow && c.leagueRow.slug) || '',
           _club: cl.length ? cl.map(t => t.name || t.short_name).join(' / ') : (row.teamFull || row.teamName || ''),
           _label: [sn.label, short].filter(Boolean).join(' · '),
           _season: sn.label, _cid: c.id, _href: scopeHref(sn, c.id)
@@ -1380,23 +1525,36 @@ async function paintCareer(pl, team, scopes, hooks) {
   $('#seasonNote').textContent = nS + (nS === 1 ? ' season · ' : ' seasons · ') +
     list.length + (list.length === 1 ? ' competition · ' : ' competitions · ') + games + (games === 1 ? ' game' : ' games') +
     (items.length > shown.length ? ' · the newest ' + CAREER_CAP : '');
-  CAREER = { rows: list, byHref: new Map(list.map(r => [r._href, r])), hooks: hooks || null };
+  CAREER = { rows: list, byHref: new Map(list.map(r => [r._href, r])), hooks: hooks || null, pl };
   renderCareerRows(host, list, pl);
+  if (adjOn()) paintAdjust();                    // the line above the tiles now knows every row's league
 }
 
+/* ADJUSTED TO A LEAGUE (paintAdjust): each row moved from its own league and its moved figures marked; the picture
+   under the table (per-game counts) is never moved */
+const careerFile = pl => (pl.slug || 'player') + '-career' + (adjOn() ? '-adjusted-to-' + ADJ_TO : '');
 function renderCareerRows(host, rows, pl) {
-  window.EpinoiaTable.render({
+  const opts = {
     host: '#seasons', kind: 'player', sortKey: 'rank', sortDir: 1, showMinGames: false, heat: false,
-    filename: (pl.slug || 'player') + '-career', track: 'player-career',
+    filename: careerFile(pl), track: 'player-career',
     nameLabel: 'SEASON', compColumn: true,
     /* a season is a link to it on this page (?s= and ?c=): a plain press redraws in place (below) */
     playerHref: r => r._href || null,
     onDraw: markCareer,
     /* the table drops the premium columns itself when this league's analytics are locked */
     leagueId: ACCESS_LEAGUE.id, leagueSlug: ACCESS_LEAGUE.slug,
-    rows
-  });
+    rows: adjOn() ? rows.map(adjRow) : rows
+  };
+  const tbl = window.EpinoiaTable.render(opts);
+  if (CAREER && CAREER.rows === rows) { CAREER.table = tbl; CAREER.opts = opts; }
   paintSeasonShot(shotLines(rows));
+}
+/* another league chosen: the same table, its rows moved (setRows keeps the reader's view, sort and columns), and the
+   CSV named for what it holds */
+function redrawCareer() {
+  if (!CAREER || !CAREER.table || typeof CAREER.table.setRows !== 'function') return;
+  if (CAREER.opts && CAREER.pl) CAREER.opts.filename = careerFile(CAREER.pl);
+  CAREER.table.setRows(adjOn() ? CAREER.rows.map(adjRow) : CAREER.rows);
 }
 
 /* THE PICTURE IS A SEASON, EVERY COMPETITION OF IT (Louie, 2026-10-14: "for BCB - not just the league, also including
@@ -1912,6 +2070,8 @@ async function seasonLog(ids, sn) {
        ?s= names the season, ?c= a competition of it; both can be sent and reloaded into. */
     const scopes = await playerScopes(pl, team);
     const SEASONS = scopes.seasons;
+    /* ADJUST TO LEAGUE (paintAdjust): offered once his leagues are known, beside everything else being drawn */
+    setupAdjust(scopes).catch(e => console.warn('[adjust]', e));
     const KIND_LABEL = { league: 'League', cup: 'Cup', trophy: 'Trophy', playoff: 'Playoffs', friendly: 'Friendlies' };
     const q0 = new URLSearchParams(location.search);
     let SEASON = pickScopeSeason(SEASONS, q0.get('s'));
@@ -1960,8 +2120,10 @@ async function seasonLog(ids, sn) {
         CMP_CTX = { mine, field, name: fullName, label: (what + ' ' + (GL ? GL.shortSeason(sname) : sname)).trim(),
           team: team && teamId === team.id ? { name: team.name, short: team.short_name, colour: team.colour, logo: team.logo_path } : null,
           teamId, photo: (pl.__photoPath && window.EpinoiaUpload ? window.EpinoiaUpload.publicUrl(CFG, pl.__photoPath) : null) || pl.photo_url || null,
-          leagueId: lgRow ? lgRow.id : null, leagueRow: lgRow, seasonName: sname };
+          leagueId: lgRow ? lgRow.id : null, leagueRow: lgRow, seasonName: sname, leagueSlug: scopeLeague(inScope) };
       }
+      /* the league the tiles' line was played in, for "adjust to league" ('' where it spans two) */
+      ADJ_FROM = scopeLeague(comps.filter(c => ids.indexOf(c.id) >= 0));
       paintTiles(mine, field);
       paintBars(mine, field);
       clutchWhenNear(ids, pl.id, team);

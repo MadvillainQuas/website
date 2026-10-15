@@ -116,5 +116,79 @@ console.log('-- the profile page');
   ok('no other stats site is named', !names.test(ui));
 }
 
+console.log('-- adjust for league, in the chart (2026-10-15)');
+{
+  const ui = rd('epinoia', 'p', 'compare-ui.js'), js = rd('epinoia', 'p', 'player.js');
+  ok('each line names its league for the chart: this one\'s (one league, or none), the other\'s',
+     /leagueSlug: ctx\.leagueSlug \|\| ''/.test(ui) && /otherAs: \{ leagueShort: [^}]*leagueSlug: L\.slug \|\| '' \}/.test(ui) &&
+     /leagueSlug: scopeLeague\(inScope\)/.test(js));
+  ok('...and hands the chart the leagues the picker already read, and the lock\'s league', /o\.leagues = cat\.all/.test(ui) && /o\.adjustLeague = ctx\.leagueId/.test(ui));
+  const o = C.fromTable(PC.model({ mine: weak[0], mineField: weak, other, otherField: strong, cols, percentiles: SE.percentiles,
+    mineAs: { name: 'Wes', leagueSlug: '' }, otherAs: { leagueSlug: 'lkl' }, league: { slug: 'nbl' } }));
+  ok('a line across two leagues is no league (never the profile\'s club league in its place)', o.players[0].leagueSlug === '' && o.players[1].leagueSlug === 'lkl');
+}
+
+console.log('-- adjust to league, on the profile (2026-10-15)');
+{
+  const js = rd('epinoia', 'p', 'player.js'), html = rd('epinoia', 'p', 'index.html');
+  const lift = (src, signature) => {
+    const from = src.indexOf(signature);
+    if (from === -1) throw new Error('cannot find ' + signature);
+    let depth = 0;
+    for (let j = src.indexOf('{', from); j < src.length; j++) {
+      if (src[j] === '{') depth++;
+      else if (src[j] === '}') { depth--; if (!depth) return src.slice(from, j + 1); }
+    }
+    throw new Error('unbalanced ' + signature);
+  };
+  const TA = require(path.join(ROOT, 'epinoia', 'transferadjust.js'));
+  const N = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const X = TA.create({ version: 1, stats: ['BPM', 'TS_pct', 'USG_pct', 'ORB_pct', 'DRB_pct', 'AST_pct', 'TOV_pct', 'STL_pct', 'BLK_pct'], pairs: {},
+    leagues: { 'Spanish ACB': { net: N }, 'Spanish Primera FEB': { net: [-2, -2, -1, 0, 0, -1, 0.6, 0, 0] },
+               'Spanish Segunda FEB': { net: [-4, -3.5, -2, 0, 0, -2, 1.2, 0, 0] }, 'Lithuanian LKL': { net: [-1.5, -1, -0.8, 0, 0, -0.6, 0.4, 0, 0] } } },
+    [{ slug: 'liga-endesa', name: 'Liga Endesa', country: 'ES' }, { slug: 'lkl', name: 'LKL', country: 'LT' }, { slug: 'nkl', name: 'NKL', country: 'LT' }],
+    { 'liga-endesa': [1, 'm'], lkl: [1, 'm'], nkl: [2, 'm'] });
+  const api = new Function('X', 'TO', 'FROM', 'let ADJ = X, ADJ_TO = TO, ADJ_FROM = FROM; const adjOn = () => true;\n' +
+    lift(js, 'function scopeLeague(comps)') + '\n' + lift(js, 'function adjTiles(s)') + '\n' + lift(js, 'function adjRow(r)') +
+    '\nreturn { scopeLeague, adjTiles, adjRow };');
+  const P = api(X, 'liga-endesa', 'lkl');
+  ok('the tiles\' line is one league\'s, or none', P.scopeLeague([{ leagueRow: { slug: 'lkl' } }, { leagueRow: { slug: 'lkl' } }]) === 'lkl' &&
+     P.scopeLeague([{ leagueRow: { slug: 'lkl' } }, { leagueRow: { slug: 'eurocup' } }]) === '' && P.scopeLeague([]) === '');
+  const t = P.adjTiles({ ts: 60, usg: 25, ppg: 20 });
+  ok('the tiles: TS% and USG% moved from the line\'s league (LKL -> Liga Endesa: 59, 24.2)', t && t.values.ts === 59 && t.values.usg === 24.2 && !('ppg' in t.values));
+  ok('...nothing when the line spans two leagues, or is the league chosen', api(X, 'liga-endesa', '').adjTiles({ ts: 60 }) === null && api(X, 'lkl', 'lkl').adjTiles({ ts: 60 }) === null);
+  const r = P.adjRow({ _leagueSlug: 'lkl', bpm: 5, ts: 60, ppg: 18, _season: '2025/26' });
+  ok('a career row moved from its own league, every moved figure marked with the figure as played',
+     r.bpm === 3.5 && r.ts === 59 && r.ppg === 18 && r._season === '2025/26' && r.__adj.bpm.title === 'unadjusted · +5.0' && r.__adj.ts.title === 'unadjusted · 60.0' && !r.__adj.ppg);
+  const e = P.adjRow({ _leagueSlug: 'nkl', bpm: 5 });
+  ok('...an estimated one says so', e.__adj.bpm.est === true && /estimated$/.test(e.__adj.bpm.title));
+  const same = { _leagueSlug: 'liga-endesa', bpm: 5 }, women = { _leagueSlug: 'slb-women', bpm: 5 };
+  ok('...a row of the league chosen, or of a league that cannot be placed, is the row as it was', P.adjRow(same) === same && P.adjRow(women) === women);
+  ok('the career keeps the reader\'s view: the rows are handed over again (setRows), the CSV named for what it holds',
+     /CAREER\.table\.setRows\(adjOn\(\) \? CAREER\.rows\.map\(adjRow\) : CAREER\.rows\)/.test(js) && /'-adjusted-to-' \+ ADJ_TO/.test(js) &&
+     /paintSeasonShot\(shotLines\(rows\)\)/.test(lift(js, 'function renderCareerRows(host, rows, pl)')));
+  ok('every row carries its league', /_leagueSlug: \(c\.leagueRow && c\.leagueRow\.slug\) \|\| ''/.test(js));
+  const ft = rd('epinoia', 'fulltable.js'), tcss = rd('epinoia', 'kit', 'table.css');
+  ok('the table marks a moved figure (fulltable.js r.__adj, kit/table.css ≈)', /const adj = r\.__adj && r\.__adj\[c\.k\];/.test(ft) &&
+     /td\.classList\.add\('ft-adj'\)/.test(ft) && /table\.ft td\.ft-adj::before\{ content:"≈"/.test(tcss));
+  ok('men\'s players only: offered where one of his leagues can be placed (a women\'s league never can)',
+     /if \(!menu \|\| !his\.some\(s => menu\.canAdjust\(s\)\)\) \{ host\.hidden = true; return; \}/.test(js));
+  ok('members only: locked, the button is drawn and the lock asks the reader in (memlock.js), with the lock\'s own key',
+     /M\.lock\(b, \{ what: 'League adjustment', key: X\.lockKey\(\)/.test(js) && /X\.locked\(ACCESS_LEAGUE\.id\)/.test(js));
+  ok('measured leagues first, then the estimated, each saying so', /list\.filter\(e => !e\.estimated\)\.forEach/.test(js) &&
+     /e\.extrapolated \? 'estimated · extrapolated' : 'estimated'/.test(js));
+  ok('the choice is kept on the device, as the position switch is', /keep\('epinoia_adj_league', ADJ_TO\)/.test(js) && /localStorage\.getItem\('epinoia_adj_league'\)/.test(js));
+  ok('the line above the tiles says to which league, estimated or not, and that the bars stay the league\'s own',
+     /el\('b', 'padj-h', 'Adjusted to'\)/.test(js) && /\[anyEst \? 'estimated' : '', anyExtra \? 'extrapolated' : ''\]/.test(js) &&
+     /el\('span', 'padj-est', tags\)/.test(js) &&
+     /The percentile bars stay within the player’s own league\./.test(js));
+  ok('the bars are never moved: paintBars reads no adjustment', !/\bADJ\b|ADJ_TO|adjRow|adjTiles|adjOn|EpinoiaTransferAdjust/.test(lift(js, 'function paintBars(mine, field)')));
+  ok('the page: its place above the tiles, its styles, the matching and the matrix before the page script',
+     html.indexOf('id="padj"') > -1 && html.indexOf('id="padj"') < html.indexOf('id="tiles"') && /\.padj\{/.test(html) &&
+     html.indexOf('../transferleagues.js') < html.indexOf('../transferadjust.js') && html.indexOf('../transferadjust.js') < html.indexOf('player.js?'));
+  const names = /basketball-?reference|bbref|kenpom|torvik|cleaning ?the ?glass|nba\.com|real ?gm|eurobasket|sports-reference/i;
+  ok('no stats site is named on the profile', !names.test(js) && !names.test(html));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

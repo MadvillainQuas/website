@@ -77,7 +77,7 @@ console.log('\nthe page');
   const deferred = [...body.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m => m[1].replace('?v=' + V, ''));
   eq('deferred scripts, in order', deferred,
      ['../config.js', '../access.js', '../season.js', '../bpm.js', '../data.js', '../global.js',
-      '../units.js', '../ages.js', '../memlock.js', '../fulltable.js', '../compare.js', '../country.js', '../follow.js',
+      '../units.js', '../ages.js', '../memlock.js', '../fulltable.js', '../transferdata.js', '../transferleagues.js', '../transferadjust.js', '../compare.js', '../country.js', '../follow.js',
       '../teamcolour.js', 'setup.js', 'scouting.js', 'imports.js', '../xscroll.js', '../nav.js']);
   ok('every deferred script is stamped ?v=' + V, [...body.matchAll(/<script src="([^"]+)"/g)].every(m => m[1].endsWith('?v=' + V)));
 
@@ -251,6 +251,9 @@ const COLS = [
   eq('players keyed by the league-scoped id, with their league', o.players,
      [{ id: 'L1:a', name: 'Ann', league: 'BCB' }, { id: 'L2:a', name: 'Ann', league: 'SLB W' }, { id: 'L1:b', name: 'Bo', league: 'BCB' }]);
   ok('the same player in two leagues keeps two value sets', o.values['L1:a'].ppg === 20.25 && o.values['L2:a'].ppg === 11);
+  /* adjust for league (compare.js, transferadjust.js): a row that knows its league's slug hands it to the chart */
+  const slugged = S.compareInput(rows.map((r, i) => Object.assign({}, r, { leagueSlug: ['bcb', 'slb-women', 'bcb'][i] })), preset, COLS, ranks, {});
+  eq('each player carries the league\'s slug where the row has one', slugged.players.map(p => p.leagueSlug), ['bcb', 'slb-women', 'bcb']);
   ok('percentiles come from getRanks by row id', o.pcts['L1:a'].ppg === 90 && o.pcts['L1:b'].ppg === 10);
   ok('a stat with no rank is null, never NaN', o.pcts['L1:a'].rpg === null);
   ok('a missing or non-finite value is null', o.values['L1:a'].p3_pct === null && o.values['L2:a'].rpg === null);

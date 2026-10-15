@@ -191,6 +191,10 @@ const CATALOGUE = Object.freeze({
     events: Object.freeze({ gate: 'analytics', label: 'Events stats', what: 'The events splits: second chances, transition, off turnovers, after timeouts, half court, assisted (club, player and box score), and their table columns' }),
     csv:    Object.freeze({ gate: 'analytics', label: 'CSV download', what: 'The CSV button on every statistics table' }),
     model:  Object.freeze({ gate: 'analytics', label: 'What wins model', what: 'What wins and the Front office win model (docs/what-wins-model.md §10.3)' }),
+    /* the Transfer matrix (scouting/transfer/) and the league adjustments compare and the player profile take from its
+       scale (transferdata.js 'tscale'): members' analysis, on the gate What wins rides on (seeded by 0265, which also
+       keeps its files behind an account and this gate on the server) */
+    transferMatrix: Object.freeze({ gate: 'analytics', label: 'Transfer matrix', what: 'The Transfer matrix page, and adjusting a player’s numbers from one league to another in compare and on the player profile' }),
     /* the reports, each sold on its own (0220): the club profile's Report tab and the player profile's */
     clubReport:   Object.freeze({ gate: 'club_report', label: 'Club report', what: 'The club profile Scouting Report tab' }),
     playerReport: Object.freeze({ gate: 'player_report', label: 'Player report', what: 'The player profile Scouting Report tab' }),
@@ -274,6 +278,11 @@ function lockReason(key, league) {
 const PEEK_KEY = 'epinoia_peek', PEEK_LEFT_KEY = 'epinoia_peek_left', PEEK_SAID = 'epinoia_peek_said';
 const PEEK_MS = 30 * 60 * 1000;
 const PEEK_IDS = ['t', 'p', 'l', 'league', 'c', 'g'];
+/* NEVER PREVIEWED (2026-10-15): the Transfer matrix's data leaves the private bucket for an account only, whatever the
+   gate says (analytics_check, migration 0265), so a signed-out preview would open the page and never fill it. Its lock
+   asks the reader to sign in, with no preview button, and no preview of it is taken or honoured. */
+const PEEK_NEVER = Object.freeze(['transferMatrix']);
+const peekNever = key => PEEK_NEVER.indexOf(String(key)) >= 0;
 /* the page a preview is for: its path and the club, player or league it shows (never its tab or its sort) */
 function peekSubject() {
   try {
@@ -286,6 +295,7 @@ function peeks() {
   try { const j = JSON.parse(sget('sessionStorage', PEEK_KEY) || '{}'); return j && typeof j === 'object' ? j : {}; } catch (_) { return {}; }
 }
 function previewActive(key) {
+  if (peekNever(key)) return false;
   const until = peeks()[String(key) + '|' + peekSubject()];
   return typeof until === 'number' && until > Date.now();
 }
@@ -386,6 +396,7 @@ function peekToast(parts, withSignIn) {
 async function takePreview(key) {
   key = String(key == null ? '' : key);
   if (!CATALOGUE.locks[key] || !signinFirst(key)) return { ok: true, open: true };
+  if (peekNever(key)) return { ok: false, error: 'unavailable' };
   if (previewActive(key)) return { ok: true, open: true };
   const f = net(), c = cfg();
   if (!f || !c.supabaseUrl || !c.supabaseAnonKey) return { ok: false, error: 'offline' };
@@ -447,7 +458,7 @@ function wirePreviews() {
 }
 /* a preview button for this key, with the week's note under it ('' where the feature cannot be previewed) */
 function peekHTML(key) {
-  if (!key || !CATALOGUE.locks[String(key)] || SIGNIN_FREE.indexOf(String(key)) >= 0) return null;
+  if (!key || !CATALOGUE.locks[String(key)] || SIGNIN_FREE.indexOf(String(key)) >= 0 || peekNever(key)) return null;
   queuePeekFill();
   const label = copyOf(isReport(key) ? 'reportIt' : 'previewIt');
   return { label, report: isReport(key),
@@ -1611,7 +1622,7 @@ return {
   FEATURES, CATALOGUE, COPY, GATES,
   load, loadMany, get, analyticsOk, canView, isPremiumColumn, featureLocked, featureOk,
   signinFirst, lockReason, signinHTML, signinNeed, signinArt: () => SIGNIN_ART,
-  previewActive, previewLeft, takePreview, peekPress, peekHTML, peekText, queuePeekFill, peekSubject, REPORT_KEYS,
+  previewActive, previewLeft, takePreview, peekPress, peekHTML, peekText, queuePeekFill, peekSubject, REPORT_KEYS, PEEK_NEVER,
   gateOf, lockWords, copyOf, loadWall, trialMonths,
   teaserHTML, paywallHTML, joinHref, authHeaders, onChange,
   session, sessionReady, fromPayload, signinHref, safePath, priceText, amountText, forget,

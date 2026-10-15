@@ -29,8 +29,9 @@
 
    API
      open(host, ctx)     the picker, drawn into host. ctx (p/player.js CMP_CTX) = { mine, field, name, label,
-                         team, teamId, photo, leagueId, leagueRow, seasonName, onClose, focus }. Returns
-                         { node, close }.
+                         team, teamId, photo, leagueId, leagueRow, leagueSlug, seasonName, onClose, focus }. Returns
+                         { node, close }. leagueSlug: the one league this line was played in ('' for a line across
+                         two), for the chart's "adjust for league".
      model(o)            pure: what compare.js fromTable takes, for two lines and their fields (the tests)
      seasonFor(L, name)  pure: the season a league opens on
    ============================================================================ */
@@ -228,18 +229,27 @@ function open(host, ctx) {
       } catch (_) { /* initials in the circle */ }
     }
     const t = team || {};
-    C.open(C.fromTable(model({
+    /* ADJUST FOR LEAGUE (compare.js): each line's league, where it is one league (an all-competitions line of two
+       leagues is not), and the leagues the catalogue already holds for the matrix's matching */
+    const TA = root.EpinoiaTransferAdjust;
+    if (TA && typeof TA.load === 'function' && ctx.leagueSlug && L.slug && ctx.leagueSlug !== L.slug) {
+      try { TA.load({ leagues: cat && cat.all }); } catch (_) { /* the chart draws without the option */ }
+    }
+    const o = C.fromTable(model({
       mine: ctx.mine, mineField: ctx.field, other, otherField: data.field,
       cols: T.PLAYER_COLS, groups: T.PRESETS && T.PRESETS.player, locked, percentiles: SE.percentiles,
       /* adjust for position: offered in the chart, and on from the start where the bars above are adjusted */
       positionGroups: SE.positionGroups, positionLabel: SE.positionLabel, byPos: !!ctx.byPos,
-      mineAs: { name: ctx.name, leagueShort: ctx.label, teamFull: t.name || '', teamName: t.short || t.name || '',
+      mineAs: { name: ctx.name, leagueShort: ctx.label, leagueSlug: ctx.leagueSlug || '', teamFull: t.name || '', teamName: t.short || t.name || '',
                 teamShort: t.short || '', colour: t.colour || null, teamLogo: t.logo || null, photo_url: ctx.photo || null },
-      otherAs: { leagueShort: (L.short + ' ' + G.shortSeason(S.name)).trim() },
+      otherAs: { leagueShort: (L.short + ' ' + G.shortSeason(S.name)).trim(), leagueSlug: L.slug || '' },
       league: ctx.leagueRow, range: ctx.seasonName || '',
       title: ctx.name + ' v ' + other.name,
       note: 'Percentiles: each player among the players of their own competition that season.'
-    })));
+    }));
+    if (cat && Array.isArray(cat.all) && cat.all.length) o.leagues = cat.all;
+    o.adjustLeague = ctx.leagueId || null;
+    C.open(o);
   };
   box.addEventListener('submit', e => { e.preventDefault(); compare(); });
   /* Enter on a dropdown is the compare button (a select does not submit its form by itself) */

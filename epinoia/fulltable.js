@@ -2041,6 +2041,11 @@ function render(opts) {
           const n = r[c.k], g = c.low ? -n : n;
           if (g > 0) td.classList.add('pos'); else if (g < 0) td.classList.add('neg');
         }
+        /* A FIGURE ADJUSTED TO ANOTHER LEAGUE (the profile's "adjust to league", transferadjust.js): the caller marks the
+           row's moved keys (r.__adj[key] = { est, title }); the cell carries an ≈ (kit/table.css) and the figure as
+           played on hover */
+        const adj = r.__adj && r.__adj[c.k];
+        if (adj) { td.classList.add('ft-adj'); if (adj.est) td.classList.add('ft-adj-est'); if (adj.title) td.title = adj.title; }
       }
       if (pinLeft.has(c.k)) { td.classList.add('stick', 'hl'); if (c.k === pinEnd) td.classList.add('hl-end'); td.style.left = pinLeft.get(c.k) + 'px'; }
       tr.appendChild(td);

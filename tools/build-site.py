@@ -44,6 +44,11 @@ NESTED_NEVER = {".git", "node_modules", "__pycache__"}
 NEVER_PATHS = ("config/groups/",)
 NEVER_FILES = {"ingest-sources.json", "github-token.json", "users.json", ".gitignore", ".nojekyll"}
 NEVER_SUFFIXES = (".md", ".py", ".pyc", ".mjs", ".ts", ".sql", ".jks", ".keystore", ".p8", ".pem", ".env")
+# OLD ADDRESSES THAT MOVED INTO EPINOIA: a one-line page GENERATED at the old address that sends the reader on. Nothing
+# of the old folder is copied - it stays on the never-publish list - so only this generated page goes out there.
+# /transfermatrix/ -> the Transfer matrix page under Scouting (2026-10-15; the scraped data it read is no longer in the
+# repository, and the new page's data comes only through the analytics gate).
+REDIRECTS = {"transfermatrix/index.html": "/epinoia/scouting/transfer/"}
 
 
 def skipped(rel):
@@ -82,6 +87,18 @@ def livestats_clients(out):
     return len(clients)
 
 
+def write_redirects(out):
+    for rel, to in REDIRECTS.items():
+        p = os.path.join(out, *rel.split("/"))
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "w", encoding="utf-8", newline="\n") as f:
+            f.write('<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>Moved · Epinoia</title>\n'
+                    f'<meta name="robots" content="noindex"><link rel="canonical" href="{to}">\n'
+                    f'<meta http-equiv="refresh" content="0; url={to}"></head>\n'
+                    f'<body><p>This has moved: <a href="{to}">{to}</a></p></body></html>\n')
+    return len(REDIRECTS)
+
+
 def main(out):
     out = os.path.abspath(out)
     if os.path.exists(out):
@@ -102,13 +119,15 @@ def main(out):
                 if not skipped(rel):
                     copy(rel, out); n += 1
     k = livestats_clients(out)
+    n += write_redirects(out)
 
     # THE CHECK: nothing from the never-publish list, anywhere in what is about to go out
     bad = []
     for dirpath, dirnames, filenames in os.walk(out):
         for name in filenames:
             rel = os.path.relpath(os.path.join(dirpath, name), out)
-            if skipped(rel) and not rel.replace("\\", "/").endswith("epinoia/livestats-clients.json"):
+            r = rel.replace("\\", "/")
+            if skipped(rel) and not r.endswith("epinoia/livestats-clients.json") and r not in REDIRECTS:
                 bad.append(rel)
     if bad:
         print("REFUSED: never-publish files in the site:", *bad[:20], sep="\n  ")

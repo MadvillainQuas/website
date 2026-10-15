@@ -59,6 +59,10 @@ PAGES = {
     "scouting/": ("Basketball Scouting Table: Filter & Compare Players | Epinoia",
                   "Every basketball league's current season in one scouting table: sort and filter on several stats at once, then compare up to five players side by side.",
                   "Global scouting", True, "Scouting", "CollectionPage"),
+    # members' analysis on a public page: the head, the method and the placeholders are what a crawler sees
+    "scouting/transfer/": ("Transfer Matrix: How Stats Travel Between Leagues | Epinoia",
+                           "How a basketball player's numbers change when he moves from one league to another: BPM, shooting, usage and rebounds, from every move in nearly 100 leagues.",
+                           "Transfer matrix", True, "Transfer matrix", "WebPage"),
     "news/": ("Basketball News: Every League, Publisher & Creator | Epinoia",
               "Basketball news from every league in one feed: match reports, the publishers that cover the game, and the leagues' own podcasts, channels and writers.",
               "News", True, "News", "CollectionPage"),

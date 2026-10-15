@@ -44,13 +44,20 @@
                       debounced ResizeObserver; returns { redraw, update, state, destroy }
      open(o)          the same inside a <dialog> — a bottom sheet on a phone
 
-     o = { players: [{ id, name, league }],
+     o = { players: [{ id, name, league, leagueSlug }],
            stats:   [{ key, label, fmt(v), signed? }],
            values:  { [playerId]: { [statKey]: number|null } },
            pcts:    { [playerId]: { [statKey]: number|null } },
            mode:    'pct' | 'value',
+           adjust:  { to, label, estimated, marks }   html() only: the values are adjusted (current() sets it)
            width,                       html() only; render() measures the host
-           allStats, note, title, onChange }   render()/open() only, all optional
+           allStats, note, title, onChange, adjustTo, transfer, adjustLocked }   render()/open() only, all optional
+
+   ADJUST FOR LEAGUE (2026-10-15, members only): players from two or more leagues the league matrix can place
+   (transferadjust.js) can be read as if every one of them played in one of those leagues. It is a value-scale
+   choice -- a percentile is already within each player's own league -- so turning it on turns the values on, and
+   the percentile button turns it off. Only the matrix's nine rates move; each moved figure carries an ≈, its bar's
+   title the figure as played, the legend says who was moved and whether it is estimated, and so does the picture.
    ============================================================================ */
 (function (root, factory) {
   const api = factory(root);
@@ -128,6 +135,58 @@ function statIndex(o) {
   return out;
 }
 
+/* ------------------------------------------------------------ adjust for league ---
+   THE LEAGUE MATRIX (transferadjust.js), loaded by the page: o.transfer is an instance handed in (the tests), else the
+   page's own once it has been read. */
+const transferLib = () => root.EpinoiaTransferAdjust || null;
+function transferOf(o) {
+  if (o && o.transfer && typeof o.transfer.adjust === 'function') return o.transfer;
+  const T = transferLib();
+  const X = T && typeof T.current === 'function' ? T.current() : null;
+  return X && X.ready ? X : null;
+}
+/* the leagues everybody can be read in: each compared player's own, where the matrix can place it -- offered only
+   when there are two of them or more (one league has nothing to adjust between) */
+function adjustChoices(o, X) {
+  if (!X) return [];
+  const seen = new Set(), out = [];
+  players(o).forEach(p => {
+    const s = p.leagueSlug ? String(p.leagueSlug) : '';
+    if (!s || seen.has(s) || !X.canAdjust(s)) return;
+    seen.add(s);
+    const e = X.entry(s) || {};
+    out.push({ slug: s, label: X.label(s) || p.league || s, estimated: !!e.estimated, extrapolated: !!e.extrapolated });
+  });
+  return out.length >= 2 ? out : [];
+}
+/* every player's values moved to `to`: the nine rates the matrix measures, the rest as played; marks says which */
+function adjustedValues(o, X, to) {
+  const values = {}, marks = {};
+  let est = false, extra = false;
+  /* the estimated leagues this reading goes through, each with its own sentence (transferleagues.js ladderNote) */
+  const why = new Map();
+  const note = slug => { const e = X.entry(slug); if (e && e.estimated && !why.has(slug)) why.set(slug, { label: e.label || slug, note: e.note || '' }); };
+  players(o).forEach(p => {
+    const v = (o.values && o.values[p.id]) || {};
+    const r = X.adjust({ stats: v, from: p.leagueSlug || '', to });
+    values[p.id] = Object.assign({}, v, r && r.ok ? r.values : {});
+    const keys = {};
+    const moved = !!(r && r.ok && !r.same);
+    if (moved) Object.keys(r.changed || {}).forEach(k => { keys[k] = { from: v[k], est: !!r.estimated }; });
+    const e = X.entry(p.leagueSlug || '') || {};
+    marks[p.id] = { keys, ok: !!(r && r.ok), same: !!(r && r.same), estimated: moved && !!r.estimated };
+    if (moved && r.estimated) { est = true; note(p.leagueSlug); note(to); }
+    if (moved && e.extrapolated) extra = true;
+  });
+  const te = X.entry(to) || {};
+  if (te.estimated) note(to);
+  return { values, marks, estimated: est || !!te.estimated, extrapolated: extra || !!te.extrapolated, notes: [...why.values()] };
+}
+const adjMark = (o, id, key) => {
+  const m = o && o.adjust && o.adjust.marks && o.adjust.marks[id];
+  return m && m.keys ? m.keys[key] || null : null;
+};
+
 /* every chart on a page needs its own hatch pattern id */
 let seq = 0;
 
@@ -140,7 +199,8 @@ function html(o) {
 
   const aria = P.length && S.length
     ? 'Comparison of ' + P.map(p => p.name || 'Player').join(', ') + ' across ' +
-      S.map(s => s.label || s.key).join(', ') + (mode === 'pct' ? ', as percentiles' : ', as values')
+      S.map(s => s.label || s.key).join(', ') +
+      (mode === 'pct' ? ', as percentiles' : o.adjust ? ', as values adjusted to ' + (o.adjust.label || '') : ', as values')
     : 'Comparison chart: no players or stats picked';
 
   if (!P.length || !S.length) {
@@ -230,9 +290,12 @@ function html(o) {
       const shown = mode === 'pct' ? pc : v;
       const n = i + 1;
 
+      /* a figure adjusted to another league: an ≈ before it, and the figure as played in its title */
+      const mk = mode === 'value' ? adjMark(o, p.id, key) : null;
       const bits = [n + ' · ' + name];
       if (p.league) bits[0] += ' (' + p.league + ')';
-      bits.push(label + ' ' + fmtValue(stat, v));
+      bits.push(label + ' ' + (mk ? '≈' : '') + fmtValue(stat, v));
+      if (mk) bits.push('adjusted from ' + fmtValue(stat, mk.from) + (mk.est ? ' (estimated)' : ''));
       if (pc != null) bits.push(ord(pc) + ' percentile');
       if (shown == null) bits.push('no data');
       const title = '<title>' + esc(bits.join(' · ')) + '</title>';
@@ -262,8 +325,8 @@ function html(o) {
       }
       parts.push('<rect class="cmp-bar ' + s + '" data-player="' + esc(p.id) + '" data-stat="' + esc(key) +
         '" x="' + px(bx) + '" y="' + px(by) + '" width="' + px(bw) + '" height="' + BAR + '" rx="1">' + title + '</rect>');
-      const txt = mode === 'pct' ? ord(shown) : fmtValue(stat, shown);
-      parts.push('<text class="cmp-val" x="' + px(valX) + '" y="' + px(ty) + '" font-size="' + FONT +
+      const txt = mode === 'pct' ? ord(shown) : (mk ? '≈' : '') + fmtValue(stat, shown);
+      parts.push('<text class="cmp-val' + (mk ? ' cmp-val-adj' : '') + '" x="' + px(valX) + '" y="' + px(ty) + '" font-size="' + FONT +
         '" text-anchor="end" data-i18n-ctx="pctl">' + esc(txt) + '</text>');
     });
 
@@ -289,7 +352,15 @@ function legendHtml(o) {
     '<span class="cmp-chip-name">' + esc(p.name || 'Player') + '</span>' +
     (p.league ? '<span class="cmp-chip-lg">' + esc(p.league) + '</span>' : '') +
     /* adjusted for position, each chip says which group its player was ranked in */
-    (o.byPos && p.pos ? '<span class="cmp-chip-pos">' + esc(p.pos) + '</span>' : '') + '</li>').join('') + '</ul>';
+    (o.byPos && p.pos ? '<span class="cmp-chip-pos">' + esc(p.pos) + '</span>' : '') +
+    /* adjusted for league, each chip says whether its player was moved (≈), estimated, or could not be */
+    chipAdj(o, p) + '</li>').join('') + '</ul>';
+}
+function chipAdj(o, p) {
+  const m = o && o.adjust && o.adjust.marks ? o.adjust.marks[p.id] : null;
+  if (!m || m.same) return '';
+  if (!m.ok) return '<span class="cmp-chip-adj cmp-chip-noadj">not adjusted</span>';
+  return '<span class="cmp-chip-adj" title="adjusted">≈</span>' + (m.estimated ? '<span class="cmp-chip-adj cmp-chip-est">estimated</span>' : '');
 }
 
 /* WHERE A DRAGGED STAT LANDS. blocks: { key, y, h } in the order drawn; dy: how far it has been dragged. Its middle is
@@ -319,7 +390,37 @@ function modeHtml(st, o) {
   return '<div class="cmp-mode" role="group" aria-label="Scale">' +
     '<button type="button" class="cmp-mode-btn" data-cmp-mode="pct" aria-pressed="' + (st.mode === 'pct') + '">Percentile</button>' +
     '<button type="button" class="cmp-mode-btn" data-cmp-mode="value" aria-pressed="' + (st.mode === 'value') + '">Value</button>' +
-    '</div>' + pos;
+    '</div>' + pos + adjustHtml(st, o);
+}
+/* ADJUST FOR LEAGUE, beside the scale: "as played", or every player read in one of their own leagues. Members only:
+   locked, it is a button that asks the reader to sign in (or to join), drawn but never hidden (memlock.js). */
+function adjustHtml(st, o) {
+  const ch = adjustChoices(o, transferOf(o));
+  if (!ch.length) return '';
+  if (st.adjLocked) {
+    return '<button type="button" class="cmp-mode-btn cmp-adj cmp-adjlock" data-cmp-adjlock="1">adjust for league</button>';
+  }
+  const on = ch.some(c => c.slug === st.adjTo) ? st.adjTo : '';
+  return '<label class="cmp-adjbox' + (on ? ' on' : '') + '"><span class="cmp-adj-l">adjust for league</span>' +
+    '<select class="cmp-adjsel" data-cmp-adj="1" aria-label="Adjust for league">' +
+    '<option value=""' + (on ? '' : ' selected') + '>as played</option>' +
+    ch.map(c => '<option value="' + esc(c.slug) + '"' + (c.slug === on ? ' selected' : '') + '>' + esc(c.label) +
+      (c.estimated ? ' · estimated' + (c.extrapolated ? ' · extrapolated' : '') : '') + '</option>').join('') +
+    '</select></label>';
+}
+/* what the adjustment did, under the legend: the league, whether it is estimated, and that only the nine rates move */
+function adjustNoteHtml(c) {
+  const a = c && c.adjust;
+  if (!a) return '';
+  return '<p class="cmp-note cmp-adjnote"><b class="cmp-adjnote-h">Adjusted to</b> <span class="cmp-adjnote-lg" translate="no">' +
+    esc(a.label) + '</span>' +
+    (a.estimated || a.extrapolated ? ' <span class="cmp-adjnote-est">' + [a.estimated ? 'estimated' : '', a.extrapolated ? 'extrapolated' : '']
+      .filter(Boolean).join(' · ') + '</span>' : '') +
+    ' <span>≈ marks a figure moved from the player’s own league; the rest are as played.</span>' +
+    ' <span>Only BPM, TS%, USG%, OREB%, DREB%, AST%, TOV%, STL% and BLK% are moved.</span>' +
+    /* each estimated league, by name, with where the Spanish ladder puts it */
+    (a.notes || []).map(n => ' <span class="cmp-adjnote-why"><span class="cmp-adjnote-lg" translate="no">' + esc(n.label) +
+      '</span> <span>' + esc(n.note) + '</span></span>').join('') + '</p>';
 }
 /* the stat chips; `fold` puts them behind a closed "stats · N" button (a phone, below the chart) */
 /* EVERY OTHER STAT, BY CATEGORY. The chips are the stats this table was already showing —
@@ -479,6 +580,8 @@ function fromTable(o) {
   return {
     title: opt.title || ('Compare ' + rows.length + ' players'),
     players: rows.map(r => ({ id: String(r.id), name: r.name || 'Player', league: r.leagueShort || r.leagueName || '',
+      /* the league's slug, for "adjust for league" (transferadjust.js); a league's own table has one league for all */
+      leagueSlug: r.leagueSlug != null ? String(r.leagueSlug) : (opt.league && opt.league.slug) || '',
       pos: ranksPos ? posOf(r) : '',
       /* the club, for the exported picture's circles (the table's own name, colour and crest) */
       team: { name: r.teamFull || r.teamName || '', short_name: r.teamShort || '', colour: r.colour || r.teamColour || null, logo: r.teamLogo || r.logo || null },
@@ -503,14 +606,28 @@ function render(host, o) {
   const pool = Array.isArray(o.allStats) && o.allStats.length ? o.allStats : stats(o);
   /* ordered: the reader has moved a stat, so one added after that goes on the end rather than back into the chips'
      order; byPos: the percentiles are the ones taken within each player's position group (o.pctsPos) */
+  /* adjTo: the league every player is read in ('' as played); adjLocked: members only, and this reader is not one */
   const st = { mode: modeOf(o), keys: stats(o).map(s => s.key), statsOpen: false, moreOpen: false,
-               ordered: false, byPos: !!(o.byPos && o.pctsPos) };
+               ordered: false, byPos: !!(o.byPos && o.pctsPos), adjTo: o.adjustTo ? String(o.adjustTo) : '', adjLocked: false };
+  const adjLockedNow = () => {
+    if (typeof o.adjustLocked === 'boolean') return o.adjustLocked;
+    const T = transferLib();
+    return !!(T && typeof T.locked === 'function' && T.locked(o.adjustLeague == null ? null : o.adjustLeague));
+  };
 
   const current = () => {
     const byKey = statIndex(o);
     const pos = !!(st.byPos && o.pctsPos);
-    return Object.assign({}, o, { mode: st.mode, byPos: pos, pcts: pos ? o.pctsPos : o.pcts,
-      stats: st.keys.map(k => byKey.get(k)).filter(Boolean) });
+    const out = Object.assign({}, o, { mode: st.mode, byPos: pos, pcts: pos ? o.pctsPos : o.pcts,
+      stats: st.keys.map(k => byKey.get(k)).filter(Boolean), adjust: null });
+    /* adjusted for league: the values moved, on the value scale only, for a reader the lock lets in */
+    const X = transferOf(o);
+    if (st.mode === 'value' && st.adjTo && !st.adjLocked && adjustChoices(o, X).some(c => c.slug === st.adjTo)) {
+      const a = adjustedValues(o, X, st.adjTo);
+      out.values = a.values;
+      out.adjust = { to: st.adjTo, label: X.label(st.adjTo), estimated: a.estimated, extrapolated: a.extrapolated, marks: a.marks, notes: a.notes };
+    }
+    return out;
   };
 
   let chart = null, lastW = -1, layoutNarrow = null;
@@ -528,22 +645,41 @@ function render(host, o) {
      494px down a 740px sheet (18 stat chips wrap to five rows), so a reader saw two of eight
      stats. Below NARROW: legend, the scale toggle, the chart, the note, then the stat chips
      behind a closed "stats · N" button. Wider screens keep chips above the chart. */
+  /* THE MATRIX IS READ WHEN IT COULD BE USED: two players or more from different leagues, and a page that loads
+     transferadjust.js. The option appears once it has arrived (a redraw); nothing is asked for a one-league table. */
+  let alive = true, lockUndo = null;
+  const askTransfer = () => {
+    const T = transferLib();
+    if (st.adjAsked || transferOf(o) || !T || typeof T.load !== 'function') return;
+    if (new Set(players(o).map(p => p.leagueSlug).filter(Boolean)).size < 2) return;
+    st.adjAsked = true;
+    Promise.resolve(T.load({ leagues: o.leagues })).then(X => { if (alive && X) draw(); }, () => {});
+  };
   const draw = () => {
+    st.adjLocked = adjLockedNow();
     const c = current();
     layoutNarrow = isNarrow();
     const title = o.title ? '<div class="cmp-title">' + esc(o.title) + '</div>' : '';
-    const note = o.note ? '<p class="cmp-note">' + esc(o.note) + '</p>' : '';
+    const note = (o.note ? '<p class="cmp-note">' + esc(o.note) + '</p>' : '') + adjustNoteHtml(c);
+    if (lockUndo) { lockUndo(); lockUndo = null; }
     host.innerHTML = '<div class="cmp' + (layoutNarrow ? ' cmp-narrow' : '') + '">' + title + legendHtml(c) +
       (layoutNarrow
         ? '<div class="cmp-controls">' + modeHtml(st, o) + '</div><div class="cmp-chart"></div>' + note + statsHtml(o, st, true)
         : controlsHtml(o, st) + note + '<div class="cmp-chart"></div>') +
       '</div>';
     chart = host.querySelector('.cmp-chart');
+    /* locked: the button reads and behaves as locked, and a press asks the reader to sign in (memlock.js) */
+    const lb = st.adjLocked && host.querySelector ? host.querySelector('[data-cmp-adjlock]') : null;
+    const M = root.EpinoiaMemLock, T = transferLib();
+    if (lb && M && typeof M.lock === 'function') {
+      lockUndo = M.lock(lb, { what: 'League adjustment', key: T && typeof T.lockKey === 'function' ? T.lockKey() : undefined });
+    }
     drawChart(true);
+    askTransfer();
   };
   const changed = () => {
     draw();
-    if (typeof o.onChange === 'function') o.onChange({ mode: st.mode, stats: st.keys.slice(), byPos: st.byPos });
+    if (typeof o.onChange === 'function') o.onChange({ mode: st.mode, stats: st.keys.slice(), byPos: st.byPos, adjustTo: st.adjTo });
   };
 
   /* the same toggle a chip does, so a stat added from a dropdown can be taken out by its chip */
@@ -569,6 +705,14 @@ function render(host, o) {
   };
 
   const onChangeSel = e => {
+    /* adjust for league: a league read on the value scale (a percentile is already within each player's league) */
+    const adj = e.target && e.target.closest ? e.target.closest('[data-cmp-adj]') : null;
+    if (adj && host.contains(adj)) {
+      st.adjTo = String(adj.value || '');
+      if (st.adjTo) st.mode = 'value';
+      changed();
+      return;
+    }
     const sel = e.target && e.target.closest ? e.target.closest('[data-cmp-group]') : null;
     if (!sel || !host.contains(sel)) return;
     const k = sel.value;
@@ -587,7 +731,8 @@ function render(host, o) {
     const mb = t.closest('[data-cmp-mode]');
     if (mb && host.contains(mb)) {
       const m = mb.getAttribute('data-cmp-mode') === 'value' ? 'value' : 'pct';
-      if (m !== st.mode) { st.mode = m; changed(); }
+      /* back to percentiles is back to each player's own league: the adjustment goes */
+      if (m !== st.mode) { st.mode = m; if (m === 'pct') st.adjTo = ''; changed(); }
       return;
     }
     const pb = t.closest('[data-cmp-pos]');
@@ -709,9 +854,12 @@ function render(host, o) {
       if (next && next.stats) { st.keys = stats(o).map(s => s.key); st.ordered = false; }
       if (next && next.mode) st.mode = modeOf(o);
       if (next && 'byPos' in next) st.byPos = !!(o.byPos && o.pctsPos);
+      if (next && 'adjustTo' in next) { st.adjTo = next.adjustTo ? String(next.adjustTo) : ''; if (st.adjTo) st.mode = 'value'; }
       draw();
     },
     destroy() {
+      alive = false;
+      if (lockUndo) { lockUndo(); lockUndo = null; }
       clearTimeout(timer);
       if (ro) ro.disconnect();
       drag = null;
@@ -772,15 +920,20 @@ function exportModel(o, extra) {
     sub: mode === 'pct'
       ? (o.byPos ? (P.some(p => p.league) ? 'Percentiles by position, each within their own league' : 'Percentiles by position among the league’s players')
         : (P.some(p => p.league) ? 'Percentiles, each against his own league' : 'Percentiles among the league’s players'))
+      /* adjusted for league, the picture says to which, whether it is estimated, and what ≈ means */
+      : o.adjust ? 'Values adjusted to ' + (o.adjust.label || '') + (o.adjust.estimated ? ' (estimated)' : '') + ' · ≈ moved, the rest as played'
       : 'Values, each stat on its own scale',
     mode,
     players: P.map((p, i) => {
       const t = p.team || {};
-      return { name: (p.name || 'Player') + (p.league ? ' · ' + p.league : ''), colour: (x.colours || [])[i] || null, photoUrl: p.photo || null,
+      const m = o.adjust && o.adjust.marks ? o.adjust.marks[p.id] : null;
+      const tag = m && !m.same ? (m.ok ? ' ≈' + (m.estimated ? ' est.' : '') : ' · as played') : '';
+      return { name: (p.name || 'Player') + (p.league ? ' · ' + p.league : '') + tag, colour: (x.colours || [])[i] || null, photoUrl: p.photo || null,
                team: { name: t.name || '', short_name: t.short_name || '', colour: t.colour || null, crestUrl: crestOf(t.logo) } };
     }),
     stats: S.map(st => ({ key: st.key, label: String(st.label || st.key), signed: isSigned(st.key, st),
-      cells: P.map(p => { const v = cell(o.values, p.id, st.key); return { v, pct: cell(o.pcts, p.id, st.key), text: fmtValue(st, v) }; }) }))
+      cells: P.map(p => { const v = cell(o.values, p.id, st.key);
+        return { v, pct: cell(o.pcts, p.id, st.key), text: (mode === 'value' && adjMark(o, p.id, st.key) ? '≈' : '') + fmtValue(st, v) }; }) }))
   };
 }
 /* a series colour as the page paints it (a league's page re-points --lume), as #rrggbb: read off one painted pixel */
@@ -885,5 +1038,6 @@ function open(o) {
 }
 
 return { html, legendHtml, render, open, fromTable, exportModel, exportName, exportPng, tableStats, tableGroups, statFrom, statIndex, dropAt,
+         adjustChoices, adjustedValues,
          isSigned, ord, SERIES, NARROW, MAX_PLAYERS, CORE_STATS, MAX_STATS, DEMOTED };
 }));
