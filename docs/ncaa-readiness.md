@@ -522,3 +522,20 @@ but nobody watches 280 games at once. So the live write load of §2 is not paid:
 **Before the first game (about 1 Nov):** `db push` (0261, 0262, 0264); deploy `snapshots`, `finalise-game` and
 `feeds`; set `NCAA_SHARDS = 1` and uncomment the schedule in `ingest-ncaa.yml`; decide the compute size (§5); and
 §4 item 4 on ncaa.com's terms still stands.
+
+### U SPORTS on the same footing (15 Oct 2026)
+
+Louie: U SPORTS (Canada, men) is handled exactly as D2 is, live and at the whistle - its schedule is large too (675
+events in 2026-27). The three `USPORTS` rows carry D2's settings (`live_on_demand`, `archive_on_final`,
+`season_refresh_s` 900, `league_rules.live = on_demand`); migration **0268** adds the rule to the `u-sports` league,
+which was created on 23 Sep before it existed.
+
+- **Its scoreboard** is the season path's RSS (`/sports/mbkb/2026-27/schedule?print=rss`, `usports.py scoreline`):
+  every event, uncapped, with the score and the state of play in the title ('UBC 38, Windsor 30 2nd - 03:05'). The
+  site's CDN keeps a copy five minutes, so it is read once a minute and its clock is never shown running. 'End of
+  4th' (or of an overtime) with the scores apart counts as the whistle: the site can leave a game there for days.
+- **The lane**: the main one, not `ncaa`. Its busiest night is about 20 games, not hundreds, and the main lane runs
+  all year: the regular season opens on 23 Oct, before `ingest-ncaa.yml` wakes in November. The on-demand rules are
+  the lane's, whichever lane runs them.
+- Tests: `usports_test.py` (the RSS against the schedule, every state of play, one read for an evening, a refused read
+  not waited out), `lane_pool_test.py` (the real adapter through the lane).
