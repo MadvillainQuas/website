@@ -439,6 +439,10 @@ html.mg-embed body.has-nav { padding-left:0 !important; padding-bottom:0 !import
     text-overflow:ellipsis; overflow:hidden }
   .wrap > .top > :is(.revertcta, .ctawrap > .scorecta, .ctawrap > .ctamore){ min-height:34px; display:inline-flex; align-items:center; justify-content:center }
   .wrap > .top > select.revertcta{ display:block; text-align-last:center }
+  /* STAFF ONLY, ON A PHONE TOO (2026-10-15). The two display rules above outrank the page's own .revertcta.hide, so on a
+     phone every hidden staff control - back to listing, attach video, tag video, FIBA LiveStats, the competition box -
+     was drawn for everybody, the Manager's box scores included. A control the page has not offered stays hidden. */
+  .wrap > .top > .hide{ display:none !important }
   /* the clubs' names, whole: balanced lines a step smaller, so a long name ("The Canterbury Academy U19 Men") settles on three
      rather than four, and a word is never broken in two */
   .bx-scorehead.bt-dressed .bteam, .bx-scorehead.bt-dressed .bt-name{ font-size:11.5px; letter-spacing:0 }

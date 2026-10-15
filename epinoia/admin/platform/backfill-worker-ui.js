@@ -65,6 +65,32 @@ function details(r, now) {
   return out;
 }
 
+/* THE BAR FROM THE PLATFORM ITSELF (2026-10-15): a worker that is not reporting its progress (one started before its
+   reporting was there, or one whose progress writes fail) left the bar at 0% for hours while its games were being written
+   - NBL1 2026 sat at "writing 716 fixture(s)" all morning. So the tab also counts the season's games on the platform, final
+   of all, and draws that when the worker's own figure says less. Pure, for the test: the row as the bar should draw it. */
+function withCount(r, c) {
+  if (!r || !c || !c.all) return r;
+  const own = +(r.detail && r.detail.pct) || 0, theirs = Math.min(100, 100 * c.final / c.all);
+  if (own >= theirs) return r;
+  return Object.assign({}, r, { detail: Object.assign({}, r.detail || {}, { pct: Math.round(theirs * 10) / 10 }) });
+}
+const COUNTS = new Map();        // request id -> { final, all, at }
+async function countOf(r) {
+  const was = COUNTS.get(r.id);
+  if (was && Date.now() - was.at < 20000) return was;
+  try {
+    const { data: ss } = await sb.from('seasons').select('id,competitions(id)').eq('league_id', r.league_id).eq('name', r.season);
+    const comps = (ss || []).flatMap(x => (x.competitions || []).map(c => c.id));
+    if (!comps.length) return null;
+    const head = st => { let q = sb.from('games').select('id', { count: 'exact', head: true }).in('competition_id', comps); return st ? q.eq('status', st) : q; };
+    const [f, a] = await Promise.all([head('final'), head(null)]);
+    const c = { final: f.count || 0, all: a.count || 0, at: Date.now() };
+    COUNTS.set(r.id, c);
+    return c;
+  } catch (_) { return null; }
+}
+
 /* ------------------------------------------------------------------ style --- */
 function style() {
   if (document.getElementById('bfw-style')) return;
@@ -157,14 +183,16 @@ async function load() {
   try { r = await rows(); } catch (e) { busy = false; part('now').textContent = ''; part('now').appendChild(el('p', 'bfw-idle', 'Could not read the requests: ' + (e.message || e))); return; }
   LAST = r;
   busy = r.open.length > 0;
-  drawNow(r.open.filter(x => x.state === 'running'), r.open.filter(x => x.state === 'queued'));
+  const running = r.open.filter(x => x.state === 'running');
+  const counts = new Map(await Promise.all(running.map(async x => [x.id, await countOf(x)])));
+  drawNow(running, r.open.filter(x => x.state === 'queued'), counts);
   drawQueue(r.open.filter(x => x.state === 'queued'));
   drawDone(r.done);
   if (picked) drawSeasons(picked);
 }
 
 /* THE WORKER, NOW */
-function drawNow(running, queued) {
+function drawNow(running, queued, counts) {
   const box = part('now'); box.textContent = '';
   const top = el('div', 'bfw-top');
   top.appendChild(el('h3', null, 'The worker'));
@@ -182,9 +210,11 @@ function drawNow(running, queued) {
   running.forEach(r => {
     const card = el('div', 'bfw-run');
     card.appendChild(el('div', 'nm', nameOf(r.league_id) + ' · ' + r.season));
-    if (JB()) card.appendChild(JB().draw(r, {}));
+    const c = counts && counts.get(r.id);
+    if (JB()) card.appendChild(JB().draw(withCount(r, c), {}));
     const dl = el('dl', 'bfw-grid');
     details(r).forEach(([k, v, cls]) => { dl.appendChild(el('dt', null, k)); dl.appendChild(el('dd', cls || null, v)); });
+    if (c && c.all) { dl.appendChild(el('dt', null, 'On the platform')); dl.appendChild(el('dd', null, c.final + ' of ' + c.all + ' games of ' + r.season + ' final')); }
     card.appendChild(dl);
     const q = r.heartbeat_at ? (Date.now() - Date.parse(r.heartbeat_at)) / 1000 : 0;
     if (q > QUIET_S) card.appendChild(el('p', 'bfw-cov', 'The worker has not reported for ' + span(q) + '. It may have stopped: ' +
@@ -331,5 +361,5 @@ async function kick() {
   restart();
 }
 
-window.EpinoiaBackfillWorker = { open, details, span };
+window.EpinoiaBackfillWorker = { open, details, span, withCount };
 })();

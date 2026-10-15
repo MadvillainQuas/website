@@ -251,6 +251,13 @@ console.log('\nthe backfill worker tab (epinoia/admin/platform/backfill-worker-u
   ok('...a worker quiet for more than five minutes is marked', quiet['Last heard from'] === 'warn:20 min ago', quiet['Last heard from']);
   const fx = Object.fromEntries(W.details({ state: 'running', detail: { phase: 'fixtures', label: 'NBL1 Men', src: 1, srcs: 1, fixtures: 716, fixtures_done: 340 } }, now));
   ok('...and the fixtures phase is counted, a lone source not numbered', fx.Fixtures === '340 of 716 written to the schedule' && fx.Source === 'NBL1 Men', JSON.stringify(fx));
+  /* a worker not reporting its progress: the bar from the season's games on the platform (NBL1 2026 at 0% all morning) */
+  const stuck = { state: 'running', step: 'NBL1 Men: writing 716 fixture(s) of 2026', detail: { pct: 0, run_url: 'x' } };
+  const drawn = W.withCount(stuck, { final: 468, all: 716 });
+  ok('a worker that reports 0% while games land: the bar is the platform\'s count (468 of 716 final = 65.4%), the rest of the row kept',
+     drawn.detail.pct === 65.4 && drawn.detail.run_url === 'x' && drawn.step === stuck.step && stuck.detail.pct === 0, JSON.stringify(drawn.detail));
+  ok('...the worker\'s own figure wins when it is further on, and no count changes nothing',
+     W.withCount({ detail: { pct: 80 } }, { final: 10, all: 100 }).detail.pct === 80 && W.withCount(stuck, null) === stuck && W.withCount(stuck, { final: 0, all: 0 }) === stuck);
   const js = read('epinoia', 'admin', 'platform', 'platform.js'), html = read('epinoia', 'admin', 'platform', 'index.html');
   ok('the platform console has the tab, its pane and its scripts, and opens it on first sight',
      /data-p="bfw"[^>]*>Backfill worker</.test(html) && /id="pane-bfw"[^>]*><div id="bfwHost">/.test(html) &&
