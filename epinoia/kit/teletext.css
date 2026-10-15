@@ -133,6 +133,9 @@ html.tt-on .wrap > .top > .wm{ display:none }
   .tt-fast a{ flex-direction:column; gap:6px; padding:9px 4px 8px; font-size:8.5px; letter-spacing:.04em }
   .tt-fast a::before{ width:18px; height:5px }
 }
+/* ONE BOTTOM MENU ON A PHONE (Louie, 2026-10-15): where the bar of tabs runs along the foot of the screen (kit/nav.css
+   .ep-tabbar, 820px and under), the four keys are not drawn as well */
+@media (max-width:820px){ .tt-fast{ display:none } }
 
 /* ============================================================================
    3. THE INDEX. On the two long pages (HOME, a league's front page) a slim

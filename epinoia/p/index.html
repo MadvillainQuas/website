@@ -17,25 +17,25 @@
 <link rel="preconnect" href="https://hhvofgqqadtyvcjudhjx.supabase.co" crossorigin>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=837"></script>
-<script src="../i18n.js?v=837" data-i18n-packs="report"></script>
-<script src="../glyphs.js?v=837" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=837">
-<link rel="stylesheet" href="../kit/sectitle.css?v=837">
-<link rel="stylesheet" href="../kit/linkswitch.css?v=837">
-<link rel="stylesheet" href="../kit/table.css?v=837">
-<link rel="stylesheet" href="../video.css?v=837">
-<link rel="stylesheet" href="../kit/nav.css?v=837">
-<link rel="stylesheet" href="../kit/labeltype.css?v=837">
-<link rel="stylesheet" href="../kit/numtype.css?v=837">
-<link rel="stylesheet" href="../kit/motion.css?v=837">
-<script src="../motion.js?v=837" defer></script>
-<link rel="stylesheet" href="../kit/sitpanel.css?v=837">
-<link rel="stylesheet" href="../kit/cards.css?v=837">
-<link rel="stylesheet" href="../kit/similar.css?v=837">
-<link rel="stylesheet" href="../kit/access.css?v=837">
+<script src="../appmode.js?v=838"></script>
+<script src="../i18n.js?v=838" data-i18n-packs="report"></script>
+<script src="../glyphs.js?v=838" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=838">
+<link rel="stylesheet" href="../kit/sectitle.css?v=838">
+<link rel="stylesheet" href="../kit/linkswitch.css?v=838">
+<link rel="stylesheet" href="../kit/table.css?v=838">
+<link rel="stylesheet" href="../video.css?v=838">
+<link rel="stylesheet" href="../kit/nav.css?v=838">
+<link rel="stylesheet" href="../kit/labeltype.css?v=838">
+<link rel="stylesheet" href="../kit/numtype.css?v=838">
+<link rel="stylesheet" href="../kit/motion.css?v=838">
+<script src="../motion.js?v=838" defer></script>
+<link rel="stylesheet" href="../kit/sitpanel.css?v=838">
+<link rel="stylesheet" href="../kit/cards.css?v=838">
+<link rel="stylesheet" href="../kit/similar.css?v=838">
+<link rel="stylesheet" href="../kit/access.css?v=838">
 <!-- the club's "released" button (offerRelease), styled with the injury report it feeds -->
-<link rel="stylesheet" href="../kit/wire.css?v=837">
+<link rel="stylesheet" href="../kit/wire.css?v=838">
 <style>
   /* ---- identity band: photo top-left, name beside it ---- */
   .idband{display:flex;gap:16px;align-items:flex-start;
@@ -83,10 +83,29 @@
   /* the kit's body zoom (1.5 from 1200px) leaves a 1440px screen about 790px of hero: the third column only from 1800px */
   @media (min-width:1800px){ .idband:has(> .idpos:not([hidden])){grid-template-columns:auto minmax(0,1fr) auto} }
   @media (max-width:1799px) and (min-width:641px){ .idband > .idpos{grid-column:2;align-self:start;margin-top:-4px} }
-  @media (max-width:640px){ .idband > .idpos{grid-column:1 / -1;justify-self:center;width:min(100%,300px)} }
-  .idpos .ip-h{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 10px;margin:0 0 6px}
+  /* a phone puts the court beside the spec panel (kit/playerhero.css) */
+  .idpos .ip-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 10px;margin:0 0 6px}
   .idpos .ip-l{font-family:var(--f-micro);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
   .idpos .ip-n{font-family:var(--f-micro);font-size:7.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  /* "POSITION BREAKDOWN CALCULATED" AND ITS '?' (player.js posLabel; Louie, 2026-10-15): the card opens over the court,
+     under the label, its parts headed as the reports head how to read a figure */
+  .idpos{position:relative}
+  .idpos .ip-l{display:inline-flex;align-items:center;gap:6px}
+  .idpos .ip-q{appearance:none;display:inline-grid;place-items:center;flex:none;width:17px;height:17px;padding:0;border-radius:50%;cursor:pointer;
+    font-family:var(--f-ui);font-size:10px;font-weight:700;line-height:1;letter-spacing:0;color:var(--ink-2);background:var(--panel);border:1px solid var(--rule-2)}
+  .idpos .ip-q:hover, .idpos .ip-q.on{color:var(--ground);background:var(--ink);border-color:var(--ink)}
+  .idpos .ip-q:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+  .idpos .ip-why{position:absolute;z-index:30;left:0;width:max(100%,min(300px,calc(100vw - 32px)));margin-top:-2px;padding:12px 14px;
+    border-radius:12px;background:var(--panel);border:1px solid var(--rule-2);box-shadow:0 12px 30px rgba(0,0,0,.18);text-align:left}
+  .idpos .ip-why[hidden]{display:none}
+  /* open, the hero sits above what follows it (the season chips, ADJUST TO LEAGUE), so the card is never under them */
+  .idband:has(.ip-why:not([hidden])){position:relative;z-index:40}
+  .idpos .ip-why p{margin:0 0 9px;font-family:var(--f-ui);font-size:11.5px;line-height:1.45;color:var(--ink-2)}
+  .idpos .ip-why p:last-child{margin-bottom:0}
+  .idpos .ip-why b{display:block;margin-bottom:2px;font-family:var(--f-micro);font-size:8.5px;font-weight:700;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink)}
+  /* the court as the hero's third column (wide screens) has the page's edge to its right: the card opens leftwards */
+  @media (min-width:1800px){ .idband > .idpos .ip-why{left:auto;right:0} }
   .idpos .ip-court{position:relative;width:100%;aspect-ratio:1500/1400;border-radius:8px;overflow:hidden;isolation:isolate;
     --court-floor:color-mix(in oklch,var(--team-a,var(--lume)) 7%,var(--panel,#fff));
     box-shadow:0 0 0 1px var(--rule-2),0 6px 18px rgba(0,0,0,.08)}
@@ -235,6 +254,7 @@
   body.vtab .sec:not(#videosec), body.vtab section.card{display:none}
   /* the report tab (report.js): everything else steps aside, as it does for video */
   body.rptab .sec:not(#reportsec), body.rptab section.card, body.rptab #videosec{display:none}
+  body.vtab #pbody, body.rptab #pbody{display:none}
   /* IN THE CLUB'S COLOURS -- the same dress as the club's own page (t/index.html): the
      player is at a club and the card says which one before the name is read. teamcolour.js
      paints --team-a/--team-b and the -ink variants that are safe as text; body.themed
@@ -308,21 +328,22 @@
   table.shot td.shot-team{font-weight:600;font-size:13px;color:var(--ink);
     white-space:normal;min-width:6em}
 </style>
-<link rel="stylesheet" href="../kit/shotchart.css?v=837">
-<link rel="stylesheet" href="../kit/gamelog.css?v=837">
-<link rel="stylesheet" href="../kit/onfloor.css?v=837">
-<link rel="stylesheet" href="../kit/report.css?v=837">
-<link rel="stylesheet" href="../kit/clutch.css?v=837">
-<link rel="stylesheet" href="../kit/soschip.css?v=837">
-<link rel="stylesheet" href="../kit/teletext.css?v=837">
-<link rel="stylesheet" href="../kit/playerhero.css?v=837">
-<link rel="stylesheet" href="../kit/silhouette.css?v=837">
-<link rel="stylesheet" href="../kit/compare.css?v=837">
-<link rel="stylesheet" href="../kit/statpop.css?v=837">
-<link rel="stylesheet" href="../kit/suggest.css?v=837">
-<link rel="stylesheet" href="../kit/adminedit.css?v=837">
-<link rel="stylesheet" href="../kit/profiletype.css?v=837">
-<link rel="stylesheet" href="../kit/legibility.css?v=837">
+<link rel="stylesheet" href="../kit/shotchart.css?v=838">
+<link rel="stylesheet" href="../kit/gamelog.css?v=838">
+<link rel="stylesheet" href="../kit/onfloor.css?v=838">
+<link rel="stylesheet" href="../kit/report.css?v=838">
+<link rel="stylesheet" href="../kit/clutch.css?v=838">
+<link rel="stylesheet" href="../kit/soschip.css?v=838">
+<link rel="stylesheet" href="../kit/teletext.css?v=838">
+<link rel="stylesheet" href="../kit/playerhero.css?v=838">
+<link rel="stylesheet" href="../kit/silhouette.css?v=838">
+<link rel="stylesheet" href="../kit/compare.css?v=838">
+<link rel="stylesheet" href="../kit/statpop.css?v=838">
+<link rel="stylesheet" href="../kit/suggest.css?v=838">
+<link rel="stylesheet" href="../kit/adminedit.css?v=838">
+<link rel="stylesheet" href="../kit/profiletype.css?v=838">
+<link rel="stylesheet" href="../kit/secgroups.css?v=838">
+<link rel="stylesheet" href="../kit/legibility.css?v=838">
 </head>
 <body>
 <div class="ep-frame">
@@ -369,21 +390,24 @@
     <button class="ep-tab" data-p="video" role="tab">Video</button>
   </div>
 
-  <div class="sec">
-    <div class="sec-h"><span class="idx">01</span><h2>League percentile</h2>
-      <span class="note" id="barNote"></span></div>
-    <div id="bars"></div>
+  <!-- ON VIDEO. Hidden until there is footage lined up with a game this player
+       actually played in, which is why it carries no placeholder: an empty
+       section on every profile in a league without cameras teaches people to
+       scroll past this part of the page. -->
+  <div class="sec" id="reportsec" style="display:none"></div>
+  <div class="sec" id="videosec" style="display:none">
+    <div class="sec-h"><span class="idx">V</span><h2>On video</h2>
+      <span class="note" id="videoNote"></span></div>
+    <div id="videopanel"></div>
   </div>
 
-  <!-- EVENTS. The season's second chances, breaks, turnovers, timeouts and half-court
-       sets from the season rows (sitpanel.js); scoped with the percentile bars above. -->
-  <div class="sec" id="eventsSec">
-    <div class="sec-h"><span class="idx">02</span><h2>Events</h2><span class="note" id="eventsNote"></span></div>
-    <div id="events"></div>
-  </div>
-
-  <div class="sec">
-    <div class="sec-h"><span class="idx">03</span><h2>Career stats</h2>
+  <!-- THE PROFILE IN GROUPS (secgroups.js, kit/secgroups.css; Louie, 2026-10-15): each group a card, a button for each under
+       the tabs above; on a desktop the buttons are tabs, one group at a time; a phone chooses Tabs or Scroll. Every section
+       keeps its id, so player.js finds it where it always did. -->
+  <div id="pbody" class="pgrp-root" data-pgrp="p">
+  <div class="pgrp-group" data-pgrp-key="career" data-pgrp-name="Career stats">
+  <div class="sec" id="careerSec">
+    <div class="sec-h"><span class="idx">01</span><h2>Career stats</h2>
       <span class="note" id="seasonNote"></span></div>
     <div class="seasonview" id="seasonView" hidden>
       <button type="button" class="ep-btn pri" data-view="table">full table</button>
@@ -392,43 +416,57 @@
     <div id="seasons"></div>
     <div id="seasonShot" hidden></div>
   </div>
-
-  <div class="sec">
-    <div class="sec-h"><span class="idx">04</span><h2>Game log</h2>
-      <span class="note" id="logNote"></span></div>
-    <div id="log"></div>
   </div>
 
-  <!-- ON VIDEO. Hidden until there is footage lined up with a game this player
-       actually played in, which is why it carries no placeholder: an empty
-       section on every profile in a league without cameras teaches people to
-       scroll past this part of the page. -->
-  <div class="sec" id="reportsec" style="display:none"></div>
-  <div class="sec" id="videosec" style="display:none">
-    <div class="sec-h"><span class="idx">04b</span><h2>On video</h2>
-      <span class="note" id="videoNote"></span></div>
-    <div id="videopanel"></div>
-  </div>
-
-  <div class="sec">
-    <div class="sec-h"><span class="idx">05</span><h2>On the floor with</h2>
-      <span class="note" id="wowyNote"></span></div>
-    <div id="onoff"></div>
-    <div id="withpanel"></div>
-  </div>
-
-  <!-- the season's shooting on the box score's court, zone by zone (shotchart.js) -->
-  <div class="sec" id="shotsec">
-    <div class="sec-h"><span class="idx">06</span><h2>Shot chart</h2></div>
-    <div id="shotchart"></div>
+  <div class="pgrp-group" data-pgrp-key="advanced" data-pgrp-name="Full advanced stats">
+  <div class="sec" id="pctSec">
+    <div class="sec-h"><span class="idx">02</span><h2>League percentile</h2>
+      <span class="note" id="barNote"></span></div>
+    <div id="bars"></div>
   </div>
 
   <!-- his clutch time (clutch.js: the last four minutes of the fourth and overtime, within five points), from his club's
        play-by-play in the scope shown. Hidden until he has five minutes of it (player.js paintClutch). -->
   <div class="sec" id="clutchsec" style="display:none">
-    <div class="sec-h"><span class="idx">07</span><h2>Clutch time</h2>
+    <div class="sec-h"><span class="idx">02a</span><h2>Clutch time</h2>
       <span class="note" id="clutchNote"></span></div>
     <div id="pclutch"></div>
+  </div>
+  </div>
+
+  <!-- EVENTS. The season's second chances, breaks, turnovers, timeouts and half-court
+       sets from the season rows (sitpanel.js); scoped with the percentile bars. -->
+  <div class="pgrp-group" data-pgrp-key="events" data-pgrp-name="Events">
+  <div class="sec" id="eventsSec">
+    <div class="sec-h"><span class="idx">03</span><h2>Events</h2><span class="note" id="eventsNote"></span></div>
+    <div id="events"></div>
+  </div>
+  </div>
+
+  <div class="pgrp-group" data-pgrp-key="log" data-pgrp-name="Game log">
+  <div class="sec" id="logSec">
+    <div class="sec-h"><span class="idx">04</span><h2>Game log</h2>
+      <span class="note" id="logNote"></span></div>
+    <div id="log"></div>
+  </div>
+  </div>
+
+  <!-- the season's shooting on the box score's court, zone by zone (shotchart.js) -->
+  <div class="pgrp-group" data-pgrp-key="shots" data-pgrp-name="Shot chart">
+  <div class="sec" id="shotsec">
+    <div class="sec-h"><span class="idx">05</span><h2>Shot chart</h2></div>
+    <div id="shotchart"></div>
+  </div>
+  </div>
+
+  <div class="pgrp-group" data-pgrp-key="floor" data-pgrp-name="On the floor with">
+  <div class="sec" id="floorSec">
+    <div class="sec-h"><span class="idx">06</span><h2>On the floor with</h2>
+      <span class="note" id="wowyNote"></span></div>
+    <div id="onoff"></div>
+    <div id="withpanel"></div>
+  </div>
+  </div>
   </div>
 
   <div class="foot">
@@ -437,75 +475,76 @@
     <span>Epinoia Network</span>
   </div>
 </div>
-<script src="../config.js?v=837" defer></script>
-<script src="../access.js?v=837" defer></script>
-<script src="../follow.js?v=837" defer></script>
-<script src="../teamcolour.js?v=837" defer></script>
-<script src="../bpm.js?v=837" defer></script>
-<script src="../season.js?v=837" defer></script>
-<script src="../data.js?v=837" defer></script>
-<script src="../boxscore.js?v=837" defer></script>
-<script src="../shotchart.js?v=837" defer></script>
-<script src="../upload.js?v=837" defer></script>
-<script src="../lineups.js?v=837" defer></script>
-<script src="../wowy.js?v=837" defer></script>
-<script src="../withstats.js?v=837" defer></script>
-<script src="../vsunits.js?v=837" defer></script>
-<script src="withui.js?v=837" defer></script>
-<script src="../memlock.js?v=837" defer></script>
-<script src="../fulltable.js?v=837" defer></script>
-<script src="../video.js?v=837" defer></script>
-<script src="video.js?v=837" defer></script>
-<script src="../sitpanel.js?v=837" defer></script>
-<script src="../consistency.js?v=837" defer></script>
-<script src="../units.js?v=837" defer></script>
-<script src="../ages.js?v=837" defer></script>
-<script src="../cards.js?v=837" defer></script>
-<script src="../statinfo.js?v=837" defer></script>
-<script src="../statpop.js?v=837" defer></script>
+<script src="../config.js?v=838" defer></script>
+<script src="../access.js?v=838" defer></script>
+<script src="../follow.js?v=838" defer></script>
+<script src="../teamcolour.js?v=838" defer></script>
+<script src="../bpm.js?v=838" defer></script>
+<script src="../season.js?v=838" defer></script>
+<script src="../data.js?v=838" defer></script>
+<script src="../boxscore.js?v=838" defer></script>
+<script src="../shotchart.js?v=838" defer></script>
+<script src="../upload.js?v=838" defer></script>
+<script src="../lineups.js?v=838" defer></script>
+<script src="../wowy.js?v=838" defer></script>
+<script src="../withstats.js?v=838" defer></script>
+<script src="../vsunits.js?v=838" defer></script>
+<script src="withui.js?v=838" defer></script>
+<script src="../memlock.js?v=838" defer></script>
+<script src="../fulltable.js?v=838" defer></script>
+<script src="../video.js?v=838" defer></script>
+<script src="video.js?v=838" defer></script>
+<script src="../sitpanel.js?v=838" defer></script>
+<script src="../consistency.js?v=838" defer></script>
+<script src="../units.js?v=838" defer></script>
+<script src="../ages.js?v=838" defer></script>
+<script src="../cards.js?v=838" defer></script>
+<script src="../statinfo.js?v=838" defer></script>
+<script src="../statpop.js?v=838" defer></script>
 <!-- how each number compares with real games in the same competition: the same preset the box
      score reads, needed here by the weekly report's ledger -->
-<script src="../gamepct-data.js?v=837" defer></script>
-<script src="../gamepct.js?v=837" defer></script>
-<script src="../weekly.js?v=837" defer></script>
-<script src="../possessions.js?v=837" defer></script>
-<script src="../situations.js?v=837" defer></script>
+<script src="../gamepct-data.js?v=838" defer></script>
+<script src="../gamepct.js?v=838" defer></script>
+<script src="../weekly.js?v=838" defer></script>
+<script src="../possessions.js?v=838" defer></script>
+<script src="../situations.js?v=838" defer></script>
 <!-- his clutch time (player.js paintClutch): clutch.js finds the engine vsunits.js loads when it is needed -->
-<script src="../clutch.js?v=837" defer></script>
-<script src="../rapm.js?v=837" defer></script>
-<script src="../raster.js?v=837" defer></script>
+<script src="../clutch.js?v=838" defer></script>
+<script src="../rapm.js?v=838" defer></script>
+<script src="../raster.js?v=838" defer></script>
 <!-- a player's Synergy play-type file, read for the reports (report.js synergyControl) -->
-<script src="../synergy.js?v=837" defer></script>
-<script src="../report.js?v=837" defer></script>
-<script src="../report-playerpages.js?v=837" defer></script>
+<script src="../synergy.js?v=838" defer></script>
+<script src="../report.js?v=838" defer></script>
+<script src="../report-playerpages.js?v=838" defer></script>
 <!-- the scout's insights on the report tab (scoutinsights.js), written with the house voice's proof (voice.js) and read by its
      editor (scrutiny.js) -->
-<script src="../voice.js?v=837" defer></script>
-<script src="../scrutiny.js?v=837" defer></script>
-<script src="../scoutinsights.js?v=837" defer></script>
-<script src="../sos.js?v=837" defer></script>
-<script src="sos-chip.js?v=837" defer></script>
-<script src="../linkswitch.js?v=837" defer></script>
-<script src="../suggest.js?v=837" defer></script>
-<script src="../adminedit.js?v=837" defer></script>
-<script src="../silhouette.js?v=837" defer></script>
-<script src="../seasonbar.js?v=837" defer></script>
+<script src="../voice.js?v=838" defer></script>
+<script src="../scrutiny.js?v=838" defer></script>
+<script src="../scoutinsights.js?v=838" defer></script>
+<script src="../sos.js?v=838" defer></script>
+<script src="sos-chip.js?v=838" defer></script>
+<script src="../linkswitch.js?v=838" defer></script>
+<script src="../suggest.js?v=838" defer></script>
+<script src="../adminedit.js?v=838" defer></script>
+<script src="../silhouette.js?v=838" defer></script>
+<script src="../seasonbar.js?v=838" defer></script>
 <!-- the depth chart's ranking of a five, point guard to centre: the position breakdown's (player.js paintPosBreakdown) -->
-<script src="../t/depth.js?v=837" defer></script>
-<script src="gamelog.js?v=837" defer></script>
-<script src="../similar.js?v=837" defer></script>
-<script src="similar-ui.js?v=837" defer></script>
+<script src="../t/depth.js?v=838" defer></script>
+<script src="gamelog.js?v=838" defer></script>
+<script src="../similar.js?v=838" defer></script>
+<script src="similar-ui.js?v=838" defer></script>
 <!-- compare player: the leagues and their rows the scouting page's way, the statistics page's chart, the picker -->
-<script src="../global.js?v=837" defer></script>
-<script src="../transferdata.js?v=837" defer></script>
-<script src="../transferleagues.js?v=837" defer></script>
-<script src="../transferadjust.js?v=837" defer></script>
-<script src="../compare.js?v=837" defer></script>
-<script src="compare-ui.js?v=837" defer></script>
-<script src="player.js?v=837" defer></script>
-<script src="../feedrank.js?v=837" defer></script>
-<script src="../interest.js?v=837" defer></script>
-<script src="../nav.js?v=837" defer></script>
-<script src="../xscroll.js?v=837" defer></script>
+<script src="../global.js?v=838" defer></script>
+<script src="../transferdata.js?v=838" defer></script>
+<script src="../transferleagues.js?v=838" defer></script>
+<script src="../transferadjust.js?v=838" defer></script>
+<script src="../compare.js?v=838" defer></script>
+<script src="compare-ui.js?v=838" defer></script>
+<script src="player.js?v=838" defer></script>
+<script src="../feedrank.js?v=838" defer></script>
+<script src="../interest.js?v=838" defer></script>
+<script src="../secgroups.js?v=838" defer></script>
+<script src="../nav.js?v=838" defer></script>
+<script src="../xscroll.js?v=838" defer></script>
 </body>
 </html>

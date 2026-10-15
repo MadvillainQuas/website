@@ -604,7 +604,6 @@
       'watch ↗': 'Ver ↗',
       'copy': 'Copiar',
       'copy failed': 'Error al copiar',
-      'hide': 'Ocultar',
       'live to viewers': 'En directo para el público',
       'NOT being saved': 'No se está guardando',
       'sign in ↗': 'Iniciar sesión ↗',

@@ -17,26 +17,26 @@
 <link rel="preconnect" href="https://hhvofgqqadtyvcjudhjx.supabase.co" crossorigin>
 <link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
-<script src="../appmode.js?v=837"></script>
-<script src="../i18n.js?v=837" data-i18n-packs="report go frontoffice"></script>
-<script src="../glyphs.js?v=837" defer></script>
-<link rel="stylesheet" href="../kit/epinoia-kit.css?v=837">
-<link rel="stylesheet" href="../kit/linkswitch.css?v=837">
-<link rel="stylesheet" href="../kit/table.css?v=837">
-<link rel="stylesheet" href="../kit/nav.css?v=837">
-<link rel="stylesheet" href="../kit/labeltype.css?v=837">
-<link rel="stylesheet" href="../kit/numtype.css?v=837">
-<link rel="stylesheet" href="../kit/motion.css?v=837">
-<script src="../motion.js?v=837" defer></script>
-<link rel="stylesheet" href="../video.css?v=837">
-<link rel="stylesheet" href="../kit/card.css?v=837">
-<link rel="stylesheet" href="../kit/sitpanel.css?v=837">
-<link rel="stylesheet" href="../kit/cards.css?v=837">
-<link rel="stylesheet" href="../kit/shotclock.css?v=837">
-<link rel="stylesheet" href="../kit/rotation.css?v=837">
-<link rel="stylesheet" href="../kit/access.css?v=837">
-<link rel="stylesheet" href="../go/venuestamp.css?v=837">
-<link rel="stylesheet" href="../go/stampfx.css?v=837">
+<script src="../appmode.js?v=838"></script>
+<script src="../i18n.js?v=838" data-i18n-packs="report go frontoffice"></script>
+<script src="../glyphs.js?v=838" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=838">
+<link rel="stylesheet" href="../kit/linkswitch.css?v=838">
+<link rel="stylesheet" href="../kit/table.css?v=838">
+<link rel="stylesheet" href="../kit/nav.css?v=838">
+<link rel="stylesheet" href="../kit/labeltype.css?v=838">
+<link rel="stylesheet" href="../kit/numtype.css?v=838">
+<link rel="stylesheet" href="../kit/motion.css?v=838">
+<script src="../motion.js?v=838" defer></script>
+<link rel="stylesheet" href="../video.css?v=838">
+<link rel="stylesheet" href="../kit/card.css?v=838">
+<link rel="stylesheet" href="../kit/sitpanel.css?v=838">
+<link rel="stylesheet" href="../kit/cards.css?v=838">
+<link rel="stylesheet" href="../kit/shotclock.css?v=838">
+<link rel="stylesheet" href="../kit/rotation.css?v=838">
+<link rel="stylesheet" href="../kit/access.css?v=838">
+<link rel="stylesheet" href="../go/venuestamp.css?v=838">
+<link rel="stylesheet" href="../go/stampfx.css?v=838">
 <style>
   /* THE HEAD (the crest, the name, the league, the actions, the competitions and the standing) is laid out and dressed
      by kit/clubhero.css, after teletext.css. */
@@ -339,22 +339,23 @@
   #paywall{padding:calc(var(--u)*3)}
   body.paywalled .rec, body.paywalled .pw-hide{display:none}
 </style>
-<link rel="stylesheet" href="../kit/shotchart.css?v=837">
-<link rel="stylesheet" href="../kit/teampage.css?v=837">
-<link rel="stylesheet" href="../kit/clutch.css?v=837">
-<link rel="stylesheet" href="../kit/clubstats.css?v=837">
-<link rel="stylesheet" href="../kit/teamviz.css?v=837">
-<link rel="stylesheet" href="../kit/report.css?v=837">
-<link rel="stylesheet" href="../kit/wowy.css?v=837">
-<link rel="stylesheet" href="../kit/teletext.css?v=837">
-<link rel="stylesheet" href="../kit/clubhero.css?v=837">
-<link rel="stylesheet" href="../kit/statpop.css?v=837">
-<link rel="stylesheet" href="../kit/soschip.css?v=837">
-<link rel="stylesheet" href="../kit/suggest.css?v=837">
-<link rel="stylesheet" href="../kit/adminedit.css?v=837">
+<link rel="stylesheet" href="../kit/shotchart.css?v=838">
+<link rel="stylesheet" href="../kit/teampage.css?v=838">
+<link rel="stylesheet" href="../kit/clutch.css?v=838">
+<link rel="stylesheet" href="../kit/clubstats.css?v=838">
+<link rel="stylesheet" href="../kit/teamviz.css?v=838">
+<link rel="stylesheet" href="../kit/report.css?v=838">
+<link rel="stylesheet" href="../kit/wowy.css?v=838">
+<link rel="stylesheet" href="../kit/teletext.css?v=838">
+<link rel="stylesheet" href="../kit/clubhero.css?v=838">
+<link rel="stylesheet" href="../kit/statpop.css?v=838">
+<link rel="stylesheet" href="../kit/soschip.css?v=838">
+<link rel="stylesheet" href="../kit/suggest.css?v=838">
+<link rel="stylesheet" href="../kit/adminedit.css?v=838">
 <!-- the Front office's win model (F3): kit/vizkit.css and kit/fomodel.css come with its code (team.js loadWinModel) -->
-<link rel="stylesheet" href="../kit/profiletype.css?v=837">
-<link rel="stylesheet" href="../kit/legibility.css?v=837">
+<link rel="stylesheet" href="../kit/profiletype.css?v=838">
+<link rel="stylesheet" href="../kit/secgroups.css?v=838">
+<link rel="stylesheet" href="../kit/legibility.css?v=838">
 </head>
 <body>
 <div class="ep-frame">
@@ -426,53 +427,77 @@
     <div id="videopanel"></div>
   </div>
 
-  <div id="tbody">
+  <!-- THE PROFILE IN GROUPS (secgroups.js, kit/secgroups.css; Louie, 2026-10-15): each group a card, a button for each under
+       the tabs above; on a desktop the buttons are tabs, one group at a time; a phone chooses Tabs or Scroll. The groups
+       are in reading order and every section keeps its id, so team.js finds it where it always did. -->
+  <div id="tbody" class="pgrp-root" data-pgrp="t">
+  <div class="pgrp-group" data-pgrp-key="main" data-pgrp-name="Main stats">
   <div class="ep-hdr pw-hide"><span class="idx">01</span><h2>Team statistics</h2></div>
   <div id="teamstats" class="pw-hide"></div>
 
+  <!-- clutch time (clutch.js: the last four minutes of the fourth and overtime, within five points): the club's ratings
+       in it and who takes its plays. Left out altogether until the club has had some (team.js teamClutch). -->
+  <div class="ep-hdr pw-hide" id="clutchHdr"><span class="idx">01a</span><h2>Clutch time</h2>
+    <span class="hnote" id="clutchNote"></span></div>
+  <div id="teamclutch" class="ep-card pw-hide"></div>
+  </div>
+
+  <!-- EVENTS, AT BOTH ENDS (team.js teamStats): drawn with the team statistics, for the same competitions -->
+  <div class="pgrp-group" data-pgrp-key="events" data-pgrp-name="Events">
+  <div class="pw-hide" id="teameventsSec" hidden>
+    <div class="ep-hdr"><span class="idx">02</span><h2>Events</h2></div>
+    <div id="teamevents" class="ep-card"></div>
+  </div>
+  </div>
+
+  <div class="pgrp-group" data-pgrp-key="players" data-pgrp-name="Players">
+  <!-- the players' table (team.js teamStats), every player ranked within the club, for the same competitions -->
+  <div class="pw-hide" id="teamplayersSec" hidden>
+    <div class="ep-hdr"><span class="idx">03</span><h2>Player statistics</h2></div>
+    <div id="teamplayers"></div>
+  </div>
+
+  <div class="ep-hdr"><span class="idx">03a</span><h2>Roster</h2>
+    <span class="note" id="rosterUnits"></span></div>
+  <div id="roster"></div>
+  </div>
+
+  <div class="pgrp-group" data-pgrp-key="shots" data-pgrp-name="Shot chart">
+  <div class="ep-hdr pw-hide"><span class="idx">04</span><h2>Shot chart</h2></div>
+  <div id="teamshots" class="ep-card pw-hide" style="padding:14px 12px"></div>
+
+  <!-- SHOT ZONES, RANKED IN THE LEAGUE (team.js teamStats): read only once the section nears the screen -->
+  <div class="pw-hide" id="teamzonesSec" hidden>
+    <div class="ep-hdr"><span class="idx">04a</span><h2>Shot zones</h2></div>
+    <div id="teamzones" class="ep-card"></div>
+  </div>
+  </div>
+
+  <div class="pgrp-group" data-pgrp-key="depth" data-pgrp-name="Depth chart">
   <!-- who plays where (t/depth.js): the minutes each player has played at each position, from the club's own lineups,
        every position one game long. Separate from the win model; the Front office's copy adds the league view. -->
-  <div class="ep-hdr pw-hide"><span class="idx">01a</span><h2>Depth chart</h2>
+  <div class="ep-hdr pw-hide"><span class="idx">05</span><h2>Depth chart</h2>
     <span class="note" id="tdepthNote"></span></div>
   <div id="teamdepth" class="ep-card pw-hide"></div>
 
-  <div class="ep-hdr pw-hide"><span class="idx">01b</span><h2>Shot chart</h2></div>
-  <div id="teamshots" class="ep-card pw-hide" style="padding:14px 12px"></div>
-
-  <!-- the club's possessions, and its opponents', by how long they ran before they ended
-       (shotclock.js / shotclock-view.js), from the same logs as the shot chart -->
-  <div class="ep-hdr pw-hide"><span class="idx">01c</span><h2>Shot clock analysis</h2>
-    <span class="note" id="clockNote"></span></div>
-  <div id="teamclock" class="ep-card pw-hide"></div>
-
   <!-- who is on the floor at each minute across the season (rotation.js) -->
-  <div class="ep-hdr pw-hide"><span class="idx">01d</span><h2>Rotations</h2>
+  <div class="ep-hdr pw-hide"><span class="idx">05a</span><h2>Rotations</h2>
     <span class="note" id="rotNote"></span></div>
   <div id="teamrot" class="ep-card pw-hide"></div>
+  </div>
 
-  <div class="ep-hdr"><span class="idx">02</span><h2>Home venue &amp; contact</h2>
-    <span class="note" id="venueNote"></span></div>
-  <div id="venue"></div>
-
-  <div class="ep-hdr"><span class="idx">03</span><h2>Roster</h2>
-    <span class="note" id="rosterUnits"></span></div>
-  <div id="roster"></div>
-
-
-  <div class="ep-hdr"><span class="idx">04</span><h2>Results &amp; fixtures</h2></div>
+  <div class="pgrp-group" data-pgrp-key="results" data-pgrp-name="Results &amp; fixtures">
+  <div class="ep-hdr"><span class="idx">06</span><h2>Results &amp; fixtures</h2></div>
   <div id="games"></div>
+  </div>
 
-  <!-- the most-used fives as cards, two rows deep, every number against the club's own (teamviz.js lineupCards) -->
-  <div class="ep-hdr pw-hide"><span class="idx">04b</span><h2>Most-used lineups</h2>
-    <span class="hnote" id="lucardsNote"></span></div>
-  <div id="lucards" class="pw-hide"></div>
-
-  <!-- 05-07 are the WOWY / Lineups page's own views, for this club (teamwowy.js) -->
-  <div class="ep-hdr pw-hide"><span class="idx">05</span><h2>With or without</h2>
+  <div class="pgrp-group" data-pgrp-key="lineups" data-pgrp-name="Lineups">
+  <!-- the WOWY / Lineups page's own views, for this club (teamwowy.js) -->
+  <div class="ep-hdr pw-hide"><span class="idx">07</span><h2>With or without</h2>
     <span class="hnote" id="wowyNote"></span></div>
   <div id="wowy" class="tlu pw-hide"></div>
 
-  <div class="ep-hdr pw-hide"><span class="idx">06</span><h2>Lineup filter</h2></div>
+  <div class="ep-hdr pw-hide"><span class="idx">07a</span><h2>Lineup filter</h2></div>
   <p class="lu-lead pw-hide">
     Pick up to five players and see how the team does with all of them on the
     floor together, against the rest of its minutes. Two or three pools every
@@ -481,14 +506,28 @@
   </p>
   <div id="lufilter" class="tlu pw-hide"></div>
 
-  <div class="ep-hdr pw-hide"><span class="idx">07</span><h2>Every lineup</h2></div>
-  <div id="lulist" class="tlu pw-hide"></div>
+  <!-- the most-used fives as cards, two rows deep, every number against the club's own (teamviz.js lineupCards) -->
+  <div class="ep-hdr pw-hide"><span class="idx">07b</span><h2>Most-used lineups</h2>
+    <span class="hnote" id="lucardsNote"></span></div>
+  <div id="lucards" class="pw-hide"></div>
 
-  <!-- clutch time (clutch.js: the last four minutes of the fourth and overtime, within five points): the club's ratings
-       in it and who takes its plays. Left out altogether until the club has had some (team.js teamClutch). -->
-  <div class="ep-hdr pw-hide" id="clutchHdr"><span class="idx">08</span><h2>Clutch time</h2>
-    <span class="hnote" id="clutchNote"></span></div>
-  <div id="teamclutch" class="ep-card pw-hide"></div>
+  <div class="ep-hdr pw-hide"><span class="idx">07c</span><h2>Every lineup</h2></div>
+  <div id="lulist" class="tlu pw-hide"></div>
+  </div>
+
+  <!-- the club's possessions, and its opponents', by how long they ran before they ended
+       (shotclock.js / shotclock-view.js), from the same logs as the shot chart -->
+  <div class="pgrp-group" data-pgrp-key="clock" data-pgrp-name="Shot clock analysis">
+  <div class="ep-hdr pw-hide"><span class="idx">08</span><h2>Shot clock analysis</h2>
+    <span class="note" id="clockNote"></span></div>
+  <div id="teamclock" class="ep-card pw-hide"></div>
+  </div>
+
+  <div class="pgrp-group" data-pgrp-key="venue" data-pgrp-name="Home venue &amp; contact">
+  <div class="ep-hdr"><span class="idx">09</span><h2>Home venue &amp; contact</h2>
+    <span class="note" id="venueNote"></span></div>
+  <div id="venue"></div>
+  </div>
   </div>
 
   <footer style="padding:calc(var(--u)*3);font-family:var(--f-micro);font-size:9px;color:var(--ink-3);display:flex;gap:14px;flex-wrap:wrap">
@@ -498,90 +537,91 @@
 </div>
 <!-- NO SDK TAG (2026-10-15): it held every read of this page back about three seconds; config.js epinoiaSdk() loads it
      for a reader with a session on file (epinoiaSignedClient), as on the player page -->
-<script src="../config.js?v=837" defer></script>
-<script src="../access.js?v=837" defer></script>
-<script src="../follow.js?v=837" defer></script>
-<script src="../linkswitch.js?v=837" defer></script>
-<script src="../units.js?v=837" defer></script>
-<script src="../ages.js?v=837" defer></script>
-<script src="../teamcolour.js?v=837" defer></script>
-<script src="../bpm.js?v=837" defer></script>
-<script src="../season.js?v=837" defer></script>
-<script src="../seasonbar.js?v=837" defer></script>
-<script src="../data.js?v=837" defer></script>
-<script src="../lineups.js?v=837" defer></script>
-<script src="../memlock.js?v=837" defer></script>
-<script src="../fulltable.js?v=837" defer></script>
-<script src="../igtile.js?v=837" defer></script>
-<script src="../video.js?v=837" defer></script>
-<script src="../p/video.js?v=837" defer></script>
-<script src="../homearenas.js?v=837" defer></script>
-<script src="../go/geo.js?v=837" defer></script>
-<script src="../go/stampfx.js?v=837" defer></script>
-<script src="../go/logo.js?v=837" defer></script>
-<script src="../go/venuestamp.js?v=837" defer></script>
-<script src="venue.js?v=837" defer></script>
+<script src="../config.js?v=838" defer></script>
+<script src="../access.js?v=838" defer></script>
+<script src="../follow.js?v=838" defer></script>
+<script src="../linkswitch.js?v=838" defer></script>
+<script src="../units.js?v=838" defer></script>
+<script src="../ages.js?v=838" defer></script>
+<script src="../teamcolour.js?v=838" defer></script>
+<script src="../bpm.js?v=838" defer></script>
+<script src="../season.js?v=838" defer></script>
+<script src="../seasonbar.js?v=838" defer></script>
+<script src="../data.js?v=838" defer></script>
+<script src="../lineups.js?v=838" defer></script>
+<script src="../memlock.js?v=838" defer></script>
+<script src="../fulltable.js?v=838" defer></script>
+<script src="../igtile.js?v=838" defer></script>
+<script src="../video.js?v=838" defer></script>
+<script src="../p/video.js?v=838" defer></script>
+<script src="../homearenas.js?v=838" defer></script>
+<script src="../go/geo.js?v=838" defer></script>
+<script src="../go/stampfx.js?v=838" defer></script>
+<script src="../go/logo.js?v=838" defer></script>
+<script src="../go/venuestamp.js?v=838" defer></script>
+<script src="venue.js?v=838" defer></script>
 <!-- the "add to calendar" panel: loaded before team.js, which mounts it -->
-<script src="../calendar.js?v=837" defer></script>
-<script src="../boxscore.js?v=837" defer></script>
-<script src="../shotchart.js?v=837" defer></script>
+<script src="../calendar.js?v=838" defer></script>
+<script src="../boxscore.js?v=838" defer></script>
+<script src="../shotchart.js?v=838" defer></script>
 <!-- the shot clock and rotation sections: possessions and chances (possessions.js), the
      events tab's ordering (situations.js), the calculators and their views -->
-<script src="../possessions.js?v=837" defer></script>
-<script src="../situations.js?v=837" defer></script>
-<script src="../shotclock.js?v=837" defer></script>
+<script src="../possessions.js?v=838" defer></script>
+<script src="../situations.js?v=838" defer></script>
+<script src="../shotclock.js?v=838" defer></script>
 <!-- the club's play-by-play as the WOWY page reads it (the season line's possession, heliocentrism and the ratings
      against the other side's starters and bench): the engine's replay, then the segments built on it -->
-<script src="../engine.js?v=837" defer></script>
-<script src="../lineupevents.js?v=837" defer></script>
-<script src="../wowylogic.js?v=837" defer></script>
-<script src="../stats/wowy/wowyui.js?v=837" defer></script>
-<script src="teamwowy.js?v=837" defer></script>
-<script src="../shotclock-view.js?v=837" defer></script>
-<script src="../rotation.js?v=837" defer></script>
-<script src="../sitpanel.js?v=837" defer></script>
-<script src="../cards.js?v=837" defer></script>
-<script src="../statinfo.js?v=837" defer></script>
-<script src="../statpop.js?v=837" defer></script>
+<script src="../engine.js?v=838" defer></script>
+<script src="../lineupevents.js?v=838" defer></script>
+<script src="../wowylogic.js?v=838" defer></script>
+<script src="../stats/wowy/wowyui.js?v=838" defer></script>
+<script src="teamwowy.js?v=838" defer></script>
+<script src="../shotclock-view.js?v=838" defer></script>
+<script src="../rotation.js?v=838" defer></script>
+<script src="../sitpanel.js?v=838" defer></script>
+<script src="../cards.js?v=838" defer></script>
+<script src="../statinfo.js?v=838" defer></script>
+<script src="../statpop.js?v=838" defer></script>
 <!-- the club's ELO and its schedule beside "Team statistics": the ratings (sos.js) and the chips the player page wears -->
-<script src="../sos.js?v=837" defer></script>
-<script src="../p/sos-chip.js?v=837" defer></script>
+<script src="../sos.js?v=838" defer></script>
+<script src="../p/sos-chip.js?v=838" defer></script>
 <!-- how each number compares with real games in the same competition: the same preset the box
      score reads, needed here by the weekly report's ledger -->
-<script src="../gamepct-data.js?v=837" defer></script>
-<script src="../gamepct.js?v=837" defer></script>
-<script src="../weekly.js?v=837" defer></script>
-<script src="../rapm.js?v=837" defer></script>
-<script src="../raster.js?v=837" defer></script>
-<script src="../teamviz.js?v=837" defer></script>
+<script src="../gamepct-data.js?v=838" defer></script>
+<script src="../gamepct.js?v=838" defer></script>
+<script src="../weekly.js?v=838" defer></script>
+<script src="../rapm.js?v=838" defer></script>
+<script src="../raster.js?v=838" defer></script>
+<script src="../teamviz.js?v=838" defer></script>
 <!-- a player's Synergy play-type file, read for the reports (report.js synergyControl) -->
-<script src="../synergy.js?v=837" defer></script>
-<script src="../report.js?v=837" defer></script>
+<script src="../synergy.js?v=838" defer></script>
+<script src="../report.js?v=838" defer></script>
 <!-- the club report's CLUTCH page: clutch time worked out from the play-by-play (needs engine.js above) -->
-<script src="../clutch.js?v=837" defer></script>
-<script src="../report-teampages.js?v=837" defer></script>
+<script src="../clutch.js?v=838" defer></script>
+<script src="../report-teampages.js?v=838" defer></script>
 <!-- the scout's insights on the report tab (scoutinsights.js), written with the house voice's proof (voice.js) and read by its
      editor (scrutiny.js) -->
-<script src="../voice.js?v=837" defer></script>
-<script src="../scrutiny.js?v=837" defer></script>
-<script src="../scoutinsights.js?v=837" defer></script>
-<script src="../injuries.js?v=837" defer></script>
-<script src="depth.js?v=837" defer></script>
-<script src="position.js?v=837" defer></script>
+<script src="../voice.js?v=838" defer></script>
+<script src="../scrutiny.js?v=838" defer></script>
+<script src="../scoutinsights.js?v=838" defer></script>
+<script src="../injuries.js?v=838" defer></script>
+<script src="depth.js?v=838" defer></script>
+<script src="position.js?v=838" defer></script>
 <!-- the win model (F3): its statistics, simulator, files' loader, chart kit and panel (winstats, winsim, winfile, vizkit,
      fomodel) and their sheets are loaded by team.js (loadWinModel) when the Front office first opens, never on a plain
      view of the page -->
-<script src="../upload.js?v=837" defer></script>
-<script src="../suggest.js?v=837" defer></script>
-<script src="../adminedit.js?v=837" defer></script>
+<script src="../upload.js?v=838" defer></script>
+<script src="../suggest.js?v=838" defer></script>
+<script src="../adminedit.js?v=838" defer></script>
 <!-- the letters on the crest's disc when a club has no crest: the same as HOME's cards give it -->
-<script src="../initials.js?v=837" defer></script>
+<script src="../initials.js?v=838" defer></script>
 <!-- the season line of Team statistics: the ratings, then tempo, efficiency and distribution as one table -->
-<script src="seasonline.js?v=837" defer></script>
-<script src="team.js?v=837" defer></script>
-<script src="../feedrank.js?v=837" defer></script>
-<script src="../interest.js?v=837" defer></script>
-<script src="../nav.js?v=837" defer></script>
-<script src="../xscroll.js?v=837" defer></script>
+<script src="seasonline.js?v=838" defer></script>
+<script src="team.js?v=838" defer></script>
+<script src="../feedrank.js?v=838" defer></script>
+<script src="../interest.js?v=838" defer></script>
+<script src="../secgroups.js?v=838" defer></script>
+<script src="../nav.js?v=838" defer></script>
+<script src="../xscroll.js?v=838" defer></script>
 </body>
 </html>

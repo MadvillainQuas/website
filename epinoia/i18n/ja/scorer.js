@@ -604,7 +604,6 @@
       'watch ↗': '観戦 ↗',
       'copy': 'コピー',
       'copy failed': 'コピーに失敗',
-      'hide': '隠す',
       'live to viewers': '視聴者にはライブ配信中',
       'NOT being saved': '保存されていません',
       'sign in ↗': 'ログイン ↗',

@@ -29,19 +29,40 @@
 .idactions .ep-follow.lbl{margin:0}
 .idmeta .ls-edit{margin:0}
 
-/* PHONE: the portrait at the left of the name and club, the spec panel and actions across the full width beneath */
+/* PHONE (Louie, 2026-10-15: "too vertical due to the position breakdown and the height/weight doesn't fill the space"): the
+   portrait at the left of the name and club; under them the spec panel as a two-by-two block with the position court beside
+   it, in place of the court stacked across the width under everything; then the season, and the actions across the width */
 @media (max-width:640px){
-  .idband{grid-template-columns:112px minmax(0,1fr);grid-template-rows:auto auto auto auto;column-gap:14px;row-gap:12px;align-items:start;padding:16px}
-  .idband .photo{width:112px;grid-row:1 / span 2;grid-column:1}
+  .idband{grid-template-columns:104px minmax(0,1fr) clamp(128px,40vw,172px);column-gap:12px;row-gap:12px;align-items:start;padding:16px}
+  .idband .photo{width:104px;grid-row:1 / span 2;grid-column:1}
   .idmeta{display:contents}
-  .idmeta h1{grid-column:2;grid-row:1;align-self:end;font-size:clamp(24px,7.4vw,32px)}
-  .idmeta .sub{grid-column:2;grid-row:2;align-self:start;font-size:10px}
+  .idmeta h1{grid-column:2 / -1;grid-row:1;align-self:end;font-size:clamp(24px,7.4vw,32px)}
+  .idmeta .sub{grid-column:2 / -1;grid-row:2;align-self:start;font-size:10px}
   .idmeta .sub .wr-rel{margin-left:0}
-  .idmeta .vitals{grid-column:1 / -1;grid-row:3;width:100%}
-  .idmeta .vitals{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));width:100%}
-  .idmeta .vit{min-width:0}
-  .idmeta .vitals .vit-units{grid-column:1 / -1;justify-self:center;margin:2px 0 10px}
-  .idmeta .vit{padding:9px 8px 8px;align-items:center;text-align:center}
+  .idmeta .vitals{grid-column:1 / 3;grid-row:3;align-self:stretch;width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:center}
+  .idmeta .vit{min-width:0;padding:9px 8px 8px;align-items:center;text-align:center;border-left:0;border-top:1px solid var(--rule-2)}
+  .idmeta .vit:first-child{padding-left:8px}
+  .idmeta .vit:nth-child(-n+2){border-top:0}
+  .idmeta .vit:nth-child(2n){border-left:1px solid var(--rule-2)}
+  /* three figures (no weight on record): the third takes the row */
+  .idmeta .vitals:not(:has(> .vit:nth-child(4))) > .vit:nth-child(3){grid-column:1 / -1}
   .idmeta .vit .vv{font-size:19px}
-  .idactions{grid-column:1 / -1;grid-row:4}
+  .idmeta .vitals .vit-units{grid-column:1 / -1;justify-self:center;margin:6px 0 8px}
+  .idmeta .idseason{grid-column:1 / 3;grid-row:4;margin-top:0}
+  .idactions{grid-column:1 / -1;grid-row:5}
+  .idband > .idpos{grid-column:3;grid-row:3 / span 2;width:100%;justify-self:stretch;align-self:start;margin:0}
+  /* no court (no minutes on record): the panel and the season take the width, the cells side by side */
+  .idband:not(:has(> .idpos:not([hidden]))) .idmeta .vitals{grid-column:1 / -1;grid-template-columns:repeat(auto-fit,minmax(70px,1fr))}
+  .idband:not(:has(> .idpos:not([hidden]))) .idmeta .vit{border-top:0;border-left:1px solid var(--rule-2)}
+  .idband:not(:has(> .idpos:not([hidden]))) .idmeta .vit:first-child{border-left:0}
+  .idband:not(:has(> .idpos:not([hidden]))) .idmeta .idseason{grid-column:1 / -1}
+  /* the court's five spots at the court's size */
+  .idpos .ip-spot{width:30px;height:30px;margin:-15px 0 0 -15px}
+  .idpos .ip-spot.top{width:36px;height:36px;margin:-18px 0 0 -18px}
+  .idpos .ip-spot b{font-size:7px}
+  .idpos .ip-spot i{font-size:8px}
+  .idpos .ip-spot.top b{font-size:7.5px}
+  .idpos .ip-spot.top i{font-size:9px}
+  .idpos .ip-key{gap:3px 7px;font-size:6.5px}
+  .idpos .ip-why{left:auto;right:0}
 }

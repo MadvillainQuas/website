@@ -152,7 +152,6 @@
       /* ---- admin.js: the fixture list ---- */
       'no fixtures yet': 'aún no hay partidos',
       'No fixtures yet. Schedule one above, generate a season or import a game below.': 'Aún no hay partidos. Programa uno arriba, genera el calendario de la temporada o importa un partido abajo.',
-      'hide': 'ocultar',
       'to play': 'por jugar',
       'select all shown': 'seleccionar todos los visibles',
       'tick every game shown': 'marca todos los partidos visibles',

@@ -10,8 +10,8 @@
        grouped in the one card, impact carrying every on/off four factor (offence and defence)
        plus BPM, OBPM, DBPM and VORP with only the four-factor blocks folding, and the sense
        (lower is better) of every one of them;
-     * the club page: four factors, the season line, shot zones and events are cards; the
-       players' table is not;
+     * the club page: four factors and the season line are cards; the shot zones, the events and
+       the players' table are sections of their own groups (secgroups.js);
      * both pages load the styles and the script before their own.
 
      node supabase/tests/collapsible-cards.test.mjs
@@ -145,7 +145,7 @@ console.log('\nthe position breakdown, where the estimated position sat (2026-10
 {
   const Season = require(path.join(ROOT, 'epinoia', 'season.js'));
   ok('the "EST POS:" chip is gone: the hero has the share of his minutes at each position instead', !/EST POS/.test(pjs) && !/paintEstPos/.test(pjs) &&
-     /async function paintPosBreakdown\(rows, field\)/.test(pjs) && /el\('span', 'ip-l', 'position breakdown'\)/.test(pjs));
+     /async function paintPosBreakdown\(rows, field\)/.test(pjs) && /el\('span', null, 'position breakdown calculated'\)/.test(pjs));
   ok('...the adjust-for-position switch still ranks by season.js positionGroups (guard, wing or big)', /const posMap = barsByPos && SE\.positionGroups \? SE\.positionGroups\(field\)/.test(pjs) &&
      JSON.stringify(Season.POS_GROUPS.map(g => g[0])) === '["G","F","C"]');
   const rows = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => ({ id, bpm_pos: 1 + i, position: '' }));
@@ -202,10 +202,13 @@ console.log('\nfouls conceded per 30 minutes, in defence');
 console.log('\nthe club page');
 const tjs = rd('epinoia', 't', 'team.js');
 const ts = tjs.slice(tjs.indexOf('async function teamStats'), tjs.indexOf('async function zoneStats') > 0 ? tjs.indexOf('/* ------------------------------------------------------------- shot zones --- */') : undefined);
-for (const k of ['ff', 'line', 'zones', 'events']) ok('team statistics: "' + k + '" is a card', new RegExp("card\\('" + k + "'").test(ts));
+for (const k of ['ff', 'line']) ok('team statistics: "' + k + '" is a card', new RegExp("card\\('" + k + "'").test(ts));
+/* the shot zones, the events and the players' table have groups of their own (secgroups.js; Louie, 2026-10-15) */
+ok('the shot zones and the events are sections of their own groups now, not cards', !/card\('zones'|card\('events'/.test(ts) &&
+   /const zh = statPart\(1\);/.test(ts) && /const evHost = statPart\(0\)/.test(ts));
 const tab = ts.slice(ts.indexOf('T.render'));
-ok('the players’ table is not in a card: it is rendered straight into the page', /const sub = el\('div'\);\s*host\.appendChild\(sub\);/.test(ts) && !/card\('players|card\('roster/.test(ts) && tab.length > 0);
-ok('the shot zones and the events are only read once their card is opened', /card\('zones', 'shot zones', \(\) =>/.test(ts) && /card\('events', 'events', \(\) =>/.test(ts));
+ok('the players’ table is not in a card: it is rendered into the Players group', /const sub = el\('div'\);\s*\(statPart\(2\) \|\| host\)\.appendChild\(sub\);/.test(ts) && !/card\('players|card\('roster/.test(ts) && tab.length > 0);
+ok('the shot zones are read only once their section nears the screen (a tab not open: once it is opened)', /whenNear\(zh, \(\) => zoneStats\(zh, S, team\)/.test(ts));
 
 console.log('\nthe pages load it');
 for (const [who, file, own] of [['player page', 'p/index.html', 'player.js'], ['club page', 't/index.html', 'team.js']]) {

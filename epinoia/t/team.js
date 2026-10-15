@@ -70,7 +70,7 @@ async function notInSeason(team, lg) {
 }
 
 function oops(msg) {
-  ['#roster', '#games', '#teamstats'].forEach(s => { const h = $(s); if (h) h.textContent = ''; });
+  ['#roster', '#games', '#teamstats', '#teamevents', '#teamzones', '#teamplayers'].forEach(s => { const h = $(s); if (h) h.textContent = ''; });
   $('#games').appendChild(el('div', 'empty', msg));
 }
 
@@ -1784,8 +1784,18 @@ function teamEvents(mine, field, name, team) {
   vz.appendChild(el('div', 'tv-more', 'the full table: tap a situation for its rim, mid-range and three breakdown'));
   return vz;
 }
+/* THE SECTIONS TEAM STATISTICS DRAWS ELSEWHERE (secgroups.js; Louie, 2026-10-15): the events, the shot zones and the
+   players' table, each in its own group, for the same competitions as the team statistics. Emptied and hidden at every
+   draw; each is shown once there is something in it. */
+const STAT_PARTS = [['#teamevents', '#teameventsSec'], ['#teamzones', '#teamzonesSec'], ['#teamplayers', '#teamplayersSec']];
+function statPart(i) {
+  const host = $(STAT_PARTS[i][0]), sec = $(STAT_PARTS[i][1]);
+  if (sec) sec.hidden = false;
+  return host;
+}
 async function teamStats(team, kind) {
   const host = $('#teamstats'); host.textContent = '';
+  STAT_PARTS.forEach(([h, s]) => { const n = $(h), w = $(s); if (n) n.textContent = ''; if (w) w.hidden = true; });
   try {   // the '?' in the section heading: what every statistic below means (statpop.js)
     const th = host.previousElementSibling;
     if (th && th.classList.contains('ep-hdr') && window.EpinoiaStatPop) window.EpinoiaStatPop.helpButton(th, 'team');
@@ -1833,10 +1843,8 @@ async function teamStats(team, kind) {
     return;
   }
 
-  /* THE SECTIONS ARE CARDS (cards.js): four factors, the season line, shot zones and events each fold away, and the
-     state is remembered in this browser. A shut card draws nothing, which is the point for the two that read every
-     event of the competition (shot zones) or every situation (events): they are only built when opened.
-     The players' table below is not one of them - it stays on the page. */
+  /* THE SECTIONS ARE CARDS (cards.js): the four factors and the season line each fold away, and the state is remembered
+     in this browser. The shot zones, the events and the players' table have groups of their own (STAT_PARTS). */
   const C = window.EpinoiaCards;
   const metaP = D.playerMeta(S.players.map(p => p.id)).catch(() => ({}));
   const cards = el('div', 'xcs');
@@ -1903,33 +1911,33 @@ async function teamStats(team, kind) {
     return box;
   }, mine.gp ? mine.gp + (mine.gp === 1 ? ' game' : ' games') : null);
 
-  /* SHOT ZONES, RANKED IN THE LEAGUE. Every located shot of every side in the scoped
+  /* SHOT ZONES, RANKED IN THE LEAGUE (the Shot chart group). Every located shot of every side in the scoped
      competitions, cut into the chart's zones; this club's share, rate per 100 possessions,
      per-game attempts and makes and eFG% in each, each one a percentile among the teams. */
-  card('zones', 'shot zones', () => {
-    const zh = el('div');
+  {
+    const zh = statPart(1);
     /* Without analytics the teaser stands in, and the zone read is never made: it fetches the
        event log of every game in the competition, and saving that is half the point. */
-    if (sectionLocked('shotZones')) {
+    if (!zh) { /* an older page without the section */ }
+    else if (sectionLocked('shotZones')) {
       const tz = el('div');
       tz.innerHTML = accessTeaser({ key: 'shotZones', title: 'Shot zones, ranked in the league',
         lines: ['Share of shots, attempts per 100 possessions, makes and eFG% from every area of the floor, each a percentile among the league’s clubs.'] });
       zh.appendChild(tz);
     } else {
-      /* after the card has attached the node: whenNear watches where it is on the page */
-      Promise.resolve().then(() => whenNear(zh, () => zoneStats(zh, S, team)
-        .catch(() => zh.appendChild(el('div', 'empty', 'The shot zones could not be computed.')))));
+      /* whenNear waits until the section nears the screen: in a tab not open, until the reader opens it */
+      whenNear(zh, () => zoneStats(zh, S, team)
+        .catch(() => zh.appendChild(el('div', 'empty', 'The shot zones could not be computed.'))));
     }
-    return zh;
-  });
+  }
 
-  /* EVENTS, AT BOTH ENDS. What the club made of second chances, breaks, turnovers,
+  /* EVENTS, AT BOTH ENDS (the Events group). What the club made of second chances, breaks, turnovers,
      timeouts and half-court sets over the scoped season, and what opponents made of
      the same against it -- from the season rows' ev_ / evd_ keys, ranked among
      S.teams. Its own try, because anything thrown here would reach boot's catch and
      blank the roster and the results. */
-  card('events', 'events', () => {
-    const evHost = el('div');
+  {
+    const evHost = statPart(0) || el('div');
     try {
       const clubLabel = team.name || team.short_name || '';
       if (sectionLocked('events')) {
@@ -1950,16 +1958,15 @@ async function teamStats(team, kind) {
       evHost.textContent = '';
       evHost.appendChild(el('div', 'empty', 'The event splits could not be drawn.'));
     }
-    return evHost;
-  });
+  }
 
-  /* every player on the roster, ranked within their own team */
+  /* every player on the roster, ranked within their own team (the Players group, above the roster) */
   const meta = await metaP;
   S.players.forEach(p => Object.assign(p, meta[p.id] || {}));
   const squad = S.players.filter(p => p.teamId === team.id);
   if (squad.length) {
     const sub = el('div');
-    host.appendChild(sub);
+    (statPart(2) || host).appendChild(sub);
     T.render({
       host: sub, kind: 'player', sortKey: 'ppg', showMinGames: false,
       filename: (team.slug || 'team') + '-players', track: 'club-players',

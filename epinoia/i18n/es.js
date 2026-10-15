@@ -2040,7 +2040,20 @@
       'Estimated: no measured moves, so it is placed two levels below Segunda FEB, extrapolated from the step between Primera FEB and Segunda FEB.': 'Estimado: sin traspasos medidos, se sitúa dos niveles por debajo de la Segunda FEB, extrapolado a partir del salto entre la Primera FEB y la Segunda FEB.',
       'Estimated: no measured moves, so it is placed two and a half levels below Segunda FEB, extrapolated from the step between Primera FEB and Segunda FEB.': 'Estimado: sin traspasos medidos, se sitúa dos niveles y medio por debajo de la Segunda FEB, extrapolado a partir del salto entre la Primera FEB y la Segunda FEB.',
       'Estimated: no measured moves, so it is placed three levels below Segunda FEB, extrapolated from the step between Primera FEB and Segunda FEB.': 'Estimado: sin traspasos medidos, se sitúa tres niveles por debajo de la Segunda FEB, extrapolado a partir del salto entre la Primera FEB y la Segunda FEB.',
-      'Estimated: no measured moves, so it is placed below Segunda FEB, extrapolated from the step between Primera FEB and Segunda FEB.': 'Estimado: sin traspasos medidos, se sitúa por debajo de la Segunda FEB, extrapolado a partir del salto entre la Primera FEB y la Segunda FEB.'
+      'Estimated: no measured moves, so it is placed below Segunda FEB, extrapolated from the step between Primera FEB and Segunda FEB.': 'Estimado: sin traspasos medidos, se sitúa por debajo de la Segunda FEB, extrapolado a partir del salto entre la Primera FEB y la Segunda FEB.',
+      'Main stats': 'Estadísticas principales',
+      'Full advanced stats': 'Estadísticas avanzadas completas',
+      'Player statistics': 'Estadísticas de los jugadores',
+      'hide': 'ocultar',
+      'Clutch time': 'Minutos decisivos',
+      'position breakdown calculated': 'minutos por posición (calculados)',
+      'How the position breakdown is calculated': 'Cómo se calculan los minutos por posición',
+      'How it is calculated': 'Cómo se calcula',
+      'Why it moves': 'Por qué cambia',
+      'When it can be wrong': 'Cuándo puede fallar',
+      'Every five this player was on the floor in is ranked from point guard to centre, and the player’s minutes go to their place in it. Each place comes from three things: the position the BPM model estimates from the box score (it counts for more the more minutes have been played), the position the club lists, and height.': 'Cada quinteto en el que estuvo en pista este jugador se ordena de base a pívot, y sus minutos van a su lugar en él. Cada lugar sale de tres cosas: la posición que el modelo BPM estima a partir de la estadística (pesa más cuantos más minutos se hayan jugado), la posición que indica el club y la estatura.',
+      'It is worked out again from the lineups of the season and competition shown, so it shifts with more minutes played and as the players around them change.': 'Se vuelve a calcular con los quintetos de la temporada y la competición mostradas, así que cambia con más minutos jugados y cuando cambian los compañeros.',
+      'Early in a season, when the BPM estimate rests on few minutes; for a player whose game does not match their size, such as a big who brings the ball up; where a club lists no positions or heights; and in a five with two players of the same kind, where one is pushed into the next spot along. Read it as a guide, not a record.': 'Al principio de la temporada, cuando la estimación del BPM se basa en pocos minutos; con un jugador cuyo juego no se corresponde con su tamaño, como un interior que sube el balón; cuando un club no indica posiciones ni estaturas; y en un quinteto con dos jugadores del mismo tipo, donde uno pasa a la posición de al lado. Tómalo como una guía, no como un registro.'
     },
 
     ctx: {

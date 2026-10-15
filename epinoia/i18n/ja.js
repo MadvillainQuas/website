@@ -2038,7 +2038,20 @@
       'Estimated: no measured moves, so it is placed two levels below Segunda FEB, extrapolated from the step between Primera FEB and Segunda FEB.': '推定: 移籍の実測データがないため、Segunda FEBの2段下に置いています（Primera FEBとSegunda FEBの差から外挿）。',
       'Estimated: no measured moves, so it is placed two and a half levels below Segunda FEB, extrapolated from the step between Primera FEB and Segunda FEB.': '推定: 移籍の実測データがないため、Segunda FEBの2.5段下に置いています（Primera FEBとSegunda FEBの差から外挿）。',
       'Estimated: no measured moves, so it is placed three levels below Segunda FEB, extrapolated from the step between Primera FEB and Segunda FEB.': '推定: 移籍の実測データがないため、Segunda FEBの3段下に置いています（Primera FEBとSegunda FEBの差から外挿）。',
-      'Estimated: no measured moves, so it is placed below Segunda FEB, extrapolated from the step between Primera FEB and Segunda FEB.': '推定: 移籍の実測データがないため、Segunda FEBより下に置いています（Primera FEBとSegunda FEBの差から外挿）。'
+      'Estimated: no measured moves, so it is placed below Segunda FEB, extrapolated from the step between Primera FEB and Segunda FEB.': '推定: 移籍の実測データがないため、Segunda FEBより下に置いています（Primera FEBとSegunda FEBの差から外挿）。',
+      'Main stats': '主要スタッツ',
+      'Full advanced stats': 'アドバンストスタッツ（全項目）',
+      'Player statistics': '選手スタッツ',
+      'hide': '隠す',
+      'Clutch time': 'クラッチタイム',
+      'position breakdown calculated': 'ポジション別出場時間（推計）',
+      'How the position breakdown is calculated': 'ポジション別出場時間の算出方法',
+      'How it is calculated': '算出方法',
+      'Why it moves': '変動する理由',
+      'When it can be wrong': '外れやすいケース',
+      'Every five this player was on the floor in is ranked from point guard to centre, and the player’s minutes go to their place in it. Each place comes from three things: the position the BPM model estimates from the box score (it counts for more the more minutes have been played), the position the club lists, and height.': 'この選手がコートに立った5人の組み合わせを、ポイントガードからセンターまでの順に並べ、その中での位置にこの選手の出場時間を割り当てています。各選手の位置は3つの要素から決まります：BPMモデルがボックススコアから推定するポジション（出場時間が長いほど重みが増します）、クラブが登録しているポジション、そして身長です。',
+      'It is worked out again from the lineups of the season and competition shown, so it shifts with more minutes played and as the players around them change.': '表示中のシーズンと大会のラインナップから毎回計算し直すため、出場時間が増えたり周りの選手が変わったりすると変動します。',
+      'Early in a season, when the BPM estimate rests on few minutes; for a player whose game does not match their size, such as a big who brings the ball up; where a club lists no positions or heights; and in a five with two players of the same kind, where one is pushed into the next spot along. Read it as a guide, not a record.': 'シーズン序盤でBPMの推定が少ない出場時間に頼っているとき、体格とプレースタイルが合わない選手（ボールを運ぶビッグマンなど）、クラブがポジションや身長を登録していないとき、そして同じタイプの選手が2人いる5人組で、一方が隣のポジションに押し出されるときです。記録ではなく目安としてご覧ください。'
     },
 
     ctx: {

@@ -1047,6 +1047,62 @@ function segs(name, opts, cur, pick) {
    rest read here -- each five ranked by its players' positions on the season line, their listed positions and heights. */
 let POS_RUN = 0;
 const CLUB_STINTS = new Map();          // game id -> its lineup stints (both sides), as "on the floor with" read them
+/* "POSITION BREAKDOWN CALCULATED" AND ITS '?' (Louie, 2026-10-15): the court is worked out, not recorded, and the reader is
+   told how and where it can go wrong, set out as the reports set out how to read a figure. A desktop opens the card on a
+   hover; a tap or a press pins it open and another closes it, as does a tap anywhere else or Escape. */
+/* in words that fit a women's league's profile as well as a men's */
+const POS_WHY = [
+  ['How it is calculated', 'Every five this player was on the floor in is ranked from point guard to centre, and the ' +
+    'player’s minutes go to their place in it. Each place comes from three things: the position the BPM model estimates ' +
+    'from the box score (it counts for more the more minutes have been played), the position the club lists, and height.'],
+  ['Why it moves', 'It is worked out again from the lineups of the season and competition shown, so it shifts with more ' +
+    'minutes played and as the players around them change.'],
+  ['When it can be wrong', 'Early in a season, when the BPM estimate rests on few minutes; for a player whose game does not ' +
+    'match their size, such as a big who brings the ball up; where a club lists no positions or heights; and in a five with ' +
+    'two players of the same kind, where one is pushed into the next spot along. Read it as a guide, not a record.']
+];
+let POS_WHY_OPEN = null;                // the card open now, and how to close it
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', e => { if (POS_WHY_OPEN && !POS_WHY_OPEN.inside(e.target)) POS_WHY_OPEN.close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && POS_WHY_OPEN) POS_WHY_OPEN.close(); });
+}
+function posLabel() {
+  const lab = el('span', 'ip-l');
+  lab.appendChild(el('span', null, 'position breakdown calculated'));
+  const q = el('button', 'ip-q', '?');
+  q.type = 'button';
+  q.setAttribute('aria-label', 'How the position breakdown is calculated');
+  q.setAttribute('aria-expanded', 'false');
+  q.setAttribute('aria-controls', 'ipWhy');
+  lab.appendChild(q);
+  const card = el('div', 'ip-why');
+  card.id = 'ipWhy';
+  card.hidden = true;
+  POS_WHY.forEach(([h, t]) => { const p = el('p'); p.append(el('b', null, h), el('span', null, t)); card.appendChild(p); });
+  lab.why = card;             // the page puts it straight after the heading
+  let pinned = false, over = false;
+  const me = {
+    inside: n => !!n && (q.contains(n) || card.contains(n)),
+    close: () => { pinned = false; over = false; show(); }
+  };
+  function show() {
+    const on = pinned || over;
+    card.hidden = !on;
+    q.setAttribute('aria-expanded', String(on));
+    q.classList.toggle('on', on);
+    if (on) { if (POS_WHY_OPEN && POS_WHY_OPEN !== me) POS_WHY_OPEN.close(); POS_WHY_OPEN = me; }
+    else if (POS_WHY_OPEN === me) POS_WHY_OPEN = null;
+  }
+  /* a press pins it open (a hover may have opened it already); a second press closes it */
+  q.addEventListener('click', () => { if (pinned) { pinned = false; over = false; } else pinned = true; show(); });
+  let hoverable = false;
+  try { hoverable = window.matchMedia('(hover: hover) and (pointer: fine)').matches; } catch (_) { /* a tap is enough */ }
+  if (hoverable) {
+    q.addEventListener('mouseenter', () => { over = true; show(); });
+    q.addEventListener('mouseleave', () => { over = false; show(); });
+  }
+  return lab;
+}
 async function paintPosBreakdown(rows, field) {
   const host = $('#idpos');
   const X = window.EpinoiaDepth, D = window.EpinoiaData;
@@ -1118,7 +1174,8 @@ async function paintPosBreakdown(rows, field) {
   rpGive('pos', { pct, games: games.size, minutes: total / 60 });
   const top = pct.indexOf(Math.max(...pct));
   const head = el('div', 'ip-h');
-  head.append(el('span', 'ip-l', 'position breakdown'),
+  const lab = posLabel();
+  head.append(lab,
               el('span', 'ip-n', games.size + (games.size === 1 ? ' game · ' : ' games · ') + Math.round(total / 60) + ' min'));
   /* A HALF COURT, AS THE SHORTLIST AND THE MODERN BOX SCORE DRAW ONE (2026-10-02): the five spots of the modern box score
      (game/modern.js SLOTS, fractions of boxscore.js's court, the ring at the top), each a disc coloured by the share of his
@@ -1147,7 +1204,7 @@ async function paintPosBreakdown(rows, field) {
     k.append(el('i', c), document.createTextNode(t));
     key.appendChild(k);
   });
-  host.append(head, court, key);
+  host.append(head, lab.why, court, key);
   host.hidden = false;
 }
 

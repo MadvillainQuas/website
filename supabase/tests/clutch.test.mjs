@@ -153,7 +153,9 @@ ok('...and the free throws lose their clutch column', /S\.games \? '<span class=
 
 console.log('\n6. the club page\'s clutch section');
 const TI = rd('epinoia', 't', 'index.html'), TJ = rd('epinoia', 't', 'team.js');
-ok('the page has the section, under the lineups, its header named so it can be hidden', /id="clutchHdr"[\s\S]*<h2>Clutch time<\/h2>[\s\S]*id="teamclutch"/.test(TI) && TI.indexOf('id="teamclutch"') > TI.indexOf('id="lulist"'));
+ok('the page has the section, in Main stats under the team statistics (secgroups.js, 2026-10-15), its header named so it can be hidden',
+   /id="clutchHdr"[\s\S]*<h2>Clutch time<\/h2>[\s\S]*id="teamclutch"/.test(TI) && TI.indexOf('id="teamclutch"') > TI.indexOf('id="teamstats"') &&
+   TI.indexOf('id="teamclutch"') < TI.indexOf('data-pgrp-key="events"') && TI.indexOf('data-pgrp-key="main"') < TI.indexOf('id="teamstats"'));
 ok('it starts when it comes near, as the other heavy sections do', /whenNear\(\$\('#teamclutch'\), \(\) => \{ teamClutch\(team\)/.test(TJ));
 ok('with no clutch time, the section and its header are hidden', /if \(!S\.games \|\| !\(S\.dur > 0\)\) \{ hide\(\); return; \}/.test(TJ));
 ok('behind the splits lock, as starters and bench are', /sectionLocked\('splits'\)\) \{\s*host\.innerHTML = accessTeaser\(\{ compact: true, key: 'splits', title: 'Clutch time'/.test(TJ));

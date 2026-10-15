@@ -152,7 +152,6 @@
       /* ---- admin.js: the fixture list ---- */
       'no fixtures yet': 'まだ試合がありません',
       'No fixtures yet. Schedule one above, generate a season or import a game below.': 'まだ試合がありません。上で登録するか、シーズン日程を自動作成するか、下で試合をインポートしてください。',
-      'hide': '隠す',
       'to play': '未実施',
       'select all shown': '表示中をすべて選択',
       'tick every game shown': '表示中の試合をすべてチェック',

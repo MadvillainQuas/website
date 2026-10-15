@@ -1,0 +1,148 @@
+/* ============================================================================
+   THE CLUB AND PLAYER PAGES IN GROUPS -- epinoia/secgroups.js, kit/secgroups.css (Louie, 2026-10-15): in place of ON
+   THIS PAGE, HOME's buttons and cards; tabs on a desktop, HOME's Tabs / Scroll switch on a phone.
+
+     1. the club page's groups, in Louie's order, each holding exactly the sections he named
+     2. the player page's groups, the same
+     3. secgroups.js: tabs from 721px, HOME's phone key, a group with nothing showing has no button, an address opens its tab
+     4. team.js draws the events, the shot zones and the players' table into their own groups
+     5. ON THIS PAGE steps aside on these pages; the four keys at the foot step aside wherever the phone's bar of tabs shows
+     6. the position breakdown: "position breakdown calculated" and a '?' that says how and where it goes wrong
+     7. the phone hero: the court beside the spec panel
+
+     node supabase/tests/profile-groups.test.mjs
+   ============================================================================ */
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const rd = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
+let pass = 0, fail = 0;
+const ok = (name, cond, detail) => {
+  if (cond) { pass++; console.log('  PASS  ' + name); }
+  else { fail++; console.log('  FAIL  ' + name + (detail !== undefined ? '\n          ' + (typeof detail === 'string' ? detail : JSON.stringify(detail)) : '')); }
+};
+
+/* each group of a page: its key, its name and the headings inside it, in order */
+function groupsOf(html) {
+  const at = html.indexOf('class="pgrp-root"');
+  if (at < 0) return [];
+  const body = html.slice(at);
+  const starts = [...body.matchAll(/<div class="pgrp-group" data-pgrp-key="([^"]+)" data-pgrp-name="([^"]+)">/g)];
+  return starts.map((m, i) => {
+    const chunk = body.slice(m.index, i + 1 < starts.length ? starts[i + 1].index : undefined);
+    return { key: m[1], name: m[2].replace(/&amp;/g, '&'), heads: [...chunk.matchAll(/<h2>([^<]+)<\/h2>/g)].map(x => x[1].replace(/&amp;/g, '&')),
+             ids: [...chunk.matchAll(/ id="([^"]+)"/g)].map(x => x[1]) };
+  });
+}
+
+console.log('\n1. the club page');
+const TI = rd('epinoia', 't', 'index.html');
+{
+  const g = groupsOf(TI);
+  const want = [
+    ['Main stats', ['Team statistics', 'Clutch time']],                          // the four factors and the season line are team statistics' cards
+    ['Events', ['Events']],
+    ['Players', ['Player statistics', 'Roster']],
+    ['Shot chart', ['Shot chart', 'Shot zones']],
+    ['Depth chart', ['Depth chart', 'Rotations']],
+    ['Results & fixtures', ['Results & fixtures']],
+    ['Lineups', ['With or without', 'Lineup filter', 'Most-used lineups', 'Every lineup']],
+    ['Shot clock analysis', ['Shot clock analysis']],
+    ['Home venue & contact', ['Home venue & contact']]
+  ];
+  ok('nine groups, in Louie\'s order', JSON.stringify(g.map(x => x.name)) === JSON.stringify(want.map(w => w[0])), g.map(x => x.name).join(' / '));
+  want.forEach(([n, heads], i) => ok(n + ': ' + heads.join(', '), g[i] && JSON.stringify(g[i].heads) === JSON.stringify(heads), g[i] && g[i].heads.join(' / ')));
+  ok('the profile\'s body is the groups\' root, so the Video, report and Front office tabs still hide it', /<div id="tbody" class="pgrp-root" data-pgrp="t">/.test(TI) &&
+     /body\.vtab #tbody\{display:none\}/.test(TI));
+  const every = ['teamstats', 'clutchHdr', 'teamclutch', 'teamevents', 'teamplayers', 'roster', 'teamshots', 'teamzones', 'teamdepth', 'teamrot', 'games',
+    'wowy', 'lufilter', 'lucards', 'lulist', 'teamclock', 'venue'];
+  ok('every section team.js draws into is in a group', every.every(id => g.some(x => x.ids.includes(id))), every.filter(id => !g.some(x => x.ids.includes(id))).join(','));
+}
+
+console.log('\n2. the player page');
+const PI = rd('epinoia', 'p', 'index.html');
+{
+  const g = groupsOf(PI);
+  const want = [
+    ['Career stats', ['Career stats']],
+    ['Full advanced stats', ['League percentile', 'Clutch time']],
+    ['Events', ['Events']],
+    ['Game log', ['Game log']],
+    ['Shot chart', ['Shot chart']],
+    ['On the floor with', ['On the floor with']]
+  ];
+  ok('six groups, in Louie\'s order', JSON.stringify(g.map(x => x.name)) === JSON.stringify(want.map(w => w[0])), g.map(x => x.name).join(' / '));
+  want.forEach(([n, heads], i) => ok(n + ': ' + heads.join(', '), g[i] && JSON.stringify(g[i].heads) === JSON.stringify(heads), g[i] && g[i].heads.join(' / ')));
+  ok('the video and report panels stay outside the groups, and their tabs hide the grouped body',
+     PI.indexOf('id="videosec"') < PI.indexOf('class="pgrp-root"') && PI.indexOf('id="reportsec"') < PI.indexOf('class="pgrp-root"') &&
+     /body\.vtab #pbody, body\.rptab #pbody\{display:none\}/.test(PI));
+}
+
+console.log('\n3. secgroups.js');
+const SG = rd('epinoia', 'secgroups.js'), SC = rd('epinoia', 'kit', 'secgroups.css');
+{
+  ok('a desktop is tabs from 721px, as HOME is', /matchMedia\('\(min-width: 721px\)'\)/.test(SG) && /@media \(min-width:721px\)\{\s*html\.pgrp-tabs \.pgrp-group\.pgrp-off\{display:none !important\}/.test(SC));
+  ok('a phone has HOME\'s Tabs / Scroll switch and HOME\'s choice (one for the whole site), Scroll until chosen',
+     /const MODE_KEY = 'hm_phone_mode';/.test(SG) && /\[\['tabs', 'Tabs'\], \['scroll', 'Scroll'\]\]/.test(SG) && /let phoneTabs = get\(MODE_KEY\) === 'tabs';/.test(SG) &&
+     /\.pgrp-mode\{display:none\}\s*@media \(max-width:720px\)\{\s*\.pgrp-mode\{display:inline-flex/.test(SC));
+  ok('a group with no heading showing has no button and no head; a folded one is measured unfolded', /x\.btn\.hidden = !x\.on/.test(SG) && /x\.head\.hidden = !x\.on/.test(SG) &&
+     /if \(folded\) x\.g\.classList\.remove\('pgrp-folded'\);/.test(SG));
+  ok('an address naming a section opens the tab that holds it', /function fromHash\(go\)/.test(SG) && /x\.g\.contains\(t\)/.test(SG));
+  ok('a tab change tells the SKIP key (epinoia:sections) and lets charts measure again (resize)', /new Event\('epinoia:sections'\)/.test(SG) && /new Event\('resize'\)/.test(SG));
+  ok('its own prefix: the suggest-an-edit sheet owns sg-', !/\bsg-/.test(SG.replace(/\/\*[\s\S]*?\*\//g, '')) && !/\.sg-/.test(SC));
+  ok('both pages load the sheet and the script', [TI, PI].every(h => /href="\.\.\/kit\/secgroups\.css\?v=\d+"/.test(h) && /src="\.\.\/secgroups\.js\?v=\d+" defer/.test(h)));
+}
+
+console.log('\n4. team.js');
+const TJ = rd('epinoia', 't', 'team.js');
+{
+  const ts = TJ.slice(TJ.indexOf('async function teamStats('), TJ.indexOf('async function zoneStats('));
+  ok('the events, the shot zones and the players\' table each draw into their own section', /const STAT_PARTS = \[\['#teamevents', '#teameventsSec'\], \['#teamzones', '#teamzonesSec'\], \['#teamplayers', '#teamplayersSec'\]\];/.test(TJ) &&
+     /const evHost = statPart\(0\)/.test(ts) && /const zh = statPart\(1\);/.test(ts) && /\(statPart\(2\) \|\| host\)\.appendChild\(sub\);/.test(ts));
+  ok('each emptied and hidden at every draw, and shown once it has something', /STAT_PARTS\.forEach\(\(\[h, s\]\) => \{ const n = \$\(h\), w = \$\(s\); if \(n\) n\.textContent = ''; if \(w\) w\.hidden = true; \}\);/.test(ts) &&
+     /if \(sec\) sec\.hidden = false;/.test(TJ));
+  ok('a failed load empties them too', /\['#roster', '#games', '#teamstats', '#teamevents', '#teamzones', '#teamplayers'\]/.test(TJ));
+}
+
+console.log('\n5. one index, one bar');
+{
+  ok('ON THIS PAGE steps aside where the groups are', /html\.pgrp-page \.tt-index\{display:none !important\}/.test(SC));
+  const TT = rd('epinoia', 'kit', 'teletext.css'), NAV = rd('epinoia', 'kit', 'nav.css');
+  ok('the four keys at the foot are not drawn where the phone\'s bar of tabs shows (820px and under)',
+     /@media \(max-width:820px\)\{ \.tt-fast\{ display:none \} \}/.test(TT) && /@media \(max-width:820px\)\{[\s\S]{0,80}\.ep-nav \.ep-tabbar\{ display:flex/.test(NAV));
+}
+
+console.log('\n6. the position breakdown');
+const PJ = rd('epinoia', 'p', 'player.js');
+{
+  ok('"position breakdown calculated", and a \'?\' beside it', /el\('span', null, 'position breakdown calculated'\)/.test(PJ) && /el\('button', 'ip-q', '\?'\)/.test(PJ));
+  const why = PJ.slice(PJ.indexOf('const POS_WHY = ['), PJ.indexOf('];', PJ.indexOf('const POS_WHY = [')));
+  ok('the card says it is the BPM position estimate, worked out again each time, and when it goes wrong',
+     /BPM model estimates/.test(why) && /worked out again/.test(why) && /When it can be wrong/.test(why) && /a guide, not a record/.test(why));
+  ok('in words that fit a women\'s league\'s profile too: no he, his or him', !/\b(he|his|him)\b/i.test(why), (why.match(/.{20}\b(he|his|him)\b.{10}/i) || [''])[0]);
+  ok('a hover opens it where there is a mouse; a press pins it; a press elsewhere or Escape closes it',
+     /\(hover: hover\) and \(pointer: fine\)/.test(PJ) && /q\.addEventListener\('mouseenter'/.test(PJ) && /if \(pinned\) \{ pinned = false; over = false; \} else pinned = true;/.test(PJ) &&
+     /e\.key === 'Escape' && POS_WHY_OPEN/.test(PJ));
+  ok('open, the hero sits above what follows it', /\.idband:has\(\.ip-why:not\(\[hidden\]\)\)\{position:relative;z-index:40\}/.test(PI));
+  const I = ['ja', 'es'].map(c => rd('epinoia', 'i18n', c + '.js'));
+  ok('Japanese and Spanish carry the label and the card', I.every(s => s.includes("'position breakdown calculated':") && s.includes("'When it can be wrong':") &&
+     s.includes("'Main stats':") && s.includes("'Full advanced stats':") && s.includes("'Player statistics':")));
+}
+
+console.log('\n7. the phone hero');
+{
+  const PH = rd('epinoia', 'kit', 'playerhero.css');
+  const phone = PH.slice(PH.indexOf('@media (max-width:640px){'));
+  ok('three columns: the portrait, the name, the court', /\.idband\{grid-template-columns:104px minmax\(0,1fr\) clamp\(128px,40vw,172px\)/.test(phone));
+  ok('the court beside the spec panel and the season, not under everything', /\.idband > \.idpos\{grid-column:3;grid-row:3 \/ span 2/.test(phone) &&
+     /\.idmeta \.vitals\{grid-column:1 \/ 3;grid-row:3/.test(phone) && /\.idmeta \.idseason\{grid-column:1 \/ 3;grid-row:4/.test(phone));
+  ok('the spec panel two by two; three figures put the third across', /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/.test(phone) &&
+     /\.idmeta \.vitals:not\(:has\(> \.vit:nth-child\(4\)\)\) > \.vit:nth-child\(3\)\{grid-column:1 \/ -1\}/.test(phone));
+  ok('no court: the panel takes the width', /\.idband:not\(:has\(> \.idpos:not\(\[hidden\]\)\)\) \.idmeta \.vitals\{grid-column:1 \/ -1/.test(phone));
+  ok('the old stacked rule is gone', !/@media \(max-width:640px\)\{ \.idband > \.idpos\{grid-column:1 \/ -1/.test(PI));
+}
+
+console.log('\n' + pass + ' passed, ' + fail + ' failed');
+if (fail) process.exit(1);

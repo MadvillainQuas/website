@@ -386,14 +386,16 @@ console.log('\nboth profiles load the panel and draw it inside their own try');
     ok(who + ': links kit/sitpanel.css?v=' + V, css > 0 && css < h.indexOf('</head>'));
     ok(who + ': loads ../sitpanel.js?v=' + V + ' before ' + own, js > 0 && mine > js);
   }
+  /* THE PROFILE IN GROUPS (secgroups.js; Louie, 2026-10-15): Career stats, Full advanced stats (league percentile, clutch
+     time), Events, Game log, Shot chart, On the floor with - each section in its group, in that order */
   const lp = phtml.indexOf('<h2>League percentile</h2>'), ev = phtml.indexOf('<div class="sec" id="eventsSec">'), se = phtml.indexOf('<h2>Career stats</h2>');   // "Season" until 2026-10-02
-  ok('p/index.html: an Events section, 02, between League percentile and Career stats',
-     lp > 0 && ev > lp && se > ev &&
-     /<div class="sec" id="eventsSec">\s*<div class="sec-h"><span class="idx">02<\/span><h2>Events<\/h2><span class="note" id="eventsNote"><\/span><\/div>\s*<div id="events"><\/div>\s*<\/div>/.test(phtml));
+  ok('p/index.html: an Events section, 03, in its own group after Full advanced stats',
+     se > 0 && lp > se && ev > lp && phtml.lastIndexOf('data-pgrp-key=', ev) === phtml.indexOf('data-pgrp-key="events"') &&
+     /<div class="sec" id="eventsSec">\s*<div class="sec-h"><span class="idx">03<\/span><h2>Events<\/h2><span class="note" id="eventsNote"><\/span><\/div>\s*<div id="events"><\/div>\s*<\/div>/.test(phtml));
   const idx = [...phtml.matchAll(/<span class="idx">([^<]+)<\/span><h2>([^<]+)<\/h2>/g)].map(m => m[1] + ' ' + m[2]);
-  ok('p/index.html: later sections renumbered', JSON.stringify(idx) === JSON.stringify(['01 League percentile', '02 Events', '03 Career stats', '04 Game log', '04b On video', '05 On the floor with', '06 Shot chart', '07 Clutch time']), idx.join(' / '));
-  ok('p/index.html: the 05 section closes as a div and the shot chart is a section of its own after it',
-     /<div id="withpanel"><\/div>\s*<\/div>\s*<!--[^>]*-->\s*<div class="sec" id="shotsec">[\s\S]*?<div id="shotchart"><\/div>\s*<\/div>/.test(phtml));
+  ok('p/index.html: the sections numbered in the groups\' order', JSON.stringify(idx) === JSON.stringify(['V On video', '01 Career stats', '02 League percentile', '02a Clutch time', '03 Events', '04 Game log', '05 Shot chart', '06 On the floor with']), idx.join(' / '));
+  ok('p/index.html: the shot chart is a section of its own, before On the floor with',
+     /<div class="sec" id="shotsec">[\s\S]*?<div id="shotchart"><\/div>\s*<\/div>/.test(phtml) && phtml.indexOf('id="shotsec"') < phtml.indexOf('id="withpanel"'));
 
   /* the call sits inside a try whose catch is its own, not boot's */
   const insideTry = (src, call) => {
@@ -408,10 +410,10 @@ console.log('\nboth profiles load the panel and draw it inside their own try');
      scope.indexOf('paintBars(mine, field);') > 0 && scope.indexOf('EpinoiaSitPanel.render') > scope.indexOf('paintBars(mine, field);') &&
      insideTry(scope, 'EpinoiaSitPanel.render(') && /kind: 'player', row: mine, field/.test(scope));
   const stats = tjs.slice(tjs.indexOf('async function teamStats(team, kind)'), tjs.indexOf('async function zoneStats('));
-  ok('team.js: teamStats renders the panel after the shot zones and before the squad, inside its own try',
-     stats.indexOf("'shot zones'") > 0 && stats.indexOf('EpinoiaSitPanel.render') > stats.indexOf("'shot zones'") &&
+  ok('team.js: teamStats renders the panel after the shot zones and before the squad, inside its own try, into the Events group',
+     stats.indexOf("'shotZones'") > 0 && stats.indexOf('EpinoiaSitPanel.render') > stats.indexOf("'shotZones'") &&
      stats.indexOf('EpinoiaSitPanel.render') < stats.indexOf('T.render(') && insideTry(stats, 'EpinoiaSitPanel.render(') &&
-     /kind: 'team', row: mine, field: S\.teams/.test(stats) && /card\('events', 'events'/.test(stats));    // the events are a card of team statistics now (cards.js)
+     /kind: 'team', row: mine, field: S\.teams/.test(stats) && /const evHost = statPart\(0\)/.test(stats));    // the events have a group of their own (secgroups.js, 2026-10-15)
   const guard = /innerHTML\s*=\s*[^;]*\b(p\.name|player\.name|team\.name|\.display_name)\b/;
   const offenders = [['sitpanel.js', sjs], ['player.js', pjs], ['team.js', tjs]]
     .flatMap(([n, s]) => s.split(';').filter(st => guard.test(st)).map(st => n + ': ' + st.trim().slice(0, 80)));

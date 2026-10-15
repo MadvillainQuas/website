@@ -267,13 +267,16 @@ function lift(src, signature) {
   throw new Error('unbalanced ' + signature);
 }
 const BREAK = lift(PJS, 'async function paintPosBreakdown(rows, field)');
+/* the label and its '?' (posLabel, 2026-10-15) come along: the breakdown builds its heading with them */
+const WHY = PJS.slice(PJS.indexOf('const POS_WHY = ['), PJS.indexOf('];', PJS.indexOf('const POS_WHY = [')) + 3);
+const LABEL = lift(PJS, 'function posLabel()');
 function breakdown(o) {
   const host = new Node('div');
   const asked = [];
   const D = { posFiles: async ids => { asked.push(ids.slice()); return new Map(ids.map(id => [id, (o.files || {})[id] || null])); },
               stints: async ids => (o.stints || []).filter(s => ids.indexOf(s.game_id) >= 0), playerMeta: async () => ({}) };
   const fn = new Function('window', '$', 'el', 'api', 'SCOPE_IDS', 'console', 'rpGive',
-    'let POS_RUN = 0; const CLUB_STINTS = new Map();\n' + BREAK + '\nreturn paintPosBreakdown;')(
+    'let POS_RUN = 0; const CLUB_STINTS = new Map(); let POS_WHY_OPEN = null;\n' + WHY + '\n' + LABEL + '\n' + BREAK + '\nreturn paintPosBreakdown;')(
     { EpinoiaDepth: X, EpinoiaData: D, EpinoiaBox: { courtSVG: () => '<svg/>' } }, s => (s === '#idpos' ? host : null),
     (t, c, x) => { const n = new Node(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; }, async () => [], o.scope || null, { warn: () => {} }, () => {});
   return fn(o.rows, o.field || []).then(() => ({ host, asked, spots: all(host, 'span.ip-spot').map(s => s.querySelector('b').textContent + ':' + s.querySelector('i').textContent + ':' + s.className) }));
@@ -287,6 +290,10 @@ const file = (id, sec) => ({ v: 1, game: id, f: null, t: [{ A: [0].concat(sec), 
   ok('...each spot coloured by its share, his main position ringed', r.spots[3].includes('b4') && r.spots[3].includes('top') && r.spots[2].includes('b3') && r.spots[4].includes('b2') && r.spots[0].includes('b0'), r.spots);
   ok('...on the half court, with how many games and minutes it is over', /<svg/.test(r.host.querySelector('div.ip-court').innerHTML) && /4 games · 17 min/.test(r.host.querySelector('span.ip-n').textContent) && !r.host.hidden,
      r.host.querySelector('span.ip-n').textContent);
+  const head = r.host.children[0], lab = head && head.children[0], why = r.host.children[1];
+  ok('...headed "position breakdown calculated", a \'?\' beside it, and its card straight after the heading, shut',
+     lab && lab.className === 'ip-l' && lab.children[0].textContent === 'position breakdown calculated' && lab.children[1].className === 'ip-q' &&
+     lab.children[1].textContent === '?' && why && why.className === 'ip-why' && why.hidden === true && why.children.length === 3);
   ok('...the newest three files asked first, then the rest', r.asked.length === 2 && r.asked[0].join() === 'p4,p3,p2' && r.asked[1].join() === 'p1', r.asked);
 }
 {

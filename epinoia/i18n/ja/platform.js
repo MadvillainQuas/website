@@ -471,7 +471,6 @@
       /* ---- clubs, moderation, keys, audit ---- */
       'No club matches that.': '一致するクラブはありません。',
       '— no league —': '— リーグなし —',
-      'hide': '隠す',
       'Nobody yet. A club manager opens the club portal — squads, crests, contact details.': 'まだ誰もいません。クラブマネージャーはクラブポータル（ロスター、エンブレム、連絡先）を使えます。',
       'Nothing waiting. Every uploaded photograph has been dealt with.': '承認待ちはありません。アップロードされた写真はすべて処理済みです。',
       'approve': '承認',

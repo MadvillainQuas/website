@@ -475,7 +475,6 @@
       /* ---- clubs, moderation, keys, audit ---- */
       'No club matches that.': 'Ningún club coincide.',
       '— no league —': '— sin liga —',
-      'hide': 'Ocultar',
       'Nobody yet. A club manager opens the club portal — squads, crests, contact details.': 'Todavía nadie. Un delegado del club abre el portal del club: plantillas, escudos, datos de contacto.',
       'Nothing waiting. Every uploaded photograph has been dealt with.': 'Nada pendiente. Todas las fotografías subidas están resueltas.',
       'approve': 'Aprobar',
