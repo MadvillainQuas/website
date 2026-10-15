@@ -183,6 +183,150 @@ if (typeof window.addEventListener === 'function') window.addEventListener('erro
   img.src = original;
 }, true);
 
+/* A LEAGUE'S LOGO WITHOUT ITS WHITE SQUARE, WHEREVER IT IS DRAWN (Louie, 2026-10-16: "When using the league small
+   logo/thumbnails on the siderail/elsewhere, can it use the same background removing logic as on the league home page?").
+   Many leagues' logos come as a JPEG or an opaque PNG/WebP with the mark on white (BCB's is a round badge on a 512px white
+   square), which reads as a white box pasted on the plate. When the image sits on a white ground (all four corners opaque
+   and near-white, and at least half its border; a round badge touches the square's edges, so BCB's border is only 83%
+   white), the white CONNECTED TO THE EDGE is made transparent, flooded in from the border so that white INSIDE the mark
+   (the lines through BCB's ball) stays. The pixels bordering the removed ground are faded by how pale they are, so no
+   white halo is left round the mark. A logo that is already transparent, or that owns its edge (a coloured badge to the
+   corners), is left exactly as uploaded, and so is one this cannot read.
+
+   The league page's heading did this alone (home.js, its own copy); it is here now, once, for every page:
+     epinoiaDropGround(img)   the heading's way: an <img> loaded with crossOrigin="anonymous", cleaned in place (640 px)
+     every other league logo  any <img> of a league upload (media-public/league/...) as it loads - the rail's plates, the
+                              fixtures' badges, the games to watch, the league cards. Read again through a CORS request
+                              (media-public answers with *), cleaned at the size it is drawn (twice it, for a sharp screen),
+                              and swapped in; the answer is kept for the visit (and the tab), so the same logo drawn in
+                              twenty places is read once. An SVG is left alone (a vector logo carries its own ground), and
+                              so is an image marked data-ground (a page that does its own). */
+(function () {
+  /* the cleaning: a data URL of the logo without its ground, or '' when it is to stay as it is (or cannot be read) */
+  function groundless(src, cap) {
+    const w0 = src.naturalWidth, h0 = src.naturalHeight;
+    if (!w0 || !h0) return '';
+    const k = Math.min(1, cap / Math.max(w0, h0));
+    const W = Math.max(1, Math.round(w0 * k)), H = Math.max(1, Math.round(h0 * k));
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const cx = cv.getContext('2d');
+    cx.drawImage(src, 0, 0, W, H);
+    const data = cx.getImageData(0, 0, W, H);          /* throws on a tainted canvas: left as is */
+    const px = data.data;
+    const pale = p => px[p * 4 + 3] > 250 && Math.min(px[p * 4], px[p * 4 + 1], px[p * 4 + 2]) >= 236;
+
+    const edge = [];
+    for (let x = 0; x < W; x++) edge.push(x, (H - 1) * W + x);
+    for (let y = 1; y < H - 1; y++) edge.push(y * W, y * W + W - 1);
+    const lit = edge.filter(pale);
+    const corners = [0, W - 1, (H - 1) * W, H * W - 1];
+    if (!corners.every(pale) || lit.length < edge.length * 0.5) return '';
+
+    const ground = new Uint8Array(W * H);
+    const stack = lit.slice();
+    let n = 0;
+    while (stack.length) {
+      const p = stack.pop();
+      if (ground[p] || !pale(p)) continue;
+      ground[p] = 1; n++;
+      const x = p % W, y = (p - x) / W;
+      if (x > 0) stack.push(p - 1);
+      if (x < W - 1) stack.push(p + 1);
+      if (y > 0) stack.push(p - W);
+      if (y < H - 1) stack.push(p + W);
+    }
+    if (n > W * H * 0.97) return '';                    /* all ground: nothing left to show */
+
+    for (let p = 0; p < W * H; p++) {
+      if (ground[p]) { px[p * 4 + 3] = 0; continue; }
+      const x = p % W, y = (p - x) / W;
+      const touches = (x > 0 && ground[p - 1]) || (x < W - 1 && ground[p + 1]) ||
+                      (y > 0 && ground[p - W]) || (y < H - 1 && ground[p + W]);
+      if (!touches) continue;
+      const m = Math.min(px[p * 4], px[p * 4 + 1], px[p * 4 + 2]);
+      if (m > 150) px[p * 4 + 3] = Math.round(px[p * 4 + 3] * Math.min(1, (255 - m) / 105));
+    }
+    cx.putImageData(data, 0, 0);
+    return cv.toDataURL('image/png');
+  }
+
+  /* the heading's way: an image it loaded itself, with CORS */
+  window.epinoiaDropGround = function (img) {
+    try { const u = groundless(img, 640); if (u) img.src = u; } catch (_) { /* a canvas it may not read: as uploaded */ }
+  };
+
+  const LEAGUE_LOGO = /\/media-public\/league\//;
+  const SVG = /\.svg(\?|#|$)/i;
+  const KEEP = 'epinoia.ground.';
+  const done = new Map();                              // src@size -> Promise of the cleaned URL ('' = as it is)
+  const sizeFor = img => {
+    let r = null;
+    try { r = img.getBoundingClientRect(); } catch (_) { r = null; }
+    const want = r && r.width ? Math.max(r.width, r.height) * (window.devicePixelRatio || 1) * 2 : 256;
+    return [128, 192, 256, 384, 512].find(s => s >= want) || 512;
+  };
+  function cleanedUrl(src, cap) {
+    const key = src + '@' + cap;
+    if (done.has(key)) return done.get(key);
+    let kept = null;
+    try { kept = sessionStorage.getItem(KEEP + key); } catch (_) { kept = null; }
+    const p = kept != null ? Promise.resolve(kept) : new Promise(resolve => {
+      const im = new Image();
+      im.crossOrigin = 'anonymous';
+      im.decoding = 'async';
+      im.onload = () => {
+        let u = '';
+        try { u = groundless(im, cap); } catch (_) { u = ''; }
+        try { if (u.length < 120000) sessionStorage.setItem(KEEP + key, u); } catch (_) { /* kept for this page only */ }
+        resolve(u);
+      };
+      im.onerror = () => resolve('');
+      im.src = src;
+    });
+    done.set(key, p);
+    return p;
+  }
+  function clean(img) {
+    if (!img || img.dataset.ground) return;
+    const src = img.getAttribute('src') || '';
+    if (!LEAGUE_LOGO.test(src) || SVG.test(src)) return;
+    const go = () => {
+      if (img.dataset.ground || img.getAttribute('src') !== src) return;
+      img.dataset.ground = 'auto';
+      cleanedUrl(img.currentSrc || img.src, sizeFor(img)).then(u => {
+        /* still the same logo (a redraw may have pointed it elsewhere): then swap in the clean one */
+        if (u && img.getAttribute('src') === src) img.src = u;
+      });
+    };
+    /* after the image itself has loaded: a lazy logo in a folded rail is never asked for twice, or at all */
+    if (img.complete && img.naturalWidth) go();
+    else img.addEventListener('load', go, { once: true });
+  }
+  window.epinoiaCleanLogo = clean;
+  function scan(node) {
+    if (!node || node.nodeType !== 1) return;
+    if (node.tagName === 'IMG') { clean(node); return; }
+    if (node.querySelectorAll) node.querySelectorAll('img[src*="/media-public/league/"]').forEach(clean);
+  }
+  function start() {
+    if (typeof MutationObserver !== 'function' || !document.documentElement) return;
+    scan(document.documentElement);
+    new MutationObserver(list => {
+      for (const m of list) {
+        if (m.type === 'attributes') {
+          if (m.target.tagName === 'IMG' && m.target.dataset.ground === 'auto' && LEAGUE_LOGO.test(m.target.getAttribute('src') || '')) delete m.target.dataset.ground;
+          scan(m.target);
+        } else m.addedNodes.forEach(scan);
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+  }
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+    else start();
+  }
+})();
+
 /* A LEAGUE'S BADGE, WHEREVER GAMES FROM MORE THAN ONE LEAGUE SIT SIDE BY SIDE (HOME's daily
    fixtures, the global fixtures page). An HTML string: span.lgb holding a small tile with the
    league's logo, or its monogram on its own two colours where it has none, then its name.

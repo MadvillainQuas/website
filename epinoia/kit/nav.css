@@ -1101,3 +1101,14 @@ html .ep-nav .panel > .ptitle, html .ep-nav .panel > .ptitle.on{ border-bottom:0
   .ep-nav:not(.drawer-open) .ep-nav-scroll.sb-on .panel > :not(.phead):not(.ptitle){ margin-left:0 }
   .ep-nav.drawer-open .ep-nav-sb{ left:3px }
 }
+
+/* A LEAGUE'S LOGO STANDS ON THE RAIL, as it does in its own page's heading (Louie, 2026-10-16: "use the same background
+   removing logic as on the league home page"). config.js takes the white square off the image itself; here the plate's
+   ground and colours go from behind a logo in the light theme. On the dark theme a logo sits on a paper plate instead, as
+   the fixtures' badges do (kit/fxc.css): league logos are drawn for paper, and with its white gone a dark one (Liga
+   Endesa's) would vanish into the night rail. */
+:root[data-theme="light"] .ep-nav .crest:has(> img){ background:none; overflow:visible }
+:root[data-theme="light"] .ep-nav .crest img{ background:transparent }
+:root:not([data-theme="light"]) .ep-nav .crest img{ background:#f4f6f5; padding:1px; box-sizing:border-box }
+/* pinned to the plate: as a grid item its 100% height was the logo's own aspect, so a tall logo was cut off */
+.ep-nav .crest img{ position:absolute; inset:0; border-radius:3px }

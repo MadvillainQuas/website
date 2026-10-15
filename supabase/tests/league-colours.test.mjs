@@ -149,9 +149,14 @@ ok('the league logo joins the NAME\'s row, never the hero, so the fixture strip 
    !/\.hero\.has-logo/.test(front));
 ok('...sized in the name\'s own units, and above the name on a phone',
    /\.lg-logo\{height:1\.72em/.test(front) && /@media \(max-width:560px\)\{\s*\.hero-head\.has-logo\{flex-direction:column/.test(front));
+const cfgjs = read('epinoia', 'config.js');
 ok('a logo on a white square loses only the white joined to its edge, and only when its corners are white',
-   /img\.crossOrigin = 'anonymous'/.test(home) && /corners\.every\(pale\)/.test(home) &&
-   /addEventListener\('load', \(\) => dropFlatGround\(img\), \{ once: true \}\)/.test(home));
+   /img\.crossOrigin = 'anonymous'/.test(home) && /corners\.every\(pale\)/.test(cfgjs) &&
+   /img\.dataset\.ground = 'self';/.test(home) && /window\.epinoiaDropGround\(img\)/.test(home) && !/function dropFlatGround/.test(home));
+ok('...and so does every other league logo on the site, as it loads (the rail, the badges, the cards); never an SVG, never twice',
+   /const LEAGUE_LOGO = \/\\\/media-public\\\/league\\\/\/;/.test(cfgjs) && /SVG\.test\(src\)/.test(cfgjs) &&
+   /im\.crossOrigin = 'anonymous';/.test(cfgjs) && /if \(!img \|\| img\.dataset\.ground\) return;/.test(cfgjs) &&
+   /new MutationObserver\(/.test(cfgjs));
 ok('match news cards carry no second-colour stripe down their edges',
    !/mt-half::before/.test(read('epinoia', 'kit', 'news.css')));
 ok('both pages trim their heading in the league\'s colours',
