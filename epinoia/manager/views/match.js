@@ -590,9 +590,15 @@ function flowSvg(flow, endT, G, me, now) {
 
 /* ------------------------------------------------------------------ THE SCREEN --- */
 function screen(host, o) {
-  const S = A.club.state, live = o.mode === 'live';
+  /* a practice game (administrators: A.startPractice) is a live game that keeps nothing */
+  const S = A.club.state, practice = o.mode === 'practice', live = o.mode === 'live' || practice;
   let M = null, f, events, segs, G, Tot, limit, seed;
-  if (live) {
+  if (practice) {
+    const pg = A.practiceGame();
+    if (!pg) { A.go('/practice'); return; }
+    M = pg.M; f = pg.f;
+    events = M.events; segs = M.lineups; G = M.G; Tot = M.Tot; limit = M.limit; seed = M.seed;
+  } else if (live) {
     const lv = A.liveGame();
     try { M = A.liveMatch(); } catch (e) { M = null; o.err = e; }
     f = lv ? S.fixtures.find(x => x.r === lv.r && (x.h === 0 || x.a === 0)) : null;
@@ -610,6 +616,8 @@ function screen(host, o) {
     G = Math.round((A.lg.sim.T || 2400) / 60); Tot = A.lg.sim.Tot || 300; limit = G >= 48 ? 6 : 5; seed = hashOf(S.seed + ':' + o.r);
   }
   const r = f.r, clubs = [f.h, f.a], me = f.h === 0 ? 0 : 1, op = me ^ 1;
+  /* the game in hand kept as it goes (never a practice game) */
+  const keep = hard => { if (!practice) A.keepLive(hard); };
   const club = s => A.clubAt(clubs[s]);
   const clubName = s => club(s).short || club(s).name;
   /* the kits on the court (each club's colours; white for the home side on a clash) and the screen's two colours */
@@ -661,10 +669,10 @@ function screen(host, o) {
   host.appendChild(el);
   /* the scoreboard */
   const ptsEl = [h('b.pts', '0'), h('b.pts', '0')], metaEl = [h('span.meta'), h('span.meta')];
-  const perEl = h('span.per', 'Q1'), clkEl = h('b.clk', fmtLeft(G * 15)), stEl = h('span.st', live ? 'Live' : 'Replay');
+  const perEl = h('span.per', 'Q1'), clkEl = h('b.clk', fmtLeft(G * 15)), stEl = h('span.st', practice ? 'Practice' : live ? 'Live' : 'Replay');
   const sideEl = s => h('div.side.' + (s ? 'a' : 'h'), s ? ptsEl[1] : null, s ? A.crest(clubs[1], 38) : null,
     h('div.nm', h('b', { translate: 'no' }, club(s).name), metaEl[s]), s ? null : A.crest(clubs[0], 38), s ? null : ptsEl[0]);
-  const leave = h('button.mg-mx-leave', { type: 'button', onclick: () => leaveScreen() }, h('span', { 'aria-hidden': 'true' }, '←'), h('span.lbl', live ? ' Save and leave' : ' Back'));
+  const leave = h('button.mg-mx-leave', { type: 'button', onclick: () => leaveScreen() }, h('span', { 'aria-hidden': 'true' }, '←'), h('span.lbl', practice ? ' Leave' : live ? ' Save and leave' : ' Back'));
   const speedTabs = h('div.mg-tabs', { role: 'group', 'aria-label': 'Speed' });
   const pauseBtn = h('button', { type: 'button', 'aria-label': 'Pause', onclick: () => togglePause() }, '❚❚');
   speedTabs.appendChild(pauseBtn);
@@ -698,8 +706,9 @@ function screen(host, o) {
   const piBtn = h('button.mg-btn.mg-pop-keep', { type: 'button', onclick: ev => openPick(ev.currentTarget) }, h('span.ic', '☰'), h('span', 'Player ', h('span.lbl-long', 'instructions')));
   const toBtn = h('button.mg-btn', { type: 'button', onclick: () => callTimeout() }, h('span.ic', '⏱'), h('span.t', 'Timeout'));
   const auBtn = h('button.mg-btn', { type: 'button', onclick: () => toggleAuto() }, h('span.ic', '⇄'), h('span', h('span.lbl-long', 'Assistant subs: '), h('span.lbl-short', 'Subs: '), h('span.t', 'on')));
+  const cvBtn = h('button.mg-btn.mg-pop-keep', { type: 'button', onclick: ev => openCover(ev.currentTarget) }, h('span.ic', '⛨'), h('span', h('span.lbl-long', 'Screen D: '), h('span.lbl-short', 'Screen: '), h('span.t', 'Own')));
   const simBtn = h('button.mg-btn', { type: 'button', onclick: () => simToEnd() }, h('span.ic', '⏩'), h('span', h('span.lbl-long', live ? 'Rest of the game' : 'To the end'), h('span.lbl-short', 'Finish')));
-  if (live) { bar.appendChild(tiBtn); bar.appendChild(piBtn); bar.appendChild(toBtn); bar.appendChild(auBtn); }
+  if (live) { bar.appendChild(tiBtn); bar.appendChild(piBtn); bar.appendChild(cvBtn); bar.appendChild(toBtn); bar.appendChild(auBtn); }
   bar.appendChild(simBtn);
 
   /* ---- the state of the screen ---- */
@@ -757,6 +766,55 @@ function screen(host, o) {
     const RO = Mgr.roles, ref = A.lg && A.lg.ref;
     return ids.map((id, k) => { try { const c = cardFor(s, id), key = keys ? keys[k] : null; return key ? RO.resolve(key, k, c, ref) : RO.bestFor(k, c, ref); } catch (e) { return null; } });
   }
+  /* the five defending: each man's instructions (his coverage on a ball screen - hedge, contain, drop - gambling, rim
+     protection) and the team's out of possession: the court plays the defence they were told to (Louie, 2026-10-15).
+     Live, as the engine has them now (a change in the game shows from the next possession); a game played again, the
+     reader's as they stand */
+  /* EACH BIG'S COVERAGE on a ball screen: his instruction (this game's), else the one his own game suits (a rim protector
+     drops, quick feet hedge: engine.inferCover) */
+  const COVL = { hedge: 'Hedges', drop: 'Drops', cont: 'Contains' };
+  /* the men who guard a ball screen with a coverage: a big (app.js screenBig), or whoever plays a big's role at his place
+     now (a wing at the five) */
+  const bigRoleNow = (s, id) => {
+    if (!live) return false;
+    const sd = M.sides[s], k = sd.floor.indexOf(String(id));
+    if (k < 3) return false;
+    try {
+      const ks = MT().rolesAt(sd, Math.min(vt, G * 60 - 1) / 60, G);
+      const r = ks ? Mgr.roles.resolve(ks[k], k, cardFor(s, id), A.lg.ref) : null;
+      return !!(r && r.family === 'b');
+    } catch (e) { return false; }
+  };
+  const isBigId = (s, id) => A.screenBig(id, cardFor(s, id)) || bigRoleNow(s, id);
+  const insOf = (s, id) => { const ins = live ? M.sides[s].T.ins : s === me ? A.insMap() : null, x = ins && ins.get ? ins.get(String(id)) : null; return x && x.k ? x.k : null; };
+  const covSet = (s, id) => { const k = insOf(s, id); return k ? (k.has('hedge') ? 'hedge' : k.has('drop') ? 'drop' : k.has('cont') ? 'cont' : null) : null; };
+  function covOf(s, id) {
+    const set = covSet(s, id);
+    if (set) return set;
+    const tc = live ? M.sides[s].T.cov : null;
+    if (tc && tc.get) return tc.get(String(id)) || 'cont';
+    try { return Mgr.engine.inferCover(cardFor(s, id), A.lg.ref); } catch (e) { return 'cont'; }
+  }
+  function defenceOf(s, ids, t) {
+    let ins = null, tac = null;
+    try {
+      if (live) {
+        const sd = M.sides[s];
+        ins = sd.T.ins || null;
+        tac = sd.tac || (MT().planAt(sd.T.segs, Math.min(t, G * 60 - 1) / 60, G) || {}).tac || null;
+      } else if (s === me) {
+        ins = A.insMap();
+        const lu = (A.lineups({ all: true }) || []).find(l => l.ids.map(String).join('|') === ids.map(String).join('|'));
+        tac = lu ? lu.tac || null : null;
+      }
+    } catch (e) { ins = null; tac = null; }
+    return {
+      dins: ids.map(id => {
+        const x = ins && ins.get ? ins.get(String(id)) : null, k = x && x.k ? [...x.k] : [];
+        if (!k.some(q => q === 'hedge' || q === 'drop' || q === 'cont')) { const c = covOf(s, id); if (c !== 'cont') k.push(c); }
+        return k;
+      }), dtac: tac };
+  }
   function planFor(e, fl) {
     let j = evI;
     while (j < events.length && !['P', 'Q', 'q'].includes(events[j].k)) j++;
@@ -765,7 +823,7 @@ function screen(host, o) {
     const L = lastEnd;
     const prev = !L || L.k === 'Q' || L.k === 'q' ? { how: 'start' } : L.k === 'D' ? { how: 'dreb', by: idx(L.p) } : L.k === 'T' ? (L.st ? { how: 'steal', by: idx(L.st) } : { how: 'dead' })
       : (L.k === 'S' && L.m) || (L.k === 'F' && L.m) ? { how: 'make' } : { how: 'dead' };
-    court.poss({ evs: [e].concat(events.slice(evI, j)), idx, roles: rolesFor(s, off, e.t), prev, spot: x => shotFeet(seed, x), seed }, s, right, fl);
+    court.poss(Object.assign({ evs: [e].concat(events.slice(evI, j)), idx, roles: rolesFor(s, off, e.t), prev, spot: x => shotFeet(seed, x), seed }, defenceOf(s ^ 1, def, e.t)), s, right, fl);
   }
 
   /* ---- the clock moves ---- */
@@ -795,8 +853,8 @@ function screen(host, o) {
             if (brk || paused || done || M.g.over || evI < events.length || M.g.t >= vt || n >= 12) break;
             MT().step(M); n++;
           }
-          if (n) { dirty.men = true; if (Date.now() - savedAt > 2000) { savedAt = Date.now(); A.keepLive(false); } }
-          if (Date.now() - hardAt > 60000) { hardAt = Date.now(); A.keepLive(true); }
+          if (n) { dirty.men = true; if (Date.now() - savedAt > 2000) { savedAt = Date.now(); keep(false); } }
+          if (Date.now() - hardAt > 60000) { hardAt = Date.now(); keep(true); }
           if (!brk && !paused) vt = Math.min(vt, M.g.t);
         } else { vt = Math.min(vt, endOf()); reveal(); }
       }
@@ -820,7 +878,7 @@ function screen(host, o) {
   /* ---- the breaks ---- */
   function startBreak(e) {
     const half = e.k === 'q' && e.p === 2, ot = e.k === 'Q';
-    if (live) A.keepLive(true);
+    if (live) keep(true);
     if (half && live) { brk = { label: 'Half-time' }; overlay(halfTime()); return; }
     brk = { label: half ? 'Half-time' : ot ? 'End of ' + (e.p > 1 ? 'overtime ' + (e.p - 1) : 'regulation') : 'End of Q' + e.p, until: Date.now() + (half ? 3500 : live ? 2600 : 1600) };
     dirty.sb = true;
@@ -857,8 +915,14 @@ function screen(host, o) {
     const star = s => { const b = top(s); return b ? h('div', h('span', A.nm(who(b.id)), ' · ', A.nm(clubName(s))), h('b', b.pts + ' pts, ' + (b.oreb + b.dreb) + ' reb, ' + b.ast + ' ast')) : null; };
     const box = h('div.in', h('h2', live ? (won ? 'Full time: a win' : 'Full time: a defeat') : 'Final'), h('div.sc', tr.score[0] + ' – ' + tr.score[1]),
       M && M.g.ot ? h('p.mg-sub', M.g.ot > 1 ? 'After ' + M.g.ot + ' overtimes' : 'After overtime') : null,
-      h('div.stars', star(me), star(op)), h('p.mg-sub', live ? 'Saving the game into your season…' : ''));
+      h('div.stars', star(me), star(op)), h('p.mg-sub', practice ? 'A practice game: nothing in it counts.' : live ? 'Saving the game into your season…' : ''));
     overlay(box);
+    if (practice) {
+      const pg = A.practiceGame(); if (pg) pg.done = true;
+      box.appendChild(h('div.go', h('a.mg-btn.primary', { href: '#/practice' }, 'Another practice game'), h('a.mg-btn', { href: '#/' }, 'Back to the club')));
+      drawSpeed();
+      return;
+    }
     if (live && !ended) {
       ended = true;
       try { await A.endLive(); box.querySelector('p.mg-sub:last-of-type').textContent = 'In your season: the table, the statistics and the leaderboards have it.'; }
@@ -877,7 +941,7 @@ function screen(host, o) {
     if (done) { perEl.textContent = 'FINAL'; clkEl.textContent = (M ? M.g.ot : 0) ? 'OT' : '0:00'; }
     else if (brk) { perEl.textContent = brk.label.toUpperCase(); clkEl.textContent = '0:00'; }
     else { perEl.textContent = c.label; clkEl.textContent = fmtLeft(c.left); }
-    stEl.textContent = done ? 'Final' : brk ? 'Break' : paused ? 'Paused' : live ? 'Live' : 'Replay';
+    stEl.textContent = done ? 'Final' : brk ? 'Break' : paused ? 'Paused' : practice ? 'Practice' : live ? 'Live' : 'Replay';
     stEl.classList.toggle('live', !done && !paused && !brk && live);
     if (dirty.sb) { dirty.sb = false; drawBoard(); }
     if (latest && commX._it !== latest) {
@@ -926,7 +990,10 @@ function screen(host, o) {
     toBtn.disabled = done || sd.to <= 0 ? true : null;
     auBtn.querySelector('.t').textContent = sd.auto ? 'on' : 'off';
     auBtn.classList.toggle('on', !!sd.auto);
-    [tiBtn, piBtn, auBtn, simBtn].forEach(b => { b.disabled = done ? true : null; });
+    /* the bigs on the floor: all one coverage set, mixed, or each his own */
+    const set = [...new Set(sd.floor.filter(id => isBigId(me, id)).map(id => covSet(me, id) || 'own'))];
+    cvBtn.querySelector('.t').textContent = set.length === 1 ? ({ hedge: 'Hedge', cont: 'Contain', drop: 'Drop', own: 'Own' })[set[0]] : set.length ? 'Mixed' : 'No bigs';
+    [tiBtn, piBtn, cvBtn, auBtn, simBtn].forEach(b => { b.disabled = done ? true : null; });
   }
 
   /* ---- your team: the five and the bench ---- */
@@ -938,7 +1005,7 @@ function screen(host, o) {
     const li = h('li' + (outF ? '.gone' : '') + (pend ? '.out' : ''), { 'data-id': id, tabindex: outF || s !== me || !live ? null : '0', draggable: live && s === me && !outF ? 'true' : null, role: live && s === me ? 'button' : null,
       'aria-label': live && s === me ? A.nameOf(id) + ': substitution and instructions' : null },
       h('span.mg-pos', { 'data-i18n-ctx': 'pos' }, onFloor ? A.SLOTS[k] : A.posOf(id)),
-      h('div.nm', h('b', { translate: 'no' }, A.nameOf(id)),
+      h('div.nm', h('b', { translate: 'no' }, A.nameOf(id)), isBigId(s, id) ? h('span.mg-mx-cov.' + covOf(s, id), { title: 'His coverage on a ball screen' + (s === me && live && !covSet(s, id) ? ' (his own game’s: set it with Screen D or his instructions)' : '') }, COVL[covOf(s, id)]) : null,
         h('span.ln', h('span', L || onFloor ? (L ? L.pts : 0) + ' pts · ' + (L ? L.oreb + L.dreb : 0) + ' reb · ' + (L ? L.ast : 0) + ' ast' : 'Not on yet'), h('span', fmtMin(mins.get(id) || 0))),
         en != null ? h('div.mg-mx-en', { title: 'Energy ' + Math.round(en) + '%' }, h('i' + (en < 50 ? '.low' : en < 70 ? '.mid' : ''), { style: { width: Math.round(en) + '%' } })) : null),
       h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' } },
@@ -1057,6 +1124,38 @@ function screen(host, o) {
   }
 
   /* ---- THE ASSISTANT (FM's): what he sees, in a sentence each ---- */
+  /* THE BALL SCREEN, AS THE ASSISTANT SEES IT (Louie: "opponent has a good drop big with good rim defense, I currently
+     have a rim roller big which isn't doing much, so I bring in a good pick and pop big"): what their coverage is doing
+     to our man it hurts most, and the coverage that would hurt their offence most (engine.js coverage, the engine's own) */
+  function coverNotes() {
+    const out = [];
+    if (!live) return out;
+    try {
+      const E = Mgr.engine, t = M.g.t / 60;
+      const side = sd => sd.sideFor(sd.floor, sd.tac || (MT().planAt(sd.T.segs, t, M.G) || {}).tac || null, MT().rolesAt(sd, t, M.G));
+      const sm = side(M.sides[me]), so = side(M.sides[op]);
+      const val = (m, e) => { if (!e) return 0; const mx = m.m || { rim: 0.33, mid: 0.33, three: 0.34 }; return -2.5 * e.tov + 0.24 * (2 * mx.rim * e.p.rim + 2 * mx.mid * e.p.mid + 3 * mx.three * e.p.three); };
+      const ours = E.coverage(sm, so) || [];
+      let worst = null;
+      sm.men.forEach((m, i) => { const v = val(m, ours[i]) * (m.s || 0.2); if (!worst || v < worst.v) worst = { m, i, v }; });
+      if (worst && worst.v < -0.004) {
+        const m = worst.m, cv = m.cv || {}, D = so.men[worst.i] || {};
+        if (cv.y >= 0.25 && D.cov === 'drop' && cv.popF < 0.4) out.push(['warn', cap1(who(D.id)) + ' drops and protects the rim: ' + who(m.id) + ' is rolling into him. A big who pops would drag him out of the paint.']);
+        else if (cv.x >= 0.3 && cv.loose > 0.3 && so.men.some(x => x.cov === 'hedge')) out.push(['warn', 'Their bigs hedge and ' + who(m.id) + '’s handle is loose: the traps are costing us the ball. A surer handler, or a passer, beats the hedge.']);
+        else if (cv.x >= 0.3 && cv.rim > 0.2) out.push(['warn', cap1(who(m.id)) + ' keeps driving into their drop: with no pull-up to punish it, he is finishing over the rim protector.']);
+      }
+      const alt = cov => Object.assign({}, sm, { men: sm.men.map(m => Object.assign({}, m, { cov: isBigId(me, m.id) ? cov : m.cov })) });
+      const total = d => { const cv = E.coverage(so, d) || []; return so.men.reduce((a, m, i) => a + (m.s || 0.2) * val(m, cv[i]), 0); };
+      const now = total(sm), opts = ['hedge', 'cont', 'drop'].map(c => ({ c, v: total(alt(c)) })).sort((a, b) => a.v - b.v);
+      if (opts[0].v < now - 0.006) {
+        const c = opts[0].c, star = so.men.slice().sort((a, b) => ((b.cv || {}).x || 0) - ((a.cv || {}).x || 0))[0], sc = (star && star.cv) || {};
+        const why = c === 'hedge' ? (sc.loose > 0.3 ? who(star.id) + ' has a loose handle' : 'their handlers do not pass out of pressure well')
+          : c === 'drop' ? (sc.rim > 0.2 ? who(star.id) + ' lives at the rim with no pull-up' : 'their rollers want the rim') : 'they punish both a hedge and a drop';
+        out.push(['info', 'Screen defence: ' + ({ hedge: 'Hedge', cont: 'Contain', drop: 'Drop' })[c] + ' suits this matchup (' + why + '). Screen D on the touchline sets it for all your bigs.']);
+      }
+    } catch (e) { /* no notes */ }
+    return out;
+  }
   function notes() {
     const out = [], sd = mySd(), fl = floorAt(vt)[me], c = clockAt(vt, G, Tot), mine = tr.team[me], theirs = tr.team[op];
     if (live) {
@@ -1080,6 +1179,7 @@ function screen(host, o) {
     if (theirs.oreb >= 6 && theirs.oreb > mine.oreb + 2) out.push(['warn', 'They have ' + theirs.oreb + ' offensive rebounds. Less Leak out keeps more men back for the glass.']);
     if (theirs.paint >= 20 && theirs.paint > mine.paint + 6) out.push(['warn', 'They have ' + theirs.paint + ' points in the paint. No paint touches, or a rim protector with Defend the rim aggressively, closes it.']);
     if (theirs.tov >= 8 && theirs.tov > mine.tov + 3) out.push(['good', 'Our pressure is working: ' + theirs.tov + ' turnovers forced.']);
+    coverNotes().forEach(x => out.push(x));
     if (live && !sd.auto) out.push(['info', 'You are making the substitutions: watch the legs and the fouls (only a man who fouls out is changed for you).']);
     if (live && sd.auto && sd.hold === Infinity) out.push(['info', 'Your changes stand until the next quarter: then the assistant follows your lineups again.']);
     if (!out.length) out.push(['good', 'Nothing to worry about: the plan is working.']);
@@ -1105,7 +1205,7 @@ function screen(host, o) {
     A.ui.close();
     A.toast(cap1(who(inId)) + ' comes on for ' + who(outId) + ' at the next dead ball.');
     dirty.men = true;
-    A.keepLive(false);
+    keep(false);
   }
   /* a man pressed: his instructions for this game, and the substitution */
   function openMan(id, anchor) {
@@ -1131,7 +1231,7 @@ function screen(host, o) {
     const roles = onFloor ? MT().rolesAt(sd, M.g.t / 60, M.G) : null;
     A.ui.pop(A.ui.playerPanel(id, { entry, actions, sub: 'This game: from the next possession', onChange: x => setIns(id, x),
       slot: roles ? k : null, role: roles ? roles[k] : null,
-      onRole: key => { MT().act(M, me, { type: 'role', id, k, role: key || null }); dirty.men = true; A.keepLive(false); A.toast((key ? Mgr.roles.BY.get(key).label : 'His default role') + ' for ' + who(id) + ', from the next possession.'); } }),
+      onRole: key => { MT().act(M, me, { type: 'role', id, k, role: key || null }); dirty.men = true; keep(false); A.toast((key ? Mgr.roles.BY.get(key).label : 'His default role') + ' for ' + who(id) + ', from the next possession.'); } }),
       anchor, { label: 'Player: ' + A.nameOf(id), cls: roles ? 'wide' : '' });
   }
   /* a bench man's fit at a place: his minutes there, his position near it, his legs */
@@ -1146,7 +1246,7 @@ function screen(host, o) {
     if ((x.u || 0) || (x.ins && x.ins.length)) obj[id] = { u: x.u || 0, k: (x.ins || []).slice() }; else delete obj[id];
     pendIns = obj;
     clearTimeout(insT);
-    insT = setTimeout(() => { if (pendIns) { MT().act(M, me, { type: 'ins', ins: pendIns }); pendIns = null; A.keepLive(false); } }, 300);
+    insT = setTimeout(() => { if (pendIns) { MT().act(M, me, { type: 'ins', ins: pendIns }); pendIns = null; keep(false); } }, 300);
   }
   /* "Player instructions" on the touchline: the squad to choose from */
   function openPick(anchor) {
@@ -1163,8 +1263,43 @@ function screen(host, o) {
     const sd = M.sides[me], tac = sd.tac || MT().planAt(sd.T.segs, Math.min(vt, G * 60 - 1) / 60, G).tac || {};
     const back = h('button.mg-btn', { type: 'button', onclick: () => { clearTimeout(tacT); pendTac = null; MT().act(M, me, { type: 'tac', tac: null }); A.ui.close(); A.toast('Back to each lineup’s own instructions.'); } }, 'Each lineup’s own');
     A.ui.pop(A.ui.teamPanel({ tac, title: 'Team instructions', sub: 'This game, from the next possession: every lineup plays them until you change them again',
-      onChange: t => { pendTac = t; clearTimeout(tacT); tacT = setTimeout(() => { if (pendTac) { MT().act(M, me, { type: 'tac', tac: pendTac }); pendTac = null; A.keepLive(false); } }, 300); },
+      onChange: t => { pendTac = t; clearTimeout(tacT); tacT = setTimeout(() => { if (pendTac) { MT().act(M, me, { type: 'tac', tac: pendTac }); pendTac = null; keep(false); } }, 300); },
       extra: sd.tac ? back : null }), anchor, { above: true, cls: 'wide', label: 'Team instructions' });
+  }
+  /* SCREEN DEFENCE ON THE FLY (Louie, 2026-10-15: "can these screen defense options be able to be changed on the fly
+     during games"): every big's coverage at once - hedge, contain, drop, or each his own game's - from the next
+     possession (one man's is in his instructions); what it does depends on whom it meets (engine.js coverage) */
+  function openCover(anchor) {
+    const sd = M.sides[me], bigs = sd.roster.filter(id => isBigId(me, id));
+    if (!bigs.length) {
+      A.ui.pop(h('div', { style: { maxWidth: '320px' } }, h('h3', { style: { margin: '0 30px 6px 0' } }, 'Screen defence'),
+        h('p.mg-sub', { style: { margin: 0 } }, 'Nobody in your squad guards a ball screen as a big: your fives contain every one. A big - signed, or a man you play at the five - gives you hedge and drop.')),
+        anchor, { above: true, label: 'Screen defence' });
+      return;
+    }
+    const pick = v => {
+      const obj = pendIns || MT().insObj(sd.T.ins);
+      bigs.forEach(id => {
+        const e = obj[id] ? { u: obj[id].u || 0, k: (obj[id].k || []).slice() } : { u: 0, k: [] };
+        e.k = e.k.filter(x => x !== 'hedge' && x !== 'cont' && x !== 'drop');
+        if (v !== 'own') e.k.push(v);
+        if (e.u || e.k.length) obj[id] = e; else delete obj[id];
+      });
+      clearTimeout(insT); pendIns = null;
+      MT().act(M, me, { type: 'ins', ins: obj });
+      A.ui.close(); dirty.men = dirty.tab = true; drawBar(); keep(false);
+      A.toast(v === 'own' ? 'Your bigs play their own coverage from the next possession.' : 'Your bigs ' + ({ hedge: 'hedge', cont: 'contain', drop: 'drop' })[v] + ' on ball screens from the next possession.');
+    };
+    const opt = (v, t, d) => h('button.mg-btn', { type: 'button', style: { justifyContent: 'flex-start', textAlign: 'left', padding: '9px 11px', whiteSpace: 'normal' }, onclick: () => pick(v) },
+      h('span', h('b', t), h('br'), h('span.mg-sub', { style: { fontSize: '11.5px' } }, d)));
+    A.ui.pop(h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '340px' } },
+      h('h3', { style: { margin: '0 30px 4px 0' } }, 'Screen defence'),
+      h('p.mg-sub', { style: { margin: '0 0 6px' } }, 'How all your bigs guard the ball screen, from the next possession.'),
+      opt('hedge', 'Hedge', 'Jump out at the ball handler: turnovers from loose handles, the pull-up taken away - but a good passer finds the roller 4-on-3'),
+      opt('cont', 'Contain', 'Show and recover: the even middle'),
+      opt('drop', 'Drop', 'Sit back at the rim: stops the roller and the driver who lives at the rim - gives up the pull-up and the pop'),
+      opt('own', 'Each his own', 'Every big plays the coverage his game suits (a rim protector drops, quick feet hedge)')),
+      anchor, { above: true, label: 'Screen defence' });
   }
   function callTimeout() {
     const sd = M.sides[me];
@@ -1181,7 +1316,7 @@ function screen(host, o) {
   }
   function simToEnd() {
     if (done) return;
-    if (live && !root.confirm('Play the rest of the game now? Your assistant takes the decisions from here.')) return;
+    if (live && !root.confirm(practice ? 'Play the rest of the practice game now?' : 'Play the rest of the game now? Your assistant takes the decisions from here.')) return;
     try {
       if (live) { MT().act(M, me, { type: 'auto', on: true }); MT().finish(M); }
       overlay(null); brk = null; halt = null;
@@ -1193,14 +1328,14 @@ function screen(host, o) {
 
   /* ---- play, pause, speed ---- */
   function play() { if (done) return; paused = false; lastFrame = 0; overlay(null); drawSpeed(); }
-  function pause() { paused = true; drawSpeed(); if (live) A.keepLive(true); }
+  function pause() { paused = true; drawSpeed(); if (live) keep(true); }
   function togglePause() { if (done) return; if (paused) { if (brk && !brk.until) endBreak(); play(); } else pause(); }
   function setSpeed(x) { speed = x; A.store('mgr_speed', String(x)); if (paused && !done && !brk) play(); drawSpeed(); }
   function fail(e) {
     paused = true; drawSpeed();
     if (root.console) console.error(e);
     overlay(h('div.in', h('h2', 'The game stopped'), h('p.mg-sub', String(e && e.message || e)),
-      live ? h('div.go', h('button.mg-btn.primary', { type: 'button', onclick: async () => { try { await A.finishLive(); A.go('/game/' + r); } catch (e2) { A.toast('It could not be finished just now: ' + (e2 && e2.message || e2), true); } } }, 'Let the assistant finish it')) : null));
+      practice ? h('div.go', h('a.mg-btn.primary', { href: '#/practice' }, 'Back to practice')) : live ? h('div.go', h('button.mg-btn.primary', { type: 'button', onclick: async () => { try { await A.finishLive(); A.go('/game/' + r); } catch (e2) { A.toast('It could not be finished just now: ' + (e2 && e2.message || e2), true); } } }, 'Let the assistant finish it')) : null));
   }
 
   /* ---- coming and going ---- */
@@ -1211,7 +1346,7 @@ function screen(host, o) {
     else if (ev.key === '+' || ev.key === '=') { const i = SPEEDS.indexOf(speed); if (i < SPEEDS.length - 1) setSpeed(SPEEDS[i + 1]); }
     else if (ev.key === '-') { const i = SPEEDS.indexOf(speed); if (i > 0) setSpeed(SPEEDS[i - 1]); }
   };
-  const onVis = () => { if (doc.hidden) { if (!paused && !done) pause(); else if (live && !done) A.keepLive(true); } };
+  const onVis = () => { if (doc.hidden) { if (!paused && !done) pause(); else if (live && !done) keep(true); } };
   const onHash = () => cleanup();
   let gone = false;
   function cleanup() {
@@ -1225,13 +1360,14 @@ function screen(host, o) {
     root.removeEventListener('hashchange', onHash);
     root.removeEventListener('pointerup', onUp); root.removeEventListener('pointercancel', onUp);
     A.ui.close();
-    if (live && !done && A.liveGame()) {
+    if (live && !practice && !done && A.liveGame()) {
       if (pendTac) MT().act(M, me, { type: 'tac', tac: pendTac });
       if (pendIns) MT().act(M, me, { type: 'ins', ins: pendIns });
-      A.keepLive(true);
+      keep(true);
     }
   }
   function leaveScreen() {
+    if (practice) { pause(); A.endPractice(); A.go('/practice'); return; }
     if (live && !done) { pause(); A.toast('Your game is kept where it is: carry on any time this week.'); A.go('/'); }
     else A.go(live ? '/' : '/game/' + r);
   }
@@ -1254,7 +1390,8 @@ function screen(host, o) {
     const starters = s => h('div', h('div.mg-cap', { style: { marginBottom: '6px' } }, clubName(s)), h('div', { style: { display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' } },
       fl0[s].map((id, k) => h('span', h('span.mg-pos', A.SLOTS[k]), ' ', A.nm(A.nameOf(id))))));
     overlay(M.g.k === 0
-      ? h('div.in', h('h2', 'Tip-off'), h('p.mg-sub', 'Round ' + r + ' · ' + (f.h === 0 ? 'at home' : 'away') + '. The game is yours to manage: press a man to substitute him or change his instructions, the touchline for the team\'s.'),
+      ? h('div.in', h('h2', practice ? 'Practice game' : 'Tip-off'), h('p.mg-sub', practice ? (f.h === 0 ? 'At home' : 'Away') + ', and nothing in it counts: try your lineups, roles, instructions and screen defence against anyone, as often as you like.'
+        : 'Round ' + r + ' · ' + (f.h === 0 ? 'at home' : 'away') + '. The game is yours to manage: press a man to substitute him or change his instructions, the touchline for the team\'s.'),
         h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', textAlign: 'left', margin: '12px 0' } }, starters(me), starters(op)),
         h('div.go', h('button.mg-btn.mg-pop-keep', { type: 'button', onclick: ev => openTeam(ev.currentTarget) }, 'Team instructions'), h('button.mg-btn.primary.big', { type: 'button', onclick: () => { overlay(null); play(); } }, '▶ Tip off')))
       : h('div.in', h('h2', 'Your game'), h('div.sc', tr.score[0] + ' – ' + tr.score[1]), h('p.mg-sub', stampOf(vt, G, Tot) + ' · as you left it'),
@@ -1280,6 +1417,7 @@ function prematch(host, md) {
   go.appendChild(h('button.mg-btn.primary.big', { type: 'button', onclick: () => start('live') }, '▶ Play it live'));
   go.appendChild(h('button.mg-btn.big', { type: 'button', onclick: () => start('quick') }, '⏩ Straight to the result'));
   go.appendChild(h('a.mg-btn.big.ghost', { href: '#/tactics' }, 'Tactics'));
+  if (A.isAdmin) go.appendChild(h('a.mg-btn.big.ghost', { href: '#/practice' }, 'Practice game'));
   p.appendChild(h('p.mg-sub', { style: { textAlign: 'center', margin: '12px 0 0' } }, 'Live, you make the substitutions, the roles, the team’s instructions and each man’s as it happens, and can stop and come back to it later in the week. Any time this week (both of the week’s games, in their order); if you have not played it by the end of ' + byWhen(md) + ', your assistant plays it for you.'));
   host.appendChild(p);
   /* the two fives */
@@ -1358,7 +1496,7 @@ function renderMatch(host) {
   if (md) return prematch(host, md);
   const S = A.club.state, nx = S ? SE().next(S, 0) : null;
   host.appendChild(h('div.mg-panel', h('h2', 'No game to play just now'), h('p.mg-sub', nx ? 'Your next game is round ' + nx.r + ', in the week from ' + SE().weekStart(nx.d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + ': play it any time that week.' : 'Your season’s games are all played.'),
-    h('a.mg-btn', { href: '#/' }, '← Back to the club')));
+    h('a.mg-btn', { href: '#/' }, '← Back to the club'), A.isAdmin ? h('a.mg-btn', { href: '#/practice', style: { marginLeft: '8px' } }, '▶ Practice game') : null));
 }
 /* #/live/<round>: a game played, again (the game in hand is the match screen's) */
 function renderReplay(host, args) {
@@ -1369,6 +1507,36 @@ function renderReplay(host, args) {
   screen(host, { mode: 'replay', r });
 }
 
+/* #/practice: PRACTICE GAMES (administrators; Louie, 2026-10-15: "As admin, can I also have access to the ability to do
+   practice games too?") - the reader's club against any club of the league, live on the match screen, at any time;
+   nothing in it counts (app.js A.startPractice). #/practice/live is the game. */
+function renderPractice(host, args) {
+  const S = A.club && A.club.state;
+  if (!A.isAdmin) { host.appendChild(h('div.mg-panel', h('h2', 'Practice games'), h('p.mg-sub', 'Practice games are for administrators.'), h('a.mg-btn', { href: '#/' }, '← Back to the club'))); return; }
+  if (!S || A.club.status !== 'active') { host.appendChild(h('div.mg-panel', h('h2', 'Practice games'), h('p.mg-sub', 'Confirm your squad first: a practice game plays the club as it stands.'), h('a.mg-btn', { href: '#/squad' }, 'Squad'))); return; }
+  if (args[0] === 'live') { if (A.practiceGame()) { screen(host, { mode: 'practice' }); return; } A.go('/practice'); return; }
+  let home = A.stored('mgr_prac_home') !== 'away';
+  host.appendChild(h('div.mg-top', A.badge(A.club.badge, 56), h('div.who', h('h1', 'Practice game'), h('div.meta', h('span', 'Administrators'), h('span', 'Nothing in it counts')))));
+  const p = h('div.mg-panel', h('h2', 'Choose the other club'),
+    h('p.mg-sub', 'Your club as it stands - its lineups, roles and instructions - against any club of the league, live on the match screen: substitutions, roles, instructions and screen defence as it happens. No result, statistic or form is kept.'));
+  const ha = h('div.mg-tabs', { role: 'group', 'aria-label': 'Home or away' });
+  [['home', 'At home'], ['away', 'Away']].forEach(([k, l]) => ha.appendChild(h('button', { type: 'button', 'aria-pressed': String((k === 'home') === home),
+    onclick: () => { home = k === 'home'; A.store('mgr_prac_home', k); ha.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.textContent === l))); } }, l)));
+  p.appendChild(h('div.mg-row', { style: { margin: '6px 0 14px' } }, ha));
+  const grid = h('div.mg-prac');
+  S.clubs.forEach((id, i) => {
+    if (i === 0) return;
+    const c = A.clubAt(i);
+    grid.appendChild(h('button.mg-prac-club', { type: 'button', onclick: () => go(i) }, A.crest(i, 36), h('b', { translate: 'no' }, c.name)));
+  });
+  p.appendChild(grid);
+  host.appendChild(p);
+  function go(i) {
+    try { A.startPractice(i, home); A.go('/practice/live'); }
+    catch (e) { A.toast('The practice game could not be set up just now: ' + (e && e.message || e), true); }
+  }
+}
+A.views.practice = { render: renderPractice };
 A.views.match = { render: renderMatch };
 A.views.live = { render: renderReplay };
 A.match = { clockAt, stampOf, say, tracker, ratingOf };

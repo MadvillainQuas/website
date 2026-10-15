@@ -240,6 +240,20 @@ const cards = new Map(rows.map(r => [r.id, C.cardOf(r, ref, {})]));
     && !IN.toggle({ ins: ['roll', 'short'] }, 'b', 'roll', false).keys.includes('short') && IN.norm({ ins: ['pas'], u: 7 }, 'g').u === 2);
   ok('instructions: a guard, a wing and a big each have their own', IN.list('g').some(d => d.k === 'pas') && !IN.list('g').some(d => d.k === 'roll')
     && IN.list('b').some(d => d.k === 'drop') && IN.list('w').some(d => d.k === 'rip') && IN.roleOf({ pos: 1.2 }) === 'g' && IN.roleOf(null, 4) === 'b');
+  /* A BIG'S COVERAGE GOES WITH HIM (his ball-screen coverage is about the man he guards): kept at a place whose role is a
+     wing's (a 3&D four) - the panel allows it beyond the role (also: COVER) - and followed there by the engine */
+  ok('instructions: a big keeps his coverage at a wing\'s place (allowed beyond the role); a wing\'s own list has none',
+    JSON.stringify(IN.norm({ ins: ['space', 'drop'] }, 'w', IN.COVER).keys) === '["space","drop"]' && JSON.stringify(IN.norm({ ins: ['space', 'drop'] }, 'w').keys) === '["space"]'
+    && IN.list('w', IN.COVER).some(d => d.k === 'hedge') && !IN.list('w').some(d => d.k === 'hedge') && IN.toggle({ ins: ['drop'] }, 'w', 'hedge', true, IN.COVER).keys.join() === 'hedge'
+    && JSON.stringify(IN.COVER) === '["hedge","cont","drop"]');
+  {
+    const f4 = real[3].card.id, as3d = real.map((x, j) => Object.assign({}, x, { role: j === 3 ? 'pf-3d' : null }));
+    const RLm = Mgr.roles;
+    const dr = sideWith(null, ins1(f4, ['drop']), as3d), hg = sideWith(null, ins1(f4, ['hedge']), as3d), nn = sideWith(null, null, as3d);
+    ok('instructions: a big told to drop drops at the four in a wing\'s role (3&D PF) - and its effects come with it',
+      RLm.family('pf-3d') === 'w' && dr.men[3].cov === 'drop' && hg.men[3].cov === 'hedge' && nn.men[3].cov === 'cont' && dr.def.mixMid > nn.def.mixMid,
+      [dr.men[3].cov, hg.men[3].cov, nn.men[3].cov]);
+  }
   const shooters = rows.filter(r => r.min > 300).map(r => cards.get(r.id)).filter(Boolean).sort((a, b) => b.p3Rel - a.p3Rel);
   ok('instructions: how well he suits it is his own line (the best shooter suits a green light better than the worst)',
     IN.fit('green', shooters[0], ref).s > IN.fit('green', shooters[shooters.length - 1], ref).s && !!IN.fit('green', shooters[0], ref).word);
@@ -568,6 +582,57 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   ok('clock: both boxes\' minutes agree, to the tenth', minsOk);
   console.log('      (transition points: box ' + fast + ', breaks ' + trPts + '; set plays late ' + late + '/' + sets + ')');
 }
+/* ---------------------------------------------------------------- the ball-screen coverage, against whom it meets --- */
+/* engine.js coverage (Louie, 2026-10-15: "drop coverage hurts rim-bound players with no inbetween game who are set to
+   slashing", "how hedging affects ball handlers w/ weaker handles", "opponent has a good drop big with good rim defense,
+   I currently have a rim roller big which isn't doing much, so I bring in a good pick and pop big") */
+{
+  const mk = o => Object.assign({ x: 0, y: 0, popF: 0, shortF: 0, loose: 0, pass: 0, rim: 0, mid: 0, pull: 0, p3: 1, passQ: 1, rp: 1, mq: 1 }, o);
+  const mix = { drop: 0.36, hedge: 0.07 };
+  /* a handler (place 0) and a screening centre (place 4) against a five whose centre plays `cov` (a strong rim protector,
+     quick feet) */
+  const run = (h, sc, cov) => {
+    const OM = [{ id: 'h', cv: mk(Object.assign({ x: 0.6 }, h)) }, { id: 'a', cv: mk({}) }, { id: 'b', cv: mk({}) }, { id: 'c', cv: mk({ y: 0.1 }) }, { id: 's', cv: mk(Object.assign({ y: 0.5 }, sc)) }];
+    const DM = [0, 1, 2, 3, 4].map(j => ({ id: 'd' + j, cov: j === 4 ? cov : 'cont', cv: mk({ rp: 1.5, mq: 1.4 }) }));
+    return E.coverage({ men: OM }, { men: DM, covMix: mix });
+  };
+  const vs = (h, sc, a, b, f) => f(run(h, sc, a)) - f(run(h, sc, b));
+  ok('coverage: a hedge turns a loose-handled, poor-passing handler over; a sure-handed passer hardly',
+    vs({ loose: 1.5, pass: -1 }, {}, 'hedge', 'cont', r => r[0].tov) > 0.05 && vs({ loose: -1, pass: 1.5 }, {}, 'hedge', 'cont', r => r[0].tov) < 0);
+  ok('coverage: a drop makes the handler\'s rim finishes harder, and gives a pull-up shooter his three',
+    vs({}, {}, 'drop', 'cont', r => r[0].p.rim) < -0.05 && vs({ pull: 1.5 }, {}, 'drop', 'cont', r => r[0].p.three) > 0 && vs({}, {}, 'drop', 'cont', r => r[0].p.mid) > 0);
+  ok('coverage: a roller finishes into a dropping rim protector, a popper is open behind him',
+    vs({}, { popF: 0 }, 'drop', 'cont', r => r[4].p.rim) < -0.05 && vs({}, { popF: 0.9, p3: 1.2 }, 'drop', 'cont', r => r[4].p.three) > 0.03);
+  ok('coverage: a popping screener drags the drop big out of the paint - his handler\'s drives suffer less',
+    run({}, { popF: 0.9 }, 'drop')[0].p.rim > run({}, { popF: 0 }, 'drop')[0].p.rim);
+  ok('coverage: over a hedge the roller gets the 4-on-3', vs({}, { popF: 0 }, 'hedge', 'cont', r => r[4].p.rim) > 0);
+  /* the league's usual coverage changes nothing: a five that drops and hedges as much as the league does, against the
+     average handler, is even */
+  const even = (() => {
+    const OM = [{ id: 'h', cv: mk({ x: 0.6 }) }, { id: 'a', cv: mk({}) }, { id: 'b', cv: mk({}) }, { id: 'c', cv: mk({ y: 0.5 }) }, { id: 's', cv: mk({ y: 0.5 }) }];
+    const DM = [0, 1, 2, 3, 4].map(j => ({ id: 'd' + j, cov: 'cont', cv: mk({}) }));
+    return E.coverage({ men: OM }, { men: DM, covMix: { drop: 0, hedge: 0 } });
+  })();
+  ok('coverage: nothing moves for a league with no coverage to measure against and a five that contains', even === null || even.every(e => e.tov === 0 && e.p.rim === 0 && e.p.mid === 0 && e.p.three === 0));
+  /* end to end: the same five against a club whose centre drops - a rim-rolling centre against a pick-and-pop centre */
+  const base = teams[3].men.slice(0, 5).map(r => r.id), dfive = teams[4].men.slice(0, 5).map(r => r.id);
+  const bigC = Object.assign({}, cards.get(dfive[4]), { id: 'dropC', def: Object.assign({}, cards.get(dfive[4]).def, { blk: 6, rimSave: 6, stl: 0.6 }) });
+  const dfC = dfive.map((id, k) => ({ card: k === 4 ? bigC : cards.get(id), k }));
+  const Xd = { mu: L.rates, ref, tac: null, G: 40, dTr: L.dTr, covMix: mix, cov: new Map([['dropC', E.inferCover(bigC, ref)]]) };
+  const sd = E.sideOf(dfC, Xd), sdC = E.sideOf(dfC, Object.assign({}, Xd, { cov: null }));
+  const ppc = r => (1 - r.tov) * ((1 - r.sfoul - r.bonus) * (2 * r.mixRim * r.pRim + 2 * r.mixMid * r.pMid + 3 * r.mix3 * r.p3) + (r.sfoul + r.bonus) * 2 * r.ft);
+  const edge = role => {
+    const five = base.map((id, k) => ({ card: cards.get(id), k, role: k === 4 ? role : null }));
+    const so = E.sideOf(five, { mu: L.rates, ref, tac: null, G: 40, dTr: L.dTr, covMix: mix });
+    const r = Sim.matchup({ off: so.off, def: so.def, n: 0 }, { off: sd.off, def: sd.def, n: 0 }, L, { home: 0 }).r[0];
+    const rC = Sim.matchup({ off: so.off, def: so.def, n: 0 }, { off: sdC.off, def: sdC.def, n: 0 }, L, { home: 0 }).r[0];
+    return { drop: ppc(E.interact(r, so, sd)) - ppc(r), cont: ppc(E.interact(rC, so, sdC)) - ppc(rC), cov: E.interact(r, so, sd).cov.get(base[4]) };
+  };
+  const roller = edge('c-roller'), popper = edge('c-dualpnp');
+  ok('coverage: a rim protector read from his game drops', E.inferCover(bigC, ref) === 'drop', E.inferCover(bigC, ref));
+  ok('coverage: against a club whose centre drops, a pick-and-pop centre does better than a rim roller (his own rim finishing the worse for it)',
+    popper.drop > roller.drop && roller.cov.p.rim < 0, { roller: { drop: +roller.drop.toFixed(4), cont: +roller.cont.toFixed(4) }, popper: { drop: +popper.drop.toFixed(4), cont: +popper.cont.toFixed(4) } });
+}
 /* ---------------------------------------------------------------- the plays on the live court --- */
 /* core/plays.js (Louie, 2026-10-15: "a good visual representation of how the team would play in real life with the set
    roles", "real life plays from playbooks ... assign them properly according to the player roles, position and what the
@@ -604,6 +669,36 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   /* (the rest: drop-offs from drives - an isolation, a clear-out, attacking a closeout, Hammer - the research's other
      source of a big's finish at the dunker spot) */
   ok('plays: a rim roller\'s dunk off the Euro PG\'s pass is drawn mostly as a ball-screen or handoff set, the PG always making the pass', inSet >= 24 && fromPG === 40, [inSet, fromPG]);
+  /* THE COVERAGE ON A BALL SCREEN is the screener's man's own instruction (Louie, 2026-10-15: "hedge big = hedging,
+     contain = show and recover, drop big = drop"): the same play, only his instruction changed */
+  {
+    let pl = null;
+    for (let i = 0; i < 80 && !pl; i++) { const x = onePoss(five1, { k: 'S', z: 1, m: 1, p: 'p0', a: null }, 'cov' + i); if (x.frames.some(f => f.hint && f.hint.pnr && f.hint.ph === 1)) pl = x; }
+    const i = pl ? pl.frames.findIndex(f => f.hint && f.hint.pnr && f.hint.ph === 1) : -1, f = pl && pl.frames[i], f0 = pl && pl.frames[i - 1];
+    /* (the defence reads the offence a moment late: measured against where it reads them) */
+    const covAt = cov => {
+      const [h, s] = f.hint.pnr, t = f0.t + 0.3 * (f.t - f0.t), seen = PL.at(pl, t - 0.3).off, d = (x, y) => +Math.hypot(x[0] - y[0], x[1] - y[1]).toFixed(1);
+      pl.D = PL.defOf({ dins: [0, 1, 2, 3, 4].map(j => (j === s ? [cov] : [])) });
+      const m = PL.at(pl, t);
+      return { ball: d(m.def[s], seen[h]), screen: d(m.def[s], seen[s]), rim: d(m.def[s], PL.RIM), handlerRim: d(seen[h], PL.RIM) };
+    };
+    const hd = pl && covAt('hedge'), ct = pl && covAt('cont'), dp = pl && covAt('drop');
+    ok('plays: a hedge big steps in front of the handler, a contain big shows level with the screen, a drop big sits back at the rim',
+      !!pl && hd.ball <= 3 && hd.rim < hd.handlerRim && ct.screen <= 2.5 && dp.rim <= 14 && dp.ball >= 7, { hd, ct, dp });
+    /* a hedge against the short roll is a trap: two men on the ball as he passes out of it */
+    const shortRoll = ['pg-euro', 'sg-3d', 'sf-3d', 'pf-dualspot', 'c-shortplay'];
+    let sr = null;
+    for (let k = 0; k < 120 && !sr; k++) { const x = onePoss(shortRoll, { k: 'S', z: 1, m: 1, p: 'p4', a: 'p0' }, 'sr' + k); if (x.calls.some(c => c.text === 'Short roll')) sr = x; }
+    const g = sr ? sr.frames.find(fr => fr.hint && fr.hint.pnr && fr.hint.ph === 2) : null, g0 = g ? sr.frames[sr.frames.indexOf(g) - 1] : null;
+    let trap = null;
+    if (g) {
+      const [h, s] = g.hint.pnr;
+      sr.D = PL.defOf({ dins: [0, 1, 2, 3, 4].map(j => (j === s ? ['hedge'] : [])) });
+      const m = PL.at(sr, (g0.t + g.t) / 2), d2 = j => Math.hypot(m.def[j][0] - m.off[h][0], m.def[j][1] - m.off[h][1]);
+      trap = [d2(h), d2(s)].map(x => +x.toFixed(1));
+    }
+    ok('plays: a hedge against the short roll traps the handler (both men on him)', !!trap && trap[0] <= 4.5 && trap[1] <= 4.5, trap);
+  }
   const posts = ['pg-mixed', 'sg-3d', 'sf-3d', 'pf-dualspot', 'c-post'];
   let split = 0;
   for (let i = 0; i < 40; i++) { const pl = onePoss(posts, { k: 'S', z: 1, m: 1, p: 'p4', a: null }, 'post' + i); if (pl.calls.some(c => /Post split|High-low|Isolation|Clear-out/.test(c.text))) split++; }

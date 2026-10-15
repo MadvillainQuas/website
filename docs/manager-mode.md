@@ -15,14 +15,14 @@ next. Global mode was scrapped (Louie, 2026-10-09).
 |---|---|
 | The way in | HOME's third strip tab, MANAGER (`home/index.html`, `kit/home.css` `.mg-warp`, `home/vhmode.js` `toManager`): a royal-blue wipe, then `manager/` |
 | The page | `manager/index.html`, `boot.js`, `app.js` (router, rail, shared builders, catch-up, saving, the game in hand), `manager.css` (the royal blue, soft-glass skin; dark navy and light sky-blue) |
-| The screens | `manager/views/`: `onboard.js` (login, black transition, team name, manager name, badge, country and league, mode); `squad.js` (draft pool, filters, shortlist, hover cards, 1–20 attributes, confirm); `tactics.js` (the court, drag and drop, up to 4 lineups, minutes to 40, the team's instructions in a pop-up at the top, a player's on a press); `ui.js` (the two pop-ups the tactics and the live game share); `match.js` (match day, the live game full screen, a game played again); `season.js` (home with the match-day panel, fixtures, table, statistics); `pages.js` (player pages with Real season / Manager season tabs, each with Scouting and Simple views; team pages); `trade.js`; `game.js`; `boards.js` (leaderboards, club settings) |
+| The screens | `manager/views/`: `onboard.js` (login, black transition, team name, manager name, badge, country and league, mode); `squad.js` (draft pool, filters, shortlist, hover cards, 1–20 attributes, confirm); `tactics.js` (the court, drag and drop, up to 4 lineups, minutes to 40, the team's instructions in a pop-up at the top, a player's on a press); `ui.js` (the two pop-ups the tactics and the live game share); `match.js` (match day, the live game full screen, a game played again, practice games); `season.js` (home with the match-day panel, fixtures, table, statistics); `pages.js` (player pages with Real season / Manager season tabs, each with Scouting and Simple views; team pages); `trade.js`; `game.js`; `boards.js` (leaderboards, club settings) |
 | The game itself | `manager/core/` (UMD, no DOM, no site: `root.Mgr.*`): `value.js`, `ratings.js`, `schedule.js`, `names.js`, `badge.js`, `cards.js`, `roles.js` (the positional roles, their categories, alignment and fit), `engine.js`, `instruct.js` (player instructions, roles, fit), `match.js` (the possession engine), `plays.js` (each possession drawn as a playbook set for the live court), `season.js`, `scorer.js` |
 | The site, from the game | `manager/adapters/epinoia.js` (`Mgr.site`): the **only** file that knows EPINOIA. It provides the leagues, the season files, the values and boosts, form windows, each real club's starting fives (`starts`), the clubs (`manager_*` RPCs) and badges. Swap it and the game runs elsewhere. |
 | EPINOIA GO | `go/leaderboards/` `#manager` and a teaser on GO's home (`leaderboards/managerboard.js`, `kit/mgboard.css`): the promise, the realism marks, your clubs, and the boards (global and league by league) |
 | The platform console | the Manager tab (`admin/platform/manager-ui.js`): each league's value range and continental boost |
 | The marks | `tools/manager-validate.mjs` writes `manager/validation.json` |
 | The database | `supabase/migrations/0259_manager.sql` |
-| Tests | `supabase/tests/manager-core.test.mjs` (151), `manager-db.test.mjs` (35, PGlite: `PGLITE_DIR=<…>/node_modules/@electric-sql/pglite`); both in guard.yml |
+| Tests | `supabase/tests/manager-core.test.mjs` (163), `manager-db.test.mjs` (35, PGlite: `PGLITE_DIR=<…>/node_modules/@electric-sql/pglite`); both in guard.yml |
 | Languages | the `manager` pack (`i18n/ja/manager.js`, `i18n/es/manager.js`) exists but is empty: the Manager is English only for now |
 
 ## Everything is played in the reader's browser
@@ -94,7 +94,40 @@ but only the chosen league is simulated.
     so a real shooter rates the green light well above it.
   - The family of instructions a man takes is his role's at the place he plays (a guard's, a wing's, a big's), and the
     ones his role rules out are greyed with the reason (`roles.locks`). They are stored unfiltered on his roster entry;
-    the engine keeps to each five's roles itself.
+    the engine keeps to each five's roles itself. One exception: **a big's coverage on a ball screen goes wherever he
+    plays** (a big in a 3&D role at the four still guards his screener), so the panel offers and keeps it at a wing's
+    place too (`instruct.COVER`, `app.js` `screenBig`) and the engine follows it there.
+- **The coverage on a ball screen against whom it meets** (`engine.coverage`, inside `interact`; Louie, 2026-10-15:
+  "drop coverage hurts rim-bound players with no inbetween game who are set to slashing", "how hedging affects ball
+  handlers w/ weaker handles", "opponent has a good drop big with good rim defense, I currently have a rim roller big
+  which isn't doing much, so I bring in a good pick and pop big to stretch out the defense").
+  - **Each big's coverage:** his instruction (hedge, contain, drop), else the one his game suits (`inferCover`, card
+    position 3.5 and up): a rim protector (blocks 1.2× his position's, or 2.5+ rim points saved per 100) without quick
+    feet drops; quick feet (steals 1.2× his position's) without the blocks hedges; the rest contain. Real clubs' bigs play
+    theirs; the reader's play theirs until the reader sets one. How well he plays it: a drop as well as he protects the
+    rim, a hedge as quick as his feet (`coverQ`).
+  - **Measured against the league's own coverage** (`coverMix`: the drop and the hedge its bigs play, on their minutes,
+    about 0.36 and 0.07 in the four validation leagues), because the clubs' numbers already hold it: a five that covers
+    as the league does changes nothing, so real clubs' calibration stands.
+  - **Each man by how much of his game comes off ball screens** (`covTraits`): as the handler (x, his time on the ball)
+    and as the screener (y: rolling, popping, short-rolling, handing off, from his role), with his ball security for that
+    time on the ball, his passing, how rim-bound he is, his mid-range and his pull-up three, each scaled to the league's
+    handlers (measured on four leagues' rotations, 17,100 stints).
+  - **Drop:** the handler's rim finishes are harder (less when his screener pops and drags the big out), the pull-up and
+    the floater are there for him, the pull-up three for a man who takes it; a rim-bound driver with no in-between game
+    pays. As the screener: a roller finishes into the rim protector, a popper is open behind him. **Hedge:** loose
+    handles and poor passers turn it over (a sure-handed passer hardly), the pull-up is taken away, the roller gets the
+    4-on-3, a short roller who passes makes the play. **Contain:** the even middle. Strengths (logit, a unit of exposure):
+    `COVK` rim .30, mid .12, pull-up three .06, hedge turnovers .30, pull-ups .06, roll .35, pop .30, the 4-on-3 .20,
+    short roll .12.
+  - The five's change goes into the matchup's rates; each man's difference from it into his own (`core/match.js`
+    `menOf`: his turnovers and his makes by zone).
+  - **Checked:** over the four validation leagues' real pairings the effect is centred (mean about 0, spread 0.2–0.6
+    points per 100). Louie's example holds in all four (ORLEN, FEB, NBL D1, CEBL): against a club whose centre drops, a
+    pick-and-pop centre does better than a rim roller (NBL D1: −1.99 per 100 of his chances for the roller, −0.74 for the
+    popper). Core tests: a hedge against a loose and a sure handler, a drop at the rim and for a pull-up shooter, the
+    roller and the popper, the popper's pull-out, the 4-on-3, nothing moved without a league mix, the inferred drop, and
+    the end-to-end popper-over-roller.
 - **Every game is played possession by possession** (`core/match.js`, also for the games nobody watches) by the ten men
   on the floor: the winsim matchup of the two fives, then each man's own turnovers, trips, shot mix and makes; the
   assist, the board, the steal and the block by the right men.
@@ -230,8 +263,18 @@ FM's match screen, full screen (the rail and tab bar hidden):
 - **Down the right:** Match (the clubs compared: shooting, boards, paint, fast break, second chance, off turnovers,
   biggest lead), Box score, Plays, Assistant (his notes on legs, foul trouble, runs, hot hands, the glass, plus the
   assistant-subs switch), Opposition.
-- **Along the foot:** team instructions (for every lineup, the rest of the game), player instructions, timeout,
-  assistant subs on/off, the rest of the game now.
+- **Along the foot:** team instructions (for every lineup, the rest of the game), player instructions, **screen
+  defence**, timeout, assistant subs on/off, the rest of the game now.
+- **Screen D** (Louie, 2026-10-15: "can these screen defense options be able to be changed on the fly during games"):
+  all your bigs' coverage at once, from the next possession - hedge, contain, drop, or each his own game's. The bigs are
+  the men offered a coverage (`app.js` `screenBig`: a big by his listed position, or a man whose own game is a big's
+  coverage) and whoever plays a big's role at his place now (a wing at the five). The button shows the floor's
+  (Hedge, Contain, Drop, Own or Mixed). One man's is in his own instructions.
+- **Each big's coverage on his row** (Hedges, Contains, Drops; both clubs): his instruction, else his own game's. The
+  opposition's tells the reader what they meet: a rim protector who drops, a quick big who hedges.
+- **The assistant reads the coverage** (`coverNotes`): the man of ours it hurts most (a roller into a dropping rim
+  protector: "a big who pops would drag him out of the paint"; a loose handle against a hedge; a rim-bound driver into
+  a drop), and the coverage that suits our bigs against their handlers and screeners when it beats the one played.
 
 The engine is never more than one possession ahead of the clock on screen. So a period's end and the reader's own
 timeout (`match.js` halts before the next possession) show before the next possession is played, and a change made
@@ -239,6 +282,12 @@ then counts in it. Quarter breaks pause briefly; half-time and the reader's time
 game goes into the season (`A.endLive`).
 
 `#/live/<round>` plays a game already played again, on the same screen, from its kept play-by-play.
+
+**Practice games** (`#/practice`, administrators; Louie, 2026-10-15: "As admin, can I also have access to the ability to
+do practice games too?"): the reader's club as it stands (lineups, roles, instructions) against any club of the league,
+home or away, live on the match screen, any time. Nothing in it counts or is kept: no season, table, form or statistics;
+the game lives in the page (`app.js` `startPractice`), and leaving ends it. Administrators are `is_platform_admin`
+(local mode counts as one). The rail has "Practice game" (not on the phone's tab bar), and match day links to it.
 
 ### The court in 2D (views/match.js `makeCourt`, core/plays.js; Louie, 2026-10-15)
 "Watching the game, it gives a good visual representation of how the team would play in real life with the set roles",
@@ -283,8 +332,15 @@ rendering".
   4. **The defence** each moment, a step behind the offence: on the ball a yard off, between him and the basket
      (picked up near half court in the backcourt); one pass away up the line; two passes away the help "i" (the top man
      toward the nail, the low man on the weak-side block); on a drive the nail man digs and the low man meets it at the
-     rim; drop coverage on the pick-and-roll with the low man tagging the roller; a trap with the weak-side big taking
-     the short roll at the nail. Defenders run at a man's speed.
+     rim. Defenders run at a man's speed.
+     - **The ball screen as the screener's man was told** (Louie, 2026-10-15: "hedge big = hedging, contain = show and
+       recover, drop big = drop"): a hedge jumps out in front of the handler and recovers to his man (against the short
+       roll it stays: a trap, the nail man taking the roller); a contain shows level with the screen and recovers; a drop
+       sits back between the ball and the rim. The handler's man trails over the screen; the low man tags the roller
+       while the big is out. Each set's screens and handoffs carry the hint (`plays.js` `defOf`, `cover`): his
+       instruction this game, else his own game's coverage.
+     - **The team's out of possession:** no paint touches packs the lane, funnel leaves the shooters' men home and the
+       centre at the rim; men told to gamble play tighter, stay solid looser; rim protectors help harder on a drive.
   5. **A trip to the line stops the clock** while it is shown (the shooter at the line, two of his men on the lane's
      second places, the defence on the first, the rest behind the arc; each free throw in the air), as a whistle does.
 - Checked over whole simulated games (the core tests and a harness): every possession planned, nobody off the court,
@@ -332,19 +388,22 @@ times (6,384 games). Each club was built the way the Manager builds it, with its
 
 | League | r (identity) | r (players alone) | Points a game, sim (real) | Home wins, sim (real) |
 |---|---|---|---|---|
-| ORLEN Basket Liga 2025-26 | 0.95 | 0.71 | 85.6 (85.5) | 62% (60%) |
-| Primera FEB 2025-26 | 0.99 | 0.92 | 81.6 (80.9) | 58% (61%) |
-| NBL Division One 2025-26 | 0.97 | 0.79 | 75.1 (75.9) | 58% (58%) |
-| CEBL 2026 | 0.89 | 0.66 | 93.9 (92.7) | 63% (61%) |
+| ORLEN Basket Liga 2025-26 | 0.96 | 0.73 | 85.8 (85.5) | 63% (60%) |
+| Primera FEB 2025-26 | 0.98 | 0.92 | 81.6 (80.9) | 58% (61%) |
+| NBL Division One 2025-26 | 0.97 | 0.77 | 75.2 (75.9) | 59% (58%) |
+| CEBL 2026 | 0.92 | 0.67 | 93.5 (92.7) | 62% (61%) |
 
 Re-run on 2026-10-15 after the position rule (no cost within one position): r 0.949 (0.941 before), points a game
-0.7 from real (0.9), players alone 0.768 (0.789).
+0.7 from real (0.9), players alone 0.768 (0.789). Then with the ball-screen coverage (every real club's bigs playing
+the coverage their game suits, against the league's own mix): r 0.958, players alone 0.773, points a game 0.6 from
+real; `--no-cover` reproduces the marks before it exactly (the games are seeded).
 
 "r" is the correlation of each club's simulated margin with its real point difference. Run the tool again
 (`node tools/manager-validate.mjs`) whenever the engine changes, and commit the file.
 - `--dry` prints the diagnostics against the real season: possessions, eFG%, turnovers, free-throw rate, the glass,
   free throws, fouls and foul-outs.
-- `--engine stretch` uses the older engine; `--no-starters` and `--decay` vary the real starters.
+- `--engine stretch` uses the older engine; `--no-starters` and `--decay` vary the real starters; `--no-cover` plays
+  without the ball-screen coverage.
 
 ## The database (0259)
 - `manager_teams`: owner-only RLS. Written only through `manager_create`, `manager_save` (sizes checked) and

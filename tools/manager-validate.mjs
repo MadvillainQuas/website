@@ -57,6 +57,8 @@ for (const want of LEAGUES) {
   const d = j.data, P = unpack(d.players), T = unpack(d.teams), teamOf = new Map(d.teamOfPlayer || []), games = d.games || [];
   const ref = C.refOf(P), L = E.leagueOf(ref, null, 40, { teams: T, games }), X = { L, ref, G: 40 };
   const cards = new Map(P.map(r => [String(r.id), C.cardOf(r, ref, {})]).filter(([, x]) => x));
+  /* the league's own ball-screen coverage, which its clubs' numbers already hold (engine.coverMix) */
+  X.covMix = argv.includes('--no-cover') ? null : E.coverMix(P, cards, ref);
   /* each club's real starters: its games' starting fives, the recent ones counting most (the Manager's adapter does the same) */
   const starts = new Map();
   if (STARTERS) {
@@ -75,7 +77,10 @@ for (const want of LEAGUES) {
   const clubs = T.filter(t => t.gp >= 5).map(t => {
     const men = P.filter(r => teamOf.get(r.id) === t.id && r.min > 0).map(r => ({ id: String(r.id), mpg: r.min / t.gp, share: C.shareOf(r) }));
     const segs = E.autoRotation(men, 40, { starters: startersOf(t.id, new Set(men.map(x => x.id))) });
-    return segs.length ? { id: t.id, segs, cards, row: t } : null;
+    /* each big's coverage on a ball screen, as the Manager reads it from his game (app.js realTeam; --no-cover: none) */
+    const cov = new Map();
+    if (!argv.includes('--no-cover')) men.forEach(m => { const v = E.inferCover(cards.get(m.id), ref); if (v !== 'cont') cov.set(m.id, v); });
+    return segs.length ? { id: t.id, segs, cards, row: t, cov } : null;
   }).filter(Boolean);
   clubs.forEach(t => { t.identity = E.identityOf(t, t.row, X); });
   const run = withId => {

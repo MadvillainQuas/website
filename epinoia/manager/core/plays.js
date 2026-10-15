@@ -177,8 +177,8 @@ SET('spread', { name: 'High pick-and-roll', base: 15,
   align: { h: 'top', s: 'nail', c: 'R corner', w: 'L wing', d: 'L dunker' },
   run: (c, m, sp, d) => [
     step(1, { mv: c.al, hold: m.h, call: [m.h, m.s] }),
-    step(0.8, { mv: { [m.s]: ballScreen(d) }, hold: m.h, scr: [m.s, ballScreen(d)] }),
-    step(1.2, { mv: { [m.h]: [d * 8.5, 21], [m.s]: [d * 2.2, 11.5], [m.w]: c.X === m.w ? null : sp('L corner') }, hold: m.h, hint: { drop: m.s, tag: [m.d, m.s] } })],
+    step(0.8, { mv: { [m.s]: ballScreen(d) }, hold: m.h, scr: [m.s, ballScreen(d)], hint: { pnr: [m.h, m.s], ph: 0 } }),
+    step(1.2, { mv: { [m.h]: [d * 8.5, 21], [m.s]: [d * 2.2, 11.5], [m.w]: c.X === m.w ? null : sp('L corner') }, hold: m.h, hint: { pnr: [m.h, m.s], ph: 1, tag: [m.d, m.s] } })],
   fin: [['h', 'pnr', '012', '-'], ['s', 'roll', '01', 'h'], ['d', 'cut roll', '0', 'h', 'k'], ['w', 'spot', '2', 'h', 'kW'], ['c', 'spot', '2', 'h', 'kC']] });
 
 SET('side', { name: 'Side pick-and-roll (ram)', base: 12, late: 1.5,
@@ -187,8 +187,8 @@ SET('side', { name: 'Side pick-and-roll (ram)', base: 12, late: 1.5,
   run: (c, m, sp, d) => [
     step(1, { mv: c.al, hold: m.h, call: [m.h, m.s] }),
     step(0.8, { mv: { [m.r]: [0, 19.5], [m.s]: [d * 4.5, 16.5] }, hold: m.h, scr: [m.r, [0, 19.5]] }),
-    step(0.8, { mv: { [m.s]: [d * 16.2, 23.4], [m.r]: sp('L slot') }, hold: m.h, scr: [m.s, [d * 16.2, 23.4]] }),
-    step(1.2, { mv: { [m.h]: [d * 8.5, 17.5], [m.s]: [d * 4, 9.5] }, hold: m.h, hint: { drop: m.s, tag: [m.w, m.s] } })],
+    step(0.8, { mv: { [m.s]: [d * 16.2, 23.4], [m.r]: sp('L slot') }, hold: m.h, scr: [m.s, [d * 16.2, 23.4]], hint: { pnr: [m.h, m.s], ph: 0 } }),
+    step(1.2, { mv: { [m.h]: [d * 8.5, 17.5], [m.s]: [d * 4, 9.5] }, hold: m.h, hint: { pnr: [m.h, m.s], ph: 1, tag: [m.w, m.s] } })],
   fin: [['s', 'roll', '01', 'h'], ['h', 'pnr', '012', '-'], ['c', 'spot', '2', 'h', 'kC'], ['w', 'spot', '2', 'h', 'kC'], ['r', 'spot offs', '2', 'h', 'kW']] });
 
 SET('horns', { name: 'Horns', base: 10,
@@ -196,8 +196,8 @@ SET('horns', { name: 'Horns', base: 10,
   align: { h: 'top', p: 'L elbow', s: 'R elbow', c: 'R corner', w: 'L corner' },
   run: (c, m, sp, d) => [
     step(1, { mv: c.al, hold: m.h, call: [m.h, m.s] }),
-    step(0.8, { mv: { [m.s]: ballScreen(d) }, hold: m.h, scr: [m.s, ballScreen(d)] }),
-    step(1.2, { mv: { [m.h]: [d * 8.5, 21], [m.s]: [d * 2.2, 11.5], [m.p]: sp('L slot') }, hold: m.h, hint: { drop: m.s, tag: [m.w, m.s] } })],
+    step(0.8, { mv: { [m.s]: ballScreen(d) }, hold: m.h, scr: [m.s, ballScreen(d)], hint: { pnr: [m.h, m.s], ph: 0 } }),
+    step(1.2, { mv: { [m.h]: [d * 8.5, 21], [m.s]: [d * 2.2, 11.5], [m.p]: sp('L slot') }, hold: m.h, hint: { pnr: [m.h, m.s], ph: 1, tag: [m.w, m.s] } })],
   fin: [['s', 'roll', '01', 'h'], ['p', 'pop spot', '2', 'h', 'W'], ['p', 'pop short spot', '1', 'h'], ['h', 'pnr', '012', '-'], ['w', 'spot', '2', 'h', 'kC'], ['c', 'spot', '2', 'h', 'kC']] });
 
 SET('pop', { name: 'Pick-and-pop', base: 5,
@@ -205,8 +205,8 @@ SET('pop', { name: 'Pick-and-pop', base: 5,
   align: { h: 'top', s: 'L elbow', d: 'R dunker', c: 'R corner', w: 'L corner' },
   run: (c, m, sp, d) => [
     step(1, { mv: c.al, hold: m.h, call: [m.h, m.s] }),
-    step(0.8, { mv: { [m.s]: ballScreen(d) }, hold: m.h, scr: [m.s, ballScreen(d)] }),
-    step(1.1, { mv: { [m.h]: [d * 8.5, 21], [m.s]: sp('L slot') }, hold: m.h })],
+    step(0.8, { mv: { [m.s]: ballScreen(d) }, hold: m.h, scr: [m.s, ballScreen(d)], hint: { pnr: [m.h, m.s], ph: 0 } }),
+    step(1.1, { mv: { [m.h]: [d * 8.5, 21], [m.s]: sp('L slot') }, hold: m.h, hint: { pnr: [m.h, m.s], ph: 1 } })],
   fin: [['s', 'pop spot', '2', 'h', 'W'], ['s', 'pop iso', '1', '-'], ['h', 'pnr', '012', '-'], ['d', 'cut roll', '0', 'h', 'k'], ['w', 'spot', '2', 's', 'C'], ['c', 'spot', '2', 'h', 'kC']] });
 
 SET('short', { name: 'Short roll', base: 3.5,
@@ -214,18 +214,18 @@ SET('short', { name: 'Short roll', base: 3.5,
   align: { h: 'top', s: 'nail', d: 'L dunker', c: 'R corner', w: 'L corner' },
   run: (c, m, sp, d) => [
     step(1, { mv: c.al, hold: m.h, call: [m.h, m.s] }),
-    step(0.8, { mv: { [m.s]: ballScreen(d) }, hold: m.h, scr: [m.s, ballScreen(d)] }),
-    step(0.9, { mv: { [m.h]: [d * 11, 30.5], [m.s]: [d * 0.5, 20] }, hold: m.h, hint: { trap: m.s, nail: m.d } }),
-    step(0.6, { pass: [m.h, m.s], hint: { trap: m.s, nail: m.d } })],
-  fin: [['d', 'cut roll', '0', 's', 'l'], ['w', 'spot', '2', 's', 'C'], ['c', 'spot', '2', 's', 'C'], ['s', 'short roll', '01', '-'], ['h', 'spot', '2', 's', 'W']] });
+    step(0.8, { mv: { [m.s]: ballScreen(d) }, hold: m.h, scr: [m.s, ballScreen(d)], hint: { pnr: [m.h, m.s], ph: 0 } }),
+    step(0.9, { mv: { [m.h]: [d * 11, 30.5], [m.s]: [d * 0.5, 20] }, hold: m.h, hint: { pnr: [m.h, m.s], ph: 1, short: 1, nail: m.d, tag: [m.w, m.s] } }),
+    step(0.6, { pass: [m.h, m.s], hint: { pnr: [m.h, m.s], ph: 2, short: 1, nail: m.d } })],
+  fin: [['d', 'cut roll', '0', 's', 'l'], ['w', 'spot', '2', 's', 'C'], ['c', 'spot', '2', 's', 'C'], ['s', 'short roll', '01', '-'], ['s', 'short roll', '01', 'h'], ['h', 'spot', '2', 's', 'W']] });
 
 SET('spain', { name: 'Spain pick-and-roll', base: 3,
   places: { h: 'bh', s: 'big', g: 'shoot', w: 'shoot', c: 'any' },
   align: { h: 'top', s: 'nail', g: 'rim', w: 'L corner', c: 'R corner' },
   run: (c, m, sp, d) => [
     step(1, { mv: c.al, hold: m.h, call: [m.h, m.s, m.g] }),
-    step(0.8, { mv: { [m.s]: ballScreen(d), [m.g]: [-d * 1, 18.5] }, hold: m.h, scr: [m.s, ballScreen(d)] }),
-    step(1.1, { mv: { [m.h]: [d * 8.5, 21], [m.s]: [d * 2.2, 11.5], [m.g]: [0, 17.5] }, hold: m.h, scr: [m.g, [0, 17.5]], hint: { drop: m.s, tag: [m.w, m.s] } }),
+    step(0.8, { mv: { [m.s]: ballScreen(d), [m.g]: [-d * 1, 18.5] }, hold: m.h, scr: [m.s, ballScreen(d)], hint: { pnr: [m.h, m.s], ph: 0 } }),
+    step(1.1, { mv: { [m.h]: [d * 8.5, 21], [m.s]: [d * 2.2, 11.5], [m.g]: [0, 17.5] }, hold: m.h, scr: [m.g, [0, 17.5]], hint: { pnr: [m.h, m.s], ph: 1, tag: [m.w, m.s] } }),
     step(0.6, { mv: { [m.g]: [0, 28.4] }, hold: m.h })],
   fin: [['s', 'roll', '0', 'h'], ['g', 'offs spot pop', '2', 'h', 'T'], ['h', 'pnr', '012', '-'], ['w', 'spot', '2', 'h', 'kC'], ['c', 'spot', '2', 'h', 'kC']] });
 
@@ -235,8 +235,8 @@ SET('drag', { name: 'Drag screen', base: 6, early: true,
   run: (c, m, sp, d) => {
     const pops = c.X === m.t ? c.z === 2 : c.P.pops(m.t);
     return [step(1.3, { mv: c.al, hold: m.h, call: [m.h, m.t] }),
-      step(0.6, { mv: { [m.t]: [d * 7.4, 29.2] }, hold: m.h, scr: [m.t, [d * 7.4, 29.2]] }),
-      step(1, { mv: { [m.h]: [0, 20.5], [m.t]: pops ? [-d * 2, 29] : [-d * 1.5, 12], [m.r]: sp('L dunker') }, hold: m.h, hint: pops ? null : { drop: m.t } })];
+      step(0.6, { mv: { [m.t]: [d * 7.4, 29.2] }, hold: m.h, scr: [m.t, [d * 7.4, 29.2]], hint: { pnr: [m.h, m.t], ph: 0 } }),
+      step(1, { mv: { [m.h]: [0, 20.5], [m.t]: pops ? [-d * 2, 29] : [-d * 1.5, 12], [m.r]: sp('L dunker') }, hold: m.h, hint: { pnr: [m.h, m.t], ph: 1, tag: [m.w, m.t] } })];
   },
   fin: [['h', 'pnr', '012', '-'], ['t', 'roll', '0', 'h'], ['t', 'pop spot', '2', 'h', 'T'], ['w', 'spot', '2', 'h', 'kC'], ['c', 'spot', '2', 'h', 'kC'], ['r', 'cut roll', '0', 'h', 'k']] });
 
@@ -248,8 +248,8 @@ SET('pistol', { name: 'Pistol', base: 4, early: true,
     if (fx[0] === 'b' && fx[1].includes('cut')) return out.concat([step(0.6, { mv: { [m.h]: [d * 15, 25.5] }, hold: m.h })]);   // denied: the backdoor
     out.push(step(0.8, { mv: { [m.h]: [d * 16.6, 23.4], [m.b]: [d * 15.2, 24.6] }, hold: m.h }), step(0.3, { pass: [m.h, m.b], dho: 1 }));
     if (fx[0] === 'b' && fx[3] === 'h') return out;                                                  // the three off the handoff
-    out.push(step(0.8, { mv: { [m.s]: [d * 10.5, 26.5], [m.h]: sp('R corner') }, hold: m.b, scr: [m.s, [d * 10.5, 26.5]] }),
-      step(1, { mv: { [m.b]: [0, 19.5], [m.s]: [d * 2.2, 11.5] }, hold: m.b, hint: { drop: m.s } }));
+    out.push(step(0.8, { mv: { [m.s]: [d * 10.5, 26.5], [m.h]: sp('R corner') }, hold: m.b, scr: [m.s, [d * 10.5, 26.5]], hint: { pnr: [m.b, m.s], ph: 0 } }),
+      step(1, { mv: { [m.b]: [0, 19.5], [m.s]: [d * 2.2, 11.5] }, hold: m.b, hint: { pnr: [m.b, m.s], ph: 1, tag: [m.c, m.s] } }));
     return out;
   },
   fin: [['b', 'pnr dho', '012', '-'], ['b', 'dho spot offs', '2', 'h', 'dW'], ['b', 'cut', '0', 'h'], ['s', 'roll', '0', 'b'], ['h', 'spot', '2', 'b', 'kC'], ['c', 'spot', '2', 'b', 'kC'], ['d', 'cut roll', '0', 'b', 'k']] });
@@ -262,7 +262,7 @@ SET('hornsdho', { name: 'Horns elbow handoff', base: 4, act: 'L',
     if (fx[0] === 'v' && fx[3] === 'e') return out;                                                  // high-low on the dive
     out.push(step(0.8, { mv: { [m.v]: sp('R dunker'), [m.g]: [-d * 8.4, 26.6], [m.e]: [-d * 8.6, 24.2] }, hold: m.e }), step(0.3, { pass: [m.e, m.g], dho: 1 }));
     if (fx[0] === 'g' && fx[3] === 'e') return out;                                                  // the three off the handoff
-    out.push(step(1, { mv: { [m.g]: [-d * 6, 17], [m.e]: c.X === m.e && c.z === 2 ? sp('L wing') : [-d * 2.5, 10] }, hold: m.g }));
+    out.push(step(1, { mv: { [m.g]: [-d * 6, 17], [m.e]: c.X === m.e && c.z === 2 ? sp('L wing') : [-d * 2.5, 10] }, hold: m.g, hint: { pnr: [m.g, m.e], ph: 1, tag: [m.c, m.e] } }));
     return out;
   },
   fin: [['v', 'roll cut', '0', 'e', 'l'], ['g', 'dho pnr', '012', '-'], ['g', 'dho spot offs', '2', 'e', 'dW'], ['e', 'roll', '0', 'g'], ['e', 'pop spot', '2', 'g', 'W'],
@@ -277,7 +277,7 @@ SET('chicago', { name: 'Chicago', base: 4,
     out.push(step(0.9, { mv: { [m.x]: [d * 17, 21.5], [m.s]: [d * 10, 10] }, hold: m.b, scr: [m.s, [d * 10, 10]] }),
       step(0.7, { mv: { [m.b]: [d * 8.8, 26.4], [m.x]: [d * 11.6, 27] }, hold: m.b }), step(0.3, { pass: [m.b, m.x], dho: 1 }));
     if (fx[0] === 'x' && fx[3] === 'b') return out;
-    out.push(step(1, { mv: { [m.b]: [d * 2.2, 11], [m.s]: sp('R corner'), [m.x]: [d * 4, 19.5] }, hold: m.x, hint: { drop: m.b } }));
+    out.push(step(1, { mv: { [m.b]: [d * 2.2, 11], [m.s]: sp('R corner'), [m.x]: [d * 4, 19.5] }, hold: m.x, hint: { pnr: [m.x, m.b], ph: 1, tag: [m.c, m.b] } }));
     return out;
   },
   fin: [['x', 'dho offs spot', '2', 'b', 'dW'], ['x', 'dho pnr', '012', '-'], ['x', 'cut', '0', 'b'], ['b', 'roll', '0', 'x'], ['s', 'spot pop', '2', 'x', 'kC'], ['c', 'spot', '2', 'x', 'kC'], ['p', 'spot', '2', 'x', 'kW']] });
@@ -290,7 +290,7 @@ SET('delay', { name: 'Delay', base: 2, act: 'L',
     if (fx[0] === 'x' && fx[1].includes('cut')) return out.concat([step(0.5, { mv: { [m.x]: [-d * 21, 21.5], [m.w]: c.X === m.w ? null : sp('L wing') }, hold: m.b })]);   // denied: the backdoor
     out.push(step(0.8, { mv: { [m.b]: [-d * 8.6, 26.6], [m.x]: [-d * 12, 26] }, hold: m.b }), step(0.3, { pass: [m.b, m.x], dho: 1 }));
     if (fx[0] === 'x' && fx[3] === 'b') return out;
-    out.push(step(1, { mv: { [m.b]: c.X === m.b && c.z === 2 ? [0, 28.5] : [-d * 2.2, 11], [m.w]: c.X === m.w ? null : sp('L wing'), [m.x]: [-d * 6, 18.5] }, hold: m.x, hint: { drop: m.b } }));
+    out.push(step(1, { mv: { [m.b]: c.X === m.b && c.z === 2 ? [0, 28.5] : [-d * 2.2, 11], [m.w]: c.X === m.w ? null : sp('L wing'), [m.x]: [-d * 6, 18.5] }, hold: m.x, hint: { pnr: [m.x, m.b], ph: 1, tag: [m.c, m.b] } }));
     return out;
   },
   fin: [['x', 'dho spot offs', '2', 'b', 'dW'], ['x', 'dho pnr', '012', '-'], ['x', 'cut', '0', 'b', 'l'], ['b', 'roll', '0', 'x'], ['b', 'pop spot', '2', 'x', 'T'], ['w', 'spot', '2', 'x', 'k'], ['c', 'spot', '2', 'x', 'kC']] });
@@ -312,8 +312,8 @@ SET('zipper', { name: 'Zipper', base: 3,
       step(0.9, { mv: { [m.z]: [-d * 8.5, 11], [m.x]: [-d * 1, 28.8] }, hold: m.p, scr: [m.z, [-d * 8.5, 11]] }),
       step(0.6, { pass: [m.p, m.x], mv: { [m.z]: c.X === m.z ? null : sp('L corner') } })];
     if (fx[0] === 'x' && fx[3] === 'p') return out;
-    out.push(step(0.8, { mv: { [m.s]: ballScreen(d) }, hold: m.x, scr: [m.s, ballScreen(d)] }),
-      step(1.1, { mv: { [m.x]: [d * 8.5, 21], [m.s]: [d * 2.2, 11.5] }, hold: m.x, hint: { drop: m.s } }));
+    out.push(step(0.8, { mv: { [m.s]: ballScreen(d) }, hold: m.x, scr: [m.s, ballScreen(d)], hint: { pnr: [m.x, m.s], ph: 0 } }),
+      step(1.1, { mv: { [m.x]: [d * 8.5, 21], [m.s]: [d * 2.2, 11.5] }, hold: m.x, hint: { pnr: [m.x, m.s], ph: 1, tag: [m.p, m.s] } }));
     return out;
   },
   fin: [['x', 'offs spot dho', '2', 'p', 'T'], ['x', 'pnr', '012', '-'], ['s', 'roll', '0', 'x'], ['c', 'spot', '2', 'x', 'kC'], ['p', 'spot', '2', 'x', 'kW'], ['z', 'spot pop', '2', 'x', 'kC']] });
@@ -363,8 +363,8 @@ SET('iverson', { name: 'Iverson cut', base: 3,
       step(1, { mv: { [m.x]: [d * 17.5, 22.5], [m.w]: [d * 3, 7] }, hold: m.p, scr: [m.q, sp('R elbow')] }),
       step(0.6, { pass: [m.p, m.x], mv: { [m.w]: c.X === m.w ? null : sp('L wing'), [m.p]: c.X === m.p ? null : sp('L slot') } })];
     if (fx[0] === 'x' && fx[3] === 'p') return out;
-    out.push(step(0.8, { mv: { [m.s]: [d * 16.2, 23.4], [m.q]: [0, 28.5] }, hold: m.x, scr: [m.s, [d * 16.2, 23.4]] }),
-      step(1.1, { mv: { [m.x]: [d * 8.5, 18], [m.s]: [d * 4, 9.5] }, hold: m.x, hint: { drop: m.s } }));
+    out.push(step(0.8, { mv: { [m.s]: [d * 16.2, 23.4], [m.q]: [0, 28.5] }, hold: m.x, scr: [m.s, [d * 16.2, 23.4]], hint: { pnr: [m.x, m.s], ph: 0 } }),
+      step(1.1, { mv: { [m.x]: [d * 8.5, 18], [m.s]: [d * 4, 9.5] }, hold: m.x, hint: { pnr: [m.x, m.s], ph: 1, tag: [m.w, m.s] } }));
     return out;
   },
   fin: [['x', 'offs spot', '2', 'p', 'W'], ['x', 'pnr', '012', '-'], ['s', 'roll', '0', 'x'], ['q', 'pop spot', '2', 'x', 'T'], ['w', 'spot', '2', 'x', 'kW'], ['p', 'spot', '2', 'x', 'kW']] });
@@ -378,8 +378,8 @@ SET('ucla', { name: 'UCLA cut', base: 4,
     if (fx[0] === 'x' && fx[1].includes('cut')) return out;
     out.push(step(0.8, { mv: { [m.x]: fx[0] === 'x' && fx[1].includes('post') ? sp('R block') : sp('R corner'), [m.s]: [0, 28.5] }, hold: m.w }));
     if (fx[0] === 'w' || (fx[0] === 's' && fx[1].includes('roll'))) {
-      out.push(step(0.8, { mv: { [m.s]: [d * 16.2, 23.4] }, hold: m.w, scr: [m.s, [d * 16.2, 23.4]] }),
-        step(1, { mv: { [m.w]: [d * 8.5, 17.5], [m.s]: [d * 4, 9.5] }, hold: m.w, hint: { drop: m.s } }));
+      out.push(step(0.8, { mv: { [m.s]: [d * 16.2, 23.4] }, hold: m.w, scr: [m.s, [d * 16.2, 23.4]], hint: { pnr: [m.w, m.s], ph: 0 } }),
+        step(1, { mv: { [m.w]: [d * 8.5, 17.5], [m.s]: [d * 4, 9.5] }, hold: m.w, hint: { pnr: [m.w, m.s], ph: 1, tag: [m.c, m.s] } }));
     }
     return out;
   },
@@ -528,7 +528,9 @@ function alignOf(set, c, m) {
 /* o: {evs (the possession's events, its P first, up to the next possession), idx(id) -> 0-4 the offence, 5-9 the defence
    (each defender guarding the man of his own place), roles (the offence's five by place, role objects), from: {pos: the
    ten where they are, hold (0-9 or null), ball (where it is when nobody has it)}, prev: {how: make | dreb | steal | dead |
-   start, by (0-9)}: how the ball changed hands, spot(e) -> the shot's spot in feet, seed} */
+   start, by (0-9)}: how the ball changed hands, spot(e) -> the shot's spot in feet, seed, dins (the defending five's
+   instruction keys by place: their bigs' coverage on the ball screen, gambling, rim protection), dtac (the defending
+   team's instructions: scheme, gamble)} */
 function plan(o) {
   const evs = o.evs, P0 = evs[0], t0 = P0.t;
   const R = rng(hashOf(String(o.seed) + ':' + t0 + ':' + (P0.s || 0)));
@@ -788,7 +790,7 @@ function plan(o) {
       (f.vel = f.vel || [])[k] = v;
     }
   });
-  return { t0, t1: frames[frames.length - 1].t, frames, stops, calls };
+  return { t0, t1: frames[frames.length - 1].t, frames, stops, calls, D: defOf(o) };
 }
 
 /* ------------------------------------------------------------------ a moment --- */
@@ -806,32 +808,90 @@ function manAt(F, i, k, t) {
 const offAt = (F, t) => { const i = seg(F, t); return FIVE.map(k => manAt(F, i, k, t)); };
 /* where a ball state leaves it at its frame's time */
 const endOf = sp => (!sp ? { hold: null, at: null } : sp.h != null ? { hold: sp.h } : sp.fly ? (sp.fly.to === 'rim' ? { hold: null, at: RIM } : { hold: sp.fly.to }) : sp.pick != null ? { hold: sp.pick } : { hold: null, at: sp.at });
-/* THE DEFENCE: on the ball a yard off, between him and the basket (in the backcourt, waiting near half court); one pass
-   away up the line toward the ball; two passes away the help "i" - the higher man toward the nail, the lower on the
-   weak-side block; on a drive the nail man digs and the low man meets it at the rim; the screener's man dropping, the low
-   man tagging the roller, a trap with the nail man taking the short roll */
-function defence(off, ball, hold, hint) {
+/* THE DEFENCE, played as its own instructions say (Louie, 2026-10-15: "the visual defense is based off of what you set
+   the screen defenders to do (i.e. hedge big = hedging, contain = show and recover, drop big = drop etc.)"): on the ball
+   a yard off, between him and the basket (picked up near half court in the backcourt) - tighter for a man told to gamble,
+   a step off for one told to stay solid; one pass away up the line toward the ball (further into the passing lane for a
+   gambler); two passes away the help "i" - the higher man toward the nail, the lower on the weak-side block; on a drive
+   the help comes (harder from a man told to protect the rim, hardly at all from a foul-conservative one). The team's
+   scheme: no paint touches packs the lane, funnel leaves the shooters' men home and the rim protector waiting.
+   ON A BALL SCREEN (or a handoff) the screener's man plays HIS COVERAGE (core/instruct.js):
+     Hedge big    jumps out into the handler's path above the screen, then recovers to the roller (against the short
+                  roll it is a trap: two on the ball, the weak-side big at the nail for the short roll);
+     Contain big  (the default) shows level with the screen, then recovers;
+     Drop big     sags into the paint between the ball and the rim, giving up the pull-up (and the pop);
+   the handler's man goes over the screen and trails him, back in front as the big contains him (behind all the way
+   against a drop); the low man tags the roller while the big is out of the paint. */
+const NO_D = { cover: [], flags: [], tac: { scheme: 0, gamble: 0 } };
+/* the defending five's instructions by place (o.dins: each man's instruction keys) and the team's (o.dtac) */
+function defOf(o) {
+  const ins = Array.isArray(o.dins) ? o.dins : [], tac = o.dtac || {};
+  const has = (j, k) => { const x = ins[j]; return !!x && (x instanceof Set ? x.has(k) : Array.isArray(x) ? x.includes(k) : false); };
+  return {
+    cover: FIVE.map(j => (has(j, 'hedge') ? 'hedge' : has(j, 'drop') ? 'drop' : 'cont')),
+    flags: FIVE.map(j => ({ gam: has(j, 'gam'), sol: has(j, 'sol'), rimp: has(j, 'rimp'), rima: has(j, 'rima'), cons: has(j, 'cons') })),
+    tac: { scheme: clamp(+tac.scheme || 0, -1, 1), gamble: clamp(+tac.gamble || 0, 0, 1) }
+  };
+}
+function defence(off, ball, hold, hint, prog, D) {
+  D = D || NO_D;
+  const fl = j => D.flags[j] || {}, scheme = D.tac.scheme || 0, teamGam = (D.tac.gamble || 0) >= 0.5;
   const out = off.map((p, k) => {
-    const toR = [RIM[0] - p[0], RIM[1] - p[1]], dr = Math.hypot(toR[0], toR[1]) || 1;
-    if (k === hold) { const gap = p[1] > 47 ? Math.min(14, p[1] - 38) : dr < 8 ? 1.8 : 3.3; return [p[0] + toR[0] / dr * gap, p[1] + toR[1] / dr * gap]; }
+    const f = fl(k), gam = f.gam || teamGam, toR = [RIM[0] - p[0], RIM[1] - p[1]], dr = Math.hypot(toR[0], toR[1]) || 1;
+    if (k === hold) {
+      let gap = p[1] > 47 ? Math.min(14, p[1] - 38) : dr < 8 ? 1.8 : 3.3;
+      if (p[1] <= 47 && dr >= 8) gap += (gam ? -0.9 : 0) + (f.sol ? 0.4 : 0) + 1.2 * Math.max(0, scheme);
+      return [p[0] + toR[0] / dr * gap, p[1] + toR[1] / dr * gap];
+    }
     if (p[1] > 40) return [p[0] * 0.7, clamp(p[1] - 14, 16, 40)];
     const b = ball || [0, 26], ballSide = Math.abs(b[0]) < 5 || Math.sign(p[0]) === Math.sign(b[0]);
-    if (ballSide && dist(p, b) < 26) {
-      if (p[1] < 10 && Math.abs(p[0]) > 18) return lerp(p, RIM, 0.12);                      // the strong-side corner: home
-      return lerp(lerp(p, b, 0.28), RIM, 0.16);
-    }
-    return p[1] < 14 ? lerp(p, [Math.sign(p[0] || 1) * 5.5, 6.5], 0.62) : lerp(p, [Math.sign(p[0] || 1) * 2.5, 19], 0.58);
+    let q;
+    if (ballSide && dist(p, b) < 26) q = p[1] < 10 && Math.abs(p[0]) > 18 ? lerp(p, RIM, 0.12) : lerp(lerp(p, b, gam ? 0.4 : 0.28), RIM, gam ? 0.1 : 0.16);
+    else q = p[1] < 14 ? lerp(p, [Math.sign(p[0] || 1) * 5.5, 6.5], 0.62) : lerp(p, [Math.sign(p[0] || 1) * 2.5, 19], 0.58);
+    if (scheme > 0) q = lerp(q, [q[0] * 0.72, Math.min(q[1], 14)], 0.35 * scheme);
+    else if (scheme < 0) q = lerp(q, lerp(p, RIM, 0.12), 0.35 * -scheme);
+    return q;
   });
+  /* funnel: the rim protector (the centre's man) waits at the rim */
+  if (scheme < 0 && hold !== 4) out[4] = lerp(out[4], [0, 8.5], 0.4 * -scheme);
   if (ball && hold != null && hold <= 4 && Math.abs(ball[0]) < 10 && ball[1] < 16) {
-    off.forEach((p, k) => { if (k === hold) return; const far = dist(p, ball) > 10; out[k] = lerp(out[k], lerp(ball, RIM, 0.5), far ? 0.38 : 0.12); });
-  } else if (hint && hint.help && ball) off.forEach((p, k) => { if (k !== hold && dist(p, ball) > 12) out[k] = lerp(out[k], lerp(ball, RIM, 0.55), 0.3); });
-  if (hint) {
-    if (hint.drop != null && ball) out[hint.drop] = lerp(RIM, ball, Math.min(0.42, 11 / Math.max(1, dist(RIM, ball))));
-    if (hint.tag && hint.tag[0] != null && hint.tag[1] != null) out[hint.tag[0]] = lerp(off[hint.tag[1]], RIM, 0.45);
-    if (hint.trap != null && hold != null && hold <= 4) out[hint.trap] = [off[hold][0] + 2.2 * (Math.sign(off[hint.trap][0] - off[hold][0]) || 1), off[hold][1] - 1.6];
-    if (hint.nail != null) out[hint.nail] = [0, 17.5];
-  }
+    off.forEach((p, k) => {
+      if (k === hold) return;
+      const f = fl(k), far = dist(p, ball) > 10;
+      const w = f.cons ? (far ? 0.14 : 0.05) : f.rimp || f.rima ? (far ? 0.6 : 0.25) : (far ? 0.38 : 0.12);
+      out[k] = lerp(out[k], lerp(ball, RIM, 0.5), w);
+    });
+  } else if (hint && hint.help && ball) off.forEach((p, k) => { if (k !== hold && dist(p, ball) > 12) out[k] = lerp(out[k], lerp(ball, RIM, 0.55), fl(k).cons ? 0.12 : 0.3); });
+  if (hint && hint.pnr && hint.pnr[0] != null && hint.pnr[1] != null && hint.pnr[0] !== hint.pnr[1]) cover(out, off, ball, hint, prog == null ? 1 : prog, D);
+  else if (hint && hint.tag && hint.tag[0] != null && hint.tag[1] != null) out[hint.tag[0]] = lerp(off[hint.tag[1]], RIM, 0.45);
   return out;
+}
+/* a ball screen's coverage, moment by moment: ph 0 the screen being set, 1 the handler coming off it, 2 the pass out of
+   the trap (p: how far through the moment) */
+function cover(out, off, ball, hint, p, D) {
+  const h = hint.pnr[0], s = hint.pnr[1], cov = D.cover[s] || 'cont', H = off[h], Sc = off[s];
+  const d0 = [H[0] - Sc[0], H[1] - Sc[1]], n0 = Math.hypot(d0[0], d0[1]) || 1, dv = [d0[0] / n0, d0[1] / n0];
+  const toR = [RIM[0] - H[0], RIM[1] - H[1]], nR = Math.hypot(toR[0], toR[1]) || 1;
+  const back = lerp(Sc, RIM, 0.3), B = ball || H;
+  if (hint.ph === 0) {
+    /* waiting for it: up beside the screen to hedge, level with it to show, under it to drop */
+    out[s] = cov === 'hedge' ? [Sc[0] + dv[0] * 1.2, Sc[1] + 1.6] : cov === 'drop' ? lerp(RIM, Sc, 0.55) : lerp(lerp(Sc, H, 0.15), RIM, 0.04);
+    return;
+  }
+  const trap = !!hint.short && cov === 'hedge';
+  /* the hedge: in front of the handler, between him and the basket (two men on the ball); the show: level with the
+     screen, beside his own man; the drop: back in the paint between the ball and the rim */
+  const inFront = [H[0] + toR[0] / nR * 2.2, H[1] + toR[1] / nR * 2.2], level = lerp(lerp(Sc, H, 0.3), RIM, 0.04);
+  const drop = lerp(RIM, B, Math.min(0.42, 11 / Math.max(1, dist(RIM, B))));
+  out[s] = cov === 'hedge' ? (trap || p < 0.55 ? inFront : lerp(inFront, back, (p - 0.55) / 0.45)) : cov === 'drop' ? drop : p < 0.35 ? level : lerp(level, back, (p - 0.35) / 0.65);
+  /* the handler's man: over the screen and trailing him; in front of him again once the big has contained him and gone
+     back (behind all the way against a drop); on a trap, the second man on the ball */
+  const trail = [H[0] - dv[0] * 2.4, H[1] - dv[1] * 2.4 + 0.6], guard = lerp(H, RIM, 0.14);
+  out[h] = trap ? [H[0] - dv[0] * 1.6, H[1] + 1.5] : cov === 'drop' ? trail : cov === 'hedge' ? lerp(trail, guard, clamp((p - 0.45) / 0.55, 0, 1)) : lerp(trail, guard, clamp(p * 1.4, 0, 1));
+  /* the low man tags the roller while the big is out of the paint; on a trap the weak-side big takes the nail */
+  const bigOut = cov === 'hedge' || (cov === 'cont' && p < 0.7);
+  if (hint.tag && hint.tag[0] != null && hint.tag[1] != null && bigOut && hint.tag[0] !== h && hint.tag[0] !== s) out[hint.tag[0]] = lerp(off[hint.tag[1]], RIM, 0.45);
+  if (trap && hint.nail != null && hint.nail !== h && hint.nail !== s) out[hint.nail] = [0, 17.5];
 }
 function at(pl, t, hp) {
   const F = pl.frames;
@@ -860,8 +920,8 @@ function at(pl, t, hp) {
   /* the defence: they react a moment late */
   const lagT = Math.max(F[0].t, t - 0.3), off2 = offAt(F, lagT);
   const bAt = hold != null && hold <= 4 ? off2[hold] : ball;
-  const hint = b ? b.hint : a.hint;
-  const def = defence(off2, bAt, hold != null && hold <= 4 ? hold : null, hint);
+  const hint = b ? b.hint : a.hint, prog = b ? clamp((t - a.t) / Math.max(1e-6, b.t - a.t), 0, 1) : 1;
+  const def = defence(off2, bAt, hold != null && hold <= 4 ? hold : null, hint, prog, pl.D);
   const ds = (b && b.dset) || (!b && a.dset) || null;
   if (ds) Object.keys(ds).forEach(j => { def[+j] = ds[j].slice(); });
   const call = pl.calls.filter(c => c.t <= t + 1e-6).slice(-1)[0] || null;
@@ -871,7 +931,7 @@ function at(pl, t, hp) {
 function atStop(pl, s, hp) {
   const x = ease(clamp(hp / 0.3, 0, 1));
   const off = FIVE.map(k => lerp(s.from[k], s.lineup[k], x));
-  const def = defence(off, off[s.X], s.X, null);
+  const def = defence(off, off[s.X], s.X, null, 1, pl.D);
   Object.keys(s.dset).forEach(j => { def[+j] = s.dset[j].slice(); });
   let hold = s.X, ball = null, air = 0;
   if (hp > 0.3) {
@@ -881,5 +941,5 @@ function atStop(pl, s, hp) {
   return { off, def, hold, ball, air, pass: null, scr: null, call: null, fixed: Object.keys(s.dset).map(Number), ft: true };
 }
 
-return { plan, at, shotSpot, kindOf, people, BOOK, COURT, SPOT, spot, RIM };
+return { plan, at, shotSpot, kindOf, people, defOf, BOOK, COURT, SPOT, spot, RIM };
 }));

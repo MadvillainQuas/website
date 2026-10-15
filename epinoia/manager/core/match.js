@@ -101,7 +101,7 @@ function sidesOf(T, X) {
     if (cache.has(key)) return cache.get(key);
     const five = ids.map((id, k) => ({ card: T.cards.get(String(id)), k, role: R ? (R[k] || null) : undefined })).filter(x => x.card);
     if (five.length !== 5) throw new Error('a five is missing a player: ' + ids.join(','));
-    const side = E.sideOf(five, { mu: X.L.rates, ref: X.ref, tac: tacN, G: X.G || 40, zones: X.L.zones, dTr: X.L.dTr || 0, form: T.form || null, ins: T.ins || null });
+    const side = E.sideOf(five, { mu: X.L.rates, ref: X.ref, tac: tacN, G: X.G || 40, zones: X.L.zones, dTr: X.L.dTr || 0, form: T.form || null, ins: T.ins || null, cov: T.cov || null, covMix: X.covMix || null });
     side.off0 = side.off; side.def0 = side.def;
     if (T.identity && T.identity.length) { const P = E.applyIdentity(side, T.identity, X.L); side.off = P.off; side.def = P.def; }
     side.key = key;
@@ -381,14 +381,16 @@ function menOf(M, mm, off) {
   const pz0 = z => (z === 'rim' ? o0.pRim : z === 'mid' ? o0.pMid : o0.p3), pzR = z => (z === 'rim' ? r.pRim : z === 'mid' ? r.pMid : r.p3);
   return mm.sO.men.map(m => {
     const pn = pen(O.en[m.id]);
+    /* his own part of the ball-screen coverage he meets (engine.js interact: coverage), beyond the five's */
+    const cv = r.cov ? r.cov.get(m.id) : null;
     const mix = {}; let ms = 0;
     ZN.forEach(z => { mix[z] = Math.max(1e-6, m.m[z] * mixR(z) / Math.max(1e-6, mix0(z))); ms += mix[z]; });
     ZN.forEach(z => { mix[z] /= ms; });
-    const p = {}; ZN.forEach(z => { p[z] = logit(pzR(z)) + logit(m.p[z]) - logit(pz0(z)) - pn + 0.6 * defPen; });
+    const p = {}; ZN.forEach(z => { p[z] = logit(pzR(z)) + logit(m.p[z]) - logit(pz0(z)) - pn + 0.6 * defPen + (cv ? cv.p[z] : 0); });
     const ratio = (a, b) => (b > 1e-9 ? a / b : 1);
     let sf = r.sfoul * ratio(m.sfoul != null ? m.sfoul : m.trip * 0.6, o0.sfoul), bo = r.bonus * ratio(m.bonus != null ? m.bonus : m.trip * 0.4, o0.bonus);
     if (sf + bo > 0.6) { const q = 0.6 / (sf + bo); sf *= q; bo *= q; }
-    return { id: m.id, k: m.k, s: m.s, tovL: logit(r.tov) + logit(m.tov) - logit(o0.tov) + 0.8 * pn, sf, bo, mix, pL: p, ft: m.ft,
+    return { id: m.id, k: m.k, s: m.s, tovL: logit(r.tov) + logit(m.tov) - logit(o0.tov) + 0.8 * pn + (cv ? cv.tov : 0), sf, bo, mix, pL: p, ft: m.ft,
       and1: clamp(r.and1 * ratio(m.and1 != null ? m.and1 : r.and1, o0.and1), 0, 0.3), orb: m.orb * (1 - 0.5 * pn), ast: m.ast * (1 - 0.3 * pn), un: m.un, tr: m.tr || 0.15, hw: m.hw || 0 };
   });
 }

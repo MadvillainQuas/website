@@ -15,8 +15,10 @@
    rates a player for a role; an instruction he does not suit is allowed, and costs.
 
      roleOf(card, slot)        'g' guard, 'w' wing, 'b' big: his listed position (slot 0..4), else his minutes'
-     list(role)                the instructions a role has, in their sections (In possession, Out of possession)
-     norm(entry, role)         {u: -2..2, keys: [..]} kept to one of each choice and to what the role allows
+     list(role, also)          the instructions a role has, in their sections (In possession, Out of possession), and
+                               `also`'s (keys allowed beyond the role's: a big's coverage at a wing's place, COVER)
+     norm(entry, role, also)   {u: -2..2, keys: [..]} kept to one of each choice and to what the role (and `also`) allows
+     COVER                     the coverage on a ball screen (hedge, cont, drop): a big's, and his wherever he plays
      fit(key, card, ref)       {s: 0..1, word, why}: how well he suits it
      (the bundles of instructions this once offered as roles are core/roles.js's roles at each position now)
      forEngine(entries, cards) Map id -> {u, k: Set} for engine.js sideOf (X.ins)
@@ -104,6 +106,7 @@ const LIST = [
     how: 'Stays out of foul trouble: fewer fouls, fewer blocks and less rim protection' }
 ];
 const BY = new Map(LIST.map(d => [d.k, d]));
+const COVER = LIST.filter(d => d.x === 'cover').map(d => d.k);
 const SEC = { ip: 'In possession', op: 'Out of possession' };
 const ROLE = { g: 'Guard', w: 'Wing', b: 'Big' };
 const U_MAX = 2;
@@ -113,18 +116,18 @@ function roleOf(card, slot) {
   const k = isNum(slot) ? slot : card && isNum(card.pos) ? Math.round(card.pos) - 1 : 2;
   return k <= 1 ? 'g' : k === 2 ? 'w' : 'b';
 }
-const list = role => LIST.filter(d => d.roles.includes(role));
+const list = (role, also) => LIST.filter(d => d.roles.includes(role) || !!(also && also.includes(d.k)));
 
 /* KEPT TO WHAT HE MAY DO: the role's own instructions ('*': any - what the engine is handed, which keeps to each five's
    roles itself), one of each choice (the later wins), nothing that needs another that is off, the usage level -2..2
    in whole steps */
-function norm(entry, role) {
+function norm(entry, role, also) {
   const e = entry || {}, r = role || e.role || 'w';
   const u = clamp(Math.round(+e.u || 0), -U_MAX, U_MAX);
   const keep = [], taken = new Map();
   (Array.isArray(e.ins) ? e.ins : Array.isArray(e.keys) ? e.keys : []).forEach(k => {
     const d = BY.get(k);
-    if (!d || (r !== '*' && !d.roles.includes(r))) return;
+    if (!d || (r !== '*' && !d.roles.includes(r) && !(also && also.includes(k)))) return;
     if (d.x) { const was = taken.get(d.x); if (was) keep.splice(keep.indexOf(was), 1); taken.set(d.x, k); }
     if (!keep.includes(k)) keep.push(k);
   });
@@ -132,8 +135,8 @@ function norm(entry, role) {
   return { u, keys: out };
 }
 /* a choice made: k on (its choice's other options off), or off */
-function toggle(entry, role, k, on) {
-  const cur = norm(entry, role), d = BY.get(k);
+function toggle(entry, role, k, on, also) {
+  const cur = norm(entry, role, also), d = BY.get(k);
   let keys = cur.keys.filter(x => x !== k);
   if (on && d) {
     if (d.x) keys = keys.filter(x => BY.get(x).x !== d.x);
@@ -142,7 +145,7 @@ function toggle(entry, role, k, on) {
   }
   /* what needed k goes with it */
   if (!on) keys = keys.filter(x => BY.get(x).needs !== k);
-  return norm({ u: cur.u, ins: keys }, role);
+  return norm({ u: cur.u, ins: keys }, role, also);
 }
 
 /* ------------------------------------------------------------------ how well he suits it --- */
@@ -271,5 +274,5 @@ function forEngine(entries, cardOf, slotOf) {
 }
 const keyOf = ins => (ins && ins.size ? [...ins.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([id, x]) => id + ':' + x.u + ':' + [...x.k].sort().join('.')).join('|') : '');
 
-return { LIST, BY, SEC, ROLE, U_MAX, roleOf, list, norm, toggle, traits, fit, forEngine, keyOf, WORDS };
+return { LIST, BY, SEC, ROLE, U_MAX, COVER, roleOf, list, norm, toggle, traits, fit, forEngine, keyOf, WORDS };
 }));

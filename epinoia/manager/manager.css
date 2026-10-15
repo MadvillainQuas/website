@@ -664,6 +664,17 @@ html[data-theme="light"] .mg-mx-sb .mid{ background:rgba(255,255,255,.6) }
   color:var(--mg-ink-3); background:var(--mg-glass-2); border:1px solid var(--mg-edge) }
 .mg-mx-rt.a1, .mg-mx-rt.a2, .mg-mx-rt.a3, .mg-mx-rt.a4{ color:#071233; border-color:transparent }
 .mg-mx-rt.a1{ background:var(--mg-a1); color:#fff } .mg-mx-rt.a2{ background:var(--mg-a2) } .mg-mx-rt.a3{ background:var(--mg-a3) } .mg-mx-rt.a4{ background:var(--mg-a4) }
+/* practice games (#/practice, administrators): the clubs to play */
+.mg-prac{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:8px }
+.mg-prac-club{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:var(--mg-glass); border:1px solid var(--mg-edge);
+  color:inherit; font:inherit; font-size:13.5px; text-align:left; cursor:pointer; transition:border-color .15s, background .15s }
+.mg-prac-club:hover, .mg-prac-club:focus-visible{ border-color:var(--mg-edge-2); background:var(--mg-glass-2) }
+.mg-prac-club .mg-crest, .mg-prac-club .mg-badge{ flex:none }
+/* a big's coverage on a ball screen, on his row (views/match.js COVL) */
+.mg-mx-cov{ display:inline-block; align-self:flex-start; padding:1px 6px; border-radius:6px; font-size:9.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; vertical-align:1px;
+  border:1px solid var(--mg-edge-2); color:var(--mg-ink-3) }
+.mg-mx-cov.drop{ color:#5cd6ff; border-color:rgba(92,214,255,.45) } .mg-mx-cov.hedge{ color:#ffc65c; border-color:rgba(255,198,92,.5) }
+html[data-theme="light"] .mg-mx-cov.drop{ color:#0a6f99 } html[data-theme="light"] .mg-mx-cov.hedge{ color:#9a5c00 }
 .mg-mx-fl{ display:inline-flex; gap:2px } .mg-mx-fl i{ width:6px; height:6px; border-radius:50%; background:var(--mg-edge-2) } .mg-mx-fl i.on{ background:var(--mg-warn) } .mg-mx-fl.trouble i.on{ background:var(--mg-bad) }
 /* the court */
 .mg-mx-courtwrap{ position:relative; flex:1 1 auto; min-height:220px; border-radius:16px; overflow:hidden; border:1px solid var(--mg-edge-2);

@@ -474,9 +474,11 @@ function sideOf(five, X) {
     const L0 = p.nat || p.R, dl = k => p.st * ((p.R[k] || 0) - (L0[k] || 0));
     p.ld = p.R.gen ? { use: 0, init: 0, pass: 0, crash: 0, run: 0, def: 0 } : { use: dl('use'), init: dl('init'), pass: dl('pass'), crash: dl('crash'), run: dl('run'), def: dl('def') };
     /* an instruction his role rules out (roles.locks), or one that is not his role's kind (a guard's at the four), is not
-       his to follow there */
+       his to follow there - but his coverage on a ball screen goes wherever he plays (a big in a wing's role at the four
+       still guards his screener): it is about the man he guards, and how much that man screens decides what it does
+       (coverage), as his own game's coverage does */
     const lock = RL.locks(p.R), fam = p.R.family, I = p.I;
-    p.has = key => { if (!(I && I.k && I.k.has(key)) || lock.has(key)) return false; const d = INSD && INSD.BY ? INSD.BY.get(key) : null; return !d || d.roles.includes(fam); };
+    p.has = key => { if (!(I && I.k && I.k.has(key)) || lock.has(key)) return false; const d = INSD && INSD.BY ? INSD.BY.get(key) : null; return !d || d.x === 'cover' || d.roles.includes(fam); };
   });
   const roled = P.some(p => p.R);
   const ON = key => P.some(p => p.has(key));
@@ -989,12 +991,14 @@ function sideOf(five, X) {
       /* his role here: its key, his share of the five's time on the ball (and what he wanted of it), the pressure he puts
          on the rim, his true usage */
       role: p.R ? p.R.key : null, onb: roled ? p.onb : null, init: roled ? p.init : null, lost: roled ? p.lost : 0, forced: roled ? p.forced : 0,
-      press: p.press, tusg: p.tusg })),
+      press: p.press, tusg: p.tusg,
+      /* what a ball-screen coverage meets in him, and the coverage he plays as a big (interact: coverage) */
+      cv: covTraits(p, ref), cov: p.has('hedge') ? 'hedge' : p.has('drop') ? 'drop' : p.has('cont') ? 'cont' : (X.cov && X.cov.get(String(p.c.id))) || 'cont' })),
     five: { spacing, vertical, passing: A5, run: trRel, prot, perim, stl: stl5, blk: blk5, drb: drb5, orb: orb5, create: create5,
       /* the roles together (a five with roles): the ball they ask for, the paint pressure, the screens, the pick-and-roll */
       roled, ball: I5, ballMax: ROLEK.ballMax, ballMin: ROLEK.ballMin, deficit, pressure: P5, pRef: ROLEK.pRef, screens: S5, sRef: ROLEK.sRef, pnr: Lpnr, hub: hub5,
       notes: roled ? roleNotes(P, { I5, deficit, P5, S5, Lpnr, hub5, spacing, A5 }) : [] },
-    tac
+    tac, covMix: X.covMix || null
   };
 }
 
@@ -1256,15 +1260,144 @@ function mixRates(list) {
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function hashOf(s) { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
 
-/* WHAT ONE FIVE'S SCHEME DOES TO THE OTHER FIVE'S SHOOTERS: a packed paint (the defence's scheme > 0) costs the rim
+/* WHAT A BALL-SCREEN COVERAGE MEETS IN A MAN (Louie, 2026-10-15: "drop coverage hurts rim-bound players with no
+   inbetween game who are set to slashing", "how hedging affects ball handlers w/ weaker handles"): how much of his game
+   comes off ball screens as the handler (x: his time on the ball) and as the screener (y: rolling, popping, short-rolling,
+   handing off), and against the league's handlers - each on a scale where ±1 is about their 10th/90th percentile,
+   measured on four leagues' rotations 2025-26 (17,100 stints): his ball security FOR HIS TIME ON THE BALL (turnovers rise
+   with it: logit 1.1 a unit of it), his passing, how rim-bound he is, his mid-range making and his pull-up three */
+const COV = { tovA: -0.252, tovB: 1.105, tovS: 0.25, pass0: 1.03, passS: 0.25, rimS: 0.5, mid0: -0.02, midS: 0.22, pullS: 0.3 };
+function covTraits(p, ref) {
+  const c = p.c, onb = isNum(p.onb) ? p.onb : p.natInit, d = p.R ? p.R.diet : null;
+  const scr = d ? (d.roll || 0) + (d.pop || 0) + (d.short || 0) : 0;
+  const y = d ? scr + 0.5 * (d.dho || 0) : (p.k === 4 ? 0.3 : p.k === 3 ? 0.2 : 0.03);
+  const popF = d ? (scr > 0 ? (d.pop || 0) / scr : 0) : clamp(((c.mixRel ? c.mixRel.three : 1) - 0.4) / 1.2, 0, 1);
+  const shortF = d && scr > 0 ? (d.short || 0) / scr : 0;
+  const zs = (v, sd) => clamp(v / sd, -1.5, 2);
+  const un3 = c.un && isNum(c.un.three) ? c.un.three : (ref && ref.un ? ref.un.three : 0.12), un0 = ref && ref.un ? Math.max(0.02, ref.un.three) : 0.12;
+  return {
+    x: clamp(1.5 * (isNum(onb) ? onb : 0.2), 0, 0.65), y: clamp(y, 0, 0.8), popF: clamp(popF, 0, 1), shortF: clamp(shortF, 0, 1),
+    loose: zs((isNum(c.off.dTov) ? c.off.dTov : 0) - (COV.tovA + COV.tovB * (isNum(onb) ? onb : 0.2)), COV.tovS),
+    pass: zs(p.passQ - COV.pass0, COV.passS), rim: zs((c.mixRel ? c.mixRel.rim : 1) - 1, COV.rimS),
+    mid: zs((isNum(c.off.dMid) ? c.off.dMid : 0) - COV.mid0, COV.midS),
+    pull: zs((c.p3Rel || 1) * (0.5 + 0.5 * clamp(un3 / un0, 0, 3)) - 1, COV.pullS), p3: c.p3Rel || 1, passQ: p.passQ,
+    /* as the screener's man: how well he plays a drop (his rim protection) and a hedge (his feet) - coverQ */
+    rp: coverQ(c, ref).rp, mq: coverQ(c, ref).mq
+  };
+}
+/* A BIG AS THE SCREENER'S MAN: the coverage read from his game, and how well he plays each - a drop as well as he protects
+   the rim (his blocks against his position's, the rim points he saves on the floor: season.js rim on/off), a hedge as
+   quick as his feet (his steals against his position's) */
+function coverQ(c, ref) {
+  const C = CARDS(), at = st => (C && C.atPos && ref ? C.atPos(ref, c.pos, st) : null);
+  const bq = c.def && isNum(c.def.blk) && at('blk_pct') > 0 ? c.def.blk / at('blk_pct') : 1, sq = c.def && isNum(c.def.stl) && at('stl_pct') > 0 ? c.def.stl / at('stl_pct') : 1;
+  const save = c.def && isNum(c.def.rimSave) ? c.def.rimSave : 0;
+  const rp = clamp(0.5 + 0.5 * clamp(bq, 0.1, 4) + 0.05 * clamp(save, -4, 8), 0.5, 1.8), mq = clamp(0.5 + 0.5 * clamp(sq, 0.2, 3), 0.5, 1.8);
+  const cov = !(c.pos >= 3.5) ? 'cont' : (bq >= 1.2 || save >= 2.5) && sq < 1.15 ? 'drop' : sq >= 1.2 && bq < 1.2 ? 'hedge' : 'cont';
+  return { cov, rp, mq };
+}
+/* THE COVERAGE A REAL CLUB'S BIG PLAYS, read from his game (FM's opponents have their tactics too; Louie, 2026-10-15:
+   "opponent has a good drop big with good rim defense"): a rim protector who does not move far from it drops, a big with
+   quick feet who does not block much hedges, the others contain. His club's numbers already hold what its coverage does
+   on average: only what it does against particular handlers is added (interact: coverage) */
+function inferCover(c, ref) { return c ? coverQ(c, ref).cov : 'cont'; }
+/* A LEAGUE'S OWN COVERAGE: the drop and the hedge its bigs play, on their minutes and as well as each plays it - what its
+   clubs' numbers already hold, so a coverage is measured against it (four leagues 2025-26: about 0.36 and 0.07) */
+const COV_MIX = { drop: 0.36, hedge: 0.07 };
+function coverMix(rows, cards, ref) {
+  let w = 0, dr = 0, hd = 0;
+  (rows || []).forEach(r => {
+    const c = cards && cards.get(String(r.id)), m = +r.min || 0;
+    if (!c || !(c.pos >= 3.5) || !(m > 0)) return;
+    const q = coverQ(c, ref);
+    w += m; if (q.cov === 'drop') dr += m * q.rp; else if (q.cov === 'hedge') hd += m * q.mq;
+  });
+  return w > 0 ? { drop: dr / w, hedge: hd / w } : Object.assign({}, COV_MIX);
+}
+/* THE BALL-SCREEN COVERAGE AGAINST THESE HANDLERS AND SCREENERS (each big's coverage: his own instruction, or the one his
+   club plays with him): a handler meets the coverage of the men guarding his screeners, as often as each screens - on the
+   plays he runs off them (x) - and every effect is against THE LEAGUE'S OWN COVERAGE (coverMix: its clubs' numbers
+   already hold it), so a club facing the usual mix is untouched.
+     DROP (the big back at the rim): a handler's finishes at the rim are harder, as hard as the dropping big protects it -
+       and less so when the screener pops (the big dragged out of the paint: the stretch big's point); the pull-up and the
+       floater are there for him (the deeper the big, the more), and the pull-up three for a man who takes them. Even
+       for a handler with the league's pick-and-roll shot mix; a rim-bound one with no in-between game pays (more of his
+       shots at the rim, few and poor from mid-range), a pull-up shooter gains. As the screener: a roller finishes into
+       the rim protector, a popper is open behind him.
+     HEDGE (the big jumping out, as quick as his feet): loose handles and a poor passer turn it over, a sure-handed passer
+       hardly; it takes the pull-up away; the roller - and a short roller making the play - gets the 4-on-3, the more so
+       for a good passer.
+     CONTAIN: the even middle.
+   o's men and d's in the order of their places (each guarding his own place's man). */
+const COVK = { rim: 0.30, mid: 0.12, pull3: 0.06, hedge: 0.30, pull: 0.06, roll: 0.35, pop: 0.30, roll4: 0.20, short: 0.12 };
+function coverage(o, d) {
+  const OM = o && o.men, DM = d && d.men;
+  if (!OM || !DM) return null;
+  /* against the league's own coverage (none known: against none, so only a coverage played counts) */
+  const mix = d.covMix || { drop: 0, hedge: 0 }, D0 = mix.drop || 0, H0 = mix.hedge || 0, D0R = 0.9 * D0;
+  if (!(D0 > 0 || H0 > 0) && !DM.some(m => m.cov && m.cov !== 'cont')) return null;
+  const y = OM.map(m => (m.cv ? m.cv.y : 0));
+  const seen = i => {
+    let t = 0, hd = 0, dS = 0, dR = 0;
+    OM.forEach((m, j) => {
+      if (j === i || !(y[j] > 0)) return;
+      t += y[j];
+      const D = DM[j] || {}, q = D.cv || {};
+      if (D.cov === 'hedge') hd += y[j] * (q.mq || 1);
+      else if (D.cov === 'drop') { dS += y[j] * (q.rp || 1); dR += y[j] * (q.rp || 1) * (1 - 0.6 * (m.cv ? m.cv.popF : 0)); }
+    });
+    return t > 0 ? { h: hd / t - H0, dS: dS / t - D0, dR: dR / t - D0R } : { h: 0, dS: 0, dR: 0 };
+  };
+  let pw = 0, ps = 0;
+  OM.forEach(m => { if (m.cv) { pw += m.cv.x; ps += m.cv.x * clamp(m.cv.passQ, 0.5, 1.8); } });
+  const passH = pw > 0 ? ps / pw : 1;
+  return OM.map((m, i) => {
+    const t = m.cv, e = { tov: 0, p: { rim: 0, mid: 0, three: 0 } };
+    if (!t) return e;
+    const c = seen(i), x = t.x;
+    e.p.rim -= COVK.rim * x * c.dR;
+    e.p.mid += COVK.mid * x * c.dS;
+    e.p.three += COVK.pull3 * x * c.dS * clamp(t.pull, -0.5, 1.5);
+    const pu = Math.max(0, t.mid + t.pull);
+    e.tov += COVK.hedge * c.h * x * (0.6 * t.loose - 0.45 * t.pass);
+    e.p.mid -= COVK.pull * c.h * x * pu; e.p.three -= COVK.pull * c.h * x * pu;
+    /* as the screener, against his own man's coverage (and the league's) */
+    if (t.y > 0) {
+      const Dm = DM[i] || {}, dq = Dm.cv || {}, rollF = Math.max(0, 1 - t.popF - t.shortF);
+      const od = (Dm.cov === 'drop' ? dq.rp || 1 : 0) - D0, oh = (Dm.cov === 'hedge' ? dq.mq || 1 : 0) - H0;
+      e.p.rim -= COVK.roll * t.y * rollF * od;
+      e.p.three += COVK.pop * t.y * t.popF * clamp(t.p3, 0.6, 1.5) * od;
+      e.p.rim += COVK.roll4 * t.y * rollF * clamp(passH, 0.6, 1.6) * oh;
+      ZONES.forEach(z => { e.p[z] += COVK.short * t.y * t.shortF * clamp(t.passQ, 0.6, 1.6) * oh; });
+    }
+    return e;
+  });
+}
+/* WHAT ONE FIVE'S DEFENCE DOES TO THE OTHER FIVE IN PARTICULAR: a packed paint (the defence's scheme > 0) costs the rim
    makes of a five that cannot space it and is punished by one that can (SYN.pack a unit of spacing from the league's
-   five); r is the offence's blended rates (winsim matchup), o the offence's side, d the defence's */
+   five); the ball-screen coverage against these handlers and screeners (coverage: the five's change here, each man's
+   difference from it in out.cov for core/match.js). r is the offence's blended rates (winsim matchup), o the offence's
+   side, d the defence's */
 function interact(r, o, d) {
+  let out = r;
   const pack = d && d.tac ? Math.max(0, d.tac.scheme || 0) : 0;
-  if (!(pack > 0) || !o || !o.five) return r;
-  const out = Object.assign({}, r), sp = clamp(o.five.spacing - 1, -0.8, 0.8);
-  out.pRim = expit(logit(r.pRim) + SYN.pack * pack * sp);
-  out.p2 = expit(logit(r.p2) + SYN.pack * pack * sp * (r.mixRim / Math.max(0.01, r.mixRim + r.mixMid)));
+  if (pack > 0 && o && o.five) {
+    out = Object.assign({}, r);
+    const sp = clamp(o.five.spacing - 1, -0.8, 0.8);
+    out.pRim = expit(logit(r.pRim) + SYN.pack * pack * sp);
+    out.p2 = expit(logit(r.p2) + SYN.pack * pack * sp * (r.mixRim / Math.max(0.01, r.mixRim + r.mixMid)));
+  }
+  const cv = coverage(o, d);
+  if (cv) {
+    if (out === r) out = Object.assign({}, r);
+    const sh = o.men.map(m => (isNum(m.s) ? m.s : 0.2)), S5 = sh.reduce((a, v) => a + v, 0) || 1;
+    const dT = o.men.reduce((a, m, i) => a + sh[i] * cv[i].tov, 0) / S5, dz = {};
+    ZONES.forEach(z => { let w = 0, v = 0; o.men.forEach((m, i) => { const ww = sh[i] * (m.m && isNum(m.m[z]) ? m.m[z] : 1 / 3); w += ww; v += ww * cv[i].p[z]; }); dz[z] = w > 0 ? v / w : 0; });
+    out.tov = expit(logit(out.tov) + dT);
+    out.pRim = expit(logit(out.pRim) + dz.rim); out.pMid = expit(logit(out.pMid) + dz.mid); out.p3 = expit(logit(out.p3) + dz.three);
+    out.p2 = expit(logit(out.p2) + (dz.rim * out.mixRim + dz.mid * out.mixMid) / Math.max(0.01, out.mixRim + out.mixMid));
+    out.cov = new Map(o.men.map((m, i) => [m.id, { tov: cv[i].tov - dT, p: { rim: cv[i].p.rim - dz.rim, mid: cv[i].p.mid - dz.mid, three: cv[i].p.three - dz.three } }]));
+  }
   return out;
 }
 /* a team in a game: {id, segs: [{t0, t1, ids, tac}], cards: Map id -> card, form?: Map}. X: {L, ref, seed, G, mins?} */
@@ -1278,7 +1411,7 @@ function prepareSides(T, X, G) {
     if (cache.has(key)) return cache.get(key);
     const five = s.ids.map((id, k) => ({ card: T.cards.get(String(id)), k, role: roles ? (roles[k] || null) : undefined })).filter(x => x.card);
     if (five.length !== 5) throw new Error('a five is missing a player: ' + s.ids.join(','));
-    const side = sideOf(five, { mu: X.L.rates, ref: X.ref, tac, mins, form: T.form || X.form, G, zones: X.L.zones, dTr: X.L.dTr || 0, ins: T.ins || null });
+    const side = sideOf(five, { mu: X.L.rates, ref: X.ref, tac, mins, form: T.form || X.form, G, zones: X.L.zones, dTr: X.L.dTr || 0, ins: T.ins || null, cov: T.cov || null, covMix: X.covMix || null });
     /* the five's own rates before its club's identity: each man's rates are read against them (core/match.js) */
     side.off0 = side.off; side.def0 = side.def;
     if (T.identity && T.identity.length) {
@@ -1514,6 +1647,6 @@ function pbp(stretches, trace, X, G, R, RT) {
   return { box: out, events, poss };
 }
 
-return { use, sim: () => SIM(), styleOf, sideOf, handlerWeights, applyIdentity, insKey, INS, INS_MIX, HANDLER, rotation, paintOf, autoRotation, overlay, minutesOf, mixRates, interact, play, preview, pbp, leagueOf, identityOf, normTac, tacKey, rng, hashOf, fatigueLoad,
+return { use, sim: () => SIM(), styleOf, sideOf, handlerWeights, applyIdentity, insKey, INS, INS_MIX, HANDLER, rotation, paintOf, autoRotation, overlay, minutesOf, mixRates, interact, inferCover, coverQ, coverMix, coverage, COV_MIX, play, preview, pbp, leagueOf, identityOf, normTac, tacKey, rng, hashOf, fatigueLoad,
   TACTICS, SLOTS, KAPPA, FATIGUE, FORM, OOP, SYN, SHIFT, DR, USG_FLOOR, SKILL_L, PPP_LOGIT, FALLBACK_L, IDENTITY_K, HCA_PER, ROLEK, roleNotes };
 }));

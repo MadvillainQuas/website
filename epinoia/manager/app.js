@@ -70,7 +70,8 @@ const ICON = {
   stats: 'M5 20V10M10 20V4M15 20v-7M20 20v-12',
   trade: 'M4 8h13l-3-3M20 16H7l3 3',
   boards: 'M7 21h10M12 17v4M6 4h12v4a6 6 0 0 1-12 0zM6 6H3a3 3 0 0 0 3 4M18 6h3a3 3 0 0 1-3 4',
-  settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8-3l2-1-2-4-2 1-2-1V5h-4v2l-2 1-2-1-2 4 2 1v2l-2 1 2 4 2-1 2 1v2h4v-2l2-1 2 1 2-4-2-1z'
+  settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8-3l2-1-2-4-2 1-2-1V5h-4v2l-2 1-2-1-2 4 2 1v2l-2 1 2 4 2-1 2 1v2h4v-2l2-1 2 1 2-4-2-1z',
+  practice: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 8.5l5.5 3.5-5.5 3.5z'
 };
 const icon = k => { const s = doc.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('class', 'ic'); s.setAttribute('aria-hidden', 'true');
   const p = doc.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', ICON[k] || ICON.home); p.setAttribute('fill', 'none'); p.setAttribute('stroke', 'currentColor');
@@ -83,12 +84,14 @@ function drawRail() {
   /* while the squad is being drafted: the squad, its tactics beside it (Louie: "also viewable while constructing the
      squad to aid it"), the boards and the settings */
   const active = !!(A.club && A.club.status !== 'draft'), list = A.club ? NAV.filter(([k]) => active || DRAFT_NAV.includes(k)) : [['home', 'Club'], ['boards', 'Leaderboards']];
+  /* administrators: practice games (#/practice), on the rail */
+  if (A.isAdmin && active) { const b = list.findIndex(([k]) => k === 'boards'); list.splice(b < 0 ? list.length : b, 0, ['practice', 'Practice game']); }
   nav.textContent = ''; bar.textContent = '';
   list.forEach(([k, label], i) => {
     if (k === 'boards') nav.appendChild(h('li.sep', { 'aria-hidden': 'true' }));
     const cur = A.route.name === k || (k === 'home' && A.route.name === 'home');
     nav.appendChild(h('li', h('a', { href: '#/' + (k === 'home' ? '' : k), 'aria-current': cur ? 'page' : null }, icon(k), label)));
-    if (k !== 'settings') bar.appendChild(h('a', { href: '#/' + (k === 'home' ? '' : k), 'aria-current': cur ? 'page' : null }, icon(k), label));
+    if (k !== 'settings' && k !== 'practice') bar.appendChild(h('a', { href: '#/' + (k === 'home' ? '' : k), 'aria-current': cur ? 'page' : null }, icon(k), label));
   });
   chip.textContent = '';
   if (A.club) {
@@ -181,6 +184,8 @@ async function openClub(club) {
   if (!L) { A.lgError = 'This club’s league cannot be read just now.'; return; }
   A.loading('Reading ' + L.name + '…');
   A.lg = await site().league(L);
+  /* the coverage its bigs play on ball screens, on their minutes: what its clubs' numbers already hold (engine.coverMix) */
+  try { A.lg.covMix = Mgr.engine.coverMix(A.lg.S.players, A.lg.cards, A.lg.ref); } catch (_) { A.lg.covMix = null; }
   await loadMine();
   /* A SEASON NOT STARTED YET takes in every club of the league (a club missing from it before is added) - only before its
      first tip-off, and from its own start date: once a round is due it is played, never drawn away (season.redrawable) */
@@ -228,7 +233,7 @@ A.realClubs = () => {
 };
 
 /* ------------------------------------------------------------------ the teams that play --- */
-const X = () => ({ L: A.lg.sim, ref: A.lg.ref, G: 40 });
+const X = () => ({ L: A.lg.sim, ref: A.lg.ref, G: 40, covMix: A.lg.covMix || null });
 /* the reader's lineups as they stand, each checked: five different men of the squad, playing some minutes (its minutes,
    or minutes painted on the rotation chart); none valid, the squad's own. Each place's ROLE (core/roles.js; Louie,
    2026-10-14: "For each position set ... force the user to select their role [which is applied regardless if one is
@@ -284,14 +289,30 @@ function realTeam(tid, form) {
     try { const full = Mgr.engine.autoRotation(all.map(men), 40, { starters: st ? [...st.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([x]) => String(x)) : null }); if (full.length) id = Mgr.engine.identityOf({ id: tid, segs: full, cards: lg.cards }, T, X()); } catch (_) { id = null; }
     A.identity.set(tid, id);
   }
-  return { id: tid, segs, cards, identity: A.identity.get(tid), form, bench: list.map(m => m.id) };
+  /* the coverage each of its bigs plays on a ball screen, read from his game (engine.inferCover: a rim protector drops,
+     quick feet hedge) - what it does against the reader's handlers and screeners (engine.js interact) */
+  const cov = new Map();
+  list.forEach(m => { const v = Mgr.engine.inferCover(cards.get(m.id), lg.ref); if (v !== 'cont') cov.set(m.id, v); });
+  return { id: tid, segs, cards, identity: A.identity.get(tid), form, bench: list.map(m => m.id), cov };
 }
 /* THE READER'S CLUB: its lineups on the clock, every man of the squad on the bench (a live game may play any of them),
    and each man's instructions (core/instruct.js, kept on his roster entry) */
 A.insMap = () => Mgr.instruct ? Mgr.instruct.forEngine(A.club.roster || [], A.cardOf, A.slotOfId) : null;
+/* A MAN WHO GUARDS A BALL SCREEN WITH A COVERAGE (Hedge, Contain, Drop): a big by his listed position (the men they are
+   offered to: instruct.roleOf), or a man whose own game is a big's coverage (engine.inferCover: a rim protector drops,
+   quick feet hedge). His coverage goes with him wherever he plays (engine.js sideOf) */
+A.screenBig = (id, card) => {
+  const c = card || A.cardOf(id);
+  if (!c) return false;
+  try { if (Mgr.instruct && Mgr.instruct.roleOf(c, A.cardOf(id) ? A.slotOfId(id) : null) === 'b') return true; } catch (_) { /* his card's alone */ }
+  try { return Mgr.engine.inferCover(c, A.lg.ref) !== 'cont'; } catch (_) { return false; }
+};
 function myTeam(form) {
   const segs = Mgr.engine.rotation(A.lineups(), 40);
-  return { id: 'me', segs, cards: A.mine.cards, form, ins: A.insMap(), bench: [...A.mine.cards.keys()] };
+  /* each big plays his own coverage on a ball screen until the reader sets one (hedge, contain, drop: his instructions) */
+  const cov = new Map();
+  A.mine.cards.forEach((c, id) => { const v = Mgr.engine.inferCover(c, A.lg.ref); if (v !== 'cont') cov.set(id, v); });
+  return { id: 'me', segs, cards: A.mine.cards, form, ins: A.insMap(), bench: [...A.mine.cards.keys()], cov };
 }
 A.teamObj = (i, form) => { const id = A.club.state.clubs[i]; return id === 'me' ? myTeam(form) : realTeam(String(id), form); };
 A.X = X;
@@ -415,6 +436,20 @@ A.startMatch = async mode => {
   await A.keepLive(true);
   return 'live';
 };
+/* A PRACTICE GAME (administrators; Louie, 2026-10-15: "As admin, can I also have access to the ability to do practice
+   games too?"): the reader's club as it stands - lineups, roles, instructions - against any club of the league, live on
+   the match screen, any time. Nothing in it counts: no season, no table, no form, nothing saved; it lives in this page. */
+A.startPractice = (i, home) => {
+  if (!A.isAdmin) throw new Error('practice games are for administrators');
+  const S = A.club.state, form = new Map();
+  if (!S || !(i > 0 && i < S.clubs.length)) throw new Error('no such club');
+  const me = A.teamObj(0, form), them = A.teamObj(i, form);
+  const M = Mgr.match.create(home ? me : them, home ? them : me, X(), { seed: (Date.now() ^ 0x5BD1E995) >>> 0, home: 1 });
+  A._practice = { M, f: { r: 0, h: home ? 0 : i, a: home ? i : 0, d: new Date().toISOString().slice(0, 10), practice: true }, started: Date.now(), done: false };
+  return A._practice;
+};
+A.practiceGame = () => (A._practice && !A._practice.done ? A._practice : null);
+A.endPractice = () => { A._practice = null; };
 /* THE GAME OVER: into the season, the round's results out, the snapshot let go */
 A.endLive = async () => {
   const S = A.club.state, lv = A.liveGame();
@@ -573,6 +608,8 @@ async function start() {
   try { A.signedIn = await site().signedIn(); } catch (_) { A.signedIn = false; }
   if (A.signedIn) {
     try { A.uid = await site().userId(); } catch (_) { A.uid = null; }
+    /* administrators may play practice games (#/practice; this browser's own clubs in local mode) */
+    try { A.isAdmin = site().LOCAL ? true : await site().isAdmin(); } catch (_) { A.isAdmin = false; }
     try { A.clubs = await site().clubs(); } catch (e) { A.clubs = []; if (e && e.status === 404) A.missing = true; }
     const want = stored('mgr_club'), pend = A.pendingClub();
     /* a club not made yet that the server has since made (confirmed, then the page closed before it was forgotten) */

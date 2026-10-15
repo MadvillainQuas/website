@@ -233,6 +233,9 @@ function famOf(id, slot, roleKey) {
   if (slot != null && RO()) { const r = RO().resolve(roleKey || null, slot, card, ref); if (r) return { fam: r.family, role: r }; }
   return { fam: IN().roleOf(card, A.slotOfId(id)), role: null };
 }
+/* a big keeps his coverage on a ball screen (Hedge, Contain, Drop) at a place whose role is a wing's (a 3&D four): it is
+   about the man he guards, and goes with him (engine.js sideOf) */
+const alsoOf = (id, fam) => (fam !== 'b' && A.screenBig && A.screenBig(id) ? IN().COVER : null);
 function playerPanel(id, o) {
   o = o || {};
   const card = A.cardOf(id), L = A.leagueDataOf(id), ref = (L && L.ref) || A.lg.ref;
@@ -241,12 +244,12 @@ function playerPanel(id, o) {
   const info = h('div.mg-pi-info', 'Press an instruction to see what it does for him.');
   const body = h('div.mg-pi-body');
   const cur0 = () => famOf(id, slot, roleKey);
-  const commit = () => { const F = cur0(); entry = Object.assign({}, entry, IN().norm(entry, F.fam)); entry.ins = entry.keys; delete entry.keys; delete entry.role; if (o.onChange) o.onChange(entry); draw(); };
+  const commit = () => { const F = cur0(); entry = Object.assign({}, entry, IN().norm(entry, F.fam, alsoOf(id, F.fam))); entry.ins = entry.keys; delete entry.keys; delete entry.role; if (o.onChange) o.onChange(entry); draw(); };
   const say = (d, f, lockWhy) => d.label + ': ' + d.how + '. ' + (lockWhy ? 'Not in his role: ' + lockWhy.toLowerCase() + '.' : 'For him: ' + (f.word || '') + (f.why ? ' - ' + f.why : '.'));
   const draw = () => {
     body.textContent = '';
-    const F = cur0(), fam = F.fam, R = F.role;
-    const n = IN().norm(entry, fam), set = new Set(n.keys);
+    const F = cur0(), fam = F.fam, R = F.role, also = alsoOf(id, fam);
+    const n = IN().norm(entry, fam, also), set = new Set(n.keys);
     /* HIS ROLE AT THIS PLACE (core/roles.js): the position's roles, how well each suits him; the one chosen, else the
        position's default (what he plays if nothing is chosen) */
     if (slot != null && RO()) {
@@ -293,7 +296,7 @@ function playerPanel(id, o) {
        instructions when these roles are active") */
     const lock = R && RO() ? RO().locks(R) : new Map();
     ['ip', 'op'].forEach(sec => {
-      const list = IN().list(fam).filter(d => d.sec === sec);
+      const list = IN().list(fam, also).filter(d => d.sec === sec);
       if (!list.length) return;
       const box = h('div.mg-pi-sec', h('div.mg-cap', IN().SEC[sec]));
       const groups = new Map();
@@ -308,7 +311,7 @@ function playerPanel(id, o) {
           const btn = h('button.mg-ins' + (on ? '.on' : '') + (lk ? '.locked' : ''), { type: 'button', 'aria-pressed': String(on), 'aria-disabled': lk ? 'true' : null, title: lk ? lk : d.how,
             onclick: () => {
               if (lk) { info.textContent = say(d, f, lk); return; }
-              const nx = IN().toggle(entry, fam, d.k, !on); entry.ins = nx.keys; entry.u = nx.u; commit(); info.textContent = say(d, f) + (d.needs && !set.has(d.needs) ? ' (With it: Roller big.)' : '');
+              const nx = IN().toggle(entry, fam, d.k, !on, also); entry.ins = nx.keys; entry.u = nx.u; commit(); info.textContent = say(d, f) + (d.needs && !set.has(d.needs) ? ' (With it: Roller big.)' : '');
             },
             onmouseenter: () => { info.textContent = say(d, f, lk); } },
             lk ? h('i.mg-lock', { 'aria-hidden': 'true' }, '🔒') : fitDot(f), h('span', d.label));
