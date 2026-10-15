@@ -11,6 +11,9 @@
      EPINOIΛ          the What wins model as a competitor of its own (prediction_model, 0253), pinned above the fans.
      ARENAS STAMPED   (the league's page) the league's EPINOIA GO board by arenas (go_leaderboard, 0166), away while
                       it is empty or before GO's functions exist.
+     DISTANCE COVERED (both pages, 2026-10-15) EPINOIA GO's board by kilometres travelled between the arenas stamped
+                      (go_leaderboard by 'km'): the league's on its page; on GO's page every league's, or the league
+                      its buttons choose. Away while it is empty.
 
    A fan shows by their username, or by a fixed tag ("fan-3f2a1") that says nothing about them. Every text goes in
    as text. Before 0239 is on the server the board says the boards are on their way, and nothing breaks.
@@ -385,14 +388,19 @@
   }
 
   /* --------------------------------------------------------- arenas (GO) --- */
-  async function drawStamped(L) {
+  async function drawStamped(L) { return drawGo(L, 'arenas', '#stamped', '#lbGo'); }
+  /* the distance board: a league's, or (no league) every league's */
+  async function drawDistance(L) { return drawGo(L, 'km', '#distance', '#lbDist'); }
+  const kmText = v => { const n = Number(v); return isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: n < 100 ? 1 : 0 }) + ' km' : '—'; };
+  async function drawGo(L, by, secSel, hostSel) {
+    const sec = $(secSel), host = $(hostSel);
+    if (!sec || !host) return;
     let rows;
-    try { rows = await rpc('go_leaderboard', { p_league: L.id, p_by: 'arenas', p_limit: 10 }); } catch (_) { return; }
-    rows = (Array.isArray(rows) ? rows : []).filter(r => Number(r.arenas) > 0);
-    if (!rows.length) return;
-    const host = $('#lbGo');
+    try { rows = await rpc('go_leaderboard', { p_league: L ? L.id : null, p_by: by, p_limit: 10 }); } catch (_) { sec.classList.add('hide'); return; }
+    rows = (Array.isArray(rows) ? rows : []).filter(r => Number(by === 'km' ? r.km : r.arenas) > 0);
+    if (!rows.length) { sec.classList.add('hide'); return; }
     host.textContent = '';
-    const list = el('ol', 'lb-list go');
+    const list = el('ol', 'lb-list go' + (by === 'km' ? ' km' : ''));
     rows.forEach(r => {
       const li = el('li', 'lb-row' + (r.me ? ' me' : ''));
       li.appendChild(data('span', 'c0', String(r.rank)));
@@ -401,8 +409,13 @@
       a.href = ROOT + 'fan/?u=' + encodeURIComponent(r.username);
       who.appendChild(a);
       li.appendChild(who);
-      li.appendChild(data('b', 'c2', num(r.arenas)));
-      li.appendChild(el('span', 'c3', num(r.stamps) + (Number(r.stamps) === 1 ? ' game' : ' games')));
+      if (by === 'km') {
+        li.appendChild(data('b', 'c2', kmText(r.km)));
+        li.appendChild(el('span', 'c3', num(r.arenas) + (Number(r.arenas) === 1 ? ' arena' : ' arenas')));
+      } else {
+        li.appendChild(data('b', 'c2', num(r.arenas)));
+        li.appendChild(el('span', 'c3', num(r.stamps) + (Number(r.stamps) === 1 ? ' game' : ' games')));
+      }
       list.appendChild(li);
     });
     host.appendChild(list);
@@ -411,7 +424,7 @@
     go.href = ROOT + 'go/';
     more.appendChild(go);
     host.appendChild(more);
-    $('#stamped').classList.remove('hide');
+    sec.classList.remove('hide');
   }
 
   /* ----------------------------------------------------------------- boot --- */
@@ -445,7 +458,7 @@
     kick.appendChild(a);
     sub.textContent = L.name + '’s fans, ranked: the winners they called on its games, and the arenas they have stamped.';
     drawWhen();
-    await Promise.all([drawPredictions(), drawStamped(L).catch(() => {})]);
+    await Promise.all([drawPredictions(), drawStamped(L).catch(() => {}), drawDistance(L).catch(() => {})]);
   }
 
   async function bootAll() {
@@ -463,6 +476,7 @@
       if (note) note.textContent = state.league ? 'Fans ranked by the winners they called in ' + state.league.name : 'Fans ranked by the winners they called, across every league';
       drawLeagues();
       drawPredictions();
+      drawDistance(state.league).catch(() => {});
     };
     const drawLeagues = () => {
       const host = $('#lbLeagues');
@@ -475,7 +489,7 @@
     if (L) state.league = { id: L.league_id, slug: L.league_slug, name: L.league };
     drawLeagues();
     drawWhen();
-    await drawPredictions();
+    await Promise.all([drawPredictions(), drawDistance(state.league).catch(() => {})]);
   }
 
   function boot() { checkAdmin().catch(() => false).then(() => (SCOPE === 'all' ? bootAll() : bootLeague())).catch(() => {}); }

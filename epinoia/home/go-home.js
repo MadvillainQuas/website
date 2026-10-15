@@ -9,6 +9,9 @@
      - the arenas in the reader's country they have not stamped yet, sliding past (the country is the GO page's
        choice, kept in this browser, and can be changed here), an arena with a game open to stamp now lit up,
        the game shown under a pointer;
+     - DISTANCE COVERED (Louie, 2026-10-15; go_leaderboard by 'km', 0166): the five fans who have travelled furthest
+       between the arenas they stamped, across every league, the reader marked when they are one, and the whole board
+       on GO's Leaderboards page. Away while nobody is on it;
      - JUST STAMPED (Louie, 2026-10-08; go_stamps_latest, 0258): every stamp, newest first, as GO's stamp cards -
        a fan who went public by their username, everybody else as "a fan", the reader's own as "you", with how long
        ago. Read again every minute while the page is in view; a stamp new since the last look comes down onto the
@@ -35,6 +38,45 @@
       if (r.status === 404) return 'missing';              // before 0258
       return r.ok ? await r.json() : null;
     } catch (_) { return null; }
+  }
+
+  /* THE DISTANCE BOARD: the first five by kilometres (the reader's own row marked, so their session rides along) */
+  async function board() {
+    const C = window.EPINOIA_CONFIG || {};
+    if (!C.supabaseUrl) return null;
+    const F = window.EpinoiaFollow, s = F && typeof F.session === 'function' ? F.session() : null;
+    const h = { apikey: C.supabaseAnonKey, 'Content-Type': 'application/json' };
+    if (s && s.token) h.Authorization = 'Bearer ' + s.token;
+    const go = () => fetch(C.supabaseUrl + '/rest/v1/rpc/go_leaderboard', { method: 'POST', cache: 'no-store', headers: h,
+      body: JSON.stringify({ p_league: null, p_by: 'km', p_limit: 5 }) });
+    try {
+      let r = await go();
+      if (r.status === 401 && h.Authorization) { delete h.Authorization; r = await go(); }
+      return r.ok ? await r.json() : null;
+    } catch (_) { return null; }
+  }
+  const kmText = v => { const n = Number(v); return isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: n < 100 ? 1 : 0 }) + ' km' : '—'; };
+  async function distance(host, base) {
+    if (!host) return;
+    const rows = ((await board()) || []).filter(r => Number(r.km) > 0);
+    host.textContent = '';
+    if (!rows.length) { host.hidden = true; return; }
+    const head = host.appendChild(el('div', 'hm-go-stamps-h hm-go-dist-h'));
+    head.appendChild(el('span', 'hm-go-dot'));
+    head.appendChild(el('span', null, 'distance covered'));
+    const all = head.appendChild(el('a', 'hm-go-dist-all', 'full leaderboard →'));
+    all.href = base + 'go/leaderboards/#distance';
+    const list = host.appendChild(el('ol', 'hm-go-dist-l'));
+    rows.forEach(r => {
+      const li = list.appendChild(el('li', 'hm-go-dist-r' + (r.me ? ' me' : '') + (r.rank <= 3 ? ' r' + r.rank : '')));
+      li.appendChild(el('span', 'k', String(r.rank)));
+      const a = li.appendChild(el('a', 'u', '@' + r.username));
+      a.href = base + 'fan/?u=' + encodeURIComponent(r.username);
+      a.setAttribute('translate', 'no');
+      li.appendChild(el('b', 'km', kmText(r.km)));
+      li.appendChild(el('span', 'ar', r.arenas + (Number(r.arenas) === 1 ? ' arena' : ' arenas')));
+    });
+    host.hidden = false;
   }
 
   function stamps(host, base) {
@@ -87,5 +129,6 @@
     sec.hidden = false;
     ctx.fadeIn(sec);
     stamps(document.getElementById('homeGoStamps'), ctx.base);
+    distance(document.getElementById('homeGoDist'), ctx.base).catch(() => {});
   });
 })();

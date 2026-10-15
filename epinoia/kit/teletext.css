@@ -195,6 +195,18 @@ html.tt-on .wrap > .top > .wm{ display:none }
   .tt-ix-l a{ min-height:44px; padding:0 11px; font-size:9px; gap:8px }
   .tt-ix-l a .n{ width:8px; height:8px }
 }
+/* TABS (nav.js, 2026-10-15): on a page to the page standard one section shows at a time; the entry shown lights up as a
+   key does under a pointer. A phone has HOME's TABS / SCROLL switch at the end of the row. */
+.tt-tabhide{ display:none !important }
+.tt-index.tt-tabs .tt-ix-l a.on{ background:var(--k); color:var(--tt-scr) }
+.tt-index.tt-tabs .tt-ix-l a.on .n{ background:var(--tt-scr); box-shadow:none }
+.tt-ix-mode{ display:none }
+@media (max-width:720px){
+  .tt-index.tt-tabbed .tt-ix-mode{ display:flex; flex:none; align-items:center; gap:3px; padding:0 8px; border-left:1px solid rgba(255,255,255,.16) }
+  .tt-ix-mode button{ font-family:var(--f-micro); font-size:8.5px; letter-spacing:.06em; text-transform:uppercase; cursor:pointer;
+    min-height:30px; padding:0 8px; background:none; color:var(--tt-white); border:1px solid rgba(255,255,255,.3) }
+  .tt-ix-mode button[aria-pressed="true"]{ background:var(--tt-yellow); border-color:var(--tt-yellow); color:var(--tt-scr) }
+}
 /* a jump lands the title below the top of the window, not under the edge */
 html.tt-on .sec, html.tt-on section, html.tt-on .ep-hdr{ scroll-margin-top:12px }
 /* SKIP (nav.js): at the right of every section's heading but the last, a small key that jumps to

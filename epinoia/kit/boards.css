@@ -167,6 +167,9 @@ a.lb-club:hover span{text-decoration:underline;text-underline-offset:2px}
 .lb-row.me .lb-rate{background:rgba(255,255,255,.14)}
 .lb-row.me .lb-rate::before{background:var(--py)}
 .lb-list.go .lb-row{grid-template-columns:44px minmax(0,1fr) 56px 90px}
+/* the distance board: kilometres take more room than a count of arenas */
+.lb-list.go.km .lb-row{grid-template-columns:44px minmax(0,1fr) 120px 90px}
+.lb-list.go.km .c2{font-size:20px;white-space:nowrap}
 .lb-more{display:flex;margin:calc(var(--u)*2.5) auto 0;border-radius:999px}
 
 @media (max-width:560px){
@@ -175,6 +178,8 @@ a.lb-club:hover span{text-decoration:underline;text-underline-offset:2px}
   .lb-row .c3{display:none}
   .lb-row .c4{flex-direction:column;align-items:stretch;gap:4px;text-align:right}
   .lb-list.go .lb-row{grid-template-columns:36px minmax(0,1fr) 40px 70px}
+  .lb-list.go.km .lb-row{grid-template-columns:36px minmax(0,1fr) 96px}
+  .lb-list.go.km .c2{font-size:17px}
   .lb-list.go .lb-row .c3{display:block}
   .lb-podium{gap:6px}
   .lb-card{padding:18px 6px 12px}

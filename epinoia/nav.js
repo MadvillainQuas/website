@@ -2947,6 +2947,72 @@
     const list = el('ol', 'tt-ix-l');
     box.append(head, list);
     if (before) before.before(box); else after.after(box);
+    /* TABS (Louie, 2026-10-15): on a page to the page standard the entries are TABS, one section shown at a time and the
+       tab remembered for the page; a phone has HOME's switch beside them, TABS or SCROLL (one choice for the whole site,
+       HOME's own key, Scroll until chosen), Scroll being the long page with each entry a jump. A desktop is always tabs.
+       Only the sections the page itself is showing are tabs (a page's own switch - Learn's, the creators' hub's,
+       scouting's - still decides those); a section marked data-tt-keep (WOWY's team and view) is never hidden, its entry
+       a jump. data-tt-tabs="off" on the frame keeps a page as it was. HOME, a league's, a club's and a player's pages
+       have their own groups and are not touched. */
+    const TABS = p.kind === 'std' && frame.getAttribute('data-tt-tabs') !== 'off';
+    const MODE_KEY = 'hm_phone_mode', TAB_KEY = 'tt_tab_' + location.pathname;
+    const lsGet = k => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+    const lsPut = (k, v) => { try { localStorage.setItem(k, v); } catch (_) { /* for this visit */ } };
+    const desk = window.matchMedia ? window.matchMedia('(min-width: 721px)') : { matches: true };
+    const tabsOn = () => TABS && SECS.filter(x => !x.sec.hasAttribute('data-tt-keep')).length >= 2 && (desk.matches || lsGet(MODE_KEY) === 'tabs');
+    let curTab = null, hashDone = false, modeBox = null;
+    /* a heading the page shows, whatever this index has tabbed away */
+    const pageShows = n => {
+      for (let x = n; x && x !== frame; x = x.parentElement) {
+        if (x.classList && x.classList.contains('tt-tabhide')) continue;
+        if (x.hidden) return false;
+        try { if (getComputedStyle(x).display === 'none') return false; } catch (_) { return true; }
+      }
+      return true;
+    };
+    if (TABS) {
+      box.classList.add('tt-tabbed');
+      modeBox = el('div', 'tt-ix-mode');
+      modeBox.setAttribute('role', 'group');
+      modeBox.setAttribute('aria-label', 'How the sections show');
+      [['tabs', 'Tabs'], ['scroll', 'Scroll']].forEach(([k, t]) => {
+        const b = el('button', null, t);
+        b.type = 'button';
+        b.dataset.m = k;
+        b.addEventListener('click', () => { lsPut(MODE_KEY, k); applyTabs(); });
+        modeBox.appendChild(b);
+      });
+      box.appendChild(modeBox);
+      if (desk.addEventListener) desk.addEventListener('change', () => applyTabs());
+      /* a link on the page to a section in another tab opens that tab, then the browser jumps as it would */
+      document.addEventListener('click', e => {
+        const a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+        if (!a || box.contains(a) || !tabsOn()) return;
+        const to = document.getElementById(a.getAttribute('href').slice(1));
+        const x = to && SECS.find(s => s.sec.contains(to) && !s.sec.hasAttribute('data-tt-keep'));
+        if (x && x.sec.id !== curTab) { curTab = x.sec.id; lsPut(TAB_KEY, curTab); applyTabs(); }
+      }, true);
+    }
+    function applyTabs() {
+      if (!TABS) return;
+      const on = tabsOn();
+      box.classList.toggle('tt-tabs', on);
+      if (modeBox) modeBox.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === (lsGet(MODE_KEY) === 'tabs' ? 'tabs' : 'scroll'))));
+      const ids = SECS.filter(x => !x.sec.hasAttribute('data-tt-keep')).map(x => x.sec.id);
+      if (!hashDone && location.hash) {
+        hashDone = true;
+        const to = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+        const x = to && SECS.find(s => s.sec.contains(to) && !s.sec.hasAttribute('data-tt-keep'));
+        if (x) curTab = x.sec.id;
+      }
+      if (ids.indexOf(curTab) < 0) { const saved = lsGet(TAB_KEY); curTab = ids.indexOf(saved) >= 0 ? saved : ids[0] || null; }
+      SECS.forEach(x => x.sec.classList.toggle('tt-tabhide', on && !x.sec.hasAttribute('data-tt-keep') && x.sec.id !== curTab));
+      list.querySelectorAll('a').forEach(a => {
+        const me = on && a.getAttribute('href') === '#' + curTab;
+        a.classList.toggle('on', me);
+        if (me) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current');
+      });
+    }
     /* a jump glides down the page (and lands at once for a reader who asked for less motion);
        the address takes the section's anchor, so it can be shared */
     list.addEventListener('click', e => {
@@ -2955,6 +3021,16 @@
       const to = document.getElementById(a.getAttribute('href').slice(1));
       if (!to || !to.scrollIntoView) return;
       e.preventDefault();
+      if (tabsOn() && !to.hasAttribute('data-tt-keep') && SECS.some(x => x.sec === to)) {
+        curTab = to.id;
+        lsPut(TAB_KEY, curTab);
+        applyTabs();
+        /* the row of tabs stays where the reader is; a chart drawn while its tab was away measures itself again */
+        if (box.getBoundingClientRect().top < 0) box.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
+        try { window.dispatchEvent(new Event('resize')); } catch (_) { /* old browser */ }
+        try { history.replaceState(history.state, '', a.getAttribute('href')); } catch (_) { /* the tab is what matters */ }
+        return;
+      }
       to.scrollIntoView({ behavior: reduced() ? 'auto' : 'smooth', block: 'start' });
       try { history.replaceState(history.state, '', a.getAttribute('href')); } catch (_) { /* the jump is what matters */ }
     });
@@ -2962,7 +3038,7 @@
     const paint = () => {
       /* HOME's VIDEO view (home/vhmode.js) takes the sections away while it is open: the list stays as it was */
       if (document.documentElement.classList.contains('vh-on')) return;
-      const heads = [].filter.call(frame.querySelectorAll('.sec-h, .ep-hdr'), n => n.getClientRects().length > 0);
+      const heads = [].filter.call(frame.querySelectorAll('.sec-h, .ep-hdr'), n => n.getClientRects().length > 0 || (TABS && pageShows(n)));
       const names = heads.map(n => { const h = n.querySelector('h2'); return h ? h.textContent.trim() : ''; });
       const now = names.join('|');
       if (now === sig) return;
@@ -2987,6 +3063,7 @@
       /* the keys this page drew on its headings before 2026-10-14 (a page cached from before) go */
       frame.querySelectorAll('.sec-h > .tt-skip, .ep-hdr > .tt-skip').forEach(n => n.remove());
       SECS = secs;
+      applyTabs();
       place();
     };
     /* SKIP, ONE KEY THAT TRAVELS WITH THE READER (Louie, 2026-10-14). It sat on every section's heading,
