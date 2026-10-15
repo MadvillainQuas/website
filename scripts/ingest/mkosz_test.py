@@ -40,6 +40,7 @@ import names as N  # noqa: E402
 DATA = os.path.join(HERE, "data", "mkosz")
 PASS = FAIL = 0
 GAMES = ("hun_134745", "hun_134777", "whun_135517", "whun_135509", "hun_ply_134267")
+BROKEN = ("hun_134745", "hun_134747", "whun_135471", "whun_135473")     # logs that lost changes (2026-27 openers)
 
 
 def ok(what, cond, saw=None):
@@ -165,10 +166,11 @@ club_reb = sum(1 for e in d["f"] if M._code(e) in (2002, 2003) and str(e.get("1"
 ok("the club's own rebounds in its totals, as LiveStats counts them (%d)" % club_reb,
    club_reb and h["tot_sReboundsTotal"] == sum(p["sReboundsTotal"] for p in h["pl"].values()) + club_reb,
    (h["tot_sReboundsTotal"], club_reb))
-ok("THE LOG THAT LOST ITS CHANGES is caught", raw45["mkosz"]["log_ok"] is False and "contradict" in raw45["mkosz"]["why"], raw45["mkosz"]["why"])
+ok("THE LOG THAT LOST ITS CHANGES is repaired, not dropped", raw45["mkosz"]["log_ok"] and raw45["mkosz"]["repaired"] > 0,
+   (raw45["mkosz"]["why"], raw45["mkosz"]["repaired"]))
 b45 = Offline().fetch("hun_134745", {"_tipoff_at": "2026-09-25T16:00:00Z"})
-ok("...and published as a result: box and score, no event log, no lineups",
-   b45 and b45.translate is False and b45.stints == [] and b45.status == "final" and b45.team["home"].get("points") == 104,
+ok("...and published with its event log and lineups",
+   b45 and b45.translate is not False and b45.stints and b45.status == "final" and b45.team["home"].get("points") == 104,
    b45 and (b45.translate, len(b45.stints), b45.status))
 ok("...the hall from the feed, the tip-off from the programme", b45 and b45.venue == "Szolnok Városi Sportcsarnok" and b45.tipoff_at == "2026-09-25T16:00:00Z")
 
@@ -237,6 +239,51 @@ for code in GAMES[1:]:
     ok(f"{code}: a drawn foul follows its foul, by the other club ({len(fo)})",
        fo and all(e["previousAction"] in fouls and fouls[e["previousAction"]]["tno"] != e["tno"]
                   and e["actionNumber"] > e["previousAction"] for e in fo))
+
+print("\n-- A LOG THAT LOST ITS CHANGES, rebuilt: five a side all game")
+
+
+def floor_walk(raw):
+    """through the translation: ms each side spent other than five on the floor, and each side's total ms"""
+    tr = fiba_translate(raw)
+    fmt = tr["format"]
+    cum = lambda p, c: (min(p, fmt["periods"]) - 1) * fmt["period_ms"] + max(0, p - fmt["periods"] - 1) * fmt["ot_ms"] \
+        + ((fmt["period_ms"] if p <= fmt["periods"] else fmt["ot_ms"]) - c)
+    on, not5, prev, end = [set(tr["starters"][0]), set(tr["starters"][1])], [0, 0], 0, 0
+    for ev in tr["events"]:
+        if ev["t"] not in ("sub", "game_end"):
+            continue
+        now_ = cum(ev["period"], ev["clock"])
+        for s in (0, 1):
+            not5[s] += (now_ - prev) * (len(on[s]) != 5)
+        prev = now_
+        if ev["t"] == "game_end":
+            end = now_
+            break
+        t, o, i = ev["team"], ev["payload"].get("out"), ev["payload"].get("in")
+        on[t].discard(o)
+        if i:
+            on[t].add(i)
+    return tr, not5, end
+
+
+for code in BROKEN:
+    dd = feed(code)
+    raw = M.MkoszAdapter.translate(dd, code)
+    tr, not5, end = floor_walk(raw)
+    ros = M.roster(dd)
+    official = [sum(r["secs"] for r in ros.values() if r["tno"] == t) for t in (1, 2)]
+    print(f"   {code}: {raw['tm']['1']['name']} - {raw['tm']['2']['name']}, {raw['mkosz']['repaired']} repair(s);"
+          f" the console's own minutes add up to {M.mmss(official[0])} and {M.mmss(official[1])} a side")
+    ok(f"{code}: the log contradicts itself, and is repaired", M.replay(dd)["bad"] and raw["mkosz"]["repaired"] and raw["mkosz"]["log_ok"],
+       (M.replay(dd)["bad"], raw["mkosz"]["repaired"], raw["mkosz"]["why"]))
+    ok(f"{code}: FIVE A SIDE EVERY SECOND OF THE GAME", not5 == [0, 0] and end == 4 * 600000, (not5, end))
+    ok(f"{code}: ...nothing left unpaired", not [x for x in tr["report"]["warnings"] if "unpaired substitution" in x], tr["report"]["warnings"])
+    rp = M.replay(dd)
+    ok(f"{code}: ...each side's minutes add to 200:00", [sum(v for p, v in rp["played"].items() if ros[p]["tno"] == t) for t in (1, 2)] == [12000, 12000])
+    ok(f"{code}: ...the score still the score", (raw["tm"]["1"]["score"], raw["tm"]["2"]["score"]) == (int(dd["i"]["hp"]), int(dd["i"]["vp"])))
+ok("a clean log is never touched (no repairs in the four trusted games)",
+   all(M.MkoszAdapter.translate(feed(c), c)["mkosz"]["repaired"] == 0 and "subs" not in M.replay(feed(c)) for c in GAMES[1:]))
 
 print("\n-- the changes made in a break are the next period's 10:00 (hun_134777)")
 raw77 = M.MkoszAdapter.translate(feed("hun_134777"), "hun_134777")

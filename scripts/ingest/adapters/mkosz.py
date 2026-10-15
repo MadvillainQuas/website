@@ -75,9 +75,19 @@ A LOG THAT LOST ITS SUBSTITUTIONS. The season's opening game (hun_134745, Szolno
 second-quarter changes missing from its log: players act for minutes after the log took them off, and
 later changes take off players who were never on. The p seconds are right (the console counted them
 itself), so replaying the log gives Goodwin 10:57 against his 22:10. A final game whose log cannot
-reproduce its own minutes (to two seconds), or whose changes contradict the floor it describes, is
-published as a result - box, score and quarters, no event log and no lineups (translate False, as
-ncaa.py and lkl.py do with a log that cannot stand) - rather than as lineups that never played.
+reproduce its own minutes (to two seconds) is published as a result - box, score and quarters, no event
+log and no lineups (translate False, as ncaa.py and lkl.py do with a log that cannot stand) - rather than
+as lineups that never played.
+
+...AND IS REBUILT (2026-10-16). Four of the season's openers (hun_134745, hun_134747, whun_135471,
+whun_135473) have such logs, and their console minutes cannot be the target: they add up to 228:37,
+212:27, 209:20... a side, more than five players can play in 40 minutes. What the log still tells is who
+acts when, so rebuild() reads the changes leniently and keeps each side at five: an impossible half is
+dropped, a side left with four is joined by the next of its players to act while off, a side left with
+six loses the one who does nothing until he is next put on. Every rebuilt game is five a side for all
+2400 seconds and 200:00 a side, and is published with its log and lineups - the minutes of the broken
+stretch an estimate, the rest the log's own. A clean log is never rebuilt (replay finds nothing wrong);
+a log that cannot be rebuilt (a side with no player left to come on) is still published as a result.
 """
 from __future__ import annotations
 
@@ -295,41 +305,113 @@ def final_end(rows: list, final: bool) -> Optional[int]:
     return ends[-1] if ends else None
 
 
-def replay(d: dict) -> dict:
-    """The floor, replayed from the log the way the translation reads it: each player's seconds, his
-    plus/minus, and the contradictions (a change taking off a player not on, or putting on one already on)."""
+def rebuild(d: dict) -> Optional[dict]:
+    """A log that lost its changes, read as the floor it can only have been (module docstring): {row index
+    of a change: [(on, off), ...]} with every half possible, and how many places it had to repair - or None
+    when even that leaves a side other than five (no player left to come on), or one change uneven.
+
+    Read leniently: an ON for a player already on, and an OFF for one not on, are the lost halves' traces
+    and are dropped. A side left with four at a change was joined, at that change, by the next of its
+    players to act while off; a side left with six lost, at that change, the one who does nothing until he
+    is next put on (or never acts again) - the player the log forgot to take off."""
     ros = roster(d)
     rows = [e for e in (d.get("f") or []) if isinstance(e, dict)]
     last = final_end(rows, str(d.get("jr")) == "2")
-    on = {1: {c for c, r in ros.items() if r["starter"] and r["tno"] == 1},
-          2: {c for c, r in ros.items() if r["starter"] and r["tno"] == 2}}
-    since = {c: 0 for side in on.values() for c in side}
-    played, pm, bad = {}, {c: 0 for c in ros}, 0
-    end = max([_gt(e) for e in rows] or [0])
+    ev = []                                  # ("sub", tno, j, on, off) / ("act", tno, who), in log order
     for j, e in enumerate(rows):
-        c = _code(e)
-        tno = 1 if str(e.get("1")) == "1" else 2
+        c, tno = _code(e), 1 if str(e.get("1")) == "1" else 2
         if c == 1011:
-            if last is not None and j > last:
-                continue
-            i, o = _who(e, "3"), _who(e, "4")
-            if o not in on[tno] or i in on[tno]:
-                bad += 1
-            if o in since:
-                played[o] = played.get(o, 0) + _gt(e) - since.pop(o)
-            on[tno].discard(o)
-            if i and i not in on[tno]:
-                on[tno].add(i)
-                since[i] = _gt(e)
-        elif c == 1000:
-            pts = SHOT_POINTS.get(int(S.num(e.get("6"))), 0)
-            for p in on[tno]:
-                pm[p] = pm.get(p, 0) + pts
-            for p in on[3 - tno]:
-                pm[p] = pm.get(p, 0) - pts
-    for c, t0 in since.items():
-        played[c] = played.get(c, 0) + end - t0
-    return {"played": played, "pm": pm, "bad": bad, "end": end}
+            if last is None or j <= last:
+                ev.append(("sub", tno, j, _who(e, "3"), _who(e, "4")))
+        elif c not in (2, 1101):             # anything a player of the side is named for, bar the roster rows
+            w = _who(e)
+            if w in ros and ros[w]["tno"] == tno:
+                ev.append(("act", tno, w))
+    on = {t: {c for c, r in ros.items() if r["starter"] and r["tno"] == t} for t in (1, 2)}
+    if any(len(s) != 5 for s in on.values()):
+        return None
+    subs, fixes = {}, 0
+
+    def seen_next(k, t, p):
+        """the next thing the log says of p after event k: ("act",...) or the change that names him"""
+        return next((x for x in ev[k + 1:] if x[1] == t and ((x[0] == "act" and x[2] == p)
+                                                           or (x[0] == "sub" and p in (x[3], x[4])))), None)
+
+    for k, x in enumerate(ev):
+        if x[0] != "sub":
+            continue
+        _, t, j, i, o = x
+        o_ok, i_ok = o in on[t], bool(i) and i not in on[t]
+        here = subs.setdefault(j, [])
+        if o_ok:
+            on[t].discard(o)
+        if i_ok:
+            on[t].add(i)
+        if o_ok or i_ok:
+            here.append((i if i_ok else "", o if o_ok else ""))
+        fixes += not (o_ok and i_ok)
+        while len(on[t]) < 5:
+            a = next((y for y in ev[k + 1:] if y[0] == "act" and y[1] == t and y[2] not in on[t]), None)
+            if not a:
+                return None
+            on[t].add(a[2]); here.append((a[2], "")); fixes += 1
+        while len(on[t]) > 5:
+            idle = [p for p in sorted(on[t]) if p != i and (lambda n: n is None or (n[0] == "sub" and n[3] == p))(seen_next(k, t, p))]
+            p = (idle or sorted(p for p in on[t] if p != i))[0]
+            on[t].discard(p); here.append(("", p)); fixes += 1
+        if sum(bool(a) for a, _ in here) != sum(bool(b) for _, b in here):
+            return None                      # the translation pairs a change's halves: an odd one would be lost
+    return {"subs": subs, "fixes": fixes}
+
+
+def replay(d: dict) -> dict:
+    """The floor, replayed from the log the way the translation reads it: each player's seconds, his
+    plus/minus, and the contradictions (a change taking off a player not on, or putting on one already on).
+    A log with contradictions is replayed as rebuild() reads it, its changes under "subs"."""
+    ros = roster(d)
+    rows = [e for e in (d.get("f") or []) if isinstance(e, dict)]
+    last = final_end(rows, str(d.get("jr")) == "2")
+
+    def run(fixed):
+        on = {1: {c for c, r in ros.items() if r["starter"] and r["tno"] == 1},
+              2: {c for c, r in ros.items() if r["starter"] and r["tno"] == 2}}
+        since = {c: 0 for side in on.values() for c in side}
+        played, pm, bad = {}, {c: 0 for c in ros}, 0
+        end = max([_gt(e) for e in rows] or [0])
+        for j, e in enumerate(rows):
+            c = _code(e)
+            tno = 1 if str(e.get("1")) == "1" else 2
+            if c == 1011:
+                if last is not None and j > last:
+                    continue
+                i, o = _who(e, "3"), _who(e, "4")
+                if o not in on[tno] or i in on[tno]:
+                    bad += 1
+                for i, o in (fixed.get(j, []) if fixed is not None else [(i, o)]):
+                    if o in since:
+                        played[o] = played.get(o, 0) + _gt(e) - since.pop(o)
+                    on[tno].discard(o)
+                    if i and i not in on[tno]:
+                        on[tno].add(i)
+                        since[i] = _gt(e)
+            elif c == 1000:
+                pts = SHOT_POINTS.get(int(S.num(e.get("6"))), 0)
+                for p in on[tno]:
+                    pm[p] = pm.get(p, 0) + pts
+                for p in on[3 - tno]:
+                    pm[p] = pm.get(p, 0) - pts
+        for c, t0 in since.items():
+            played[c] = played.get(c, 0) + end - t0
+        return {"played": played, "pm": pm, "bad": bad, "end": end}
+
+    rp = run(None)
+    if rp["bad"]:
+        rb = rebuild(d)
+        if rb:
+            bad = rp["bad"]
+            rp = run(rb["subs"])
+            rp.update(bad=bad, subs=rb["subs"], repaired=rb["fixes"])
+    return rp
 
 
 def schedule_rows(page: str, season: str, nat: str) -> list:
@@ -459,8 +541,8 @@ class MkoszAdapter(FibaLiveStatsAdapter):
             if not re.fullmatch(r"x\d{4}", season):
                 dm = re.match(r"(\d{4})-(\d{2})", str(info.get("date") or ""))
                 season = season_token({"season": str(int(dm.group(1)) - (int(dm.group(2)) < 8))}) if dm else ""
-        pbp, shots, by_period = MkoszAdapter.events(d)
         rp = replay(d)
+        pbp, shots, by_period = MkoszAdapter.events(d, rp.get("subs"))
 
         # the box, counted from the log as the page counts it
         stats = {c: {k: 0 for k in S.STATS} for c in ros}
@@ -523,21 +605,22 @@ class MkoszAdapter(FibaLiveStatsAdapter):
         # can this log stand for the game? (module docstring: a log that lost its substitutions)
         off = {c: (rp["played"].get(c, 0), r["secs"]) for c, r in ros.items() if abs(rp["played"].get(c, 0) - r["secs"]) > 2}
         why = ""
-        if rp["bad"]:
+        if rp["bad"] and "subs" not in rp:
             why = f"{rp['bad']} substitution(s) contradict the floor"
-        elif final and off:
+        elif final and off and "subs" not in rp:
             c0 = next(iter(off))
             why = f"its changes give {len(off)} player(s) other minutes than the console's (e.g. {c0}: {mmss(off[c0][0])} v {mmss(off[c0][1])})"
         dm = re.match(r"(\d{4})-(\d{2})-(\d{2})$", str(info.get("date") or ""))
         raw["mkosz"] = {"code": code, "nat": str(info.get("nat") or ""), "season": season, "round": info.get("round"),
                         "arena": unescape(info.get("arena")), "date": info.get("date"),
                         "tipoff_at": tipoff(*dm.groups()) if dm else None,
-                        "log_ok": not why, "why": why, "unknown": sorted({e["pno"] for e in pbp if e.get("pno") and e["pno"] not in ros})}
+                        "log_ok": not why, "why": why, "repaired": rp.get("repaired", 0), "unknown": sorted({e["pno"] for e in pbp if e.get("pno") and e["pno"] not in ros})}
         return raw
 
     @staticmethod
-    def events(d: dict) -> tuple[list, dict, dict]:
-        """The event log -> (FIBA pbp oldest first, {tno: [shot]}, {tno: {period: points}})."""
+    def events(d: dict, subs: Optional[dict] = None) -> tuple[list, dict, dict]:
+        """The event log -> (FIBA pbp oldest first, {tno: [shot]}, {tno: {period: points}}). `subs`: a
+        rebuilt log's changes (rebuild()), written in place of the log's own."""
         ros = roster(d)
         rows = [e for e in (d.get("f") or []) if isinstance(e, dict)]
         final = str(d.get("jr")) == "2"
@@ -608,8 +691,11 @@ class MkoszAdapter(FibaLiveStatsAdapter):
                                        "r": 1 if c == 1000 else 0, "pno": _who(e), "tno": tno, "per": p, "actionType": at})
             elif c == 1011:
                 # one change, its two halves at one clock: off first, then on
-                add({"actionType": "substitution", "subType": "out", "period": p, "gt": gt, "tno": tno, "pno": _who(e, "4")})
-                add({"actionType": "substitution", "subType": "in", "period": p, "gt": gt, "tno": tno, "pno": _who(e, "3")})
+                pairs = [(_who(e, "3"), _who(e, "4"))] if subs is None else subs.get(j, [])
+                for o in [o for _, o in pairs if o or subs is None]:
+                    add({"actionType": "substitution", "subType": "out", "period": p, "gt": gt, "tno": tno, "pno": o})
+                for i in [i for i, _ in pairs if i or subs is None]:
+                    add({"actionType": "substitution", "subType": "in", "period": p, "gt": gt, "tno": tno, "pno": i})
             elif c in ACTIONS:
                 at, sub, team = ACTIONS[c]
                 ev = {"actionType": at, "period": p, "gt": gt, "tno": tno, "pno": "" if team else _who(e)}
