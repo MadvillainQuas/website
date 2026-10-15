@@ -66,9 +66,6 @@ function run(fields) {
   const host = node('div');
   const scrolled = [];
   const ctx = {
-    /* the wheel and drag pass-through is real events on a real frame; here it is only
-       counted, so the test can say every card was given it */
-    scrollThrough: (link, frame) => scrolled.push([link, frame]),
     console, Promise, String, encodeURIComponent, JSON,
     document: {
       documentElement: { getAttribute: () => 'dark' },
@@ -82,7 +79,9 @@ function run(fields) {
     /* home.js's ?s= for links out of the page (4d0b3a5c8: the "Full" stats link keeps the season);
        the current season is shown here, which carries no parameter */
     seasonQuery: () => '',
-    seasonFields: () => Promise.resolve(fields)
+    seasonFields: () => Promise.resolve(fields),
+    /* the season's competitions, the fallback when the fields cannot be read (none here) */
+    leagueCompetitions: () => Promise.resolve([])
   };
   ctx.globalThis = ctx;
   vm.createContext(ctx);
@@ -95,11 +94,14 @@ function run(fields) {
   return {
     host, picker, scrolled,
     chips: () => (picker() ? find(picker(), 'ep-chip') : []),
-    frames: () => find(host, 'embedframe'),
-    hits: () => find(host, 'embedhit')
+    /* TABLE & LEADERS (2026-10-15): two blocks at the page's width in place of the two embeds; each block's way out is
+       the link in its head */
+    blocks: () => find(host, 'lgs-block'),
+    links: () => find(host, 'lgs-h').map(h => h.kids.find(k => k.tag === 'a'))
   };
 }
 
+const find2 = (n, tag, out = []) => { if (n.tag === tag) out.push(n); (n.kids || []).forEach(k => find2(k, tag, out)); return out; };
 const COMP = (id, name, kind) => ({ id, name, kind, games: 4, teams: new Set(['a', 'b']) });
 const TWO = { main: COMP('c-lg', 'BCB 2026-2027', 'league'),
               all: [COMP('c-cup', 'BCB Trophy 2027', 'trophy'), COMP('c-lg', 'BCB 2026-2027', 'league')] };
@@ -116,40 +118,36 @@ console.log('\n1. one row of buttons, above both cards');
      r.chips().map(c => c.attrs['aria-pressed']), ['true', 'false']);
   ok('each says what kind of competition it is',
      r.chips().every(c => c.kids.some(k => k.cls.has('kind'))));
-  ok('they sit above the two cards, because they govern both', (() => {
+  ok('they sit above the table and the leaders, because they govern both', (() => {
     const kids = r.host.kids;
-    return kids[0] && kids[0].cls.has('gpick') && kids[1] && kids[1].cls.has('splitgrid');
+    return kids[0] && kids[0].cls.has('gpick') && kids[1] && kids[1].cls.has('lgs-table') && kids[2] && kids[2].cls.has('lgs-leaders');
   })());
   ok('the buttons are buttons, not links that would navigate',
      r.chips().length > 0 && r.chips().every(c => c.tag === 'button' && c.type === 'button'));
-  ok('each card\'s link still lets its table scroll underneath (a wheel or a drag is not a tap)',
-     r.hits().length === 2 && r.scrolled.length === 2 &&
-     r.hits().every(h => r.scrolled.some(([l, f]) => l === h && r.frames().indexOf(f) >= 0)));
+  ok('two blocks at the page\'s width, the table then the leaders, each headed and with its way out',
+     r.blocks().length === 2 && find2(r.host, 'h3').map(h => h.textContent).join() === 'Table,Leaders' && r.links().length === 2);
 }
 
 /* ------------------------------------------------- 2. what choosing one does --- */
-console.log('\n2. choosing one moves both embeds and both links');
+console.log('\n2. choosing one moves both tables and both links');
 {
   const r = run(TWO);
   await new Promise(s => setTimeout(s, 0));
-  eq('the table and the leaders both open on the principal competition',
-     r.frames().map(f => f.src),
-     ['embed/table/?l=bcb&kind=standings&n=200&theme=dark&c=c-lg',
-      'embed/table/?l=bcb&kind=leaders&stat=ppg&n=30&theme=dark&c=c-lg']);
-  eq('...and so does the way out of each card',
-     r.hits().map(a => a.attrs.href || a.href),
-     ['l/?l=bcb&c=c-lg', 'l/?l=bcb&c=c-lg#leaders']);
+  eq('the table and the leaders both open on the principal competition (their ways out say which)',
+     r.links().map(a => a.attrs.href || a.href),
+     ['l/?l=bcb&c=c-lg', 'stats/?l=bcb&c=c-lg']);
 
   r.chips()[1].click();
-  eq('choosing the trophy moves both embeds', r.frames().map(f => f.src),
-     ['embed/table/?l=bcb&kind=standings&n=200&theme=dark&c=c-cup',
-      'embed/table/?l=bcb&kind=leaders&stat=ppg&n=30&theme=dark&c=c-cup']);
-  eq('...and both links, so "open ›" opens what is on screen',
-     r.hits().map(a => a.attrs.href || a.href),
-     ['l/?l=bcb&c=c-cup', 'l/?l=bcb&c=c-cup#leaders']);
+  eq('choosing the trophy moves both, so each link opens what is on screen',
+     r.links().map(a => a.attrs.href || a.href),
+     ['l/?l=bcb&c=c-cup', 'stats/?l=bcb&c=c-cup']);
   eq('the chosen button is the lit one', r.chips().map(c => c.cls.has('on')), [false, true]);
-  eq('the leaders link keeps its anchor AFTER the competition',
-     (r.hits()[1].attrs.href || r.hits()[1].href).endsWith('#leaders'), true);
+  ok('the table is the table page\'s own (standingsview.js) and the leaders the statistics page\'s table (fulltable.js), the top 25 first',
+     /window\.EpinoiaStandingsView\.render\(T\.body, \{ api, competition: comp, base: '', eloIds:/.test(src) &&
+     /FT\.render\(\{\s*host: L\.body, kind: 'player', sortKey: 'ppg',\s*pageSize: 25,/.test(src));
+  ok('their code arrives, and their reads are made, only when the section first comes near the screen',
+     /new IntersectionObserver\(es => \{ if \(es\.some\(e => e\.isIntersecting\)\) \{ io\.disconnect\(\); seen = true; draw\(\); \} \}/.test(src) &&
+     /if \(!seen \|\| !id \|\| drawn === id\) return;/.test(src) && /function seasonTools\(\)/.test(src));
 }
 
 /* --------------------------------------------- 3. when there is no choice --- */
@@ -159,15 +157,14 @@ console.log('\n3. a league with nothing to choose between');
   const r = run(one);
   await new Promise(s => setTimeout(s, 0));
   eq('one competition: no buttons at all', r.chips().length, 0);
-  eq('...and the embeds are exactly what they always were',
-     r.frames().map(f => f.src),
-     ['embed/table/?l=bcb&kind=standings&n=200&theme=dark',
-      'embed/table/?l=bcb&kind=leaders&stat=ppg&n=30&theme=dark']);
+  eq('...and the table and the leaders are of it',
+     r.links().map(a => a.attrs.href || a.href), ['l/?l=bcb&c=c-lg', 'stats/?l=bcb&c=c-lg']);
 
   const none = run(null);
   await new Promise(s => setTimeout(s, 0));
-  eq('a read that failed leaves the page as it was, with no buttons',
-     [none.chips().length, none.frames().length], [0, 2]);
+  await new Promise(s => setTimeout(s, 0));
+  eq('a read that failed: no buttons, the two blocks there, saying nothing is played yet rather than loading for ever',
+     [none.chips().length, none.blocks().length, none.blocks().every(b => /Nothing played yet this season\./.test(b.textContent))], [0, 2, true]);
 
   /* a competition with entries and no fixtures is not a view of anything */
   const unplayed = { main: COMP('c-lg', 'BCB 2026-2027', 'league'),
@@ -177,7 +174,7 @@ console.log('\n3. a league with nothing to choose between');
   eq('only the ones being played are offered', u.chips().length, 0);
   ok('...which is comps.js\'s own rule, not a second one here',
      /const played = \[\.\.\.byId\.values\(\)\]\.filter\(c => c\.games > 0\);/.test(rd('epinoia', 'comps.js')) &&
-     /seasonFields\(LEAGUE\.id\)\.then\(F => \{\s*\n\s*const played = \(F && F\.all\) \|\| \[\];/.test(src));
+     /seasonFields\(LEAGUE\.id\)\.then\(async F => \{\s*\n\s*const played = \(F && F\.all\) \|\| \[\];/.test(src));
 }
 
 /* ------------------------------------------- 4. the embed understands it --- */
@@ -190,8 +187,8 @@ console.log('\n4. the parameter the buttons send is the one the embed reads');
      /const comp = comps\.find\(c => c\.id === compId\) \|\| comps\[0\] \|\| null;/.test(rd('epinoia', 'data.js')));
   ok('the row is styled by the stylesheet the games picker already uses',
      /\.gpick\{/.test(rd('epinoia', 'index.html')) && /picker = el\('div', 'gpick'\)/.test(src));
-  ok('an iframe is only re-pointed when the URL actually changes',
-     /if \(card\.frame\.getAttribute\('src'\) !== want\) card\.frame\.src = want;/.test(src));
+  ok('a competition already drawn is not drawn again (a press on the lit button does nothing)',
+     /if \(!seen \|\| !id \|\| drawn === id\) return;/.test(src));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -64,3 +64,9 @@
 .ep-tbl.stand th .sorth:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
 .ep-tbl.stand th[aria-sort="descending"] .sorth{color:var(--tt-yellow,#ffe14d)}          /* the teletext header is black in both themes: the yellow of the first place */
 .ep-tbl.stand th[aria-sort="descending"] .sorth::after{content:" \25BC";font-size:.8em}
+/* THE CREST AND THE NAME'S OWN BASE (standingsview.js; 2026-10-15): the table page set these in its own sheet; a league's
+   front page draws the same table (its TABLE & LEADERS) without that sheet, so they are here, under the table's class */
+.ep-tbl.stand .crest{display:inline-grid;place-items:center;flex:none;font-family:var(--f-score)}
+.ep-tbl.stand .tname-cell{display:flex;align-items:center}
+.ep-tbl.stand .tname-cell a{text-decoration:none}
+.ep-tbl.stand .dock{color:var(--flare);font-size:9px;margin-left:4px;vertical-align:super}

@@ -1,0 +1,40 @@
+/* A LEAGUE'S FRONT PAGE - GAMES (leaguegames.js; Louie, 2026-10-15): HOME's daily fixtures for one league. The switch is
+   the feed's (kit/feedview.css: the section is .fv), with HOME's LIVE dot and count (kit/home.css .hm, repeated here for
+   .lgg); the cards are kit/fxc.css's. On a desktop two rows of four (three, then two, as the column narrows), on a phone
+   HOME's sideways strip. */
+.lgg .sec-h .showall{margin-left:auto}
+.lgg .sec-h .hm-seg button[data-fx="live"]:not([hidden]){display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.lgg .sec-h .hm-seg .fx-dot{width:7px;height:7px;border-radius:50%;background:var(--flare);flex:none;
+  animation:lgg-live 1.6s ease-in-out infinite}
+.lgg .sec-h .hm-seg button[aria-selected="true"] .fx-dot{background:var(--ground)}
+.lgg .sec-h .hm-seg .fx-n{font:inherit;font-weight:700;min-width:16px;padding:1px 4px;border-radius:999px;text-align:center;
+  background:var(--flare);color:#fff;letter-spacing:0}
+.lgg .sec-h .hm-seg button[aria-selected="true"] .fx-n{background:var(--ground);color:var(--flare)}
+@keyframes lgg-live{0%,100%{opacity:1}50%{opacity:.45}}
+.lgg .lg-mount{min-height:120px}
+.lgg .lg-mount[aria-busy="true"] > .fxc-rail{opacity:.5;transition:opacity .2s ease}
+.lgg .lg-mount > .empty{padding:calc(var(--u)*3)}
+/* the skeleton while the first read is out: four cards' height */
+.lgg .hm-skel{display:flex;gap:calc(var(--u)*1.5);padding:0 calc(var(--u)*3) calc(var(--u)*3);overflow:hidden}
+.lgg .hm-skel i{display:block;flex:1 1 0;min-width:200px;height:150px;border:1px solid var(--rule);border-radius:14px;
+  background:linear-gradient(90deg,var(--panel),color-mix(in oklch,var(--ink) 5%,var(--panel)),var(--panel));background-size:200% 100%;
+  animation:lgg-skel 1.4s ease-in-out infinite}
+@keyframes lgg-skel{to{background-position:-200% 0}}
+@media (min-width:721px){
+  .lgg .lg-mount{container:lgg / inline-size}
+  .lgg .fxc-rail{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@container lgg (min-width:460px){ .lgg .fxc-rail{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@container lgg (min-width:616px){ .lgg .fxc-rail{grid-template-columns:repeat(4,minmax(0,1fr))} }
+@media (prefers-reduced-motion:reduce){ .lgg .sec-h .hm-seg .fx-dot, .lgg .hm-skel i{animation:none} }
+
+/* TABLE & LEADERS (home.js splash; Louie, 2026-10-15): the table page's table and the statistics page's table, each the
+   page's full width and every row of it, in place of the two small embeds side by side */
+.lgs-block{margin:0 0 calc(var(--u)*4)}
+.lgs-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:calc(var(--u)*2) calc(var(--u)*3) calc(var(--u)*1.5)}
+.lgs-h h3{margin:0;font-family:var(--f-micro);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+.lgs-h a{font-family:var(--f-micro);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);text-decoration:none}
+.lgs-h a:hover{color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.lgs-table .ep-tw{padding:0 calc(var(--u)*3)}
+.lgs-wait{padding:calc(var(--u)*3);color:var(--ink-3);font-family:var(--f-micro);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+@media (max-width:720px){ .lgs-h{padding-left:12px;padding-right:12px} .lgs-table .ep-tw{padding:0 6px} }

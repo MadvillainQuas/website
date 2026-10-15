@@ -129,7 +129,7 @@ console.log('\nHOME: MAIN | VIDEO, and the VIDEO view');
      && /rpc\/live_streams/.test(vm) && /dataset\.on = on \? '1' : '0'/.test(vm));
   ok('the change over: what leaves fades and sinks and is then not drawn; ?view=video in the address, the Back button back to MAIN',
      /n\.classList\.add\('vh-gone'\)/.test(vm) && /searchParams\.set\('view', 'video'\)/.test(vm) && /addEventListener\('popstate'/.test(vm)
-     && /\.vh-gone\{display:none !important\}/.test(rd('epinoia', 'kit', 'home.css')));
+     && /\.vh-gone\{display:none !important\}/.test(rd('epinoia', 'kit', 'modes.css')));    // the strip's sheet, shared with a league's front page (2026-10-15)
   ok('ON THIS PAGE holds still while VIDEO is open (nav.js), and an entry of it pressed goes back to MAIN first',
      /classList\.contains\('vh-on'\)\) return;/.test(nav) && /\.tt-index a\[href\^="#"\]/.test(vm));
   ok('LIVE: every game streaming (live_streams), its stream, its box score dark, its chat, FULL SCREEN; read again every minute while seen',

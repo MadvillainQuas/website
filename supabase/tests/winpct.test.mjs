@@ -75,15 +75,16 @@ const tag = t => n => n.tagName === t.toUpperCase();
 
 console.log('\nthe league page\'s table (l/league.js)');
 {
-  const src = rd('epinoia', 'l', 'league.js');
-  const a = src.indexOf('/* THE ORDER OF THE TABLE.'), b = src.indexOf('/* ------------------------------------------------------ conference tables');
-  ok('the table code is where this test reads it', a > 0 && b > a);
+  /* the table is drawn by standingsview.js (2026-10-15: shared with a league's front page); the page hands it its rows */
+  const src = rd('epinoia', 'standingsview.js'), lg = rd('epinoia', 'l', 'league.js');
+  ok('the table code is where this test reads it, and the league page draws through it', /THE ORDER OF THE TABLE\./.test(src) &&
+     /function groupTable\(rows\) \{ return SV\(\)\.groupTable\(rows, \{ base: '\.\.\/', elo: ELO_NOW \}\); \}/.test(lg));
   const sandbox = { window: { EpinoiaStandings: ST }, document: { createElement: t => new El(t) }, console };
   sandbox.window.epinoiaLogoUrl = () => null;
-  const code = 'const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };\n' +
-    src.slice(a, b) + '\n;this.groupTable = groupTable;';
   vm.createContext(sandbox);
-  vm.runInContext(code, sandbox);
+  vm.runInContext(src, sandbox);
+  const SVw = sandbox.EpinoiaStandingsView;
+  sandbox.groupTable = rows => SVw.groupTable(rows, { base: '../' });
   const t1 = sandbox.groupTable(rows), t2 = sandbox.groupTable(rows.slice(0, 3));
   BODY.append(t1, t2);
   const heads = t => t.all(tag('th')).map(th => th.textContent);

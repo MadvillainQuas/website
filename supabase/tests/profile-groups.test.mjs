@@ -148,5 +148,62 @@ console.log('\n7. the phone hero');
   ok('the old stacked rule is gone', !/@media \(max-width:640px\)\{ \.idband > \.idpos\{grid-column:1 \/ -1/.test(PI));
 }
 
+console.log('\n8. a league\'s front page (Louie, 2026-10-15)');
+{
+  const LI = rd('epinoia', 'index.html');
+  const at = LI.indexOf('class="pgrp-root"');
+  const body = LI.slice(at);
+  const starts = [...body.matchAll(/<div class="pgrp-group" data-pgrp-key="([^"]+)" data-pgrp-name="([^"]+)">/g)];
+  const g = starts.map((m, i) => {
+    const chunk = body.slice(m.index, i + 1 < starts.length ? starts[i + 1].index : undefined);
+    return { key: m[1], name: m[2].replace(/&amp;/g, '&'), secs: [...chunk.matchAll(/<(?:div|section) class="sec[^"]*" id="([^"]+)"/g)].map(x => x[1]) };
+  });
+  const want = [
+    ['Games', ['lgGamesSec']],
+    ['Feed & video', ['newsSec', 'storySec', 'videoSec', 'creatorsSec']],
+    ['Clubs', ['clubsSec']],
+    ['Stars', ['totySec', 'fvSec', 'starsSec']],
+    ['Records', ['recordsSec']],
+    ['Fixtures', ['gamesSec']],
+    ['Table & leaders', ['seasonSec']],
+    ['Take part', ['takepartSec', 'merchSec', 'socialSec']]
+  ];
+  ok('eight groups, in Louie\'s order', JSON.stringify(g.map(x => x.name)) === JSON.stringify(want.map(w => w[0])), g.map(x => x.name).join(' / '));
+  want.forEach(([n, ids], i) => ok(n + ': ' + ids.join(', '), g[i] && JSON.stringify(g[i].secs) === JSON.stringify(ids), g[i] && g[i].secs.join(',')));
+  ok('only on a league\'s page: the platform\'s splash shares the document', /<div class="pgrp-root" id="lgMain" data-pgrp="l" data-pgrp-if="m-league">/.test(LI) &&
+     /data-pgrp-if/.test(SG) && /doc\.documentElement\.classList\.contains\(c\)/.test(SG));
+  ok('the old live and recent list is the Fixtures group\'s, headed so', /<h2>Fixtures<\/h2>/.test(LI) && !/<h2>Games<\/h2>/.test(LI));
+
+  /* the strip */
+  const strip = LI.slice(LI.indexOf('<nav class="hm-modes"'), LI.indexOf('</nav>', LI.indexOf('<nav class="hm-modes"')));
+  ok('HOME\'s MAIN | VIDEO strip, MAIN and VIDEO only, marked as a league\'s', /<nav class="hm-modes" id="hmModes" aria-label="Main or video" data-scope="league">/.test(LI) &&
+     /data-mode="main" aria-selected="true"/.test(strip) && /data-mode="video"/.test(strip) && !/data-mode="manager"/.test(strip) &&
+     /<div class="vh" id="videoHub" role="tabpanel" aria-label="Video" hidden><\/div>/.test(LI));
+  ok('under the games strip, above the groups', LI.indexOf('id="strip"') < LI.indexOf('id="hmModes"') && LI.indexOf('id="hmModes"') < LI.indexOf('id="lgMain"'));
+  ok('the strip\'s sheet is shared with HOME (kit/modes.css), and both pages load it', /\.hm-modes\{/.test(rd('epinoia', 'kit', 'modes.css')) &&
+     !/\.hm-modes\{/.test(rd('epinoia', 'kit', 'home.css')) && /href="kit\/modes\.css\?v=\d+"/.test(LI) && /href="\.\.\/kit\/modes\.css\?v=\d+"/.test(rd('epinoia', 'home', 'index.html')));
+  const VM = rd('epinoia', 'home', 'vhmode.js'), VH = rd('epinoia', 'home', 'videohub.js'), HJ = rd('epinoia', 'home.js');
+  ok('one switcher for both pages: its paths are its own folder\'s, and a league\'s strip hands VIDEO the league', /const withStamp = p => new URL\(p, DIR\)\.href/.test(VM) &&
+     /api\.open\(hub, \{ base: ROOT, league: leagueOf\(\) \}\)/.test(VM) && /strip\.dataset\.scope !== 'league'/.test(VM) && /src="home\/vhmode\.js\?v=\d+" defer/.test(LI));
+  ok('home.js puts the league on the strip once it knows it', /modes\.dataset\.league = JSON\.stringify\(\{ id: LEAGUE\.id, slug: LEAGUE\.slug, name: LEAGUE\.name \}\)/.test(HJ));
+  ok('VIDEO, a league\'s: only its games live and scheduled, only its videos, no leagues\' strip', /const fixedLg = !team && opts && opts\.league/.test(VH) &&
+     /\(!team \|\| isTeam\(g\)\) && inLg\(g\)\) : \[\]/.test(VH) && /g\.status === 'scheduled' && \(!team \|\| isTeam\(g\)\) && inLg\(g\)/.test(VH) &&
+     /league = fixedLg, followedLg/.test(VH) && /if \(!STRIP\[k\] \|\| team \|\| fixedLg\) \{ lgs\.hidden = true; return; \}/.test(VH));
+  ok('the LIVE mark on a league\'s strip counts its own streams', /setLive\(lg \? all\.filter\(g => g && g\.league/.test(VM));
+
+  /* the games */
+  const LG = rd('epinoia', 'leaguegames.js'), LC = rd('epinoia', 'kit', 'leaguegames.css');
+  ok('GAMES: HOME\'s live, upcoming and results for the league alone, eight cards', /G = GG\.scoped \? GG\.scoped\(\{ only: \[league\.id\] \}\) : GG;/.test(LG) &&
+     /const N = 8,/.test(LG) && /G\.card\(g, \{ base: '', now: data\.now, state: data\.state\[g\.id\], badge: false \}\)/.test(LG) &&
+     /data-fx="live"[^>]*hidden/.test(LI) && /data-fx="up"/.test(LI) && /data-fx="res"/.test(LI));
+  ok('...two rows of four on a desktop, HOME\'s strip on a phone', /@container lgg \(min-width:616px\)\{ \.lgg \.fxc-rail\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)\} \}/.test(LC) &&
+     /@media \(min-width:721px\)\{\s*\.lgg \.lg-mount\{container:lgg \/ inline-size\}/.test(LC));
+  ok('...SHOW ALL GAMES is the league\'s fixtures page', /all\.href = 'fixtures\/\?l=' \+ encodeURIComponent\(league\.slug\)/.test(LG) && /id="lgGamesAll" href="fixtures\/">show all games →</.test(LI));
+  ok('...started by home.js once it knows the league, and hidden with the fixtures behind a wall', /window\.EpinoiaLeagueGames\.mount\(\{ league: LEAGUE \}\)/.test(HJ) &&
+     /const lg = \$\('#lgGamesSec'\); if \(lg\) lg\.classList\.add\('hide'\);/.test(HJ));
+  ok('the page loads what the groups and the games need', ['kit/fxc.css', 'kit/leaguegames.css', 'kit/secgroups.css'].every(h => LI.includes('href="' + h + '?v=')) &&
+     ['globalgames.js', 'leaguegames.js', 'secgroups.js'].every(s => LI.includes('src="' + s + '?v=')));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 if (fail) process.exit(1);

@@ -62,6 +62,11 @@
     const st = S = { host, M, timers: [], chat: null, boxer: null, sp: null, alive: true };
     const team = opts && opts.team && opts.team.id ? opts.team : null;
     const isTeam = g => !!team && [g.home, g.away].some(t => t && team.slug && t.slug === team.slug);
+    /* A LEAGUE'S VERSION (opts.league = { id, slug, name }: a league's front page, home/vhmode.js; Louie, 2026-10-15): HOME's
+       view, but LIVE and SCHEDULED hold only the league's games and LATEST VIDEOS only its videos - the league fixed as if
+       chosen on the leagues' strip, which is not shown */
+    const fixedLg = !team && opts && opts.league && (opts.league.id || opts.league.slug) ? opts.league : null;
+    const inLg = g => !fixedLg || !!(g && g.league && ((fixedLg.slug && g.league.slug === fixedLg.slug) || (fixedLg.id && g.league.id === fixedLg.id)));
     /* THE PLATFORM'S VISIT COUNTS (track.js action): what is done here, as keys - on HOME's VIDEO view ('home/video') or the
        club page's Video tab ('t') - with the league and game it was about. Anonymous, and never in the way. */
     const act = (k, o) => { try { const T = window.EpinoiaTrack; if (T && T.action) T.action(k, o); } catch (_) { /* no count */ } };
@@ -285,7 +290,7 @@
       /* the fixture cards' list too (watch.js onAir): one read for the page */
       try { if (Array.isArray(list) && window.EpinoiaWatch && window.EpinoiaWatch.airFeed) window.EpinoiaWatch.airFeed(list); } catch (_) { /* theirs */ }
       if (!st.alive) return;
-      games = Array.isArray(list) ? list.filter(g => g && g.id && g.home && g.away && (!team || isTeam(g))) : [];
+      games = Array.isArray(list) ? list.filter(g => g && g.id && g.home && g.away && (!team || isTeam(g)) && inLg(g)) : [];
       /* the club's version: LIVE is there only while the club is playing */
       if (team) live.hidden = !games.length && !schedRows.length;
       else try { if (window.EpinoiaHomeModes && window.EpinoiaHomeModes.setLive) window.EpinoiaHomeModes.setLive(games.length); } catch (_) { /* the strip's own */ }
@@ -328,7 +333,7 @@
         if (s && s.token && typeof F.load === 'function') { const pr = await F.load(); ((pr && pr.fav_league_ids) || []).forEach(id => schedFol.add(id)); }
       } catch (_) { /* signed out */ }
       if (!st.alive) return;
-      schedRows = list.filter(g => g && g.id && g.home && g.away && g.status === 'scheduled' && (!team || isTeam(g)))
+      schedRows = list.filter(g => g && g.id && g.home && g.away && g.status === 'scheduled' && (!team || isTeam(g)) && inLg(g))
         .sort((a, b) => (Date.parse(a.tipoff_at) || 0) - (Date.parse(b.tipoff_at) || 0));
       drawSched();
     }
@@ -544,7 +549,7 @@
 
     /* the leagues' strip is over HIGHLIGHTS and FULL GAMES (each kind its own leagues, read once) */
     const STRIP = { highlights: 1, full: 1, press: 1 };
-    let kind = null, rows = [], shown = STEP, playing = null, league = null, followedLg = new Set();
+    let kind = null, rows = [], shown = STEP, playing = null, league = fixedLg, followedLg = new Set();
     const leaguesBy = {};
     const R = () => window.EpinoiaFeedRank;
     st.sp = M.stagePlayer(stage, {
@@ -571,13 +576,13 @@
       b.addEventListener('click', () => {
         if (k === kind) return;
         kind = k;
-        league = null;
+        league = fixedLg;
         act('kind-' + (k || 'all'));
         seg.querySelectorAll('.md-chip').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
         /* on a phone the pill scrolls sideways (kit/media.css): the chip pressed comes wholly into it */
         const sr = seg.getBoundingClientRect(), br = b.getBoundingClientRect();
         if (br.left < sr.left || br.right > sr.right) seg.scrollTo({ left: seg.scrollLeft + br.left - sr.left - 24, behavior: 'smooth' });
-        if (!STRIP[kind] || team) lgs.hidden = true;
+        if (!STRIP[kind] || team || fixedLg) lgs.hidden = true;
         loadVideos().then(showLeagues);
       });
       seg.appendChild(b);
@@ -657,7 +662,7 @@
     const leaguesFor = async k => (leaguesBy[k] || (leaguesBy[k] = await readLeagues(k)));
     async function showLeagues() {
       const k = kind;
-      if (!STRIP[k] || team) { lgs.hidden = true; return; }
+      if (!STRIP[k] || team || fixedLg) { lgs.hidden = true; return; }
       const list = await leaguesFor(k);
       if (!st.alive || kind !== k) return;
       lgs.hidden = !list.length;
@@ -666,7 +671,7 @@
     }
     function caption() {
       if (team) return;
-      vsub.textContent = league ? league.name + ' · ' + tr(kind === 'full' ? 'every full game, newest first in your order'
+      vsub.textContent = league ? (league.name ? league.name + ' · ' : '') + tr(kind === 'full' ? 'every full game, newest first in your order'
         : kind === 'press' ? 'every press conference, newest first in your order' : 'every highlight, newest first in your order')
         : tr('From what you follow first, then in your feed’s order');
     }

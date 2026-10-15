@@ -749,7 +749,6 @@
       /* ---- embeds-ui.js: registered websites ---- */
       'every embed': 'todos los widgets',
       'fixture strip': 'franja de partidos',
-      'table & leaders': 'clasificación y líderes',
       'live box score': 'estadísticas en directo',
       'Register a website and an embed planted there needs no settings of its own. Anything written into the snippet still wins, so nothing already in place changes. This arranges public information — it is not a permission, and a site could claim to be another site.': 'Registra una web y un widget insertado allí no necesita ajustes propios. Lo que esté escrito en el fragmento sigue teniendo prioridad, así que no cambia nada de lo que ya está puesto. Esto organiza información pública: no es un permiso, y una web podría hacerse pasar por otra.',
       'the club’s website — paste the address, the rest is trimmed off': 'la web del club: pega la dirección y se recorta el resto',

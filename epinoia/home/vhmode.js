@@ -25,7 +25,19 @@
   const liveMark = strip.querySelector('.hm-mode-live');
   const me = document.currentScript || document.querySelector('script[src*="vhmode.js"]');
   const STAMP = (/[?&]v=(\d+)/.exec((me && me.src) || '') || [])[1] || '';
-  const withStamp = p => p + (STAMP ? '?v=' + STAMP : '');
+  /* A LEAGUE'S FRONT PAGE CARRIES THE STRIP TOO (Louie, 2026-10-15: MAIN and VIDEO, no MANAGER), from epinoia/ rather than
+     epinoia/home/: every path is this file's own folder's, so the same file serves both pages */
+  const DIR = ((me && me.src) || location.href).replace(/[?#].*$/, '').replace(/[^/]*$/, '');
+  const withStamp = p => new URL(p, DIR).href + (STAMP ? '?v=' + STAMP : '');
+  const ROOT = new URL('../', DIR).href;                   // epinoia/, for the VIDEO view's own reads and links
+  /* the league a league's front page is about (home.js puts it on the strip once it is known; until then its slug from
+     the address): VIDEO then shows that league's games and videos alone (videohub.js opts.league) */
+  const leagueOf = () => {
+    if (strip.dataset.scope !== 'league') return null;
+    try { const l = JSON.parse(strip.dataset.league || 'null'); if (l && (l.id || l.slug)) return l; } catch (_) { /* below */ }
+    const slug = new URLSearchParams(location.search).get('l');
+    return slug ? { slug } : null;
+  };
   const reduced = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return false; } };
   const wait = ms => new Promise(r => setTimeout(r, ms));
   let mode = 'main', busy = false, loading = null;
@@ -101,7 +113,7 @@
         parts.forEach(n => { n.classList.remove('vh-out'); n.classList.add('vh-gone'); });
         hub.hidden = false;
         if (!quick) hub.classList.add('vh-in');
-        Promise.resolve(api.open(hub, { base: '../' })).catch(() => {});
+        Promise.resolve(api.open(hub, { base: ROOT, league: leagueOf() })).catch(() => {});
         const top = strip.getBoundingClientRect().top + window.scrollY - 8;
         if (window.scrollY > top || o.instant) window.scrollTo({ top, behavior: quick ? 'auto' : 'smooth' });
         setTimeout(() => hub.classList.remove('vh-in'), 700);
@@ -134,7 +146,7 @@
     strip.dataset.mode = 'manager';
     tabs.forEach(x => x.setAttribute('aria-selected', String(x === t)));
     if (bar) { bar.style.width = t.offsetWidth + 'px'; bar.style.transform = 'translateX(' + t.offsetLeft + 'px)'; }
-    const go = () => { location.href = '../manager/'; };
+    const go = () => { location.href = new URL('../manager/', DIR).href; };
     if (reduced()) { go(); return; }
     const r = t.getBoundingClientRect(), w = document.createElement('div');
     w.className = 'mg-warp';
@@ -187,11 +199,16 @@
     if (!c || !c.supabaseUrl || !liveMark || document.hidden) return;
     /* the fixture cards' list (watch.js: the games streaming now) when it is fresh: the same read, not asked twice */
     const W = window.EpinoiaWatch, fresh = W && W.airFresh ? W.airFresh() : null;
-    if (fresh) { setLive(fresh.size); return; }
+    if (fresh && !leagueOf()) { setLive(fresh.size); return; }        // a league's strip counts its own (below)
     fetch(c.supabaseUrl + '/rest/v1/rpc/live_streams', { method: 'POST', cache: 'no-store',
       headers: { apikey: c.supabaseAnonKey, Authorization: 'Bearer ' + c.supabaseAnonKey, 'Content-Type': 'application/json' }, body: '{}' })
       .then(r => (r.ok ? r.json() : null))
-      .then(list => { if (Array.isArray(list) && W && W.airFeed) W.airFeed(list); setLive(Array.isArray(list) ? list.length : 0); })
+      .then(list => {
+        if (Array.isArray(list) && W && W.airFeed) W.airFeed(list);
+        /* a league's strip: its own games streaming, not every league's */
+        const lg = leagueOf(), all = Array.isArray(list) ? list : [];
+        setLive(lg ? all.filter(g => g && g.league && ((lg.slug && g.league.slug === lg.slug) || (lg.id && g.league.id === lg.id))).length : all.length);
+      })
       .catch(() => {});
   }
   if ('requestIdleCallback' in window) requestIdleCallback(probe, { timeout: 4000 }); else setTimeout(probe, 2500);

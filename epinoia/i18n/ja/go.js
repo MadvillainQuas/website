@@ -223,7 +223,6 @@
       'Press “Use my location”, or go on passport mode, and the nearest games appear here.': '「現在地を使う」を押すか、パスポートモードにすると、近くの試合がここに表示されます。',
       'Press the button and the nearest games appear.': 'ボタンを押すと、近くの試合が表示されます。',
       'Shown, nearest first': '表示中（近い順）',
-      'The games could not be read just now.': '試合を読み込めませんでした。',
       'The games nearest your passport place: the distance, the day and the time.': 'パスポートで選んだ場所に近い試合：距離・日付・時間。',
       'time to be confirmed': '時間未定',
       'Using': '使用中',

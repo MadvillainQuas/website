@@ -223,7 +223,6 @@
       'Press “Use my location”, or go on passport mode, and the nearest games appear here.': 'Pulsa «Usar mi ubicación» o activa el modo pasaporte y aquí aparecerán los partidos más cercanos.',
       'Press the button and the nearest games appear.': 'Pulsa el botón y aparecerán los partidos más cercanos.',
       'Shown, nearest first': 'Mostrados, del más cercano',
-      'The games could not be read just now.': 'No se han podido leer los partidos ahora mismo.',
       'The games nearest your passport place: the distance, the day and the time.': 'Los partidos más cercanos a tu lugar de pasaporte: la distancia, el día y la hora.',
       'time to be confirmed': 'hora por confirmar',
       'Using': 'Usando',

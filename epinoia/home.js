@@ -1369,78 +1369,6 @@ async function comps() {
   return compIdsCache;
 }
 
-/* THE CARD IS A LINK, AND THE TABLE UNDER IT STILL SCROLLS. The link lies over the whole embed
-   so a tap anywhere opens the page - which also meant the rows inside (every club, the top
-   thirty) could not be scrolled at all: the wheel and the finger both landed on the link
-   (reported 2026-09-24). So the link passes on what is not a tap:
-     a wheel over the card    scrolls the table; at its top or bottom the page scrolls instead
-     a drag (finger or mouse) scrolls the table, with a little glide when a finger lets go;
-                              one that is mostly sideways, or that meets the table's end, is
-                              left to the page
-     a tap or a click         is still the link - unless the pointer moved, which was a drag
-   The embed is this site's own page, so its scroller (#host) is reached directly. */
-function scrollThrough(link, frame) {
-  const box = () => {
-    try { return frame.contentDocument && frame.contentDocument.getElementById('host'); } catch (_) { return null; }
-  };
-  /* how far the table moved: 0 when it was already at that end, so the page may have the gesture */
-  const move = (s, dy) => {
-    const was = s.scrollTop;
-    s.scrollTop = Math.max(0, Math.min(s.scrollHeight - s.clientHeight, was + dy));
-    return s.scrollTop - was;
-  };
-  link.addEventListener('wheel', e => {
-    const s = box();
-    if (!s || e.ctrlKey) return;                       /* ctrl+wheel is the browser's zoom */
-    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? s.clientHeight : 1;
-    if (move(s, e.deltaY * unit)) e.preventDefault();
-  }, { passive: false });
-
-  let drag = null, dragged = false, glide = 0;
-  const stop = () => { if (glide) cancelAnimationFrame(glide); glide = 0; };
-  const start = (x, y) => { stop(); drag = { x, y, last: y, t: performance.now(), v: 0, axis: '' }; };
-  const step = (x, y, e) => {
-    if (!drag) return;
-    const s = box();
-    if (!s) return;
-    if (!drag.axis) {
-      if (Math.abs(x - drag.x) < 6 && Math.abs(y - drag.y) < 6) return;
-      drag.axis = Math.abs(y - drag.y) >= Math.abs(x - drag.x) ? 'y' : 'x';
-    }
-    if (drag.axis !== 'y') { dragged = true; return; }
-    const dy = drag.last - y;
-    const now = performance.now();
-    drag.v = dy / Math.max(1, now - drag.t);
-    drag.last = y; drag.t = now;
-    if (move(s, dy)) { dragged = true; if (e && e.cancelable) e.preventDefault(); }
-  };
-  const end = () => {
-    if (!drag) return;
-    const s = box();
-    let v = drag.v * 16;                              /* px per frame */
-    drag = null;
-    if (!s || Math.abs(v) < 1) return;
-    const run = () => {
-      v *= 0.94;
-      if (Math.abs(v) < 0.5 || !move(s, v)) { glide = 0; return; }
-      glide = requestAnimationFrame(run);
-    };
-    glide = requestAnimationFrame(run);
-  };
-  link.addEventListener('touchstart', e => { dragged = false; const t = e.touches[0]; if (t) start(t.clientX, t.clientY); }, { passive: true });
-  link.addEventListener('touchmove', e => { const t = e.touches[0]; if (t) step(t.clientX, t.clientY, e); }, { passive: false });
-  link.addEventListener('touchend', end, { passive: true });
-  link.addEventListener('touchcancel', () => { drag = null; }, { passive: true });
-  /* a mouse drag too: the link's own drag (of its URL) would otherwise take it */
-  link.addEventListener('dragstart', e => e.preventDefault());
-  link.addEventListener('mousedown', e => { if (e.button === 0) { dragged = false; start(e.clientX, e.clientY); } });
-  window.addEventListener('mousemove', e => { if (drag && e.buttons & 1) step(e.clientX, e.clientY, e); });
-  window.addEventListener('mouseup', () => { if (drag) end(); });
-  link.addEventListener('click', e => {
-    if (dragged) { e.preventDefault(); dragged = false; }
-  });
-}
-
 /* which competition the two embeds are showing; '' until the season is known,
    which is the embed's own default (its first competition) */
 let splashComp = '';
@@ -1450,102 +1378,127 @@ function splash() {
   const slug = encodeURIComponent(LEAGUE.slug);
   const table = 'l/?l=' + slug;
 
-  /* THE BUTTONS GO ABOVE BOTH CARDS, because they govern both. A league is not
-     one competition — it is a league, a cup, a trophy and its playoffs — and
-     these two summaries showed whichever the embed happened to pick first, with
-     no way to see the cup's table or the cup's leading scorers without leaving
-     the page. Drawn only when there is more than one competition being played:
-     a single-competition league gets no choice it does not have. */
+  /* THE BUTTONS GO ABOVE BOTH TABLES, because they govern both. A league is not
+     one competition — it is a league, a cup, a trophy and its playoffs — so the
+     reader picks which one the table and the leaders are of. Drawn only when
+     there is more than one competition being played: a single-competition league
+     gets no choice it does not have. */
   const picker = el('div', 'gpick'); picker.id = 'seasonPick';
   host.appendChild(picker);
 
-  /* THE WHOLE TABLE, AND A REAL TOP THIRTY. Twelve rows cut a league's own standings
-     short on its own front page, and ten leaders is a glance rather than a list. The
-     embed scrolls inside its frame now, so asking for all of it costs the page nothing
-     and a reader who wants the tenth club does not have to open another page to see it. */
-  const cards = [
-    { title: 'Table', kind: '&kind=standings&n=200', href: table },
-    { title: 'Leaders', kind: '&kind=leaders&stat=ppg&n=30', href: table + '#leaders' }
-  ];
-  const grid = el('div', 'splitgrid');
-  cards.forEach(c => {
-    const card = el('div', 'embedcard');
-    const h = el('div', 'embedhead');
-    h.append(el('span', null, c.title), el('span', 'embedgo', 'open ›'));
-    card.appendChild(h);
+  /* THE TABLE AND THE LEADERS AT THE PAGE'S WIDTH (Louie, 2026-10-15: "better and more attractive ... use the same style as
+     table for the table, same for statistics for the leaders ... show the full league table rather than being small").
+     They were two small embeds side by side, cut off after twelve rows. Now the table is the table page's own (standings-
+     view.js, kit/standings.css: every club, the crests, WIN% and PTS to order it, the streak, ELO) and the leaders are the
+     statistics page's table (fulltable.js: every player, sortable, the heat map, its column sets), one under the other.
+     Their code arrives, and their reads are made, only when the section first comes near the screen: in a tab not open,
+     once the reader opens it. */
+  const block = (title, go, href) => {
+    const b = el('div', 'lgs-block');
+    const h = el('div', 'lgs-h');
+    const a = el('a', null, go); a.href = href;
+    h.append(el('h3', null, title), a);
+    const body = el('div', 'lgs-body');
+    body.appendChild(el('div', 'lgs-wait', 'Loading…'));
+    b.append(h, body);
+    host.appendChild(b);
+    return { b, a, body, href };
+  };
+  const T = block('Table', 'full table ›', table);
+  T.b.classList.add('lgs-table');
+  const L = block('Leaders', 'every statistic ›', 'stats/?l=' + slug + seasonQuery());
+  L.b.classList.add('lgs-leaders');
 
-    const f = document.createElement('iframe');
-    f.className = 'embedframe';
-    f.src = 'embed/table/?l=' + slug + c.kind + embedLook();
-    f.loading = 'lazy';
-    f.scrolling = 'no';
-    f.title = LEAGUE.name + ' ' + c.title.toLowerCase();
-    card.appendChild(f);
+  let seen = false, drawn = '';
+  const draw = async () => {
+    const id = splashComp;
+    if (!seen || !id || drawn === id) return;
+    drawn = id;
+    try { await seasonTools(); } catch (_) { T.body.textContent = ''; T.body.appendChild(el('div', 'empty', 'The table could not be drawn just now.')); return; }
+    if (drawn !== id) return;
+    /* the table: the competition's own shape (a table, groups, conferences), the ELO over the season's competitions */
+    (async () => {
+      let comp = null;
+      try { comp = (await api('competitions?id=eq.' + id + '&select=id,name,kind,format'))[0]; }
+      catch (_) { try { comp = (await api('competitions?id=eq.' + id + '&select=id,name,kind'))[0]; } catch (e2) { comp = null; } }
+      if (drawn !== id) return;
+      T.body.textContent = '';
+      if (!comp) { T.body.appendChild(el('div', 'empty', 'The table could not be read just now.')); return; }
+      const ids = await leagueCompetitions().catch(() => []);
+      await window.EpinoiaStandingsView.render(T.body, { api, competition: comp, base: '', eloIds: ids.length ? ids : [id] });
+    })().catch(() => { T.body.textContent = ''; T.body.appendChild(el('div', 'empty', 'The table could not be drawn just now.')); });
+    /* the leaders: every player of the competition, the statistics page's table, ranked by points a game */
+    (async () => {
+      const D = window.EpinoiaData, FT = window.EpinoiaTable;
+      const S = await D.season([id], { rows: false, trim: true });
+      if (drawn !== id) return;
+      const players = (S && S.players) || [];
+      const meta = players.length && D.playerMeta ? await D.playerMeta(players.map(p => p.id)).catch(() => ({})) : {};
+      if (drawn !== id) return;
+      players.forEach(p => Object.assign(p, meta[p.id] || {}));
+      L.body.textContent = '';
+      if (!players.length) { L.body.appendChild(el('div', 'empty', 'No statistics yet: they fill in as games are finalised.')); return; }
+      FT.render({
+        host: L.body, kind: 'player', sortKey: 'ppg',
+        pageSize: 25,                       // the top 25, then the table's own SHOW MORE (the statistics page shows 50)
+        filename: (LEAGUE.slug || 'league') + '-leaders', track: 'league-leaders',
+        leagueId: LEAGUE.id, leagueSlug: LEAGUE.slug,
+        rows: players,
+        playerHref: r => 'p/?p=' + encodeURIComponent(r.id)
+      });
+    })().catch(() => { L.body.textContent = ''; L.body.appendChild(el('div', 'empty', 'The leaders could not be drawn just now.')); });
+  };
 
-    /* the whole card is the link; the iframe is decoration under it */
-    const a = el('a', 'embedhit');
-    a.href = c.href;
-    a.setAttribute('aria-label', 'Open the ' + LEAGUE.name + ' ' + c.title.toLowerCase());
-    card.appendChild(a);
-
-    scrollThrough(a, f);
-
-    c.frame = f; c.link = a;
-    grid.appendChild(card);
-  });
-  host.appendChild(grid);
-
-  /* Point both embeds at one competition, and take the reader there too — the
-     league page reads ?c= the same way, so "open ›" opens what is on screen.
-     THE SRC IS ONLY WRITTEN WHEN IT CHANGES: assigning the same URL reloads an
-     iframe, which on first paint would be the summary flickering for nothing. */
+  /* Point both at one competition, and take the reader there too — the
+     league page reads ?c= the same way, so the links open what is on screen. */
   const point = id => {
     splashComp = id || '';
+    if (!splashComp) {                     // no competition this season: say so rather than wait
+      [T, L].forEach(x => { x.body.textContent = ''; x.body.appendChild(el('div', 'empty', 'Nothing played yet this season.')); });
+      return;
+    }
     const c = splashComp ? '&c=' + encodeURIComponent(splashComp) : '';
-    cards.forEach(card => {
-      const want = 'embed/table/?l=' + slug + card.kind + embedLook() + c;
-      if (card.frame.getAttribute('src') !== want) card.frame.src = want;
-      const hash = card.href.indexOf('#');
-      card.link.href = hash < 0 ? card.href + c
-        : card.href.slice(0, hash) + c + card.href.slice(hash);
-    });
+    T.a.href = T.href + c;
+    L.a.href = L.href + c;
+    draw();
   };
+
+  if (typeof IntersectionObserver === 'function') {
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); seen = true; draw(); } }, { rootMargin: '600px 0px' });
+    io.observe(host);
+  } else seen = true;
 
   /* The competitions actually being PLAYED, from the same read the clubs grid
      makes (comps.js, cached): a competition with entries and no fixtures is not
-     a view of anything. The principal one is selected, which is what the embeds
-     were already showing. A league with one competition, or a read that fails,
-     leaves the page exactly as it was. */
-  seasonFields(LEAGUE.id).then(F => {
+     a view of anything. The principal one is selected. A read that fails falls
+     back to the season's first competition. */
+  seasonFields(LEAGUE.id).then(async F => {
     const played = (F && F.all) || [];
-    if (played.length < 2) return;
-    const main = (F.main && F.main.id) || played[0].id;
-    const order = played.slice().sort((a, b) =>
-      (a.id === main ? -1 : 0) - (b.id === main ? -1 : 0) ||
-      String(a.name).localeCompare(String(b.name)));
-    const draw = () => {
-      picker.textContent = '';
-      const row = el('div', 'grow');
-      order.forEach(c => {
-        const b = el('button', 'ep-chip' + (splashComp === c.id ? ' on' : ''), c.name);
-        b.type = 'button';
-        b.setAttribute('aria-pressed', splashComp === c.id ? 'true' : 'false');
-        const tag = KIND_LABEL[c.kind] || '';
-        if (tag) { const k = el('small', 'kind', tag); k.setAttribute('data-i18n-ctx', 'kind'); b.appendChild(k); }
-        b.addEventListener('click', () => { point(c.id); draw(); });
-        row.appendChild(b);
-      });
-      picker.appendChild(row);
-    };
-    point(main);
-    draw();
-  }).catch(() => { /* no buttons, and the summaries as they always were */ });
+    const main = (F && F.main && F.main.id) || (played[0] && played[0].id) || (await leagueCompetitions().catch(() => []))[0];
+    if (played.length >= 2) {
+      const order = played.slice().sort((a, b) =>
+        (a.id === main ? -1 : 0) - (b.id === main ? -1 : 0) ||
+        String(a.name).localeCompare(String(b.name)));
+      const drawPick = () => {
+        picker.textContent = '';
+        const row = el('div', 'grow');
+        order.forEach(c => {
+          const b = el('button', 'ep-chip' + (splashComp === c.id ? ' on' : ''), c.name);
+          b.type = 'button';
+          b.setAttribute('aria-pressed', splashComp === c.id ? 'true' : 'false');
+          const tag = KIND_LABEL[c.kind] || '';
+          if (tag) { const k = el('small', 'kind', tag); k.setAttribute('data-i18n-ctx', 'kind'); b.appendChild(k); }
+          b.addEventListener('click', () => { point(c.id); drawPick(); });
+          row.appendChild(b);
+        });
+        picker.appendChild(row);
+      };
+      point(main);
+      drawPick();
+    } else point(main);
+  }).catch(() => { leagueCompetitions().then(ids => point(ids[0])).catch(() => {}); });
 
-  /* THE FULL TABLE BELONGS HERE, under the two summaries it is the long
-     version of, rather than in "Take part" among the sign-in cards. A reader
-     who has just looked at a twelve-row table and a top ten is the reader who
-     wants every row and every column; sending them to a different section to
-     find it was an accident of where the entry points were first collected. */
+  /* the long versions, a press away */
   const more = el('div', 'seasonmore');
   const full = el('a', 'ep-chip', 'Full statistics table →');
   full.href = 'stats/?l=' + slug + seasonQuery();
@@ -1554,6 +1507,34 @@ function splash() {
   tbl.href = table;
   more.append(full, tbl);
   host.appendChild(more);
+}
+
+/* THE TABLE & LEADERS' CODE AND STYLES, once, when the section is first seen: the table page's standings
+   (standings.js, standingsview.js, sos.js for the ELO, kit/standings.css) and the statistics page's table (fulltable.js
+   with units.js, ages.js and memlock.js, kit/table.css). The page's own stamp on each, so a deploy reaches them. */
+let seasonToolsP = null;
+function seasonTools() {
+  if (seasonToolsP) return seasonToolsP;
+  const v = (/[?&]v=(\d+)/.exec(((document.querySelector('script[src*="home.js"]') || {}).src) || '') || [])[1];
+  const q = v ? '?v=' + v : '';
+  const css = h => new Promise(res => {
+    if (document.querySelector('link[href^="' + h + '"]')) return res();
+    const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = h + q; l.onload = res; l.onerror = res;
+    /* where the table and statistics pages have them: before teletext.css, whose black header rows must win */
+    const tt = document.querySelector('link[href^="kit/teletext.css"]');
+    if (tt) tt.before(l); else document.head.appendChild(l);
+  });
+  const js = (src, global) => (window[global] ? Promise.resolve() : new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = src + q; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  }));
+  seasonToolsP = Promise.all([
+    css('kit/standings.css'), css('kit/table.css'),
+    js('standings.js', 'EpinoiaStandings'), js('sos.js', 'EpinoiaSOS'), js('units.js', 'EpinoiaUnits'), js('ages.js', 'EpinoiaAges'),
+    js('memlock.js', 'EpinoiaMemLock')
+  ]).then(() => Promise.all([js('standingsview.js', 'EpinoiaStandingsView'), js('fulltable.js', 'EpinoiaTable')]));
+  seasonToolsP.catch(() => { seasonToolsP = null; });
+  return seasonToolsP;
 }
 
 /* The section numbers are a reading aid, so they must count what is actually
@@ -1856,7 +1837,10 @@ async function leagueAccess() {
   $('#accessSec').classList.remove('hide');
   $('#seasonSec').classList.add('hide');              // the table and the leaders
   $('#leagues').textContent = '';                     // ...and their embeds stop loading
-  if (!WALL.fixturesPublic) $('#gamesSec').classList.add('hide');
+  if (!WALL.fixturesPublic) {
+    $('#gamesSec').classList.add('hide');
+    const lg = $('#lgGamesSec'); if (lg) lg.classList.add('hide');     // the GAMES group's cards are the same games
+  }
   return WALL;
 }
 
@@ -1982,6 +1966,11 @@ function renumber() {
        the anonymous answer can never land on top of the member's. The stars, Team
        of the Year and the news have no second pass, so they start after the
        answer: one access_state call, bounded at four seconds by access.js. */
+    /* MAIN | VIDEO's VIDEO is this league's (home/vhmode.js reads the league off the strip), and the GAMES group's
+       cards are its games (leaguegames.js; Louie, 2026-10-15). Both read for themselves, as the strip at the top does. */
+    const modes = $('#hmModes');
+    if (modes) modes.dataset.league = JSON.stringify({ id: LEAGUE.id, slug: LEAGUE.slug, name: LEAGUE.name });
+    if (window.EpinoiaLeagueGames) window.EpinoiaLeagueGames.mount({ league: LEAGUE });
     splash();
     seasonBar().catch(() => null);
     const gamesFirst = games().catch(() => null);

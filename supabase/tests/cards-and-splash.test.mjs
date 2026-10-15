@@ -56,8 +56,11 @@ console.log('\n1. the table and the leaders scroll, and hold every row');
      /const height = host \? chrome \+ host\.scrollHeight : document\.body\.scrollHeight;/.test(js));
 
   const home = rd('epinoia', 'home.js');
-  ok('the league\'s front page asks for the whole table', /kind=standings&n=200/.test(home));
-  ok('...and a top thirty', /kind=leaders&stat=ppg&n=30/.test(home));
+  /* 2026-10-15: no longer embeds on the league's own front page - the table page's table and the statistics page's table
+     at the page's width (home.js splash, standingsview.js, fulltable.js) */
+  ok('the league\'s front page shows the whole table (every club: the standings read has no limit)', /EpinoiaStandingsView\.render\(T\.body/.test(home) &&
+     !/&limit=/.test(rd('epinoia', 'standingsview.js').slice(rd('epinoia', 'standingsview.js').indexOf('async function render('))));
+  ok('...and the leaders, the top 25 then SHOW MORE', /pageSize: 25,/.test(home));
   const idx = rd('epinoia', 'index.html');
   ok('the frame is tall enough that the scroll is a bonus, not the only way in', (() => {
     const m = /\.embedframe\{[^}]*height:(\d+)px/.exec(idx);

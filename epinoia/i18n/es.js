@@ -2053,7 +2053,24 @@
       'When it can be wrong': 'Cuándo puede fallar',
       'Every five this player was on the floor in is ranked from point guard to centre, and the player’s minutes go to their place in it. Each place comes from three things: the position the BPM model estimates from the box score (it counts for more the more minutes have been played), the position the club lists, and height.': 'Cada quinteto en el que estuvo en pista este jugador se ordena de base a pívot, y sus minutos van a su lugar en él. Cada lugar sale de tres cosas: la posición que el modelo BPM estima a partir de la estadística (pesa más cuantos más minutos se hayan jugado), la posición que indica el club y la estatura.',
       'It is worked out again from the lineups of the season and competition shown, so it shifts with more minutes played and as the players around them change.': 'Se vuelve a calcular con los quintetos de la temporada y la competición mostradas, así que cambia con más minutos jugados y cuando cambian los compañeros.',
-      'Early in a season, when the BPM estimate rests on few minutes; for a player whose game does not match their size, such as a big who brings the ball up; where a club lists no positions or heights; and in a five with two players of the same kind, where one is pushed into the next spot along. Read it as a guide, not a record.': 'Al principio de la temporada, cuando la estimación del BPM se basa en pocos minutos; con un jugador cuyo juego no se corresponde con su tamaño, como un interior que sube el balón; cuando un club no indica posiciones ni estaturas; y en un quinteto con dos jugadores del mismo tipo, donde uno pasa a la posición de al lado. Tómalo como una guía, no como un registro.'
+      'Early in a season, when the BPM estimate rests on few minutes; for a player whose game does not match their size, such as a big who brings the ball up; where a club lists no positions or heights; and in a five with two players of the same kind, where one is pushed into the next spot along. Read it as a guide, not a record.': 'Al principio de la temporada, cuando la estimación del BPM se basa en pocos minutos; con un jugador cuyo juego no se corresponde con su tamaño, como un interior que sube el balón; cuando un club no indica posiciones ni estaturas; y en un quinteto con dos jugadores del mismo tipo, donde uno pasa a la posición de al lado. Tómalo como una guía, no como un registro.',
+      'Main': 'Principal',
+      'Main or video': 'Principal o vídeo',
+      'Nothing live right now': 'Ahora no hay nada en directo',
+      'Records': 'Récords',
+      'Table & leaders': 'Clasificación y líderes',
+      'show all games →': 'ver todos los partidos →',
+      'every statistic ›': 'todas las estadísticas ›',
+      'full table ›': 'clasificación completa ›',
+      'ELO rating, updated after every game. 1500 is average.': 'Rating ELO, actualizado tras cada partido. 1500 es la media.',
+      'Nothing played yet this season.': 'Todavía no se ha jugado nada esta temporada.',
+      'No results yet this season.': 'Todavía no hay resultados esta temporada.',
+      'No games to come yet.': 'Todavía no hay próximos partidos.',
+      'The games could not be read just now.': 'No se han podido leer los partidos ahora mismo.',
+      'The table could not be read just now.': 'No se ha podido leer la clasificación.',
+      'The table could not be drawn just now.': 'No se ha podido mostrar la clasificación.',
+      'The leaders could not be drawn just now.': 'No se han podido mostrar los líderes.',
+      'No statistics yet: they fill in as games are finalised.': 'Todavía no hay estadísticas: se completan a medida que se cierran los partidos.'
     },
 
     ctx: {

@@ -10,7 +10,7 @@
    whole site (HOME's own key), Scroll until the reader chooses; a desktop is always tabs and shows no switch.
 
    THE PAGE'S MARKUP SAYS WHAT THE GROUPS ARE:
-     <div class="pgrp-root" data-pgrp="t">                                        (t: the club page, p: the player page)
+     <div class="pgrp-root" data-pgrp="t">                      (t: the club page, p: the player page, l: a league's front page)
        <div class="pgrp-group" data-pgrp-key="main" data-pgrp-name="Main stats"> ...its sections, in reading order... </div>
    Nothing is moved and nothing is drawn here but the buttons, the heads and the switch, so the pages' own scripts find
    every section where they always did. A group none of whose headings is showing (a members' section locked away, clutch
@@ -201,7 +201,10 @@
   const reduced = () => { try { return root.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return false; } };
 
   const done = new Set();
-  const boot = () => doc.querySelectorAll('.pgrp-root[data-pgrp]').forEach(b => { if (!done.has(b)) { done.add(b); mount(b); } });
+  /* data-pgrp-if: a class the page's root must carry for the groups to be built (a league's front page, m-league: the
+     platform's splash shares that document and has no groups) */
+  const wanted = b => { const c = b.getAttribute('data-pgrp-if'); return !c || doc.documentElement.classList.contains(c); };
+  const boot = () => doc.querySelectorAll('.pgrp-root[data-pgrp]').forEach(b => { if (!done.has(b) && wanted(b)) { done.add(b); mount(b); } });
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot); else boot();
   root.EpinoiaSecGroups = { mount, shows, COLOURS, MODE_KEY };
 })(typeof window !== 'undefined' ? window : globalThis);

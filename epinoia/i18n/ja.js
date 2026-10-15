@@ -2051,7 +2051,24 @@
       'When it can be wrong': '外れやすいケース',
       'Every five this player was on the floor in is ranked from point guard to centre, and the player’s minutes go to their place in it. Each place comes from three things: the position the BPM model estimates from the box score (it counts for more the more minutes have been played), the position the club lists, and height.': 'この選手がコートに立った5人の組み合わせを、ポイントガードからセンターまでの順に並べ、その中での位置にこの選手の出場時間を割り当てています。各選手の位置は3つの要素から決まります：BPMモデルがボックススコアから推定するポジション（出場時間が長いほど重みが増します）、クラブが登録しているポジション、そして身長です。',
       'It is worked out again from the lineups of the season and competition shown, so it shifts with more minutes played and as the players around them change.': '表示中のシーズンと大会のラインナップから毎回計算し直すため、出場時間が増えたり周りの選手が変わったりすると変動します。',
-      'Early in a season, when the BPM estimate rests on few minutes; for a player whose game does not match their size, such as a big who brings the ball up; where a club lists no positions or heights; and in a five with two players of the same kind, where one is pushed into the next spot along. Read it as a guide, not a record.': 'シーズン序盤でBPMの推定が少ない出場時間に頼っているとき、体格とプレースタイルが合わない選手（ボールを運ぶビッグマンなど）、クラブがポジションや身長を登録していないとき、そして同じタイプの選手が2人いる5人組で、一方が隣のポジションに押し出されるときです。記録ではなく目安としてご覧ください。'
+      'Early in a season, when the BPM estimate rests on few minutes; for a player whose game does not match their size, such as a big who brings the ball up; where a club lists no positions or heights; and in a five with two players of the same kind, where one is pushed into the next spot along. Read it as a guide, not a record.': 'シーズン序盤でBPMの推定が少ない出場時間に頼っているとき、体格とプレースタイルが合わない選手（ボールを運ぶビッグマンなど）、クラブがポジションや身長を登録していないとき、そして同じタイプの選手が2人いる5人組で、一方が隣のポジションに押し出されるときです。記録ではなく目安としてご覧ください。',
+      'Main': 'メイン',
+      'Main or video': 'メインか動画か',
+      'Nothing live right now': '現在ライブ配信中の試合はありません',
+      'Records': '記録',
+      'Table & leaders': '順位表と個人成績',
+      'show all games →': '全試合を見る →',
+      'every statistic ›': 'すべてのスタッツ ›',
+      'full table ›': '順位表の全体 ›',
+      'ELO rating, updated after every game. 1500 is average.': 'ELOレーティング。試合ごとに更新され、1500が平均です。',
+      'Nothing played yet this season.': '今シーズンはまだ試合がありません。',
+      'No results yet this season.': '今シーズンの結果はまだありません。',
+      'No games to come yet.': '今後の試合はまだありません。',
+      'The games could not be read just now.': '試合を読み込めませんでした。',
+      'The table could not be read just now.': '順位表を読み込めませんでした。',
+      'The table could not be drawn just now.': '順位表を表示できませんでした。',
+      'The leaders could not be drawn just now.': '個人成績を表示できませんでした。',
+      'No statistics yet: they fill in as games are finalised.': 'まだスタッツはありません。試合が確定すると反映されます。'
     },
 
     ctx: {

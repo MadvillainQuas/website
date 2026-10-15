@@ -749,7 +749,6 @@
       /* ---- embeds-ui.js: registered websites ---- */
       'every embed': 'すべての埋め込み',
       'fixture strip': '日程ストリップ',
-      'table & leaders': '順位表と個人成績',
       'live box score': 'ライブのボックススコア',
       'Register a website and an embed planted there needs no settings of its own. Anything written into the snippet still wins, so nothing already in place changes. This arranges public information — it is not a permission, and a site could claim to be another site.': 'ウェブサイトを登録すると、そこに設置した埋め込みには個別の設定が不要になります。スニペットに書かれた設定は引き続き優先されるので、設置済みのものは変わりません。これは公開情報の見せ方を決めるもので、権限ではありません。サイトは別のサイトを名乗ることもできます。',
       'the club’s website — paste the address, the rest is trimmed off': 'クラブのウェブサイト — アドレスを貼り付けると、余分な部分は取り除かれます',
