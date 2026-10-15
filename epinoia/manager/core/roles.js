@@ -409,23 +409,55 @@ function home(role) {
   if ((d.spot || 0) >= 0.45 || r.def) return 'corner';
   return 'wing';
 }
-/* the five's alignment: each place's man to the first free spot his home allows, on his side of the floor (the point guard
-   in the middle, the two and the four on the right, the three and the five on the left), the handlers and the bigs first */
+/* THE FIVE'S ALIGNMENT, AS A PLAYBOOK DRAWS IT (Louie, 2026-10-15: "this doesn't look like a basketball set up"). The men
+   inside first, each to the first free spot his home allows on his side of the floor (the point guard in the middle, the
+   two and the four on the right, the three and the five on the left). Then the men outside to the spots a set of that
+   shape spreads them to - not each to the spot he likes best, which bunched three men around the top of the key:
+     5-out          the top, both wings, both corners
+     4-out 1-in     the top, both wings and the corner away from the big (both corners and the wing above the big when
+                    two of them are corner shooters); with nobody at the point, both slots and both corners
+     3-out 2-in     the top and both wings, or both corners for corner shooters; with nobody at the point, both slots and
+                    the corner away from the bigs
+   each man to the one nearest his home's depth (top, slot, wing, corner), on his own side where it can be */
 const SIDE = [0, 1, -1, 1, -1];
 const CHAIN = { top: ['top', 'S slot', 'O slot', 'S wing'], slot: ['S slot', 'O slot', 'top', 'S wing', 'O wing'], wing: ['S wing', 'O wing', 'S corner', 'O corner', 'S slot'],
   corner: ['S corner', 'O corner', 'S wing', 'O wing'], elbow: ['S elbow', 'O elbow', 'nail', 'S slot'], block: ['S block', 'O block', 'S short corner', 'O short corner'],
   dunker: ['S dunker', 'O dunker', 'S short corner', 'O short corner', 'S block'] };
 const PRIO = { top: 0, block: 1, dunker: 1, elbow: 1, slot: 2, wing: 3, corner: 3 };
+const DEPTH = { top: 0, slot: 1, wing: 2, corner: 3 };
+const depthOf = s => DEPTH[String(s).replace(/^(left|right) /, '')];
+const sideOfSpot = s => (/^left /.test(s) ? -1 : /^right /.test(s) ? 1 : 0);
+function perimeter(n, hasTop, corners, away, near) {
+  if (n >= 5) return ['top', 'left wing', 'right wing', 'left corner', 'right corner'];
+  if (n === 4) return hasTop ? (corners >= 2 ? ['top', near + ' wing', 'left corner', 'right corner'] : ['top', 'left wing', 'right wing', away + ' corner'])
+    : ['left slot', 'right slot', 'left corner', 'right corner'];
+  if (n === 3) return hasTop ? (corners >= 2 ? ['top', 'left corner', 'right corner'] : ['top', 'left wing', 'right wing']) : ['left slot', 'right slot', away + ' corner'];
+  if (n === 2) return hasTop ? ['top', away + (corners ? ' corner' : ' wing')] : corners >= 2 ? ['left corner', 'right corner'] : ['left wing', 'right wing'];
+  return n === 1 ? ['top'] : [];
+}
+function permutations(a) { return a.length <= 1 ? [a.slice()] : a.flatMap((x, i) => permutations(a.slice(0, i).concat(a.slice(i + 1))).map(p => [x].concat(p))); }
 function layout(roles, cards, ref) {
   const R5 = [0, 1, 2, 3, 4].map(k => { const x = roles ? roles[k] : null, r = typeof x === 'string' ? BY.get(x) : x; return r && r.slot === k ? r : resolve(null, k, cards ? cards[k] : null, ref); });
   const homes = R5.map(home), taken = new Set(), spots = [];
-  [0, 1, 2, 3, 4].sort((a, b) => (PRIO[homes[a]] - PRIO[homes[b]]) || (a - b)).forEach(k => {
+  const ins = [0, 1, 2, 3, 4].filter(k => INSIDE.has(homes[k])), outs = [0, 1, 2, 3, 4].filter(k => !INSIDE.has(homes[k]));
+  ins.sort((a, b) => (PRIO[homes[a]] - PRIO[homes[b]]) || (a - b)).forEach(k => {
     const S = SIDE[k] >= 0 ? 'right' : 'left', O = S === 'right' ? 'left' : 'right';
     const chain = CHAIN[homes[k]].map(x => x.replace(/^S /, S + ' ').replace(/^O /, O + ' '));
     const spot = chain.find(x => !taken.has(x)) || Object.keys(SPOTS).find(x => x !== 'rim' && !taken.has(x));
     taken.add(spot); spots[k] = spot;
   });
-  const inn = homes.filter(x => INSIDE.has(x)).length;
+  /* the side the bigs are on: the corner away from them is the open one */
+  const inSide = ins.reduce((a, k) => a + sideOfSpot(spots[k]), 0), near = inSide > 0 ? 'right' : 'left', away = near === 'right' ? 'left' : 'right';
+  const corners = outs.filter(k => homes[k] === 'corner').length, hasTop = outs.some(k => homes[k] === 'top');
+  let set = perimeter(outs.length, hasTop, corners, away, near).filter(x => !taken.has(x));
+  ['top', 'left wing', 'right wing', 'left corner', 'right corner', 'left slot', 'right slot'].forEach(x => { if (set.length < outs.length && !taken.has(x) && !set.includes(x)) set.push(x); });
+  set = set.slice(0, outs.length);
+  /* each man outside to the spot nearest his home's depth, on his side where it can be: the cheapest of every way */
+  const cost = (k, x) => Math.abs((DEPTH[homes[k]] != null ? DEPTH[homes[k]] : 2) - depthOf(x)) + (SIDE[k] && sideOfSpot(x) && SIDE[k] !== sideOfSpot(x) ? 0.35 : 0);
+  let best = null;
+  permutations(set).forEach(p => { const c = outs.reduce((a, k, i) => a + cost(k, p[i]), 0); if (!best || c < best.c - 1e-9) best = { c, p }; });
+  outs.forEach((k, i) => { spots[k] = best ? best.p[i] : 'top'; taken.add(spots[k]); });
+  const inn = ins.length;
   return { roles: R5, homes, spots, at: spots.map(s => SPOTS[s]), inn, out: 5 - inn, label: inn ? (5 - inn) + '-out ' + inn + '-in' : '5-out' };
 }
 

@@ -29,6 +29,134 @@ const heat = u => { const t = Math.max(0, Math.min(1, (u - 12) / 16)); return 'h
 const initials = name => String(name || '').split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 const surname = name => { const p = String(name || '').split(/\s+/).filter(Boolean); return p.length > 1 ? p.slice(1).join(' ') : p[0] || ''; };
 
+/* ------------------------------------------------------------------ THE COURT, TO SCALE --- */
+/* Louie, 2026-10-15: "this doesn't look like a basketball set up". The half court as a playbook draws it - the basket at the
+   top, the half-court line at the foot - in FIBA's own measures, on the same feet the roles' spots are in (roles.js SPOTS:
+   u across, v up from the baseline, the basket at v 5.25), ten units a foot: so a wing stands outside the arc, an elbow at
+   the corner of the free-throw line, a corner man in the corner. Sidelines 15 m apart (24.6 ft either side), the
+   half-court line 14 m out (45.9 ft); the lane 4.9 m wide and 5.8 m deep; the three-point line 6.75 m from the basket,
+   6.6 m in the corners; the free-throw circle 1.8 m; the no-charge semicircle 1.25 m; the backboard 1.2 m in. The box
+   is drawn at the court's own shape (520 x 485), so nothing is stretched. */
+const CW = 520, CH = 485, CX = u => (260 + 10 * u) / CW * 100, CY = v => (15 + 10 * v) / CH * 100;
+const COURT_SVG = '<svg class="lines" viewBox="0 0 520 485" preserveAspectRatio="none" aria-hidden="true">' +
+  '<rect x="14" y="15" width="492" height="459"/>' +
+  '<rect x="179.5" y="15" width="161" height="190"/>' +
+  '<path d="M201 205 A59 59 0 0 0 319 205"/><path class="dash" d="M201 205 A59 59 0 0 1 319 205"/>' +
+  '<path d="M43.5 15 L43.5 114.2 A221.5 221.5 0 0 0 476.5 114.2 L476.5 15"/>' +
+  '<path d="M219 55 L219 67.5 A41 41 0 0 0 301 67.5 L301 55"/>' +
+  '<path class="board" d="M230.5 55 L289.5 55"/><circle class="rim" cx="260" cy="67.5" r="7.5"/>' +
+  '<path d="M201 474 A59 59 0 0 1 319 474"/></svg>';
+
+/* ------------------------------------------------------------------ THE FIVE LAID OUT ON THE COURT --- */
+/* Louie, 2026-10-15: "can the player placing on the tactics screen be much more adaptive and look nicer". Football
+   Manager's tactics pitch never lets one tile cover another. Here each man's disc stands at his role's spot (two too close
+   for their discs are eased apart) and his nameplate goes on whichever side of him is clear - of the other discs, the
+   other nameplates and the court's edge: every arrangement of the five is tried (ten places each, 100,000 in all) and
+   the clearest kept - below him first, then above (either slid a little to one side if need be), then beside, then a
+   corner. A narrow court has smaller discs and plates;
+   one still too crowded for them drops the role line (pressing him still opens it). Again whenever the court's size
+   changes. */
+const SIDES = [['b', 0], ['t', 1], ['b<', 0.8], ['b>', 0.8], ['t<', 1.8], ['t>', 1.8], ['r', 2.2], ['l', 2.2], ['br', 3.4], ['bl', 3.4]];
+const PREF = 60, CLEAR = 60;
+/* the overlap of two boxes, each given AIR pixels of room around it */
+const AIR = 3;
+const inBox = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+const ovl = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) + 2 * AIR) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) + 2 * AIR);
+function arrange(spots, W, H) {
+  const pad = 4, g = 6, n = spots.length, S = SIDES.length;
+  const P = spots.map(sp => ({ x: W * (+sp.dataset.x) / 100, y: H * (+sp.dataset.y) / 100 }));
+  const d0 = spots[0].querySelector('.mg-dot'), D = d0 ? d0.offsetWidth || 64 : 64, R = D / 2;
+  /* discs too close eased apart, inside the court */
+  const md = D * 1.3;
+  for (let it = 0; it < 40; it++) {
+    let moved = false;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      let dx = P[j].x - P[i].x, dy = P[j].y - P[i].y, d = Math.hypot(dx, dy);
+      if (d >= md) continue;
+      if (d < 0.01) { dx = 1; dy = 0; d = 1; }
+      const push = (md - d) / 2;
+      P[i].x -= dx / d * push; P[i].y -= dy / d * push; P[j].x += dx / d * push; P[j].y += dy / d * push; moved = true;
+    }
+    P.forEach(p => { p.x = Math.max(R + pad, Math.min(W - R - pad, p.x)); p.y = Math.max(R + pad, Math.min(H - R - pad, p.y)); });
+    if (!moved) break;
+  }
+  const discs = P.map(p => ({ x: p.x - R, y: p.y - R, w: D, h: D })), box = { x: pad, y: pad, w: W - 2 * pad, h: H - 2 * pad };
+  const sz = spots.map(sp => { const l = sp.querySelector('.lab'); return { w: l.offsetWidth, h: l.offsetHeight }; });
+  const rect = (i, s) => {
+    const p = P[i], w = sz[i].w, h = sz[i].h, c = R * 0.72, sl = s[1] === '<' ? -0.32 * w : s[1] === '>' ? 0.32 * w : 0;
+    const v = s[0];
+    return (v === 'b' || v === 't') && s !== 'br' && s !== 'bl' ? { x: p.x - w / 2 + sl, y: v === 'b' ? p.y + R + g : p.y - R - g - h, w, h }
+      : s === 'r' ? { x: p.x + R + g, y: p.y - h / 2, w, h } : s === 'l' ? { x: p.x - R - g - w, y: p.y - h / 2, w, h }
+      : s === 'br' ? { x: p.x + c, y: p.y + c + g / 2, w, h } : { x: p.x - c - w, y: p.y + c + g / 2, w, h };
+  };
+  /* each plate at each side: off the court, over another's disc */
+  const RS = [], base = [];
+  for (let i = 0; i < n; i++) {
+    RS[i] = []; base[i] = [];
+    for (let s = 0; s < S; s++) {
+      const r = rect(i, SIDES[s][0]);
+      let c = r.w * r.h - inBox(r, box);
+      for (let j = 0; j < n; j++) if (j !== i) c += ovl(r, discs[j]);
+      RS[i][s] = r; base[i][s] = c;
+    }
+  }
+  /* every arrangement: the plates over each other too */
+  let best = null;
+  const idx = new Array(n).fill(0), total = Math.pow(S, n);
+  for (let c = 0; c < total; c++) {
+    let v = c, clash = 0, pref = 0;
+    for (let i = 0; i < n; i++) { idx[i] = v % S; v = (v - idx[i]) / S; clash += base[i][idx[i]]; pref += SIDES[idx[i]][1]; }
+    if (best && clash + PREF * pref >= best.cost) continue;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) clash += ovl(RS[i][idx[i]], RS[j][idx[j]]);
+    const cost = clash + PREF * pref;
+    if (!best || cost < best.cost) best = { cost, clash, sides: idx.slice() };
+  }
+  return { P, R, clash: best.clash, rects: best.sides.map((s, i) => RS[i][s]), sides: best.sides.map(s => SIDES[s][0]) };
+}
+function fitCourt(court) {
+  if (!court || !court.isConnected) return;
+  const W = court.clientWidth, H = court.clientHeight, spots = [...court.querySelectorAll('.mg-spot.c')];
+  if (!W || !H || !spots.length) return;
+  court.classList.toggle('narrow', W < 600);
+  /* the fullest plates that fit: with the role line, without it, then small discs with just the name */
+  const TIERS = [[], ['tight'], ['tight', 'mini']];
+  let L = null, tier = null;
+  for (const t of TIERS) {
+    court.classList.remove('tight', 'mini');
+    t.forEach(c => court.classList.add(c));
+    const A2 = arrange(spots, W, H);
+    if (!L || A2.clash < L.clash) { L = A2; tier = t; }
+    if (A2.clash <= CLEAR) break;
+  }
+  court.classList.remove('tight', 'mini');
+  tier.forEach(c => court.classList.add(c));
+  spots.forEach((sp, i) => {
+    const p = L.P[i], r = L.rects[i], lab = sp.querySelector('.lab');
+    sp.style.left = p.x.toFixed(1) + 'px'; sp.style.top = p.y.toFixed(1) + 'px';
+    lab.style.left = (r.x - p.x).toFixed(1) + 'px'; lab.style.top = (r.y - p.y).toFixed(1) + 'px';
+    lab.dataset.at = L.sides[i];
+    /* a plate not straight above or below its disc is tied to it by a line in his colour */
+    const ld = sp.querySelector('.lead');
+    if (ld) {
+      const nx = Math.max(r.x, Math.min(r.x + r.w, p.x)), ny = Math.max(r.y, Math.min(r.y + r.h, p.y)), dx = nx - p.x, dy = ny - p.y, d = Math.hypot(dx, dy);
+      const R0 = L.R + 2, len = d - R0, show = L.sides[i] !== 'b' && L.sides[i] !== 't' && len > 6;
+      ld.style.display = show ? 'block' : 'none';
+      if (show) { ld.style.width = len.toFixed(1) + 'px'; ld.style.transform = 'rotate(' + Math.atan2(dy, dx).toFixed(4) + 'rad) translateX(' + R0.toFixed(1) + 'px)'; }
+    }
+  });
+  court.classList.add('laid');
+}
+/* the court laid out now and whenever it changes size (one watcher: the court drawn last) */
+let courtRO = null;
+function watchCourt(court) {
+  if (courtRO) courtRO.disconnect();
+  courtRO = null;
+  const run = () => root.requestAnimationFrame(() => fitCourt(court));
+  if (root.ResizeObserver) { courtRO = new root.ResizeObserver(run); courtRO.observe(court); }
+  run();
+  if (root.document.fonts && root.document.fonts.ready) root.document.fonts.ready.then(run).catch(() => {});
+}
+
 async function render(host) {
   /* while the squad is being drafted (Louie: the tactics "also viewable while constructing the squad to aid it"): the men
      signed so far, their lineups kept with the draft until it is confirmed */
@@ -127,9 +255,7 @@ async function render(host) {
     courtPanel.appendChild(h('div.mg-h', h('h3', h('i.sw', { style: { '--lc': LC[cur] }, 'aria-hidden': 'true' }), (cur + 1) + ' · ', nameIn),
       h('span.mg-sub', sel ? 'Now press a place or a bench player to swap' : 'Press a player for his role and instructions; drag one from the bench onto a place to bring him in')));
     const court = h('div.mg-court.big.dots');
-    court.innerHTML = '<svg class="lines" viewBox="0 0 500 420" preserveAspectRatio="none" aria-hidden="true"><rect x="10" y="10" width="480" height="400" rx="6"/>' +
-      '<rect x="180" y="250" width="140" height="160"/><path d="M180 250 A70 70 0 0 1 320 250"/><path d="M45 410 L45 300 A210 210 0 0 1 455 300 L455 410"/>' +
-      '<circle cx="250" cy="375" r="9"/><path d="M225 392 L275 392"/><path d="M190 10 A60 60 0 0 0 310 10"/></svg>';
+    court.innerHTML = COURT_SVG;
     const l = L();
     /* THE ALIGNMENT the roles make (roles.layout: each role's home spot - Louie: "player roles imply team spacing"): the
        circles stand where their roles play when the ball is not theirs */
@@ -151,7 +277,8 @@ async function render(host) {
       const mix = m ? m.m : null;
       const bar = mix ? h('div.mg-mixbar', { title: 'His shots: ' + Math.round(100 * mix.rim) + '% at the rim, ' + Math.round(100 * mix.mid) + '% other twos, ' + Math.round(100 * mix.three) + '% threes' },
         h('i.rim', { style: { width: (100 * mix.rim).toFixed(1) + '%' } }), h('i.mid', { style: { width: (100 * mix.mid).toFixed(1) + '%' } }), h('i.three', { style: { width: (100 * mix.three).toFixed(1) + '%' } })) : null;
-      const lab = h('div.lab', A.nm(surname(name), 'b'),
+      /* his nameplate (FM's player tile): his place and name, his role (press it to choose), his shots */
+      const lab = h('div.lab', h('div.nm', h('span.pos', { 'data-i18n-ctx': 'pos' }, E().SLOTS[k]), A.nm(surname(name), 'b')),
         h('button.mg-rolechip.' + fit.band + (chosen ? '' : '.dflt'), { type: 'button', title: chosen ? R.desc : 'No role chosen: he plays the default (' + R.label + '). Press to choose', onclick: ev => { ev.stopPropagation(); openPlayer(id, dot, k); } },
           h('i.mg-fit.' + fit.band, { 'aria-hidden': 'true' }), h('span', R.label), chosen ? null : h('em', ' ▾')),
         bar);
@@ -160,16 +287,17 @@ async function render(host) {
       dot.addEventListener('mouseenter', ev => hint(id, ev.currentTarget, R.label + (chosen ? '' : ' (default)')));
       dot.addEventListener('mouseleave', unhint);
       dot.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); if (sel) place(sel, k); else openPlayer(id, dot, k); } });
-      /* his spot on this court (the basket at the foot, ten pixels of the drawing a foot); near the baseline his name goes
-         above him */
-      const [su, sv] = lay.at[k], x = 50 + 1.92 * su, y = Math.max(8, Math.min(92, (427.5 - 10 * sv) / 4.2));
-      const spot = h('div.mg-spot.c' + (y > 70 ? '.low' : ''), { style: { left: x.toFixed(1) + '%', top: y.toFixed(1) + '%' }, title: lay.spots[k] }, h('span.tag', { 'data-i18n-ctx': 'pos' }, E().SLOTS[k]), h('div.dotwrap', dot, badges), lab);
+      /* his spot on this court (the basket at the foot, ten pixels of the drawing a foot); fitCourt settles the disc and
+         his nameplate around it */
+      const [su, sv] = lay.at[k], x = CX(su), y = Math.max(3, Math.min(97, CY(sv)));
+      const spot = h('div.mg-spot.c', { style: { left: x.toFixed(2) + '%', top: y.toFixed(2) + '%', '--heat': heat(u) }, 'data-x': x.toFixed(2), 'data-y': y.toFixed(2), title: lay.spots[k] }, h('i.lead', { 'aria-hidden': 'true' }), h('div.dotwrap', dot, badges), lab);
       spot.addEventListener('dragover', ev => { ev.preventDefault(); spot.classList.add('over'); });
       spot.addEventListener('dragleave', () => spot.classList.remove('over'));
       spot.addEventListener('drop', ev => { ev.preventDefault(); spot.classList.remove('over'); try { place(JSON.parse(ev.dataTransfer.getData('text/plain')), k); } catch (_) { /* not ours */ } });
       court.appendChild(spot);
     });
     courtPanel.appendChild(court);
+    watchCourt(court);
     courtPanel.appendChild(h('div.mg-legend',
       h('span', h('i.heat', { 'aria-hidden': 'true' }), 'Colour: his share of the plays (cool few, hot many)'),
       h('span', h('i.ring', { 'aria-hidden': 'true' }), 'Ring: his time on the ball'),

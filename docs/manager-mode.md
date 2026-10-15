@@ -234,7 +234,24 @@ Louie's own list.
   to run it. His role under him (dashed: none chosen, the default plays). Hover: his 1-20 attributes. Press: his role
   at that place (the position's roles by category, each with its fit stars; what it asks, why he suits it, an animated
   demonstration from `roles.SCENES`) and his instructions.
-- The **bench beside the court**: drag a man onto a place (the role stays with the place, FM's way), or press.
+- **The court to scale, laid out like a playbook** (Louie, 2026-10-15: "much more adaptive and look nicer", "this
+  doesn't look like a basketball set up"). The half court is drawn in FIBA's measures on the same feet as the roles'
+  spots, basket at the top as coaching diagrams have it (`tactics.js` `COURT_SVG`: 15 m wide, 14 m deep, the lane
+  4.9 × 5.8 m, the three-point line 6.75 m and 6.6 m in the corners), in a box of the drawing's own shape so nothing
+  stretches. The alignment spaces the men outside the way a set does, not each to his favourite spot (`roles.layout`):
+  5-out = top, both wings, both corners; 4-out 1-in = top, both wings and the corner away from the big (both corners
+  for two corner shooters; slots and corners with nobody at the point); 3-out 2-in = top and the wings, or the corners
+  for corner shooters; each man to the spot nearest his role's depth (top, slot, wing, corner) on his own side. The
+  live court starts its half-court possessions from the same alignment.
+- Each man is a disc and a **nameplate** (FM's player tile: place, name, role, shot bar, his heat as its top edge).
+  `fitCourt` places them after measuring the court, and again whenever its size changes: discs too close are eased
+  apart, and every arrangement of the five plates (below, above, either slid a little, beside, a corner: 100,000 in
+  all) is scored for overlap with the other discs, plates and the court's edge, the clearest kept. Narrow courts get
+  smaller discs and plates; a court still too crowded drops the role line, then shrinks to name plates; a plate set
+  off its disc is tied to it by a line in his colour. Checked at 1600, 1280, 1000, 820 and 390 px wide, both themes,
+  in 4-out 1-in, 3-out 2-in and 5-out: no plate over another man (one 120 px² touch left in the phone's 3-out 2-in).
+- The **bench beside the court**: drag a man onto a place (the role stays with the place, FM's way), or press. When
+  the tactics area is too narrow for both (a container query), the bench goes under the court, its men side by side.
 - **How this five plays**: gauges (time on the ball, pressure on the rim, spacing, screens, passing) and the notes; each
   man's plays, true usage, time on the ball and shot mix.
 - **The rotation**, a box-score rotation chart at lineup granularity, by quarter (10:00 → 0:00), a cell a minute,
