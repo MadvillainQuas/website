@@ -276,5 +276,29 @@ ok("the main loop says so only for a discovery pass: not --ids, not a catch-up o
 # the live keeper's call passes the observer's memory (read under its lock as `memory`, 2026-10-14)
 ok("...and the live keeper never does", any("observed, memory" in c and "from_schedule" not in c for c in _calls), _calls)
 
+# 2026-10-15: the games a pass knows were read in one request, which PostgREST stops at 1,000 rows - NBL1M's 1,459 left the
+# rest "unknown", and a backfill of NBL1 2026 re-read 487 finished games where 62 were left
+print("\n-- the games a pass knows: every row, a page at a time")
+
+
+class Paged:
+    def __init__(self, n):
+        self.rows = [{"external_id": "%05d" % i} for i in range(n)]
+        self.asked = []
+
+    def select(self, table, query):
+        self.asked.append(query)
+        q = dict(x.split("=", 1) for x in query.split("&") if "=" in x)
+        off, lim = int(q.get("offset", 0)), int(q.get("limit", 1000))
+        return self.rows[off:off + min(lim, 1000)]           # the server's own cap, as max-rows
+
+
+pg_ = Paged(1459)
+got_ = RI.Supabase.select_all(pg_, "external_games", "adapter=eq.nbl&competition_code=eq.NBL1M&select=external_id&order=external_id.asc")
+ok("select_all reads all 1,459 rows in two pages, in order", len(got_) == 1459 and len(pg_.asked) == 2 and got_[-1]["external_id"] == "01458", (len(got_), pg_.asked))
+ok("...and the pass reads its known games that way, ordered",
+   "for r in sb.select_all(\"external_games\", f\"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&select=external_id,external_status,payload_hash" in _src
+   and "game_id,tipoff_at&order=external_id.asc\")" in _src)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

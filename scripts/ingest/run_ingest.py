@@ -3594,7 +3594,11 @@ def main() -> int:
             stored: dict = {}       # external_id -> the row as stored, for the fixture pass below
             if sb:
                 try:
-                    for r in sb.select("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&select=external_id,external_status,payload_hash,raw_ref,game_date,home_name,away_name,home_score,away_score,game_id,tipoff_at"):
+                    # EVERY ROW, A PAGE AT A TIME (2026-10-15). A plain read stops at PostgREST's 1,000 rows: NBL1M holds 1,459
+                    # (2025 and 2026), the rows past the first thousand were not "known", and their finished games were read
+                    # again - a backfill of NBL1 2026 lined up 487 games where 62 were left, and every source with more than a
+                    # thousand stored games re-read finished ones it should have skipped.
+                    for r in sb.select_all("external_games", f"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&select=external_id,external_status,payload_hash,raw_ref,game_date,home_name,away_name,home_score,away_score,game_id,tipoff_at&order=external_id.asc"):
                         k = str(r["external_id"])
                         stored[k] = r
                         known_db[k] = {**known_repo.get(k, {"id": k}), "id": k, "home": r.get("home_name"), "away": r.get("away_name"),
