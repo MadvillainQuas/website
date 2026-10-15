@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="EPINOIΛ">
 <!-- PUBLIC page, members' analysis (access.js CATALOGUE.locks.transferMatrix, drawn by memlock.js). Signed out or not a
      member, every working section keeps its title and shows the membership placeholder, and the player data is never
-     asked for; "How it is worked out" is always open. The data is a members' file in the private bucket (written by
+     asked for. The data is a members' file in the private bucket (written by
      tools/build-transfer.mjs, handed out by the analytics-file function to an entitled account only, through
      transferdata.js) and every number is worked out in the browser by engine.js. -->
 <meta http-equiv="Content-Security-Policy"
@@ -42,24 +42,24 @@
 <!-- /seo:head -->
 <link rel="icon" type="image/png" sizes="32x32" href="../../brand/epinoia-mark-32.png">
 <link rel="apple-touch-icon" href="../../brand/epinoia-app-180.png">
-<script src="../../appmode.js?v=833"></script>
-<script src="../../i18n.js?v=833" data-i18n-packs="analysis"></script>
-<script src="../../glyphs.js?v=833" defer></script>
-<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=833">
-<link rel="stylesheet" href="../../kit/nav.css?v=833">
-<link rel="stylesheet" href="../../kit/labeltype.css?v=833">
-<link rel="stylesheet" href="../../kit/numtype.css?v=833">
-<link rel="stylesheet" href="../../kit/motion.css?v=833">
-<script src="../../motion.js?v=833" defer></script>
-<link rel="stylesheet" href="../../kit/access.css?v=833">
-<link rel="stylesheet" href="../../kit/table.css?v=833">
-<link rel="stylesheet" href="../../kit/page.css?v=833">
-<link rel="stylesheet" href="../../kit/vizkit.css?v=833">
-<link rel="stylesheet" href="../../kit/winning.css?v=833">
-<link rel="stylesheet" href="../../kit/transfer.css?v=833">
-<link rel="stylesheet" href="../../kit/sectitle.css?v=833">
-<link rel="stylesheet" href="../../kit/teletext.css?v=833">
-<link rel="stylesheet" href="../../kit/legibility.css?v=833">
+<script src="../../appmode.js?v=834"></script>
+<script src="../../i18n.js?v=834" data-i18n-packs="analysis"></script>
+<script src="../../glyphs.js?v=834" defer></script>
+<link rel="stylesheet" href="../../kit/epinoia-kit.css?v=834">
+<link rel="stylesheet" href="../../kit/nav.css?v=834">
+<link rel="stylesheet" href="../../kit/labeltype.css?v=834">
+<link rel="stylesheet" href="../../kit/numtype.css?v=834">
+<link rel="stylesheet" href="../../kit/motion.css?v=834">
+<script src="../../motion.js?v=834" defer></script>
+<link rel="stylesheet" href="../../kit/access.css?v=834">
+<link rel="stylesheet" href="../../kit/table.css?v=834">
+<link rel="stylesheet" href="../../kit/page.css?v=834">
+<link rel="stylesheet" href="../../kit/vizkit.css?v=834">
+<link rel="stylesheet" href="../../kit/winning.css?v=834">
+<link rel="stylesheet" href="../../kit/transfer.css?v=834">
+<link rel="stylesheet" href="../../kit/sectitle.css?v=834">
+<link rel="stylesheet" href="../../kit/teletext.css?v=834">
+<link rel="stylesheet" href="../../kit/legibility.css?v=834">
 <!-- seo:ld -->
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Transfer Matrix: How Stats Travel Between Leagues | Epinoia","description":"How a basketball player's numbers change when he moves from one league to another: BPM, shooting, usage and rebounds, from every move in nearly 100 leagues.","url":"https://prophesyscouting.co.uk/epinoia/scouting/transfer/","inLanguage":"en","isPartOf":{"@id":"https://prophesyscouting.co.uk/epinoia/#website"},"primaryImageOfPage":{"@type":"ImageObject","url":"https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png","width":1200,"height":630}}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Epinoia","item":"https://prophesyscouting.co.uk/epinoia/home/"},{"@type":"ListItem","position":2,"name":"Transfer matrix"}]}</script>
@@ -119,62 +119,16 @@
       <p class="note">The neighbouring leagues behind one league’s rating, and their say</p></div>
     <div class="sec-b ww-body" id="ledgerB"></div>
   </section>
-
-  <!-- HOW IT IS WORKED OUT: public and static -->
-  <section class="sec" id="method" aria-labelledby="methodH">
-    <div class="sec-h"><h2 id="methodH">How it is worked out</h2>
-      <p class="note">Where the numbers come from, and what they cannot say</p></div>
-    <div class="sec-b narrow ww-method tm-method">
-      <h3>The moves</h3>
-      <p>The data is a season line for every player in close to a hundred men’s leagues, season by season. Players are matched by their own id, never by name: dozens of names are shared by different players. A move is the same player in two different leagues in the same season or the next, with at least 120 minutes in each. Each move counts by the smaller of his two minute totals, and what it says is how each of his numbers changed.</p>
-      <h3>The nine numbers</h3>
-      <p>BPM (box plus-minus, points per 100 possessions over an average player), TS% (true shooting), USG% (usage), ORB% and DRB% (the share of rebounds he takes at each end), AST% (the share of his teammates’ baskets he assisted), TOV% (turnovers per 100 of his plays, where lower is better), STL% and BLK%. All are rates, so they travel between leagues; counting stats depend on the role and the minutes a new club gives him.</p>
-      <h3>Three ways to translate</h3>
-      <dl class="ww-lenses">
-        <dt><span class="ww-chip">Blend</span></dt>
-        <dd>The default. The moves on this route, both ways (a move the other way counts with its sign turned round), weighted by minutes, mixed with the league network. The route counts for n ÷ (n + 30) of the answer, where n is the number of players who made it: 30 players make it half, 150 make it five-sixths.</dd>
-        <dt><span class="ww-chip">This route only</span></dt>
-        <dd>Only the players who made this move, either way. No model: a route nobody took has no answer.</dd>
-        <dt><span class="ww-chip">Spanish scale</span></dt>
-        <dd>Every league placed against Spanish ACB through the chain of moves between leagues, solved one league at a time until nothing moves, with a 50-minute floor for a move. A league with no chain of moves to the Spanish leagues has no number. The moves on the route itself are not used on their own.</dd>
-      </dl>
-      <h3>The league network</h3>
-      <p>For each number, every league gets one rating so that, across every move between every pair of leagues, the difference between two leagues’ ratings comes as close as it can to the change the movers showed: a weighted least-squares solve, with Spanish ACB held at zero (the league with the most minutes, when it is left out). A route nobody took still has an answer, through the leagues around it. A league’s grade is 100 plus 10 for each point of BPM against Spanish ACB.</p>
-      <h3>Robust weighting</h3>
-      <p>On unless you turn it off. Some routes carry hundreds of moves by the same kind of player, back and forth between a top league and its feeder, and those moves are neither independent nor typical. With robust weighting a player who made the same move several times counts once, his changes averaged, and each route’s total weight levels off at 25,000 minutes, so a busy route cannot outvote the rest by volume alone. The examples under the translator always list every move.</p>
-      <h3>The talent curve</h3>
-      <p>Off unless you turn it on. Players far above their old league’s average tend to come back toward it when they move, so a route fed by star imports looks harder than it is. Turned on, each change is corrected for how far the mover sat from his old league’s average, by a slope measured inside each route (so real gaps between leagues cannot leak into it). An average mover is left as he was.</p>
-      <h3>Stabilise</h3>
-      <p>For a small sample: his numbers are pulled toward his old league’s average before they are translated, keeping MIN ÷ (MIN + 350) of the gap. 350 minutes keeps half. Off by default, because the moves already carry the usual pull toward the average.</p>
-      <h3>How sure we can be</h3>
-      <ul class="ww-mins">
-        <li>High confidence: 150 players or more made this move</li>
-        <li>Moderate: 40 or more</li>
-        <li>Little evidence: 10 or more</li>
-        <li>Fewer than 10: the league network carries the answer</li>
-      </ul>
-      <h3>League strength over time</h3>
-      <p>The same solve, season by season, from the moves inside a trailing window of seasons (three by default), so a league’s rating follows its recent moves. A single number is the change a player can expect moving from that league to Spanish ACB, with TOV% turned round so that higher always means a tougher league. A combined measure puts each part’s ladder in standard scores and averages them: 0 is an average league, 100 is one standard deviation above it. What sets a rating lists the leagues around one league with their say in it: a neighbour’s vote is its own rating plus the change seen between the two, and the rating is about the weighted mean of the votes. A route is trustworthy when the change leaving and the change arriving roughly mirror each other.</p>
-      <h3>What the numbers cannot say</h3>
-      <ul class="ww-caveats">
-        <li>They are estimates of rates, for a typical player in his new league, not a forecast of one player’s season.</li>
-        <li>Players who move are not a random sample: who gets signed, and why, shapes every route.</li>
-        <li>A projection is held inside each number’s possible range.</li>
-        <li>Leagues left out are left out for this visit only.</li>
-      </ul>
-      <p class="ww-asof" id="tmAsof">The data date appears here once the data has loaded.</p>
-    </div>
-  </section>
 </div>
-<script src="../../config.js?v=833" defer></script>
-<script src="../../access.js?v=833" defer></script>
-<script src="../../memlock.js?v=833" defer></script>
-<script src="../../teamcolour.js?v=833" defer></script>
-<script src="../../vizkit.js?v=833" defer></script>
-<script src="../../xscroll.js?v=833" defer></script>
-<script src="../../transferdata.js?v=833" defer></script>
-<script src="engine.js?v=833" defer></script>
-<script src="page.js?v=833" defer></script>
-<script src="../../nav.js?v=833" defer></script>
+<script src="../../config.js?v=834" defer></script>
+<script src="../../access.js?v=834" defer></script>
+<script src="../../memlock.js?v=834" defer></script>
+<script src="../../teamcolour.js?v=834" defer></script>
+<script src="../../vizkit.js?v=834" defer></script>
+<script src="../../xscroll.js?v=834" defer></script>
+<script src="../../transferdata.js?v=834" defer></script>
+<script src="engine.js?v=834" defer></script>
+<script src="page.js?v=834" defer></script>
+<script src="../../nav.js?v=834" defer></script>
 </body>
 </html>

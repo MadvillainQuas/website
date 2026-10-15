@@ -135,8 +135,6 @@ table.ft.tm-rt tbody tr:nth-child(even) th.c1{background:color-mix(in oklch,var(
 .tm .tm-ledger{min-width:720px}
 .tm-ledger td{text-align:right}
 
-.tm-method dd .ww-chip{white-space:nowrap}
-
 @media (max-width:720px){
   .tm-legs{grid-template-columns:1fr}
   .tm-gap{flex-direction:row;flex-wrap:wrap;gap:4px 8px}

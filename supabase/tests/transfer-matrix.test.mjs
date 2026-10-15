@@ -326,10 +326,11 @@ const css = rd('epinoia', 'kit', 'transfer.css'), ejs = rd('epinoia', 'scouting'
 ok('built to the standard: data-std, the head with its one h1 and .pg-sub', /<div class="ep-frame[^"]*" id="tm" data-std>/.test(html) &&
    /<header class="hero pg-head">[\s\S]*?<h1>Transfer matrix<\/h1>[\s\S]*?class="pg-sub"/.test(html) && (html.match(/<h1[\s>]/g) || []).length === 1);
 const secs = [...html.matchAll(/<section class="sec[^"]*" id="([^"]+)"[^>]*>([\s\S]*?)<\/section>/g)];
-ok('seven sections, each with a title and a short subtitle with no full stop', secs.length === 7 && secs.every(m => {
+ok('six sections, each with a title and a short subtitle with no full stop', secs.length === 6 && secs.every(m => {
   const n = (/<p class="note">([^<]*)<\/p>/.exec(m[2]) || [])[1] || ''; return /<h2[\s>]/.test(m[2]) && n.length > 5 && n.length <= 70 && !/\.$/.test(n); }), secs.map(m => m[1]));
-ok('...the six working ones members only, "How it is worked out" open to all', same(P.MEMBER, ['data', 'translate', 'movers', 'index', 'ranks', 'ledger']) &&
-   secs.map(m => m[1]).join() === 'data,translate,movers,index,ranks,ledger,method');
+ok('...all six members only, in order', same(P.MEMBER, ['data', 'translate', 'movers', 'index', 'ranks', 'ledger']) &&
+   secs.map(m => m[1]).join() === 'data,translate,movers,index,ranks,ledger');
+ok('no "How it is worked out" section, nor anything of it (Louie, 2026-10-15)', !/id="method"|worked out<\/h2>|tmAsof|tm-method/.test(html + pjs + css));
 const sheets = [...html.matchAll(/<link rel="stylesheet" href="([^"?]+)/g)].map(m => m[1].replace(/^(\.\.\/)+/, ''));
 ok('the sheets in the standard\'s order, the page\'s own (transfer.css) between page.css and sectitle.css', sheets[0] === 'kit/epinoia-kit.css' && sheets[sheets.length - 1] === 'kit/legibility.css' &&
    sheets.indexOf('kit/page.css') < sheets.indexOf('kit/transfer.css') && sheets.indexOf('kit/transfer.css') < sheets.indexOf('kit/sectitle.css') && sheets.indexOf('kit/sectitle.css') < sheets.indexOf('kit/teletext.css'), sheets);

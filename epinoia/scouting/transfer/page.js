@@ -11,7 +11,7 @@
    analytics_check, migration 0265: an account always, then the gate). Not entitled - signed out, or not a member once
    memberships are on - every working section keeps its title and shows memlock.js's placeholder, and nothing is asked
    for. The server has the last word: a 'members' answer draws the same placeholder, 'signin' asks the reader to sign in
-   again. "How it is worked out" (#method) is always open. A sign-in or a membership in another tab
+   again. A sign-in or a membership in another tab
    (EpinoiaAccess.onChange) opens the page where it stands. There is no preview of it (access.js PEEK_NEVER).
 
    THE SECTIONS
@@ -470,9 +470,6 @@ function boot() {
     drawAll();
     stage('draw', 1, 'Done');
     root.setTimeout(() => { const p = $('tmProg'); if (p) p.classList.add('hide'); }, reduced() ? 0 : 900);
-    const asof = $('tmAsof');
-    if (asof) asof.innerHTML = '<span>Data built</span> <span translate="no">' + esc(RAW.info.built || '') + '</span> · <span>seasons</span> <span translate="no">' +
-      esc(yearLabel(RAW, ys[0]) + ' – ' + yearLabel(RAW, ys[ys.length - 1])) + '</span>';
   }
 
   /* ---- the model ---- */
