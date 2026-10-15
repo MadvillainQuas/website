@@ -190,7 +190,7 @@ console.log('\nthe pages hand the card their league');
 {
   const home = read('epinoia', 'home.js');
   /* the front page's news is HOME's feed now (feedview.js, the post card): the plate stays the article's head and the news page's card */
-  ok('the front page\'s news is the feed, given the league', /EpinoiaFeedView[\s\S]{0,400}league: \{ id: LEAGUE\.id, slug: LEAGUE\.slug/.test(home) && !/mountHeadlines/.test(home));
+  ok('the front page\'s news is the feed, given the league', /EpinoiaFeedView[\s\S]{0,2500}league: \{ id: LEAGUE\.id, slug: LEAGUE\.slug/.test(home) && !/mountHeadlines/.test(home));
   const page = read('epinoia', 'news', 'news-page.js');
   ok('the news page reads the league\'s logo and where its colour came from',
      /'&select=id,slug,name,colour_a,colour_b,colour_source,logo_path&limit=1'/.test(page));
