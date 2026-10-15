@@ -1209,6 +1209,13 @@ jobs:
         # overtime and a basket the league logged with no player included
         run: python scripts/ingest/lnbp_test.py
 
+      - name: Austria (Superliga, Zweite Liga, Damen Superliga) from basketballaustria.at's Sportradar embed
+        # adapters/austria.py: one EUI website per league (260, 262, 261), each found by its competition id and
+        # start year; regular season and play-offs told apart by the game's name code or stage tab (fixtureType
+        # is REGULAR on all), BSL defensive rebounds from the total, and box, stints, score and every player's
+        # minutes replayed from the substitutions reconciling - two overtimes included
+        run: python scripts/ingest/austria_test.py
+
       - name: FIBA's own competitions (Champions League, Europe Cup) and their formats
         # fiba_events.py + fiba_format.py over captured pages: the season from one schedule page, a game
         # from the live-info JSON and again from its page's flight data (box, quarters, stints, shot chart,

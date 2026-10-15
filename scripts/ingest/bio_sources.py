@@ -32,6 +32,9 @@ What each source gives, found by looking, not assumed (2026-09-27):
   lnb-espoirs-elite / -2 the same LNB API as lnb-elite, divisions 3 and 4 (date; height for ~40%; no weight). Refuses a GitHub runner
   u-sports               each club's own roster page (PrestoSports table or Sidearm list): height, weight where the club prints it; no date
   lnbp                   the Sportradar EUI embed's players page (website 14): height, weight for ~96%, date for about a third; keyed
+  basketball-superliga, basketball-zweite-liga, damen-superliga
+                         the same EUI players page on basketballaustria.at's websites 260, 262, 261: date and height for every
+                         player (162 of 162 in the BSL, 2026-27), weight seldom; keyed by the box score's personId
   lkl                    each player's page on lkl.lt, by the slug the game feed keys him by (date, height, weight)
   nkl                    each club's page on nkl.lt (height, weight); the date from the player's page, only when missing
   orlen-basket-liga, 1-liga-mezczyzn, 1-liga-kobiet
@@ -879,6 +882,33 @@ def lnbp(today: date | None = None, log: Callable = print, **_) -> Iterator[dict
                        "height_cm": r.get("height"), "weight_kg": r.get("weight"), "birth": r.get("Date of birth"), "label": r.get("name")}
 
 
+# -------------------------------------------------------------- Austria (EUI) ---
+def austria(league: str) -> Callable[..., Iterator[dict]]:
+    """basketballaustria.at's leagues (adapters/austria.py) are the EUI embed as websites 260, 262 and 261, whose players page lists a
+    season's whole league in one request, as LNBP's does: date of birth and height for every player of the BSL in 2026-27 (162),
+    weight seldom. Its id is the box score's personId, the game feed's own key. The season is the start year (2026 = 2026-27), and
+    this season and last are read; only the league's own competition (website 261 also shows its National League)."""
+    def read(today: date | None = None, log: Callable = print, **_) -> Iterator[dict]:
+        from adapters import austria as M
+        from adapters.lnb import EUI_EMBED, page_state
+        lg = M.LEAGUES[league]
+        url = f"{EUI_EMBED}/{lg['site']}/persons"
+        first = (get_json(url, {"state": page_state({"l": M.LOCALE})}, M.HEADERS) or {}).get("data") or {}
+        seasons = [s for s in (first.get("seasons") or {}).get("seasons") or [] if s.get("competitionId") == lg["competition"]]
+        d = today or date.today()
+        y = d.year if d.month >= 8 else d.year - 1
+        for year in (y, y - 1):
+            for s in (s for s in seasons if s.get("year") == year):
+                data = first if s["seasonId"] == first.get("seasonId") else                     (get_json(url, {"state": page_state({"s": s["seasonId"], "l": M.LOCALE})}, M.HEADERS) or {}).get("data") or {}
+                rows = (data.get("persons") or {}).get("rows") or []
+                log(f"     {lg['label']} {year}/{year + 1} ({s.get('nameLocal')}): {len(rows)} players")
+                for r in rows:
+                    yield {"name": r.get("name"), "team": r.get("teamName"), "key": r.get("id"), "number": r.get("bib"),
+                           "height_cm": r.get("height"), "weight_kg": r.get("weight"), "birth": r.get("Date of birth"),
+                           "label": r.get("name")}
+    return read
+
+
 # ------------------------------------------------------------------------- LKL ---
 LKL = "https://lkl.lt"
 
@@ -1317,6 +1347,9 @@ READERS: dict = {
     "lnb-espoirs-elite-2": lnb(4),
     "u-sports": usports,
     "lnbp": lnbp,
+    "basketball-superliga": austria("bsl"),
+    "basketball-zweite-liga": austria("b2l"),
+    "damen-superliga": austria("bdsl"),
     "lkl": lkl,
     "nkl": nkl,
     "orlen-basket-liga": pzkosz(2, keyed=True),

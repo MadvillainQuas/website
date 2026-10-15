@@ -3136,11 +3136,13 @@ def live_keeper(sb: "Supabase | None", sources: list[dict], args) -> tuple[int, 
 # And inside an adapter on the list, a season its source no longer holds is said
 # so and read as nothing: BNXT's film (purged after a season), Kosovo's site (the
 # season being played only), Finland before 2024-25 (off the stats feed).
+# Austria (austria: the EUI's season list, by start year) has every season back to
+# 2006-07; plays from 2024-25, a box only before (a 2015-16 game had none: adapters/austria.py).
 REFRESH = {"on": False}             # set from --refresh in main(): reopen final games to rewrite them
 
 SEASON_AWARE_ADAPTERS = {"fiba_livestats", "fiba_site_schedule", "euroleague", "acb", "lnb", "bleague",
                          "twobbl", "usports", "plk", "lba", "lkl", "lnbp", "feb", "bnxt", "wjbl", "bgnbl", "grel", "kbl",
-                         "aba", "basketfi", "lnbbr", "nbl", "ncaa", "fiba_events", "ibsl"}
+                         "aba", "basketfi", "lnbbr", "nbl", "ncaa", "fiba_events", "ibsl", "austria"}
 #: adapters that cannot read a past season at all, and why - said on the console's request, not only in a log
 NO_PAST = {"bbl": "the BBL's schedule is its site's season being played, and its API refuses scripts"}
 _SPLIT_SEASON = re.compile(r"\d{4}\s*[-/]\s*\d{2,4}")

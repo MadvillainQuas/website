@@ -1257,3 +1257,32 @@ row, a play-off row and a pre-season row (Open Match Day, a friendly); slug `kbl
 - No shot chart: `match-chart.shootLog` gives pixels on an unspecified court drawing.
 - Bio: each player's profile on the league's statistics service (kbl-api.sports2i.com, Referer kbl.or.kr),
   by pcode: date of birth and height, no weight.
+
+## Austria: Basketball Superliga, Basketball Zweite Liga, Damen Superliga (basketballaustria.at)
+
+Added 2026-10-15. Adapter `austria` (`adapters/austria.py`), test `scripts/ingest/austria_test.py`. Sources
+`ATBSL`, `ATB2L`, `ATBDSL` (a regular-season row and a play-off row each; `adapter_config.league` = bsl / b2l /
+bdsl); slugs `basketball-superliga` (tier 1 men), `basketball-zweite-liga` (tier 2 men), `damen-superliga`
+(tier 1 women); country AT.
+
+- The federation's pages embed Sportradar's EUI widget, one website per league: 260 (BSL), 262 (B2L), 261
+  (BDSL), locale `de-AT`, no key or token. The game feed is LNB's (`LnbAdapter.fetch`, unchanged): structured
+  events (`eventType`/`eventSubType`/`success`/x,y), never the German labels the page draws.
+
+      /v1/embed/<site>/fixtures?state=<{"l":"de-AT"}>                         the season list (seasons.seasons[])
+      /v1/embed/<site>/fixtures?state=<{"s":<season>,"l":"de-AT","z":"RESULTS"|"FIXTURES"}>
+      /v1/embed/<site>/fixture_detail?state=<{"s","l","z":"pbp"|"statistics","f"}>&fixtureId=<f>
+      /v1/embed/<site>/persons?state=<{"s","l"}>                              the players (bio: date, height)
+
+- The league is its competition id (BSL b359f9b2-..., B2L 12c8ceaa-..., BDSL 1a9584c4-...): the names change
+  sponsor, and 261 also lists the BDSL National League and a Supercup, which are not the league. Season = start
+  year ("26/27" is year 2026). Games keyed `<season>_<fixture>`.
+- fixtureType is REGULAR on every game, the final too. The stage is the game name's code ("BSL-GD - 044": GD,
+  QR, PR = regular season; VF, SF, FIN, REL = play-offs; 2024-25 writes "GD-013", one BDSL game "BSDL-SF"), else
+  the stage tab its stageCode names (seasons before 2024-25 have no names; "BSL Playdown" goes with the
+  play-offs). 2024-25's play-off games have a name but no stageCode.
+- Past seasons are on the embed back to 2006-07 (BSL), 2012-13 (B2L), 2019-20 (BDSL): plays from 2024-25, box only
+  2018-19 to 2023-24 (published as a result, translate off), and a sampled 2015-16 game has no box.
+- Website 260 publishes no `reboundsDefensive`; it is the total less the offensive ones there (261/262 have it).
+- One BDSL game (Duchess 73-78 Wels, 11 Oct 2026) has two players with one more defensive rebound in the log than
+  in the box; the box is published. Minutes replayed from the substitutions equal the box on every test game with plays.
