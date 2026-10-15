@@ -66,8 +66,8 @@ const PI = rd('epinoia', 'p', 'index.html');
 {
   const g = groupsOf(PI);
   const want = [
+    ['Full advanced stats', ['League percentile', 'Clutch time']],             // first, and the default tab (Louie, 2026-10-15)
     ['Career stats', ['Career stats']],
-    ['Full advanced stats', ['League percentile', 'Clutch time']],
     ['Events', ['Events']],
     ['Game log', ['Game log']],
     ['Shot chart', ['Shot chart']],
@@ -75,6 +75,10 @@ const PI = rd('epinoia', 'p', 'index.html');
   ];
   ok('six groups, in Louie\'s order', JSON.stringify(g.map(x => x.name)) === JSON.stringify(want.map(w => w[0])), g.map(x => x.name).join(' / '));
   want.forEach(([n, heads], i) => ok(n + ': ' + heads.join(', '), g[i] && JSON.stringify(g[i].heads) === JSON.stringify(heads), g[i] && g[i].heads.join(' / ')));
+  ok('Full advanced stats opens first: the first group is the default, and the page\'s version sets aside a tab chosen before',
+     g[0] && g[0].key === 'advanced' && /<div id="pbody" class="pgrp-root" data-pgrp="p" data-pgrp-v="2">/.test(PI) &&
+     /const TAB_KEY = 'pgrp_tab_' \+ kind \+ \(ver \? '_v' \+ ver : ''\)/.test(rd('epinoia', 'secgroups.js')) &&
+     /if \(!vis\.some\(x => x\.key === k\)\) k = vis\.length \? vis\[0\]\.key : null;/.test(rd('epinoia', 'secgroups.js')));
   ok('the video and report panels stay outside the groups, and their tabs hide the grouped body',
      PI.indexOf('id="videosec"') < PI.indexOf('class="pgrp-root"') && PI.indexOf('id="reportsec"') < PI.indexOf('class="pgrp-root"') &&
      /body\.vtab #pbody, body\.rptab #pbody\{display:none\}/.test(PI));

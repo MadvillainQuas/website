@@ -389,11 +389,11 @@ console.log('\nboth profiles load the panel and draw it inside their own try');
   /* THE PROFILE IN GROUPS (secgroups.js; Louie, 2026-10-15): Career stats, Full advanced stats (league percentile, clutch
      time), Events, Game log, Shot chart, On the floor with - each section in its group, in that order */
   const lp = phtml.indexOf('<h2>League percentile</h2>'), ev = phtml.indexOf('<div class="sec" id="eventsSec">'), se = phtml.indexOf('<h2>Career stats</h2>');   // "Season" until 2026-10-02
-  ok('p/index.html: an Events section, 03, in its own group after Full advanced stats',
-     se > 0 && lp > se && ev > lp && phtml.lastIndexOf('data-pgrp-key=', ev) === phtml.indexOf('data-pgrp-key="events"') &&
+  ok('p/index.html: an Events section, 03, in its own group after Full advanced stats and Career stats',
+     lp > 0 && se > lp && ev > se && phtml.lastIndexOf('data-pgrp-key=', ev) === phtml.indexOf('data-pgrp-key="events"') &&
      /<div class="sec" id="eventsSec">\s*<div class="sec-h"><span class="idx">03<\/span><h2>Events<\/h2><span class="note" id="eventsNote"><\/span><\/div>\s*<div id="events"><\/div>\s*<\/div>/.test(phtml));
   const idx = [...phtml.matchAll(/<span class="idx">([^<]+)<\/span><h2>([^<]+)<\/h2>/g)].map(m => m[1] + ' ' + m[2]);
-  ok('p/index.html: the sections numbered in the groups\' order', JSON.stringify(idx) === JSON.stringify(['V On video', '01 Career stats', '02 League percentile', '02a Clutch time', '03 Events', '04 Game log', '05 Shot chart', '06 On the floor with']), idx.join(' / '));
+  ok('p/index.html: the sections numbered in the groups\' order', JSON.stringify(idx) === JSON.stringify(['V On video', '01 League percentile', '01a Clutch time', '02 Career stats', '03 Events', '04 Game log', '05 Shot chart', '06 On the floor with']), idx.join(' / '));
   ok('p/index.html: the shot chart is a section of its own, before On the floor with',
      /<div class="sec" id="shotsec">[\s\S]*?<div id="shotchart"><\/div>\s*<\/div>/.test(phtml) && phtml.indexOf('id="shotsec"') < phtml.indexOf('id="withpanel"'));
 

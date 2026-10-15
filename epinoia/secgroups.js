@@ -38,7 +38,10 @@
 
   function mount(box) {
     const kind = box.getAttribute('data-pgrp') || 'page';
-    const TAB_KEY = 'pgrp_tab_' + kind, foldKey = k => 'pgrp_fold_' + kind + '_' + k;
+    /* data-pgrp-v: the page's default group has changed, so the tab a reader chose before is set aside once (a new key)
+       and they open on the new default (the first group) */
+    const ver = box.getAttribute('data-pgrp-v');
+    const TAB_KEY = 'pgrp_tab_' + kind + (ver ? '_v' + ver : ''), foldKey = k => 'pgrp_fold_' + kind + '_' + k;
     const groups = [].filter.call(box.children, n => n.classList.contains('pgrp-group'));
     if (groups.length < 2) return null;
     doc.documentElement.classList.add('pgrp-page');
