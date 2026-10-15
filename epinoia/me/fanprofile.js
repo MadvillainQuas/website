@@ -34,7 +34,7 @@ const el = (t, c, x) => { const n = document.createElement(t); if (c) n.classNam
 const https = u => /^https:\/\/[^\s<>"]+$/i.test(String(u || '').trim());
 const LINKS = [['instagram', 'Instagram'], ['x', 'X'], ['tiktok', 'TikTok'], ['youtube', 'YouTube'], ['twitch', 'Twitch'],
   ['threads', 'Threads'], ['bluesky', 'Bluesky'], ['facebook', 'Facebook'], ['website', 'Website']];
-const PROVIDER = { google: 'Google', discord: 'Discord', twitter: 'X', twitch: 'Twitch', facebook: 'Facebook', apple: 'Apple', github: 'GitHub' };
+const PROVIDER = { google: 'Google', discord: 'Discord', twitter: 'X', twitch: 'Twitch', facebook: 'Facebook', apple: 'Apple' };
 /* where a provider's handle is a page of theirs */
 const HANDLE_LINK = { twitter: h => ['x', 'https://x.com/' + encodeURIComponent(h)], twitch: h => ['twitch', 'https://www.twitch.tv/' + encodeURIComponent(h)] };
 const WHY = {

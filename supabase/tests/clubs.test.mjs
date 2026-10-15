@@ -113,6 +113,14 @@ class SB:
         rows = self.t.get(table, [])
         if table == 'teams' and 'slug=eq.' in q:
             s = q.split('slug=eq.')[1].split('&')[0]; return [r for r in rows if r['slug'] == s]
+        if table == 'teams' and 'or=(external_ids->>fiba_livestats.eq.' in q:
+            # the platform's combined lookup (0188): the club's own code, or one a merge kept under "also"
+            from urllib.parse import unquote
+            lid = q.split('league_id=eq.')[1].split('&')[0]
+            f = unquote(q.split('or=(')[1].split(')&')[0])
+            c = json.loads(f.split('fiba_livestats.eq.')[1].split(',external_ids->also.cs.')[0])
+            return [r for r in rows if r['league_id'] == lid and (r['external_ids'].get('fiba_livestats') == c
+                                                                   or c in (r['external_ids'].get('also') or []))]
         if table == 'teams' and 'external_ids->>fiba_livestats=eq.' in q:
             lid = q.split('league_id=eq.')[1].split('&')[0]; c = q.split('fiba_livestats=eq.')[1].split('&')[0]
             return [r for r in rows if r['league_id'] == lid and r['external_ids'].get('fiba_livestats') == c]

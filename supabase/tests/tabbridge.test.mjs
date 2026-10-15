@@ -64,12 +64,15 @@ console.log('-- the edge function’s brief and the report written from it');
   ok('the brief carries the tabs’ inputs', brief.connections && brief.sitPlayers && brief.clock && brief.assists && brief.atop && brief.sits, Object.keys(brief).filter(k => brief[k] == null));
   const withTabs = report(brief);
   const headings = withTabs.sections.map(s => s.heading);
-  ok('with them the report has the sections that read the tabs', ['How the ball moved', 'Play types and rebounds', 'The shot clock', 'What the four factors were worth'].every(h => headings.includes(h)), headings);
+  /* the four factors' accounting: "What decided it" where the possessions can be counted (story.js factLedger), the older
+     "What the four factors were worth" where they cannot (report.js) */
+  const ACCT = ['What decided it', 'What the four factors were worth'];
+  ok('with them the report has the sections that read the tabs', ['How the ball moved', 'Play types and rebounds', 'The shot clock'].every(h => headings.includes(h)) && ACCT.some(h => headings.includes(h)), headings);
   ok('the filed article passes the facts check: no claim in it that the game refuses', [withTabs.headline, withTabs.standfirst].concat(withTabs.sections.flatMap(x => x.paras)).every(p => verifyClaims(brief, withTabs.facts, p).length === 0));
   ok('...and it reports what the check caught in its drafts', withTabs.quality && Array.isArray(withTabs.quality.logic));
   const without = report(gameBrief(game, d, TA, E.lineupAgg, { leagueSlug: 'slb-men', competition: 'Championship', league: 'SLB' }, null));
   const h2 = without.sections.map(s => s.heading);
-  ok('without them it does not write them, and still has the four factors', !h2.includes('How the ball moved') && !h2.includes('The shot clock') && h2.includes('What the four factors were worth'), h2);
+  ok('without them it does not write them, and still has the four factors', !h2.includes('How the ball moved') && !h2.includes('The shot clock') && ACCT.some(h => h2.includes(h)), h2);
   const { articleBody } = await import(new URL('../functions/_shared/matchreport.ts', import.meta.url));
   const strip = x => String(x).replace(/<[^>]*>/g, '');
   ok('the filed article leads with the lede: a specific headline and a standfirst that adds to it', /\d/.test(strip(withTabs.headline)) && strip(withTabs.standfirst).length > 20 && strip(withTabs.standfirst) !== strip(withTabs.headline), [withTabs.headline, withTabs.standfirst]);
@@ -93,9 +96,13 @@ console.log('-- weighed by the league’s own win model (What wins, 2026-10-07)'
   ok('...without the model the fixed weights stand, and the fact says it has no model', p0 && p0.data.model === null && !['efg', 'tovp'].every(k => near(p0.data.rows.find(r => r.key === k).net, pa.data.rows.find(r => r.key === k).net)));
   const half = { v: 1, b: { efg: 1.5, tovp: -1.1, orebp: 0.4 } };
   ok('...a model short of a factor is not used', S.facts(Object.assign({}, base, { model: half })).find(f => f.kind === 'pointsAdded').data.model === null);
-  const rep = report(withM), sec = rep.sections.find(s => s.heading === 'What the four factors were worth');
-  const em = S.facts(withM).find(f => f.kind === 'estMargin');
-  ok('the report says the four factors are weighed by what wins in this league, and on how many games', !em || (sec && /what wins in this league|this league’s own win model|what decides games in this league/.test(sec.paras.join(' ')) && /240 of its games/.test(sec.paras.join(' '))), sec && sec.paras[0]);
+  const rep = report(withM), sec = rep.sections.find(s => s.heading === 'What the four factors were worth'), led = rep.sections.find(s => s.heading === 'What decided it');
+  const em = S.facts(withM).find(f => f.kind === 'estMargin'), lf = S.facts(withM).find(f => f.kind === 'ledger');
+  /* the ledger says it in words and carries the model's games on the card's key (said in every report, the count became
+     the one phrase every report shared: report.js sectionLedger); the older section says both */
+  ok('the report says the four factors are weighed by what wins in this league, and on how many games', !em
+    || (led && /this league’s own model of what wins|the way this league’s games are decided|what decides games in this league/.test(led.paras.join(' ')) && lf && lf.data.model && lf.data.model.n === 240)
+    || (sec && /what wins in this league|this league’s own win model|what decides games in this league/.test(sec.paras.join(' ')) && /240 of its games/.test(sec.paras.join(' '))), sec && sec.paras[0]);
   ok('...and the article still passes the facts check', [rep.headline, rep.standfirst].concat(rep.sections.flatMap(x => x.paras)).every(p => verifyClaims(withM, rep.facts, p).length === 0));
 }
 

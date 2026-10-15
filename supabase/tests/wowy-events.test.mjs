@@ -12,9 +12,10 @@
    ============================================================================ */
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
+const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 globalThis.EpinoiaLineups = require(path.join(ROOT, 'epinoia/lineups.js'));
 const LE = require(path.join(ROOT, 'epinoia/lineupevents.js'));
 const W = require(path.join(ROOT, 'epinoia/wowylogic.js'));

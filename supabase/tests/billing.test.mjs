@@ -37,6 +37,7 @@
    ============================================================================ */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   STRIPE_VERSION, CONSENT, ADULT_WORDING, NOT_SYNCED, SUBSCRIPTION_EVENTS, GRACE_DAYS,
   parseStripeSignature, verifyStripeSignature, verifyWebhook,
@@ -806,7 +807,7 @@ console.log('emails');
    are the rules a refactor would break without any test noticing. */
 console.log('the function');
 {
-  const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
+  const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
   const src = readFileSync(path.join(ROOT, 'supabase', 'functions', 'billing', 'index.ts'), 'utf8');
   const hook = src.slice(src.indexOf('async function webhook('));
   ok(hook.indexOf('await req.text()') > 0, 'the webhook reads the raw body');
@@ -882,7 +883,7 @@ console.log('the function');
 /* --------------------------------------------------------------------- */
 /* ====================================================================== free trials (0223) ====== */
 {
-  const join = readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', '..', 'epinoia', 'join', 'join.js'), 'utf8');
+  const join = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'epinoia', 'join', 'join.js'), 'utf8');
   eq(TRIAL_CONSENT, '2026-10-t', 'a free trial is asked for under its own wording');
   ok(join.includes("const TRIAL_VERSION = '2026-10-t';") && join.includes("const TRIAL_WORDING = '" + CONSENT[TRIAL_CONSENT].replace(/'/g, "\\'") + "';"),
      'the join page shows the trial wording word for word, under that version');
@@ -907,11 +908,11 @@ console.log('the function');
   let threw = false;
   try { checkoutParams({ ...base, consentVersion: TRIAL_CONSENT, trialMonths: 0 }); } catch (_) { threw = true; }
   ok(threw, 'the trial wording with no trial due is refused rather than charged at once');
-  const fn = readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'functions', 'billing', 'index.ts'), 'utf8');
+  const fn = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'functions', 'billing', 'index.ts'), 'utf8');
   ok(/body\.consent\.version === TRIAL_CONSENT[\s\S]{0,200}rpc\('trial_months_for', \{ p_user: who\.user\.id, p_plan: plan\.id \}\)/.test(fn) &&
      /trialMonths <= 0\) \{\s*return json\(\{ error: 'The free trial is for new members/.test(fn) && /checkoutId, consentVersion: body\.consent\.version, trialMonths/.test(fn),
      'checkout asks the database whether this account is due a trial, refuses one it is not, and passes the months on');
-  const sql = readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'migrations', '0223_free_trials.sql'), 'utf8');
+  const sql = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'migrations', '0223_free_trials.sql'), 'utf8');
   ok(/'trial_months', '3'::jsonb, true/.test(sql) && /q\.seller = p\.seller and q\.league_id is not distinct from p\.league_id/.test(sql),
      '0223: three months by default; none for whoever held a plan from the same seller before');
 

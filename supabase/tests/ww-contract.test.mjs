@@ -24,6 +24,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 const EP = path.join(ROOT, 'epinoia');
@@ -96,7 +97,10 @@ for (const [dir, re] of SETS) {
 console.log('\nwho names game_features, and what the snapshots function may touch');
 {
   const ALLOW = new Set(['epinoia/features.js', 'supabase/functions/_shared/features.js', 'tools/build-analytics.mjs', 'scripts/backfill_features.mjs',
-    'supabase/functions/finalise-game/index.ts', 'supabase/functions/_shared/analyticsfile.ts']);
+    'supabase/functions/finalise-game/index.ts', 'supabase/functions/_shared/analyticsfile.ts',
+    /* later legitimate readers: the EPINOIA win model's builder reads the feature lines it learns from (d1329e15f) and
+       its test fakes that read; the archive tier bundles each game's rows, its feature lines among them (4f9ee1fb8) */
+    'tools/build-odds.mjs', 'supabase/tests/build-odds.test.mjs', 'scripts/ingest/archive.py']);
   const mig = fs.readdirSync(path.join(ROOT, 'supabase', 'migrations')).filter(f => /_what_wins\.sql$/.test(f));
   mig.forEach(f => ALLOW.add('supabase/migrations/' + f));
   const allowed = r => ALLOW.has(r) || /^supabase\/tests\/ww-[\w-]+\.test\.mjs$/.test(r);
@@ -137,7 +141,7 @@ const WW_FILES = ['epinoia/features.js', 'epinoia/winfile.js', 'epinoia/winstats
     for (const m of s.matchAll(/\.select\(\s*['"]([^'"]*)['"]/g)) lists.push([f, m[1], tableAt(m.index)]);
     for (const m of s.matchAll(/\b[A-Z_]*SELECT\s*=\s*((?:'[^']*'\s*\+?\s*)+)/g)) lists.push([f, m[1].replace(/'\s*\+\s*'/g, '').replace(/'/g, '')]);
   }
-  const B = await import(path.join(ROOT, 'tools', 'build-analytics.mjs'));
+  const B = await import(pathToFileURL(path.join(ROOT, 'tools', 'build-analytics.mjs')).href);
   ['PGS_SELECT', 'STINT_SELECT', 'GAME_SELECT', 'FEATURE_SELECT'].forEach(k => { if (B[k]) lists.push(['build-analytics ' + k, B[k]]); });
   const toks = l => l.replace(/\$\{[^}]*\}/g, '').split(/[,()]/).map(t => t.trim().replace(/^[\w]+:/, '')).filter(Boolean);
   /* a whole stats blob: the bare column anywhere, or * on a table that carries one (or on a table this cannot name) */

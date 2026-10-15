@@ -44,7 +44,7 @@ function eta(r, now) {
 }
 
 /* WHAT A QUEUED REQUEST IS WAITING FOR, AS IT IS (0217). The worker used to be started by its own cron alone, and the
-   bar said "it looks every 10 minutes" while GitHub left gaps of up to seven hours. It is now started as soon as
+   bar said "it looks every 10 minutes" while the scheduler left gaps of up to seven hours. It is now started as soon as
    something is queued (scripts/ingest/console_kick.py, the console-kick function), and the request says when. */
 const hhmm = iso => { try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; } };
 function waiting(r, opts) {
@@ -74,7 +74,7 @@ function draw(r, opts) {
   if (line) box.appendChild(el('div', 'jb-step', line));
   /* the worker's own log, line by line, for whoever wants to watch it (the run writes its address when it takes the job) */
   const log = r.detail && r.detail.run_url;
-  if (log && /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/actions\/runs\/\d+$/.test(String(log)) && r.state !== 'queued') {
+  if (log && /^https:\/\/[\w.-]+\/[\w.-]+\/[\w.-]+\/actions\/runs\/\d+$/.test(String(log)) && r.state !== 'queued') {
     const a = box.appendChild(el('a', 'jb-log', 'the worker\u2019s log'));
     a.href = log; a.target = '_blank'; a.rel = 'noopener';
   }

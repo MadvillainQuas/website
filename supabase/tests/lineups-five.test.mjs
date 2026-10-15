@@ -13,15 +13,25 @@
      - 7 more lost up to ten minutes of one player: a change logged twice sent
        on somebody already on, and the engine restarted his stint at the repeat.
 
-   This replays every saved game through the ingest's own translator and the
+   This replays saved games through the ingest's own translator and the
    engine, and holds both sides to five a side throughout and each player's
    minutes to the feed's own, wherever the feed's box adds up to the game.
+
+   THE GAMES (supabase/tests/fixtures/slb-games: the saved feeds, gzipped, byte
+   for byte). The 160-game folder this first ran over left the repository with
+   the old datasets on 2026-09-26, so the sweep keeps the 17 that matter: games
+   the pre-fix translator or the pre-fix engine (before 3c52a00f7) got wrong --
+   found by replaying all 160 through that code -- across every kind of failure
+   (a side short, a side over, minutes only, overtime, a late correction), plus
+   the two games the other replay tests read. The current code passed all 160
+   when they were cut down (318 sides compared).
 
      node supabase/tests/lineups-five.test.mjs
    ============================================================================ */
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
@@ -57,16 +67,16 @@ console.log('\na change logged twice');
 
 /* ---- every saved SLB game ------------------------------------------------------------------ */
 console.log('\nevery saved SLB game, through the ingest\'s translator and the engine');
-const DIR = path.join(ROOT, 'data', 'data_2026-05-09T15-59_SLB', 'game_data');
-/* the folder, not 160 paths: a Windows command line stops at 32K characters */
-const files = fs.readdirSync(DIR).filter(f => /^\d+\.json$/.test(f)).sort().map(f => path.join(DIR, f));
+const DIR = path.join(ROOT, 'supabase', 'tests', 'fixtures', 'slb-games');
+/* the folder, not a list of paths: a Windows command line stops at 32K characters */
+const files = fs.readdirSync(DIR).filter(f => /^\d+\.json\.gz$/.test(f)).sort().map(f => path.join(DIR, f));
 const py = [
-  'import sys, json, io, os, re',
+  'import sys, json, os, re, gzip',
   'sys.path.insert(0, sys.argv[1])',
   'from translate.fiba_events import translate',
   'out = []',
-  'for n in sorted(f for f in os.listdir(sys.argv[2]) if re.match(r"^[0-9]+[.]json$", f)):',
-  '    T = translate(json.load(io.open(os.path.join(sys.argv[2], n), encoding="utf-8")), lambda team, pno: "%s:%s" % (team, pno))',
+  'for n in sorted(f for f in os.listdir(sys.argv[2]) if re.match(r"^[0-9]+[.]json[.]gz$", f)):',
+  '    T = translate(json.load(gzip.open(os.path.join(sys.argv[2], n), "rt", encoding="utf-8")), lambda team, pno: "%s:%s" % (team, pno))',
   '    out.append({"starters": T["starters"], "period": T["period"], "teams": T["roster_snapshot"]["teams"],',
   '                "events": [dict(e, **(e.get("payload") or {}), id=e["seq"]) for e in T["events"]]})',
   'sys.stdout.write(json.dumps(out))',
@@ -76,14 +86,14 @@ for (const exe of ['python3', 'python']) {
   const r = spawnSync(exe, ['-c', py, path.join(ROOT, 'scripts', 'ingest'), DIR], { encoding: 'utf8', maxBuffer: 1 << 30 });
   if (r.status === 0 && r.stdout) { games = JSON.parse(r.stdout); break; }
 }
-ok(files.length + ' saved games translate', !!games && games.length === files.length);
+ok(files.length + ' saved games translate', files.length >= 17 && !!games && games.length === files.length);
 
 const mmss = s => { const m = /^(\d+):(\d+)/.exec(String(s || '')); return m ? +m[1] * 60 + +m[2] : 0; };
 const notFive = [], sums = [], minutes = [];
 let compared = 0;
 (games || []).forEach((T, gi) => {
   const name = path.basename(files[gi]);
-  const raw = JSON.parse(fs.readFileSync(files[gi], 'utf8'));
+  const raw = JSON.parse(zlib.gunzipSync(fs.readFileSync(files[gi])).toString('utf8'));
   const d = E.deriveGame({ teams: T.teams, starters: T.starters, events: T.events, period: T.period, clockMs: 0 });
   const length = E.cumEl(T.period, 0);
   [0, 1].forEach(t => {
@@ -106,7 +116,7 @@ let compared = 0;
 ok('both sides are five on the floor for every second of every game', !notFive.length, notFive.slice(0, 5).join('; '));
 ok('...so each side\'s player minutes add up to the game', !sums.length, sums.slice(0, 5).join('; '));
 ok(`every player's minutes are within a minute of the feed's own (${compared} sides whose box adds up)`,
-   compared > 300 && !minutes.length, minutes.slice(0, 5).join('; '));
+   compared === 2 * files.length && !minutes.length, minutes.slice(0, 5).join('; '));
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

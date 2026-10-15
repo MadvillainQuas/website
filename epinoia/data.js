@@ -772,7 +772,7 @@ function seasonUnits(seasons) {
    FUNCTION. The biggest on the platform in September 2026 had 240; an NCAA Division I season
    is about 5,800 games and 140,000 player rows (112 MB trimmed), which no phone reads and
    which the function's two seconds of CPU cannot sum. Such a competition is built by
-   tools/build-seasons.mjs in GitHub Actions (big-seasons.yml, hourly), a batch at a time, into
+   tools/build-seasons.mjs in the scheduled jobs (big-seasons.yml, hourly), a batch at a time, into
    the same file every page already reads; the function leaves it alone.
 
    And a page takes the LATEST file built for it, when the current one is not there yet,

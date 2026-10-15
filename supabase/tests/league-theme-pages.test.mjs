@@ -174,7 +174,7 @@ console.log('\n-- each page\'s heading');
      /body\.league-themed \.hero::after\{[^}]*var\(--league-a\) 0 72%,var\(--league-b\) 72% 88%/.test(kit) &&
      /body\.league-themed \.hero h1\{ background-image:linear-gradient\(100deg,var\(--league-a-ink\),var\(--league-b-ink\)\) \}/.test(kit));
   ['fixtures/index.html', 'stats/wowy/index.html', 'news/index.html', 'video/index.html', 'join/index.html']
-    .forEach(f => ok(f + ' opens with a .hero the kit trims', /class="hero"/.test(read('epinoia', ...f.split('/')))));
+    .forEach(f => ok(f + ' opens with a .hero the kit trims', /class="hero(?: [^"]*)?"/.test(read('epinoia', ...f.split('/')))));
   const stats = read('epinoia', 'stats', 'index.html');
   ok('the statistics page, which has no .hero, trims its heading itself', /body\.league-themed \.ep-frame > \.ep-hdr\{/.test(stats) &&
      /body\.league-themed #title\{color:var\(--league-a-ink\)\}/.test(stats));

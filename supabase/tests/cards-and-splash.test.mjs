@@ -151,8 +151,10 @@ console.log('\n4. a new version for phones to take');
   ok('...and the name with it', v.versionName >= '1.0.4', v.versionName);
   eq('it is a whole number, which is what the release tag is built from',
      Number.isInteger(v.versionCode) && v.versionCode > 0, true);
-  ok('the download still points at the latest release',
-     /releases\/latest\/download\/epinoia\.apk$/.test(v.apk));
+  /* since 0d7098544 the download is the stable epinoia.apk in our own storage (0169), which each release
+     overwrites, not the code host's latest release (android-config.test.mjs holds the exact address) */
+  ok('the download still points at the latest build',
+     /\/storage\/v1\/object\/public\/apps\/epinoia\.apk$/.test(v.apk), v.apk);
   const wf = rd('.github', 'workflows', 'android.yml');
   ok('pushing that file is what builds and releases it',
      /- 'epinoia\/android\/version\.json'/.test(wf) && /tag_name: android-v\$\{\{ steps\.version\.outputs\.code \}\}/.test(wf));

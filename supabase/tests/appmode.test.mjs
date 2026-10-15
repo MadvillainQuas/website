@@ -338,7 +338,8 @@ function click(r, target, ev = {}) {
   ok('HOME loads ../appmode.js first in <head>, without data-water',
      firstScript > 0 && head.slice(firstScript).startsWith('<script src="../appmode.js?v=')
      && !/appmode\.js[^>]*data-water/.test(head));
-  ok('HOME never loads mode.js or splash.css', !/mode\.js/.test(home.replace(/appmode\.js/g, '')) && !/splash\.css/.test(home));
+  // the splash's own mode.js by name: appmode.js and HOME's vhmode.js (the VIDEO view) are other scripts
+  ok('HOME never loads mode.js or splash.css', !/(^|[^\w-])mode\.js/.test(home) && !/splash\.css/.test(home));
   const news = rd('epinoia', 'news', 'index.html');
   ok('the news archive carries appmode.js without data-water', /<script src="\.\.\/appmode\.js\?v=\d+"><\/script>/.test(news)
      && !/appmode\.js[^>]*data-water/.test(news));

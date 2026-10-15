@@ -197,7 +197,21 @@ ok("...and its game id is already known from the ticker's matchday board (games.
    gi and gi.extra.get("game_id") == "2005820", gi and gi.extra)
 ok("an unplayed fixture has no game id and still a key", any(not g.extra.get("game_id") for g in g_new))
 a = fresh()
-g_b = list(a.discover(T.SCHEDULE_URLS["prob"], {"season": "2026-27", "stage": "regular"}))
+
+
+class _AtCapture(datetime):
+    """The clock the fixtures were captured at (2026-09-23): the captured live board already
+    shows two pre-game ticker tests as 'E', which are only 'final' once their tip-off is past."""
+    @classmethod
+    def now(cls, tz=None):
+        return datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+
+
+T.datetime, _real_datetime = _AtCapture, T.datetime
+try:
+    g_b = list(a.discover(T.SCHEDULE_URLS["prob"], {"season": "2026-27", "stage": "regular"}))
+finally:
+    T.datetime = _real_datetime
 ok("ProB 2026/27: 392 scheduled fixtures under prob- keys",
    len(g_b) == 392 and all(g.external_id.startswith("prob-2026-") for g in g_b)
    and all(g.status == "scheduled" for g in g_b), len(g_b))

@@ -482,7 +482,7 @@ function mountSources(o) {
           ? 'Adding by link arrives with migration 0198: it has not been applied to this database yet.' : errText(e), 'err');
       }
       /* A YOUTUBE CHANNEL IS FOUND AND READ AT ONCE (news-refresh, with the YouTube key): no wait for the half-hourly read,
-         which GitHub can run hours late. Anything else, and a channel before the key is set, waits for that read. */
+         which the scheduler can run hours late. Anything else, and a channel before the key is set, waits for that read. */
       if (NR() && d && d.slug && /(^|\.)youtube\.com\//i.test(link.value.trim().replace(/^https?:\/\//i, ''))) {
         say('Added ' + (d.name || 'it') + ': reading its channel now…', 'ok');
         const out = await NR().call({ sb, source: d.slug });

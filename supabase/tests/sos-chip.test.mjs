@@ -1,9 +1,10 @@
 /* SCHEDULE CHIP + ELO: band(), summarise() and eloRatings() are pure.
      node supabase/tests/sos-chip.test.mjs */
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
+const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const require = createRequire(import.meta.url);
 globalThis.EpinoiaSeason = require(path.join(ROOT, 'epinoia', 'season.js'));
 const SOS = require(path.join(ROOT, 'epinoia', 'sos.js'));

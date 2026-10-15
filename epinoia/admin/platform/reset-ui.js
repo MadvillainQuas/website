@@ -3,7 +3,7 @@
    START A LEAGUE AGAIN - the platform console's front door to scripts/ingest/reset_league.py (migration 0187).
 
    Pick a league, see what would go and what stays, type its slug to confirm, and the request is queued. The
-   worker (.github/workflows/console-jobs.yml, started as soon as it is queued: ../jobbar.js kick) takes it, deletes the league's games and
+   worker (the console-jobs workflow, started as soon as it is queued: ../jobbar.js kick) takes it, deletes the league's games and
    players in small paced batches - clubs, crests, colours, venues and competitions are kept - and reads the
    league again from its feed. Nothing happens in the browser.
 
@@ -125,7 +125,7 @@ async function mount(o) {
     const { error } = await sb.rpc('request_league_reset', { p_league: l.id });
     if (error) { go.disabled = false; return oops(error); }
     say(l.name + ' is queued; starting the worker\u2026');
-    /* started now, not at GitHub's next cron slot (0217): the console-kick function where it is set up, the live lane
+    /* started now, not at the scheduler's next cron slot (0217): the console-kick function where it is set up, the live lane
        within a few minutes where it is not */
     const k = window.EpinoiaJobBar && window.EpinoiaJobBar.kick ? await window.EpinoiaJobBar.kick(sb) : { started: false };
     say(k.started || k.why === 'already started'

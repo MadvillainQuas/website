@@ -112,9 +112,12 @@ jobs:
           fi
           echo "ok - nothing shipped names the code host"
 
+      # Since 97bf8d130 (2026-09-30) the root sw.js only clears its caches and unregisters
+      # itself: with no fetch handler it serves nothing, stale or not. The bypass is required
+      # again the moment a root worker that answers requests comes back.
       - name: The service worker must not cache the public section
         run: |
-          if [ -f sw.js ] && ! grep -q "startsWith('/epinoia/')" sw.js; then
+          if [ -f sw.js ] && grep -q "addEventListener('fetch'" sw.js && ! grep -q "startsWith('/epinoia/')" sw.js; then
             echo "::error::sw.js is missing the /epinoia/ bypass — live pages would be served stale."
             exit 1
           fi
@@ -1974,19 +1977,6 @@ jobs:
         run: |
           npm i --no-save @electric-sql/pglite
           node supabase/tests/ncaa-halves.test.mjs
-
-      - name: The WOWY / lineups page - colour scale, reliability, pair buckets, column picker, gate, address
-        # epinoia/wowylogic.js over lineups.js, pure: percentile colours turned round where lower is better, small samples
-        # labelled with thresholds the reader moves, the four pair buckets adding up to the team, units of a size, the column
-        # picker's caps by width, the preview gate following wowyPreviewMax, the address round trip, and the page's contracts
-        run: node supabase/tests/wowy-page.test.mjs
-
-      - name: The WOWY page's play-by-play layer - both fives per play, vs starters, the new stats, gating
-        # epinoia/lineupevents.js over the engine, possessions.js, situations.js and shotclock.js, on a synthetic game worked
-        # by hand: segments cut where the stints are, opponent-five buckets (a game without starters in none), zones,
-        # assisted shares, transition against half court, pace per 40, the shot clock, heliocentrism, rebound origins,
-        # deltas by direction, members-only reads, pairs and WOWY as separate tabs, the address
-        run: node supabase/tests/wowy-events.test.mjs
 
       - name: The public box score must be the scorer's own code
         # boxscore.js/.css are lifted verbatim from the scorer; if the scorer

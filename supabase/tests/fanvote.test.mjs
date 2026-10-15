@@ -152,10 +152,15 @@ console.log('\nthe players: the Stars podium’s week (BCB, as stars.test.mjs ca
   ok('asks for more than the fifteen the database keeps (so a withheld player costs nobody)', BALLOT_PLAYERS > 15);
   ok('as many as qualify, up to ' + BALLOT_PLAYERS, got.length === Math.min(BALLOT_PLAYERS, eligible.length),
      got.length + ' of ' + eligible.length);
-  same('the first ten are the ten the league page showed, in its order', got.slice(0, 10).map(p => p.id), W.ids);
+  /* the podium's ten as the league page draws them now: since 2026-10-06 the Stars rank by single-game BPM (stars.js
+     singleGameBPM), so the fixture's captured ten (W.ids, W.bpm: the season-style figures from before, which
+     stars.test.mjs keeps for its parity sections) are no longer the page's */
+  const page = pick(agg.players, week, 10);
+  void W;
+  same('the first ten are the ten the league page shows, in its order', got.slice(0, 10).map(p => p.id), page.map(p => p.id));
   ok('...with the same BPM to one place',
-     got.slice(0, 10).every((p, i) => Math.abs(p.line.bpm - Number(W.bpm[i])) < 0.051),
-     got.slice(0, 10).map(p => p.line.bpm).join(',') + ' vs ' + W.bpm.join(','));
+     got.slice(0, 10).every((p, i) => Math.abs(p.line.bpm - Number(Number(page[i].bpm).toFixed(1))) < 0.051),
+     got.slice(0, 10).map(p => p.line.bpm).join(',') + ' vs ' + page.map(p => Number(p.bpm).toFixed(1)).join(','));
   same('the rest follow on the same rule', got.map(p => p.id), eligible.slice(0, BALLOT_PLAYERS).map(p => p.id));
   ok('best BPM first', got.every((p, i) => !i || got[i - 1].line.bpm >= p.line.bpm));
   ok('everyone played a game and twenty minutes', got.every(p => p.line.gp >= 1 && p.line.min >= 20));

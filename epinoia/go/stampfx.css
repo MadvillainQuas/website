@@ -18,7 +18,7 @@
   transform:rotate(-7deg) scale(2.6);opacity:0;max-width:100%}
 .gsx.on .gsx-plate{animation:gsx-slam .42s cubic-bezier(.2,1.5,.35,1) .06s forwards}
 .gsx-plate::after{content:"";position:absolute;inset:7px;border:1px dashed rgba(147,242,191,.4);border-radius:6px;pointer-events:none}
-.gsx-k{font-family:var(--f-micro,var(--f-ui,sans-serif));font-size:10px;letter-spacing:.32em;text-transform:uppercase;opacity:.9}
+.gsx-k{font-family:var(--f-micro,var(--f-ui,sans-serif));font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.9}
 .gsx-v{font-family:var(--f-go,var(--f-score,sans-serif));font-weight:700;font-size:clamp(24px,7vw,40px);line-height:1.05;letter-spacing:.02em;
   text-transform:uppercase;overflow-wrap:anywhere;text-shadow:0 0 18px rgba(147,242,191,.55)}
 .gsx-d{font-family:var(--f-data,var(--f-ui,sans-serif));font-size:12px;letter-spacing:.06em;opacity:.85}

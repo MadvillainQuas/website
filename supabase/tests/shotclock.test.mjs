@@ -134,17 +134,17 @@ console.log('\npossessions.js');
 console.log('\nreal LiveStats games agree with the box score');
 {
   const script = [
-    'import sys, json, io',
+    'import sys, json, io, gzip',
     'sys.path.insert(0, sys.argv[1])',
     'from translate.fiba_events import translate',
-    'raw = json.load(io.open(sys.argv[2], encoding="utf-8"))',
+    'raw = json.load((gzip.open if sys.argv[2].endswith(".gz") else io.open)(sys.argv[2], "rt", encoding="utf-8"))',
     'T = translate(raw, lambda team, pno: "%s:%s" % (team, pno))',
     'sys.stdout.write(json.dumps(T))',
   ].join('\n');
   const feeds = [
     path.join(ROOT, 'supabase', 'tests', 'fixtures', 'feedtiming', 'feed.json'),
-    path.join(ROOT, 'data', 'data_2026-05-09T15-59_SLB', 'game_data', '2702542.json'),
-    path.join(ROOT, 'data', 'data_2026-05-09T15-59_SLB', 'game_data', '2702545.json')
+    path.join(ROOT, 'supabase', 'tests', 'fixtures', 'slb-games', '2702542.json.gz'),
+    path.join(ROOT, 'supabase', 'tests', 'fixtures', 'slb-games', '2702545.json.gz')
   ];
   for (const f of feeds) {
     let T = null;

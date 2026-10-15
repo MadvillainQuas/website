@@ -80,10 +80,18 @@ const FG = { p2_made: 2, p3_made: 3, p2_miss: 0, p3_miss: 0 };
 const FT = { ft_made: 1, ft_miss: 0 };
 const TRANSITION_MS = 8000;          // engine.js TRANSITION_MS
 
-/* engine.js isRim: the shot TYPE decides when it is decisive, location fills the gaps */
+/* engine.js isRim, rule for rule: a rim TYPE (layup, dunk, tip-in...) is at the rim wherever the marker
+   landed; otherwise the marker decides, against the restricted area (125 cm around the ring on the 1500 x
+   1400 chart); only a shot with no marker falls back to a far type, then the paint tag. Kept identical so
+   the events tab's rim attempts are the box score's (supabase/tests/events.test.mjs). */
 const RIM_TYPE = new Set(['layup', 'dunk', 'tip-in', 'tip in', 'putback', 'alley-oop']);
 const FAR_TYPE = new Set(['jump shot', 'jumper', 'fadeaway', 'step-back', 'stepback',
                           'pull-up', 'pullup', 'catch & shoot', 'catch and shoot']);
+const RIM_AT = { x: 750 / 1500, y: 157.5 / 1400, w: 1500, h: 1400, r: 125 };
+const atRim = l => {
+  const dx = (l.x - RIM_AT.x) * RIM_AT.w, dy = (l.y - RIM_AT.y) * RIM_AT.h;
+  return Math.sqrt(dx * dx + dy * dy) <= RIM_AT.r;
+};
 
 /* the situations, in the order every reader shows them */
 const KEYS = ['all', 'second', 'transition', 'offTo', 'ato', 'half'];
@@ -132,9 +140,10 @@ function describe(all) {
     if (ev.t[1] === '3') return 'three';
     const ty = (stypes[ev.id] || '').toLowerCase();
     if (ty && RIM_TYPE.has(ty)) return 'rim';
-    if (ty && FAR_TYPE.has(ty)) return 'mid';
     const l = locs[ev.id];
-    return ((l && l.x > 0.33 && l.x < 0.67 && l.y < 0.42) || (tags[ev.id] && tags[ev.id].has('paint'))) ? 'rim' : 'mid';
+    if (l) return atRim(l) ? 'rim' : 'mid';
+    if (ty && FAR_TYPE.has(ty)) return 'mid';
+    return tags[ev.id] && tags[ev.id].has('paint') ? 'rim' : 'mid';
   };
   return { tags, stypes, locs, zoneOf };
 }

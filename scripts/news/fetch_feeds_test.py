@@ -84,7 +84,7 @@ ok("a date in numbers: month first (9/30/2026, FEB's), day first when it must be
    F.when("9/29/2026", NOW).isoformat() == "2026-09-29T12:00:00+00:00" and F.when("28.09.2026", NOW).isoformat() == "2026-09-28T12:00:00+00:00" and
    F.when("9/29/2026 3:05:00 PM", NOW).isoformat() == "2026-09-29T15:05:00+00:00" and F.when("13/13/2026", NOW) is None,
    [str(F.when(x, NOW)) for x in ("9/29/2026", "28.09.2026", "9/29/2026 3:05:00 PM", "13/13/2026")])
-ok("...and a day with no time that is today is as new as the read that found it", F.when(NOW.strftime("%-m/%-d/%Y"), NOW) == NOW)
+ok("...and a day with no time that is today is as new as the read that found it", F.when("%d/%d/%d" % (NOW.month, NOW.day, NOW.year), NOW) == NOW)
 FEB = b"""<?xml version="1.0" encoding="utf-8"?><rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/"><channel><title>FEB</title><link>https://www.feb.es</link>
 <item><title>Uno</title><link>https://www.feb.es/2026/9/29/a/1.aspx</link><description>Primera.</description><pubDate>9/29/2026</pubDate>
 <media:content format="XL" url="https://www.feb.es/Imagenes/1_1.jpg" /><media:content format="S" url="https://www.feb.es/Imagenes/1_4.jpg" /></item>

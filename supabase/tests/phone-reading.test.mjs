@@ -135,8 +135,10 @@ console.log('\n1. a club\'s letters in a fixture row');
   eq('on a phone the name gives way', decl(phone, '.fx .tn .full', 'display'), 'none');
   eq('...to the letters', decl(phone, '.fx .tn .short', 'display'), 'inline');
   ok('the letters are spaced as a scoreboard spaces them', /letter-spacing/.test(phone));
+  /* aed122d3b put an empty first column in front, as wide as the state and bell columns
+     (54 + 8 + 26), so the score sits on the row's centre line */
   ok('the row is set out for two short names and a score',
-     /\.fx\{[^}]*grid-template-columns:1fr auto 1fr 54px 26px/.test(phone));
+     /\.fx\{[^}]*grid-template-columns:88px 1fr auto 1fr 54px 26px/.test(phone));
   ok('and they are big enough to read', (() => {
     const s = decl(phone, '.fx .tn', 'font-size');
     return s && parseFloat(s) >= 15;

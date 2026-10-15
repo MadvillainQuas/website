@@ -3,9 +3,10 @@
      node supabase/tests/seasonline.test.mjs */
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-const ROOT = path.resolve(new URL('../..', import.meta.url).pathname);
+const ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const require = createRequire(import.meta.url);
 const rd = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8').replace(/\r\n/g, '\n');
 const SL = require(path.join(ROOT, 'epinoia', 't', 'seasonline.js'));
@@ -345,7 +346,9 @@ console.log('\nthe page');
     assert.match(line, /SL\.render\(box, \{/); assert.match(line, /logs: sectionLocked\('events'\) \?/); assert.match(line, /bench: benchMinutes\(S, team\)/);
   });
   ok('the club\'s logs are read through lineupevents.js, a game at a time, each game kept for the page\'s life', () => {
-    assert.match(tj, /async function clubLogs\(team, scoped\)/);
+    /* `logs` (optional) lets the scouting report pass the logs over its linked competitions (rpLogs); the page omits it */
+    assert.match(tj, /async function clubLogs\(team, scoped, logs\)/);
+    assert.match(tj, /const \{ gs, byG, sideOf \} = logs \|\| await seasonLogs\(team\);/);
     assert.match(tj, /LE\.gameSegments\(\{ id: g\.id, starters: g\.starters, events: byG\[g\.id\] \|\| \[\], period: g\.period \}\)/);
     assert.match(tj, /LE\.recordsOf\(G, side\)\.forEach\(r => \{ r\.oteam = oteam; recs\.push\(r\); \}\)/); assert.match(tj, /segCache\.set\(g\.id, G\)/);
     assert.match(tj, /starters: sectionLocked\('splits'\) \? null : scopeStarters\(scopeComps\)/);

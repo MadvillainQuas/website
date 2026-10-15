@@ -65,7 +65,8 @@ const navcss = read('epinoia', 'kit', 'nav.css');
 const follow = read('epinoia', 'follow.js');
 const kit = read('epinoia', 'kit', 'epinoia-kit.css');
 const country = read('epinoia', 'country.js');
-const robots = read('epinoia', 'robots.txt');
+// robots.txt lives at the site root (crawlers read it only there); the /epinoia/invite/ rule is in it
+const robots = read('robots.txt');
 
 let pass = 0, fail = 0;
 const ok = (name, cond, detail) => {
@@ -287,8 +288,12 @@ ok('the offer is drawn under the league name, beside the follow bell',
    /\$\('#leagueActs'\)/.test(home.slice(home.indexOf('async function offerSchedule'))));
 ok('it goes to the fixtures section of the console, not its front door',
    /a\.href = 'admin\/#fixtures'/.test(home) && /id="fixtures"/.test(adminH));
+/* 596625705 widened the one #fixtures jump to any Settings section's anchor (the index under the tabs); #fixtures
+   is one of those sections, so it is still scrolled to once the league has loaded */
 ok('...and the console scrolls there after it has loaded',
-   /location\.hash === '#fixtures'/.test(admin) && /scrollIntoView/.test(admin),
+   /await loadLeague\(\);[\s\S]{0,1500}location\.hash[\s\S]{0,800}inSettings\.contains\(sec\)[\s\S]{0,300}sec\.scrollIntoView/.test(admin)
+   && adminH.indexOf('id="fixtures"') > adminH.indexOf('id="tabSettings"')
+   && adminH.indexOf('id="fixtures"') < adminH.indexOf('id="tabGraphics"'),
    'the browser jumps at parse time, before the fixture list has moved everything down');
 ok('a signed-out visitor costs no request at all',
    /if \(!s \|\| !s\.token\) return;/.test(home) &&
@@ -328,13 +333,14 @@ ok('every place that groups a league uses the one rule',
    'the counter, the list filter, the page-opens-its-own-group path and settleCountry');
 
 console.log('\n13. your hub (it was "your profile") is a rail, and the way back to a private league');
-ok('the deck carries a sixth panel (and a seventh since, EPINOIA GO\'s layer)',
+ok('the deck carries a sixth panel (a seventh since, EPINOIA GO\'s layer, and an eighth, scouting\'s)',
    /const followsPanel = el\('div', 'panel followspanel'\);/.test(nav) &&
-   /deck\.append\(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel\)/.test(nav));
-ok('...and the CSS is a seventh, not a sixth',
-   /width:700%/.test(navcss) && /width:14\.2857%/.test(navcss) &&
-   /data-view="follows"\] \.deck\{ transform:translateX\(-71\.4286%\)/.test(navcss) &&
-   /data-view="go"\] \.deck\{ transform:translateX\(-85\.7143%\)/.test(navcss));
+   /deck\.append\(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel, scoutPanel\)/.test(nav));
+ok('...and the CSS is an eighth, not a sixth',
+   /width:800%/.test(navcss) && /width:12\.5%/.test(navcss) &&
+   /data-view="follows"\] \.deck\{ transform:translateX\(-62\.5%\)/.test(navcss) &&
+   /data-view="go"\] \.deck\{ transform:translateX\(-75%\)/.test(navcss) &&
+   /data-view="scout"\] \.deck\{ transform:translateX\(-87\.5%\)/.test(navcss));
 ok('the panel is hidden from the tab order like every other',
    /followsPanel\.setAttribute\('aria-hidden', String\(v !== 'follows'\)\)/.test(nav));
 ok('"your hub" opens it, and is still a real link for a modified click',

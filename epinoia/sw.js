@@ -78,7 +78,7 @@ function offlinePage() {
 }
 /* THE SITE'S OWN STAMPED FILES, FROM A CACHE OF ITS OWN (2026-10-15). Every script and stylesheet a page loads is
    stamped with the site's version (src="game.js?v=821", tools/stamp-assets.py), and a deploy stamps them all anew,
-   so the file behind one such address does not change. GitHub Pages lets a browser keep a file for ten minutes;
+   so the file behind one such address does not change. The host lets a browser keep a file for ten minutes;
    after that, every page asked again for each of its 60-130 files before it could run - a burst of requests in front
    of the box score on every visit after a short break. Here such a file is answered from this cache at once, and
    when the copy is more than REVALIDATE_MS old it is asked for again AFTER the page has it (a conditional request,

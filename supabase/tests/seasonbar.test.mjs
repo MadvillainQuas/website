@@ -57,10 +57,40 @@ const COMPS = [
 /* c27 is missing on purpose: entries without a fixture are not a season */
 const HAS_GAMES = new Set(['c26', 'k26', 'c25', 'c24']);
 
+/* Since 2026-10-15 (4b9fbbb15) a league is read WITH its seasons, their
+   competitions and a one-row games probe each, as PostgREST embeds — one
+   request where there were four. The embedded shape, as PostgREST returns it:
+   each season carries `competitions`, each competition `games` (at most one). */
+const embedded = played => SEASONS.map(s => Object.assign({}, s, {
+  competitions: COMPS.filter(c => c.season_id === s.id)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(c => Object.assign({}, c, { games: played(c.id) ? [{ id: 'g-' + c.id }] : [] }))
+}));
+const EMBED_ASK = /competitions\(/;
+
+/* the three requests the embed falls back to (an API that refuses the embed) */
+const plain = (asked, leagueRow, played) => async p => {
+  asked.push(p);
+  if (EMBED_ASK.test(p)) throw new Error('embed refused');
+  if (p.startsWith('leagues?')) return [Object.assign({}, leagueRow)];
+  if (p.startsWith('seasons?')) return SEASONS.slice();
+  if (p.startsWith('competitions?')) return COMPS.slice();
+  if (p.startsWith('games?')) {
+    const ids = (p.match(/in\.\(([^)]*)\)/) || [])[1].split(',');
+    return ids.some(played) ? [{ id: 'g1' }] : [];
+  }
+  throw new Error('unexpected ' + p);
+};
+
 const asked = [];
 const api = async p => {
   asked.push(p);
-  if (p.startsWith('leagues?')) return [{ id: 'lg', slug: 'demo-league', name: 'Demo League' }];
+  if (p.startsWith('leagues?')) {
+    const row = { id: 'lg', slug: 'demo-league', name: 'Demo League' };
+    if (EMBED_ASK.test(p)) row.seasons = embedded(id => HAS_GAMES.has(id));
+    return [row];
+  }
+  if (p.startsWith('seasons?') && EMBED_ASK.test(p)) return embedded(id => HAS_GAMES.has(id));
   if (p.startsWith('seasons?')) return SEASONS.slice();
   if (p.startsWith('competitions?')) return COMPS.slice();
   if (p.startsWith('games?')) {
@@ -87,20 +117,49 @@ eq('?s= lands on the season a person would have typed',
 eq('...and an unknown one lands on the current season rather than an error',
    (await SB.context(api, 'demo-league', 'nonsense')).season.name, '2026-27');
 
-/* The whole history in three requests, and one probe per season rather than a
-   season's worth of games downloaded to count them. */
-const first = asked.filter(p => p.startsWith('seasons?') || p.startsWith('competitions?')).length;
-ok('one seasons read and one competitions read for every season', first === 2, asked);
-ok('...and the games probe asks for a single row', asked.filter(p => p.startsWith('games?'))
-   .every(p => /select=id&limit=1/.test(p)), asked.filter(p => p.startsWith('games?')));
+/* The whole history comes with the league: one request, its games probe one
+   row per competition rather than a season's worth of games to count them. */
+ok('the league, its seasons, their competitions and the probes are one request',
+   asked.length > 0 && asked.every(p => p.startsWith('leagues?')), asked);
+ok('...the probe asks for a single game per competition',
+   /seasons\.competitions\.games\.limit=1/.test(asked[0]) && /games\(id\)/.test(asked[0]), asked[0]);
 ok('a second caller on the same page shares the answer rather than repeating it',
-   asked.filter(p => p.startsWith('seasons?')).length === 1);
+   !asked.some(p => p.startsWith('seasons?') || p.startsWith('competitions?') || p.startsWith('games?')), asked);
+{
+  /* a page that already holds its league row (load(), not context()) asks for
+     the seasons embedded, once */
+  const a2 = [];
+  const o = await SB.load(async p => { a2.push(p); return embedded(id => HAS_GAMES.has(id)); }, 'lg-load');
+  eq('load(): the same offer from one embedded seasons read', o.list.map(s => s.name), ['2026-27', '2025-26', '2024-25']);
+  ok('...asked once, seasons with competitions and probes', a2.length === 1 && /^seasons\?/.test(a2[0]) && EMBED_ASK.test(a2[0]), a2);
+}
+
+/* An API that refuses the embed: the three requests, answering the same. */
+{
+  const a3 = [];
+  const old = plain(a3, { id: 'lg-old', slug: 'old-league', name: 'Old League' }, id => HAS_GAMES.has(id));
+  const c3 = await SB.context(old, 'old-league');
+  eq('refused embed: the same seasons, newest first', c3.seasons.map(s => s.name), ['2026-27', '2025-26', '2024-25']);
+  eq('...the same default', c3.season.name, '2026-27');
+  eq('...the same competitions with it', c3.comps.map(c => c.id), ['c26', 'k26']);
+  const plainReads = a3.filter(p => !EMBED_ASK.test(p));
+  ok('...one seasons read and one competitions read for every season',
+     plainReads.filter(p => p.startsWith('seasons?')).length === 1
+     && plainReads.filter(p => p.startsWith('competitions?')).length === 1, a3);
+  ok('...and the games probe asks for a single row', plainReads.filter(p => p.startsWith('games?'))
+     .every(p => /select=id&limit=1/.test(p)), plainReads.filter(p => p.startsWith('games?')));
+}
 
 /* ------------------------------------------------------- 2. nothing played --- */
 console.log('\n2. a league whose games cannot be read (members only, or brand new)');
 {
   const shut = async p => {
-    if (p.startsWith('leagues?')) return [{ id: 'lg2', slug: 'shut', name: 'Shut' }];
+    /* the games are refused, so every embedded probe comes back empty */
+    if (p.startsWith('leagues?')) {
+      const row = { id: 'lg2', slug: 'shut', name: 'Shut' };
+      if (EMBED_ASK.test(p)) row.seasons = embedded(() => false);
+      return [row];
+    }
     if (p.startsWith('seasons?')) return SEASONS.slice();
     if (p.startsWith('competitions?')) return COMPS.slice();
     return [];                      // every probe comes back empty

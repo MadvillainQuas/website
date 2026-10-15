@@ -362,7 +362,7 @@ function draw(panel) {
     if (error) return opts.say(league.name + ': ' + error.message, 'err');
     opts.say(name + ' is queued; starting the worker\u2026', 'ok');
     restart();
-    /* THE WORKER IS STARTED NOW, not at GitHub's next cron slot (0217): the console-kick function where it is set up,
+    /* THE WORKER IS STARTED NOW, not at the scheduler's next cron slot (0217): the console-kick function where it is set up,
        and the live lane within a few minutes where it is not */
     const k = window.EpinoiaJobBar && window.EpinoiaJobBar.kick ? await window.EpinoiaJobBar.kick(opts.sb) : { started: false };
     opts.say(k.started || k.why === 'already started'

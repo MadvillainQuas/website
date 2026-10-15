@@ -128,13 +128,13 @@ console.log('\nreading a number');
 console.log('\nthe pages, on a real LiveStats game');
 {
   const script = [
-    'import sys, json, io',
+    'import sys, json, io, gzip',
     'sys.path.insert(0, sys.argv[1])',
     'from translate.fiba_events import translate',
-    'raw = json.load(io.open(sys.argv[2], encoding="utf-8"))',
+    'raw = json.load((gzip.open if sys.argv[2].endswith(".gz") else io.open)(sys.argv[2], "rt", encoding="utf-8"))',
     'sys.stdout.write(json.dumps(translate(raw, lambda team, pno: "%s:%s" % (team, pno))))'
   ].join('\n');
-  const feed = path.join(ROOT, 'data', 'data_2026-05-09T15-59_SLB', 'game_data', '2702542.json');
+  const feed = path.join(ROOT, 'supabase', 'tests', 'fixtures', 'slb-games', '2702542.json.gz');
   let T = null;
   for (const exe of ['python3', 'python']) {
     const r = spawnSync(exe, ['-c', script, path.join(ROOT, 'scripts', 'ingest'), feed], { encoding: 'utf8', maxBuffer: 64 << 20 });

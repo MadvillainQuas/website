@@ -39,7 +39,8 @@ import { createRequire } from 'node:module';
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 const EP = path.join(ROOT, 'epinoia');
 const FIX = path.join(ROOT, 'supabase/tests/fixtures/ww-fo');
-const read = (...p) => fs.readFileSync(path.join(...p), 'utf8');
+/* line endings normalised: t/team.js is committed with CRLF, and the snapshots and regexes here are written with LF */
+const read = (...p) => fs.readFileSync(path.join(...p), 'utf8').replace(/\r\n/g, '\n');
 const require = createRequire(import.meta.url);
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = '') => { cond ? pass++ : fail++; console.log(`  ${cond ? 'PASS' : 'FAIL'}  ${name}${extra && !cond ? '  -> ' + extra : ''}`); };

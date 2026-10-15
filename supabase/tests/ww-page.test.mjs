@@ -90,11 +90,14 @@ console.log('\nthe thirteen sections (A.3 added Lineup mixes)');
 console.log('\nthe sheets and scripts');
 {
   const sheets = [...HTML.matchAll(/<link rel="stylesheet" href="\.\.\/kit\/([\w-]+)\.css\?v=\d+">/g)].map(m => m[1]);
-  ok('sheets in §11\'s order: kit, nav, access, page, vizkit, winning, sectitle, teletext, legibility (last)',
-     sheets.join() === 'epinoia-kit,nav,access,page,vizkit,winning,sectitle,teletext,legibility', sheets.join());
+  /* labeltype + numtype (Archivo labels, 0bb8d9ecf) and motion (the site-wide press and reveal, 4d349e379) follow nav on
+     every page since, as the page standard has them */
+  ok('sheets in §11\'s order: kit, nav, labeltype, numtype, motion, access, page, vizkit, winning, sectitle, teletext, legibility (last)',
+     sheets.join() === 'epinoia-kit,nav,labeltype,numtype,motion,access,page,vizkit,winning,sectitle,teletext,legibility', sheets.join());
   const heads = [...HTML.split('</head>')[0].matchAll(/<script src="\.\.\/([\w-]+)\.js\?v=\d+"([^>]*)><\/script>/g)];
-  ok('the head: appmode.js, i18n.js with data-i18n-packs="analysis", glyphs.js deferred', heads.length === 3 && heads[0][1] === 'appmode' && heads[1][1] === 'i18n' &&
-     /data-i18n-packs="analysis"/.test(heads[1][2]) && heads[2][1] === 'glyphs' && /\bdefer\b/.test(heads[2][2]));
+  ok('the head: appmode.js, i18n.js with data-i18n-packs="analysis", glyphs.js and motion.js deferred', heads.length === 4 && heads[0][1] === 'appmode' && heads[1][1] === 'i18n' &&
+     /data-i18n-packs="analysis"/.test(heads[1][2]) && heads[2][1] === 'glyphs' && /\bdefer\b/.test(heads[2][2]) &&
+     heads[3][1] === 'motion' && /\bdefer\b/.test(heads[3][2]), heads.map(h => h[1]).join());
   const body = [...HTML.split('</head>')[1].matchAll(/<script src="([^"?]+)\?v=\d+"([^>]*)><\/script>/g)];
   const order = body.map(m => m[1].replace(/^\.\.\//, '').replace(/\.js$/, ''));
   ok('the scripts, deferred, in order: config, access, memlock, data, teamcolour, winning, winstats, winsim, winfile, vizkit, xscroll, winmix, page, nav',

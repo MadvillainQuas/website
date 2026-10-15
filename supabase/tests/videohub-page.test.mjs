@@ -80,9 +80,12 @@ console.log('\nthe page');
   eq('the policy is the game page\'s, character for character', csp, gameCsp);
 
   const css = [...head.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)].map(m => m[1]);
+  /* the site-wide type and motion sheets (labels in Archivo 0bb8d9ecf, figures, the press motion 4d349e379) come
+     after the nav and before the page's own */
   eq('stylesheets, in order', css,
      ['../kit/epinoia-kit.css?v=' + V, '../kit/access.css?v=' + V,
-      '../kit/nav.css?v=' + V, '../video.css?v=' + V, '../kit/teletext.css?v=' + V, '../kit/legibility.css?v=' + V]);
+      '../kit/nav.css?v=' + V, '../kit/labeltype.css?v=' + V, '../kit/numtype.css?v=' + V, '../kit/motion.css?v=' + V,
+      '../video.css?v=' + V, '../kit/teletext.css?v=' + V, '../kit/legibility.css?v=' + V]);
 
   const scripts = [...HTML.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
   ok('no inline script: every <script> has a src and no body', scripts.every(m => /\bsrc="/.test(m[1]) && !m[2].trim()));

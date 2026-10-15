@@ -3698,7 +3698,6 @@ def main() -> int:
                     tot["paused"] = len(todo) - g_i
                     print(f"   out of time for this run: {len(todo) - g_i} game(s) left - back in the queue, the next run goes on from here")
                     break
-                t_obs = time.time()
                 # a backfill's bar: each source an equal share, each game read a step through it. WITH THE DETAIL the
                 # platform console's BACKFILL WORKER tab shows (2026-10-15): the games read and left, written, failed,
                 # the pace and the time left on this source, and the last game written
@@ -3711,6 +3710,9 @@ def main() -> int:
                                 "written": tot["written"] + run["games_written"], "failed": fails["n"], "waiting": waiting,
                                 "per_game_s": round(per, 1) if per else None,
                                 "eta_s": round(per * (len(todo) - g_i)) if per else None, "last": last_game})
+                # timed from just before the fetch, after the bar: beat() can write to the database, and that
+                # wait is not part of when the feed was read
+                t_obs = time.time()
                 try:
                     b = adapter.fetch(g.external_id, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
                 except Exception as exc:                                 # one bad game never stops the league

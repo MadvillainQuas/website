@@ -13,7 +13,7 @@
 //
 //   node supabase/tests/game-bpm.test.mjs
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
@@ -97,14 +97,14 @@ console.log('\nevery page asks the one function');
   const game = read('epinoia', 'game', 'game.js'), modern = read('epinoia', 'game', 'modern.js'), player = read('epinoia', 'p', 'player.js');
   const sc = read('epinoia', 'socialcard.js'), gfx = read('epinoia', 'admin', 'socialgfx-ui.js');
   ok('the game page: the game\'s lines, the engine\'s club lines and the competition\'s season', /BPM\.game\(\{ lines, clubs, season \}\)/.test(game) && /clubs = \[E\.teamAdv\(S, d, 0\), E\.teamAdv\(S, d, 1\)\]/.test(game) && /MB\.season \? MB\.season\(\)/.test(game));
-  ok('...the season loaded for the report\'s circles too, and the page drawn again when it is here', /ensureSeasonPositions\(\);\n    const strip = squadsHTML\(d\);/.test(game) && /fTab === 'report'\)\) \{ lastBodyKey = ''; renderBody\(\); \}/.test(game));
+  ok('...the season loaded for the report\'s circles too, and the page drawn again when it is here', /ensureSeasonPositions\(\);(?:\n    [^\n]*){0,6}\n    const strip = squadsHTML\(d\);/.test(game) && /fTab === 'report'\)\) \{ lastBodyKey = ''; renderBody\(\); \}/.test(game));
   ok('the modern box prints the same figure (its own estimate only places the players)', /bpmByPid = window\.EpinoiaGameBPM\(d\)/.test(modern) && /season: \(\) => seasonRows/.test(modern));
   ok('the player\'s game log: with the clubs\' lines and each game\'s competition\'s season', /B\.game\(\{ lines: byGame\.get\(r\.game_id\) \|\| \[\], clubs: cl && cl\[0\] && cl\[1\] \? cl : null,/.test(player) && /avgLead:stats->adv->avgLead/.test(player));
   ok('the graphics (player of the game, stars, leaders): the same function, the season travelling with each game\'s club lines', /B\.game\(\{ lines: rows\.map/.test(sc) && /season = season \|\| \(teamAdv && teamAdv\.season\) \|\| null;/.test(sc) &&
      /await withSeasons\(out\.teamAdv, out\.finals\);/.test(gfx) && /player_uuid,player_id,/.test(gfx));
   ok('...the console page has the season reader (data.js)', /<script src="\.\.\/data\.js\?v=\d+" defer><\/script>/.test(read('epinoia', 'admin', 'index.html')));
   /* the graphics' gameBPMs is bpm.js game for the same game */
-  const SC = (await import(path.join(ROOT, 'epinoia', 'socialcard.js'))).default || globalThis.EpinoiaSocialCard;
+  const SC = (await import(pathToFileURL(path.join(ROOT, 'epinoia', 'socialcard.js')).href)).default || globalThis.EpinoiaSocialCard;
   globalThis.EpinoiaBPM = B;
   const rows = lines.map(l => ({ team_idx: l.side, player_uuid: l.id, stats: l.stats }));
   const season = new Map(lines.map(l => [l.id, { bpm: 1, min: 300, gp: 10, bpm_pos: 3, bpm_role: 3 }]));

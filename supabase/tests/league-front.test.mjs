@@ -79,6 +79,9 @@ function run(fields) {
     LEAGUE: { id: 'lg1', slug: 'bcb', name: 'British Championship Basketball' },
     KIND_LABEL: { league: 'league', cup: 'cup', trophy: 'trophy' },
     embedLook: () => '&theme=dark',
+    /* home.js's ?s= for links out of the page (4d0b3a5c8: the "Full" stats link keeps the season);
+       the current season is shown here, which carries no parameter */
+    seasonQuery: () => '',
     seasonFields: () => Promise.resolve(fields)
   };
   ctx.globalThis = ctx;

@@ -103,11 +103,25 @@ ok("Greek local time: 17:00 on 4 Oct 2025 (summer time) is 14:00 UTC; 17:00 on 1
 # ============================================================================ the schedule
 print("\n-- the schedule, from the round cache")
 a = fresh()
-reg = list(a.discover("x", dict(CFG, season="2025-26")))
-po = list(a.discover("x", dict(CFG, season="2025/26", stage="playoffs")))
+
+
+class _AtCapture(datetime):
+    """The clock the round cache was captured at (2026-09-24). Its one page that is not all final -
+    2025-26's empty Final Four page - is trusted for ROUND_TTL after it was read, and re-read after."""
+    @classmethod
+    def now(cls, tz=None):
+        return datetime(2026, 9, 24, 12, 0, tzinfo=timezone.utc)
+
+
+G.datetime, _real_datetime = _AtCapture, G.datetime
+try:
+    reg = list(a.discover("x", dict(CFG, season="2025-26")))
+    po = list(a.discover("x", dict(CFG, season="2025/26", stage="playoffs")))
+finally:
+    G.datetime = _real_datetime
 ok("2025-26: 210 regular-season games (both halves), 17 post-season, all final",
    (len(reg), len(po)) == (210, 17) and all(g.status == "final" for g in reg + po), (len(reg), len(po)))
-ok("...every round page from the cache: all its games final, so never read again (no request)", ASKED == [], ASKED[:3])
+ok("...every round page from the cache: all its games final (or read within the day), so never read again (no request)", ASKED == [], ASKED[:3])
 ok("rounds 1-30 across the two halves", {g.extra["round"] for g in reg} == {f"Round {n}" for n in range(1, 31)})
 names_ = [g.home_name for g in reg + po] + [g.away_name for g in reg + po] + [g.extra["venue"] or "" for g in reg]
 ok("not one Greek character in a club or venue", not any(GREEK.search(n) for n in names_),

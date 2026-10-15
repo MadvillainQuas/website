@@ -177,6 +177,7 @@ console.log('\na live game is timed whichever lane sees it');
     '    def __init__(self, existing): self.existing, self.inserted, self.upserted, self.deleted, self.chunks = existing, [], [], [], []',
     '    def select(self, table, q):',
     "        return [{'status': 'live'}] if table == 'games' else (self.existing if table == 'game_events' else [])",
+    '    def select_all(self, table, q): return self.select(table, q)   # the whole event log, paged (one page here)',
     '    def patch(self, *a): pass',
     "    def delete(self, table, q): self.deleted.append(q) if table == 'game_events' else None",
     '    def function(self, *a): return 200, {}',
@@ -282,9 +283,10 @@ console.log('\na live game is timed whichever lane sees it');
   }
 
   const lane = src.slice(src.indexOf('live_set = []'), src.indexOf('if not args.dry_run:', src.indexOf('live_set = []')));
-  /* a write may also carry the schedule's arena (EPINOIA GO 1.3, venues_test.py): that is not memory */
+  /* a write may also carry the schedule's arena (EPINOIA GO 1.3, venues_test.py) and whether the schedule
+     asked for it (from_schedule): keywords after the stamp, so neither is memory */
   ok('both of the discovery lane\'s writes pass it',
-     (lane.match(/write_platform\(sb, src, b, run, discovery_observed\(b, t_obs, args\.live_every\)(, venue=\(g\.extra or \{\}\)\.get\("venue"\))?\)/g) || []).length === 2 &&
+     (lane.match(/write_platform\(sb, src, b, run, discovery_observed\(b, t_obs, args\.live_every\)(\)|, venue=)/g) || []).length === 2 &&
      !/write_platform\(sb, src, b, run\)\s*$/m.test(src), (lane.match(/write_platform\([^)]*\)/g) || []).join(' | '));
   ok('...each timed from just before its own fetch',
      (lane.match(/t_obs = time\.time\(\)\s*\n\s*try:\s*\n\s*b = adapter\.fetch/g) || []).length === 2);
@@ -388,6 +390,7 @@ console.log('\na play is timed by the version it first appeared in');
     '    def __init__(self, existing): self.existing, self.inserted, self.upserted, self.deleted, self.chunks = existing, [], [], [], []',
     '    def select(self, table, q):',
     "        return [{'status': 'live'}] if table == 'games' else (self.existing if table == 'game_events' else [])",
+    '    def select_all(self, table, q): return self.select(table, q)   # the whole event log, paged (one page here)',
     '    def patch(self, *a): pass',
     "    def delete(self, table, q): self.deleted.append(q) if table == 'game_events' else None",
     '    def function(self, *a): return 200, {}',
@@ -563,11 +566,13 @@ console.log('\na play is timed by the version it first appeared in');
      /def _play\(p\):\s*\n\s*return \{k: v for k, v in \(p or \{\}\)\.items\(\) if k not in \("wall", "wall_err"\)\}/.test(src));
   ok('the live lane hands the observer\'s memory to the write, and the kill switch hands none',
      /* use_obs, not observer: a source that is not on the CDN has no observer snapshot either,
-        so it hands none for the same reason the kill switch does. The test lagged the rename. */
-     /write_platform\(sb, src, b, run, observed, observer\.stamps\(xid\) if use_obs else None(, venue=\(g\.extra or \{\}\)\.get\("venue"\))?\)/.test(src) &&
+        so it hands none for the same reason the kill switch does. The test lagged the rename.
+        The memory is read under obs_lock (the live lane's threads share the observer) into
+        `memory`, which stays None without one. */
+     /memory = None\s*\n\s*if use_obs:\s*\n\s*with obs_lock:\s*\n\s*memory = observer\.stamps\(xid\)\s*\n\s*write_platform\(sb, src, b, run, observed, memory(\)|, venue=)/.test(src) &&
      /write_event_log\(sb, src, b, game_id, people\["pids"\], observed, stamps\)/.test(src));
   ok('the discovery lane passes no memory (a different process: its own writes stay poll-stamped)',
-     (src.match(/write_platform\(sb, src, b, run, discovery_observed\(b, t_obs, args\.live_every\)(, venue=\(g\.extra or \{\}\)\.get\("venue"\))?\)/g) || []).length === 2);
+     (src.match(/write_platform\(sb, src, b, run, discovery_observed\(b, t_obs, args\.live_every\)(\)|, venue=)/g) || []).length === 2);
 }
 
 /* ---------------------------------------------------------------------------
@@ -581,8 +586,9 @@ console.log('\na play is timed by the version it first appeared in');
 console.log('\n2b: the database client keeps one connection');
 {
   const cls = src.slice(src.indexOf('class Supabase:'), src.indexOf('class RepoFeed:'));
+  /* nine: rpc, select, upsert, upsert_quiet (the return=minimal upsert), patch, delete, insert, function, storage_put */
   ok('every Supabase call goes through the session, none through bare requests',
-     !/requests\.(get|post|patch|delete)\(/.test(cls) && (cls.match(/self\.s\.(get|post|patch|delete)\(/g) || []).length === 8,
+     !/requests\.(get|post|patch|delete)\(/.test(cls) && (cls.match(/self\.s\.(get|post|patch|delete)\(/g) || []).length === 9,
      String((cls.match(/self\.s\.(get|post|patch|delete)\(/g) || []).length));
   const HARNESS = [
     'import sys, json, types',

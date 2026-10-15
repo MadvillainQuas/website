@@ -702,7 +702,10 @@ class FibaLiveStatsAdapter(BaseAdapter):
                 FibaLiveStatsAdapter._pipeline_warned = True
                 print(f"     (stints skipped: scraper pipeline not importable from {config.get('scraper_dir') or DEFAULT_SCRAPER_DIR}: {self._pipeline_error})")
             return []
-        bcb = sys.modules.get("bcb_scraper")
+        # The parser loads its engine from a file path without registering it in sys.modules,
+        # so look on the parser module first - otherwise there is no streamer and the lineups
+        # come back as lists rather than stints.csv's comma-joined names.
+        bcb = getattr(fap, "_bcb", None) or sys.modules.get("bcb_scraper")
         try:
             fap._set_pending_json(raw)
             parser = fap.APIBackedParser("<api/>", "<api/>", game_id=str(gid), game_date=config.get("game_date", ""))
@@ -745,7 +748,8 @@ class FibaLiveStatsAdapter(BaseAdapter):
         # Serialise through the pipeline's own streamer so the columns ARE stints.csv's.
         Streamer = getattr(bcb, "StintCSVStreamer", None)
         if Streamer is None:
-            return [{k: v for k, v in e.items() if k != "player_stats"} for e in enhanced]
+            return [{k: (",".join(v) if k in ("home_lineup", "away_lineup") else v)
+                     for k, v in e.items() if k != "player_stats"} for e in enhanced]
         tmp = tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False)
         tmp.close()
         try:

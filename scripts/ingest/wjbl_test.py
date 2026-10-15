@@ -36,6 +36,7 @@ import shutil
 import sys
 import tempfile
 from collections import defaultdict
+from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -108,8 +109,12 @@ def fresh(seed_names=True):
     shutil.rmtree(root, ignore_errors=True)
     if seed_names:
         os.makedirs(os.path.join(root, "data", "feed", "WJBL"))
+        # stamped today, as a cache the lane has just written: the fixture's own "at" dates age past
+        # NAME_RECHECK_DAYS, and a name with no romaji would then be asked for again
+        today = datetime.now(timezone.utc).date().isoformat()
+        seeded = {pid: dict(p, at=today) for pid, p in PEOPLE.items()}
         with open(os.path.join(root, "data", "feed", "WJBL", "players.json"), "w", encoding="utf-8") as f:
-            json.dump(PEOPLE, f, ensure_ascii=False)
+            json.dump(seeded, f, ensure_ascii=False)
     # the production path: the Actions runner has no scraper folder, so stints come from stints.py
     FibaLiveStatsAdapter._pipeline = False
     FibaLiveStatsAdapter._pipeline_warned = True

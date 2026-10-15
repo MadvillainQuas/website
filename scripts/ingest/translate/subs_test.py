@@ -18,7 +18,7 @@ restate a change that a live one at the same instant continues (2778590, P4 06:4
 White on" live and "White off, Policelli on" late, with White already on since 08:30): applied
 one after the other that took White off as well -- four on the floor for 409 s.
 """
-import io
+import gzip
 import json
 import os
 import sys
@@ -122,11 +122,12 @@ ok("an OUT with no IN anywhere in the log is dropped, and said so",
    subs(T) == [] and any("unpaired" in w for w in T["report"]["warnings"]), (subs(T), T["report"]["warnings"]))
 
 print("\n-- the two real games")
-DATA = os.path.normpath(os.path.join(HERE, "..", "..", "..", "data", "data_2026-05-09T15-59_SLB", "game_data"))
+# the saved feeds, gzipped byte for byte (supabase/tests/fixtures/slb-games; the old dataset folder left the repo)
+DATA = os.path.normpath(os.path.join(HERE, "..", "..", "..", "supabase", "tests", "fixtures", "slb-games"))
 
 
 def real(gid):
-    raw = json.load(io.open(os.path.join(DATA, gid + ".json"), encoding="utf-8"))
+    raw = json.load(gzip.open(os.path.join(DATA, gid + ".json.gz"), "rt", encoding="utf-8"))
     return raw, translate(raw, lambda t, p: "%d:%s" % (t, p))
 
 

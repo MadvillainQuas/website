@@ -263,7 +263,8 @@ const EVENT_MAP = '({ id: r.seq, seq: r.seq, t: r.t, team: r.team, pid: r.pid, p
   ok('...inside a try, so a throw there cannot stop a finalise',
      /try \{\s*const C = computeSituations\(game\);[\s\S]{0,600}?\} catch \(e\) \{/.test(FIN));
   ok('...and a run without the enumerator writes no line (possessions:false is not stored)',
-     /if \(C && C\.possessions\) SIT = storedSituations\(C\);/.test(FIN) && /let SIT: [^=]*= null;/.test(FIN));
+     /* SITC keeps the full result beside the stored line (the match report reads each side's buckets) */
+     /if \(C && C\.possessions\) \{ SIT = storedSituations\(C\); SITC = C; \}/.test(FIN) && /let SIT: [^=]*= null;/.test(FIN));
   ok('a player row carries sit AFTER its existing keys, only when he has a line',
      /stats: \{ \.\.\.d\.stats\[p\.id\], adv: playerAdv\(game, d, t, p, TA\[t\], TA\[1 - t\]\),\s*\.\.\.\(SIT && SIT\.players\[p\.id\] \? \{ sit: SIT\.players\[p\.id\] \} : \{\}\) \}/.test(FIN));
   ok('a team row carries sit AFTER adv, perQ and score',
@@ -376,22 +377,24 @@ if (B) {
 console.log('\nreal LiveStats games: players add up to their side, and each line is the box score');
 {
   const script = [
-    'import sys, json, io',
+    'import sys, json, io, gzip',
     'sys.path.insert(0, sys.argv[1])',
     'from translate.fiba_events import translate',
-    'raw = json.load(io.open(sys.argv[2], encoding="utf-8"))',
+    'raw = json.load((gzip.open if sys.argv[2].endswith(".gz") else io.open)(sys.argv[2], "rt", encoding="utf-8"))',
     'T = translate(raw, lambda team, pno: "%s:%s" % (team, pno))',
     'sys.stdout.write(json.dumps(T))',
   ].join('\n');
   const feeds = [
     path.join(ROOT, 'supabase', 'tests', 'fixtures', 'feedtiming', 'feed.json'),
-    path.join(ROOT, 'data', 'data_2026-05-09T15-59_SLB', 'game_data', '2702542.json'),
-    path.join(ROOT, 'data', 'data_2026-05-09T15-59_SLB', 'game_data', '2702545.json')
+    path.join(ROOT, 'supabase', 'tests', 'fixtures', 'slb-games', '2702542.json.gz'),
+    path.join(ROOT, 'supabase', 'tests', 'fixtures', 'slb-games', '2702545.json.gz')
   ];
   const SUMMED = ['pts', 'fgm', 'fga', 'p3m', 'p3a', 'rimM', 'rimA', 'midM', 'midA', 'ftm', 'fta', 'tov'];
   const FG = { p2_made: 2, p3_made: 3, p2_miss: 0, p3_miss: 0 }, FT = { ft_made: 1, ft_miss: 0 };
   const DESCRIPTOR = { loc: 1, tag: 1, stype: 1 };
   const ix = f => Sit.FIELDS.indexOf(f);
+  /* the two SLB games: kept, compressed, among the test fixtures since the scrape folder they came from left the
+     repository (2026-09-26) */
   for (const f of feeds) {
     let T = null;
     for (const exe of ['python3', 'python']) {
