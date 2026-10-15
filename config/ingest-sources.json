@@ -4580,6 +4580,118 @@
       "scheduleUrls": [
         "https://basketballaustria.at/bdsl/saison/spielplan#playoffs"
       ]
+    },
+    {
+      "code": "ARLLN",
+      "label": "La Liga Nacional",
+      "adapter": "lnbar",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        0,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "la-liga-nacional",
+      "league_name": "La Liga Nacional",
+      "league_country": "AR",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "ARLLN",
+        "league": "laliga",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.laliganacional.com.ar/laliga/fixture"
+      ]
+    },
+    {
+      "code": "ARLLA",
+      "label": "La Liga Argentina",
+      "adapter": "lnbar",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        0,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "la-liga-argentina",
+      "league_name": "La Liga Argentina",
+      "league_country": "AR",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "ARLLA",
+        "league": "laligaargentina",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.laliganacional.com.ar/laligaargentina/fixture"
+      ]
+    },
+    {
+      "code": "ARLFB",
+      "label": "La Liga Femenina",
+      "adapter": "lnbar",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        0,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "la-liga-femenina",
+      "league_name": "La Liga Femenina",
+      "league_country": "AR",
+      "league_gender": "women",
+      "adapter_config": {
+        "code": "ARLFB",
+        "league": "lfb",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.laliganacional.com.ar/lfb/fixture"
+      ]
+    },
+    {
+      "code": "ARLDD",
+      "label": "Liga Desarrollo",
+      "adapter": "lnbar",
+      "league_id": null,
+      "competition_id": null,
+      "poll_minutes": 60,
+      "active_window": [
+        0,
+        24
+      ],
+      "enabled": true,
+      "create_league": true,
+      "league_slug": "liga-desarrollo",
+      "league_name": "Liga Desarrollo",
+      "league_country": "AR",
+      "league_gender": "men",
+      "adapter_config": {
+        "code": "ARLDD",
+        "league": "ligaproximo",
+        "archive_raw": true,
+        "store_pbp": false,
+        "auto_create": true
+      },
+      "scheduleUrls": [
+        "https://www.laliganacional.com.ar/ligaproximo/fixture"
+      ]
     }
   ]
 }

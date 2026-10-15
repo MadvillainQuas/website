@@ -46,8 +46,9 @@ used = {s["adapter"] for s in CONFIG}
 ok("every configured adapter reads a season, or says why it cannot",
    not (used - R.SEASON_AWARE_ADAPTERS - set(R.NO_PAST)), sorted(used - R.SEASON_AWARE_ADAPTERS - set(R.NO_PAST)))
 ok("...ABA, Finland, Brazil and the NBL among the season-aware", {"aba", "basketfi", "lnbbr", "nbl"} <= R.SEASON_AWARE_ADAPTERS)
-ok("...and the BBL the one that cannot, with its reason", set(R.NO_PAST) == {"bbl"} and "401" not in R.NO_PAST["bbl"]
-   and "season being played" in R.NO_PAST["bbl"])
+ok("...and the BBL and Argentina's site the ones that cannot, with their reasons", set(R.NO_PAST) == {"bbl", "lnbar"}
+   and "401" not in R.NO_PAST["bbl"] and "season being played" in R.NO_PAST["bbl"]
+   and "season being played" in R.NO_PAST["lnbar"])
 ok("no adapter is both", not (set(R.NO_PAST) & R.SEASON_AWARE_ADAPTERS))
 
 print("\n-- pinning a league's sources to the season asked for")

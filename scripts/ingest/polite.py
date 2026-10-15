@@ -56,6 +56,9 @@ HOST_GAP_S: Dict[str, float] = {
     # storage file per game, a second apart, is nothing beside that
     "mkosz.hu": 1.0,
     "webpont.com": 1.0,
+    # Argentina's four leagues (adapters/lnbar.py): one ASP.NET server behind Cloudflare, every game a
+    # 1.3 MB page rendered on demand - no CDN copy to lean on, so a second between pages
+    "www.laliganacional.com.ar": 1.0,
 }
 #: our own services - the database and storage, GitHub, this machine: a host is exempt when it is one of these
 #: or ends in ".<one of these>"

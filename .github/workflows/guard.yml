@@ -1104,6 +1104,10 @@ jobs:
         # adapters/mkosz.py: the box counted from the log as the netcasting page counts it, elapsed game time into the
         # clock left, the minutes replayed to the console's own; a log that lost its changes is published as a result
         run: python scripts/ingest/mkosz_test.py
+      - name: Argentina's four leagues from laliganacional.com.ar
+        # adapters/lnbar.py: ids that survive the site's per-view link tokens, each period's announcement of the five as
+        # one change, fouls paired (a missing foul line put back), box = log re-counted, minutes replayed to the box's
+        run: python scripts/ingest/lnbar_test.py
 
       - name: Basketligaen and Kvinde Basketligaen on FIBA LiveStats
         # men: fiba_site_schedule site "basketligaen" (the site's JSON API names every game's LiveStats id, kept once,
