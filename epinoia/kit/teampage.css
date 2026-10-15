@@ -64,7 +64,9 @@
   padding-top:9px;padding-bottom:9px;font-size:13.5px}
 #roster table.ft.roster tbody td.c0{width:58px;text-align:center;font-family:var(--f-score);font-size:17px;
   background:#0a0a0a;color:#ffe14d;box-shadow:inset 6px 0 0 var(--team-a,var(--lume))}
-#roster table.ft.roster th.c1, #roster table.ft.roster td.c1{width:auto}
+/* the name takes what the declared columns leave (its floor is the table's min-width, set in t/team.js roster()); stuck
+   beside the number column's own 58px, not the kit's 36px, so a name scrolled sideways does not slide under its number */
+#roster table.ft.roster th.c1, #roster table.ft.roster td.c1{width:auto;left:58px}
 #roster table.ft.roster th:nth-child(n+3), #roster table.ft.roster td:nth-child(n+3){width:104px;white-space:nowrap}
 #roster table.ft.roster th.c0, #roster table.ft.roster td.c0{width:58px}
 #roster table.ft.roster tbody td.c1{font-family:var(--f-ui);font-weight:800;font-size:14.5px;letter-spacing:.01em}

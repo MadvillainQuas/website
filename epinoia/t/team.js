@@ -2740,6 +2740,12 @@ async function roster(team) {
   /* no position anywhere in the squad and nobody here to type one: the column is left out (CSS, so
      every row and the average keep the same cells) */
   const t = el('table', 'ft roster' + (!canEdit && !rows.some(r => r.position) ? ' nopos' : ''));
+  /* THE NAME ALWAYS HAS ROOM (2026-10-15). Under the kit's fixed layout the name column gets only what the declared columns
+     leave, and on a phone with a manager's every measurement box (HT, WT, WING, PREVIOUS CLUB) that was nothing: the squad
+     read as a column of "—" position boxes. The table is never narrower than its columns plus 150px of name; past the
+     screen it scrolls sideways, the number and name stuck at the left. */
+  t.style.minWidth = Math.max(520, 58 + 150 + (canEdit || rows.some(r => r.position) ? 104 : 0) + (plan.age || plan.born ? 104 : 0) +
+    plan.measures.reduce((s, m) => s + (m.w || 104), 0)) + 'px';
   const thead = el('thead'), hr = el('tr');
   ['#', 'PLAYER', 'POS'].concat(plan.age ? ['AGE'] : plan.born ? ['BORN'] : [])
     .forEach((h, i) => hr.appendChild(el('th', i < 2 ? 'stick c' + i : '', h)));

@@ -3148,11 +3148,38 @@ def beat(pct: float | None = None, step: str | None = None, force: bool = False,
                 b["q"].rpc("progress_season_backfill", {"p_id": b["id"], "p_step": step or "",
                                                         "p_detail": dict(extra or {}, pct=round(max(0.0, min(100.0, pct)), 1))})
                 return
-            except Exception:
-                b["progress"] = False          # not on the server yet: heartbeats only from here on
+            except Exception as exc:
+                # ONLY A DATABASE WITHOUT THE FUNCTION turns progress off (2026-10-15). Any failure used to, so one
+                # timeout on a busy database froze NBL1 2026's console line on "writing 716 fixture(s)" at 0% for the
+                # four hours its games were being written: the worker was fine, the bar said it was stuck.
+                if progress_missing(exc):
+                    b["progress"] = False      # not on the server yet: heartbeats only from here on
         b["q"].rpc("heartbeat_season_backfill", {"p_id": b["id"]})
     except Exception:
         pass            # a missed heartbeat is not worth failing a season over; the lease is 90 min
+
+
+def progress_missing(exc: Exception) -> bool:
+    """progress_season_backfill is not on this database (before 0187): PostgREST's "no such function", not a passing failure."""
+    t = str(exc)
+    return "PGRST202" in t or ("progress_season_backfill" in t and ("Could not find" in t or "does not exist" in t))
+
+
+# A RUN HAS A TIME LIMIT; A SEASON MAY NOT FIT IN IT (2026-10-15). console-jobs.yml's backfill job is killed at 340
+# minutes, and NBL1 2026 (716 games, ~33 s each) needed more. Killed, the request sat on "running" until its 90-minute
+# lease ran out and only then went back to the queue. Now the workflow passes BACKFILL_DEADLINE (epoch seconds, a
+# quarter of an hour before the kill): past it, the pass stops between games, puts the request back in the queue and
+# the workflow's last step starts the next run at once, which skips every game already written.
+def backfill_deadline() -> float | None:
+    try:
+        return float(os.environ.get("BACKFILL_DEADLINE") or "") or None
+    except ValueError:
+        return None
+
+
+def out_of_time() -> bool:
+    d = backfill_deadline()
+    return bool(_BEAT and d and time.time() >= d)
 
 
 def backfill_claim(args) -> tuple[dict | None, "Supabase | None"]:
@@ -3275,6 +3302,23 @@ def backfill_is_current(season) -> bool:
     if re.fullmatch(r"\d{4}", s):
         return int(s) >= datetime.now(timezone.utc).year
     return s == season_name_for()
+
+
+def backfill_requeue(q: "Supabase | None", job: dict, left: int, written: int) -> None:
+    """Out of time (out_of_time): the request goes back in the queue, said on its line, for the next run to go on with."""
+    global _BEAT
+    _BEAT = None
+    step = f"{left} game(s) still to read: a new run goes on from here"
+    line = f"backfill {job['season']} put back in the queue: {written} written in this run, {left} game(s) left"
+    if not q or job.get("_dry"):
+        print("[dry] " + line)
+        return
+    try:
+        q.patch("season_backfills", f"id=eq.{job['id']}&state=eq.running",
+                {"state": "queued", "worker": None, "claimed_at": None, "heartbeat_at": None, "step": step})
+        print(line)
+    except Exception as exc:
+        print(f"(could not put the backfill back in the queue - the lease will, in 90 minutes: {exc})")
 
 
 def backfill_finish(q: "Supabase | None", job: dict, state: str, sources_run: int,
@@ -3443,6 +3487,8 @@ def main() -> int:
             print("   no outstanding games")
             return 0
     for src_i, src in enumerate(sources):
+        if tot.get("paused"):
+            break                                # out of time: the rest is the next run's (out_of_time)
         adapter = get_adapter(src["adapter"])
         sfeed = repo_feed_of(src, feed)          # None for a source kept out of git (repo_feed: false)
         run = {"source_id": src.get("id"), "worker": f"gha:{worker}", "games_seen": 0, "games_fetched": 0, "games_written": 0}
@@ -3639,6 +3685,10 @@ def main() -> int:
                 print(f"   {len(fixtures)} fixture(s) checked, {wrote} changed on the schedule")
             live_set = []
             for g_i, g in enumerate(todo):
+                if out_of_time():
+                    tot["paused"] = len(todo) - g_i
+                    print(f"   out of time for this run: {len(todo) - g_i} game(s) left - back in the queue, the next run goes on from here")
+                    break
                 t_obs = time.time()
                 # a backfill's bar: each source an equal share, each game read a step through it
                 beat(100.0 * (src_i + g_i / max(1, len(todo))) / max(1, len(sources)),
@@ -3802,7 +3852,9 @@ def main() -> int:
         link_sweep(sb)
     # the queued row is closed whatever happened: `running` left behind is a league whose season
     # nobody can ask for again until the lease expires
-    if job:
+    if job and tot.get("paused"):
+        backfill_requeue(queue, job, tot["paused"], tot["written"])
+    elif job:
         state, error = ("failed" if exit_code else "done"), tot["error"]
         if not exit_code and not tot["seen"]:
             # NOTHING ON THE SCHEDULE IS NOT "DONE". A source that answers but holds no game of that season (it keeps

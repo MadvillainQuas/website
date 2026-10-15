@@ -271,6 +271,62 @@ ok("...the claim says so with its run's log, and so do the sources, the schedule
    "game(s) on the {job['season']} schedule" in SRC and "fixture(s) of {job['season']}" in SRC)
 ok("a season with nothing on its schedule is failed, with the reason, not \"done\"",
    'if not exit_code and not tot["seen"]:' in SRC and "the source shows nothing for that season" in SRC)
+
+# 2026-10-15: one failed progress write froze the bar for the rest of the run (NBL1 2026, four hours at 0%)
+class Flaky(Rpc):
+    def __init__(self, fail):
+        super().__init__(); self.fail = list(fail)
+
+    def rpc(self, fn, body):
+        if fn == "progress_season_backfill" and self.fail:
+            raise RuntimeError(self.fail.pop(0))
+        self.calls.append((fn, body))
+
+
+fq = Flaky(["canceling statement due to statement timeout"])
+R._BEAT = {"q": fq, "id": "job", "at": 0}
+R.beat(10.0, "game 1 of 9", force=True)
+R.beat(20.0, "game 2 of 9", force=True)
+R._BEAT = None
+ok("a progress write that fails once is a heartbeat that time; the next game's progress is written again",
+   [c[0] for c in fq.calls] == ["heartbeat_season_backfill", "progress_season_backfill"] and fq.calls[1][1]["p_step"] == "game 2 of 9", fq.calls)
+mq = Flaky(['{"code":"PGRST202","message":"Could not find the function public.progress_season_backfill"}'])
+R._BEAT = {"q": mq, "id": "job", "at": 0}
+R.beat(10.0, "game 1 of 9", force=True)
+R.beat(20.0, "game 2 of 9", force=True)
+R._BEAT = None
+ok("...a database without the function (before 0187): heartbeats only from then on", [c[0] for c in mq.calls] == ["heartbeat_season_backfill"] * 2, mq.calls)
+
+
+class Patches:
+    def __init__(self):
+        self.patches = []
+
+    def patch(self, table, q, body):
+        self.patches.append((table, q, body))
+
+
+os.environ["BACKFILL_DEADLINE"] = str(time.time() - 1)
+R._BEAT = {"q": Rpc(), "id": "job", "at": time.time()}
+late = R.out_of_time()
+R._BEAT = None
+ok("past BACKFILL_DEADLINE a claimed backfill is out of time; an ordinary pass never is", late and not R.out_of_time())
+os.environ["BACKFILL_DEADLINE"] = str(time.time() + 3600)
+R._BEAT = {"q": Rpc(), "id": "job", "at": time.time()}
+early = R.out_of_time()
+del os.environ["BACKFILL_DEADLINE"]
+none = R.out_of_time()
+R._BEAT = None
+ok("...not before it, nor with no deadline at all", not early and not none)
+pq = Patches()
+R._BEAT = {"q": pq, "id": "job", "at": 0}
+R.backfill_requeue(pq, {"id": "b1", "season": "2026"}, 41, 675)
+ok("out of time, the request goes back in the queue (only while still running), its line saying what is left",
+   pq.patches == [("season_backfills", "id=eq.b1&state=eq.running", {"state": "queued", "worker": None, "claimed_at": None, "heartbeat_at": None,
+                                                                   "step": "41 game(s) still to read: a new run goes on from here"})] and R._BEAT is None, pq.patches)
+ok("...the pass stops between games and between sources, and is put back rather than closed",
+   'if out_of_time():\n                    tot["paused"] = len(todo) - g_i' in SRC.replace("\r\n", "\n") and 'if tot.get("paused"):\n            break' in SRC.replace("\r\n", "\n") and
+   'if job and tot.get("paused"):\n        backfill_requeue(queue, job, tot["paused"], tot["written"])\n    elif job:' in SRC.replace("\r\n", "\n"))
 RS = open(os.path.join(HERE, "reset_league.py")).read()
 ok("a reset says when it is taken, with its run's log", 'send("taken by the worker", {"pct": 0.5, "run_url":' in RS)
 
@@ -295,6 +351,10 @@ try:
         ok(f"{name}: it starts the workflow again when something of its kind is still queued",
            last.get("name") == "Start again if something is still queued" and last.get("if") == "${{ always() }}" and
            f"console_kick.py --kick {name}" in last["run"] and last["env"].get("GH_TOKEN") == "${{ github.token }}")
+    take = next(s for s in jobs["backfill"]["steps"] if s.get("name") == "Take every queued season backfill")["run"]
+    ok("backfill: the deadline is a quarter of an hour before the job's limit, and no new season is taken past it",
+       "export BACKFILL_DEADLINE=$(( $(date +%s) + 315 * 60 ))" in take and '[ "$(date +%s)" -lt "$BACKFILL_DEADLINE" ] || {' in take and
+       jobs["backfill"]["timeout-minutes"] >= 330)
     ok("the workflow may start itself (actions: write), and the cron stays as the floor",
        d["permissions"].get("actions") == "write" and d[True]["schedule"][0]["cron"] == "7-57/10 * * * *")
 except ImportError:

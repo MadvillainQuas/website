@@ -151,8 +151,13 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/scraper
           PYTHONUNBUFFERED: "1"
         # --feed-out "": the database is where a backfilled season lives; this job commits nothing
+        # BACKFILL_DEADLINE (2026-10-15): a quarter of an hour before the job's 340 minutes. A season still being read then
+        # stops between games and goes back in the queue (run_ingest.py out_of_time), and the step below starts the next
+        # run at once - rather than the run being killed and the request waiting out its 90-minute lease.
         run: |
+          export BACKFILL_DEADLINE=$(( $(date +%s) + 315 * 60 ))
           for i in 1 2 3 4 5 6; do
+            [ "$(date +%s)" -lt "$BACKFILL_DEADLINE" ] || { echo "out of time for this run: what is queued goes to the next"; break; }
             python -u scripts/ingest/console_kick.py --queued backfill || break
             python -u scripts/ingest/run_ingest.py --config --backfill --max-games 2000 --feed-out "" || echo "backfill $i ended with an error (its request says why)"
           done
