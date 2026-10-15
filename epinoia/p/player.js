@@ -1819,17 +1819,16 @@ async function seasonLog(ids, sn) {
     }
     const pl = ps[0];
 
-    /* the approved photograph, if the league has passed one */
-    if (pl.photo_media_id) {
-      try {
-        const md = await api(`media?id=eq.${pl.photo_media_id}` +
-                             `&status=eq.approved&select=storage_path&limit=1`);
-        if (md.length) pl.__photoPath = md[0].storage_path;
-      } catch (_) { /* an unapproved or withdrawn photo simply does not show */ }
-    }
-
-    const re = await api(`roster_entries?player_id=eq.${pl.id}` +
-      `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name,logo_path,colour_a))&order=created_at.desc&limit=1`);
+    /* the approved photograph, if the league has passed one, and his club: both asked at once (2026-10-15), each needing
+       only the player - one after the other they were a round trip the hero waited for twice */
+    const [md, re] = await Promise.all([
+      pl.photo_media_id ? api(`media?id=eq.${pl.photo_media_id}&status=eq.approved&select=storage_path&limit=1`)
+        .catch(() => [])                              // an unapproved or withdrawn photo simply does not show
+        : Promise.resolve([]),
+      api(`roster_entries?player_id=eq.${pl.id}` +
+        `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name,logo_path,colour_a))&order=created_at.desc&limit=1`)
+    ]);
+    if (md.length) pl.__photoPath = md[0].storage_path;
     const entry = re[0] || {};
     const team = entry.teams || null;
     paintIdentity(pl, entry, team);
@@ -2059,7 +2058,11 @@ async function seasonLog(ids, sn) {
        It waits for his other leagues' answers (started beside the season above),
        and so does everything after it: the game log reads across them too. */
     await careerAccess;
-    await paintCareer(pl, team, scopes, {
+    /* THE GAME LOG, THE CAREER AND THE FLOOR AT ONCE (2026-10-15). Each was read only once the one before it was drawn -
+       the season's own game log last of all, behind every lineup of the club's last forty games, so a profile's log
+       arrived some fourteen seconds in. None needs another: all three are asked now and each is drawn as it lands. */
+    const logP = seasonLog(scopes.ids, SEASON);
+    const careerP = paintCareer(pl, team, scopes, {
       current: () => ({ label: SEASON ? SEASON.label : '', kind: scopeKind }),
       /* a row pressed: that season and competition on this profile, as its chips would, and the hero brought into view */
       pick: (label, cid) => {
@@ -2072,6 +2075,8 @@ async function seasonLog(ids, sn) {
         }).catch(e => console.warn('[career pick]', e));
       }
     });
+    careerP.catch(() => { /* said where it is awaited, below */ });
+    logP.catch(() => { /* said where it is awaited, below */ });
 
     /* ---------------------------------------------------------------------------
    THE SHOT CHART, AND THE TWO NUMBERS THAT MAKE IT READABLE.
@@ -2286,8 +2291,9 @@ function drawShotChart(shots, colour, games, gameList) {
       }
     }
 
-    /* game log, the season shown (seasonLog) */
-    await seasonLog(scopes.ids, SEASON);
+    /* the career table and the game log, asked beside the floor above: waited for here, so a failure still says so */
+    await careerP;
+    try { await logP; } catch (e) { console.warn('[game log]', e); }
   } catch (e) {
     fail('Could not load: ' + e.message);
   } finally {
