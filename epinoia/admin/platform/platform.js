@@ -177,7 +177,7 @@ function wire() {
                      keys: loadKeys, audit: loadAudit, set: loadSettings,
                      plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas,
                      analytics: loadAnalytics, links: loadLinks, maint: loadReset, news: loadNewsSources, newsroom: loadNewsroom,
-                     manager: loadManager };
+                     manager: loadManager, bfw: loadBackfillWorker };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -1692,6 +1692,14 @@ function loadLinks() {
   const L = window.EpinoiaLinksUI;
   if (!L) return say('links-ui.js did not load, so links cannot be edited. Reload the page.', 'err');
   L.mount({ host: '#linksHost', sb, say, oops });
+}
+
+/* -------------------------------------------------------- backfill worker --- */
+/* Every league's older seasons, queued and followed in one place (2026-10-15): backfill-worker-ui.js draws the tab */
+function loadBackfillWorker() {
+  const B = window.EpinoiaBackfillWorker;
+  if (!B) return say('backfill-worker-ui.js did not load, so the backfill worker cannot be shown. Reload the page.', 'err');
+  B.open(sb, { say, oops }).catch(oops);
 }
 
 /* --------------------------------------------------------------- manager --- */

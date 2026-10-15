@@ -3663,10 +3663,18 @@ def main() -> int:
                                              if (stored.get(str(g.external_id)) or {}).get("game_id")],
                                         conf=any("conference_game" in (g.extra or {}) for g in fixtures))
             wrote = 0
+            label = src.get('label') or src.get('code')
             if job and fixtures:
                 beat(100.0 * src_i / max(1, len(sources)),
-                     f"{src.get('label') or src.get('code')}: writing {len(fixtures)} fixture(s) of {job['season']}", force=True)
+                     f"{label}: writing {len(fixtures)} fixture(s) of {job['season']}", force=True,
+                     extra={"phase": "fixtures", "src": src_i + 1, "srcs": len(sources), "label": label, "fixtures": len(fixtures), "fixtures_done": 0})
+            fx_i = 0
             for g in games:
+                if job and fixtures and (g.tipoff_at or g.home_name) and not (entries.get(g.external_id) or {}).get("hash"):
+                    fx_i += 1
+                    # THE FIXTURES, COUNTED (2026-10-15): 716 of them took NBL1 2026 a long while with the line unmoved
+                    beat(100.0 * src_i / max(1, len(sources)), f"{label}: writing fixture {fx_i} of {len(fixtures)} ({job['season']})",
+                         extra={"phase": "fixtures", "fixtures": len(fixtures), "fixtures_done": fx_i})
                 if g.tipoff_at or g.home_name:
                     entries[g.external_id] = sched_entry(g, entries.get(g.external_id))
                     if sb and not args.dry_run and not entries[g.external_id].get("hash"):
@@ -3684,16 +3692,25 @@ def main() -> int:
             if fixtures:
                 print(f"   {len(fixtures)} fixture(s) checked, {wrote} changed on the schedule")
             live_set = []
+            t_games, last_game = time.time(), None
             for g_i, g in enumerate(todo):
                 if out_of_time():
                     tot["paused"] = len(todo) - g_i
                     print(f"   out of time for this run: {len(todo) - g_i} game(s) left - back in the queue, the next run goes on from here")
                     break
                 t_obs = time.time()
-                # a backfill's bar: each source an equal share, each game read a step through it
-                beat(100.0 * (src_i + g_i / max(1, len(todo))) / max(1, len(sources)),
-                     f"{src.get('label') or src.get('code')}: game {g_i + 1} of {len(todo)}"
-                     + (f" (source {src_i + 1} of {len(sources)})" if len(sources) > 1 else ""))
+                # a backfill's bar: each source an equal share, each game read a step through it. WITH THE DETAIL the
+                # platform console's BACKFILL WORKER tab shows (2026-10-15): the games read and left, written, failed,
+                # the pace and the time left on this source, and the last game written
+                if job:
+                    per = (time.time() - t_games) / g_i if g_i else None
+                    beat(100.0 * (src_i + g_i / max(1, len(todo))) / max(1, len(sources)),
+                         f"{label}: game {g_i + 1} of {len(todo)}"
+                         + (f" (source {src_i + 1} of {len(sources)})" if len(sources) > 1 else ""),
+                         extra={"phase": "games", "src": src_i + 1, "srcs": len(sources), "label": label, "done": g_i, "of": len(todo),
+                                "written": tot["written"] + run["games_written"], "failed": fails["n"], "waiting": waiting,
+                                "per_game_s": round(per, 1) if per else None,
+                                "eta_s": round(per * (len(todo) - g_i)) if per else None, "last": last_game})
                 try:
                     b = adapter.fetch(g.external_id, dict(src.get("adapter_config", {}), _tipoff_at=g.tipoff_at))
                 except Exception as exc:                                 # one bad game never stops the league
@@ -3740,6 +3757,7 @@ def main() -> int:
                 if b.status == "live":
                     live_set.append(g)
                 print(f"    + {b.home_name} {entry['homeScore']}-{entry['awayScore']} {b.away_name} ({b.status}, {len(b.stints)} stints)")
+                last_game = f"{b.home_name} {entry['homeScore']}-{entry['awayScore']} {b.away_name}"[:120]
                 # A GAME THAT STALLED WHILE NO LANE WAS WATCHING (the catch-up's own read is its second look):
                 # still live, not a play more than the last write had, and past the live window
                 if sb and not args.dry_run and b.status == "live" and prev and prev.get("hash") == b.payload_hash:

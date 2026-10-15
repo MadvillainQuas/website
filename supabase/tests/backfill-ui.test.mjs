@@ -229,5 +229,41 @@ ok('a league never checked: nothing said', BF.summary(null) === null && BF.summa
   }
 }
 
+/* ---------------------------------------------------------------- the platform's BACKFILL WORKER tab (2026-10-15) --- */
+console.log('\nthe backfill worker tab (epinoia/admin/platform/backfill-worker-ui.js)');
+{
+  const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
+  const box = { window: {} };
+  vm.runInNewContext(read('epinoia', 'admin', 'platform', 'backfill-worker-ui.js'), box);
+  const W = box.window.EpinoiaBackfillWorker;
+  ok('it loads with no page, and says what it is', !!W && typeof W.open === 'function' && typeof W.details === 'function');
+  ok('spans read as a person says them', W.span(40) === '40 s' && W.span(720) === '12 min' && W.span(9170) === '2 h 33 min' && W.span(null) === '');
+  const now = Date.parse('2026-10-15T11:00:00Z');
+  const run = { state: 'running', claimed_at: '2026-10-15T07:30:00Z', heartbeat_at: '2026-10-15T10:59:40Z',
+    detail: { phase: 'games', src: 1, srcs: 3, label: 'NBL1 Men', done: 451, of: 716, written: 449, failed: 2, waiting: 0, per_game_s: 34.6, eta_s: 9170,
+              last: 'Rockingham Flames 88-80 East Perth Eagles' } };
+  const lines = Object.fromEntries(W.details(run, now).map(([k, v, c]) => [k, (c ? c + ':' : '') + v]));
+  ok('a running request in detail: the source of several, the games read and left, written and failed, pace, time left, last game',
+     lines.Source === 'NBL1 Men (1 of 3)' && lines.Games === '451 of 716 read' && lines.Written === '449 · 2 could not be read' &&
+     lines.Pace === '35 s a game' && lines['Time left'] === 'about 2 h 33 min on this source' && lines['Last game written'] === 'Rockingham Flames 88-80 East Perth Eagles' &&
+     lines['Running for'].startsWith('3 h 30 min') && lines['Last heard from'] === '20 s ago', JSON.stringify(lines));
+  const quiet = Object.fromEntries(W.details(Object.assign({}, run, { heartbeat_at: '2026-10-15T10:40:00Z' }), now).map(([k, v, c]) => [k, (c ? c + ':' : '') + v]));
+  ok('...a worker quiet for more than five minutes is marked', quiet['Last heard from'] === 'warn:20 min ago', quiet['Last heard from']);
+  const fx = Object.fromEntries(W.details({ state: 'running', detail: { phase: 'fixtures', label: 'NBL1 Men', src: 1, srcs: 1, fixtures: 716, fixtures_done: 340 } }, now));
+  ok('...and the fixtures phase is counted, a lone source not numbered', fx.Fixtures === '340 of 716 written to the schedule' && fx.Source === 'NBL1 Men', JSON.stringify(fx));
+  const js = read('epinoia', 'admin', 'platform', 'platform.js'), html = read('epinoia', 'admin', 'platform', 'index.html');
+  ok('the platform console has the tab, its pane and its scripts, and opens it on first sight',
+     /data-p="bfw"[^>]*>Backfill worker</.test(html) && /id="pane-bfw"[^>]*><div id="bfwHost">/.test(html) &&
+     /<script src="\.\.\/backfill-coverage\.js\?v=\d+" defer>/.test(html) && /<script src="\.\.\/backfill-ui\.js\?v=\d+" defer>/.test(html) &&
+     /<script src="backfill-worker-ui\.js\?v=\d+" defer>/.test(html) && /bfw: loadBackfillWorker/.test(js));
+  const src = read('epinoia', 'admin', 'platform', 'backfill-worker-ui.js');
+  ok('it queues through queue_season_backfill (one request a season), starts the worker, and withdraws only a waiting request',
+     /sb\.rpc\('queue_season_backfill', \{ p_league: league, p_season: s \}\)/.test(src) && /JB\(\)\.kick\(sb\)/.test(src) &&
+     /\.delete\(\)\.eq\('id', r\.id\)\.eq\('state', 'queued'\)/.test(src));
+  const py = read('scripts', 'ingest', 'run_ingest.py');
+  ok('the worker reports what the tab draws: the phase, the counts, the pace, the time left and the last game',
+     /"phase": "games"/.test(py) && /"per_game_s":/.test(py) && /"eta_s":/.test(py) && /"last": last_game/.test(py) && /"phase": "fixtures"/.test(py));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
