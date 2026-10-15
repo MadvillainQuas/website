@@ -1474,7 +1474,10 @@ A.livePanel = host => {
       h('div.go', h('a.mg-btn.primary.big', { href: '#/match' }, '▶ Play it live'), h('button.mg-btn.big', { type: 'button', onclick: async ev => {
         ev.currentTarget.disabled = true;
         try { const out = await A.startMatch('quick'); if (out === 'done') A.go('/game/' + r); else A.route_(); } catch (e) { A.toast('The game could not be played: ' + (e && e.message || e), true); A.route_(); }
-      } }, '⏩ Straight to the result'), h('a.mg-btn.big.ghost', { href: '#/tactics' }, 'Tactics')),
+      } }, '⏩ Straight to the result'), h('a.mg-btn.big.ghost', { href: '#/tactics' }, 'Tactics'),
+        /* administrators: a practice game from the match-day panel too (Louie: "I'm an admin yet I can't see any practice
+           game options" - the rail's entry alone was easy to miss) */
+        A.isAdmin ? h('a.mg-btn.big.ghost', { href: '#/practice' }, '▶ Practice game') : null),
       h('p.mg-sub.note', 'Play it whenever you like this week. If you have not by the end of ' + byWhen(md) + ', your assistant plays it for you.'));
     setTimeout(() => {
       try {

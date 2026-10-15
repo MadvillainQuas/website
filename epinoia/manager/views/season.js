@@ -58,7 +58,7 @@ function home(host) {
       h('p.mg-sub', { style: { margin: '-4px 0 12px' } }, '⏱ Play it any time in its week (Monday to Sunday, the week\u2019s games in their order): live, managing every change as it happens, or straight to the result. If you have not by the end of Sunday, your assistant plays it. Real-life form counts: how your players did in their real games in the week before it moves how they play in this one.'),
       h('div.mg-next', h('div.side', A.crest(homeGame ? 0 : opp, 64), homeGame ? A.nm(A.club.name, 'b') : A.clubLink(opp)), h('div.vs', h('span.mg-cap', homeGame ? 'Home' : 'Away'), h('span.big', 'v')),
         h('div.side', A.crest(homeGame ? opp : 0, 64), homeGame ? A.clubLink(opp) : A.nm(A.club.name, 'b'))),
-      meter, h('div.mg-row.between', { style: { marginTop: '8px' } }, h('span.mg-sub', 'Your chance, simulated with your lineups and tactics: ', chance), h('a.mg-btn', { href: '#/tactics' }, 'Tactics')), countdown(nx)));
+      meter, h('div.mg-row.between', { style: { marginTop: '8px' } }, h('span.mg-sub', 'Your chance, simulated with your lineups and tactics: ', chance), h('div.mg-row', { style: { gap: '8px' } }, A.isAdmin ? h('a.mg-btn', { href: '#/practice' }, '▶ Practice game') : null, h('a.mg-btn', { href: '#/tactics' }, 'Tactics'))), countdown(nx)));
     setTimeout(() => {
       try {
         const pv = Mgr.engine.preview(A.teamObj(0, null), A.teamObj(opp, null), Object.assign({}, A.X(), { home: homeGame ? 1 : -1, seed: 17 }), 300);
