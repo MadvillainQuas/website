@@ -75,6 +75,7 @@ own). Those stay honest zeros.
 """
 from __future__ import annotations
 
+import collections
 import html as _html
 import re
 import threading
@@ -273,8 +274,18 @@ def _fold(s) -> str:
     return re.sub(r"[^a-z]", "", s.lower())
 
 
+#: ONE CLUB, TWO NAMES ON THE SITE (the name it goes by here first). Toronto Metropolitan is "TMU" on 23 of its 2026-27
+#: schedule rows and "Toronto Metropolitan" on 7, under ONE PrestoSports team id, and its game pages are as mixed (both
+#: CA029): keyed by name it became two clubs on the first import (15 Oct 2026). Its code stays the site's stats slug,
+#: torontometropolitan. discover() says when a team id carries two names (USportsAdapter._name_clashes) - add it here.
+CLUB_NAMES = {"TMU": "Toronto Metropolitan"}
+
+
 def _strip_rank(name: str) -> str:
-    return re.sub(r"^#\d+\s+", "", (name or "").strip()).strip()
+    """A club's name as the site prints it, without a poll rank ('#3 Carleton'), in the one form it goes by here
+    (CLUB_NAMES). Every club name the adapter reads passes through this."""
+    n = re.sub(r"^#\d+\s+", "", (name or "").strip()).strip()
+    return CLUB_NAMES.get(n, n)
 
 
 def parse_source_url(url: str) -> dict:
@@ -380,7 +391,7 @@ def team_filter(html) -> list:
     for o in (html if isinstance(html, _El) else dom(html)).find_all("option"):
         m = re.search(r"teamId=([a-z0-9]+)", o.get("value", ""))
         if m:
-            out.append((m.group(1), _txt(o)))
+            out.append((m.group(1), _strip_rank(_txt(o))))
     return out
 
 
@@ -437,6 +448,29 @@ def is_exhibition(rec: dict, ical: Optional[dict] = None) -> bool:
         return True
     text = (rec.get("notes") or "") + " " + ((ical or {}).get("description") or "")
     return bool(re.search(r"\b(exhibition|scrimmage)\b", text, re.I))
+
+
+def outside_sides(rec: dict, members: Optional[set]) -> list:
+    """The clubs of a schedule row that are not U SPORTS's - [] for a U SPORTS game. A game against such a club is
+    left out like an exhibition, as NCAA Division II lists D2 against D2 only: the site does not always flag them
+    (2026-27: Baylor, UC Irvine and a touring 'NCAA East Coast All-Stars', under three names, against Concordia, Laval
+    and UQAM in August and October, none flagged - the first import made them clubs of the league). Two signs, both
+    needed: the site gives the club no team id (it is not one of its members), and the groups file does not know the
+    name - a playoff row can print a member with no team id (Calgary at Winnipeg, 14 Feb 2026), and a new member
+    still has its team id. `members`: groups.membership's folded spellings; None = unknown, nothing is left out."""
+    if members is None:
+        return []
+    out = []
+    for side in ("away", "home"):
+        t = rec.get(side) or {}
+        name = t.get("name") or ""
+        if name and not t.get("team_id") and _fold(name) not in members:
+            out.append(name)
+    return out
+
+
+def _fold(name: str) -> str:
+    return _groups.fold(name) if _groups is not None else re.sub(r"[^a-z0-9]+", "", (name or "").lower())
 
 
 # ============================================================================ the scoreboard (RSS)
@@ -1447,7 +1481,8 @@ class USportsAdapter(FibaLiveStatsAdapter):
             print(f"     U SPORTS {sp}: the iCal lists {len(set(ical) - {r['eid'] for r in rows})} "
                   f"event(s) the page does not")
         now = datetime.now(timezone.utc)
-        games, flags, n_exh = [], [], 0
+        games, flags, n_exh, outsiders = [], [], 0, collections.Counter()
+        members = self._members(config, season)
         for r in rows:
             ic = ical.get(r["eid"]) or {}
             if not r["eid"]:
@@ -1457,6 +1492,10 @@ class USportsAdapter(FibaLiveStatsAdapter):
                 continue
             home, away = r.get("home") or {}, r.get("away") or {}
             hn, an = home.get("name") or ic.get("teams", ("", ""))[1], away.get("name") or ic.get("teams", ("", ""))[0]
+            out = outside_sides(r, members)
+            if out:
+                outsiders.update(out)
+                continue
             tip = ic.get("tip") or (f"{r['date']}T12:00:00+00:00" if r.get("date") else None)
             postseason = src["stage"] != "regular" or "postseason" in r["classes"]
             extra = {"venue": ic.get("venue"), "home_code": team_code(hn) or None, "away_code": team_code(an) or None,
@@ -1478,8 +1517,36 @@ class USportsAdapter(FibaLiveStatsAdapter):
                                       status=status, extra=extra))
         self._report_flags(flags, config, season)
         print(f"     U SPORTS {sp}: {len(games)} games ({sum(1 for g in games if g.status == 'final')} final, "
-              f"{sum(1 for g in games if g.status == 'live')} live), {n_exh} exhibitions left out")
+              f"{sum(1 for g in games if g.status == 'live')} live), {n_exh} exhibitions left out"
+              + (f", {sum(outsiders.values())} against a club outside U SPORTS left out "
+                 f"({', '.join(sorted(outsiders))})" if outsiders else ""))
+        for tid, names in self._name_clashes(rows).items():
+            print(f"     ! U SPORTS {sp}: one club, two names on the site (team id {tid}: {' / '.join(names)}) - "
+                  f"keyed by name it becomes two clubs; add it to usports.py CLUB_NAMES")
         return games
+
+    @staticmethod
+    def _members(config: dict, season: str) -> Optional[set]:
+        """Every folded spelling of a U SPORTS club this season, from the groups file; None when it cannot be read
+        (then no game is left out for its clubs)."""
+        if _groups is None:
+            return None
+        try:
+            spec = _groups.spec_for({"groups_file": config.get("groups_file") or "config/groups/usports.json"})
+            return set(_groups.membership(spec, season)) if spec else None
+        except Exception:
+            return None
+
+    @staticmethod
+    def _name_clashes(rows: list) -> dict:
+        """{team id: [names]} for every team id the rows print under more than one name (after CLUB_NAMES)."""
+        seen: dict = {}
+        for r in rows:
+            for side in ("away", "home"):
+                t = r.get(side) or {}
+                if t.get("team_id") and t.get("name"):
+                    seen.setdefault(t["team_id"], set()).add(t["name"])
+        return {tid: sorted(n) for tid, n in seen.items() if len(n) > 1}
 
     @staticmethod
     def _season(config: dict, src: Optional[dict] = None) -> str:

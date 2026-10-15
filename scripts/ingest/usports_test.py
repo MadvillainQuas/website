@@ -583,6 +583,34 @@ U.USportsAdapter._boards = {k: (v[0] - 61, v[1]) for k, v in U.USportsAdapter._b
 ok("...while a board read before stands in for it when the next read is refused",
    r.scoreline("u8xvsotcgoe6c0oq", tip)["home"] == 34 and len(Refused.calls) == 2, Refused.calls)
 
+print("\n-- the first import of 2026-27 (15 Oct 2026): clubs outside U SPORTS, one club under two names")
+pub = U.parse_schedule_rows(fixture("schedule-2026-27-published.html.gz"), "2026-27")
+members = U.USportsAdapter._members({}, "2026-27")
+listed = [r for r in pub if r["eid"] and not U.is_exhibition(r, {})]
+outside = {r["date"]: U.outside_sides(r, members) for r in listed if U.outside_sides(r, members)}
+ok("the games against clubs outside U SPORTS that the site does not flag as exhibitions are left out - five",
+   outside == {"2026-08-07": ["Baylor"], "2026-08-10": ["East Coast"], "2026-08-11": ["NCAA East Coast All-Stars"],
+               "2026-08-13": ["East Coast All-Stars"], "2026-10-10": ["UC Irvine"]}, outside)
+clubs = {r[s]["name"] for r in listed if not U.outside_sides(r, members) for s in ("away", "home")}
+ok("...leaving the league's 48 clubs", len(clubs) == 48, (len(clubs), sorted(clubs)))
+ok("Toronto Metropolitan is one club: 'TMU' on most of its rows, its full name on the rest, one team id",
+   "Toronto Metropolitan" in clubs and "TMU" not in clubs and U._strip_rank("#4 TMU") == "Toronto Metropolitan"
+   and U.team_code(U._strip_rank("TMU")) == "torontometropolitan"
+   and ("3ubk90p1zr36fx2b", "Toronto Metropolitan") in U.team_filter(fixture("schedule-2026-27-published.html.gz")))
+ok("...and no team id carries two names once CLUB_NAMES is applied", U.USportsAdapter._name_clashes(pub) == {})
+saved_names, U.CLUB_NAMES = U.CLUB_NAMES, {}
+try:
+    clash = U.USportsAdapter._name_clashes(U.parse_schedule_rows(fixture("schedule-2026-27-published.html.gz"), "2026-27"))
+finally:
+    U.CLUB_NAMES = saved_names
+ok("...without it, discovery would say so (the warning that names the team id)",
+   clash == {"3ubk90p1zr36fx2b": ["TMU", "Toronto Metropolitan"]}, clash)
+po_rows = U.parse_schedule_rows(fixture("schedule-2025-26p.html.gz"), "2025-26p")
+no_id = [r for r in po_rows if not (r["away"].get("team_id") and r["home"].get("team_id"))]
+ok("a playoff row printing a member with no team id is still a U SPORTS game (3 in 2025-26: the groups file knows them)",
+   len(no_id) == 3 and not any(U.outside_sides(r, U.USportsAdapter._members({}, "2025-26")) for r in no_id), len(no_id))
+ok("without the groups file nothing is left out", U.outside_sides(listed[0] | {"home": {"name": "Baylor"}}, None) == [])
+
 print("\n-- a machine the site refuses (GitHub's runners: 405 from the first request, 15 Oct 2026)")
 
 
