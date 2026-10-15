@@ -166,7 +166,7 @@ console.log('\na slow pool: a league\'s months of news');
 console.log('\nthe league page and HOME are one module');
 {
   const home = read('epinoia', 'home.js'), fh = read('epinoia', 'home', 'feed-home.js'), fv = read('epinoia', 'feedview.js');
-  const news = home.slice(home.indexOf('async function news()'), home.indexOf('async function creators()'));
+  const news = home.slice(home.indexOf('async function news('), home.indexOf('async function creators()'));    // news(wallP) since 2026-10-15
   ok('the league\'s news() mounts EpinoiaFeedView with the league, its own rpc, and the section shown only with something in it',
      /window\.EpinoiaFeedView/.test(news) && /V\.mount\(\{/.test(news) && /league: \{ id: LEAGUE\.id, slug: LEAGUE\.slug/.test(news) && /\brpc\b/.test(news) && /reveal: shown =>/.test(news));
   ok('HOME\'s feed mounts the same EpinoiaFeedView', /window\.EpinoiaFeedView/.test(fh) && /V\.mount\(\{/.test(fh) && !/rankRows|K\.grid/.test(fh));

@@ -2070,7 +2070,10 @@
       'The table could not be read just now.': 'No se ha podido leer la clasificación.',
       'The table could not be drawn just now.': 'No se ha podido mostrar la clasificación.',
       'The leaders could not be drawn just now.': 'No se han podido mostrar los líderes.',
-      'No statistics yet: they fill in as games are finalised.': 'Todavía no hay estadísticas: se completan a medida que se cierran los partidos.'
+      'No statistics yet: they fill in as games are finalised.': 'Todavía no hay estadísticas: se completan a medida que se cierran los partidos.',
+      'Stars & Fan Picks': 'Estrellas y elección de la afición',
+      'Fans’ picks': 'La elección de la afición',
+      'The news could not be read just now.': 'No se han podido leer las noticias ahora mismo.'
     },
 
     ctx: {

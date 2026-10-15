@@ -1680,18 +1680,41 @@ function dropFlatGround(img) {
    its own articles, then its match reports, For you or Newest, Personalise beside them, six cards and "all news". One
    read (news_feed for this league, in place of the five headlines it replaced), with the member's headers (rpc).
    Silent when there is nothing: a league that does not publish should not carry an empty section. */
-async function news() {
+async function news(wallP) {
   const V = window.EpinoiaFeedView;
   const sec = $('#newsSec');
   if (!LEAGUE || !V || !sec) return;
-  try {
-    await V.mount({
-      sec, host: $('#news'), seg: $('#newsSeg'), all: $('#newsAll'), base: '', rpc,
-      league: { id: LEAGUE.id, slug: LEAGUE.slug, name: LEAGUE.name, country: LEAGUE.country || '' },
-      key: 'epinoia.league.feed',
-      reveal: shown => sec.classList.toggle('hide', !shown)
-    });
-  } catch (_) { sec.classList.add('hide'); /* news is not load-bearing for the rest of the page */ }
+  /* STARTED WITH THE PAGE, SHOWN ONCE THE ANSWER IS IN (2026-10-15). The reads used to wait for the members answer
+     (leagueAccess, up to four seconds) and then for the rest of the page's set-up: the first of them left about nine
+     seconds after the page opened, and a reader on FEED & VIDEO saw the storylines and no news. Now they leave at once;
+     the section is only shown when the answer says this reader may see the league (a members' league shut to them
+     keeps it shut). */
+  const open = wallP ? Promise.resolve(wallP).then(w => !(w && w.walled), () => true) : Promise.resolve(true);
+  /* A READ THAT FAILS IS TRIED AGAIN (a 500 under load, a dropped connection): the section used to be shut for the visit
+     on the first failure, so a league that publishes could show no news at all. Twice more, two and then five seconds
+     later; after that the section says the news could not be read, with a button to try again. */
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await V.mount({
+        sec, host: $('#news'), seg: $('#newsSeg'), all: $('#newsAll'), base: '', rpc,
+        league: { id: LEAGUE.id, slug: LEAGUE.slug, name: LEAGUE.name, country: LEAGUE.country || '' },
+        key: 'epinoia.league.feed',
+        reveal: shown => open.then(o => sec.classList.toggle('hide', !(shown && o)))
+      });
+    } catch (_) {
+      if (attempt < 2) await new Promise(r => setTimeout(r, attempt ? 5000 : 2000));
+    }
+  }
+  if (!(await open)) return;
+  const host = $('#news');
+  host.textContent = '';
+  const box = el('div', 'empty', 'The news could not be read just now. ');
+  const again = el('button', 'ep-btn', 'try again');
+  again.type = 'button';
+  again.addEventListener('click', () => { host.textContent = ''; news(wallP); });
+  box.appendChild(again);
+  host.appendChild(box);
+  sec.classList.remove('hide');
 }
 
 /* THE LEAGUE'S VIDEO (0237), under its news: media.js's board (the same one the league's stats page has as its Video
@@ -1976,7 +1999,10 @@ function renumber() {
     const gamesFirst = games().catch(() => null);
     const clubsP = clubs().catch(() => null);
     const socialsP = socials().catch(() => null);
-    const wall = await leagueAccess();
+    /* the news starts now, beside the members answer, and shows once that answer lets it (news, below) */
+    const wallP = leagueAccess();
+    const newsP = news(wallP).catch(() => null);
+    const wall = await wallP;
     const AX = window.EpinoiaAccess;
     const ast = (AX && typeof AX.get === 'function' && AX.get(LEAGUE.id)) || {};
     /* not while memberships are switched off for the platform: the first,
@@ -1992,7 +2018,7 @@ function renumber() {
       clubsP,
       wall.walled ? null : stars().catch(() => null),
       wall.walled ? null : records(clubsP).catch(() => null),
-      wall.walled ? null : news().catch(() => null),
+      newsP,
       wall.walled ? null : storylines().catch(() => null),
       wall.walled ? null : creators().catch(() => null),
       wall.walled ? null : teamOfTheYear().catch(() => null),

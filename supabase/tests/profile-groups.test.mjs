@@ -162,7 +162,7 @@ console.log('\n8. a league\'s front page (Louie, 2026-10-15)');
     ['Games', ['lgGamesSec']],
     ['Feed & video', ['newsSec', 'storySec', 'videoSec', 'creatorsSec']],
     ['Clubs', ['clubsSec']],
-    ['Stars', ['totySec', 'fvSec', 'starsSec']],
+    ['Stars & Fan Picks', ['totySec', 'fvSec', 'starsSec']],          // renamed from Stars (Louie, 2026-10-15)
     ['Records', ['recordsSec']],
     ['Fixtures', ['gamesSec']],
     ['Table & leaders', ['seasonSec']],
@@ -201,6 +201,14 @@ console.log('\n8. a league\'s front page (Louie, 2026-10-15)');
   ok('...SHOW ALL GAMES is the league\'s fixtures page', /all\.href = 'fixtures\/\?l=' \+ encodeURIComponent\(league\.slug\)/.test(LG) && /id="lgGamesAll" href="fixtures\/">show all games →</.test(LI));
   ok('...started by home.js once it knows the league, and hidden with the fixtures behind a wall', /window\.EpinoiaLeagueGames\.mount\(\{ league: LEAGUE \}\)/.test(HJ) &&
      /const lg = \$\('#lgGamesSec'\); if \(lg\) lg\.classList\.add\('hide'\);/.test(HJ));
+  /* FEED & VIDEO's NEWS (Louie, 2026-10-15: "currently no news"): its reads waited about nine seconds for the members
+     answer and the rest of the set-up, and one failed read shut the section for the visit */
+  ok('the news starts beside the members answer, not after it, and shows only once that answer lets it',
+     /const wallP = leagueAccess\(\);\s*\n\s*const newsP = news\(wallP\)\.catch\(\(\) => null\);\s*\n\s*const wall = await wallP;/.test(HJ) &&
+     /reveal: shown => open\.then\(o => sec\.classList\.toggle\('hide', !\(shown && o\)\)\)/.test(HJ));
+  ok('a failed read is tried twice more, then the section says so with TRY AGAIN rather than vanishing',
+     /for \(let attempt = 0; attempt < 3; attempt\+\+\)/.test(HJ) && /The news could not be read just now\. /.test(HJ) &&
+     /again\.addEventListener\('click', \(\) => \{ host\.textContent = ''; news\(wallP\); \}\);/.test(HJ));
   ok('the page loads what the groups and the games need', ['kit/fxc.css', 'kit/leaguegames.css', 'kit/secgroups.css'].every(h => LI.includes('href="' + h + '?v=')) &&
      ['globalgames.js', 'leaguegames.js', 'secgroups.js'].every(s => LI.includes('src="' + s + '?v=')));
 }

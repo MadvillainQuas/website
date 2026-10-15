@@ -2068,7 +2068,10 @@
       'The table could not be read just now.': '順位表を読み込めませんでした。',
       'The table could not be drawn just now.': '順位表を表示できませんでした。',
       'The leaders could not be drawn just now.': '個人成績を表示できませんでした。',
-      'No statistics yet: they fill in as games are finalised.': 'まだスタッツはありません。試合が確定すると反映されます。'
+      'No statistics yet: they fill in as games are finalised.': 'まだスタッツはありません。試合が確定すると反映されます。',
+      'Stars & Fan Picks': 'スターとファン投票',
+      'Fans’ picks': 'ファン投票の結果',
+      'The news could not be read just now.': 'ニュースを読み込めませんでした。'
     },
 
     ctx: {
