@@ -250,20 +250,25 @@ async function board(leagueId, limit) { if (LOCAL) return local.board(leagueId);
 async function boardLeagues() { if (LOCAL) return local.boardLeagues(); return (await rpc('manager_board_leagues', {})) || []; }
 async function badges(ids) { if (LOCAL) return local.badges(ids || []); return ids && ids.length ? ((await rpc('manager_badges', { p_ids: ids.slice(0, 60) })) || []) : []; }
 /* A REAL CLUB'S ROTATION CHART (Louie, 2026-10-16: "using their rotation charts"): who it had on the floor at each
-   minute of its last ROT_N finals (any competition, the season before too while this one is young: rotation.js over
-   each game's play-by-play, as its club page draws it),
+   minute of its last ROT_N finals (any competition; the season before only while this one has fewer than ROT_MIN games:
+   rotation.js over each game's play-by-play, as its club page draws it),
    per man the share of each regulation minute - read when the reader meets the club, kept a week in this browser.
    -> {games, rows: [{id, cells: [40], gp, starts}]} or null (too few games, or the logs not there) */
-const ROT_N = 10;
+const ROT_N = 10, ROT_MIN = 3, ROT_GAP = 60 * 864e5;
 async function rotation(teamId, compIds) {
   const R = root.EpinoiaRotation, Dd = D();
   if (!R || !Dd || !teamId || !compIds || !compIds.length) return null;
-  const key = 'mgr_rot2_' + teamId + '_' + compIds.join('.');
+  const key = 'mgr_rot3_' + teamId + '_' + compIds.join('.');
   try { const c = JSON.parse(root.localStorage.getItem(key) || 'null'); if (c && Date.now() - c.at < 7 * 864e5) return c.v; } catch (_) { /* read it */ }
   const gs = (await Dd.all(`games?or=(home_team_id.eq.${teamId},away_team_id.eq.${teamId})&status=eq.final` +
-    `&select=id,home_team_id,away_team_id,period,starters,roster_snapshot&order=tipoff_at.desc&limit=${ROT_N}`)) || [];
+    `&select=id,tipoff_at,home_team_id,away_team_id,period,starters,roster_snapshot&order=tipoff_at.desc&limit=${ROT_N}`)) || [];
   /* the newest ROT_N (the reader pages past a limit: keep it to them, so only their logs are read) */
-  const ok = gs.filter(g => g.roster_snapshot && g.roster_snapshot.teams && Array.isArray(g.starters)).slice(0, ROT_N);
+  let ok = gs.filter(g => g.roster_snapshot && g.roster_snapshot.teams && Array.isArray(g.starters)).slice(0, ROT_N);
+  /* THIS SEASON'S GAMES ALONE once it has ROT_MIN (the summer is the first gap of two months): last season's starters
+     opened every quarter of a young season's chart (Louie, 2026-10-16: the Lions started last May's Phillip and Price,
+     two centres, and put Joel Scott at the three) */
+  const cut = ok.findIndex((g, i) => i > 0 && Date.parse(ok[i - 1].tipoff_at) - Date.parse(g.tipoff_at) > ROT_GAP);
+  if (cut >= ROT_MIN) ok = ok.slice(0, cut);
   if (ok.length < 3) return null;
   const evs = await Dd.events(ok.map(g => g.id));
   const byG = {};

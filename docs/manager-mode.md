@@ -163,8 +163,10 @@ but only the chosen league is simulated.
 - **Real clubs play like themselves** (Louie, 2026-10-16: "make opposition teams more realistic to their irl
   counterparts, using their rotation charts, and player stats etc. to alter their own style, tactics"):
   - *Their rotation chart* (`site.rotation`, `engine.realRotation`): before a game with a real club, its last 10 finals
-    (any competition, so last season covers a young one) are replayed by `rotation.js` into each man's share of every
-    regulation minute, kept a week in the browser. The plan follows it: each man keeps his season's minutes, his chart
+    (any competition) are replayed by `rotation.js` into each man's share of every
+    regulation minute, kept a week in the browser. Only this season's games once it has 3 (the summer is the first
+    two-month gap): last season's playoffs in the window started the 2026 Lions with last May's Phillip and Price, two
+    centres, and put Joel Scott at the three. Last season fills in only before a club has played 3. The plan follows it: each man keeps his season's minutes, his chart
     says when (paced so a closer keeps his minutes for the end), changes every two minutes at most (a coach subs in
     groups). Checked on ORLEN clubs: every man within a minute of his real minutes a game (the minutes-only plan had
     one at 36 for a real 25), starters opening and closing the quarters, ~16 changes a game. A club with fewer than 3
