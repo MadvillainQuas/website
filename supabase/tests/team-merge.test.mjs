@@ -241,5 +241,29 @@ console.log('\n-- 0192: the administrators\' door');
   ok('team_merge_run cannot be called by a signed-in user directly', direct);
 }
 
+console.log('\n-- 0269: U SPORTS\'s "TMU" into Toronto Metropolitan (one club the first import made two of)');
+{
+  await seed();
+  const US = '15000000-0000-0000-0000-0000000000a1', CU = '20000000-0000-0000-0000-0000000000a1';
+  const TM = 'eeeeeeee-0000-0000-0000-0000000000a1', TMU = 'eeeeeeee-0000-0000-0000-0000000000a2', LAU = 'eeeeeeee-0000-0000-0000-0000000000a3';
+  await q(`insert into public.leagues (id, slug, name) values ($1, 'u-sports', 'U SPORTS')`, [US]);
+  await q(`insert into public.teams (id, league_id, slug, name, external_ids) values
+    ($1, $4, 'toronto-metropolitan', 'Toronto Metropolitan', '{"fiba_livestats":"torontometropolitan"}'),
+    ($2, $4, 'tmu', 'TMU', '{"fiba_livestats":"tmu"}'), ($3, $4, 'laurier', 'Laurier', '{}')`, [TM, TMU, LAU, US]);
+  await q(`insert into public.competitions (id, league_id, name) values ($1, $2, 'U SPORTS 2026-27')`, [CU, US]);
+  await q(`insert into public.competition_teams values ($1, $2), ($1, $3), ($1, $4)`, [CU, TM, TMU, LAU]);
+  await q(`insert into public.games (competition_id, status, home_team_id, away_team_id) values
+    ($1, 'scheduled', $3, $2), ($1, 'scheduled', $2, $4), ($1, 'scheduled', $4, $5)`, [CU, TMU, LAU, LAU, TM]);
+  await db.exec(mig('0192_merge_senior_twins.sql'));
+  await db.exec(mig('0269_usports_tmu_merge.sql'));
+  const left = await q(`select name, aliases, external_ids from public.teams where league_id = $1 order by name`, [US]);
+  ok('one Toronto Metropolitan, "TMU" among its aliases and its code kept', left.length === 2 && left[1].name === 'Toronto Metropolitan'
+     && left[1].aliases.includes('TMU') && JSON.stringify(left[1].external_ids).includes('tmu'), JSON.stringify(left));
+  ok('...with all three of its fixtures', (await one(`select count(*)::int n from public.games where $1 in (home_team_id, away_team_id)`, [TM])).n === 3);
+  ok('...entered once in the competition', (await one(`select count(*)::int n from public.competition_teams where competition_id = $1`, [CU])).n === 2);
+  await db.exec(mig('0269_usports_tmu_merge.sql'));
+  ok('run again: nothing to merge, nothing changed', (await one(`select count(*)::int n from public.teams where league_id = $1`, [US])).n === 2);
+}
+
 if (fail) { console.log(`\n${fail} failed, ${pass} passed`); process.exit(1); }
 console.log(`\nteam merge: ${pass} passed - two rows of one club become one, and 'Senior Men (I)' is not mistaken for a second team`);
