@@ -65,6 +65,26 @@ def season_name_for(now: datetime | None = None) -> str:
     return f"{now.year}-{str(now.year + 1)[2:]}" if now.month >= 8 else f"{now.year - 1}-{str(now.year)[2:]}"
 
 
+# the words a club's name shares with another's, its marker and filler words left out ("U19 Men", "College", "Academy")
+_SIDE_FILLER = {"the", "of", "and", "u19", "u18", "u17", "u16", "men", "mens", "women", "womens", "senior", "seniors", "junior",
+                "college", "academy", "school", "high", "university", "basketball", "club", "team", "bc", "i", "ii", "iii"}
+
+
+def _side_words(name: str) -> set:
+    return {w for w in re.findall(r"[a-z0-9]+", names.plain_name(name or "")) if len(w) > 2 and w not in _SIDE_FILLER}
+
+
+def swapped_sides(raw: dict, sides: dict) -> bool:
+    """Do the payload's two sides read the other way round from the game's two clubs? Only a clear case says so: a
+    side sharing more words with the other club than with its own. A side sharing none with either says nothing."""
+    tm = raw.get("tm") or {}
+    def share(t, row):
+        mine = _side_words(t.get("name") or "")
+        return max([len(mine & _side_words(n)) for n in [row.get("name")] + list(row.get("aliases") or []) if n] or [0])
+    t1, t2 = tm.get("1") or {}, tm.get("2") or {}
+    return share(t1, sides["2"]) > share(t1, sides["1"]) or share(t2, sides["1"]) > share(t2, sides["2"])
+
+
 class Platform:
     """Thin, idempotent creator over the Supabase REST client (service role)."""
 
@@ -590,7 +610,55 @@ class Platform:
         self.insert("roster_entries", {"team_id": team["id"], "player_id": player["id"], "season_id": season_id,
                                        "jersey": str(p.get("shirtNumber") or ""), "position": p.get("playingPosition") or None, "active": True})
 
-    def ensure_game_people(self, league_id: str, comp: dict, season_id: str, raw: dict, group_of=None) -> dict:
+    def side_club(self, league_id: str, t: dict, own: dict | None) -> dict | None:
+        """THE GAME'S OWN SIDE (Louie, 2026-10-15: "I merge once and if that team name pops up again it comes under the
+        merged team"). A game already on the platform was filed from its schedule under two clubs; its payload names
+        the same two sides in its own words - the UK's Genius feed writes "Nottingham Academy Wildcats U19 Men" (code
+        WIL) for the schedule's "Nottingham Wildcats", and "Academy" and "U19 Men" are markers no name rule may read as
+        the same club. So every new club in EABL, WEABL and both Division Ones came twice - a twin with no games,
+        holding the rosters - and was merged by hand, league by league.
+
+        A payload side that matches a club already (its code, a name or alias, the sponsor rule) is that club, as
+        before. One that matches NONE is the game's own club on that side, and that club learns the payload's
+        spelling as an alias and its code beside its own (external_ids.also), so the next game - and the next pass -
+        finds it at once, exactly as a merge would have left it. Nothing is created and nothing already matched is
+        overruled: a payload side that names a different existing club keeps it (a schedule that got a fixture
+        wrong is not welded onto the payload's club)."""
+        if is_placeholder_team(t.get("name")):
+            return None
+        key = (league_id, team_code(t))
+        was, self.auto_create = self.auto_create, False
+        try:
+            found = self.team(league_id, t)
+        finally:
+            self.auto_create = was
+        if found:
+            return found
+        self.cache["team"].pop(key, None)              # "no match" is not an answer to keep for the rest of the pass
+        if not own:
+            return self.team(league_id, t)
+        raw_name = (t.get("name") or "").strip()
+        real = (t.get("code") or "").strip()
+        ext = dict(own.get("external_ids") or {})
+        also = [str(x) for x in (ext.get("also") or [])]
+        patch = {}
+        if real and real != str(ext.get("fiba_livestats") or "") and real not in also:
+            patch["external_ids"] = {**ext, "also": also + [real]}
+        al = [a for a in (own.get("aliases") or []) if a]
+        if raw_name and raw_name != own.get("name") and raw_name not in al:
+            patch["aliases"] = al + [raw_name]
+        if patch and not self.dry and self.sb:
+            try:
+                self.sb.patch("teams", f"id=eq.{own['id']}", patch)
+            except Exception:
+                patch = {}
+        if patch:
+            self.log(f"  ~ {raw_name or real} is {own.get('name')} (the game's own side)")
+        row = {**own, **patch}
+        self.cache["team"][key] = row
+        return row
+
+    def ensure_game_people(self, league_id: str, comp: dict, season_id: str, raw: dict, group_of=None, sides: dict | None = None) -> dict:
         """Both clubs + every listed player of one payload. Returns {'1': team, '2': team, 'pids': {ext: uuid}}.
 
         ONE PERSON, ONE SLOT. Everything downstream keys a game's stats on the platform player id:
@@ -603,9 +671,13 @@ class Platform:
         out = {"pids": {}}
         self.note_rivals(((raw.get("tm") or {}).get("1") or {}).get("name"), ((raw.get("tm") or {}).get("2") or {}).get("name"))
         taken: dict = {}                    # player id -> the slot that already has them, BOTH sides
+        if sides and swapped_sides(raw, sides):
+            self.log("  ? the payload's sides read the other way round from the game's clubs: matched by name only")
+            sides = None
         for k in ("1", "2"):
             t = (raw.get("tm") or {}).get(k) or {}
-            team = self.team(league_id, t)
+            # sides: the game's own two clubs, when the game is already on the platform (side_club)
+            team = self.side_club(league_id, t, (sides or {}).get(k)) if sides else self.team(league_id, t)
             out[k] = team
             if not team:
                 continue

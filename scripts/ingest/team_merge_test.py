@@ -99,5 +99,86 @@ for spelling in ("Cardiff Met Archers Senior Men 1", "CARDIFF MET ARCHERS SENIOR
             got = str(e)
         ok(f"{spelling!r} (code {code!r}) is the club it was merged into, never a second one", isinstance(got, dict) and got["id"] == "t1", got)
 
+# 2026-10-15: "I merge once and if that team name pops up again it comes under the merged team". The payload of a game
+# already filed under its two clubs named them its own way ("Nottingham Academy Wildcats U19 Men", WIL) and a twin with
+# no games was made every time; now a side that matches no club is the game's own club, which learns the spelling
+print("\n-- the game's own side (Platform.side_club)")
+
+
+class SideSB:
+    def __init__(self, rows):
+        self.rows, self.patches = rows, []
+
+    def select(self, table, q):
+        if table != "teams":
+            return []
+        if q.startswith("slug=eq."):
+            want = q.split("slug=eq.")[1].split("&")[0]
+            return [r for r in self.rows if r.get("slug") == want]
+        if "&or=(" in q or "fiba_livestats=eq." in q:
+            d = unquote(q)
+            return [r for r in self.rows if ('"' + str((r.get("external_ids") or {}).get("fiba_livestats")) + '"') in d
+                    or any(('["' + a + '"]') in d for a in ((r.get("external_ids") or {}).get("also") or []))]
+        return [dict(r) for r in self.rows]
+
+    def one(self, table, q):
+        got = self.select(table, q)
+        return got[0] if got else None
+
+    def patch(self, table, q, body):
+        self.patches.append((table, q, body))
+        rid = q.split("id=eq.")[1]
+        for r in self.rows:
+            if r["id"] == rid:
+                r.update(body)
+
+    def insert(self, *a, **k):
+        raise AssertionError("a second club was created")
+
+    upsert = insert
+
+
+def side_plat(rows):
+    sb = SideSB(rows)
+    p = feedplatform.Platform(sb, dry=False, auto_create=True, log=lambda m: None)
+    p.one = sb.one
+    return p, sb
+
+
+WILD = {"id": "w1", "slug": "nottingham-wildcats", "name": "Nottingham Wildcats", "aliases": [], "external_ids": {"fiba_livestats": "nottingham-wildcats"}}
+READ = {"id": "r1", "slug": "reading-rockets", "name": "Reading Rockets", "aliases": [], "external_ids": {"fiba_livestats": "reading-rockets"}}
+p, sb = side_plat([dict(WILD), dict(READ)])
+try:
+    got = p.side_club("L1", {"name": "Nottingham Academy Wildcats U19 Men", "code": "WIL"}, dict(WILD))
+except AssertionError as e:
+    got = str(e)
+ok("a payload side matching no club is the game's own club on that side - no second club", isinstance(got, dict) and got["id"] == "w1", got)
+ok("...which learns the payload's spelling as an alias and its code beside its own",
+   sb.patches and sb.patches[0][2].get("aliases") == ["Nottingham Academy Wildcats U19 Men"]
+   and sb.patches[0][2].get("external_ids", {}).get("also") == ["WIL"] and sb.patches[0][2]["external_ids"]["fiba_livestats"] == "nottingham-wildcats", sb.patches)
+p2, sb2 = side_plat([r for r in sb.rows])
+again = p2.team("L1", {"name": "Nottingham Academy Wildcats U19 Men", "code": "WIL"})
+ok("...so the next pass finds it by that code at once, as a merge would have left it", again is not None and again["id"] == "w1", again)
+p3, sb3 = side_plat([dict(WILD), dict(READ)])
+other = p3.side_club("L1", {"name": "Reading Rockets", "code": "reading-rockets"}, dict(WILD))
+ok("a payload side that names a different existing club keeps it (a wrong schedule is never welded on)",
+   other["id"] == "r1" and not sb3.patches, (other, sb3.patches))
+p4, sb4 = side_plat([dict(WILD), dict(READ)])
+try:
+    made = p4.side_club("L1", {"name": "Brand New Club", "code": "BNC"}, None)
+except AssertionError as e:
+    made = "created"
+ok("...and with no game to go by, a new club is made as before", made == "created", made)
+ok("the payload's sides read the other way round from the game's: positions are not trusted",
+   feedplatform.swapped_sides({"tm": {"1": {"name": "HHS Reading Rockets U19 Women"}, "2": {"name": "Nottingham Academy Wildcats U19 Men"}}},
+                              {"1": WILD, "2": READ}) is True and
+   feedplatform.swapped_sides({"tm": {"1": {"name": "Nottingham Academy Wildcats U19 Men"}, "2": {"name": "HHS Reading Rockets U19 Women"}}},
+                              {"1": WILD, "2": READ}) is False and
+   feedplatform.swapped_sides({"tm": {"1": {"name": "SGS College U19 Men"}, "2": {"name": "The Canterbury Academy U19 Men"}}},
+                              {"1": WILD, "2": READ}) is False)
+SRC = open(os.path.join(HERE, "run_ingest.py"), encoding="utf-8").read()
+ok("write_platform hands the game's own two clubs to ensure_game_people", "group_fields(src, *n)) if groups.spec_for(src) else None, sides=sides)" in SRC
+   and 'sides = {"1": rows_[ids_[0]], "2": rows_[ids_[1]]}' in SRC)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

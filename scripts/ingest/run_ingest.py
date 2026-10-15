@@ -1125,8 +1125,28 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
         season_id = srow[0]["season_id"] if srow else None
         if season_id:
             pf["season"][comp["id"]] = season_id
+    # THE GAME'S OWN TWO CLUBS, when it is on the platform already (its schedule filed it): a payload side matching no
+    # club is that side's club, which learns the payload's name and code (Platform.side_club) - never a second club
+    sides = None
+    try:
+        gk = (src["adapter"], b.external_id)
+        gid = pf["game"].get(gk)
+        if not gid:
+            ex_ = sb.select("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}&select=game_id")
+            gid = ex_[0]["game_id"] if ex_ and ex_[0].get("game_id") else None
+            if gid:
+                pf["game"][gk] = gid
+        if gid:
+            g_ = sb.select("games", f"id=eq.{gid}&select=home_team_id,away_team_id")
+            ids_ = [x for x in ((g_[0].get("home_team_id"), g_[0].get("away_team_id")) if g_ else ()) if x]
+            if len(ids_) == 2:
+                rows_ = {r["id"]: r for r in sb.select("teams", f"id=in.({','.join(ids_)})&select=id,slug,name,aliases,external_ids,logo_path")}
+                if len(rows_) == 2:
+                    sides = {"1": rows_[ids_[0]], "2": rows_[ids_[1]]}
+    except Exception:
+        sides = None
     people = plat.ensure_game_people(league_id, comp, season_id, b.raw,
-                                     group_of=(lambda *n: group_fields(src, *n)) if groups.spec_for(src) else None)
+                                     group_of=(lambda *n: group_fields(src, *n)) if groups.spec_for(src) else None, sides=sides)
     home, away = people.get("1"), people.get("2")
     if not (home and away):
         sb.patch("external_games", f"adapter=eq.{src['adapter']}&external_id=eq.{b.external_id}",
