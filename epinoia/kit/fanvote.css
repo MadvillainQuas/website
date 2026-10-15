@@ -393,3 +393,145 @@
 .fvw-laurel ellipse{transform:scale(.72,.5);opacity:.85}
 .fvw-win .club-ed{white-space:normal;overflow:visible;text-overflow:clip;text-align:right;line-height:1.15;font-weight:700}
 .fvw-all{border-bottom:0;text-decoration:none}
+
+/* ===== MAKE YOUR VOICE HEARD, IN THE PAGE'S OWN DRESS (Louie, 2026-10-16: "more attractive and more in line with the website
+   style"). The panel was a black teletext screen (kit/ttpanel.css) under a cream page; it is now one of the page's own cards:
+   the group card's edge, wash and head band (kit/secgroups.css .pgrp-*) in the league's colours, the question as a section
+   title (the pixel face with the page's mosaic under it, as GAMES and STARS have), the podium as rounded wells, and the
+   page's pill buttons. Theme tokens throughout, so the dark theme follows. The unrolling, the drag and every class are as
+   they were; the rules are on #fv because the feed's section is also .fv (kit/feedview.css). ===== */
+#fv{--fv-r:18px;margin:16px 12px 0}
+#fv::before{background:linear-gradient(90deg,transparent,var(--fv-a) 45%,var(--fv-a) 55%,transparent)}
+#fv .fv-body{color:var(--ink);padding:0 0 calc(var(--u)*2.25);border:1px solid var(--rule-2);border-radius:var(--fv-r);
+  background:color-mix(in oklch,var(--fv-a) 4%,var(--panel));background-image:none;
+  box-shadow:0 10px 30px rgba(0,0,0,.07)}
+#fv .fv-body::after,#fv .fv-body::before{content:none}
+#fv .fv-roll{border-radius:var(--fv-r)}
+
+/* the head band: a square of the league's colour and the name, the week beside it, the close key at its end */
+#fv .fv-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px 14px;padding:12px 64px 12px 18px;
+  border-radius:calc(var(--fv-r) - 1px) calc(var(--fv-r) - 1px) 0 0;border-bottom:1px solid var(--rule-2);
+  background:linear-gradient(90deg,color-mix(in oklch,var(--fv-a) 22%,var(--panel)),var(--panel) 62%)}
+#fv .fv-title{display:flex;align-items:center;gap:10px;font:400 12px/1.2 var(--f-micro);letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink);text-shadow:none}
+#fv .fv-title::before{content:"";flex:none;width:10px;height:10px;border-radius:3px;
+  background:linear-gradient(135deg,var(--fv-a) 0 60%,var(--fv-b) 60%)}
+#fv .fv-title::after{content:none}
+#fv .fv-week{margin:0 0 0 auto;padding:5px 11px;border-radius:999px;background:var(--panel);
+  border:1px solid var(--rule-2);color:var(--ink-2);font:400 9.5px/1.2 var(--f-micro);letter-spacing:.06em;
+  text-transform:uppercase;opacity:1}
+#fv .fv-x{top:7px;right:10px;width:36px;height:36px;border-radius:50%;border:1px solid var(--rule-2);
+  background:var(--panel);color:var(--ink);font:400 22px/1 var(--f-ui);box-shadow:0 2px 8px rgba(0,0,0,.08);
+  transition:background .15s ease,color .15s ease,border-color .15s ease}
+#fv .fv-x:hover{transform:none;background:var(--fv-a);border-color:var(--fv-a);color:var(--fv-on)}
+
+/* the question, as the page titles its sections */
+#fv .fv-stages{padding:0 calc(var(--u)*2.5)}
+#fv .fv-ask{flex-direction:column;align-items:center;text-align:center;gap:0;margin:calc(var(--u)*3) 0 calc(var(--u)*2)}
+#fv .fv-q{font-family:var(--f-score);font-weight:400;font-size:clamp(22px,3.2vw,28px);line-height:1;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink)}
+#fv .fv-ask .fv-q::after,#fv .fv-stage[data-stage="done"] .fv-q::after{content:"";display:block;width:66px;height:12px;margin:12px auto 0;
+  background:linear-gradient(90deg,var(--tt-m1,var(--fv-a)) 0 36%,var(--tt-m2,var(--fv-b)) 36% 68%,var(--tt-m3,var(--fv-ink)) 68%);
+  -webkit-mask:var(--tt-mosaic) center/66px 12px no-repeat;mask:var(--tt-mosaic) center/66px 12px no-repeat}
+#fv .fv-how{margin-top:12px;font:400 10.5px/1.7 var(--f-micro);letter-spacing:.05em;color:var(--ink-3);opacity:1}
+#fv .fv-hint{color:var(--ink-2)}
+#fv .fv-hint.shake{color:var(--fv-ink)}
+
+/* the play sits on a well of its own, as the page's cards sit on a group */
+#fv .fv-play{padding:calc(var(--u)*2);border-radius:14px;background:var(--panel);border:1px solid var(--rule);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 50%,transparent)}
+
+/* the podium: rounded wells, 1st the tallest and washed in the league's colour */
+#fv .fv-podium{gap:8px}
+#fv .fv-slot{border-radius:12px;border:1.5px dashed var(--rule-2);background:color-mix(in oklch,var(--fv-a) 3%,var(--panel));
+  padding:8px 5px 9px}
+#fv .fv-slot.p1{background:color-mix(in oklch,var(--fv-a) 9%,var(--panel));border-color:color-mix(in oklch,var(--fv-a) 55%,transparent)}
+#fv .fv-slot.filled{border-style:solid;border-color:var(--fv-a);background:color-mix(in oklch,var(--fv-a) 12%,var(--panel));
+  box-shadow:0 6px 16px color-mix(in srgb,var(--fv-a) 22%,transparent)}
+#fv .fv-slot.over{transform:translateY(-4px) scale(1.04);border-color:var(--fv-a);background:color-mix(in oklch,var(--fv-a) 18%,var(--panel))}
+#fv .fv-place{font-family:var(--f-score);font-size:22px;letter-spacing:.04em;color:var(--fv-ink)}
+#fv .fv-podium.one .fv-place{font:400 10px/1.25 var(--f-micro);letter-spacing:.1em;color:var(--fv-ink)}
+#fv .fv-hold:empty::before{border:1px dashed color-mix(in oklch,var(--fv-a) 40%,transparent);border-radius:8px}
+#fv .fv-slot:focus-visible{outline:2px solid var(--fv-a);outline-offset:3px}
+
+/* the strip: the page's round keys at each end, the cards lifted on a hover */
+#fv .fv-nav{width:36px;height:36px;border-radius:50%;border:1px solid var(--rule-2);background:var(--panel);color:var(--ink);
+  font:400 22px/1 var(--f-ui);padding:0 0 2px;box-shadow:0 2px 8px rgba(0,0,0,.08);
+  transition:background .15s ease,color .15s ease,border-color .15s ease,opacity .15s ease}
+#fv .fv-nav:not(:disabled):hover{transform:none;background:var(--fv-a);border-color:var(--fv-a);color:var(--fv-on)}
+#fv .fv-nav:disabled{opacity:.3;box-shadow:none}
+#fv .fv-card{border-radius:10px;border:1px solid var(--rule);
+  box-shadow:0 1px 0 color-mix(in srgb,#000 6%,transparent),0 6px 16px rgba(0,0,0,.08)}
+#fv .fv-card:hover{transform:translateY(-3px);box-shadow:0 0 0 2px var(--fv-a),0 12px 24px rgba(0,0,0,.12)}
+#fv .fv-card .club-plate{border-radius:6px;overflow:hidden}
+#fv .fv-card.picked{opacity:.45;filter:grayscale(.6)}
+#fv .fv-card.picked::after{border-radius:50%;background:var(--fv-a);color:var(--fv-on);font:400 13px/1 var(--f-score);
+  width:26px;height:26px;box-shadow:0 0 0 2px var(--panel)}
+#fv .fv-card:focus-visible,#fv .fv-nav:focus-visible,#fv .fv-x:focus-visible{outline:2px solid var(--fv-a);outline-offset:2px}
+.fv-ghost.fv-card{border-radius:10px;box-shadow:0 0 0 2px var(--league-a,var(--lume)),0 22px 44px rgba(0,0,0,.3)}
+
+/* the actions: the page's pills, filled in the league's colour for the one that counts */
+#fv .fv-acts{margin-top:calc(var(--u)*2)}
+#fv .fv-go,#fv .fv-skip,#fv .fv-change{min-height:42px;padding:0 22px;border-radius:999px;font:700 11px/1 var(--f-ui);
+  letter-spacing:.1em;text-transform:uppercase;transition:transform .15s ease,background .15s ease,color .15s ease,box-shadow .15s ease}
+#fv .fv-go{background:var(--fv-a);color:var(--fv-on);border:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 5px rgba(0,0,0,.16),0 6px 16px color-mix(in srgb,var(--fv-a) 30%,transparent)}
+#fv .fv-go:not(:disabled):hover{transform:translateY(-1px);filter:brightness(1.06)}
+#fv .fv-go:disabled{opacity:1;cursor:not-allowed;background:var(--panel);color:var(--ink-3);box-shadow:inset 0 0 0 1px var(--rule-2)}
+#fv .fv-skip,#fv .fv-change{background:var(--panel);color:var(--ink);border:0;box-shadow:inset 0 0 0 1px var(--rule-2)}
+#fv .fv-skip:hover,#fv .fv-change:hover{box-shadow:inset 0 0 0 1.5px var(--fv-a);color:var(--fv-ink)}
+#fv .fv-go:focus-visible,#fv .fv-skip:focus-visible,#fv .fv-change:focus-visible{outline:2px solid var(--fv-a);outline-offset:3px}
+/* "remind me later" and "don't show this again": quiet, as the page's fold key is */
+#fv .fv-foot{border-top:1px solid var(--rule);background:none}
+#fv .fv-acts .fv-foot{border:0}
+#fv .fv-later,#fv .fv-never{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:999px;text-decoration:none;
+  border:1px solid var(--rule-2);color:var(--ink-2);font:400 9.5px/1 var(--f-micro);letter-spacing:.08em;opacity:1;
+  transition:border-color .15s ease,color .15s ease}
+#fv .fv-later:hover,#fv .fv-never:hover{border-color:var(--fv-a);color:var(--ink)}
+#fv .fv-later:focus-visible,#fv .fv-never:focus-visible{outline:2px solid var(--fv-a);outline-offset:2px}
+
+/* done: the stamp in the league's ink, the ballot as a small table */
+#fv .fv-stage[data-stage="done"]{padding:calc(var(--u)*3) 0 calc(var(--u)*1)}
+#fv .fv-stamp{color:var(--fv-ink);border:3px solid currentColor;border-radius:10px;padding:8px 18px 4px;font-size:clamp(26px,3.6vw,38px);
+  background:color-mix(in oklch,var(--fv-a) 8%,var(--panel))}
+#fv .fv-stage[data-stage="done"] .fv-q{margin-top:calc(var(--u)*2.5)}
+#fv .fv-said{margin:calc(var(--u)*2) auto calc(var(--u)*1.5);padding:12px 18px;border-radius:12px;background:var(--panel);
+  border:1px solid var(--rule)}
+#fv .fv-said-k{color:var(--fv-ink);opacity:1}
+#fv .fv-said-v{color:var(--ink)}
+
+/* the way back in: the line under the hero in the league's two colours, its tab a pill of the page's */
+.fv-rule::before{height:3px;background:linear-gradient(90deg,var(--fv-a,var(--league-a,currentColor)) 0 72%,var(--fv-b,var(--league-b,currentColor)) 72% 88%,var(--fv-a,var(--league-a,currentColor)) 88%)}
+.fv-rule-tab{display:inline-flex;align-items:center;gap:8px;bottom:6px;padding:7px 14px;border-radius:999px;
+  background:var(--panel);color:var(--ink);border:1px solid var(--rule-2);box-shadow:0 6px 18px rgba(0,0,0,.12);
+  font:400 10px/1 var(--f-micro);letter-spacing:.08em}
+.fv-rule-tab::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--fv-a,var(--league-a,var(--lume)))}
+
+@media (max-width:720px){
+  #fv{margin:12px 6px 0;--fv-r:16px}
+  #fv .fv-body{padding-bottom:calc(var(--u)*1.75)}
+  #fv .fv-head{padding:10px 56px 10px 14px}
+  #fv .fv-week{margin:0;padding:0;border:0;background:none;font-size:9px;line-height:1.5;color:var(--ink-3)}
+  #fv .fv-x{top:8px;right:8px}
+  #fv .fv-stages{padding:0 calc(var(--u)*1.5)}
+  #fv .fv-ask{margin:calc(var(--u)*2.5) 0 calc(var(--u)*1.5)}
+  #fv .fv-play{padding:calc(var(--u)*1.25)}
+  #fv .fv-go,#fv .fv-skip,#fv .fv-change{min-height:46px}
+  #fv .fv-later,#fv .fv-never{min-height:36px;padding:0 10px;font-size:8.5px;letter-spacing:.05em}
+}
+@media (prefers-reduced-motion:reduce){
+  #fv .fv-x,#fv .fv-nav,#fv .fv-go,#fv .fv-skip,#fv .fv-change,#fv .fv-later,#fv .fv-never{transition:none}
+  #fv .fv-card:hover,#fv .fv-go:not(:disabled):hover{transform:none}
+}
+
+/* THE WINNERS, the same way: the page's pills under them; the ribbon hangs under the card rather than across its foot (a
+   club's name on two lines put its result behind the ribbon) */
+.fvw-sec .fvw{border-radius:16px;border-color:var(--rule)}
+.fvw-sec .fvw-ribbon{bottom:-5%}
+.fvw-sec .fvw-meta{margin-top:calc(var(--u)*3.5)}
+.fvw-sec .fvw-vote{font:700 11px/1 var(--f-ui);letter-spacing:.1em;min-height:44px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 5px rgba(0,0,0,.16),0 6px 16px color-mix(in srgb,var(--fv-a) 30%,transparent)}
+.fvw-sec .fvw-vote.done{background:var(--panel);color:var(--ink);box-shadow:inset 0 0 0 1px var(--rule-2)}
+.fvw-sec .fvw-vote.done:hover{box-shadow:inset 0 0 0 1.5px var(--fv-a)}
+.fvw-sec .fvw-all{font:700 11px/1 var(--f-ui);letter-spacing:.1em;min-height:44px;display:inline-flex;align-items:center}
+.fvw-sec .fvw-vote:focus-visible,.fvw-sec .fvw-all:focus-visible{outline:2px solid var(--fv-a);outline-offset:3px}
