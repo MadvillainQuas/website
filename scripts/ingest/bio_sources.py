@@ -1406,6 +1406,12 @@ NO_BIO = {
                         "(/jatekos/<season>/<nat>/<feed player code>/<slug>) prints height, weight, position and birth YEAR "
                         "(checked 15 Oct 2026) - a by-player-page reader is the way in",
     "hungarian-nb-i-a-women": "as hungarian-nb-i-a (the same site, nat whun)",
+    "la-liga-nacional": "not read yet: the game pages (adapters/lnbar.py) carry no date of birth, height or weight; each "
+                        "player has a page on laliganacional.com.ar (<league>/jugador/<id>/<slug>, linked from the box "
+                        "score) not yet checked for one (15 Oct 2026)",
+    "la-liga-argentina": "as la-liga-nacional (the same site)",
+    "la-liga-femenina": "as la-liga-nacional (the same site)",
+    "liga-desarrollo": "as la-liga-nacional (the same site)",
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).

@@ -185,7 +185,7 @@ raw17 = K.KblAdapter.translate(head.get("game") or {}, head.get("teamrecords") o
                                load("text-cast_S49G01N17.json"), None)
 tr = fiba_translate(raw17)
 fmt = tr["format"]
-cum = lambda p, c: (min(p, fmt["periods"]) - 1) * fmt["period_ms"] + max(0, p - fmt["periods"] - 1) * fmt["ot_ms"] \
+cum = lambda p, c: (min(p, fmt["periods"] + 1) - 1) * fmt["period_ms"] + max(0, p - fmt["periods"] - 1) * fmt["ot_ms"] \
     + ((fmt["period_ms"] if p <= fmt["periods"] else fmt["ot_ms"]) - c)
 on, since, played = [set(tr["starters"][0]), set(tr["starters"][1])], {}, {}
 for side in (0, 1):
