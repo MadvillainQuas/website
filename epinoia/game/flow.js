@@ -24,6 +24,8 @@
      a point       after every score, every field-goal attempt, every turnover
      a run         consecutive points by one side; 8+ is a team momentum run (6+ for a player run),
                    and any player with 6+ inside it is a player run
+     a kill        three of the other side's possessions in a row held scoreless (killsOf, on the
+                   exact possessions of epinoia/possessions.js); a stretch of six is two
 
    THREE THINGS ARE DELIBERATELY NOT COPIED, because they are bugs rather than
    behaviour anybody could want:
@@ -249,7 +251,54 @@ function compute(S) {
   });
   finalize();                                        // the run the game ended on
 
-  return { points, playerRuns, teamRuns, summary: summarise(points), period, lastElapsed, lineups, halves: H };
+  const kills = killsOf(inGameOrder((S && S.events) || [], H), H, teams, lineups);
+  const summary = summarise(points);
+  summary.homeKills = kills.filter(k => k.teamIdx === 0).reduce((a, k) => a + k.kills, 0);
+  summary.awayKills = kills.filter(k => k.teamIdx === 1).reduce((a, k) => a + k.kills, 0);
+  return { points, playerRuns, teamRuns, kills, summary, period, lastElapsed, lineups, halves: H };
+}
+
+/* KILLS (Louie, 2026-10-16: "add kills alongside runs (3+ plays consecutively opposing team held scoreless)"): a
+   side's stretch of KILL or more of the other side's possessions in a row on which it scored nothing - its own
+   possessions in between do not break it, a single point does. Possessions are the exact ones (epinoia/possessions.js:
+   gaining the ball to losing it, an offensive rebound keeps one going), not the 0.96 x ... estimate the charts use.
+   Each three stops in a stretch is a kill: six in a row is two. A stretch still going at the end of a live log counts
+   for what it has. -> [{key, team, teamIdx, stops, kills, points (= stops, for the strip), ownPts, start/end ...}] */
+const KILL = 3;
+function killsOf(evs, H, teams, lineups) {
+  const P = root.EpinoiaPossessions ||
+    (typeof require === 'function' ? (() => { try { return require('../possessions.js'); } catch (_) { return null; } })() : null);
+  if (!P || !P.enumerate || !evs.length) return [];
+  const E = P.enumerate({ events: evs });
+  /* a possession that did nothing (a rebound at the buzzer, the clock run out) is neither a stop nor a score */
+  const poss = E.possessions.filter(p => (p.team === 0 || p.team === 1) &&
+    (p.points > 0 || p.chances.some(ci => E.chances[ci] && E.chances[ci].outcome !== P.OUTCOME.PERIOD)));
+  /* the score after each possession, from the possessions themselves: a clock reading would take in a basket the other
+     side scored in the same second the stretch ended */
+  const cum = [];
+  poss.forEach((p, j) => { const s = j ? cum[j - 1].slice() : [0, 0]; s[p.team] += p.points; cum.push(s); });
+  const fiveAt = (sec, side) => { let on = lineups[0] ? lineups[0].on[side] : []; for (const l of lineups) { if (l.sec <= sec + 1e-9) on = l.on[side]; else break; } return on || []; };
+  const out = [];
+  const build = (d, js) => {
+    const a = poss[js[0]], b = poss[js[js.length - 1]], list = js;
+    const startElapsed = cumEl(a.gainPeriod || a.period, a.gainClock != null ? a.gainClock : a.startClock, H) / 1000;
+    const endPeriod = b.lastPeriod || b.period, endClock = b.lastClock != null ? b.lastClock : b.startClock;
+    const endElapsed = Math.max(startElapsed, cumEl(endPeriod, endClock, H) / 1000);
+    const s0 = js[0] ? cum[js[0] - 1] : [0, 0], s1 = cum[js[js.length - 1]], seconds = endElapsed - startElapsed;
+    const lineupNames = fiveAt(startElapsed, d);
+    return {
+      key: 'k' + (a.startEventId != null ? a.startEventId : out.length), team: (teams[d] && teams[d].name) || '', teamIdx: d,
+      stops: list.length, kills: Math.floor(list.length / KILL), points: list.length, ownPts: s1[d] - s0[d],
+      startPeriod: a.gainPeriod || a.period, startClock: a.gainClock != null ? a.gainClock : a.startClock, endPeriod, endClock,
+      startElapsed, endElapsed, seconds, duration: formatDuration(seconds),
+      startScore: s0[0] + '-' + s0[1], endScore: s1[0] + '-' + s1[1], lineupNames
+    };
+  };
+  const cur = [[], []];
+  const close = d => { if (cur[d].length >= KILL) out.push(build(d, cur[d])); cur[d] = []; };
+  poss.forEach((p, j) => { const d = 1 - p.team; if (p.points > 0) close(d); else cur[d].push(j); });
+  close(0); close(1);
+  return out.sort((x, y) => x.startElapsed - y.startElapsed);
 }
 
 /* renderGameFlowTab's strip: lead changes and runs read off the flow points */
@@ -499,9 +548,12 @@ function runsCharts(F, names, watch) {
     if (b > a) quarters += '<span class="gf-strip-q" style="left:' + ((a + b) / 2).toFixed(2) + '%">' + perLabel(p, F.halves) + '</span>';
   }
 
-  const chart = (runs, kind, emptyText, rowHTML) => {
+  /* lo: the smallest a bar can be (6 points for a run, 3 stops for a kill); kills have no video link */
+  const chart = (runs, kind, emptyText, rowHTML, lo = 6) => {
     if (!runs.length) return '<p class="gf-none">' + emptyText + '</p>';
-    const maxPts = Math.max(7, ...runs.map(r => r.points));             // the biggest run fills the height
+    const maxPts = Math.max(lo + 1, ...runs.map(r => r.points));        // the biggest run fills the height
+    const watchHere = watch && kind !== 'k';
+    const label = r => (kind === 'p' ? r.playerFull + ' ' + r.points + ' pts' : kind === 'k' ? r.team + ' ' + r.stops + ' stops' : r.team + ' ' + dash(r.scoreDiff));
     /* two players can each have 6+ inside ONE team run: same side, same stretch of
        clock. They share its width side by side rather than drawing over each other. */
     const groups = {};
@@ -518,9 +570,9 @@ function runsCharts(F, names, watch) {
       while (row < 2 && rows[row] != null && cx - rows[row] < 5) row++;
       if (row === 2) row = 0;
       rows[row] = cx;
-      const f = 0.3 + 0.7 * Math.min(1, (r.points - 6) / (maxPts - 6));
+      const f = 0.3 + 0.7 * Math.min(1, (r.points - lo) / (maxPts - lo));
       return '<span class="gf-bar ' + (r.teamIdx === 0 ? 'home' : 'away') + '" data-run="' + kind + i + '"' +
-        ' title="' + esc('#' + (i + 1) + '  ' + (kind === 'p' ? r.playerFull + ' ' + r.points + ' pts' : r.team + ' ' + dash(r.scoreDiff)) +
+        ' title="' + esc('#' + (i + 1) + '  ' + label(r) +
                          ' · ' + whenText(r) + ' · ' + dash(r.startScore || '') + (r.startScore ? ' → ' + dash(r.endScore) : '')) + '"' +
         ' style="--x:' + left.toFixed(2) + '%;--w:' + span.toFixed(2) + '%;--f:' + f.toFixed(3) + ';--row:' + row + '">' +
         '<span class="gf-badge">' + (i + 1) + '</span></span>';
@@ -531,7 +583,7 @@ function runsCharts(F, names, watch) {
         '<li class="gf-runrow ' + (r.teamIdx === 0 ? 'home' : 'away') + '" data-run="' + kind + i + '">' +
           '<span class="gf-runno">' + (i + 1) + '</span>' + rowHTML(r) +
           /* WATCH VIDEO: the video tab, on this run, playing from its first basket to its last */
-          (watch ? '<button type="button" class="gf-watch" data-watch="' + esc(r.key) + '" aria-label="' +
+          (watchHere ? '<button type="button" class="gf-watch" data-watch="' + esc(r.key) + '" aria-label="' +
                    esc('Watch run ' + (i + 1) + ' on video') + '">▶ Watch video</button>' : '') +
         '</li>').join('') +
       '</ol>';
@@ -550,8 +602,18 @@ function runsCharts(F, names, watch) {
     score(r) +
     '<span class="gf-runline">On court: ' + esc(r.lineupNames.join(', ')) + '</span>';
 
+  /* a kill: the stops, who made them, how many kills (each three stops), what the side scored meanwhile, the five on the floor */
+  const killRow = r =>
+    '<span class="gf-runbig">' + r.stops + '<small> stops</small></span>' +
+    '<span class="gf-runmain"><b>' + esc(r.team) + '</b><span class="gf-runwhen">' + whenText(r) + ' · ' + r.duration + '</span></span>' +
+    '<span class="gf-runtop"><b>' + r.kills + (r.kills === 1 ? ' kill' : ' kills') + '</b> · scored ' + r.ownPts + ' meanwhile</span>' +
+    score(r) +
+    '<span class="gf-runline">On court: ' + esc(r.lineupNames.join(', ')) + '</span>';
+
   const count = (list, t) => list.filter(r => r.teamIdx === t).length;
   const sideLegend = list => legend('▲ ' + esc(names[0]) + ' (' + count(list, 0) + ')', '▼ ' + esc(names[1]) + ' (' + count(list, 1) + ')');
+  const killsOn = t => (F.kills || []).filter(r => r.teamIdx === t).reduce((a, r) => a + r.kills, 0);
+  const killLegend = legend('▲ ' + esc(names[0]) + ' (' + killsOn(0) + ')', '▼ ' + esc(names[1]) + ' (' + killsOn(1) + ')');
 
   return '<section class="gf-card gf-runs">' +
       '<div class="gf-card-head"><h3 class="gf-title">Player Scoring Runs (6+ consecutive pts)</h3>' + sideLegend(F.playerRuns) + '</div>' +
@@ -560,6 +622,10 @@ function runsCharts(F, names, watch) {
     '<section class="gf-card gf-runs">' +
       '<div class="gf-card-head"><h3 class="gf-title">Team Momentum Runs (8+ consecutive pts by lineup)</h3>' + sideLegend(F.teamRuns) + '</div>' +
       chart(F.teamRuns, 'm', 'No team momentum runs (8+ pts) detected', teamRow) +
+    '</section>' +
+    '<section class="gf-card gf-runs gf-kills">' +
+      '<div class="gf-card-head"><h3 class="gf-title">Kills (3+ consecutive stops: the opponent held scoreless)</h3>' + killLegend + '</div>' +
+      chart(F.kills || [], 'k', 'No kills (3+ consecutive stops) yet', killRow, 3) +
     '</section>';
 }
 
@@ -743,6 +809,8 @@ function render(S) {
       item('Lead Changes', s.leadChanges) +
       item('Biggest ' + esc(firstWord(names[0])) + ' Run', s.biggestHomeRun + '-0', 'gf-home') +
       item('Biggest ' + esc(firstWord(names[1])) + ' Run', '0-' + s.biggestAwayRun, 'gf-away') +
+      item(esc(firstWord(names[0])) + ' Kills', s.homeKills || 0, 'gf-home') +
+      item(esc(firstWord(names[1])) + ' Kills', s.awayKills || 0, 'gf-away') +
       item('Final EPA', signed(s.finalEpa, 1) + ' pts', s.finalEpa >= 0 ? 'gf-home' : 'gf-away') +
       item(esc(firstWord(names[0])) + ' PPP', s.homePPP.toFixed(3), 'gf-home') +
       item(esc(firstWord(names[1])) + ' PPP', s.awayPPP.toFixed(3), 'gf-away') +
