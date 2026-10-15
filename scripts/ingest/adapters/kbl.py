@@ -35,6 +35,16 @@ box keys that player on. Two things decide whether the lineups come out right:
     the announcement of who is on court, not substitutions. The first period's is the starting
     five, which comes from the box score's startFlag instead; a later period's is kept, because the
     matching "sub out" rows after the previous period's end (009) took everybody off;
+  * THE BREAK BETWEEN PERIODS IS ONE CHANGE (2026-10-15). After a period's end (009) the feed takes all ten
+    off (102), announces the ten on court (101) before the next period's start (001), and then makes the
+    period's real changes at its first second, outs first and ins after ("out, out, out, in, in, in").
+    Read row by row, the announcement's ins and the real changes met in one group at the new period's
+    10:00 - three outs and eight ins - and the translator, which pairs a group only when its halves
+    balance, dropped the three players really coming on: Hoon Heo (KCC) was given 13:10 of his 28:38
+    against KT, and every KBL player brought on at a period's first second lost the stint. Now a
+    player both taken off at the end and announced for the next period never left: the two rows
+    cancel. Whoever was really changed in the break goes off at the new period's 10:00, beside the
+    one announced in his place - one balanced change - and the period's own changes pair as they are;
   * m:s is time REMAINING, which is FIBA's own gt.
 There is no running score in the events; the box score's quarter lines give the result.
 
@@ -445,11 +455,15 @@ class KblAdapter(FibaLiveStatsAdapter):
         # finish with nobody on court, so a finished game's substitutions stop at its final buzzer
         ends = [i for i, e in enumerate(rows) if str(e.get("a") or "").zfill(3) == "009"]
         last_end = ends[-1] if (played and ends) else None
+        drop, retime = KblAdapter.break_changes(rows, last_end)
         out, opened = [], False
         for i, e in enumerate(rows):
             a = str(e.get("a") or "").zfill(3)
             if last_end is not None and i > last_end and a in ("101", "102"):
                 continue
+            if i in drop:
+                continue
+            at = rows[retime[i]] if i in retime else e        # a change made in the break: at the new period's start
             if a == "001":
                 opened = True
             spec = ACTIONS.get(a)
@@ -461,8 +475,8 @@ class KblAdapter(FibaLiveStatsAdapter):
             n = int(S.num(e.get("n")))
             team = str(e.get("t") or "")
             teamless = action == "period"
-            ev = {"actionNumber": n, "actionType": action, "period": _period(e.get("q")),
-                  "gt": f"{int(S.num(e.get('m'))):02d}:{int(S.num(e.get('s'))):02d}",
+            ev = {"actionNumber": n, "actionType": action, "period": _period(at.get("q")),
+                  "gt": f"{int(S.num(at.get('m'))):02d}:{int(S.num(at.get('s'))):02d}",
                   "tno": 0 if teamless else side_of.get(team, 0),
                   "pno": "" if teamless or a in TEAM_EVENTS else by_name.get((team, str(e.get("p") or "").strip()), "")}
             if action == "foul":
@@ -478,6 +492,34 @@ class KblAdapter(FibaLiveStatsAdapter):
             out.append({"actionNumber": (out[-1]["actionNumber"] + 1) if out else 1, "actionType": "game",
                         "subType": "end", "period": out[-1]["period"] if out else 4, "gt": "00:00", "tno": 0, "pno": ""})
         return out
+
+    @staticmethod
+    def break_changes(rows: list, last_end: Optional[int]) -> tuple[set, dict]:
+        """The breaks between periods (module docstring): rows to drop - a player taken off at the end
+        and announced again - and {row: announcement row} for one really taken off, whose clock and period
+        become the announcement's (the new period's first second). Only the feed's own shape is touched:
+        an end, its outs, its announcement, the next start; anything else is left as it is."""
+        code = lambda r: str(r.get("a") or "").zfill(3)
+        who = lambda r: (str(r.get("t") or ""), str(r.get("p") or "").strip())
+        drop, retime = set(), {}
+        for k, e in enumerate(rows):
+            if code(e) != "009" or (last_end is not None and k >= last_end):
+                continue
+            j, outs, ins = k + 1, [], []
+            while j < len(rows) and code(rows[j]) == "102":
+                outs.append(j); j += 1
+            while j < len(rows) and code(rows[j]) == "101":
+                ins.append(j); j += 1
+            if not outs or not ins or j >= len(rows) or code(rows[j]) != "001":
+                continue
+            back, gone = {who(rows[i]) for i in ins}, {who(rows[i]) for i in outs}
+            for i in outs:
+                if who(rows[i]) in back:
+                    drop.add(i)
+                else:
+                    retime[i] = ins[0]
+            drop.update(i for i in ins if who(rows[i]) in gone)
+        return drop, retime
 
     def _stints_via_pipeline(self, raw: dict, gid: str, config: dict, team_rows: dict) -> list:
         """A translated feed is built forwards; the scraper's builder reads a real data.json backwards

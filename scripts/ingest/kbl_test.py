@@ -173,5 +173,45 @@ ok("the lineups replay (stints built)", b and len(b.stints or []) > 10, b and le
 a = Offline()
 ok("a game not yet tipped off: no request", a.fetch("S49G01N1", {"_tipoff_at": "2099-10-03T05:00:00Z"}) is None and a.asked == [], a.asked)
 
+# THE BREAK BETWEEN PERIODS IS ONE CHANGE (2026-10-15): Busan KCC 81-87 Suwon KT (S49G01N17, 11 Oct 2026). The changes
+# made at a period's first second ("out, out, out, in, in, in") met the next period's announcement in one group and the
+# players coming on were dropped: Hoon Heo was given 13:10 of the 28:38 the box says. Every player's minutes, replayed
+# from the translated substitutions, now come to the box score's own, to the second.
+print("-- minutes, replayed through the breaks between periods (S49G01N17)")
+from translate.fiba_events import translate as fiba_translate  # noqa: E402
+head = load("match_S49G01N17.json")
+raw17 = K.KblAdapter.translate(head.get("game") or {}, head.get("teamrecords") or {}, load("player-stat_S49G01N17.json"),
+                               {str(r.get("tcode")): r.get("records") or {} for r in load("team-record_S49G01N17.json") if isinstance(r, dict)},
+                               load("text-cast_S49G01N17.json"), None)
+tr = fiba_translate(raw17)
+fmt = tr["format"]
+cum = lambda p, c: (min(p, fmt["periods"]) - 1) * fmt["period_ms"] + max(0, p - fmt["periods"] - 1) * fmt["ot_ms"] \
+    + ((fmt["period_ms"] if p <= fmt["periods"] else fmt["ot_ms"]) - c)
+on, since, played = [set(tr["starters"][0]), set(tr["starters"][1])], {}, {}
+for side in (0, 1):
+    for pid in on[side]:
+        since[pid] = 0
+end = 0
+for ev in tr["events"]:
+    if ev["t"] == "sub":
+        t, now = ev["team"], cum(ev["period"], ev["clock"])
+        o, i = ev["payload"].get("out"), ev["payload"].get("in")
+        if o in since:
+            played[o] = played.get(o, 0) + now - since.pop(o)
+        on[t].discard(o)
+        if i and i not in on[t]:
+            on[t].add(i); since[i] = now
+    if ev["t"] == "game_end":
+        end = cum(ev["period"], ev["clock"])
+for pid, t0 in since.items():
+    played[pid] = played.get(pid, 0) + end - t0
+box_s = lambda txt: (lambda m, s: int(m) * 60 + int(s))(*str(txt or "0:00").split(":"))
+want = {f"{i}:{pno}": box_s(p.get("sMinutes")) for i, k in enumerate(("1", "2")) for pno, p in (raw17["tm"][k].get("pl") or {}).items()}
+off = {pid: (round(played.get(pid, 0) / 1000), s) for pid, s in want.items() if abs(round(played.get(pid, 0) / 1000) - s) > 1}
+ok("every player's minutes are the box score's, to the second (%d players)" % len(want), not off, off)
+heo = next(f"{i}:{pno}" for i, k in enumerate(("1", "2")) for pno, p in raw17["tm"][k]["pl"].items() if str(pno) == "291085")
+ok("...Hoon Heo 28:38, not 13:10", round(played.get(heo, 0) / 1000) == 28 * 60 + 38, played.get(heo))
+ok("...and nothing left unpaired", not [w for w in tr["report"].get("warnings", []) if "unpaired substitution" in w], tr["report"].get("warnings"))
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)
