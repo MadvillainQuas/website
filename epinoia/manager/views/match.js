@@ -1119,6 +1119,10 @@ function screen(host, o) {
   function opposition() {
     const fl = floorAt(vt), mins = minutesAt(Math.min(vt, endOf()));
     const wrap = h('div');
+    /* how they play: their tactics from their own season (app.js styleOf) */
+    let st = null;
+    try { st = A.styleOf ? A.styleOf(clubs[op]) : null; } catch (e) { st = null; }
+    if (st && st.length) wrap.appendChild(h('div.mg-mx-style', h('span.mg-cap', 'How they play'), h('ul', st.map(x => h('li', x)))));
     wrap.appendChild(h('div.hd', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '8px' } }, h('span.mg-cap', 'On the floor'), A.crest(clubs[op], 22)));
     const ul = h('ul.mg-mx-men');
     fl[op].forEach((id, k) => ul.appendChild(manRow(op, id, k, mins[op], true)));
@@ -1541,7 +1545,9 @@ function renderPractice(host, args) {
   });
   p.appendChild(grid);
   host.appendChild(p);
-  function go(i) {
+  async function go(i) {
+    /* the other club's rotation chart first (its real rotation: app.js loadRotation) */
+    try { if (A.readyFor) await A.readyFor(i); } catch (_) { /* its minutes' rotation, this season's tactics */ }
     try { A.startPractice(i, home); A.go('/practice/live'); }
     catch (e) { A.toast('The practice game could not be set up just now: ' + (e && e.message || e), true); }
   }

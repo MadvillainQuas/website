@@ -160,6 +160,25 @@ but only the chosen league is simulated.
 - **A signing with no minutes yet** has no card from his league's file (cards come from minutes played): he plays as
   a replacement-level man at his listed position (`app.js` `loadMine`), and the engine only ever sends on a man with a
   card (2026-10-15: a game froze when a painted lineup held one with none - "a five is missing a player").
+- **Real clubs play like themselves** (Louie, 2026-10-16: "make opposition teams more realistic to their irl
+  counterparts, using their rotation charts, and player stats etc. to alter their own style, tactics"):
+  - *Their rotation chart* (`site.rotation`, `engine.realRotation`): before a game with a real club, its last 10 finals
+    (any competition, so last season covers a young one) are replayed by `rotation.js` into each man's share of every
+    regulation minute, kept a week in the browser. The plan follows it: each man keeps his season's minutes, his chart
+    says when (paced so a closer keeps his minutes for the end), changes every two minutes at most (a coach subs in
+    groups). Checked on ORLEN clubs: every man within a minute of his real minutes a game (the minutes-only plan had
+    one at 36 for a real 25), starters opening and closing the quarters, ~16 changes a game. A club with fewer than 3
+    logged games, or a chart that knows too few of its men, keeps the minutes-only plan.
+  - *Their tactics* (`engine.tacticsOf`): defensive scheme from the shot mix it allows (pack the paint vs funnel to the
+    rim protector; play-by-play splits where readable, else the fitted What wins file), gambling from turnovers forced
+    and steals, crashing from its offensive glass, leaking from how often it runs, its handlers' style from its three
+    appetite - each a z-score against its league's clubs at 0.45 a standard deviation, shrunk by its games, last
+    season's numbers leading while this one is young. Its identity is measured with them on (its totals stay its own);
+    they change how it plays against the reader's five (the paint packed against a five that cannot space, gambles
+    against loose handles, the glass). A small league's are trusted more slowly (z-scores among ten clubs are noisy:
+    the games shrink grows as (14 / clubs)^3 - at full strength CEBL 2026 fell to r 0.83). Validation, tactics on
+    (off): ORLEN 0.973 (0.965), FEB 0.987 (0.987), NBL D1 0.959 (0.963), CEBL 0.913 (0.896).
+  - The Opposition tab says how they play ("Pack the paint", "Gamble for steals", ...).
 - **The play-by-play's clock.** Fast breaks shoot 3.5–7 s in (the length of the floor to cover: at 2 s the live court drew shots from half court), put-backs 2–5 s after the board, set plays late. The
   transition and shot-clock tabs of the box score read it.
 
@@ -426,15 +445,15 @@ times (6,384 games). Each club was built the way the Manager builds it, with its
 
 | League | r (identity) | r (players alone) | Points a game, sim (real) | Home wins, sim (real) |
 |---|---|---|---|---|
-| ORLEN Basket Liga 2025-26 | 0.96 | 0.73 | 85.8 (85.5) | 63% (60%) |
-| Primera FEB 2025-26 | 0.98 | 0.92 | 81.6 (80.9) | 58% (61%) |
-| NBL Division One 2025-26 | 0.97 | 0.77 | 75.2 (75.9) | 59% (58%) |
-| CEBL 2026 | 0.92 | 0.67 | 93.5 (92.7) | 62% (61%) |
+| ORLEN Basket Liga 2025-26 | 0.97 | 0.70 | 86.0 (85.5) | 62% (60%) |
+| Primera FEB 2025-26 | 0.98 | 0.94 | 82.2 (80.9) | 60% (61%) |
+| NBL Division One 2025-26 | 0.96 | 0.77 | 76.1 (75.9) | 59% (58%) |
+| CEBL 2026 | 0.94 | 0.66 | 94.4 (92.7) | 62% (61%) |
 
 Re-run on 2026-10-15 after the position rule (no cost within one position): r 0.949 (0.941 before), points a game
 0.7 from real (0.9), players alone 0.768 (0.789). Then with the ball-screen coverage (every real club's bigs playing
 the coverage their game suits, against the league's own mix): r 0.958, players alone 0.773, points a game 0.6 from
-real; `--no-cover` reproduces the marks before it exactly (the games are seeded).
+real; `--no-cover` reproduces the marks before it exactly (the games are seeded). With the real clubs' tactics (2026-10-16): r 0.964, players alone 0.770, points a game 0.9 from real; `--no-tactics` plays without them.
 
 "r" is the correlation of each club's simulated margin with its real point difference. Run the tool again
 (`node tools/manager-validate.mjs`) whenever the engine changes, and commit the file.

@@ -159,7 +159,15 @@ async function load(L) {
   players.forEach(r => { const c = core.cards.cardOf(r, ref, { share: share.get(String(r.id)) }); if (c) cards.set(String(r.id), c); });
   const named = new Map(rows.map(r => [String(r.playerId), r]));
   const teams = (S.teams || []).map(t => Object.assign({}, t, { meta: teamMeta[t.id] || {} }));
-  return { L, S, rows, named, byId, teamOf, ref, sim, fo, share, slot, range: range || core.value.DEFAULT_RANGE, hasRange: !!range, boosts, priced, attrs, cards, teams, starts,
+  /* THE SEASON BEFORE, for the real clubs' tactics while this one is young (engine.tacticsOf opt.prev): its clubs' rows,
+     read in the background - nothing waits for it but the start of a game */
+  const prevS = Array.isArray(L.seasons) ? L.seasons.find(x => x && x.id !== L.seasonId && x.competitionIds && x.competitionIds.length) : null;
+  const prevP = prevS ? Dd.season(prevS.competitionIds, { rows: false }).then(P => (P && !P.building && Array.isArray(P.teams) ? P.teams : null)).catch(() => null) : Promise.resolve(null);
+  prevP.catch(() => null);
+  /* the opponents' shot mix each club allowed, from the fitted file where the reader has it (tacticsOf opt.fo) */
+  const foDef = new Map();
+  if (fo && Array.isArray(fo.teams)) fo.teams.forEach(t => { const d = t && t.prof && t.prof.def; if (d) { const tot = (+d.mixRim || 0) + (+d.mixMid || 0) + (+d.mix3 || 0); if (tot > 0) foDef.set(String(t.id), { rim: +d.mixRim / tot, three: +d.mix3 / tot }); } });
+  return { L, S, rows, named, byId, teamOf, ref, sim, fo, share, slot, range: range || core.value.DEFAULT_RANGE, hasRange: !!range, boosts, priced, attrs, cards, teams, starts, prevP, foDef,
     budget: core.value.budgetOf(priced, players) };
 }
 /* a player's card for another league: his own league's reference, the strength shift between the two leagues' ranges */
@@ -241,7 +249,34 @@ async function remove(id) { if (LOCAL) return local.remove(id); return rpc('mana
 async function board(leagueId, limit) { if (LOCAL) return local.board(leagueId); return (await rpc('manager_leaderboard', { p_league: leagueId || null, p_limit: limit || 100 })) || []; }
 async function boardLeagues() { if (LOCAL) return local.boardLeagues(); return (await rpc('manager_board_leagues', {})) || []; }
 async function badges(ids) { if (LOCAL) return local.badges(ids || []); return ids && ids.length ? ((await rpc('manager_badges', { p_ids: ids.slice(0, 60) })) || []) : []; }
+/* A REAL CLUB'S ROTATION CHART (Louie, 2026-10-16: "using their rotation charts"): who it had on the floor at each
+   minute of its last ROT_N finals (any competition, the season before too while this one is young: rotation.js over
+   each game's play-by-play, as its club page draws it),
+   per man the share of each regulation minute - read when the reader meets the club, kept a week in this browser.
+   -> {games, rows: [{id, cells: [40], gp, starts}]} or null (too few games, or the logs not there) */
+const ROT_N = 10;
+async function rotation(teamId, compIds) {
+  const R = root.EpinoiaRotation, Dd = D();
+  if (!R || !Dd || !teamId || !compIds || !compIds.length) return null;
+  const key = 'mgr_rot2_' + teamId + '_' + compIds.join('.');
+  try { const c = JSON.parse(root.localStorage.getItem(key) || 'null'); if (c && Date.now() - c.at < 7 * 864e5) return c.v; } catch (_) { /* read it */ }
+  const gs = (await Dd.all(`games?or=(home_team_id.eq.${teamId},away_team_id.eq.${teamId})&status=eq.final` +
+    `&select=id,home_team_id,away_team_id,period,starters,roster_snapshot&order=tipoff_at.desc&limit=${ROT_N}`)) || [];
+  /* the newest ROT_N (the reader pages past a limit: keep it to them, so only their logs are read) */
+  const ok = gs.filter(g => g.roster_snapshot && g.roster_snapshot.teams && Array.isArray(g.starters)).slice(0, ROT_N);
+  if (ok.length < 3) return null;
+  const evs = await Dd.events(ok.map(g => g.id));
+  const byG = {};
+  (evs || []).forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
+  const games = ok.filter(g => (byG[g.id] || []).length > 20).map(g => ({ side: String(g.home_team_id) === String(teamId) ? 0 : 1,
+    model: R.compute({ status: 'final', period: g.period || 4, clockMs: 0, teams: g.roster_snapshot.teams, starters: g.starters, events: byG[g.id] }) }));
+  if (games.length < 3) return null;
+  const M = R.season(games, '');
+  const v = { games: games.length, rows: (M.teams[0].rows || []).filter(r => r.pid != null).map(r => ({ id: String(r.pid), cells: r.cells.map(x => Math.round(x * 100) / 100), gp: r.gp, starts: r.starts })) };
+  try { root.localStorage.setItem(key, JSON.stringify({ at: Date.now(), v })); } catch (_) { /* kept for this visit only */ }
+  return v;
+}
 async function isAdmin() { try { return (await rpc('is_platform_admin', {})) === true; } catch (_) { return false; } }
 
-return { leagues, league, card, formFor, values, setValues, medianRange, clubs, create, save, remove, board, boardLeagues, badges, isAdmin, signedIn, userId, signinHref, rpc, rest, FORM_KEYS, LOCAL };
+return { leagues, league, card, formFor, values, setValues, medianRange, clubs, create, save, remove, board, boardLeagues, badges, isAdmin, signedIn, userId, signinHref, rpc, rest, rotation, FORM_KEYS, LOCAL };
 }));

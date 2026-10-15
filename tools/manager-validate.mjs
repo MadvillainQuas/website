@@ -80,7 +80,11 @@ for (const want of LEAGUES) {
     /* each big's coverage on a ball screen, as the Manager reads it from his game (app.js realTeam; --no-cover: none) */
     const cov = new Map();
     if (!argv.includes('--no-cover')) men.forEach(m => { const v = E.inferCover(cards.get(m.id), ref); if (v !== 'cont') cov.set(m.id, v); });
-    return segs.length ? { id: t.id, segs, cards, row: t, cov } : null;
+    /* its tactics from its own season (engine.tacticsOf; --no-tactics: none), on every stretch of its rotation */
+    const tac = argv.includes('--no-tactics') ? null : E.tacticsOf(t, T);
+    const plain = segs.map(sg => Object.assign({}, sg));
+    if (tac) segs.forEach(sg => { sg.tac = Object.assign({}, sg.tac || {}, tac); });
+    return segs.length ? { id: t.id, segs, plain, cards, row: t, cov } : null;
   }).filter(Boolean);
   clubs.forEach(t => { t.identity = E.identityOf(t, t.row, X); });
   const run = withId => {
@@ -89,7 +93,8 @@ for (const want of LEAGUES) {
     for (const H of clubs) for (const A of clubs) {
       if (H === A) continue;
       for (let r = 0; r < REPS; r++) {
-        const h = withId ? H : Object.assign({}, H, { identity: null }), a = withId ? A : Object.assign({}, A, { identity: null });
+        /* from the players alone: nothing of the club - no identity, no tactics */
+        const h = withId ? H : Object.assign({}, H, { identity: null, segs: H.plain }), a = withId ? A : Object.assign({}, A, { identity: null, segs: A.plain });
         const res = ENGINE === 'stretch' ? E.play(h, a, Object.assign({}, X, { seed: E.hashOf(H.id + A.id + r), home: 1 }))
           : MT.play(h, a, X, { seed: E.hashOf(H.id + A.id + r), home: 1 });
         const dm = res.pts[0] - res.pts[1];

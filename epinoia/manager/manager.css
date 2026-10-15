@@ -820,6 +820,9 @@ html[data-theme="light"] .mg-spot .lab > b{ text-shadow:0 1px 6px rgba(255,255,2
 .mg-mixbar{ display:flex; width:74%; height:5px; border-radius:3px; overflow:hidden; background:var(--mg-glass) }
 .mg-mixbar i{ display:block; height:100% }
 .mg-mixbar .rim, .mg-legend .mix .rim{ background:var(--mg-zr) } .mg-mixbar .mid, .mg-legend .mix .mid{ background:var(--mg-zm) } .mg-mixbar .three, .mg-legend .mix .three{ background:var(--mg-z3) }
+/* how the opposition plays (views/match.js opposition, app.js styleOf) */
+.mg-mx-style{ margin:0 0 12px; padding:9px 11px; border-radius:11px; background:var(--mg-glass); border:1px solid var(--mg-edge) }
+.mg-mx-style ul{ margin:6px 0 0; padding-left:17px; font-size:12.5px; line-height:1.45; color:var(--mg-ink-2) }
 /* THE FIVE LAID OUT (views/tactics.js fitCourt): the spot is the disc's centre; the disc sits on it, the nameplate (FM's
    player tile) on whichever side is clear, placed in pixels once the court is measured */
 .mg-court.dots{ --plate:clamp(122px, 17%, 156px) }

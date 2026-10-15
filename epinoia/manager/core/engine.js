@@ -248,6 +248,65 @@ function applyIdentity(side, edits, L) {
   });
   return { off, def };
 }
+/* A REAL CLUB'S TACTICS, FROM ITS OWN SEASON (Louie, 2026-10-16: "make opposition teams more realistic to their irl
+   counterparts, using their rotation charts, and player stats etc. to alter their own style, tactics"): each slider from
+   how far its numbers stand from its league's clubs' (z-scores, TAC_K a standard deviation, as far as its games go):
+     scheme    what its opponents shoot - a club that gives up threes and keeps them off the rim packs the paint (no paint
+               touches), one that gives up the rim and runs shooters off the line funnels to its protector
+     gamble    the turnovers it forces
+     crash     its offensive glass
+     leak      how often it runs (less for a club that crashes)
+     handlers  its appetite for threes, its handlers' pull-ups against their drives
+   Its identity (identityOf) is measured with them on, so its totals stay its own; what they change is how it plays
+   against whom it meets: the paint packed against a five that cannot space, the gambles against loose handles, the glass */
+const TAC_K = 0.45, TAC_PREV = 0.6, TAC_PREV_GP = 20;
+/* opt.prev {row, rows}: the club's season before (a young season is two games: last season's numbers lead, its own take
+   over as it goes - last season's games counting TAC_PREV each, at most TAC_PREV_GP of them); opt.fo {def: Map id ->
+   {rim, three}}: its opponents' shot mix from the fitted What wins file where the reader has it (the play-by-play splits
+   behind evd_* are members' data) */
+function tacticsOf(row, rows, opt) {
+  opt = opt || {};
+  const num = v => (v == null || v === '' || !isFinite(+v) ? null : +v);
+  const zIn = (r, list, k, ok) => {
+    if (!r || !ok) return null;
+    const v = num(r[k]); if (!isNum(v)) return null;
+    const vs = (list || []).filter(x => x && +x.gp > 0).map(x => num(x[k])).filter(isNum); if (vs.length < 6) return null;
+    const mu = vs.reduce((a, x) => a + x, 0) / vs.length, sd = Math.sqrt(vs.reduce((a, x) => a + (x - mu) * (x - mu), 0) / vs.length);
+    return sd > 1e-9 ? clamp((v - mu) / sd, -2.5, 2.5) : null;
+  };
+  const cur = row && +row.gp > 0 ? row : null, P = opt.prev && opt.prev.row && +opt.prev.row.gp > 0 ? opt.prev : null;
+  if (!cur && !P) return null;
+  const gC = cur ? +cur.gp : 0, gP = P ? TAC_PREV * Math.min(TAC_PREV_GP, +P.row.gp) : 0;
+  /* a number from both seasons, each by its games */
+  const both = (k, okC, okP) => {
+    const a = zIn(cur, rows, k, okC), b = P ? zIn(P.row, P.rows, k, okP) : null;
+    const wa = a == null ? 0 : gC, wb = b == null ? 0 : gP;
+    return wa + wb > 0 ? { z: ((a || 0) * wa + (b || 0) * wb) / (wa + wb), g: wa + wb } : { z: 0, g: 0 };
+  };
+  /* a z-score among few clubs is a noisy one: a small league's tactics are trusted more slowly (10 clubs: about three
+     times the games; 14 or more: its identity's) - CEBL 2026's ten clubs on twelve games were made worse by them */
+  const nClubs = (rows || []).filter(x => x && +x.gp > 0).length || 14, KG = IDENTITY_K * Math.max(1, Math.pow(14 / Math.max(6, nClubs), 3));
+  const shrink = x => x.z * x.g / (x.g + KG);
+  const evdC = cur && (+cur.evd_gp || 0) >= 5, evdP = P && (+P.row.evd_gp || 0) >= 5, evC = cur && (+cur.ev_gp || 0) >= 5, evP = P && (+P.row.ev_gp || 0) >= 5;
+  let rimA = both('evd_all_rim_sh', evdC, evdP), thrA = both('evd_all_p3_sh', evdC, evdP);
+  /* the fitted file's defensive mix (this season's), where the play-by-play splits are not there to the reader */
+  if (!rimA.g && opt.fo && opt.fo.def && cur && opt.fo.def.has(String(cur.id))) {
+    const list = [...opt.fo.def.values()], zf = (k, v) => { const vs = list.map(x => x[k]).filter(isNum); const mu = vs.reduce((a, x) => a + x, 0) / vs.length, sd = Math.sqrt(vs.reduce((a, x) => a + (x - mu) * (x - mu), 0) / vs.length); return sd > 1e-9 ? clamp((v - mu) / sd, -2.5, 2.5) : 0; };
+    const d = opt.fo.def.get(String(cur.id));
+    if (list.length >= 6 && isNum(d.rim) && isNum(d.three)) { rimA = { z: zf('rim', d.rim), g: gC }; thrA = { z: zf('three', d.three), g: gC }; }
+  }
+  const tov = both('dff_tov', true, true), stl = both('spg', true, true), oreb = both('ff_oreb', true, true), tr = both('ev_transition_freq', evC, evP), p3 = both('p3_share', true, true);
+  const gam = { z: (tov.z + stl.z) / 2, g: Math.max(tov.g, stl.g) };
+  const t = {
+    scheme: clamp(TAC_K * 0.5 * (shrink(thrA) - shrink(rimA)), -1, 1),
+    gamble: clamp(TAC_K * shrink(gam), 0, 1),
+    crash: clamp(TAC_K * shrink(oreb), 0, 1),
+    leak: clamp(TAC_K * (shrink(tr) - 0.5 * Math.max(0, shrink(oreb))), 0, 1),
+    handlers: clamp(0.3 * shrink(p3), -1, 1)
+  };
+  Object.keys(t).forEach(k => { t[k] = Math.round(t[k] * 100) / 100; });
+  return t;
+}
 function identityOf(team, row, X) {
   if (!row || !(+row.gp > 0)) return null;
   const S = SIM(), G = X.G || 40, zones = !!X.L.zones, mu = X.L.rates;
@@ -1112,6 +1171,54 @@ function paintOf(lineups, G) {
    capped at 90% of it); a position with nobody borrows the next one's second man; then each position's men laid on the
    clock, the starter opening and closing each quarter, the others in the middle by their minutes.
    players: [{id, mpg, share: [5]}] -> [{t0, t1, ids}] */
+/* A REAL CLUB'S ROTATION FROM ITS ROTATION CHART (Louie, 2026-10-16: "using their rotation charts"): rows [{id, cells:
+   [40 shares of each regulation minute, averaged over its recent games]}] (rotation.js season), players [{id, mpg, share}]
+   (its men now). Each man keeps his season's minutes (his quota); the chart says WHEN he plays them - the minute by minute
+   five is the men whose share of that minute is highest, pressed by the quota each still has to play (so a backup who
+   comes in at a different moment each game, never in the top five of any one minute, still gets his minutes), the five
+   on the floor kept a little (a change is a substitution: stretches, not a man in and out every minute). A man the chart
+   does not know (a signing since) plays where autoRotation (base) has him. The five in position order (point to centre,
+   by where his minutes are). -> [{t0, t1, ids}] or [] */
+function realRotation(rows, players, G, base) {
+  G = G || 40;
+  const men = (players || []).filter(p => p && p.mpg > 0).map(p => ({ id: String(p.id), mpg: Math.min(0.9 * G, p.mpg), share: Array.isArray(p.share) ? p.share : [0.2, 0.2, 0.2, 0.2, 0.2] }));
+  if (men.length < 5) return [];
+  const cellsOf = new Map((rows || []).filter(r => r && Array.isArray(r.cells)).map(r => [String(r.id), r.cells]));
+  const known = men.filter(p => cellsOf.has(p.id));
+  if (known.length < 5 || known.reduce((a, p) => a + p.mpg, 0) < 0.6 * 5 * G) return [];
+  const baseAt = m => { const sg = (base || []).find(x => x.t0 <= m + 0.5 && m + 0.5 < x.t1); return sg ? sg.ids.map(String) : []; };
+  /* each minute's pull: his chart's share of it; a man it does not know, the base plan's minute */
+  const pull = (p, m) => { const c = cellsOf.get(p.id); return c ? (+c[Math.min(c.length - 1, m)] || 0) : (baseAt(m).includes(p.id) ? 0.6 : 0); };
+  /* HIS PACE: by each minute, the share of his minutes his chart puts before it (a closer keeps his for the end) - a man
+     behind it is pulled on, one ahead of it held back */
+  const used = new Map(men.map(p => [p.id, 0]));
+  const due = new Map(men.map(p => { const c = Array.from({ length: G }, (_, m) => Math.max(0.02, pull(p, m))), tot = c.reduce((a, v) => a + v, 0); let run = 0; return [p.id, c.map(v => (run += v) / tot * p.mpg)]; }));
+  const posOf = p => p.share.reduce((a, v, k) => a + v * k, 0) / Math.max(1e-9, p.share.reduce((a, v) => a + v, 0));
+  let on = [];
+  const fives = [];
+  /* a change at most every BLOCK minutes (a coach subs at moments, in groups: no one-minute cameos) */
+  const BLOCK = 2;
+  for (let m0 = 0; m0 < G; m0 += BLOCK) {
+    const w = Math.min(BLOCK, G - m0), mid = Math.min(G - 1, m0 + w - 1);
+    const sc = men.map(p => {
+      let pl = 0; for (let m = m0; m < m0 + w; m++) pl += pull(p, m);
+      const behind = due.get(p.id)[mid] - used.get(p.id), over = used.get(p.id) + w - p.mpg;
+      return { p, s: pl / w + 0.45 * clamp(behind, -2.5, 2.5) + (on.includes(p.id) ? 0.18 : 0) - (over > 1 ? 2 : 0) };
+    }).sort((a, b) => b.s - a.s || b.p.mpg - a.p.mpg);
+    const five = sc.slice(0, 5).map(x => x.p);
+    five.forEach(p => used.set(p.id, used.get(p.id) + w));
+    on = five.map(p => p.id);
+    const ids = five.slice().sort((a, b) => posOf(a) - posOf(b)).map(p => p.id);
+    for (let m = m0; m < m0 + w; m++) fives.push(ids);
+  }
+  const segs = [];
+  fives.forEach((ids, m) => {
+    const last = segs[segs.length - 1];
+    if (last && last.ids.slice().sort().join() === ids.slice().sort().join()) last.t1 = m + 1;
+    else segs.push({ t0: m, t1: m + 1, ids });
+  });
+  return segs;
+}
 function autoRotation(players, G, o) {
   G = G || 40;
   const max = (o && o.max) || 11;
@@ -1654,6 +1761,6 @@ function pbp(stretches, trace, X, G, R, RT) {
   return { box: out, events, poss };
 }
 
-return { use, sim: () => SIM(), styleOf, sideOf, handlerWeights, applyIdentity, insKey, INS, INS_MIX, HANDLER, rotation, paintOf, autoRotation, overlay, minutesOf, mixRates, interact, inferCover, coverQ, coverMix, coverage, COV_MIX, play, preview, pbp, leagueOf, identityOf, normTac, tacKey, rng, hashOf, fatigueLoad,
+return { use, sim: () => SIM(), styleOf, sideOf, handlerWeights, applyIdentity, insKey, INS, INS_MIX, HANDLER, rotation, paintOf, autoRotation, overlay, minutesOf, mixRates, interact, inferCover, coverQ, coverMix, coverage, COV_MIX, tacticsOf, realRotation, play, preview, pbp, leagueOf, identityOf, normTac, tacKey, rng, hashOf, fatigueLoad,
   TACTICS, SLOTS, KAPPA, FATIGUE, FORM, OOP, SYN, SHIFT, DR, USG_FLOOR, SKILL_L, PPP_LOGIT, FALLBACK_L, IDENTITY_K, HCA_PER, ROLEK, roleNotes };
 }));

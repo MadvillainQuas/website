@@ -217,7 +217,7 @@ function render(host) {
         A.store('mgr_net_pending', JSON.stringify(st.pool || []));
         A.keepPending(club);
         close();
-        A.lg = null; A.identity = new Map(); A.news = [];
+        A.lg = null; A.identity = new Map(); A.tactics = new Map(); A.rotations = new Map(); A.news = [];
         await A.openClub(club);
         A.go('/squad');
       } catch (e) {

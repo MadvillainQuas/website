@@ -423,6 +423,29 @@ const teamObj = (T, extra) => Object.assign({ id: T.id, segs: E.autoRotation(T.m
   }
   ok('match: no event is ever timed after the engine clock, and none runs backwards (20 games)', ahead === 0 && back === 0 && n > 2000, { ahead, back, n });
 }
+/* REAL CLUBS, AS THEY PLAY (Louie, 2026-10-16: "make opposition teams more realistic to their irl counterparts, using their
+   rotation charts, and player stats etc. to alter their own style, tactics") */
+{
+  /* the rotation chart: starters open and close each quarter, the bench comes in the middle, every man near his minutes */
+  const st = ['a', 'b', 'c', 'd', 'e'], bn = ['f', 'g', 'h', 'i'];
+  const cellsOf = id => Array.from({ length: 40 }, (_, m) => { const q = m % 10; return st.includes(id) ? (q < 6 || q >= 8 ? 0.85 : 0.25) : id === 'i' ? (m % 7 === 3 ? 0.3 : 0.05) : (q >= 5 && q < 9 ? 0.45 : 0.08); });
+  const mp = { a: 30, b: 28, c: 27, d: 26, e: 24, f: 20, g: 18, h: 15, i: 12 };
+  const pl = Object.keys(mp).map((id, k) => ({ id, mpg: mp[id], share: [0, 1, 2, 3, 4].map(j => (j === k % 5 ? 1 : 0)) }));
+  const segs = E.realRotation(st.concat(bn).map(id => ({ id, cells: cellsOf(id) })), pl, 40, null), mins = {};
+  segs.forEach(sg => sg.ids.forEach(id => { mins[id] = (mins[id] || 0) + sg.t1 - sg.t0; }));
+  const at = m => (segs.find(sg => sg.t0 <= m && m < sg.t1) || {}).ids || [];
+  ok('real clubs: the rotation chart makes the plan - starters open every quarter, each man within 4.5 minutes of his own, every minute five men, stretches not flickers',
+    [0, 10, 20, 30].every(m => st.every(id => at(m).includes(id))) && Object.keys(mp).every(id => Math.abs((mins[id] || 0) - mp[id]) <= 4.5)
+      && segs.every(sg => sg.ids.length === 5 && new Set(sg.ids).size === 5) && segs.length >= 6 && segs.length <= 30, { segs: segs.length, mins });
+  ok('real clubs: a chart that knows too few of the men now is not used (their minutes make the rotation)', E.realRotation([{ id: 'a', cells: cellsOf('a') }], pl, 40, null).length === 0);
+  /* the tactics: from its numbers against its league's, last season leading while this one is young */
+  const mk = (i, gp) => ({ id: 't' + i, gp, ev_gp: gp, evd_gp: gp, evd_all_rim_sh: 30 + i, evd_all_p3_sh: 40 - i, dff_tov: 12 + i * 0.3, spg: 6 + i * 0.3, ff_oreb: 25 + i, ev_transition_freq: 14 + i * 0.5, p3_share: 38 + i });
+  const cur = Array.from({ length: 10 }, (_, i) => mk(i, 2)), prev = Array.from({ length: 10 }, (_, i) => mk(i, 30));
+  const young = E.tacticsOf(cur[9], cur), withPrev = E.tacticsOf(cur[9], cur, { prev: { row: prev[9], rows: prev } }), packer = E.tacticsOf(prev[0], prev), runner = E.tacticsOf(prev[9], prev);
+  ok('real clubs: tactics from their own numbers - a club that keeps you off the rim packs the paint, one that forces turnovers gambles, one that rebounds crashes',
+    packer.scheme > 0.2 && runner.scheme < -0.2 && runner.gamble > 0.2 && runner.crash > 0.2 && packer.gamble === 0, { packer, runner });
+  ok('real clubs: two games say little - last season leads until this one has its games', Math.abs(young.gamble) < 0.12 && withPrev.gamble > 2 * young.gamble, { young, withPrev });
+}
 /* ---------------------------------------------------------------- the match, possession by possession --- */
 /* core/match.js (Louie, 2026-10-14: live games "where the user can change team instructions, make subs etc. to change the
    game"): every game is played by the men on the floor at that moment, and every change is the game's from then on */

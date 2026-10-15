@@ -56,7 +56,7 @@ const A = {
   h, nm, fmt, pct, money, SLOTS, slotOf, stored, store,
   signedIn: false, clubs: [], club: null, lg: null, ext: new Map(),
   mine: { cards: new Map(), rows: new Map(), league: new Map() },
-  identity: new Map(), news: [], views: {}, route: { name: 'home', args: [], q: new URLSearchParams() }
+  identity: new Map(), tactics: new Map(), rotations: new Map(), news: [], views: {}, route: { name: 'home', args: [], q: new URLSearchParams() }
 };
 Mgr.app = A;
 
@@ -171,7 +171,7 @@ A.go = path => { if (location.hash === '#' + path) route(); else location.hash =
 async function switchClub(id) {
   const c = id === 'pending' ? A.pendingClub() : A.clubs.find(x => x.id === id);
   if (!c) return;
-  A.lg = null; A.mine = { cards: new Map(), rows: new Map(), league: new Map() }; A.identity = new Map(); A.news = [];
+  A.lg = null; A.mine = { cards: new Map(), rows: new Map(), league: new Map() }; A.identity = new Map(); A.tactics = new Map(); A.rotations = new Map(); A.news = [];
   A.loading('Opening ' + c.name + '…');
   await openClub(c);
   A.go('/');
@@ -184,6 +184,8 @@ async function openClub(club) {
   if (!L) { A.lgError = 'This club’s league cannot be read just now.'; return; }
   A.loading('Reading ' + L.name + '…');
   A.lg = await site().league(L);
+  /* the season before, when it lands: the real clubs' tactics (and their identity with them) made again with it */
+  if (A.lg && A.lg.prevP) { const lg0 = A.lg; lg0.prevP.then(rows => { if (rows && A.lg === lg0) { lg0.prevTeams = rows; A.tactics.clear(); A.identity.clear(); } }); }
   /* the coverage its bigs play on ball screens, on their minutes: what its clubs' numbers already hold (engine.coverMix) */
   try { A.lg.covMix = Mgr.engine.coverMix(A.lg.S.players, A.lg.cards, A.lg.ref); } catch (_) { A.lg.covMix = null; }
   await loadMine();
@@ -290,9 +292,31 @@ function realTeam(tid, form) {
   const starters = st ? [...st.entries()].map(([id, w]) => [idOf(String(id)), w]).filter(([id]) => have.has(id)).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([id]) => id) : null;
   let segs = Mgr.engine.autoRotation(list, 40, { starters });
   if (!segs.length) { list = list.concat([0, 1, 2, 3, 4].map(fill)); segs = Mgr.engine.autoRotation(list, 40, { starters }); }
+  /* ITS TACTICS FROM ITS OWN SEASON (engine.tacticsOf, Louie 2026-10-16: opposition "more realistic to their irl
+     counterparts"): how it defends, gambles, crashes, runs and shoots, on every stretch of its rotation - and its identity
+     measured with them on, so its totals stay its own */
+  if (!A.tactics.has(tid)) {
+    let tc = null;
+    try { const pr = lg.prevTeams ? lg.prevTeams.find(t => String(t.id) === tid) : null; tc = Mgr.engine.tacticsOf(T, lg.teams, { prev: pr ? { row: pr, rows: lg.prevTeams } : null, fo: lg.foDef && lg.foDef.size ? { def: lg.foDef } : null }); } catch (_) { tc = null; }
+    A.tactics.set(tid, tc);
+  }
+  const tac = A.tactics.get(tid);
+  const withTac = sg => (tac ? sg.map(x => Object.assign({}, x, { tac: Object.assign({}, x.tac || {}, tac) })) : sg);
+  /* ITS REAL ROTATION (its rotation chart: A.loadRotation, read before a game with it) - when it is there, who plays when
+     follows the club's own games; each man still at his season's minutes */
+  const rot = A.rotations.get(tid);
+  if (rot && rot.rows && rot.rows.length) {
+    try { const rr = Mgr.engine.realRotation(rot.rows.map(r => Object.assign({}, r, { id: idOf(String(r.id)) })), list, 40, segs); if (rr.length) segs = rr; } catch (_) { /* its minutes' rotation */ }
+  }
+  segs = withTac(segs);
   if (!A.identity.has(tid)) {
     let id = null;
-    try { const full = Mgr.engine.autoRotation(all.map(men), 40, { starters: st ? [...st.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([x]) => String(x)) : null }); if (full.length) id = Mgr.engine.identityOf({ id: tid, segs: full, cards: lg.cards }, T, X()); } catch (_) { id = null; }
+    try {
+      let full = Mgr.engine.autoRotation(all.map(men), 40, { starters: st ? [...st.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([x]) => String(x)) : null });
+      if (rot && rot.rows && rot.rows.length) { const rr = Mgr.engine.realRotation(rot.rows, all.map(men), 40, full); if (rr.length) full = rr; }
+      full = withTac(full);
+      if (full.length) id = Mgr.engine.identityOf({ id: tid, segs: full, cards: lg.cards }, T, X());
+    } catch (_) { id = null; }
     A.identity.set(tid, id);
   }
   /* the coverage each of its bigs plays on a ball screen, read from his game (engine.inferCover: a rim protector drops,
@@ -320,6 +344,40 @@ function myTeam(form) {
   A.mine.cards.forEach((c, id) => { const v = Mgr.engine.inferCover(c, A.lg.ref); if (v !== 'cont') cov.set(id, v); });
   return { id: 'me', segs, cards: A.mine.cards, form, ins: A.insMap(), bench: [...A.mine.cards.keys()], cov };
 }
+/* HOW A REAL CLUB PLAYS, in words (its tactics from its own season: engine.tacticsOf) - for the match screen's Opposition
+   tab, so the reader can plan against it */
+/* A REAL CLUB'S ROTATION CHART, read once a visit (site.rotation: its last games' play-by-play, kept a week in the
+   browser) before a game with it; its identity measured again with it */
+/* before a game with real club i: its rotation chart and the season before (for its tactics), a few seconds at most */
+A.readyFor = i => Promise.all([A.loadRotation(i), A.lg && A.lg.prevP ? Promise.race([A.lg.prevP, new Promise(res => setTimeout(res, 6000))]) : null]).catch(() => null);
+A.loadRotation = async i => {
+  const id = A.club && A.club.state ? A.club.state.clubs[i] : null;
+  if (id == null || id === 'me' || !A.lg || !site().rotation) return null;
+  const tid = String(id);
+  if (A.rotations.has(tid)) return A.rotations.get(tid);
+  let v = null;
+  try { v = await Promise.race([site().rotation(tid, A.lg.L.competitionIds || []), new Promise(res => setTimeout(() => res(undefined), 9000))]); } catch (_) { v = null; }
+  if (v === undefined) return null;
+  A.rotations.set(tid, v || null);
+  if (v) A.identity.delete(tid);
+  return v;
+};
+A.styleOf = i => {
+  const id = A.club && A.club.state ? A.club.state.clubs[i] : null;
+  if (id == null || id === 'me') return null;
+  if (!A.tactics.has(String(id))) { try { A.teamObj(i, null); } catch (_) { return null; } }
+  const t = A.tactics.get(String(id));
+  if (!t) return null;
+  const out = [];
+  if (t.scheme >= 0.15) out.push('Pack the paint: they keep you off the rim and give up threes');
+  else if (t.scheme <= -0.15) out.push('Funnel drives to their rim protector and stay home on shooters');
+  if (t.gamble >= 0.15) out.push('Gamble for steals: loose handles pay for it');
+  if (t.crash >= 0.15) out.push('Crash the offensive glass');
+  if (t.leak >= 0.15) out.push('Push in transition: get back');
+  if (t.handlers >= 0.12) out.push('Their handlers hunt pull-up threes');
+  else if (t.handlers <= -0.12) out.push('Their handlers attack the rim');
+  return out.length ? out : ['Nothing far from the league’s middle: they play it straight'];
+};
 A.teamObj = (i, form) => { const id = A.club.state.clubs[i]; return id === 'me' ? myTeam(form) : realTeam(String(id), form); };
 A.X = X;
 
@@ -430,6 +488,7 @@ A.startMatch = async mode => {
   if (!md || S.live) return null;
   const r = md.r, f = md.f, now = Date.now();
   A.loading(mode === 'live' ? 'Getting the game ready…' : 'Playing the game…');
+  await Promise.all([A.readyFor(f.h), A.readyFor(f.a)]);
   const form = formOfRound(S, r, await formLines(S, [r], now), now);
   /* the round's other games, now */
   const ctx = ctxOf(form, x => x === f);
