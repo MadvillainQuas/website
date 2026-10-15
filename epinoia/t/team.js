@@ -569,7 +569,7 @@ function frontOfficeTab(team) {
    appears in their hub the moment they do (with a membership that opens it). Nothing is drawn for anybody else. */
 async function frontOfficeShare(team) {
   const host = $('#foshare');
-  const sb = window.epinoiaClient && window.epinoiaClient();
+  const sb = window.epinoiaSignedClient ? await window.epinoiaSignedClient() : (window.epinoiaClient && window.epinoiaClient());
   if (!host || !sb) return;
   try {
     const { data: { session } } = await sb.auth.getSession();
@@ -2696,7 +2696,7 @@ async function roster(team) {
   /* May this viewer edit? The database is asked, not assumed — and a viewer
      who is not signed in never even makes the request. */
   let canEdit = false;
-  const sb = window.epinoiaClient && window.epinoiaClient();
+  const sb = window.epinoiaSignedClient ? await window.epinoiaSignedClient() : (window.epinoiaClient && window.epinoiaClient());
   if (sb) {
     try {
       const { data: { session } } = await sb.auth.getSession();

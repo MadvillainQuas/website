@@ -1428,7 +1428,10 @@ async function rapmRemote(key) {
 async function rapmKeep(key, map, games) {
   const m = [...map].map(([id, v]) => [id, r1(v.orapm), r1(v.drapm)]);
   root.__rpRapm = { key, games, m };
-  const c = typeof root.epinoiaClient === 'function' ? root.epinoiaClient() : null;
+  /* the SDK on demand where the page did not load it (the club page, 2026-10-15) */
+  let c = null;
+  try { c = typeof root.epinoiaClientReady === 'function' ? await root.epinoiaClientReady() : typeof root.epinoiaClient === 'function' ? root.epinoiaClient() : null; }
+  catch (_) { c = null; }
   if (!c || !c.from) return false;
   try { const { error } = await c.from('report_rapm').upsert({ key, games, m, computed_at: new Date().toISOString() }, { onConflict: 'key' }); return !error; }
   catch (_) { return false; }

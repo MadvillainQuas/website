@@ -405,7 +405,7 @@ function editor(team, c, sb, onSaved) {
    The SDK client carries the token; the bare fetch is the signed-out path and
    the fallback for a page that never loaded the SDK. */
 async function readContact(team, cfg) {
-  const sb = window.epinoiaClient && window.epinoiaClient();
+  const sb = window.epinoiaSignedClient ? await window.epinoiaSignedClient() : (window.epinoiaClient && window.epinoiaClient());
   if (sb) {
     const { data, error } = await sb.rpc('team_contact', { p_team: team.id });
     if (error) throw new Error(error.message);

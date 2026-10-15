@@ -605,6 +605,16 @@ window.epinoiaClientReady = async function () {
   return window.epinoiaClient();
 };
 
+/* THE CLIENT FOR WHOEVER MIGHT BE SIGNED IN (2026-10-15): null at once for a reader with no session on file (no SDK
+   fetched), else the SDK loaded on demand and its client. For a page that no longer loads the SDK up front (the club
+   page: its 55 KB tag held every read of the page back by about three seconds), in place of the synchronous
+   epinoiaClient() an editing control used to ask. */
+window.epinoiaSignedClient = async function () {
+  if (window.__sb) return window.__sb;
+  if (typeof window.epinoiaMaybeSignedIn === 'function' && !window.epinoiaMaybeSignedIn()) return null;
+  return window.epinoiaClientReady();
+};
+
 /* Which transport should a page use? ?mode= wins, then the key's presence. */
 window.epinoiaMode = function () {
   const q = new URLSearchParams(location.search).get('mode');
