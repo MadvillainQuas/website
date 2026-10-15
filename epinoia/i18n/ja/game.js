@@ -407,7 +407,10 @@
       'On the newsdesk': 'ニュースデスク',
       'the storylines this game touches': 'この試合に関わるストーリーライン',
       'every storyline in the league ↗': 'リーグのすべてのストーリーライン ↗',
-      'full play-by-play starting - within half a minute': 'テキスト速報を開始中（30秒以内）'
+      'full play-by-play starting - within half a minute': 'テキスト速報を開始中（30秒以内）',
+      'Kills (3+ consecutive stops: the opponent held scoreless)': 'Kills（3回以上連続のストップ：相手を無得点に抑える）',
+      'No kills (3+ consecutive stops) yet': 'Kills（3回以上連続のストップ）はまだありません',
+      'stops': 'ストップ'
     },
 
     ctx: {
@@ -590,6 +593,10 @@
       [/^On court: (.+)$/, 'コート上: $1'],
       [/^Watch run (\d+) on video$/, 'ラン$1を動画で見る'],
       [/^Biggest (.+) Run$/, '$1の最大ラン'],
+      [/^#(\d+)\s+(.+) (\d+) stops$/, '#$1 $2 $3ストップ'],
+      [/^(.+) Kills$/, '$1のKills'],
+      [/^(\d+) kills?$/, '$1 Kill'],
+      [/^scored (\d+) meanwhile$/, 'その間$1得点'],
       [/^TO: ([+-]?\d+)$/, 'TO: $1'],
       [/^OREB: ([+-]?\d+)$/, 'OR: $1'],
       [/^eFG%: ([+-]?[\d.]+)$/, 'EFG%: $1'],

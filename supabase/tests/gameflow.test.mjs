@@ -98,10 +98,53 @@ console.log('\nthe flow points, worked out by hand');
      R.points.length === 10 && R.points[0].homePoints === 2 && R.summary.leadChanges === 2);
 }
 
+/* ---- kills: three of the other side's possessions in a row held scoreless ---- */
+console.log('\nkills, worked out by hand');
+{
+  const K = { teams: S.teams, starters: S.starters, events: [] };
+  let q = 0;
+  const kv = (t, team, pid, clock, extra) => K.events.push(Object.assign({ seq: ++q, t, team, pid, period: 1, clock }, extra || {}));
+  kv('period_start', null, null, P1);
+  kv('p2_made', 0, 'h1', 590000);                                         // 2-0
+  kv('p2_miss', 1, 'a1', 580000); kv('reb', 0, 'h2', 578000);             // away stop 1
+  kv('p2_miss', 0, 'h3', 570000); kv('reb', 1, 'a2', 568000);             // home 0
+  kv('to', 1, 'a1', 560000); kv('stl', 0, 'h1', 560000);                  // away stop 2
+  kv('p3_miss', 0, 'h1', 550000); kv('reb', 0, 'h4', 548000, { off: true });
+  kv('p2_made', 0, 'h4', 547000);                                         // 4-0: an offensive rebound keeps home's possession
+  kv('p3_miss', 1, 'a3', 530000); kv('reb', 1, 'a4', 528000, { off: true });
+  kv('p2_miss', 1, 'a4', 527000); kv('reb', 0, 'h5', 525000);             // away stop 3: two shots, one possession
+  kv('p2_made', 0, 'h2', 510000);                                         // 6-0
+  kv('ft_made', 1, 'a2', 500000); kv('ft_miss', 1, 'a2', 500000); kv('reb', 0, 'h1', 499000);   // 6-1: one point ends it
+  kv('p2_miss', 0, 'h1', 490000); kv('reb', 1, 'a1', 488000);
+  const F = Flow.compute(K);
+  const k = F.kills;
+  ok('one kill: three away possessions held scoreless, an offensive rebound inside one of them', k.length === 1 && k[0].teamIdx === 0 && k[0].stops === 3 && k[0].kills === 1,
+     JSON.stringify(k.map(x => [x.teamIdx, x.stops])));
+  ok('...from the ball changing hands after home\'s first basket to away\'s last miss, home scoring 2 meanwhile',
+     k[0] && k[0].startScore === '2-0' && k[0].endScore === '4-0' && k[0].ownPts === 2 && k[0].startClock === 590000 && k[0].endClock === 527000,
+     k[0] && [k[0].startScore, k[0].endScore, k[0].ownPts, k[0].startClock, k[0].endClock].join(' '));
+  ok('...with the home five on the floor, and counted in the summary', k[0] && k[0].lineupNames.length === 5 && F.summary.homeKills === 1 && F.summary.awayKills === 0);
+  /* six stops in a row is two kills; a stretch of two is none */
+  const K2 = { teams: S.teams, starters: S.starters, events: [] };
+  let c = 590000, z = 0;
+  for (let i = 0; i < 6; i++) {
+    K2.events.push({ seq: ++z, t: 'p2_miss', team: 1, pid: 'a1', period: 1, clock: c -= 5000 }, { seq: ++z, t: 'reb', team: 0, pid: 'h1', period: 1, clock: c -= 1000 });
+    K2.events.push({ seq: ++z, t: 'p2_miss', team: 0, pid: 'h1', period: 1, clock: c -= 5000 }, { seq: ++z, t: 'reb', team: 1, pid: 'a1', period: 1, clock: c -= 1000 });
+  }
+  const F2 = Flow.compute(K2);
+  const byT = t => F2.kills.find(x => x.teamIdx === t) || {};
+  ok('six stops in a row are two kills, both ways', byT(0).stops === 6 && byT(0).kills === 2 && byT(1).stops === 6 && byT(1).kills === 2 && F2.summary.homeKills === 2,
+     JSON.stringify(F2.kills.map(x => [x.teamIdx, x.stops, x.kills])));
+  const html = Flow.render(K);
+  ok('the kills card: a bar and a row per stretch, no video link, a count each side in the strip',
+     (html.match(/class="gf-bar [^"]+" data-run="k\d+"/g) || []).length === 1 && (html.match(/class="gf-runrow [^"]+" data-run="k\d+"/g) || []).length === 1 &&
+     /3<small> stops<\/small>/.test(html) && /1 kill<\/b>/.test(html) && /Leeds Kills/.test(html) && !/data-watch="k/.test(html));
+}
+
 console.log('\nthe charts');
 {
   const html = Flow.render(S);
-  ok('all six charts and the summary strip are drawn', (html.match(/class="gf-card[ "]/g) || []).length === 6 && /gf-summary/.test(html),
+  ok('all six charts, the kills and the summary strip are drawn', (html.match(/class="gf-card[ "]/g) || []).length === 7 && /gf-summary/.test(html),
      (html.match(/class="gf-card[ "]/g) || []).length);
   ok('...under GAMEVIS\'s titles', ['Player Scoring Runs', 'Team Momentum Runs', 'Scoring Development (Score Margin)',
      'Expected Points Added (EPA)', 'Scoring Battle (eFG% + FT Rate)', 'Points Per Possession Development'].every(t => html.includes(t)));
@@ -219,6 +262,9 @@ console.log('\na real LiveStats game agrees with the box score');
       ok('team ' + t + ': every assist is in a pair, worth the engine\'s points assisted', n === ast && pts === ptsAst,
          n + '/' + ast + ' assists, ' + pts + '/' + ptsAst + ' points');
     });
+    ok('every kill is 3+ of the other side\'s possessions with the other side\'s score unchanged', F.kills.length > 0 &&
+       F.kills.every(k => k.stops >= 3 && k.kills === Math.floor(k.stops / 3) && k.startScore.split('-')[1 - k.teamIdx] === k.endScore.split('-')[1 - k.teamIdx] && k.endElapsed >= k.startElapsed),
+       F.kills.length + ' kills ' + JSON.stringify(F.kills.filter(k => !(k.startScore.split('-')[1 - k.teamIdx] === k.endScore.split('-')[1 - k.teamIdx] && k.endElapsed >= k.startElapsed)).map(k => [k.teamIdx, k.stops, k.startScore, k.endScore, k.startClock, k.endClock, k.startPeriod, k.endPeriod])));
     const html = Flow.render(G) + Conn.render(G);
     ok('both tabs render the real game', /gf-summary/.test(html) && /cx-card/.test(html));
   }

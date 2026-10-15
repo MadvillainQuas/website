@@ -414,7 +414,10 @@
       'On the newsdesk': 'En la redacción',
       'the storylines this game touches': 'las historias que toca este partido',
       'every storyline in the league ↗': 'todas las historias de la liga ↗',
-      'full play-by-play starting - within half a minute': 'las jugadas completas llegan en menos de medio minuto'
+      'full play-by-play starting - within half a minute': 'las jugadas completas llegan en menos de medio minuto',
+      'Kills (3+ consecutive stops: the opponent held scoreless)': 'Kills (3+ stops seguidos: el rival sin anotar)',
+      'No kills (3+ consecutive stops) yet': 'Todavía no hay kills (3+ stops seguidos)',
+      'stops': 'stops'
     },
 
     ctx: {
@@ -598,6 +601,10 @@
       [/^On court: (.+)$/, 'En pista: $1'],
       [/^Watch run (\d+) on video$/, 'Ver el parcial $1 en vídeo'],
       [/^Biggest (.+) Run$/, 'Mayor parcial de $1'],
+      [/^#(\d+)\s+(.+) (\d+) stops$/, '#$1 $2 $3 stops'],
+      [/^(.+) Kills$/, 'Kills de $1'],
+      [/^(\d+) kills?$/, (m) => m[1] + (m[1] === '1' ? ' kill' : ' kills')],
+      [/^scored (\d+) meanwhile$/, 'anotó $1 mientras tanto'],
       [/^TO: ([+-]?\d+)$/, 'Pér: $1'],
       [/^OREB: ([+-]?\d+)$/, 'RO: $1'],
       [/^eFG%: ([+-]?[\d.]+)$/, 'eFG%: $1'],
