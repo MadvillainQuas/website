@@ -335,6 +335,7 @@ window.EPINOIA_LEAGUE_TIERS = {
   /* Great Britain */ 'slb-men': [1, 'm'], 'bcb': [2, 'm'], 'nbl-d1': [3, 'm'], 'eabl': ['y1', 'm'],
                      'slb-women': [1, 'w'], 'wnbl-d1': [2, 'w'], 'weabl': ['y1', 'w'],
   /* Greece */ 'greek-elite-league': [2, 'm'],
+  /* Hungary */ 'hungarian-nb-i-a': [1, 'm'], 'hungarian-nb-i-a-women': [1, 'w'],
   /* Israel */ 'winner-league': [1, 'm'],
   /* Italy */ 'lega-basket-serie-a': [1, 'm'], 'serie-a1-femminile': [1, 'w'], 'serie-a2-femminile': [2, 'w'],
   /* Japan */ 'b-league-premier': [1, 'm'], 'b-league-one': [2, 'm'], 'w-league-premier': [1, 'w'], 'w-league-future': [2, 'w'],

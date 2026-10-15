@@ -1100,6 +1100,11 @@ jobs:
         # adapters/kbl.py: the league's English names (Hangul by rule where it has none), the play-by-play's announcements
         run: python scripts/ingest/kbl_test.py
 
+      - name: NB I/A men and women (Hungary) from MKOSZ's programme and webpont netcasting
+        # adapters/mkosz.py: the box counted from the log as the netcasting page counts it, elapsed game time into the
+        # clock left, the minutes replayed to the console's own; a log that lost its changes is published as a result
+        run: python scripts/ingest/mkosz_test.py
+
       - name: Basketligaen and Kvinde Basketligaen on FIBA LiveStats
         # men: fiba_site_schedule site "basketligaen" (the site's JSON API names every game's LiveStats id, kept once,
         # the site's club codes over the operator's); women: the Genius-hosted schedule on tenant DAM

@@ -1369,6 +1369,10 @@ NO_BIO = {
     "macedonian-super-league": "Genius tenant MSL lists only 2015-16's competitions (4454, 8032), so genius() finds no season to "
                                "read, and the season's hosted rosters (competition 50171) carry shirt, name and position only - "
                                "no date of birth, height or weight; the LiveStats data carries no bio (checked 8 Oct 2026)",
+    "hungarian-nb-i-a": "not read yet: the netcasting feed carries no bio, but each player's page on hunbasket.hu "
+                        "(/jatekos/<season>/<nat>/<feed player code>/<slug>) prints height, weight, position and birth YEAR "
+                        "(checked 15 Oct 2026) - a by-player-page reader is the way in",
+    "hungarian-nb-i-a-women": "as hungarian-nb-i-a (the same site, nat whun)",
 }
 
 # Leagues whose reader goes club by club through the feed's own club ids (bio_sync loads the clubs for them).

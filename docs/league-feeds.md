@@ -1257,3 +1257,26 @@ row, a play-off row and a pre-season row (Open Match Day, a friendly); slug `kbl
 - No shot chart: `match-chart.shootLog` gives pixels on an unspecified court drawing.
 - Bio: each player's profile on the league's statistics service (kbl-api.sports2i.com, Referer kbl.or.kr),
   by pcode: date of birth and height, no weight.
+
+## Hungary: NB I/A men and women (MKOSZ, hunbasket.hu)
+
+Added 2026-10-15. Test `scripts/ingest/mkosz_test.py`. Adapter `mkosz` (`adapters/mkosz.py`), a translation into
+the FIBA shape. Sources `HUNM` (slug `hungarian-nb-i-a`) and `HUNW` (`hungarian-nb-i-a-women`), country HU, each a
+regular-season, a play-off and a play-out row; Europe/Budapest.
+
+- hunbasket.hu shows only the last and next round. The whole of a competition's season is the federation's programme
+  page, `https://mkosz.hu/bajnoksag-musor/<season>/<nat>/` (WITH the trailing slash - without it a 500). Season =
+  `x` + its two years (`x2627`, back to `x0809`); nat = `hun` / `hun_ply` / `hun_plo` (men's regular season,
+  play-offs for 1-8, play-out), `whun` / `whun_ply` / `whun_plya` (women's). 2026-27: 182 men's, 110 women's games.
+  A backfill passes the season (`2024-25` -> `x2425`); 2025-26's `hun_ply` page lists its 40 play-off games.
+- A game is `<nat>_<n>` (`hun_134745`, `whun_135517`, `hun_ply_134267`) - the schedule's result link, the game
+  centre (`hunbasket.hu/merkozes/x2627/hun/hun_134745`) and the netcasting page (`netcasting4.webpont.com/?hun_134745`)
+  all use it, so no game-centre hop. The data is `https://netcasting4.webpont.com/storage/full<code>.html`: JSON with
+  `#` `|` `%` standing for `","` `":"` `"},{"` (the page's own jsonDecode). Neither host has a robots.txt.
+- The feed has rosters (`p`: starter, shirt, short name, SECONDS PLAYED, home), full names (`players`, "FAMILY&nbsp;Given"),
+  and an event log (`f`) with GAME TIME ELAPSED (`gt`, 0-2400). No box score: the netcasting page counts it from the
+  log, as the adapter does (checked column by column against a saved page). Substitution 1011: `3` on, `4` off.
+- Shot places on a 360 x 240 px full court (= 28 x 15 m; rims at x 20.25 and 339.75, y 120).
+- The opening game hun_134745's log lost second-quarter substitutions: a final whose changes contradict the floor,
+  or do not reproduce the console's minutes, is published as a result (translate False).
+- Crests `https://hunbasketimg.webpont.com/art/logo/<season>-<club id>.gif`; club codes are the federation's club ids.
