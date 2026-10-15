@@ -27,6 +27,13 @@ seconds between requests.
     the box score (STARTERS / RESERVES / TEAM / TOTALS), the line score and its "Final", the
     play-by-play (#pbp-tabpanel, StatCrew text: 'O'CONNOR,BENNETT made 3-pt. jump shot',
     names only, no shirt numbers) and one box score per period (with minutes). Fetched once.
+  * THE SCOREBOARD is the same path's RSS (?print=rss, verified 2026-10-15 on a game in progress):
+    every event of the season path, uncapped (675 in 2026-27, 390 KB), each with the score and
+    the state of play in its title - 'UBC 38, Windsor 30 2nd - 03:05', 'Regina 88, Brandon 85
+    End of 4th', 'Queen's 74, Bucknell 78 Final', 'Dalhousie vs. Waterloo' (not started). The
+    first club named is always the schedule's away (first-listed) one, neutral sites included,
+    and the description ends with the two scores in that order. The site's CDN keeps a copy for
+    five minutes (max-age=300), so a line can be that old; the game page is not cached.
 
 THE STABLE KEY is the PrestoSports event id (16 characters, e.g. cfrm4zwonl577zdh): listed with
 the fixture, unchanged when the game is played, the box posted or the date moved. fetch() finds
@@ -70,6 +77,7 @@ from __future__ import annotations
 
 import html as _html
 import re
+import threading
 import time
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -429,6 +437,76 @@ def is_exhibition(rec: dict, ical: Optional[dict] = None) -> bool:
         return True
     text = (rec.get("notes") or "") + " " + ((ical or {}).get("description") or "")
     return bool(re.search(r"\b(exhibition|scrimmage)\b", text, re.I))
+
+
+# ============================================================================ the scoreboard (RSS)
+def parse_rss(text: str) -> dict:
+    """{event id: {away, home, away_score, home_score, status_text}} from ?print=rss. A game not
+    started has no scores (None) and no status. Scores and names are the schedule's order: the
+    away (first-listed) club first."""
+    out = {}
+    for it in re.findall(r"<item>(.*?)</item>", text or "", re.S):
+        def tag(t):
+            m = re.search(rf"<{t}>(.*?)</{t}>", it, re.S)
+            return _html.unescape(m.group(1)).strip() if m else ""
+        eid = re.search(r"#([a-z0-9]+)\s*$", tag("link"))
+        if not eid:
+            continue
+        title, rec = tag("title"), {"away": "", "home": "", "away_score": None, "home_score": None, "status_text": ""}
+        sc = re.search(r",\s*(\d+)-(\d+)\s*$", tag("description"))
+        m = sc and re.match(rf"^(.*\S) {sc.group(1)}, (.*\S) {sc.group(2)}(?: (.*))?$", title)
+        if m:
+            rec.update(away=m.group(1), home=m.group(2), away_score=int(sc.group(1)),
+                       home_score=int(sc.group(2)), status_text=(m.group(3) or "").strip())
+        else:
+            names = re.match(r"^(.*?) (?:vs\.|at) (.*)$", title)
+            if names:
+                rec.update(away=names.group(1), home=names.group(2))
+        out[eid.group(1)] = rec
+    return out
+
+
+def rss_state(status_text: str, away_score, home_score, periods: int = 4, period_ms: int = 600000,
+              ot_ms: int = 300000) -> dict:
+    """One RSS line -> {status, period, clock_ms, running, home, away}, the shape run_ingest's live
+    lane writes into game_state for a game nobody is watching (0264). The site prints '1st - 05:32',
+    '2nd - 03:05', 'End of 2nd', 'Halftime', 'End of 4th', 'OT - 01:12', '2OT - 00:30', 'Final',
+    'Final - OT', 'Final - 2OT'.
+
+    THE END OF REGULATION OR OF AN OVERTIME WITH THE SCORES APART IS THE FINAL WHISTLE: nothing but
+    the scorer's 'Final' is missing (run_ingest._looks_finished says the same of a game page), and
+    the site can leave a game there for days (Regina at Brandon, 13 Oct 2026, 'End of 4th' two days
+    later). Read as final, so the lane reads the game in full and its own rules close it.
+
+    NEVER A RUNNING CLOCK: the line can be five minutes old (the CDN's copy), so the clock is shown
+    as read rather than run on by the page from a moment it no longer describes."""
+    low = (status_text or "").strip().lower()
+    if away_score is None or home_score is None:
+        return {"status": "scheduled", "period": 0, "clock_ms": 0, "running": False, "home": 0, "away": 0}
+    away, home = int(away_score), int(home_score)
+    ot = re.search(r"\b(\d*)\s*(?:st|nd|rd|th)?\s*ot\b", low)
+    q = re.search(r"\b([1-4])(?:st|nd|rd|th)\b", low)
+    if ot:
+        period = periods + (int(ot.group(1)) if ot.group(1) else 1)
+    elif "half" in low:
+        period = max(1, periods // 2)
+    elif q:
+        period = int(q.group(1))
+    else:
+        period = periods if low.startswith("final") else 1
+    clock = re.search(r"\b(\d{1,2}):(\d{2})\b", low)
+    at_end = low.startswith(("final", "end of")) or "half" in low
+    if at_end:
+        clock_ms = 0
+    elif clock:
+        clock_ms = (int(clock.group(1)) * 60 + int(clock.group(2))) * 1000
+    else:
+        clock_ms = period_ms if period <= periods else ot_ms
+    if low.startswith("final") or (low.startswith("end of") and period >= periods and away != home):
+        status = "final"
+    else:
+        status = "live"
+    return {"status": status, "period": period, "clock_ms": clock_ms, "running": False, "home": home, "away": away}
 
 
 # ============================================================================ one game page
@@ -1542,12 +1620,7 @@ class USportsAdapter(FibaLiveStatsAdapter):
         is posted - including while the game is live; where the event's link is something else
         (a video, 23 of 698 in 2025-26) the box address is derived from the event id and the
         game's local date, which is the UTC date or the day before."""
-        seasons = []
-        for s in (normalize_season(config.get("season")) if config.get("season") else None,
-                  season_of_tip(config.get("_tipoff_at")), current_season()):
-            if s and s not in seasons:
-                seasons.append(s)
-        paths = [hint] if hint else [s + suffix for s in seasons for suffix in STAGES.values()]
+        paths = [hint] if hint else self._paths(config)
         for sp in paths:
             ev = self._ical(sp).get(eid)
             if not ev:
@@ -1569,10 +1642,72 @@ class USportsAdapter(FibaLiveStatsAdapter):
             return info
         return None
 
+    @staticmethod
+    def _paths(config: dict) -> list:
+        """The season paths a game of this config can be on: its season (the config's, its tip-off's,
+        the current one), each with its three stages."""
+        seasons = []
+        for s in (normalize_season(config.get("season")) if config.get("season") else None,
+                  season_of_tip(config.get("_tipoff_at")), current_season()):
+            if s and s not in seasons:
+                seasons.append(s)
+        return [s + suffix for s in seasons for suffix in STAGES.values()]
+
+    # ------------------------------------------------------------------ the scoreboard line alone
+    # LIVE ON DEMAND (0264), as NCAA Division II (Louie, 2026-10-15: U SPORTS's schedule is large too). A game nobody
+    # is watching is followed from the season path's RSS alone - one request for every game of the evening, at most
+    # every board_every_s - and read in full (fetch) only while somebody watches it and at its final whistle.
+    _boards: dict = {}          # season path -> (read_at, {event id: parse_rss line})
+    _board_failed: dict = {}    # season path -> when its last read failed
+    _line_of: dict = {}         # event id -> the season path whose board lists it
+    _board_lock = threading.Lock()
+    #: the CDN's copy changes at most every five minutes, so a read a minute is as fresh as it gets for little
+    board_every_s = 60.0
+
+    def board(self, sp: str) -> dict:
+        """{event id: line} for one season path, read at most every board_every_s, one read at a time (the lane
+        asks from several threads). A read the site refuses is not waited out here - that would hold every other
+        game's thread: the last board read stands, or the error is raised, until board_every_s has passed."""
+        with USportsAdapter._board_lock:
+            held = USportsAdapter._boards.get(sp)
+            now = time.time()
+            if held and now - held[0] < self.board_every_s:
+                return held[1]
+            failed = USportsAdapter._board_failed.get(sp)
+            if failed and now - failed < self.board_every_s:
+                if held:
+                    return held[1]
+                raise RuntimeError(f"usports: {sp} scoreboard unreadable (tried {int(now - failed)} s ago)")
+            try:
+                text = self._get_text(f"{SITE}{SPORT}/{sp}/schedule?print=rss", encoding="cp1252", max_wait_s=0)
+            except Exception:
+                USportsAdapter._board_failed[sp] = now
+                if held:
+                    return held[1]
+                raise
+            lines = parse_rss(text) if text else {}
+            USportsAdapter._boards[sp] = (now, lines)
+            USportsAdapter._board_failed.pop(sp, None)
+            for eid in lines:
+                USportsAdapter._line_of[eid] = sp
+            return lines
+
+    def scoreline(self, external_id: str, config: dict) -> Optional[dict]:
+        """A game AS THE SCOREBOARD HAS IT, for a league followed on demand (0264): {status, period, clock_ms,
+        running, home, away} from its season path's RSS (rss_state). None when the game is on no board - the lane
+        then reads it in full."""
+        eid = str(external_id)
+        sp = USportsAdapter._line_of.get(eid) or (self._events.get(eid) or {}).get("season_path")
+        for path in ([sp] if sp else self._paths(config)):
+            line = self.board(path).get(eid)
+            if line:
+                return rss_state(line["status_text"], line["away_score"], line["home_score"])
+        return None
+
     # ------------------------------------------------------------------ plumbing
-    def _get_text(self, url: str, encoding: str = "utf-8") -> Optional[str]:
+    def _get_text(self, url: str, encoding: str = "utf-8", max_wait_s: float = WAF_MAX_WAIT_S) -> Optional[str]:
         """GET with a browser UA and polite spacing; the WAF's 202 / 429 / 459 answers are waited
-        out (never solved), up to WAF_MAX_WAIT_S; 404 is None."""
+        out (never solved), up to max_wait_s (0: raised at once, the pace still slowed); 404 is None."""
         waited, delay, net_fail = 0, 30, 0
         while True:
             gap = time.time() - USportsAdapter._last_req
@@ -1594,10 +1729,10 @@ class USportsAdapter(FibaLiveStatsAdapter):
                 return None
             if r.status_code == 403:
                 raise RuntimeError(f"usports: 403 from {url} (User-Agent refused?)")
-            if waited >= WAF_MAX_WAIT_S:
+            USportsAdapter._pace = min(max(USportsAdapter._pace * 1.5, 4.0), 10.0)
+            if waited >= max_wait_s:
                 raise RuntimeError(f"usports: HTTP {r.status_code} for {waited}s from {url} - the site's "
                                    f"rate limit; next run")
-            USportsAdapter._pace = min(max(USportsAdapter._pace * 1.5, 4.0), 10.0)
             print(f"     (usports: HTTP {r.status_code} - the site's rate limit; waiting {delay}s)")
             time.sleep(delay)
             waited += delay

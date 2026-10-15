@@ -268,6 +268,77 @@ ok("the unwatched live game (A): its scoreboard line only - game_state, and its 
 ok("...then, at its final whistle, the whole game - so every player's line is in the season", "A" in ow and od.reads["A"] >= 2)
 ok("which games are watched is one read a pass, not one a game", 1 <= osb.watch_asked <= 3, osb.watch_asked)
 
+print("\n-- the same for U SPORTS (0268): the real adapter's scoreboard, its RSS as captured on 15 Oct 2026")
+import gzip  # noqa: E402
+from adapters import usports as U  # noqa: E402
+
+
+class UsOffline(U.USportsAdapter):
+    """The real scoreline over the captured RSS; fetch() records the full reads (the game pages are usports_test's)."""
+    def __init__(self):
+        self.fetched, self.asked = [], []
+
+    def _get_text(self, url, encoding="utf-8", max_wait_s=U.WAF_MAX_WAIT_S):
+        self.asked.append(url.replace(U.SITE, ""))
+        if url.endswith("/2026-27/schedule?print=rss"):
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "usports", "rss-2026-27.xml.gz")
+            with gzip.open(path, "rb") as f:
+                return f.read().decode(encoding)
+        return None
+
+    def fetch(self, xid, cfg):
+        self.fetched.append(xid)
+        return FakeAdapter().fetch(xid, cfg)
+
+
+class UsSb(OdSb):
+    def select(self, table, q):
+        if table == "game_watch":
+            self.watch_asked += 1
+            return [{"game_id": "g-watched"}]
+        return []
+
+
+def run_usports():
+    R.LANE_THREADS, R.INLINE_EVERY_S = 1, 1
+    U.USportsAdapter._boards, U.USportsAdapter._board_failed, U.USportsAdapter._line_of = {}, {}, {}
+    us, sb = UsOffline(), UsSb()
+    writes, calls = [], {"n": 0}
+    games = {"u8xvsotcgoe6c0oq": "g-ubc", "86e2admlqeh3z8ki": "g-regina", "b1dmftofcla57yza": "g-dal",
+             "htux65qsp51neg0g": "g-watched"}
+
+    def live_due(sb_, fiba, now):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return [(fiba[0], {"external_id": x, "game_id": g, "home_name": "H", "away_name": "A",
+                               "tipoff_at": "2026-10-15T20:30:00+00:00", "external_status": "live"}) for x, g in games.items()], None
+        return [], None
+
+    R.live_due, R.get_adapter = live_due, (lambda name: us)
+    R.write_platform = lambda sb_, src, b, run_, observed=None, memory=None, venue=None, **k: writes.append(b.external_id) or True
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "config", "ingest-sources.json"), encoding="utf-8") as f:
+        import json
+        src = dict(next(s for s in json.load(f)["sources"] if s.get("adapter") == "usports"), id=None)
+    R.live_keeper(sb, [src], argparse.Namespace(live_loop=60, live_every=1, broadcast_every=2, shard=None, dry_run=False))
+    return us, sb, writes
+
+
+us, usb, uw = run_usports()
+ok("UBC at Windsor, live and unwatched: its scoreboard line only - Windsor (home) 34, UBC 48, 2nd quarter 0:45 - and "
+   "its going live; never read in full",
+   any(r.get("game_id") == "g-ubc" and (r.get("score_home"), r.get("score_away"), r.get("period"), r.get("clock_ms"))
+       == (34, 48, 2, 45000) for r in usb.state)
+   and any(t == "games" and "g-ubc" in q and b.get("status") == "live" for t, q, b in usb.patches)
+   and "u8xvsotcgoe6c0oq" not in us.fetched, (us.fetched, usb.state))
+ok("Regina at Brandon, 'End of 4th' 88-85: the final whistle - read and written in full",
+   "86e2admlqeh3z8ki" in us.fetched and "86e2admlqeh3z8ki" in uw, (us.fetched, uw))
+ok("Dalhousie at Waterloo, not started on the scoreboard: nothing read, nothing written",
+   "b1dmftofcla57yza" not in us.fetched and not any(r.get("game_id") == "g-dal" for r in usb.state))
+ok("the game somebody has open: read and written in full, as any league's live game",
+   "htux65qsp51neg0g" in us.fetched and "htux65qsp51neg0g" in uw, (us.fetched, uw))
+ok("the whole evening from the season's RSS: one scoreboard request a minute, however many games",
+   us.asked.count("/sports/mbkb/2026-27/schedule?print=rss") == 1, us.asked)
+
 print("\n-- a final the feed has and the platform never closed: read again in full, a few times a pass (14 Oct 2026)")
 
 

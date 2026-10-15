@@ -1125,9 +1125,15 @@
       "league_slug": "u-sports",
       "league_name": "U SPORTS",
       "league_country": "CA",
+      "league_rules": {
+        "live": "on_demand"
+      },
       "groups_file": "config/groups/usports.json",
       "adapter_config": {
         "code": "USPORTS",
+        "season_refresh_s": 900,
+        "live_on_demand": true,
+        "archive_on_final": true,
         "archive_raw": true,
         "store_pbp": false,
         "auto_create": true
@@ -1148,9 +1154,15 @@
       "league_slug": "u-sports",
       "league_name": "U SPORTS",
       "league_country": "CA",
+      "league_rules": {
+        "live": "on_demand"
+      },
       "groups_file": "config/groups/usports.json",
       "adapter_config": {
         "code": "USPORTS",
+        "season_refresh_s": 900,
+        "live_on_demand": true,
+        "archive_on_final": true,
         "archive_raw": true,
         "store_pbp": false,
         "auto_create": true
@@ -1171,9 +1183,15 @@
       "league_slug": "u-sports",
       "league_name": "U SPORTS",
       "league_country": "CA",
+      "league_rules": {
+        "live": "on_demand"
+      },
       "groups_file": "config/groups/usports.json",
       "adapter_config": {
         "code": "USPORTS",
+        "season_refresh_s": 900,
+        "live_on_demand": true,
+        "archive_on_final": true,
         "archive_raw": true,
         "store_pbp": false,
         "auto_create": true

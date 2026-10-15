@@ -67,6 +67,8 @@ def fixture_for(url):
         return f"game-{sp}_{m.group(3)}.html.gz", "utf-8"
     if q == "?print=ical":
         return f"ical-{sp}.ics.gz", "cp1252"
+    if q == "?print=rss":
+        return f"rss-{sp}.xml.gz", "cp1252"
     if q.startswith("?teamId="):
         return f"team-{sp}-{q[8:]}.html.gz", "utf-8"
     if q.startswith("?eid="):
@@ -78,7 +80,7 @@ class Offline(U.USportsAdapter):
     """The real adapter with its one network call served from the fixtures."""
     requests_made: list = []
 
-    def _get_text(self, url, encoding="utf-8"):
+    def _get_text(self, url, encoding="utf-8", max_wait_s=U.WAF_MAX_WAIT_S):
         self.requests_made.append(url)
         name, enc = fixture_for(url)
         return fixture(name, enc) if name else None
@@ -87,6 +89,7 @@ class Offline(U.USportsAdapter):
 def fresh():
     U.USportsAdapter._events = {}
     U.USportsAdapter._icals = {}
+    U.USportsAdapter._boards, U.USportsAdapter._board_failed, U.USportsAdapter._line_of = {}, {}, {}
     Offline.requests_made = []
     return Offline()
 
@@ -428,7 +431,7 @@ ok("...and the next poll costs one request (the game page)", b2 is not None and 
 
 class LinkedOffline(Offline):
     """An iCal whose link for cfrm is a video, not the box: the box address must be derived."""
-    def _get_text(self, url, encoding="utf-8"):
+    def _get_text(self, url, encoding="utf-8", max_wait_s=U.WAF_MAX_WAIT_S):
         text = super()._get_text(url, encoding)
         if text and url.endswith("?print=ical"):
             text = text.replace("URL:/sports/mbkb/2025-26/boxscores/20260110_cfrm.xml", "URL:/links/abc123")
@@ -472,6 +475,132 @@ ok("stints still five a side", all(len(r["home_lineup"].split(",")) == 5 and len
 ok("a final page can never be forced final by the caller when it says otherwise",
    U.raw_from_page(live_html, event_id="live", final=True)["pbp"][-1]["actionType"] != "game")
 ok("a page with no box score -> None", U.raw_from_page("<html><body>Not Found</body></html>") is None)
+
+# ============================================================================ live on demand (0264, 0268)
+print("\n-- the scoreboard: the season's RSS (captured 15 Oct 2026, 21:11 UTC, UBC at Windsor in progress)")
+rss = U.parse_rss(fixture("rss-2026-27.xml.gz", "cp1252"))
+ok("every event of the season path, uncapped (675; the page list stops at 500)", len(rss) == 675, len(rss))
+ok("a game in progress: names and scores in the schedule's order (away first), its state of play",
+   rss.get("u8xvsotcgoe6c0oq") == {"away": "UBC", "home": "Windsor", "away_score": 48, "home_score": 34,
+                                   "status_text": "2nd - 00:45"}, rss.get("u8xvsotcgoe6c0oq"))
+ok("a finished game where the first-named club lost (Queen's 74, Bucknell 78: the description's order, not the "
+   "winner-first ps:score)", rss["v4uctg2l13ip1ax1"]["away_score"] == 74 and rss["v4uctg2l13ip1ax1"]["home_score"] == 78,
+   rss["v4uctg2l13ip1ax1"])
+ok("a neutral-site game: the first-named club is the schedule's away one (Purdue v Calgary at Burnaby)",
+   (rss["q4o9hpjj51pm0iqy"]["away"], rss["q4o9hpjj51pm0iqy"]["home"]) == ("Purdue", "Calgary"))
+ok("a game not started: both clubs, no scores, no state",
+   rss["b1dmftofcla57yza"] == {"away": "Dalhousie", "home": "Waterloo", "away_score": None, "home_score": None,
+                               "status_text": ""}, rss["b1dmftofcla57yza"])
+po_rss = U.parse_rss(fixture("rss-2025-26p.xml.gz", "cp1252"))
+po_rows = U.parse_schedule_rows(fixture("schedule-2025-26p.html.gz"), "2025-26p")
+same = [r for r in po_rows if r["eid"] in po_rss]
+ok("every 2025-26 playoff game: the RSS's clubs and scores are the schedule's away and home, side for side (29)",
+   len(same) == 29 and all((po_rss[r["eid"]]["away"], po_rss[r["eid"]]["home"], po_rss[r["eid"]]["away_score"],
+                            po_rss[r["eid"]]["home_score"]) == (r["away"]["name"], r["home"]["name"], r["away"]["score"],
+                                                                r["home"]["score"]) for r in same), len(same))
+
+print("\n-- the state of play the site prints -> the scoreboard line")
+for text, a, h, want in [
+        ("2nd - 00:45", 48, 34, ("live", 2, 45000)),
+        ("1st - 09:59", 0, 2, ("live", 1, 599000)),
+        ("4th - 00:04.5", 70, 71, ("live", 4, 4000)),
+        ("End of 1st", 20, 18, ("live", 1, 0)),
+        ("Halftime", 40, 38, ("live", 2, 0)),
+        ("End of 4th", 70, 70, ("live", 4, 0)),                    # level: overtime is coming
+        ("End of 4th", 88, 85, ("final", 4, 0)),                   # apart: the final whistle bar the scorer's tap
+        ("OT - 01:12", 80, 79, ("live", 5, 72000)),
+        ("End of OT", 85, 85, ("live", 5, 0)),
+        ("2OT - 00:30", 90, 90, ("live", 6, 30000)),
+        ("End of 2OT", 95, 92, ("final", 6, 0)),
+        ("Final", 74, 78, ("final", 4, 0)),
+        ("Final - OT", 90, 89, ("final", 5, 0)),
+        ("Final - 2OT", 101, 99, ("final", 6, 0)),
+        ("", 10, 8, ("live", 1, 600000)),                          # a score and no state: in progress, place unknown
+        ("", None, None, ("scheduled", 0, 0))]:
+    got = U.rss_state(text, a, h)
+    ok(f"{text or '(nothing)'!r} {a}-{h} -> {want[0]}, period {want[1]}, clock {want[2]} ms",
+       (got["status"], got["period"], got["clock_ms"]) == want and got["running"] is False
+       and (a is None or (got["away"], got["home"]) == (a, h)), got)
+
+print("\n-- scoreline(): what the live lane asks for a game nobody is watching")
+a = fresh()
+tip = {"_tipoff_at": "2026-10-15T20:30:00+00:00"}
+line = a.scoreline("u8xvsotcgoe6c0oq", tip)
+ok("the game in progress, home and away the right way round, from one request (the season's RSS)",
+   line == {"status": "live", "period": 2, "clock_ms": 45000, "running": False, "home": 34, "away": 48}
+   and [u.replace(U.SITE, "") for u in Offline.requests_made] == ["/sports/mbkb/2026-27/schedule?print=rss"],
+   (line, Offline.requests_made))
+ok("every other game of the evening from the same read: not one more request",
+   a.scoreline("86e2admlqeh3z8ki", tip)["status"] == "final" and a.scoreline("b1dmftofcla57yza", tip)["status"] == "scheduled"
+   and len(Offline.requests_made) == 1, Offline.requests_made)
+ok("an event on no board -> None (the lane reads it in full)", a.scoreline("zzzzzzzzzzzzzzzz", tip) is None)
+U.USportsAdapter._boards = {k: (v[0] - 61, v[1]) for k, v in U.USportsAdapter._boards.items()}
+a.scoreline("u8xvsotcgoe6c0oq", tip)
+ok("read again once board_every_s (60 s) has passed - the CDN's copy changes at most every five minutes",
+   a.board_every_s == 60 and Offline.requests_made.count(U.SITE + "/sports/mbkb/2026-27/schedule?print=rss") == 2,
+   Offline.requests_made)
+a = fresh()
+line = a.scoreline("kx6bnyhu7lh19f7q", {"_tipoff_at": "2026-02-26T00:00:00+00:00"})
+ok("a playoff game: found on its own season path's board (the regular one first, then the playoffs')",
+   line == {"status": "final", "period": 5, "clock_ms": 0, "running": False, "home": 85, "away": 76}
+   and [u.replace(U.SITE, "") for u in Offline.requests_made] == ["/sports/mbkb/2025-26/schedule?print=rss",
+                                                                  "/sports/mbkb/2025-26p/schedule?print=rss"],
+   (line, Offline.requests_made))
+a.scoreline("kx6bnyhu7lh19f7q", {"_tipoff_at": "2026-02-26T00:00:00+00:00"})
+ok("...and remembered there: the next ask goes straight to that board", len(Offline.requests_made) == 2,
+   Offline.requests_made)
+
+
+class Refused(Offline):
+    """The site's WAF answering the scoreboard read with a challenge."""
+    calls = []
+
+    def _get_text(self, url, encoding="utf-8", max_wait_s=U.WAF_MAX_WAIT_S):
+        Refused.calls.append(max_wait_s)
+        raise RuntimeError("usports: HTTP 202 for 0s")
+
+
+a = fresh()
+Refused.calls = []
+r = Refused()
+try:
+    r.scoreline("u8xvsotcgoe6c0oq", tip)
+    raised = False
+except RuntimeError:
+    raised = True
+ok("a refused scoreboard read is not waited out (it would hold every other game's thread): raised at once",
+   raised and Refused.calls == [0], Refused.calls)
+try:
+    r.scoreline("86e2admlqeh3z8ki", tip)
+    raised = False
+except RuntimeError:
+    raised = True
+ok("...and not asked again by the next game until board_every_s has passed", raised and len(Refused.calls) == 1,
+   Refused.calls)
+U.USportsAdapter._board_failed = {}                       # a minute on: a board read that works ...
+a.scoreline("u8xvsotcgoe6c0oq", tip)
+U.USportsAdapter._boards = {k: (v[0] - 61, v[1]) for k, v in U.USportsAdapter._boards.items()}
+ok("...while a board read before stands in for it when the next read is refused",
+   r.scoreline("u8xvsotcgoe6c0oq", tip)["home"] == 34 and len(Refused.calls) == 2, Refused.calls)
+
+print("\n-- the source rows: U SPORTS followed as NCAA Division II is (Louie, 2026-10-15)")
+with open(os.path.join(HERE, "..", "..", "config", "ingest-sources.json"), encoding="utf-8") as f:
+    rows = json.load(f)["sources"]
+usp = [s for s in rows if s.get("adapter") == "usports"]
+d2 = [s for s in rows if s.get("code") in ("NCAA_D2M", "NCAA_D2W")]
+keys = ("live_on_demand", "archive_on_final", "season_refresh_s", "store_pbp", "archive_raw")
+ok("all three U SPORTS rows (regular season, playoffs, Final 8)", len(usp) == 3 and len(d2) == 2, (len(usp), len(d2)))
+ok("live on demand, archived at the final whistle, the season roll-up every 15 minutes, no stored pbp - NCAA D2's settings",
+   all({k: s["adapter_config"].get(k) for k in keys} == {k: d2[0]["adapter_config"].get(k) for k in keys} for s in usp),
+   [{k: s["adapter_config"].get(k) for k in keys} for s in usp + d2[:1]])
+ok("the league's rules say on demand (the game page's watch_game and live_frames_wanted read them; 0268 sets the "
+   "existing league)", all((s.get("league_rules") or {}).get("live") == "on_demand" for s in usp))
+ok("in the main live lane (it runs all year: the regular season opens on 23 Oct, the NCAA lane wakes in November)",
+   all(not s.get("live_lane") and not (s.get("adapter_config") or {}).get("live_lane") for s in usp))
+ok("the adapter answers the lane's scoreboard question", callable(getattr(U.USportsAdapter, "scoreline", None)))
+mig = open(os.path.join(HERE, "..", "..", "supabase", "migrations", "0268_usports_live_on_demand.sql"), encoding="utf-8").read()
+ok("0268 adds the one rule to u-sports and nothing else",
+   "slug = 'u-sports'" in mig and "|| '{\"live\": \"on_demand\"}'::jsonb" in mig)
 
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)
