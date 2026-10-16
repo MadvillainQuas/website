@@ -635,7 +635,17 @@ Deno.serve(async (req) => {
             .select('name,seasons(leagues(name,slug,timezone))').eq('id', g.competition_id).maybeSingle();
           comp = c;
         } catch (_) { /* a report without a dateline is still a report */ }
-        const brief = gameBrief(game, d, TA, lineupAgg, {
+        /* THE CLUBS BY THEIR OWN NAMES (Louie, 2026-10-16: "use teams' canonical names"): the roster snapshot carries
+           the feed's spellings ("Barking Abbey U19 Men"); the report is written with the clubs' names on the site
+           (side 0 the hosts, as everywhere here). No answer: the feed's names, as before */
+        let named: any = game;
+        try {
+          const ids = [g.home_team_id, g.away_team_id];
+          const { data: tn } = await admin.from('teams').select('id,name').in('id', ids.filter(Boolean));
+          const nm = new Map((tn ?? []).map((t: any) => [t.id, t.name]));
+          named = { ...game, teams: game.teams.map((tm: any, i: number) => (nm.get(ids[i]) ? { ...tm, name: nm.get(ids[i]) } : tm)) };
+        } catch (_) { /* the feed's names */ }
+        const brief = gameBrief(named, d, TA, lineupAgg, {
           venue: g.venue, attendance: g.attendance, tipoff_at: g.tipoff_at,
           competition: comp?.name ?? null, league: comp?.seasons?.leagues?.name ?? null,
           leagueSlug: comp?.seasons?.leagues?.slug ?? null,

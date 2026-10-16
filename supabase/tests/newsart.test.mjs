@@ -112,6 +112,45 @@ ok('a match report brings its own clubs and score', f.layout === 'duel' && f.sco
      && /querySelectorAll\(opt\.avoid\)/.test(nc2));
 }
 
+/* THE CLUBS BY THEIR OWN NAMES (Louie, 2026-10-16: "it's using Barking Abbey U19 Men when its canonical name is ...") */
+{
+  const KC = req(path.join(EP, 'newscard.js'));
+  const eabl = [
+    { name: 'Barking Abbey School', aliases: ['Barking Abbey U19 Men'] },
+    { name: 'City of London Academy', aliases: ['City of London Academy - Southwark U19 Men'] },
+    { name: 'Manchester Magic', aliases: ['The Manchester Magic Academy U19 Men'] },
+    { name: 'UTC Sheffield Olympic Legacy Park U19 Men', aliases: [] },
+    { name: 'Itchen College', aliases: ['Itchen College U19 Men', 'Itchen'] }
+  ];
+  const pairs = KC.aliasPairs(eabl);
+  ok('a league\'s aliases as pairs, longest first; an alias that is a club\'s own name, or too short, is nobody\'s',
+     pairs[0][0].length >= pairs[pairs.length - 1][0].length && !pairs.some(p => p[0] === 'Itchen') && pairs.some(p => p[0] === 'Manchester Magic Academy U19 Men'));
+  ok('a match report\'s headline in the clubs\' own names, whatever dash the feed\'s spelling was given',
+     KC.canonText('Barking Abbey U19 Men beat City of London Academy — Southwark U19 Men 61–54', pairs) === 'Barking Abbey School beat City of London Academy 61–54',
+     KC.canonText('Barking Abbey U19 Men beat City of London Academy — Southwark U19 Men 61–54', pairs));
+  ok('..."The X" mid-sentence and at the start, a possessive kept, and a club whose own name is long left alone',
+     KC.canonText('The Manchester Magic Academy U19 Men come from 10 down to beat UTC Sheffield Olympic Legacy Park U19 Men', pairs)
+       === 'Manchester Magic come from 10 down to beat UTC Sheffield Olympic Legacy Park U19 Men'
+     && KC.canonText("Barking Abbey U19 Men's run", pairs) === "Barking Abbey School's run");
+  ok('...never inside a longer word, and text with no alias untouched', KC.canonText('Itchen College U19 Mens', pairs) === 'Itchen College U19 Mens'
+     && KC.canonText('nothing here', pairs) === 'nothing here');
+  const f = A.analyse({ title: 'Barking Abbey U19 Men beat City of London Academy — Southwark U19 Men 61–54', summary: '', kind: 'league' },
+    { clubs: eabl.map(c => Object.assign({ colour: '#202020' }, c)) });
+  ok('a cover finds the clubs by their feed spellings too, and names them by their own', f.layout === 'duel'
+     && f.clubs.map(c => c.name).join() === 'Barking Abbey School,City of London Academy', f.clubs.map(c => c.name));
+  const cs = [{ name: 'Barking Abbey School', short: 'Barking', aliases: ['Barking Abbey U19 Men'] }, { name: 'City of London Academy', short: 'City of' },
+              { name: 'UTC Sheffield Olympic Legacy Park U19 Men', short: 'UTC' }, { name: 'B. Braun Sheffield Sharks', short: 'SHE' }];
+  ok('a club on a cover: never "U19 MEN" or "SCHOOL" - the age, sex and kind of side come off, a long name is its short word',
+     cs.map(c => A.clubWords(c).join(' ')).join('|') === 'Barking Abbey|City of London|UTC|Sheffield Sharks', cs.map(c => A.clubWords(c).join(' ')));
+  ok('...and its letters on a disc with no crest are its own (UTC, BA), not "UM"', A.monogram(cs[2]) === 'UTC' && A.monogram(cs[0]) === 'BA');
+  ok('the cover reads the words with the clubs\' own names', A.canonWith('Barking Abbey U19 Men won', cs) === 'Barking Abbey School won');
+  const fin = readFileSync(path.join(here, '..', 'functions', 'finalise-game', 'index.ts'), 'utf8');
+  ok('finalise-game writes the report with the clubs\' names on the site, side 0 the hosts', /gameBrief\(named,/.test(fin)
+     && /from\('teams'\)\.select\('id,name'\)/.test(fin) && /const ids = \[g\.home_team_id, g\.away_team_id\]/.test(fin));
+  ok('every place a league\'s article is shown reads the clubs by their own names', /KC\.canon\(link, o\.leagueSlug\)/.test(src('news.js'))
+     && /K\.canon\(host, league\.slug\)/.test(src('news/news-page.js')) && /it\.kind === 'league' && it\.row && it\.row\.league_slug\) canon\(art/.test(src('newscard.js')));
+}
+
 console.log('\nthe colours');
 const contrast = (a, b) => { const x = A.lum(a), y = A.lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 const hue = h => { const n = parseInt(h.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;

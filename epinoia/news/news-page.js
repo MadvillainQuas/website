@@ -269,6 +269,12 @@ async function one(league) {
   link.href = '?l=' + encodeURIComponent(league.slug);
   foot.appendChild(link);
   host.appendChild(foot);
+  /* THE CLUBS BY THEIR OWN NAMES: a match report was written in the feed's spellings ("Barking Abbey U19 Men"); the
+     head, the words and the tab's title read the clubs' names (newscard.js canon) */
+  if (K && K.canon) {
+    K.canon($('#head'), league.slug);
+    K.canon(host, league.slug).then(() => { if (K.aliasesFor) K.aliasesFor(league.slug).then(p => { document.title = K.canonText(document.title, p); }); });
+  }
 
   const settle = () => { hero.classList.remove('is-wait'); };
   reportGame(league, a).then(g => {

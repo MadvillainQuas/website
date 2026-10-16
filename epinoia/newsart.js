@@ -90,7 +90,7 @@ function palette(c1, c2, seed) {
 /* ------------------------------------------------------------------ words --- */
 const clean = s => String(s || '').replace(/\s+/g, ' ').trim();
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const fold = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[–—]/g, '-').toLowerCase();
 const LETTER = /[\p{L}\p{N}]/u;
 /* whole words only: "Lions" in "London Lions", never in "Lionsgate" */
 function at(text, key) {
@@ -109,6 +109,7 @@ function at(text, key) {
    first (Leicester), if long enough to mean something */
 const COMMON = new Set(['basketball', 'basket', 'club', 'team', 'city', 'united', 'real', 'sporting', 'athletic', 'academy', 'royals',
   'national', 'the', 'new', 'north', 'south', 'east', 'west', 'saint', 'san', 'santa', 'union', 'olympic', 'women', 'men']);
+const GENERIC = /^(u-?\d{1,2}s?|under|men|women|mens|womens|men's|women's|boys|girls|academy|college|school|club|basketball|ii|iii|senior|seniors|junior|juniors|team|reserves?|-|–|—)$/i;
 function clubKeys(list) {
   const firsts = new Map(), lasts = new Map();
   const words = c => clean(c.name).split(' ').filter(Boolean);
@@ -119,8 +120,14 @@ function clubKeys(list) {
     firsts.set(f, (firsts.get(f) || 0) + 1); lasts.set(l, (lasts.get(l) || 0) + 1);
   });
   return list.map(c => {
-    const w = words(c), keys = [clean(c.name)];
-    for (let i = 1; i <= w.length - 2; i++) keys.push(w.slice(i).join(' '));
+    /* its name, and every spelling a feed gives it ("Barking Abbey U19 Men" is Barking Abbey School) */
+    const w = words(c), keys = [clean(c.name)].concat((c.aliases || []).map(clean));
+    /* the tails of its name, but never one that is only an age, a sex or a kind of side ("U19 Men", "Academy U19 Men"):
+       every academy's name ends that way */
+    for (let i = 1; i <= w.length - 2; i++) {
+      const tail = w.slice(i);
+      if (!tail.every(x => GENERIC.test(x))) keys.push(tail.join(' '));
+    }
     if (c.short && /^[\p{L}][\p{L}.' -]{3,}$/u.test(c.short) && !/^[A-Z]{2,4}$/.test(c.short)) keys.push(clean(c.short));
     if (w.length >= 2) {
       const f = fold(w[0]), l = fold(w[w.length - 1]);
@@ -149,6 +156,20 @@ function wordAt(text, key) {
     i = t.indexOf(k, i + 1);
   }
   return -1;
+}
+/* A FEED'S SPELLINGS OF THE CLUBS put back as their own names (newscard.js canonText, for the cover's own reading) */
+function canonWith(text, clubs) {
+  let s = String(text || '');
+  const pairs = [];
+  (clubs || []).forEach(c => (c.aliases || []).forEach(a => {
+    const al = clean(a);
+    if (al && al !== c.name && al.length >= 4 && !String(c.name).toLowerCase().includes(al.toLowerCase())) pairs.push([al, c.name]);
+  }));
+  pairs.sort((x, y) => y[0].length - x[0].length).forEach(([al, name]) => {
+    const re = new RegExp('(^|[^\\p{L}\\p{N}])' + esc(al).replace(/[-–—]/g, '[-–—]').replace(/\s+/g, '\\s+') + '(?![\\p{L}\\p{N}])', 'giu');
+    s = s.replace(re, (m0, pre) => pre + name);
+  });
+  return s;
 }
 /* the clubs a text names, in the order it names them: [{ club, at, key }]. whole: the story's every word, where a
    one-word key must not be some other team's last word anywhere ("Rockets dominate Thunder" over a summary that says
@@ -316,7 +337,7 @@ function hash(s) { let h = 2166136261; for (const ch of String(s || '')) { h ^= 
    o: { clubs: [{ name, short, colour, colour2, logo }] } - the leagues' clubs, to find in the words */
 function analyse(a0, o) {
   const a = a0 || {}, opt = o || {};
-  const title = clean(a.title), summary = clean(a.summary || a.standfirst);
+  const title = canonWith(clean(a.title), opt.clubs), summary = canonWith(clean(a.summary || a.standfirst), opt.clubs);
   const both = title + ' . ' + summary;
   const brand = a.brand || {};
   let clubs = [];
@@ -511,7 +532,7 @@ function disc(ctx, cx, cy, r, img, club, o) {
     contain(ctx, img, cx - r * 0.66, cy - r * 0.66, r * 1.32, r * 1.32);
     ctx.restore();
   } else {
-    const txt = initials(club && club.name);
+    const txt = monogram(club);
     font(ctx, r * 0.78, 900, 'condensed');
     ctx.fillStyle = lum(colour) > 0.55 ? '#111418' : '#ffffff';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -634,9 +655,31 @@ function nameLines(n) {
 }
 /* a club's name for the big type: the words after its sponsor (B. Braun Sheffield Sharks -> SHEFFIELD SHARKS) */
 function clubWords(c) {
-  const w = clean(c && c.name).replace(/\b(basketball|basket|bc|bk|kk|cb)\b\.?/gi, '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
-  const keep = w.length > 3 ? w.slice(-2) : w.length === 3 && w[0].length <= 3 ? w.slice(1) : w;
+  let w = clean(c && c.name).replace(/\b(basketball|basket|bc|bk|kk|cb)\b\.?/gi, '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  /* what is only an age, a sex or a kind of side comes off ("Barking Abbey School" is BARKING ABBEY on a cover, "UTC
+     Sheffield Olympic Legacy Park U19 Men" not U19 MEN) unless nothing else is left */
+  const core = w.filter(x => !GENERIC.test(x));
+  if (core.length) w = core;
+  /* a long name is the club's own short name, where that is a word of its name (UTC); else the words after a sponsor */
+  const sh = shortWord(c);
+  const keep = w.length > 3 ? (sh ? [sh] : w.slice(-2)) : w.length === 3 && w[0].length <= 3 && !/^(of|de|la|el)$/i.test(w[1]) ? w.slice(1) : w;
   return keep.length ? keep : [String((c && c.name) || '')];
+}
+/* the club's short name when it is one of the words of its name (Barking, UTC, Manchester): the name a small cover
+   gives it */
+function shortWord(c) {
+  const sh = clean(c && c.short);
+  if (!sh || /\s/.test(sh)) return null;
+  const words = clean(c && c.name).split(' ').map(x => x.toLowerCase());
+  return words.includes(sh.toLowerCase()) ? sh : null;
+}
+/* the club's letters on a disc with no crest: its short name when that is a short word of its own (UTC), else the
+   first and last letters of its name's own words (never of "U19 Men") */
+function monogram(c) {
+  const sh = shortWord(c);
+  if (sh && sh.length <= 4) return sh.toUpperCase();
+  const w = clean(c && c.name).replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter(x => x && !GENERIC.test(x));
+  return w.length ? initials(w.join(' ')) : initials(c && c.name);
 }
 
 /* WHAT THE STRAP SAYS: a number worth saying (a club's, or a player's with the player's name), else the headline's own
@@ -651,7 +694,8 @@ function strapFor(f, o) {
     const s = strapOf(f);
     if (s) return s;
   }
-  const m = /^[^:|–—]{3,70}\s*[:|–—]\s*([^"“«»”]{6,})$/.exec(f.title || '');
+  /* a colon or a bar splits a headline; a dash is too often inside a club's name ("City of London Academy - Southwark") */
+  const m = /^[^:|]{3,70}\s*[:|]\s*([^"“«»”]{6,})$/.exec(f.title || '');
   if (m) {
     const words = clean(m[1]).replace(/[.!?]+$/, '').split(' ');
     if (words.length >= 2 && words.length <= 7) return words.join(' ').toUpperCase();
@@ -885,10 +929,18 @@ function drawDuel(ctx, W, H, f, im, opt, B, S, pal) {
   disc(ctx, xb, cy, R, im.clubs && im.clubs[1], b);
   const nameW = W * 0.3;
   const sizeOf = nm => Math.min(fitW(ctx, nm, nameW, 800, 'condensed'), nameRoom, R * 0.5);
-  let names = [a, b].map(c => { const w = clubWords(c), full = w.join(' ').toUpperCase(); return w.length > 1 && sizeOf(full) < R * 0.3 ? w[w.length - 1].toUpperCase() : full; });
+  /* a name too long for its half gives way to the club's short name, else its last word */
+  let names = [a, b].map(c => { const w = clubWords(c), full = w.join(' ').toUpperCase(); return w.length > 1 && sizeOf(full) < R * 0.3 ? (shortWord(c) || w[w.length - 1]).toUpperCase() : full; });
   let nameS = Math.min(...names.map(sizeOf));
   if (nameS < 10) {
-    const code = c => (c.short && /^[\p{L}\p{N}]{2,5}$/u.test(c.short) ? c.short : clubWords(c).slice(-1)[0].replace(/[^\p{L}\p{N}]/gu, '').slice(0, 3)).toUpperCase();
+    /* the club's three letters: its short name when that is short, else its short word's, else its name's last real word's
+       (Copleston High School is COP, City of London Academy LON) */
+    const code = c => {
+      if (c.short && /^[\p{L}\p{N}]{2,5}$/u.test(c.short)) return c.short.toUpperCase();
+      const sw = shortWord(c);
+      const words = clubWords(c).filter(x => !/^(of|de|la|el|the|and|&)$/i.test(x));
+      return String(sw || words[words.length - 1] || c.name || '').replace(/[^\p{L}\p{N}]/gu, '').slice(0, 3).toUpperCase();
+    };
     names = [code(a), code(b)];
     nameS = Math.min(...names.map(sizeOf));
   }
@@ -1159,10 +1211,11 @@ function clubsFor(slugs) {
     } catch (_) { /* read it */ }
     const C = root.EPINOIA_CONFIG;
     if (!C || !C.supabaseUrl || typeof fetch !== 'function') return [];
-    const r = await fetch(C.supabaseUrl + '/rest/v1/teams?select=name,short_name,colour,colour_2,logo_path,leagues!inner(slug)&leagues.slug=in.(' +
+    const r = await fetch(C.supabaseUrl + '/rest/v1/teams?select=name,short_name,colour,colour_2,logo_path,aliases,leagues!inner(slug)&leagues.slug=in.(' +
       want.join(',') + ')&limit=1000', { headers: { apikey: C.supabaseAnonKey, Accept: 'application/json' } });
     if (!r.ok) return [];
-    const rows = (await r.json()).map(t => ({ name: t.name, short: t.short_name, colour: t.colour, colour2: t.colour_2, logo: t.logo_path }));
+    const rows = (await r.json()).map(t => ({ name: t.name, short: t.short_name, colour: t.colour, colour2: t.colour_2, logo: t.logo_path,
+                                              aliases: Array.isArray(t.aliases) ? t.aliases.filter(a => typeof a === 'string' && a.length >= 4) : [] }));
     try { sessionStorage.setItem(SK, JSON.stringify({ at: Date.now(), rows })); } catch (_) { /* fine */ }
     return rows;
   })().catch(() => []);
@@ -1256,6 +1309,6 @@ function mount(host, item, o) {
   return box;
 }
 
-return { analyse, strapOf, strapFor, svgContext, drawArt, mount, clubsFor, palette, font, fit, lines, wrap, cover, contain, disc, pill, ground, slash, rr, load, crest,
+return { analyse, strapOf, strapFor, svgContext, canonWith, monogram, drawArt, mount, clubsFor, palette, font, fit, lines, wrap, cover, contain, disc, pill, ground, slash, rr, load, crest,
          fonts, nameLines, clubWords, initials, hex, lum, mix, rgba, numberOf, scoreOf, topicOf, quoteOf, namesOf, clubsIn, runsIn, tintHex, T };
 }));

@@ -385,6 +385,84 @@ function watchSeen(art, it) {
   seenObs.observe(art);
 }
 
+/* A LEAGUE'S CLUBS BY THEIR OWN NAMES (Louie, 2026-10-16: "use teams' canonical names ... it's using Barking Abbey
+   U19 Men when its canonical name is Barking Abbey"). A match report is written from the feed's roster, which spells
+   a club as its feed does ("The Manchester Magic Academy U19 Men"); the site keeps that spelling among the club's
+   aliases and calls it by its own name. So wherever a league's article is shown, every alias of one of the league's
+   clubs is put back as the club's name: in the words, and in the labels a screen reader is given. One read of the
+   league's clubs a page (and an hour in this tab). */
+const ALIASES = new Map();
+function aliasesFor(slug) {
+  if (!slug || typeof slug !== 'string' || !/^[a-z0-9-]+$/.test(slug)) return Promise.resolve([]);
+  if (ALIASES.has(slug)) return ALIASES.get(slug);
+  const p = (async () => {
+    const SK = 'epinoia_club_aliases:' + slug;
+    try {
+      const kept = JSON.parse(sessionStorage.getItem(SK) || 'null');
+      if (kept && Date.now() - kept.at < 3600e3) return kept.pairs;
+    } catch (_) { /* read them */ }
+    const C = typeof window !== 'undefined' ? window.EPINOIA_CONFIG : null;
+    if (!C || !C.supabaseUrl || typeof fetch !== 'function') return [];
+    const r = await fetch(C.supabaseUrl + '/rest/v1/teams?select=name,aliases,leagues!inner(slug)&leagues.slug=eq.' + slug + '&limit=2000',
+      { headers: { apikey: C.supabaseAnonKey, Accept: 'application/json' } });
+    if (!r.ok) return [];
+    const pairs = aliasPairs(await r.json());
+    try { sessionStorage.setItem(SK, JSON.stringify({ at: Date.now(), pairs })); } catch (_) { /* fine */ }
+    return pairs;
+  })().catch(() => []);
+  ALIASES.set(slug, p);
+  return p;
+}
+/* [[alias, name]], longest alias first; an alias that is some club's own name is nobody's alias */
+function aliasPairs(rows) {
+  const names = new Set((rows || []).map(t => String(t.name || '').trim()).filter(Boolean));
+  const out = [];
+  (rows || []).forEach(t => {
+    const name = String(t.name || '').trim();
+    if (!name) return;
+    (Array.isArray(t.aliases) ? t.aliases : []).forEach(a0 => {
+      const a = String(a0 || '').trim();
+      /* never one the name itself contains ("Itchen" for Itchen College would make it Itchen College College) */
+      const low = name.toLowerCase();
+      if (!a || a === name || names.has(a) || a.length < 4 || low.includes(a.toLowerCase())) return;
+      out.push([a, name]);
+      /* the feed's "The X" is also written "X" in a sentence that begins otherwise */
+      if (/^the /i.test(a) && !names.has(a.slice(4))) out.push([a.slice(4), name]);
+    });
+  });
+  return out.sort((x, y) => y[0].length - x[0].length);
+}
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/* an alias found whole (a dash in it any dash, its spaces any space), never inside a longer word */
+function canonText(text, pairs) {
+  let s = String(text == null ? '' : text);
+  if (!s || !pairs || !pairs.length) return s;
+  pairs.forEach(([a, name]) => {
+    if (s.toLowerCase().indexOf(a.split(/[\s–—-]+/)[0].toLowerCase()) < 0) return;
+    const re = new RegExp('(^|[^\\p{L}\\p{N}])' + reEsc(a).replace(/[-–—]/g, '[-–—]').replace(/\s+/g, '\\s+') + '(?![\\p{L}\\p{N}])', 'giu');
+    s = s.replace(re, (m, pre) => pre + name);
+  });
+  return s;
+}
+/* every text in a node, and its labels, by the clubs' own names: once the league's aliases have been read */
+function canon(node, slug) {
+  if (!node || !slug) return Promise.resolve(false);
+  return aliasesFor(slug).then(pairs => {
+    if (!pairs.length || typeof document === 'undefined') return false;
+    const w = document.createTreeWalker(node, 4 /* NodeFilter.SHOW_TEXT */);
+    const hit = [];
+    for (let t = w.nextNode(); t; t = w.nextNode()) hit.push(t);
+    hit.forEach(t => { const v = canonText(t.nodeValue, pairs); if (v !== t.nodeValue) t.nodeValue = v; });
+    [node].concat([...node.querySelectorAll('[aria-label],[title]')]).forEach(e => {
+      ['aria-label', 'title'].forEach(k => {
+        const v = e.getAttribute && e.getAttribute(k);
+        if (v) { const c = canonText(v, pairs); if (c !== v) e.setAttribute(k, c); }
+      });
+    });
+    return true;
+  }, () => false);
+}
+
 function card(item, opts) {
   const o = opts || {};
   const it = item || {};
@@ -479,6 +557,8 @@ function card(item, opts) {
   }
   art.appendChild(foot);
   watchSeen(art, it);
+  /* a league's own article: its clubs by their own names, not the feed's spellings */
+  if (it.kind === 'league' && it.row && it.row.league_slug) canon(art, it.row.league_slug);
   return art;
 }
 
@@ -631,5 +711,5 @@ function grid(items, opts) {
   return g;
 }
 
-return { card, grid, hero, masthead, brands, mark, fromFeed, art, artFigure, artItem, newsArt, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND, toTrack, partnerPill, whyLine, langChip };
+return { card, grid, hero, masthead, brands, mark, fromFeed, art, artFigure, artItem, newsArt, canon, canonText, aliasesFor, aliasPairs, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND, toTrack, partnerPill, whyLine, langChip };
 }));

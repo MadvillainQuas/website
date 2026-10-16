@@ -307,6 +307,9 @@ function card(a, opts) {
               el('span', 'club-name', 'Read \u2192'));
 
   link.append(plate, body, foot);
+  /* its clubs by their own names, not the feed's spellings a match report was written in (newscard.js canon) */
+  const KC = typeof window !== 'undefined' ? window.EpinoiaNewsCard : null;
+  if (KC && KC.canon && o.leagueSlug) KC.canon(link, o.leagueSlug);
   return link;
 }
 
