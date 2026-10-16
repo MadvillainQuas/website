@@ -418,6 +418,17 @@ console.log('-- export geometry: sizes, layout, wrapping, file names');
 /* the text boxes debounce their typing, each with its own timer: one shared timer let a quick edit in the next box cancel the last */
 ok('each text box keeps its own typing timer', (() => { const m = /const field = \(label, k, auto, cap\) => \{\s*let t;/.test(src); return m; })());
 
+/* THE EXPORT'S TEXT AND CHART SIZES (Louie, 2026-10-16: "the chart is looking quite small in the image") */
+{
+  const one = C.exportLayout({ size: '1200x675', charts: 1, titleLines: 1, subLines: 1 }), big = C.exportLayout({ size: '1200x675', charts: 1, titleLines: 1, subLines: 1, text: 2, chart: 2 });
+  ok('the text size grows the title and the subtitle; the chart size trims the margins, so the chart is wider in the same picture',
+     big.title.size === 2 * one.title.size && big.sub.size === 2 * one.sub.size && big.pad < one.pad && big.charts[0].w > one.charts[0].w &&
+     big.charts[0].x + big.charts[0].w <= big.w && big.charts[0].y + big.charts[0].h <= big.h, [one.pad, big.pad, one.charts[0].w, big.charts[0].w]);
+  ok('...the chart\'s words grow with the text size and its marks with the chart size, apart; two rows of buttons in the export panel, 1.25X by default',
+     /const fs = clamp\(u \* 1\.1, 0\.9, 1\.4\) \* tx;/.test(src) && /cfg\.marks = cx \/ tx;/.test(src) && /const mk = clamp\(\+cfg\.marks \|\| 1, 0\.3, 4\);/.test(src) &&
+     /grp\('text size'/.test(src) && /grp\('chart size'/.test(src) && /text: 1\.25, chart: 1\.25/.test(src));
+}
+
 /* LOGOS (Louie, 2026-10-16): every club its crest in a circle instead of a dot; kept in the link; clubs only */
 {
   const t = C.sanitizeState({ ent: 't', lo: 1 }), p = C.sanitizeState({ ent: 'p', lo: 1 });

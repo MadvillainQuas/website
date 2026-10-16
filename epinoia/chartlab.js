@@ -730,6 +730,8 @@ const EXPORT_SIZE_LABELS = { shown: 'as shown', '1200x675': '1200 × 675', '1080
      o.charts    1 | 2
      o.titleLines, o.subLines, o.footLines   how many lines the wrapped texts take (0 when there is none)
      o.credit    a credit line at the foot
+     o.text      the export's text size (1 as before): the title, the subtitle and the foot line grow with it
+     o.chart     the export's chart size (1 as before): above 1, the margins round the chart are trimmed so it fills more
    Returns { w, h, unit, pad, title: {x, y, w, lh, size}, sub, foot, credit, charts: [{x, y, w, h}], side } with every rectangle inside
    the canvas and none overlapping another. */
 function exportLayout(o) {
@@ -737,8 +739,9 @@ function exportLayout(o) {
   const n = o.charts === 2 ? 2 : 1;
   const W = fixed ? fixed[0] : Math.max(320, Math.round(o.shown && o.shown.w || 640));
   const u = fixed ? W / 1200 : clamp(W / 1100, 0.6, 1);
-  const pad = Math.round(28 * u), gap = Math.round(14 * u);
-  const tSize = 24 * u, tLh = Math.round(30 * u), sSize = 13 * u, sLh = Math.round(19 * u), fSize = 11.5 * u, fLh = Math.round(16 * u), cSize = 9.5 * u;
+  const tx = clamp(+o.text || 1, 0.8, 2.5), trim = (+o.chart || 1) > 1 ? 0.55 : 1;
+  const pad = Math.round(28 * u * trim), gap = Math.round(14 * u * trim);
+  const tSize = 24 * u * tx, tLh = Math.round(30 * u * tx), sSize = 13 * u * tx, sLh = Math.round(19 * u * tx), fSize = 11.5 * u * tx, fLh = Math.round(16 * u * tx), cSize = 9.5 * u;
   const tl = o.titleLines || 0, sl = o.subLines || 0, fl = o.footLines || 0;
   const headH = pad + tl * tLh + (sl ? Math.round(4 * u) + sl * sLh : 0) + (tl || sl ? gap : 0);
   const creditH = o.credit ? Math.round(26 * u) : 0;
@@ -1018,8 +1021,10 @@ function buildChart(cfg) {
 
   /* ---- the dots: one path per colour, every circle its own size; the rest dim when something is highlighted ---- */
   const dimOn = hi.size > 0;
-  const baseR = (n <= 40 ? 5 : n <= 150 ? 4.3 : n <= 400 ? 3.6 : 3.1) * fs;
-  const rOf = p => cfg.size ? (2.4 + 6.4 * Math.sqrt(cfg.size.get(p))) * fs * (n > 300 ? 0.75 : 1) : baseR;
+  /* cfg.marks: the dots, crests and discs larger or smaller than the words (an export's CHART size; 1 on the page) */
+  const mk = clamp(+cfg.marks || 1, 0.3, 4);
+  const baseR = (n <= 40 ? 5 : n <= 150 ? 4.3 : n <= 400 ? 3.6 : 3.1) * fs * mk;
+  const rOf = p => cfg.size ? (2.4 + 6.4 * Math.sqrt(cfg.size.get(p))) * fs * mk * (n > 300 ? 0.75 : 1) : baseR;
   const colourOf = (p, ser) => {
     if (ovl2) return ser ? T.s2 : T.s1;
     const e = p.e;
@@ -1036,7 +1041,7 @@ function buildChart(cfg) {
      colour where it has none, or the crest does not load - sized with the dots (and by the size statistic, when one is set) */
   const logoOn = !!cfg.logos && cfg.kind === 'team' && !ovl2;
   const logoPts = [];
-  const logoR = p => Math.max(7 * fs, Math.min(16 * fs, (cfg.size ? rOf(p) * 1.35 : (n <= 20 ? 11 : n <= 40 ? 9.5 : n <= 80 ? 8 : 7) * fs)));
+  const logoR = p => Math.max(7 * fs * mk, Math.min(16 * fs * mk, (cfg.size ? rOf(p) * 1.35 : (n <= 20 ? 11 : n <= 40 ? 9.5 : n <= 80 ? 8 : 7) * fs * mk)));
   pts.forEach(p => {
     const sers = ovl2 ? [0, 1] : [0];
     sers.forEach(ser => {
@@ -1046,7 +1051,7 @@ function buildChart(cfg) {
       if (!isFinite(px) || !isFinite(py)) return;
       const isHi = hi.has(p.e.id);
       const r = logoOn ? logoR(p) : rOf(p);
-      const rec = { id: p.e.id, ser, px, py, r: isHi ? 11 * fs : r, hi: isHi, p, inside: inPlot(px, py) };
+      const rec = { id: p.e.id, ser, px, py, r: isHi ? 11 * fs * mk : r, hi: isHi, p, inside: inPlot(px, py) };
       hits.push(rec);
       if (!rec.inside) return;
       if (isHi) { placedPts.push(rec); if (!ovl2 || !ser) return; }
@@ -1083,7 +1088,7 @@ function buildChart(cfg) {
   /* ---- highlighted entities: coloured discs with initials, or the club's crest ---- */
   const discs = S('g', { class: 'cl-discs', 'clip-path': 'url(#' + clipId + ')' }); g.appendChild(discs);
   const nHi = placedPts.filter(r => !r.ser).length;
-  const R = (nHi > 10 ? 8.5 : 11) * fs;
+  const R = (nHi > 10 ? 8.5 : 11) * fs * mk;
   const byId = new Map();
   placedPts.forEach(rec => { if (!rec.ser) byId.set(rec.id, rec); rec.r = R; });
   hits.forEach(h => { if (h.hi) h.r = R; });
@@ -1171,7 +1176,10 @@ function buildChart(cfg) {
   const fit = (s, maxW, m) => { const l = wrapLines(s, maxW, m, 1); return l.length ? l[0] : ''; };
   g.appendChild(S('text', ed({ x: num1(x0 + pw / 2), y: H - 20 * fs, 'text-anchor': 'middle', fill: T.ink2, 'font-size': 10.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.03em' }, 'x'), fit(xTitle, pw * 0.72, mMic)));
   const yLabel = D.overlay ? (T_.ay || D.cy.title + ' & ' + D.cy2.title + ': z-scores') : yTitle;
-  g.appendChild(S('text', ed({ transform: 'translate(' + num1(11 * fs) + ' ' + num1(y0 + ph / 2) + ') rotate(-90)', 'text-anchor': 'middle', fill: T.ink2, 'font-size': 10.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.03em' }, 'y'), fit(yLabel, Math.max(50, ph - 2 * (measureFn(small, FONT.micro, 400)('better') + 18 * fs)), mMic)));
+  /* the Y title in the side's room under the BETTER arrow (which always sits at the top: every axis runs better-upwards), not
+     centred on the whole side with that room kept clear at both ends - a large export's title was cut to "Net…" */
+  const yClear = measureFn(small, FONT.micro, 400)('better') + 18 * fs, yRoom = Math.max(50, ph - yClear - 4 * fs);
+  g.appendChild(S('text', ed({ transform: 'translate(' + num1(11 * fs) + ' ' + num1(y0 + yClear + yRoom / 2) + ') rotate(-90)', 'text-anchor': 'middle', fill: T.ink2, 'font-size': 10.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.03em' }, 'y'), fit(yLabel, yRoom, mMic)));
   {
     /* the direction that is better, in words and an arrow: at the foot of X, up the side of Y (both turned round for a
        lower-is-better statistic; z-scores and percentiles are already turned, so their arrows always point up and right) */
@@ -1352,12 +1360,13 @@ const longDate = () => { try { return new Date().toLocaleDateString('en-GB', { d
 function composeExport(o) {
   const theme = o.theme === 'light' ? THEMES.light : o.theme === 'dark' ? THEMES.dark : pageTheme(o.pageEl);
   const n = o.charts.length;
-  const base = exportLayout({ size: o.size, shown: o.shown, charts: n, credit: false });
+  const tx = clamp(+o.text || 1, 0.8, 2.5), cx = clamp(+o.chart || 1, 0.8, 3);
+  const base = exportLayout({ size: o.size, shown: o.shown, charts: n, credit: false, text: tx, chart: cx });
   const u = base.unit, W = base.w;
-  const mT = measureFn(24 * u, "Jersey25, " + FONT.ui, 400), mS = measureFn(13 * u, FONT.ui, 500), mF = measureFn(11.5 * u, FONT.ui, 500);
+  const mT = measureFn(base.title.size, "Jersey25, " + FONT.ui, 400), mS = measureFn(base.sub.size, FONT.ui, 500), mF = measureFn(base.foot.size, FONT.ui, 500);
   const inner = W - 2 * base.pad;
   const tl = wrapLines(o.texts.title || '', inner, mT, 3), sl = wrapLines(o.texts.sub || '', inner, mS, 3), fl = wrapLines(o.texts.foot || '', inner, mF, 3);
-  const L = exportLayout({ size: o.size, shown: o.shown, charts: n, titleLines: tl.length, subLines: sl.length, footLines: fl.length, credit: !!o.credit });
+  const L = exportLayout({ size: o.size, shown: o.shown, charts: n, titleLines: tl.length, subLines: sl.length, footLines: fl.length, credit: !!o.credit, text: tx, chart: cx });
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('xmlns', NS); svg.setAttribute('width', L.w); svg.setAttribute('height', L.h); svg.setAttribute('viewBox', '0 0 ' + L.w + ' ' + L.h);
   svg.appendChild(S('style', null, (o.fonts || '') + '\ntext{font-kerning:normal}'));
@@ -1372,9 +1381,10 @@ function composeExport(o) {
   txt(tl, Object.assign({}, L.title, { y: L.title.y + L.title.lh * 0.12 }), { fill: theme.ink, 'font-family': "Jersey25, " + FONT.ui, 'font-weight': 400, 'letter-spacing': '0.02em' });
   txt(sl, Object.assign({}, L.sub, { y: L.sub.y + L.sub.lh * 0.1 }), { fill: theme.ink2, 'font-family': FONT.ui, 'font-weight': 500 });
   const crestUsed = new Set(), crestMissing = new Set();
-  const fs = clamp(u * 1.1, 0.9, 1.4);
+  const fs = clamp(u * 1.1, 0.9, 1.4) * tx;
   L.charts.forEach((r, i) => {
     const cfg = o.charts[i](r, fs, theme, e => { const d = o.crest ? o.crest(e) : null; if (d) crestUsed.add(e.id); else if (o.wantCrest && o.wantCrest(e)) crestMissing.add(e.id); return d; });
+    cfg.marks = cx / tx;                               // the marks at the chart size, whatever the words grew by
     const built = buildChart(cfg);
     const gg = S('g', { transform: 'translate(' + r.x + ' ' + r.y + ')' });
     if (!o.transparent) gg.appendChild(S('rect', { x: 0.5, y: 0.5, width: r.w - 1, height: r.h - 1, fill: 'none', stroke: theme.rule2, 'stroke-width': 1 }));
@@ -2503,7 +2513,9 @@ async function mountAsync(opts) {
   }
 
   /* ---------------------------------------------------------------- export --- */
-  const xo = { size: '1200x675', scale: 2, transparent: false, theme: 'page', preview: null, busy: 0 };
+  /* text: the export's words (title, subtitle, axes, names) at 1.25 their old size by default; chart: the marks (dots, crests) 1.25 too,
+     the margins trimmed (Louie, 2026-10-16: "the chart is looking quite small in the image") */
+  const xo = { size: '1200x675', scale: 2, transparent: false, theme: 'page', text: 1.25, chart: 1.25, preview: null, busy: 0 };
   let exStatus = null, exPreview = null, exNote = null, previewT = 0, previewUrl = null, previewSeq = 0;
   async function buildExport(noCrest) {
     const fonts = await fontCSS();
@@ -2515,7 +2527,7 @@ async function mountAsync(opts) {
     const gridW = Math.round(grid.clientWidth || wrap.clientWidth || 640);
     const shown = { w: side ? gridW : gridW + 56, chartH: cards.map(c => c.H || 380), side };
     return composeExport({
-      size: xo.size, theme: xo.theme, transparent: xo.transparent, credit: !!state.cr, fonts, pageEl: wrap, shown,
+      size: xo.size, theme: xo.theme, transparent: xo.transparent, credit: !!state.cr, fonts, pageEl: wrap, shown, text: xo.text, chart: xo.chart,
       texts: { title: textOf('ti'), sub: textOf('su'), foot: state.tx.fo || '', credit: creditText() },
       charts: charts.map((D, ci) => (rect, fs, thm, crestFn) => cfgFor(ci, { W: rect.w, H: rect.h, fs, theme: thm, crest: crestFn, view: views[ci], uid: 'x' })),
       crest: e => { const u = urls.get(e.id); return u ? data.get(u) || null : null; }, wantCrest: e => !noCrest && urls.has(e.id)
@@ -2580,6 +2592,10 @@ async function mountAsync(opts) {
       grp('png scale', [[1, '1X'], [2, '2X'], [3, '3X']], xo.scale, v => { xo.scale = v; }),
       grp('background', [[false, 'SOLID'], [true, 'TRANSPARENT']], xo.transparent, v => { xo.transparent = v; }),
       grp('theme', [['page', 'AS THE PAGE'], ['light', 'LIGHT'], ['dark', 'DARK']], xo.theme, v => { xo.theme = v; })
+    ]));
+    p.appendChild(h('div', { class: 'cl-xrow' }, [
+      grp('text size', [[1, '1X', 'the words as they were'], [1.25, '1.25X'], [1.5, '1.5X'], [2, '2X', 'the title, the subtitle, the axes and the names twice the size']], xo.text, v => { xo.text = v; }),
+      grp('chart size', [[1, '1X', 'the dots and the margins as they were'], [1.25, '1.25X'], [1.5, '1.5X'], [2, '2X', 'the dots and crests twice the size, the margins trimmed']], xo.chart, v => { xo.chart = v; })
     ]));
     exPreview = h('img', { class: 'cl-prev', alt: 'Preview of the exported image', decoding: 'async' });
     exStatus = h('p', { class: 'cl-xs', role: 'status', text: 'Building the preview…' });
