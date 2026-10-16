@@ -65,6 +65,22 @@ ok('a story with nothing to name: the brand layout, latest news', f.layout === '
 f = A.analyse({ title: 'Report', summary: '', kind: 'league', home: clubs[2], away: clubs[3], homeScore: 90, awayScore: 80 }, {});
 ok('a match report brings its own clubs and score', f.layout === 'duel' && f.score.join() === '90,80');
 
+/* IS IT A GAME? The headline says so, not a score in the lines under it (Louie, 2026-10-16: "5 super-early predictions
+   for the Sheffield Sharks" came out as its summary's 98-76 game) */
+{
+  const sharks = [{ name: 'Sheffield Sharks', short: 'SHE', colour: '#1c2a5c' }, { name: 'Caledonia Gladiators', short: 'CAL', colour: '#00539f' }];
+  const sum = 'The Sheffield Sharks got their season underway with a convincing 98-76 win at home against the Caledonia Gladiators.';
+  const p1 = A.analyse({ title: '5 super-early predictions for the Sheffield Sharks', summary: sum, kind: 'article' }, { clubs: sharks });
+  ok('a feature about a club whose summary mentions a game: the club, its list as the strap, no score', p1.layout === 'club'
+     && p1.clubs.length === 1 && p1.clubs[0].name === 'Sheffield Sharks' && p1.score === null && A.strapOf(p1) === '5 PREDICTIONS' && p1.topic.key === 'predictions', p1);
+  const p2 = A.analyse({ title: '5 super-early predictions for the Sheffield Sharks', summary: sum, kind: 'article' }, { clubs: [] });
+  ok('...and with no clubs to find, never a duel of guesses', p2.layout === 'number' && !p2.clubs.length, p2.layout);
+  const p3 = A.analyse({ title: 'Sheffield Sharks beat Caledonia Gladiators 98-76', summary: '', kind: 'article' }, { clubs: sharks });
+  ok('a headline that is a result is still a duel with its score', p3.layout === 'duel' && String(p3.score) === '98,76');
+  ok('a list piece counts its items: 3 takeaways, 10 storylines', A.numberOf('3 takeaways from the opener').label === 'TAKEAWAYS'
+     && A.numberOf('10 storylines to watch this season').value === '10' && A.numberOf('Lions win 3 straight') !== null);
+}
+
 console.log('\nthe colours');
 const contrast = (a, b) => { const x = A.lum(a), y = A.lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 const hue = h => { const n = parseInt(h.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255, mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
@@ -228,7 +244,20 @@ ok('the hub loads the post kit and has its section', /newsart\.js\?v=\d+/.test(h
 ok('the hub mounts it when a league is chosen', /newsPosts\(\)/.test(src('creators/hub/hub.js')));
 const nc = src('newscard.js');
 ok('a card with no picture gets its cover, from newsart.js loaded beside newscard.js at its version',
-   /newsart\.js' \+ \(m\[2\] \|\| ''\)/.test(nc) && /cover\(plate, f, it\)/.test(nc) && /artFigure/.test(src('news/news-page.js')) && /K\.art\(/.test(src('news.js')));
+   /newsart\.js' \+ \(m\[2\] \|\| ''\)/.test(nc) && /cover\(plate, f, it, partner\)/.test(nc) && /artFigure/.test(src('news/news-page.js')) && /K\.art\(/.test(src('news.js')));
+const ncss = src('kit/newscard.css');
+ok('a card with a drawn cover shows its publisher\'s badge (whose story it is), no grain over the drawing, and a partner\'s pill below the words',
+   /\.pc-noimg \.pc-plate\.has-art > \.pc-badge\{display:flex\}/.test(ncss) && /\.pc-plate\.has-art > \.pc-grain\{display:none\}/.test(ncss)
+   && /partnered \? \{ safeBottom: 0\.2 \}/.test(nc) && /cover\(plate, f, it, partner\)/.test(nc) && /chrome: true/.test(nc)
+   && /\.club-plate\.has-art > \.club-grain\{display:none\}/.test(src('kit/news.css')));
+{
+  /* the words stay above a partner's pill: nothing drawn in the bottom fifth but the ground */
+  const f = an('Valencia center reportedly moves to Germany', 'Yankuba Sima is leaving Valencia Basket.');
+  const c = recorder(296, 185);
+  A.drawArt(c, 296, 185, f, { clubs: [img(200, 200, 'crest')] }, { safeTop: 0.2, safeBottom: 0.2 });
+  const low = c.log.filter(e => e.kind === 'text' && e.y1 > 185 * 0.8 + 1);
+  ok('a partner\'s cover keeps every word above the pill\'s band', !low.length, low.map(e => e.t));
+}
 ok('no test figure ships: nothing under epinoia/ names a lab or a cut-out file', !/_lab\/|cutout\.png/.test(nc + src('newsart.js') + src('newspost.js') + src('creators/hub/posts.js')));
 
 console.log(`\n${pass} passed, ${fail} failed`);

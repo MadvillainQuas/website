@@ -327,3 +327,10 @@ a.pc-mast-brand:hover{background:rgba(0,0,0,.42)}
 .pc-read-fig.pc-read-art{aspect-ratio:16/9;overflow:hidden;max-height:min(60vh,540px)}
 .pc-read-fig.pc-read-art > .pc-flood{position:absolute;inset:0}
 .pc-plate.has-art > .pc-field{visibility:hidden}
+/* A COVER DRAWN (newsart.js): the brand's badge back in its corner - its disc in the print is under the cover now, and a
+   story must always say whose it is (Louie, 2026-10-16) - the corner marks as a photograph's, and no grain laid over
+   the drawing (an overlay of noise is what made its type look fuzzy) */
+.pc-noimg .pc-plate.has-art > .pc-badge{display:flex}
+.pc-noimg .pc-plate.has-art > .pc-reg.tl,.pc-noimg .pc-plate.has-art > .pc-reg.tr{display:none}
+.pc-plate.has-art > .pc-grain{display:none}
+.pc-noimg .pc-plate.has-art > .pc-partner{left:10px}

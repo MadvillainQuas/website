@@ -411,13 +411,13 @@ function card(item, opts) {
       const img = el('img', 'pc-cover');
       img.src = it.image; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
       /* a picture that will not load leaves the brand's plate behind */
-      img.addEventListener('error', () => { img.remove(); art.classList.add('pc-noimg'); const f = field(b); plate.insertBefore(f, plate.firstChild); cover(plate, f, it); });
+      img.addEventListener('error', () => { img.remove(); art.classList.add('pc-noimg'); const f = field(b); plate.insertBefore(f, plate.firstChild); cover(plate, f, it, partner); });
       plate.appendChild(img);
       plate.appendChild(el('span', 'pc-shade'));
     } else {
       const f = field(b);
       plate.appendChild(f);
-      cover(plate, f, it);
+      cover(plate, f, it, partner);
     }
     ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'pc-reg ' + c)));
     const badge = el('span', 'pc-badge');
@@ -517,15 +517,17 @@ function artItem(it) {
 }
 /* the cover into a plate: host the plate, after the child it goes over (the brand's print) */
 function art(host, after, it, opts) {
-  newsArt().then(A => { if (A && host) A.mount(host, artItem(it), Object.assign({ after, safeTop: 0.2 }, opts || {})); }, () => { /* the print stays */ });
+  newsArt().then(A => { if (A && host) A.mount(host, artItem(it), Object.assign({ after, safeTop: 0.36 }, opts || {})); }, () => { /* the print stays */ });
 }
+/* a partner's card carries its pill over the plate's foot: the cover keeps its words above it */
+const cover = (host, after, it, partnered) => art(host, after, it, partnered ? { safeBottom: 0.2 } : null);
 /* a reading page's figure for a story with no picture: the cover at 16:9 under the masthead */
-const cover = (host, after, it) => art(host, after, it);
 function artFigure(it) {
   const fig = el('figure', 'pc-read-fig pc-read-art');
   const print = el('span', 'pc-flood');
   fig.appendChild(print);
-  art(fig, print, it, { safeTop: 0.06 });
+  /* standing on its own under the masthead, the cover carries its publisher's mark and name itself */
+  art(fig, print, it, { safeTop: 0.06, chrome: true });
   return fig;
 }
 

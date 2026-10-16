@@ -237,9 +237,12 @@ function namesOf(title, summary, avoid) {
 const STATW = { points: 'POINTS', point: 'POINTS', pts: 'POINTS', rebounds: 'REBOUNDS', assists: 'ASSISTS', steals: 'STEALS', blocks: 'BLOCKS',
   threes: 'THREES', 'three-pointers': 'THREES', triples: 'THREES', puntos: 'POINTS', punti: 'POINTS', rebotes: 'REBOUNDS', rimbalzi: 'REBOUNDS' };
 const WORDN = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+const LIST_NOUNS = 'predictions|takeaways|things|reasons|questions|storylines|thoughts|observations|lessons|keys|players|moments|stats|names|bold takes|takes';
 function numberOf(text) {
   const t = clean(text);
   let m;
+  /* A LIST PIECE opens on its count: "5 super-early predictions" is 5 PREDICTIONS */
+  if ((m = new RegExp('^(\\d{1,2})\\s+(?:[\\p{L}’\'-]+\\s+){0,3}?(' + LIST_NOUNS + ')\\b', 'iu').exec(t))) return { value: m[1], label: m[2].toUpperCase(), list: true };
   if ((m = /\b(\d{1,2})[–—-](\d{1,2})\s+(run|parcial)\b/i.exec(t))) return { value: m[1] + '–' + m[2], label: 'RUN' };
   if ((m = /\bfrom\s+(\d{1,2})\s+(?:points\s+)?down\b/i.exec(t))) return { value: m[1], label: 'POINT COMEBACK' };
   if ((m = /\b(\d{1,2})[-\s]point\s+(game|night|performance|haul|effort|outing|comeback|win|victory|deficit)\b/i.exec(t))) {
@@ -275,6 +278,10 @@ const TOPICS = [
   ['trade', /\b(trades?|traded|trading|swap|deal for|mercato|traspaso|échange)\b/i, ['TRADE', 'TALK']],
   ['contract', /\b(contract|extension|extends|contrato|contratto|prolong\w*)\b/i, ['CONTRACT', 'NEWS']],
   ['offcourt', /\b(sanctions?|fined?|suspen\w+|bans?|banned|appeal\w*|statement|legal|lawsuit|court case|governance|investigat\w+)\b/i, ['OFF THE', 'COURT']],
+  ['predictions', /\b(predictions?|predict\w*|forecasts?|bold takes?|pronósticos?|pronostici|prédictions?)\b/i, ['THE', 'PREDICTIONS']],
+  ['rankings', /\b(power rankings?|rankings?|ranked|ranking every|tier list)\b/i, ['POWER', 'RANKINGS']],
+  ['breakdown', /\b(breakdown|deep dive|film study|tactical|tactics|x'?s and o'?s|analysis|análisis|analisi)\b/i, ['THE', 'BREAKDOWN']],
+  ['review', /\b(review|report card|grades?|graded|takeaways|lessons|what we learned)\b/i, ['THE', 'REVIEW']],
   ['preview', /\b(preview|previa|anteprima|avant[- ]match|look ahead|ahead of)\b/i, ['GAME', 'PREVIEW']],
   ['debut', /\b(debut|début|esordio)\b/i, ['THE', 'DEBUT']],
   ['award', /\b(mvp|award|honou?rs?|all-star|player of the|named to|trophy|premio)\b/i, ['AWARD', 'NEWS']],
@@ -320,11 +327,19 @@ function analyse(a0, o) {
       if (!seen.has(x.club) && clubs.length < 2) { seen.add(x.club); clubs.push(x.club); }
     });
   }
-  const score = a.homeScore != null && a.awayScore != null ? [a.homeScore, a.awayScore] : scoreOf(both);
+  /* IS IT A GAME? THE HEADLINE SAYS SO, not a score in the lines under it: "5 super-early predictions for the Sheffield
+     Sharks" over a summary that mentions their 98-76 opener is about the Sharks, not that game (Louie, 2026-10-16). A
+     game: a match report's own clubs, a score in the headline, a result or a preview in it, "v", or two clubs named in it */
+  const scoreT = scoreOf(title);
+  let score = a.homeScore != null && a.awayScore != null ? [a.homeScore, a.awayScore] : (scoreT || scoreOf(summary));
+  const titleTopic = topicOf(title, a.kind);
+  const resultWords = /\b(beat|beats|defeat\w*|edg\w+|past|over|dominat\w*|wins?|won|loss|lost|stun\w*|rout\w*|outlast\w*|vs?\.?|versus)\b/i;
+  const game = !!(a.home && a.away) || !!scoreT || ['result', 'preview'].includes(titleTopic.key)
+    || /\b(vs?\.?|versus|against|derby|clash)\b/i.test(title) || clubsIn(title, opt.clubs, both).length >= 2;
   const avoid = clubs.flatMap(c => [c.name, c.short]).concat([brand.name, a.league && a.league.name]).filter(Boolean);
   let names = namesOf(title, summary, avoid);
   /* two teams the site does not hold, in a result with its score: a duel all the same, on monograms */
-  if (clubs.length < 2 && score && names.length >= 2 && /\b(beat|beats|defeat\w*|edg\w+|past|over|dominat\w*|win|won|loss|lost|vs?\.?)\b/i.test(both)) {
+  if (game && clubs.length < 2 && score && names.length >= 2 && resultWords.test(title)) {
     const named = names.slice(0, 2).map(n => ({ name: n, guess: true }));
     clubs = clubs.length ? [clubs[0], named.find(n => fold(n.name) !== fold(clubs[0].name)) || named[1]] : named;
     names = names.slice(2);
@@ -348,9 +363,11 @@ function analyse(a0, o) {
   }
   const topic = topicOf(title, a.kind, summary);
   const quote = quoteOf(a.quote || summary) || quoteOf(title);
-  /* two clubs named make a game only when the story is one: a result, a preview, a score, "v" */
-  const game = !!(a.home && a.away) || !!score || ['result', 'preview'].includes(topic.key) || /\b(vs?\.?|versus|against|derby|clash)\b/i.test(title);
-  if (clubs.length >= 2 && !game && !clubs[1].guess) clubs = clubs.slice(0, 1);
+  /* not a game: the club the headline is about (never a guessed one), and no score on it */
+  if (!game) {
+    score = null;
+    clubs = clubs.filter(c => !c.guess).slice(0, 1);
+  }
   const layout = clubs.length >= 2 ? 'duel' : clubs.length === 1 ? 'club' : number ? 'number' : names.length ? 'name' : 'brand';
   const lead = clubs[0] || null;
   const pal = lead && !lead.guess ? palette(lead.colour, lead.colour2, lead.name)
@@ -600,7 +617,10 @@ function drawArt(ctx, W, H, f, images, o) {
   const im = images || {};
   const pal = f.palette;
   const r = W / H, wide = r >= 1.2;
-  const safeTop = H * (opt.safeTop != null ? opt.safeTop : 0.2);
+  /* a cover carrying its own brand line (chrome) keeps its subject below it */
+  const safeTop = H * Math.max(opt.safeTop != null ? opt.safeTop : 0.2, opt.chrome ? 0.17 : 0);
+  /* the floor the words stand on: the height less a band the page lays its own tag over (safeBottom: the partner's pill) */
+  const HL = H - H * Math.max(0, Math.min(0.4, opt.safeBottom || 0));
   const pad = Math.min(W, H) * 0.075;
   ctx.save();
   if (f.layout === 'duel') {
@@ -631,7 +651,7 @@ function drawArt(ctx, W, H, f, images, o) {
       top0 = Math.max(top0, pad * 0.3 + lr * 2 + pad * 0.15);
     }
     const strapS = Math.max(9, H * 0.036), strapH = strapS * 1.75;
-    const avail = H - top0 - pad * 0.7 - strapH * 1.5;
+    const avail = HL - top0 - pad * 0.7 - strapH * 1.5;
     const R = Math.min(avail * 0.34, W * 0.15);
     const cy = top0 + R * 1.04;
     const xa = W * 0.2, xb = W - xa;
@@ -680,13 +700,13 @@ function drawArt(ctx, W, H, f, images, o) {
       lines(ctx, [segs], W / 2, cy + sz * 0.36, sz, { align: 'center', shadow: 'rgba(0,0,0,0.55)' });
     }
     const strap = strapOf(f) || (final ? null : T(f.topic.words.join(' ')));
-    if (strap && opt.strap !== false) pill(ctx, strap, W / 2, H - pad * 0.7 - strapH, strapS, pal.accent, '#0b0d10', 'center');
+    if (strap && opt.strap !== false) pill(ctx, strap, W / 2, HL - pad * 0.7 - strapH, strapS, pal.accent, '#0b0d10', 'center');
   } else if (f.layout === 'club') {
     const c = f.clubs[0];
     ground(ctx, W, H, pal, f.seed, { lightX: wide ? W * 0.72 : W * 0.5 });
     slash(ctx, W, H, wide ? W * 0.52 : W * 0.6, pal.accent, { alpha: 0.12, band: W * 0.08 });
-    const R = wide ? Math.min((H - safeTop) * 0.42, W * 0.2) : Math.min(W * 0.26, (H - safeTop) * 0.28);
-    const cx = wide ? W * 0.74 : W * 0.5, cy = wide ? safeTop + (H - safeTop) * 0.5 : safeTop + R * 1.05;
+    const R = wide ? Math.min((HL - safeTop) * 0.42, W * 0.2) : Math.min(W * 0.26, (HL - safeTop) * 0.28);
+    const cx = wide ? W * 0.74 : W * 0.5, cy = wide ? safeTop + (HL - safeTop) * 0.5 : safeTop + R * 1.05;
     /* a halo of rings behind the crest */
     ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = Math.max(1, R * 0.03);
     [1.28, 1.56, 1.86].forEach(k => { ctx.beginPath(); ctx.arc(cx, cy, R * k, 0, Math.PI * 2); ctx.stroke(); });
@@ -704,28 +724,28 @@ function drawArt(ctx, W, H, f, images, o) {
                                  : [[{ text: words[0], colour: '#ffffff' }]];
     const boxX = pad, boxW = wide ? Math.max(W * 0.3, cx - R * 1.12 - pad) : W - pad * 2;
     const top = wide ? safeTop : cy + R * 1.25;
-    const boxH = (H - pad - top) * (wide ? 0.62 : 0.6);
+    const boxH = (HL - pad - top) * (wide ? 0.62 : 0.6);
     const s = fit(ctx, ls, boxW, boxH, { max: H * 0.3 });
-    const y0 = wide ? top + (H - pad - top - ls.length * s * 0.92) * 0.42 + s * 0.8 : top + s * 0.8;
+    const y0 = wide ? top + (HL - pad - top - ls.length * s * 0.92) * 0.42 + s * 0.8 : top + s * 0.8;
     const yEnd = lines(ctx, ls, boxX, y0, s, { shadow: 'rgba(0,0,0,0.35)' });
     const strap = strapOf(f) || T(f.topic.words.join(' '));
-    if (yEnd + s * 0.25 + H * 0.07 < H - pad * 0.4) pill(ctx, strap, boxX, yEnd + s * 0.3, Math.max(9, H * 0.034), pal.accent, '#0b0d10');
+    if (yEnd + s * 0.25 + H * 0.07 < HL - pad * 0.4) pill(ctx, strap, boxX, yEnd + s * 0.3, Math.max(9, H * 0.034), pal.accent, '#0b0d10');
   } else if (f.layout === 'number') {
     ground(ctx, W, H, pal, f.seed);
     slash(ctx, W, H, W * 0.6, pal.accent, { alpha: 0.1 });
     const n = f.number;
     const who = n.who || f.names[0] ? (n.who || f.names[0]).toUpperCase() : null;
     const boxW = wide ? W * 0.62 : W - pad * 2;
-    const ns = fit(ctx, [[{ text: n.value, colour: pal.accent }]], boxW * (n.value.length > 3 ? 1 : 0.62), (H - safeTop - pad) * 0.64, { max: H * 0.62 });
+    const ns = fit(ctx, [[{ text: n.value, colour: pal.accent }]], boxW * (n.value.length > 3 ? 1 : 0.62), (HL - safeTop - pad) * 0.64, { max: H * 0.62 });
     const labelS = fit(ctx, [[{ text: n.label, colour: '#fff' }]], boxW, ns * 0.22, { stretch: 'condensed', max: ns * 0.2 });
     const whoS = who ? fit(ctx, [[{ text: who, colour: '#fff' }]], boxW, ns * 0.2, { stretch: 'condensed', weight: 800, max: ns * 0.17 }) : 0;
     const blockH = (who ? whoS * 1.15 : 0) + ns * 0.8 + labelS * 1.2;
-    let y = safeTop + (H - safeTop - pad - blockH) * 0.5;
+    let y = safeTop + (HL - safeTop - pad - blockH) * 0.5;
     if (who) { lines(ctx, [[{ text: who, colour: '#ffffff' }]], pad, y + whoS * 0.8, whoS, { stretch: 'condensed', weight: 800 }); y += whoS * 1.15; }
     lines(ctx, [[{ text: n.value, colour: pal.accent }]], pad - ns * 0.03, y + ns * 0.78, ns, { shadow: 'rgba(0,0,0,0.4)' });
     y += ns * 0.8;
     lines(ctx, [[{ text: n.label, colour: '#ffffff' }]], pad, y + labelS * 1.0, labelS, { stretch: 'condensed' });
-    if (wide && im.brand) disc(ctx, W * 0.82, safeTop + (H - safeTop) * 0.48, Math.min(H * 0.2, W * 0.11), im.brand, { name: f.brand.name, colour: f.brand.colour });
+    if (wide && im.brand) disc(ctx, W * 0.82, safeTop + (HL - safeTop) * 0.48, Math.min(H * 0.2, W * 0.11), im.brand, { name: f.brand.name, colour: f.brand.colour });
   } else if (f.layout === 'name') {
     ground(ctx, W, H, pal, f.seed);
     slash(ctx, W, H, W * 0.64, pal.accent, { alpha: 0.12 });
@@ -734,16 +754,19 @@ function drawArt(ctx, W, H, f, images, o) {
     const ls = nl.length === 2 ? [[{ text: nl[0], colour: '#ffffff' }], [{ text: nl[1], colour: pal.accent }]] : [[{ text: nl[0], colour: pal.accent }]];
     /* the given names smaller, the family name as big as it goes */
     const boxW = wide ? W * (im.brand ? 0.66 : 0.86) : W - pad * 2;
-    const avail = H - safeTop - pad;
-    const big = fit(ctx, [ls[ls.length - 1]], boxW, avail * 0.56, { max: H * 0.5 });
-    const small = ls.length === 2 ? fit(ctx, [ls[0]], boxW, big * 0.42, { stretch: 'condensed', weight: 800, max: big * 0.4 }) : 0;
+    const avail = HL - safeTop - pad;
+    /* the whole block (given names, family name, strap) inside the room under the page's badges: a short card's name is
+       sized to the room, never centred up into them */
     const strapS = Math.max(9, H * 0.034);
+    const roomFor = Math.max(4, (avail - strapS * 2.6) / (0.86 + (ls.length === 2 ? 0.42 : 0)));
+    const big = Math.min(fit(ctx, [ls[ls.length - 1]], boxW, avail * 0.56, { max: H * 0.5 }), roomFor);
+    const small = ls.length === 2 ? fit(ctx, [ls[0]], boxW, big * 0.42, { stretch: 'condensed', weight: 800, max: big * 0.4 }) : 0;
     const blockH = (small ? small * 1.05 : 0) + big * 0.86 + strapS * 2.6;
-    let y = safeTop + (avail - blockH) * 0.5;
+    let y = safeTop + Math.max(0, (avail - blockH) * 0.5);
     if (small) { lines(ctx, [ls[0]], pad, y + small * 0.8, small, { stretch: 'condensed', weight: 800 }); y += small * 1.05; }
     lines(ctx, [ls[ls.length - 1]], pad - big * 0.02, y + big * 0.78, big, { shadow: 'rgba(0,0,0,0.4)' });
     y += big * 0.86;
-    pill(ctx, T(f.topic.words.join(' ')), pad, y + strapS * 0.5, strapS, pal.accent, '#0b0d10');
+    pill(ctx, strapOf(f) || T(f.topic.words.join(' ')), pad, y + strapS * 0.5, strapS, pal.accent, '#0b0d10');
     if (wide && im.brand) disc(ctx, W * 0.84, safeTop + avail * 0.5, Math.min(avail * 0.3, W * 0.1), im.brand, { name: f.brand.name, colour: f.brand.colour });
   } else {
     /* NOTHING TO NAME: the brand's mark on its disc and what kind of news it is, in the big type */
@@ -751,13 +774,13 @@ function drawArt(ctx, W, H, f, images, o) {
     slash(ctx, W, H, W * 0.56, pal.accent, { alpha: 0.12 });
     const words = f.topic.words.map(T);
     const ls = [[{ text: words[0], colour: '#ffffff' }], [{ text: words[1], colour: pal.accent }]];
-    const R = wide ? Math.min((H - safeTop) * 0.36, W * 0.17) : Math.min(W * 0.22, (H - safeTop) * 0.24);
-    const cx = wide ? W * 0.76 : W * 0.5, cy = wide ? safeTop + (H - safeTop) * 0.5 : safeTop + R * 1.1;
+    const R = wide ? Math.min((HL - safeTop) * 0.36, W * 0.17) : Math.min(W * 0.22, (HL - safeTop) * 0.24);
+    const cx = wide ? W * 0.76 : W * 0.5, cy = wide ? safeTop + (HL - safeTop) * 0.5 : safeTop + R * 1.1;
     disc(ctx, cx, cy, R, im.brand, { name: f.brand.name, colour: f.brand.colour || pal.base });
     const top = wide ? safeTop : cy + R * 1.3;
     const boxW = wide ? W * 0.54 : W - pad * 2;
-    const s = fit(ctx, ls, boxW, (H - pad - top) * 0.7, { max: H * 0.3 });
-    const y0 = top + (H - pad - top - 2 * s * 0.92) * (wide ? 0.45 : 0.2) + s * 0.8;
+    const s = fit(ctx, ls, boxW, (HL - pad - top) * 0.7, { max: H * 0.3 });
+    const y0 = top + (HL - pad - top - 2 * s * 0.92) * (wide ? 0.45 : 0.2) + s * 0.8;
     lines(ctx, ls, pad, y0, s, { shadow: 'rgba(0,0,0,0.35)' });
   }
   /* A COVER ON ITS OWN carries its brand and what it is, top left */
@@ -881,10 +904,11 @@ function mount(host, item, o) {
       images = { clubs: crests, brand };
       await fonts();
       paint();
-      if (typeof ResizeObserver === 'function') {
-        let t = 0;
-        new ResizeObserver(() => { clearTimeout(t); t = setTimeout(paint, 120); }).observe(host);
-      }
+      let t = 0;
+      const later = () => { clearTimeout(t); t = setTimeout(paint, 120); };
+      if (typeof ResizeObserver === 'function') new ResizeObserver(later).observe(host);
+      /* the browser's zoom changes the pixels under the canvas without changing its box: redrawn at the new sharpness */
+      if (typeof root.addEventListener === 'function') root.addEventListener('resize', later, { passive: true });
     } catch (_) { /* the plate's own print stays */ }
   };
   if (typeof IntersectionObserver === 'function') {

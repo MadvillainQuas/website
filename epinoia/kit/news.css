@@ -380,3 +380,5 @@
 
 /* a finished game's cover over its result plate (newsart.js): above the halves, the crests and the board */
 .mt-plate > .na-art{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:4;pointer-events:none}
+/* no grain over a drawn cover: the noise overlay blurred its type */
+.club-plate.has-art > .club-grain{display:none}
