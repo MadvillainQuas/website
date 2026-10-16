@@ -74,5 +74,8 @@ console.log('\n-- and it never returns something too long to read');
 L = nameLabels([P(1, 'Jean-Baptiste Vanderbeken-Delacroix', 11)]);
 ok('a long surname is still the surname', L[1], 'Vanderbeken-Delacroix');
 
+/* the tag over the court adds up the five drawn, never the club's whole score (Louie, 2026-10-16) */
+ok('the starters tag is their own points', /' · ' \+ five\.reduce\(\(n, id\) => n \+ \(\(d\.stats\[id\] \|\| \{\}\)\.pts \|\| 0\), 0\) \+ ' pts<\/span>/.test(src) && !/\(T\.pts \|\| 0\) \+ ' pts/.test(src), true);
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

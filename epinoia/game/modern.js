@@ -283,10 +283,10 @@
     const court = B.courtSVG(null, { plain: true });
     const floor = onFloor.map(({ p, slot }) => circleHTML(p, d.stats[p.id] || B.mkP(), colour,
       { style: 'left:' + (slot.x * 100).toFixed(1) + '%;top:' + (slot.y * 100).toFixed(1) + '%' })).join('');
-    const T = d.team[t] || {};
     return '<div class="glass bxteam mv-card t' + t + '" data-t="' + t + '" style="--c:' + esc(colour) + ';--kink:' + kinkOf(colour) + '">' +
       '<div class="mv-head"><h3 data-team-slot="' + t + '" style="color:' + colour + '">' + esc(B.tname(t)) + '</h3>' +
-        '<span class="mv-tag">' + (final ? 'starters' : 'on the floor') + ' · ' + (T.pts || 0) + ' pts</span></div>' +
+        /* the five drawn: their own points added up (Louie, 2026-10-16: it printed the club's whole score) */
+        '<span class="mv-tag">' + (final ? 'starters' : 'on the floor') + ' · ' + five.reduce((n, id) => n + ((d.stats[id] || {}).pts || 0), 0) + ' pts</span></div>' +
       '<div class="mv-court">' + court + '<div class="mv-five">' + floor + '</div></div>' +
       (bench.length ? '<div class="mv-benchlabel"><b>bench</b><i></i><span>' + bench.length + ' players · ' +
         bench.reduce((n, p) => n + ((d.stats[p.id] || {}).pts || 0), 0) + ' pts</span></div><div class="mv-bench">' +
