@@ -45,6 +45,7 @@
       'leagues': 'Ligas',
       'league': 'Liga',
       'profile': 'Perfil',
+      'your dashboard': 'Tu panel',
       'fixtures': 'Calendario',
       'injury report': 'Bajas',
       'Not yet filed': 'Sin clasificar',

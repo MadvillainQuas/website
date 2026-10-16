@@ -126,7 +126,7 @@ console.log('\nthe hub, the rail and the counting');
      ['teamcolour.js', 'data.js', 'records.js', 'socialcard.js', 'admin/socialgfx-ui.js', 'icons.js', 'storylines.js'].every(f => scripts.indexOf(f) >= 0 && scripts.indexOf(f) < scripts.indexOf('hub.js')) &&
      scripts[scripts.length - 1] === 'nav.js', scripts);
   ok('...talking to the database only (its content policy)', /connect-src 'self' https:\/\/\*\.supabase\.co wss:\/\/\*\.supabase\.co;/.test(html) && /script-src 'self';/.test(html));
-  ok('the rail\'s "your hub" opens the creator hub', /mk\('', '✎', 'creator hub', root \+ 'creators\/hub\/'\)/.test(nav));
+  ok('the rail\'s "your hub" opens the creator hub', /mk\('', '✎', 'Creator Hub', root \+ 'creators\/hub\/'\)/.test(nav));
   ok('...and nav.js keeps the outlets the account writes for, so their own reading is never counted', /my_creator_outlets/.test(nav) && /epinoia_my_outlets/.test(nav));
   ok('the studio and your hub point to it', /href="\.\.\/hub\/"/.test(src('creators/studio/index.html')) && /href="\.\.\/creators\/hub\/"/.test(src('me/index.html')));
   ok('the hub reads creator_stats and the desk creator_studio, and asks for what is due to go out first',

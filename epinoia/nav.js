@@ -945,19 +945,21 @@
       a.title = tx;
       return a;
     };
+    /* YOUR DASHBOARD (Louie, 2026-10-16: "can 'profile' be renamed to 'Your Dashboard' and can your page, personalisation
+       and creator hub be in title case?" - the four are written as they show) */
     /* PROFILE FIRST, THEN PERSONALISATION (Louie, 2026-09-30): "profile" is the fan's own public page now (profile/:
        the username and the page at fan/?u=), and what was called the profile - the clubs, the colour, the
        notifications, the membership - is PERSONALISATION, under the cog, at me/ */
-    flist.appendChild(mk('', '☆', 'profile', root + 'profile/'));
+    flist.appendChild(mk('', '☆', 'Your Dashboard', root + 'profile/'));
     /* YOUR PAGE (Louie, 2026-10-07): the page other fans see, fan/?u=<username> (0197). Until the username is known
        (or for a fan without one yet) it leads to PROFILE, where the username and the page are set up. */
-    const yourPage = mk('', '◉', 'your page', root + 'profile/');
-    yourPage.title = 'your page: what other fans see';
+    const yourPage = mk('', '◉', 'Your Page', root + 'profile/');
+    yourPage.title = 'Your Page: what other fans see';
     flist.appendChild(yourPage);
-    flist.appendChild(mk('', COG, 'personalisation', root + 'me/'));
+    flist.appendChild(mk('', COG, 'Personalisation', root + 'me/'));
     /* THE CREATOR HUB (0200): a creator's numbers and writing desk, and for anybody a league's storylines, graphics
        and icons */
-    flist.appendChild(mk('', '✎', 'creator hub', root + 'creators/hub/'));
+    flist.appendChild(mk('', '✎', 'Creator Hub', root + 'creators/hub/'));
 
     const hd = el('div', 'gtitle', 'your follows');
     flist.appendChild(hd);
@@ -3259,8 +3261,63 @@
     if (!ctx) { ctx = el('span'); line.appendChild(ctx); }
     line.classList.add('tt-line');
     ctx.classList.add('tt-ctx');
-    const mark = line.querySelector('.epinoia-mark');
+    let mark = line.querySelector('.epinoia-mark');
     if (mark && !mark.classList.contains('wm')) mark.classList.add('wm');
+
+    /* THE MARK IS THE WAY HOME, AND SAYS SO (Louie, 2026-10-16: "can it be made more obvious clicking that on desktop
+       returns users to home?"). One link, .tt-home, holds the chip and a "◂ HOME" cue beside it (desktop; not on HOME
+       itself). A page's own line has the chip inside a link (t/, games/), as the link itself (p/), or bare: each is
+       made the same link to home/. */
+    if (mark) {
+      let link = mark.closest('a');
+      if (link === mark) {
+        /* the chip IS the link: the chip becomes a span inside a link of its own, so the cue can sit beside it */
+        const chip = el('span', mark.className, mark.textContent);
+        chip.setAttribute('translate', 'no');
+        link = el('a', 'plain');
+        link.href = mark.getAttribute('href') || root + 'home/';
+        mark.replaceWith(link);
+        link.appendChild(chip);
+        mark = chip;
+      } else if (!link) {
+        link = el('a', 'plain');
+        link.href = root + 'home/';
+        mark.replaceWith(link);
+        link.appendChild(mark);
+      }
+      link.classList.add('tt-home');
+      link.removeAttribute('aria-label');
+      mark.removeAttribute('aria-label');
+      link.setAttribute('aria-label', p.kind === 'home' ? 'EPINOIA HOME' : 'EPINOIA: back to HOME');
+      link.title = p.kind === 'home' ? 'EPINOIA HOME' : 'Back to HOME';
+      if (p.kind !== 'home') {
+        const cue = el('span', 'tt-homecue', '◂ HOME');
+        cue.setAttribute('aria-hidden', 'true');
+        link.appendChild(cue);
+      }
+    }
+
+    /* THE ? (Louie, 2026-10-16): always on the line, in its text's cyan - how to use the site, as a pop-up (help.js,
+       fetched from beside this file at its own ?v= on the first press only) */
+    const help = el('button', 'tt-help', '?');
+    help.type = 'button';
+    help.setAttribute('aria-label', 'How to use EPINOIA');
+    help.setAttribute('aria-haspopup', 'dialog');
+    help.title = 'How to use EPINOIA';
+    let helpLoading = false;
+    help.addEventListener('click', () => {
+      if (window.EpinoiaHelp) { window.EpinoiaHelp.open(root); return; }
+      if (helpLoading) return;
+      const me = document.querySelector('script[src*="nav.js"]');
+      if (!me) return;
+      helpLoading = true;
+      const s = document.createElement('script');
+      s.src = me.getAttribute('src').replace(/nav\.js(?=[?#]|$)/, 'help.js');
+      s.onload = () => { helpLoading = false; if (window.EpinoiaHelp) window.EpinoiaHelp.open(root); };
+      s.onerror = () => { helpLoading = false; };
+      document.head.appendChild(s);
+    });
+    line.appendChild(help);
 
     const date = el('span', 'tt-date');
     const clock = el('span', 'tt-clock');

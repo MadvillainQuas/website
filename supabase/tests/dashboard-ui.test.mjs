@@ -23,7 +23,7 @@ let pass = 0, fail = 0;
 const ok = (what, cond, saw) => { if (cond) { pass++; console.log('  PASS  ' + what); } else { fail++; console.log('  FAIL  ' + what + (saw === undefined ? '' : '  -- saw ' + JSON.stringify(saw))); } };
 
 console.log('\nthe head');
-ok('no title of their own: the page\'s', D.titleOf({}) === 'Your dashboard' && D.titleOf({ dash_title: '   ' }) === 'Your dashboard' && D.titleOf(null) === 'Your dashboard');
+ok('no title of their own: the page\'s', D.titleOf({}) === 'Your Dashboard' && D.titleOf({ dash_title: '   ' }) === 'Your Dashboard' && D.titleOf(null) === 'Your Dashboard');
 ok('theirs when they chose one', D.titleOf({ dash_title: 'Sam’s scouting desk' }) === 'Sam’s scouting desk');
 ok('five banners, as 0224 allows them', D.BANNERS.map(b => b[0]).join() === 'glow,plain,stripes,grid,club');
 ok('a banner nobody offers reads as the glow', D.bannerOf({ dash_banner: 'neon' }) === 'glow' && D.bannerOf({ dash_banner: 'club' }) === 'club' && D.bannerOf(null) === 'glow');

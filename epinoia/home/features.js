@@ -7,15 +7,11 @@
 (function () {
   const strip = document.getElementById('hmModes');
   if (!strip) return;
-  const F = [
-    ['◉', 'Live games', 'Live games with granular play-by-play stats in real time.', '../games/'],
-    ['▤', 'Profiles', 'Player and team profiles with auto-updated stats and a vast array of game-altering detail, including events, lineup and shot zone stats.', [['see an example: London Lions →', '../t/?t=london-lions']]],
-    ['❑', 'News & video', 'Auto-fed news and video from each league, including content creator articles and highlights video available on release.', [['news →', '../news/'], ['video →', '../home/?view=video']]],
-    ['▶', 'Watch live', 'Live games with attached box score and storylines pop-up.', '../home/?view=video'],
-    ['◎', 'EPINOIA GO', 'A geo-tagging game: gather stamps from the games you attend and compare distances covered worldwide, plus a prediction game with global leaderboards.', '../go/'],
-    ['✚', 'Scouting reports', 'Professional-grade automated scouting reports with PDF download and auto-email straight to coaches’ inboxes, and a front office advanced roster analysis model based on thousands of games.', [['see an example: London Lions →', '../t/?t=london-lions']]],
-    ['⛉', 'EPINOIA Manager', 'A quasi-fantasy manager game: create your team, set up your tactics and play against the teams in your favourite league, all based on a real analytics model.', '../manager/']
-  ];
+  /* the cards are epinoia/help.js's (the strip's ? pop-up shows the same ones), their links relative to epinoia/ */
+  const H = window.EpinoiaHelp;
+  if (!H) return;
+  const F = H.FEATURES.map(([ic, name, text, href]) =>
+    [ic, name, text, Array.isArray(href) ? href.map(([l, to]) => [l, '../' + to]) : '../' + href]);
   const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
   const wrap = el('div', 'ft');
   const rule = el('button', 'ft-rule');

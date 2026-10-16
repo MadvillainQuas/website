@@ -309,7 +309,7 @@ const homeBtn = r => (r.nav ? byClass(r.nav, 'home-btn')[0] : null);
   const rows = panel ? byClass(panel, 'item').map(a => ({ href: a.href, ic: (byClass(a, 'ic')[0] || {}).textContent, tx: a.title })) : [];
   /* YOUR PAGE (2026-10-07): what other fans see, to PROFILE until the username is known, then fan/?u= */
   eq('your hub, opened: PROFILE, YOUR PAGE, then PERSONALISATION, then the creator hub', rows.slice(0, 4).map(x => [x.tx, x.href]),
-     [['profile', '../profile/'], ['your page: what other fans see', '../profile/'], ['personalisation', '../me/'], ['creator hub', '../creators/hub/']]);
+     [['Your Dashboard', '../profile/'], ['Your Page: what other fans see', '../profile/'], ['Personalisation', '../me/'], ['Creator Hub', '../creators/hub/']]);
   eq('...PERSONALISATION wears the cog as text', rows[2] && rows[2].ic, '\u2699\uFE0E');
   ok('...then "your follows"', panel && byClass(panel, 'gtitle').some(n => n.textContent === 'your follows'));
 }

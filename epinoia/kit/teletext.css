@@ -86,6 +86,24 @@ body:has(> .ep-bell) .tt-line{ padding-right:66px }
   flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
   font-family:var(--f-micro); font-size:10px; letter-spacing:.06em; color:var(--tt-cyan); text-transform:uppercase }
 .tt-line .tt-ctx a{ color:inherit }
+/* the mark is the way home (nav.js ttLine): the chip and "◂ HOME" are one link, lit together on hover */
+.tt-line .tt-home{ flex:none; display:inline-flex; align-items:center; gap:9px; color:var(--tt-white); cursor:pointer }
+.tt-line .tt-home .wm{ transition:box-shadow .15s, filter .15s }
+.tt-line .tt-homecue{ font-family:var(--f-micro); font-size:9px; letter-spacing:.14em; color:var(--tt-white); opacity:.62;
+  transition:opacity .15s, color .15s, transform .15s }
+.tt-line .tt-home:hover .wm, .tt-line .tt-home:focus-visible .wm{ box-shadow:0 0 18px rgba(143,245,255,.65); filter:brightness(1.08) }
+.tt-line .tt-home:hover .tt-homecue, .tt-line .tt-home:focus-visible .tt-homecue{ opacity:1; color:var(--tt-cyan); transform:translateX(-2px) }
+.tt-line .tt-home:focus-visible{ outline:1px solid var(--tt-cyan); outline-offset:3px }
+@media (max-width:899px){ .tt-line .tt-homecue{ display:none } }
+/* the ?: how to use the site (help.js), neon in the line's own cyan */
+.tt-line .tt-help{ flex:none; display:grid; place-items:center; width:21px; height:21px; margin:-3px 0; padding:0;
+  border:1px solid rgba(63,240,255,.6); border-radius:50%; background:rgba(63,240,255,.06); color:var(--tt-cyan);
+  font-family:var(--f-micro); font-size:12px; font-weight:700; line-height:1; cursor:pointer;
+  text-shadow:0 0 4px var(--tt-cyan), 0 0 12px rgba(63,240,255,.75);
+  box-shadow:0 0 8px rgba(63,240,255,.45), inset 0 0 6px rgba(63,240,255,.25); transition:background .15s, box-shadow .15s }
+.tt-line .tt-help:hover, .tt-line .tt-help:focus-visible{ background:rgba(63,240,255,.18); outline:none;
+  box-shadow:0 0 14px rgba(63,240,255,.75), inset 0 0 8px rgba(63,240,255,.4) }
+.tt-line .tt-ctx + .tt-help{ margin-left:4px }
 .tt-line .tt-date{ flex:none; margin-left:auto; color:var(--tt-white) }
 .tt-line .tt-clock{ flex:none; color:var(--tt-yellow); font-variant-numeric:tabular-nums;
   text-shadow:1px 0 rgba(255,75,75,.35),-1px 0 rgba(63,240,255,.35) }

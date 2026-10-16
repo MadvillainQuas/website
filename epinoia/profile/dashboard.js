@@ -37,7 +37,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const SWATCHES = ['#93f2bf', '#8ff5ff', '#ffd166', '#ff7ab8', '#b7a8ff', '#ff5f6b', '#63ffa0', '#ffffff', '#ff9f43', '#5ab8ff'];
 const BANNERS = [['glow', 'glow'], ['plain', 'plain'], ['stripes', 'stripes'], ['grid', 'grid'], ['club', 'club colours']];
 const BANNER_KEYS = BANNERS.map(b => b[0]);
-const DEFAULT_TITLE = 'Your dashboard';
+const DEFAULT_TITLE = 'Your Dashboard';
 const KINDS = {
   game: { label: 'Game analysis', seg: 'Games' },
   opp: { label: 'Scouting report', seg: 'Scouting' },
@@ -140,7 +140,7 @@ function paintHead() {
   const p = S.prefs, f = S.fan || {};
   const title = titleOf(p);
   $('#dashTitle').textContent = title;
-  try { doc.title = (title === DEFAULT_TITLE ? 'Profile' : title) + ' · Epinoia'; } catch (_) { /* a nicety */ }
+  try { doc.title = title + ' · Epinoia'; } catch (_) { /* a nicety */ }
   const who = f.username ? '@' + f.username : (S.email || '');
   const kick = $('#dashKick');
   kick.textContent = '';

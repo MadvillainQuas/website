@@ -43,6 +43,7 @@
       'leagues': 'リーグ',
       'league': 'リーグ',
       'profile': 'マイページ',
+      'your dashboard': 'マイダッシュボード',
       'fixtures': '日程・結果',
       'injury report': '欠場情報',
       'Not yet filed': '未分類',
