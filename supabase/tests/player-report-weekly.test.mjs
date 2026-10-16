@@ -405,6 +405,9 @@ const M = await import(pathToFileURL(path.join(ROOT, 'scripts', 'report_mailer.m
   const blocks = M2.matchupBlocks([{ head: 'v Alpha (Tue 21 Oct)', who: [{ name: 'A One', rel: 'same', mpg: 24.5 }, { name: 'A Two', rel: 'up', mpg: 18 }] }, { head: 'at Beta (Thu 23 Oct)', who: [], none: 'no player of theirs has this season’s numbers to match on' }]).join('');
   ok('the email\'s lines: each club, its players and what they are to him, and a club with none said why', /v Alpha \(Tue 21 Oct\)<\/b>: A One <span[^>]*>\(same position, 24\.5 min a game\)<\/span>, A Two <span[^>]*>\(one position up/.test(blocks) && /at Beta[^]*no player of theirs/.test(blocks), blocks);
   ok('...and none at all when nobody was drawn', M2.matchupBlocks([{ head: 'x', who: [] }]).length === 0);
+  ok('the caveat (Louie, 2026-10-16): positions from the BPM position calculation, assigned dynamically, can be off early in the season - in the email and on the index',
+     /BPM position calculation/.test(M2.MATCHUP_CAVEAT) && /dynamically/.test(M2.MATCHUP_CAVEAT) && /early in the season/.test(M2.MATCHUP_CAVEAT) &&
+     blocks.includes(M2.MATCHUP_CAVEAT.replace(/’/g, '’')) && /<p class="caveat">Positions are estimated/.test(IH), blocks.slice(-400));
   ok('the truncated report: the title page, the shot chart, left v right and connections', M2.MATCHUP_MODS === 'cover,shots,lvr,conn' && M2.MATCHUP_MAX === 15);
 
   const RJS = read('epinoia', 'report.js'), PPJ = read('epinoia', 'report-playerpages.js'), PLJ = read('epinoia', 'p', 'player.js'), RAS = read('epinoia', 'raster.js');

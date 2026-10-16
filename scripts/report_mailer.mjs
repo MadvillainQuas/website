@@ -1157,15 +1157,18 @@ export function indexHTML(plan, meta) {
     'h1{margin:26px 0 4px;font-size:34px;font-weight:800;letter-spacing:-.01em}' +
     '.sub{margin:0 0 6px;font-size:13px;color:#3d4d45}' +
     '.how{margin:0 0 22px;font-size:11px;color:#5b6b63;line-height:1.5}' +
+    /* the caveat pinned above the footer, so a full list (15 players) never pushes it off the page; a long list sits tighter */
+    '.caveat{position:absolute;left:48px;right:48px;bottom:58px;margin:0;padding:8px 12px;border-left:3px solid #c9d3cd;background:#f5f8f6;font-size:10px;color:#5b6b63;line-height:1.45;font-style:italic}' +
+    '.dense h2{margin:12px 0 4px}.dense .row{padding:6px 2px}' +
     'h2{margin:18px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:' + ink + '}' +
     '.row{display:flex;align-items:baseline;gap:10px;padding:9px 2px;border-bottom:1px solid #e4ebe7;text-decoration:none;color:inherit}' +
     '.row b{font-size:16px;font-weight:700;white-space:nowrap}.rel{font-size:11px;color:#5b6b63;white-space:nowrap}' +
     '.dots{flex:1;border-bottom:1px dotted #b8c4be;transform:translateY(-4px)}.pg{font-size:15px;font-weight:800;color:' + ink + ';min-width:22px;text-align:right}' +
     '.foot{position:absolute;left:48px;right:48px;bottom:34px;display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#5b6b63}' +
-    '</style></head><body><div class="pg-wrap"><div class="top"><span class="mark">EPINOIΛ</span><span class="kick">Potential match-ups · confidential</span></div>' +
+    '</style></head><body><div class="pg-wrap' + (plan.reduce((n, c) => n + c.players.length, 0) > 10 ? ' dense' : '') + '"><div class="top"><span class="mark">EPINOIΛ</span><span class="kick">Potential match-ups · confidential</span></div>' +
     '<h1>Potential match-ups</h1><p class="sub">' + esc(meta.name) + (meta.pos ? ' (' + esc(meta.pos) + ')' : '') + (meta.team ? ' · ' + esc(meta.team) : '') + (meta.span ? ' · ' + esc(meta.span) : '') + '</p>' +
     '<p class="how">The players of each club ahead whom ' + esc(meta.name) + ' could be matched up onto: the same position, then one position up, by where each has played this season (the position breakdown of every game, every competition). Each has a title page, the shot chart, left v right and connections over their whole season. Click a name to go to it.</p>' +
-    rows + '<div class="foot"><span>Index</span><span>Prepared with Epinoia</span></div></div></body></html>';
+    rows + '<p class="caveat">' + esc(MATCHUP_CAVEAT) + '</p><div class="foot"><span>Index</span><span>Prepared with Epinoia</span></div></div></body></html>';
 }
 export async function indexPage(plan, meta) {
   if (hooks.index) return hooks.index(plan, meta);
@@ -1232,12 +1235,16 @@ export async function matchupReport({ name, slug, playerIds, team, tz, games, da
   return { pdf: { filename: 'epinoia-matchups-' + slugName(name) + '-' + (day || new Date().toISOString().slice(0, 10)) + '.pdf', content: Buffer.from(bytes).toString('base64') },
            lines, me: R.me, why: null };
 }
+/* THE CAVEAT (Louie, 2026-10-16: "a small disclaimer that the positions are calculated via the BPM positions calculation and
+   dynamically assigned, there can be errors especially early season"): in the email and on the PDF's index */
+export const MATCHUP_CAVEAT = 'Positions are estimated, not listed: each player’s position comes from the BPM position calculation (from their box-score numbers, blended with their listed position and height), and the spots in each lineup are assigned dynamically from it, game by game. It can be off - especially early in the season, with few games played.';
 /* the email's lines on it */
 export function matchupBlocks(lines, me) {
   if (!lines || !lines.some(l => l.who.length)) return [];
   const { M } = muLib();
   return [P('<b>Potential match-ups</b>, in the second PDF' + (me && me.pos ? ' (they play ' + esc(me.pos) + ')' : '') + ': the players of each club ahead they could be matched up onto, the same position or one position up, each with their title page, shot chart, left v right and connections:'),
-    UL(lines.map(l => '<b>' + esc(l.head) + '</b>: ' + (l.who.length ? l.who.map(w => esc(w.name) + ' <span style="color:#5b6b63">(' + (w.pos ? esc(w.pos) + ', ' : '') + esc(M.REL[w.rel]) + ', ' + w.mpg + ' min a game)</span>').join(', ') : esc(l.none || 'none drawn'))))];
+    UL(lines.map(l => '<b>' + esc(l.head) + '</b>: ' + (l.who.length ? l.who.map(w => esc(w.name) + ' <span style="color:#5b6b63">(' + (w.pos ? esc(w.pos) + ', ' : '') + esc(M.REL[w.rel]) + ', ' + w.mpg + ' min a game)</span>').join(', ') : esc(l.none || 'none drawn')))),
+    '<p style="margin:0 0 14px;font-size:12px;line-height:1.5;color:#5b6b63"><i>' + esc(MATCHUP_CAVEAT) + '</i></p>'];
 }
 /* THE EMAIL WITH THE MATCH-UPS ALONE: a week they did not play, or "send now" with no report ticked */
 export function matchupEmail({ sub, name, team, lines, tz, games, me }) {
