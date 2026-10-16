@@ -9,7 +9,7 @@
        one, newest first, one per season name (his league's 2025-26 and a cup's 2025-26 are one season of his), each
        competition under the profile he played most of its minutes under, the most-played competition first; with no
        season line yet, his club's competitions;
-     * ALL is offered only for more than one competition played under one profile;
+     * ALL is offered for more than one competition, under one profile or linked ones (summed as one line: one profile, 2026-10-16);
      * ?s= finds a season by how a person writes it, its name or its key, and anything else is the newest;
      * the page reads that season (or one competition of it) for the hero's tiles, the bars, the events and the game
        log, says which on the hero, and the club page's scoreboard says its season too.
@@ -82,8 +82,8 @@ const COMPS = [
   ok('...his league\'s 2026-27 and the European cup\'s 2026-27 are one season with two competitions, the most-played first, each under its profile',
      s26.comps.map(c => c.id + ':' + c.pid).join() === 'c-eu26:B,c-lg26:A' && s26.comps[0].league === 'FIBA Europe Cup', s26.comps);
   ok('...a season at two clubs is its minutes and games added together', s25.comps[0].id === 'c-lg25' && s25.comps[0].min === 390 && s25.comps[0].gp === 16, s25.comps);
-  ok('ALL is offered for two competitions under one profile, never across two profiles, never for one competition',
-     api.allOk(s25) && !api.allOk(s26) && !api.allOk({ comps: [{ id: 'x', pid: 'A' }] }) && !api.allOk(null));
+  ok('ALL is offered for two competitions, under one profile or across linked ones (one profile), never for one competition',
+     api.allOk(s25) && api.allOk(s26) && !api.allOk({ comps: [{ id: 'x', pid: 'A' }] }) && !api.allOk(null));
   ok('?s= finds a season as a person writes it, by its name or its key; anything else, or nothing, is the newest',
      api.pickScopeSeason(sc.seasons, '2025/26') === s25 && api.pickScopeSeason(sc.seasons, '2025-26') === s25 &&
      api.pickScopeSeason(sc.seasons, '2025-2026') === s25 && api.pickScopeSeason(sc.seasons, 'nonsense') === s26 && api.pickScopeSeason(sc.seasons, null) === s26 &&

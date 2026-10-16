@@ -257,6 +257,35 @@ async function askScoped(cfg, q, leagues, fuzzy, signal) {
   return ((await r.json()) || []).filter(x => x && x.kind !== 'league' && want.has(x.league_slug));
 }
 
+/* A LINKED PLAYER IS ONE RESULT (Louie, 2026-10-16: one profile): his rows that are linked (0178, the SLB's and the EuroCup's
+   Thomas Kennedy) are one entry, the domestic league's row kept in the first one's place -- every row of him opens the same
+   page. One small public read, only when two players came back; on any failure the rows stand as they were. */
+const CROSS_LEAGUE = /^(euroleague|eurocup|basketball-champions-league|fiba-europe-cup)$|(^|-)(euro|fiba|champions)(-|$)/;
+async function oneEach(cfg, rows, signal) {
+  const ps = (rows || []).filter(r => r && r.kind === 'player' && r.id);
+  if (ps.length < 2) return rows;
+  let links = [];
+  try {
+    const r = await fetch(cfg.supabaseUrl + '/rest/v1/player_group_members?select=player_id,group_id&player_id=in.(' + ps.map(x => x.id).join(',') + ')',
+      { signal, headers: { apikey: cfg.supabaseAnonKey, Accept: 'application/json' } });
+    links = r.ok ? await r.json() : [];
+  } catch (e) { if (e && e.name === 'AbortError') throw e; return rows; }
+  const groupOf = new Map((Array.isArray(links) ? links : []).map(l => [l.player_id, l.group_id]));
+  const byGroup = new Map();
+  ps.forEach(r => { const g = groupOf.get(r.id); if (g) { if (!byGroup.has(g)) byGroup.set(g, []); byGroup.get(g).push(r); } });
+  const drop = new Set(), swap = new Map();
+  byGroup.forEach(list => {
+    if (list.length < 2) return;
+    const keep = list.find(r => !CROSS_LEAGUE.test(String(r.league_slug || ''))) || list[0];
+    list.forEach(r => { if (r !== keep) drop.add(r); });
+    if (keep !== list[0]) { swap.set(list[0], keep); drop.add(list[0]); drop.delete(keep); }
+  });
+  if (!drop.size) return rows;
+  const out = [];
+  rows.forEach(r => { if (swap.has(r)) out.push(swap.get(r)); else if (!drop.has(r)) out.push(r); });
+  return out.filter((r, i) => out.indexOf(r) === i);
+}
+
 /* what to show for q: the function's answer (a second look for near misses), or the tables' */
 async function search(cfg, q, signal, part, scope) {
   if (scope && scope.leagues && scope.leagues.length) {
@@ -269,7 +298,7 @@ async function search(cfg, q, signal, part, scope) {
       try { more = await askScoped(cfg, q, scope.leagues, true, signal); } catch (e) { if (e && e.name === 'AbortError') throw e; }
       if (more && more.length) { const all = merge(rows, more); close = all.length > rows.length; rows = all; }
     }
-    const out = { rows, via: 'rpc', close };
+    const out = { rows: await oneEach(cfg, rows, signal), via: 'rpc', close };
     memo.set(sk, out);
     return out;
   }
@@ -289,7 +318,7 @@ async function search(cfg, q, signal, part, scope) {
       /* the tables may still have an answer; if they have none, it is the failure that is shown - never "Nothing matches" for a search that did not run */
       const some = await askTables(cfg, q, signal, part);
       if (!some.length) throw failed;
-      return { rows: some, via: 'tables', close: false };
+      return { rows: await oneEach(cfg, some, signal), via: 'tables', close: false };
     }
   }
   if (rows === null) { via = 'tables'; rows = await askTables(cfg, q, signal, part); }
@@ -300,7 +329,7 @@ async function search(cfg, q, signal, part, scope) {
     try { more = await askRpc(cfg, q, true, signal); } catch (e) { if (e && e.name === 'AbortError') throw e; }
     if (more && more.length) { const all = merge(rows, more); close = all.length > rows.length; rows = all; }
   }
-  const out = { rows, via, close };
+  const out = { rows: await oneEach(cfg, rows, signal), via, close };
   memo.set(key, out);
   if (memo.size > 60) memo.delete(memo.keys().next().value);
   return out;
@@ -628,5 +657,5 @@ function mount(host, ctx) {
 }
 
 return { mount, fold, foldMap, words, segments, completion, hrefOf, merge, grouped, flat, regionName, subOf, restQueries, fromRest,
-         readRecent, keepRecent, search, _reset() { rpcState = 'unknown'; memo.clear(); }, _consts: { MIN, WAIT, LIMIT, FUZZY_BELOW, RECENT_N } };
+         readRecent, keepRecent, search, oneEach, _reset() { rpcState = 'unknown'; memo.clear(); }, _consts: { MIN, WAIT, LIMIT, FUZZY_BELOW, RECENT_N } };
 }));

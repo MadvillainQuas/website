@@ -39,7 +39,7 @@ ok('the RAPM never reads the linked side\'s games', /\(ids \|\| \[\]\)\.filter\(
 ok('the cover says what the lines are over and what they are ranked against', /' · ranked among ' \+ \(lg\.name \|\| 'the league'\) \+ ' clubs'/.test(T));
 
 console.log('\nthe player page');
-ok('each linked profile of his season counted as his', /new Map\(cs\.filter\(c => c\.pid && c\.pid !== pl\.id\)\.map\(c => \[c\.pid, pl\.id\]\)\)/.test(P));
+ok('each linked profile of his season counted as his (jointSeasonLine, shared with the page’s ALL)', /new Map\(cs\.filter\(c => c\.pid && c\.pid !== plId\)\.map\(c => \[c\.pid, plId\]\)\)/.test(P) && /jointSeasonLine\(pl\.id, jointComps\(\)\)/.test(P));
 ok('only his clubs\' games are read', /or=\(home_team_id\.in\.\(\$\{tids\.join\(','\)\}\),away_team_id\.in\./.test(P));
 ok('his joint line takes his row\'s place in the page\'s field', /out\.field = \(B\.field \|\| \[\]\)\.map\(r => \(r === B\.mine \? J : r\)\)/.test(P));
 ok('offered when his season has more than one competition, said on the cover', /RP_SEASON\.comps\.length > 1/.test(P) && /' · ranked among the players of ' \+ scopeText\(\)/.test(P));

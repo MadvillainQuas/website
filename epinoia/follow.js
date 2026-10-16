@@ -20,6 +20,10 @@
      offer(kind, name)                                             the push offer, once, at the end
    and every follow that saved dispatches `epinoia:follows` ({ kind, id, on }) on the window.
 
+   ONE PLAYER, ONE FOLLOW (Louie, 2026-10-16: a linked player is one profile). bell('player', id, { also: [his other rows] })
+   is lit when any of them is followed; a tap follows this id alone and drops the others, and unfollowing drops them all.
+   The notices reach every linked row from the one id (0280's audience), so a fan's list never holds the same person twice.
+
    A LEAGUE IS THE WHOLE LEAGUE (0133): following one brings every game in it, and every
    game of a club that joins it later, because the audience expands the league into its
    clubs when the notices are made rather than when the follow was saved.
@@ -110,6 +114,8 @@
     return loading;
   }
   const has = (kind, id) => !!(prefs && (prefs[KEY[kind]] || []).includes(id));
+  const alsoOf = o => ((o && o.also) || []).filter(Boolean);
+  const hasAny = (kind, id, also) => has(kind, id) || also.some(x => has(kind, x));
 
   /* opts.want: true or false SETS the follow to that rather than flipping it, so a caller that means "on"
      can never turn it off by being asked twice (HOME's favourites panel queues its taps). opts.quiet: no
@@ -119,10 +125,15 @@
     await load();
     const k = KEY[kind];
     const cur = new Set(prefs[k] || []);
-    if (typeof o.want === 'boolean' && cur.has(id) === o.want) return { ok: true, on: o.want };   // already so
-    if (cur.has(id)) cur.delete(id); else cur.add(id);
+    const also = alsoOf(o).filter(x => x !== id), was = prefs[k] || [];
+    const onNow = cur.has(id) || also.some(x => cur.has(x));
+    if (typeof o.want === 'boolean' && onNow === o.want && !(o.want && !cur.has(id))) return { ok: true, on: o.want };   // already so
+    const want = typeof o.want === 'boolean' ? o.want : !onNow;
+    also.forEach(x => cur.delete(x));                                  // his other rows: never held beside this one
+    if (want) cur.add(id); else cur.delete(id);
     prefs[k] = [...cur];
-    paintAll(kind, id);
+    const repaint = () => { paintAll(kind, id); also.forEach(x => paintAll(kind, x)); };
+    repaint();
     const body = {}; body[k] = prefs[k];
     try {
       const send = () => fetch(C().supabaseUrl + '/rest/v1/rpc/set_fan_prefs',
@@ -150,8 +161,7 @@
         throw new Error(why);
       }
     } catch (e) {
-      if (cur.has(id)) cur.delete(id); else cur.add(id);      // put it back
-      prefs[k] = [...cur]; paintAll(kind, id);
+      prefs[k] = was.slice(); repaint();                      // put it back
       return { ok: false, reason: (e && e.message) || 'could not be saved' };
     }
     if (cur.has(id) && !o.quiet) offerPush(kind, name);       // followed, and saved
@@ -192,7 +202,7 @@
       .catch(() => { /* the follow saved; the offer is a nicety */ });
   }
   function paint(b) {
-    const on = has(b.dataset.kind, b.dataset.id);
+    const on = hasAny(b.dataset.kind, b.dataset.id, (b.dataset.also || '').split(',').filter(Boolean));
     b.classList.toggle('on', on);
     b.setAttribute('aria-pressed', String(on));
     /* A LABELLED BELL SAYS WHICH IT IS. "Follow the league" in a lit pill is a sentence
@@ -212,6 +222,7 @@
     b.type = 'button';
     b.className = 'ep-follow' + (o.cls ? ' ' + o.cls : '');
     b.dataset.kind = kind; b.dataset.id = id;
+    if (alsoOf(o).length) b.dataset.also = alsoOf(o).join(',');
     b.setAttribute('aria-label', 'follow ' + WHAT[kind]);
     b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15L6 17z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>' +
                   (o.label ? '<span></span>' : '');
@@ -230,7 +241,7 @@
       }
       /* A refusal is SAID, on the bell that was pressed. Reverting in silence is
          indistinguishable from a dead button. */
-      toggle(kind, id, o.name).then(res => {
+      toggle(kind, id, o.name, alsoOf(o).length ? { also: alsoOf(o) } : undefined).then(res => {
         if (!res || res.ok) return;
         const sp = b.querySelector('span');
         const was = sp ? sp.textContent : '';

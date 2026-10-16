@@ -167,6 +167,7 @@ function net(o) {
     if (/\/rest\/v1\/teams\?/.test(url)) return json((o.tables && o.tables.teams) || []);
     if (/\/rest\/v1\/players\?/.test(url)) return json((o.tables && o.tables.players) || []);
     if (/\/rest\/v1\/roster_entries\?/.test(url)) return json((o.tables && o.tables.roster) || []);
+    if (/\/rest\/v1\/player_group_members\?/.test(url)) return json(o.links || []);
     return { ok: false, status: 404, json: async () => ({}) };
   };
   return calls;
@@ -194,7 +195,7 @@ const P1 = { kind: 'player', id: '13eff2f4-bd51-425b-93a5-af524786e20e', name: '
   S._reset();
   calls = net({ rpc: b => [P1, Object.assign({}, P1, { id: 'b' })] });
   r = await S.search(CFG, 'michael');
-  ok('a search that finds something is not asked again (mistakes are for when there is nothing)', calls.length === 1 && !r.close);
+  ok('a search that finds something is not asked again (mistakes are for when there is nothing)', calls.filter(c => /\/rpc\//.test(c.url)).length === 1 && !r.close);
   S._reset();
   calls = net({ rpc: b => [] });
   await S.search(CFG, 'zzz');
@@ -258,6 +259,26 @@ for (const code of ['ja', 'es']) {
                 'searching…', 'Search is not available just now.', 'Nothing matches'].filter(w => !core.includes("'" + w + "':"));
   ok(code + ': the row, the box, the list and its messages are translated', !miss.length && /'search': '/.test(core), miss);
   ok(code + ': the privacy notice\'s new paragraph is translated', info.includes("'What you search for':") && info.includes('When you use the search box'));
+}
+
+console.log('-- a linked player is one result (Louie, 2026-10-16)');
+{
+  const TK = (id, league_slug) => ({ kind: 'player', id, name: 'Thomas Kennedy', slug: id, sub: 'London Lions', league_slug, league_name: league_slug });
+  const ec = TK('9b7a33f4-0000-4000-8000-000000000001', 'eurocup'), slb = TK('8edfa1c7-0000-4000-8000-000000000002', 'slb-men'), jp = TK('21d45280-0000-4000-8000-000000000003', 'b-league-premier');
+  S._reset();
+  let calls = net({ rpc: () => [ec, jp, slb], links: [{ player_id: ec.id, group_id: 'g1' }, { player_id: slb.id, group_id: 'g1' }] });
+  let r = await S.search(CFG, 'thomas kennedy');
+  ok('his SLB and EuroCup rows are one result, the domestic league\'s row in the first one\'s place; another Thomas Kennedy stays',
+     r.rows.map(x => x.id).join() === [slb.id, jp.id].join(), r.rows.map(x => x.league_slug));
+  ok('...one small read of the link groups, for the players that came back', calls.filter(c => /player_group_members\?select=player_id,group_id&player_id=in\./.test(c.url)).length === 1);
+  S._reset();
+  calls = net({ rpc: () => [ec, jp] });
+  r = await S.search(CFG, 'thomas kennedy two');
+  ok('players linked to nothing are left as they came', r.rows.length === 2);
+  S._reset();
+  calls = net({ rpc: () => [slb] });
+  r = await S.search(CFG, 'thomas kennedy one');
+  ok('one player back: nothing more is asked', r.rows.length === 1 && !calls.some(c => /player_group_members/.test(c.url)));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

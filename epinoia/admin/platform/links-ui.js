@@ -109,7 +109,8 @@ function spellLines(card, max) {
   return { shown: lines.slice(0, max == null ? 3 : max), more: Math.max(0, lines.length - (max == null ? 3 : max)) };
 }
 const nameOf = c => (c && c.name) || '—';
-const publicHref = (kind, c) => kind === 'team' ? SUB + 't/?t=' + encodeURIComponent(c.slug || c.id) : SUB + 'p/?p=' + encodeURIComponent(c.id);
+/* a player's row opened as itself (&own=1): the public page of a linked player is his home row, whichever is asked for */
+const publicHref = (kind, c) => kind === 'team' ? SUB + 't/?t=' + encodeURIComponent(c.slug || c.id) : SUB + 'p/?p=' + encodeURIComponent(c.id) + '&own=1';
 
 /* ------------------------------------------------------------- combo --- */
 /* A search box with a list under it. o = {
@@ -195,8 +196,9 @@ function mount(o) {
   host.appendChild(el('p', 'lead',
     'A club that plays in more than one competition (London Lions in the SLB, the EuroCup and the women\'s league) or a player ' +
     'who is written differently in two feeds is one row per feed. Link them here: nothing is merged, every game and stat line stays ' +
-    'where it was written, and a link is undone with one click. The page for one of them then offers the others, and a player\'s ' +
-    'career runs across them. When clubs are linked, the players whose names match across them are linked too, automatically (marked auto); ' +
+    'where it was written, and a link is undone with one click. A club\'s page then offers its other competitions; a linked ' +
+    'player is ONE profile, whichever of his rows is opened: every competition, the career, the follow and the search result as one. ' +
+    'When clubs are linked, the players whose names match across them are linked too, automatically (marked auto); ' +
     'anything doubtful is flagged below for you to check.'));
   const bar = host.appendChild(el('div', 'row lk-bar'));
   const seg = bar.appendChild(el('div', 'lk-seg'));

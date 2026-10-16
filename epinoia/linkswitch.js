@@ -5,8 +5,13 @@
    A team page for a club that plays in more than one competition -- London Lions in the SLB, in the
    EuroCup and the women's side -- gets a button at the top for each of the club's leagues (the page you are on marked)
    and a drop-down of the seasons alone; a team page for a women's side carries a WOMEN indicator beside its league, and one for a youth side
-   (Liga U, an academy, an U19 team) a YOUTH indicator, or its age group. A player's profile
-   offers the other rows that are the same person, and his career table runs across all of them.
+   (Liga U, an academy, an U19 team) a YOUTH indicator, or its age group.
+
+   A PLAYER IS ONE PROFILE (Louie, 2026-10-16: "I don't want multiple profiles, I want everything all on one profile"). The
+   rows that are the same person are one page: whichever of them is asked for, the page shown is his HOME row's
+   (homeProfile: his newest season, his domestic league before a European cup, then the row with the most behind it), and
+   it reads every row's games. The "other profiles" button is gone; an administrator opens one row as it is with &own=1
+   (the console's links do), where the button still lists the rows.
 
    Nothing here is required: a page whose club or player is linked to nothing shows nothing new, and a
    database that has not had 0178 yet answers the two calls with an error, which is treated as "no links".
@@ -72,6 +77,25 @@ function bySeason(card, only) {
   });
   return [...map.entries()].sort((a, b) => String(b[0]).localeCompare(String(a[0]))).map(([season, names]) => ({ season, names }));
 }
+/* A CROSS-BORDER COMPETITION (EuroLeague, EuroCup, the Champions League, the FIBA Europe Cup): a player's home row is his
+   domestic league's when he has one */
+const CROSS_RE = /^(euroleague|eurocup|basketball-champions-league|fiba-europe-cup)$|(^|-)(euro|fiba|champions)(-|$)/;
+const crossBorder = slug => CROSS_RE.test(String(slug || '').toLowerCase());
+/* THE ROW A LINKED PLAYER'S PAGE IS: the one with the newest season; at the same season the one with a domestic league in it;
+   then the one with the most seasons and clubs; then the lowest id, so every row of the group names the same one whatever
+   order the cards come in. null for a player linked to nothing. */
+function homeProfile(linked) {
+  const cards = ((linked && linked.players) || []).filter(c => c && c.id);
+  if (cards.length < 2) return null;
+  const facts = c => {
+    const sp = c.spells || [];
+    const newest = sp.reduce((m, s) => (s.season && String(s.season) > m ? String(s.season) : m), '');
+    const home = sp.some(s => String(s.season || '') === newest && !crossBorder(s.league_slug));
+    return { id: String(c.id), newest, home: home ? 1 : 0, n: sp.length };
+  };
+  const f = cards.map(facts).sort((a, b) => b.newest.localeCompare(a.newest) || (b.home - a.home) || (b.n - a.n) || a.id.localeCompare(b.id));
+  return f[0].id;
+}
 /* every profile id in a player's link group (himself included), or just his own */
 function playerIds(linked, id) {
   const ids = ((linked && linked.players) || []).map(p => p.id).filter(Boolean);
@@ -79,7 +103,8 @@ function playerIds(linked, id) {
   return ids;
 }
 const teamHref = c => './?t=' + encodeURIComponent(c.slug || c.id);
-const playerHref = c => './?p=' + encodeURIComponent(c.slug || c.id);
+/* a row of a player opened as itself (the administrator's switcher): &own=1, or it would lead to his home row */
+const playerHref = c => './?p=' + encodeURIComponent(c.slug || c.id) + '&own=1';
 const womenChip = () => el('span', 'ls-women', 'women');
 /* the age group when there is one (a name: never translated), else the word */
 const youthChip = age => { const c = age ? nm('span', 'ls-youth', age) : el('span', 'ls-youth', 'youth'); c.title = 'a youth team'; return c; };
@@ -254,11 +279,12 @@ function playerSwitcher(linked, currentId) {
 function loadPlayer(playerId) { return call('linked_players', { p_player: playerId }); }
 function paintPlayer(pl, linked, o) {
   o = o || {};
-  /* THE "OTHER PROFILES" BUTTON sits in a slot, so an administrator's edit (linkedit.js, kind 'player') can draw it again; the
-     editor's own host goes under the identity line, and only once an administrator is confirmed (attach) */
+  /* THE "OTHER PROFILES" BUTTON only on a row opened as itself (o.own, &own=1): a reader's page is the one profile. It sits in
+     a slot, so an administrator's edit (linkedit.js, kind 'player') can draw it again; the editor's own host goes under the
+     identity line, and only once an administrator is confirmed (attach) */
   const slot = el('span', 'ls-slot-inline');
   if (o.sub) o.sub.appendChild(slot);
-  const draw = l => { slot.textContent = ''; const sw = playerSwitcher(l, pl.id); if (sw) slot.appendChild(sw); return sw; };
+  const draw = l => { slot.textContent = ''; const sw = o.own ? playerSwitcher(l, pl.id) : null; if (sw) slot.appendChild(sw); return sw; };
   const sw = draw(linked);
   const host = el('div', 'ls-row-host');
   const editSlot = host.appendChild(el('div', 'ls-edit'));
@@ -270,5 +296,5 @@ function paintPlayer(pl, linked, o) {
   return sw;
 }
 
-return { paintTeam, adminEditor, editorUrl, looksWomen, looksYouth, youthAge, youthChip, teamSwitcher, playerSwitcher, loadPlayer, paintPlayer, playerIds, seasonsAcross, bySeason, womenChip, call };
+return { paintTeam, adminEditor, editorUrl, looksWomen, looksYouth, youthAge, youthChip, teamSwitcher, playerSwitcher, loadPlayer, paintPlayer, playerIds, homeProfile, crossBorder, seasonsAcross, bySeason, womenChip, call };
 }));

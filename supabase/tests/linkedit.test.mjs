@@ -286,7 +286,7 @@ console.log('-- a player\u2019s profile');
   m.toggle.fire('click');
   const rows = m.host.cls('le-mem');
   ok('it lists the profiles that are this person, this page first and marked, each a link to its profile page',
-     rows.length === 2 && rows[0].classList.contains('here') && rows.map(r => r.cls('le-name')[0].href).join() === './?p=p1,./?p=p2', rows.map(r => r.cls('le-name')[0].href));
+     rows.length === 2 && rows[0].classList.contains('here') && rows.map(r => r.cls('le-name')[0].href).join() === './?p=p1&own=1,./?p=p2&own=1', rows.map(r => r.cls('le-name')[0].href));
   ok('...with the clubs each played for, once each, and an "auto" chip on one the site linked itself',
      rows[1].cls('le-sub')[0].textContent === 'Brisbane Bullets \u00b7 NBL \u00b7 2025-26  |  Ipswich \u00b7 NBL1 \u00b7 2024' && rows[1].cls('le-chip')[0].textContent === 'auto', rows[1].cls('le-sub')[0].textContent);
   ok('...and the group\u2019s name', m.host.cls('le-g')[0].textContent === 'Max Mackinnon');
@@ -319,7 +319,7 @@ console.log('-- a player\u2019s profile');
   const teamMode = mounted();
   teamMode.toggle.fire('click');
   ok('a club\u2019s panel is exactly as it was: no reload button', teamMode.host.cls('le-x').every(b => !/reload/.test(b.textContent) || b.hidden === true));
-  ok('the pure helpers', E.spellLines(OTHER).length === 2 && E.spellLines(OTHER, 1).length === 1 && E.spellLines({}).length === 0 && E.playerHref({ slug: 'a b' }) === './?p=a%20b');
+  ok('the pure helpers', E.spellLines(OTHER).length === 2 && E.spellLines(OTHER, 1).length === 1 && E.spellLines({}).length === 0 && E.playerHref({ slug: 'a b' }) === './?p=a%20b&own=1');
 
   /* who is shown it, on a player's page */
   const mountCalls = [];
@@ -337,7 +337,10 @@ console.log('-- a player\u2019s profile');
   globalThis.epinoiaMaybeSignedIn = () => false;
   const sub = new N('div'); sub.parent = new N('div');
   const sw = K.paintPlayer(pl, GROUP, { sub });
-  ok('paintPlayer still draws the "other profiles" button for everyone, in the identity line, and asks a signed-out reader nothing', sw && sub.cls('ls-wrap').length === 1 && mountCalls.length === 0);
+  /* ONE PROFILE (Louie, 2026-10-16): a reader's page is the player, not one of his rows */
+  ok('paintPlayer draws no "other profiles" button on a reader’s page, and asks a signed-out reader nothing', sw === null && sub.cls('ls-wrap').length === 0 && mountCalls.length === 0);
+  const subOwn = new N('div'); subOwn.parent = new N('div');
+  ok('...a row opened as itself (&own=1) still lists his rows, in the identity line', !!K.paintPlayer(pl, GROUP, { sub: subOwn, own: true }) && subOwn.cls('ls-wrap').length === 1);
   ok('...and for a player linked to nothing draws nothing', K.paintPlayer(pl, null, { sub: new N('div') }) === null);
 }
 

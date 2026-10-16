@@ -52,7 +52,7 @@ ok('a team\'s seasons are listed once each, newest first', JSON.stringify(L.seas
 const pcard = { spells: [{ team: 'Newcastle', league: 'SLB', season: '2026-27' }, { team: 'Newcastle', league: 'SLB', season: '2026-27' }, { team: 'Bourg', league: 'Elite', season: '2025-26' }, { team: 'X', league: 'Y', season: '2024-25' }, { team: 'Z' }] };
 const sp = L.spellLines(pcard, 3);
 ok('a player\'s places, without repeats, capped, the rest counted', sp.shown.length === 3 && sp.more === 1 && sp.shown[0] === 'Newcastle · SLB · 2026-27', sp);
-ok('a link to the public page opens the team by slug and the player by id', L.publicHref('team', team) === '../../t/?t=london-lions' && L.publicHref('player', { id: 'abc' }) === '../../p/?p=abc');
+ok('a link to the public page opens the team by slug and the player by id', L.publicHref('team', team) === '../../t/?t=london-lions' && L.publicHref('player', { id: 'abc' }) === '../../p/?p=abc&own=1');
 
 /* ---------------------------------------------------------------- the dropdown --- */
 console.log('-- the dropdown');
@@ -250,7 +250,7 @@ ok('a club linked to nothing gets no switcher; one alone neither', K.teamSwitche
   const sw = K.playerSwitcher(PL, 'p1');
   ok('a linked player gets "other profiles" counting the others', sw && sw.cls('ls-btn-n')[0].textContent === '1');
   const items = sw.cls('ls-item');
-  ok('each profile is a link, the current one marked, with where he played', items.length === 2 && items[0].classList.contains('on') && items[1].href === './?p=d-williams' && items[1].cls('ls-row').length === 2, items.map(i => i.href));
+  ok('each profile is a link (opened as itself, &own=1), the current one marked, with where he played', items.length === 2 && items[0].classList.contains('on') && items[1].href === './?p=d-williams&own=1' && items[1].cls('ls-row').length === 2, items.map(i => i.href));
   ok('a spell at a women\'s side says so', items[1].cls('ls-women').length === 1 && items[0].cls('ls-women').length === 0);
   ok('a player linked to nothing gets none', K.playerSwitcher(null, 'p1') === null && K.playerSwitcher({ players: [PL.players[0]] }, 'p1') === null);
 }

@@ -155,6 +155,32 @@ async function loadWeekGames(pl, team, pidsP) {
   }
   return { monday, sunday, tz, games, picked: chosen.length > 0 };
 }
+/* HIS LINE OVER SEVERAL COMPETITIONS PLAYED UNDER LINKED ROWS (0178): each row's games counted as his (data.js season,
+   opts.alias) and summed before any rate is worked out, from his clubs' games only -- his line is what is wanted, not the
+   competitions'. Shared by the page's ALL (one profile, Louie 2026-10-16) and the report's every competition. */
+let JOINT = null;
+function jointSeasonLine(plId, cs) {
+  const D = window.EpinoiaData;
+  if (!cs || cs.length < 2 || !D) return Promise.resolve(null);
+  const key = plId + '|' + cs.map(c => c.id + ':' + c.pid).join(',');
+  if (JOINT && JOINT.key === key) return JOINT.p;
+  const p = (async () => {
+    const alias = { player: new Map(cs.filter(c => c.pid && c.pid !== plId).map(c => [c.pid, plId])) };
+    const gids = [];
+    for (const c of cs) {
+      const tids = (c.teams || []).filter(Boolean);
+      if (!tids.length) continue;
+      (await D.all(`games?competition_id=eq.${c.id}&status=eq.final&or=(home_team_id.in.(${tids.join(',')}),away_team_id.in.(${tids.join(',')}))&select=id`))
+        .forEach(g => gids.push(g.id));
+    }
+    if (!gids.length) return null;
+    const Sub = await D.season(cs.map(c => c.id), { rows: false, trim: true, gameIds: gids, alias });
+    return Sub.players.find(r => r.id === plId) || null;
+  })();
+  JOINT = { key, p };
+  p.catch(() => { if (JOINT && JOINT.key === key) JOINT = null; });
+  return p;
+}
 function reportTab(pl, name, team) {
   const E = window.EpinoiaReport, RPm = window.EpinoiaReportPlayer;
   if (!E || !RPm || !pl || !pl.id || REPORT) return;
@@ -168,32 +194,11 @@ function reportTab(pl, name, team) {
      linked profile's rows (0178: playerScopes' pid of each competition) counted as his and summed before any rate is worked
      out (data.js season, opts.alias). Ranked against the field of the competition shown on the page all the same: the
      report says so. Offered when his season has more than one competition. */
-  let RP_COMBINE = false, RP_JOINT = null;
+  let RP_COMBINE = false;
   const jointComps = () => (RP_SEASON && RP_SEASON.comps && RP_SEASON.comps.length > 1 ? RP_SEASON.comps : null);
   const jointLabel = () => { const cs = jointComps(); return cs ? cs.map(c => c.short || c.name).filter(Boolean).join(' + ') : ''; };
-  const jointLine = async () => {
-    const cs = jointComps(), D = window.EpinoiaData;
-    if (!cs || !D) return null;
-    const key = cs.map(c => c.id + ':' + c.pid).join(',');
-    if (RP_JOINT && RP_JOINT.key === key) return RP_JOINT.p;
-    const p = (async () => {
-      const alias = { player: new Map(cs.filter(c => c.pid && c.pid !== pl.id).map(c => [c.pid, pl.id])) };
-      /* only the games of his clubs in those competitions: his line is what is wanted, not the competitions' */
-      const gids = [];
-      for (const c of cs) {
-        const tids = (c.teams || []).filter(Boolean);
-        if (!tids.length) continue;
-        (await D.all(`games?competition_id=eq.${c.id}&status=eq.final&or=(home_team_id.in.(${tids.join(',')}),away_team_id.in.(${tids.join(',')}))&select=id`))
-          .forEach(g => gids.push(g.id));
-      }
-      if (!gids.length) return null;
-      const Sub = await D.season(cs.map(c => c.id), { rows: false, trim: true, gameIds: gids, alias });
-      return Sub.players.find(r => r.id === pl.id) || null;
-    })();
-    RP_JOINT = { key, p };
-    p.catch(() => { RP_JOINT = null; });
-    return p;
-  };
+  /* a copy: the report fills in its own fields, and the page's ALL holds the same line */
+  const jointLine = async () => { const J = await jointSeasonLine(pl.id, jointComps()); return J ? Object.assign({}, J) : null; };
   const ctx = {
     /* his season's field, with the league's other seasons to rank against (report.js loadPrior, read once a scope) */
     bars: async () => {
@@ -290,7 +295,7 @@ function reportTab(pl, name, team) {
 }
 
 /* --------------------------------------------------------------- identity --- */
-function paintIdentity(pl, entry, team) {
+function paintIdentity(pl, entry, team, alsoIds) {
   const name = ((pl.first_name || '') + ' ' + (pl.last_name || '')).trim();
   $('#name').textContent = name;
   /* the copy tools/build-seo.py wrote for him already has his title (team and league in it); keep that one */
@@ -299,7 +304,8 @@ function paintIdentity(pl, entry, team) {
   reportTab(pl, name, team);
   /* follow the player: his line after every game */
   if (window.EpinoiaFollow && pl.id) {
-    const fb = window.EpinoiaFollow.bell('player', pl.id, { cls: 'big', label: 'follow' });
+    /* his linked rows ride along (follow.js also): one follow for the one profile, lit by a follow of any of them */
+    const fb = window.EpinoiaFollow.bell('player', pl.id, { cls: 'big', label: 'follow', also: (alsoIds || []).filter(x => x && x !== pl.id) });
     fb.classList.add('lbl'); const act = $('#idactions'); if (act) act.appendChild(fb); else $('#name').insertAdjacentElement('afterend', fb);
   }
   suggestable(pl, entry, name);
@@ -979,6 +985,18 @@ const VS_BIG = 800;
 let SCOPE_GAME_COUNT = 0;
 /* the club's games "on the floor with" has read: { games, byGame, capped }, or null when it reads none */
 let clubLogsDone = () => {};
+/* ONE PROFILE (Louie, 2026-10-16): the clubs and ids of his linked rows (his EuroCup row and its London Lions) -> this profile's
+   club and id, in the copies of the club's games, stints and logs "on the floor with" and what reads them work from */
+const FLOOR_ALIAS = new Map();
+function aliasCopy(o, map) {
+  if (!map.size || o == null) return o;
+  if (typeof o === 'string') return map.get(o) || o;
+  if (Array.isArray(o)) return o.map(x => aliasCopy(x, map));
+  if (typeof o !== 'object') return o;
+  const out = {};
+  Object.keys(o).forEach(k => { out[k] = aliasCopy(o[k], map); });
+  return out;
+}
 const CLUB_LOGS = new Promise(r => { clubLogsDone = r; });
 const STARTERS_READ = new Map(), VS_DONE = new Map(), VS_WAIT = new Map();
 function scopeStarters(ids) {
@@ -1001,6 +1019,7 @@ function vsMinStarts() {
 }
 async function vsCompute(ids, pid) {
   const VU = window.EpinoiaVsUnits, SE = window.EpinoiaSeason;
+  pid = FLOOR_ALIAS.get(pid) || pid;                  // a linked row's id: the club's logs know him by this profile's
   if (!VU || !SE) return { state: 'none', why: 'not available on this page' };
   const [logs, E] = await Promise.all([CLUB_LOGS, VU.loadEngine()]);
   if (!E) return { state: 'none', why: 'the replay could not be loaded' };
@@ -2096,8 +2115,9 @@ function pickScopeSeason(list, ref) {
   return list.find(s => s.label === want || s.name === want || s.key === want) ||
          list.find(s => seasonLabelOf(want) && s.label === seasonLabelOf(want)) || list[0];
 }
-/* every competition of the season together: where there is more than one, and one profile played them all */
-const allOk = sn => !!sn && sn.comps.length > 1 && new Set(sn.comps.map(c => c.pid)).size === 1;
+/* every competition of the season together, where there is more than one: under one profile, or under linked rows of him,
+   summed as one line (jointSeasonLine) -- he is one profile (Louie, 2026-10-16) */
+const allOk = sn => !!sn && sn.comps.length > 1;
 function scopeHref(sn, kind) {
   const u = new URL(location.href);
   u.searchParams.set('s', (sn && sn.label) || '');
@@ -2226,20 +2246,41 @@ async function seasonLog(ids, sn) {
 
     /* the approved photograph, if the league has passed one, and his club: both asked at once (2026-10-15), each needing
        only the player - one after the other they were a round trip the hero waited for twice */
-    const [md, re] = await Promise.all([
+    const LK = window.EpinoiaLinks;
+    const qBoot = new URLSearchParams(location.search);
+    const own = qBoot.get('own') === '1';
+    const [md, re, lk] = await Promise.all([
       pl.photo_media_id ? api(`media?id=eq.${pl.photo_media_id}&status=eq.approved&select=storage_path&limit=1`)
         .catch(() => [])                              // an unapproved or withdrawn photo simply does not show
         : Promise.resolve([]),
       api(`roster_entries?player_id=eq.${pl.id}` +
-        `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name,logo_path,colour_a,gender,timezone))&order=created_at.desc&limit=1`)
+        `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name,logo_path,colour_a,gender,timezone))&order=created_at.desc&limit=1`),
+      /* his link group, asked beside the two above: a linked player is ONE PROFILE (below) */
+      LK && LK.loadPlayer ? LK.loadPlayer(pl.id).catch(() => null) : Promise.resolve(null)
     ]);
+    /* ONE PROFILE (Louie, 2026-10-16: "I don't want multiple profiles, I want everything all on one profile (if a player is
+       linked, merge their pages)"). Whichever of his linked rows was asked for, the page is his home row's (linkswitch.js
+       homeProfile), and it reads every row's games. &own=1 opens a row as itself (the console's links do); &via=1 marks a
+       page reached this way, so a link group changing under a reader can never send the page round in a circle. */
+    if (!own && !qBoot.get('via') && LK && LK.homeProfile) {
+      const home = LK.homeProfile(lk);
+      if (home && home !== pl.id) {
+        const card = ((lk && lk.players) || []).find(c => c.id === home) || {};
+        qBoot.set('p', card.slug || home); qBoot.set('via', '1');
+        location.replace(location.pathname + '?' + qBoot.toString() + location.hash);
+        return;
+      }
+    }
+    if (qBoot.get('via')) {
+      try { qBoot.delete('via'); history.replaceState(null, '', location.pathname + (qBoot.toString() ? '?' + qBoot.toString() : '') + location.hash); } catch (_) { /* the address keeps it */ }
+    }
     if (md.length) pl.__photoPath = md[0].storage_path;
     const entry = re[0] || {};
     const team = entry.teams || null;
-    paintIdentity(pl, entry, team);
-    if (window.EpinoiaLinks) {
-      LINKED_P = window.EpinoiaLinks.loadPlayer(pl.id);
-      LINKED_P.then(l => window.EpinoiaLinks.paintPlayer(pl, l, { sub: $('#sub') })).catch(() => { /* no switcher */ });
+    paintIdentity(pl, entry, team, LK && LK.playerIds ? LK.playerIds(lk, pl.id) : []);
+    if (LK) {
+      LINKED_P = Promise.resolve(lk);
+      try { LK.paintPlayer(pl, lk, { sub: $('#sub'), own }); } catch (_) { /* no switcher */ }
     }
     /* the club's own button, if this is the club's own person (nothing is fetched for anybody else) */
     offerRelease(pl, team).catch(() => { /* no button */ });
@@ -2352,6 +2393,17 @@ async function seasonLog(ids, sn) {
           field = S.players;
           mine = field.find(r => pids.has(r.id)) || field.find(r => r.id === pl.id) || null;
           teamOf = S.teamOfPlayer || null;
+          /* EVERY COMPETITION UNDER LINKED ROWS: his rows in the field become one, his line over all of them */
+          if (kind === 'all' && pids.size > 1) {
+            const J = await jointSeasonLine(pl.id, comps.filter(c => ids.indexOf(c.id) >= 0)).catch(e => { console.warn('[all, linked]', e); return null; });
+            if (scopeKind !== kind) return;                                    // another chip was pressed meanwhile
+            if (J) {
+              const base = field.find(r => r.id === pl.id) || mine || {};
+              const one = Object.assign({}, base, J, { id: pl.id });
+              field = field.filter(r => !pids.has(r.id) && r.id !== pl.id).concat(one);
+              mine = one;
+            }
+          }
         }
       } catch (e) { console.warn('[season]', e); }
       /* the line the similar-players file is for: the one competition shown, or (all competitions) the league's own */
@@ -2546,21 +2598,60 @@ function drawShotChart(shots, colour, games, gameList) {
            Newest first and capped, so the cost of this page is the same in a
            league's fifth season as in its first. */
         const RECENT_GAMES = 40;
-        const gs = await D.all(`games?or=(home_team_id.eq.${team.id},away_team_id.eq.${team.id})` +
+        /* ONE PROFILE: his linked rows' clubs in his newest season too (his EuroCup row's London Lions), their games counted as
+           this club's and his other ids as his, in copies (FLOOR_ALIAS) -- the cached logs keep their own ids */
+        const clubsOf = [{ tid: team.id, pid: pl.id }];
+        ((SEASONS[0] && SEASONS[0].comps) || []).forEach(c => {
+          if (!c.pid || c.pid === pl.id) return;
+          const t = (c.teams || [])[0];
+          if (t && !clubsOf.some(x => x.tid === t)) clubsOf.push({ tid: t, pid: c.pid });
+        });
+        clubsOf.forEach(x => { if (x.tid !== team.id) FLOOR_ALIAS.set(x.tid, team.id); if (x.pid !== pl.id) FLOOR_ALIAS.set(x.pid, pl.id); });
+        const gsRaw = [].concat(...await Promise.all(clubsOf.map(x => D.all(`games?or=(home_team_id.eq.${x.tid},away_team_id.eq.${x.tid})` +
           `&status=eq.final&select=id,home_team_id,away_team_id,starters,tipoff_at,competition_id,period` +
-          `&order=tipoff_at.desc&limit=${RECENT_GAMES}`);
+          `&order=tipoff_at.desc&limit=${RECENT_GAMES}`))))
+          .filter((g, i, a) => a.findIndex(x => x.id === g.id) === i)
+          .sort((a, b) => String(b.tipoff_at || '').localeCompare(String(a.tipoff_at || '')))
+          .slice(0, RECENT_GAMES);
+        let gs = gsRaw.map(g => aliasCopy(g, FLOOR_ALIAS));
         if (!gs.length) {
           $('#withpanel').appendChild(el('div', 'empty',
             'No finalised games yet — this fills in once one is played.'));
         } else {
           const byGame = {}; gs.forEach(g => { byGame[g.id] = g; });
-          const [st, evs] = await Promise.all([
+          const [stRaw, evsRaw] = await Promise.all([
             D.stints(gs.map(g => g.id), team.id, byGame),
             D.events(gs.map(g => g.id))
           ]);
-          /* the position breakdown reads these games' lineups from here, not again (both sides are not needed: his) */
+          /* the position breakdown reads these games' lineups from here, not again (both sides are not needed: his), as they
+             were written: it looks for the id each game's line knows him by */
           gs.forEach(g => { if (!CLUB_STINTS.has(g.id)) CLUB_STINTS.set(g.id, []); });
-          st.forEach(x => { const l = CLUB_STINTS.get(x.game_id); if (l && l.indexOf(x) < 0) l.push(x); });
+          stRaw.forEach(x => { const l = CLUB_STINTS.get(x.game_id); if (l && l.indexOf(x) < 0) l.push(x); });
+          /* HIS TEAMMATES ARE ONE PERSON EACH TOO: a teammate's row in the linked club's games (his EuroCup row) counted as the row
+             he plays under in this club's games, where the two are linked (0178; public reads), so nobody is two teammates */
+          if (clubsOf.length > 1) {
+            try {
+              const linkedG = new Set(gsRaw.filter(g => !clubsOf.slice(1).every(x => x.tid !== g.home_team_id && x.tid !== g.away_team_id)).map(g => g.id));
+              const here = new Set(), there = new Set();
+              stRaw.forEach(x => (x.player_ids || []).forEach(id => { if (id && !FLOOR_ALIAS.has(id) && id !== pl.id) (linkedG.has(x.game_id) ? there : here).add(id); }));
+              const away = [...there].filter(id => !here.has(id));
+              const rowsOf = async (col, ids) => {
+                const out = [];
+                for (let i = 0; i < ids.length; i += 60) out.push(...await api(`player_group_members?${col}=in.(${ids.slice(i, i + 60).join(',')})&select=player_id,group_id`));
+                return out;
+              };
+              const mine = away.length ? await rowsOf('player_id', away) : [];
+              const groups = [...new Set(mine.map(r => r.group_id))];
+              const all = groups.length ? await rowsOf('group_id', groups) : [];
+              const homeOf = new Map();
+              all.forEach(r => { if (here.has(r.player_id) && !homeOf.has(r.group_id)) homeOf.set(r.group_id, r.player_id); });
+              mine.forEach(r => { const h = homeOf.get(r.group_id); if (h && h !== r.player_id) FLOOR_ALIAS.set(r.player_id, h); });
+              gs = gsRaw.map(g => aliasCopy(g, FLOOR_ALIAS));
+              gs.forEach(g => { byGame[g.id] = g; });
+            } catch (e) { console.warn('[floor, linked teammates]', e); }
+          }
+          const st = FLOOR_ALIAS.size ? stRaw.map(x => aliasCopy(x, FLOOR_ALIAS)) : stRaw;
+          const evs = FLOOR_ALIAS.size ? evsRaw.map(e => aliasCopy(e, FLOOR_ALIAS)) : evsRaw;
 
           /* the same games, for his numbers against the starters and the bench: nothing is read twice */
           const logsOf = new Map();

@@ -511,13 +511,23 @@ async function loadFollows() {
   if (!P.length) { empty(pl, 'You do not follow a player yet. The bell on a player\'s page follows them, and their latest line appears here.'); return; }
   let meta = {}, lines = {};
   try {
+    /* A LINKED PLAYER IS ONE PROFILE (0280, Louie 2026-10-16): his latest line is from whichever of his rows played last, his
+       EuroCup game as much as his SLB one. Before 0280 (or on any failure) each followed id is read alone, as it was. */
+    const back = new Map();
+    try {
+      const r = await S.sb.rpc('linked_player_ids', { p_ids: P });
+      const got = (r && !r.error && r.data) || {};
+      P.forEach(id => (got[id] || []).forEach(x => { if (!back.has(x) && P.indexOf(x) < 0) back.set(x, id); }));
+    } catch (_) { /* his own row alone */ }
+    const ask = P.concat([...back.keys()]);
     const [m, rows] = await Promise.all([
       D && D.playerMeta ? D.playerMeta(P).catch(() => ({})) : Promise.resolve({}),
-      safe('player_game_stats?player_uuid=in.(' + list(P) + ')&select=game_id,player_uuid,team_idx,s_pts:stats->pts,s_or:stats->or,s_dr:stats->dr,' +
+      safe('player_game_stats?player_uuid=in.(' + list(ask) + ')&select=game_id,player_uuid,team_idx,s_pts:stats->pts,s_or:stats->or,s_dr:stats->dr,' +
         's_ast:stats->ast,s_min:stats->min,games!inner(tipoff_at,status,home:home_team_id(name,short_name),away:away_team_id(name,short_name))' +
         '&games.tipoff_at=gte.' + encodeURIComponent(new Date(Date.now() - 60 * DAY).toISOString()) + '&limit=600')
     ]);
-    meta = m || {}; lines = latestLines(rows);
+    meta = m || {};
+    lines = latestLines((rows || []).map(r => (back.has(r.player_uuid) ? Object.assign({}, r, { player_uuid: back.get(r.player_uuid) }) : r)));
   } catch (_) { /* tiles without lines */ }
   P.forEach(id => pl.appendChild(playerTile(id, meta[id], lines[id])));
 }

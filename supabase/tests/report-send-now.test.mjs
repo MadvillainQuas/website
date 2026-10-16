@@ -160,7 +160,7 @@ console.log('\nthe mailer takes a request');
   ok('...the games asked for are next week\'s: Monday 12 October 00:00 BST to Monday 19 October 00:00', g.from === '2026-10-11T23:00:00.000Z' && g.to === '2026-10-18T23:00:00.000Z', g);
   const pdfs = calls.filter(c => c.k === 'pdf');
   ok('...a scouting report on each opponent that week (one game on the Sunday before and one on the Monday after are not in it), then the club\'s own',
-     pdfs.map(p => p.path).join(' ') === `/epinoia/t/?t=P&tab=report /epinoia/t/?t=J&tab=report /epinoia/t/?t=${TEAM}&tab=report`, pdfs.map(p => p.path));
+     pdfs.map(p => p.path).join(' ') === `/epinoia/t/?t=P&tab=report&rpvs=${TEAM}&rpadd=cmp,lmisc /epinoia/t/?t=J&tab=report&rpvs=${TEAM}&rpadd=cmp,lmisc /epinoia/t/?t=${TEAM}&tab=report`, pdfs.map(p => p.path));
   const stored = calls.filter(c => c.k === 'store').map(c => c.path);
   ok('...kept for the dashboard under the Sunday\'s date, each file once', stored.length === 3 && stored.every(p => p.startsWith(SUB + '/2026-10-11/')) && stored[0].endsWith('/scouting-report-south-east-melbourne-phoenix.pdf'), stored);
   const files = calls.filter(c => c.k === 'file');

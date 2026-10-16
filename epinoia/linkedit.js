@@ -60,7 +60,8 @@ function seasonsOf(card) {
   return seen.sort().reverse();
 }
 const teamHref = c => './?t=' + encodeURIComponent(c.slug || c.id);
-const playerHref = c => './?p=' + encodeURIComponent(c.slug || c.id);
+/* a row opened as itself (&own=1): a linked player's public page is his home row (linkswitch.js homeProfile) */
+const playerHref = c => './?p=' + encodeURIComponent(c.slug || c.id) + '&own=1';
 /* a player card's clubs as short lines, "Club · League · Season", the distinct ones in the card's order (newest first) */
 function spellLines(card, n) {
   const seen = [];
