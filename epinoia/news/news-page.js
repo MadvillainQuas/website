@@ -299,7 +299,8 @@ function heroOf(g, league, a) {
   link.href = gameHref(g.id);
   link.setAttribute('aria-label', h.name + (scored ? ' ' + g.home_score + '–' + g.away_score + ' ' : ' v ') + w.name + ': the box score');
   /* a game opened again after its report was filed (a correction) says LIVE over its score, not FINAL */
-  link.appendChild(N.plate(row, { league, live: g.status === 'live', when: g.status === 'final' ? day : '' }));
+  link.appendChild(N.plate(row, { league, live: g.status === 'live', final: g.status === 'final', when: g.status === 'final' ? day : '',
+                                  title: a.title || '', standfirst: a.standfirst || '' }));
   return link;
 }
 

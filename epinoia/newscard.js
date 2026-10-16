@@ -511,7 +511,9 @@ function artItem(it) {
   const leagues = (x.tags || []).map(t => t.slug).concat(x.leagues || []);
   if (r.league_slug) leagues.push(r.league_slug);
   return { title: x.title, summary: x.summary, kind: x.kind, brand: { name: b.name, colour: b.colour, logo: b.logo },
-           leagues: [...new Set(leagues.filter(Boolean))] };
+           leagues: [...new Set(leagues.filter(Boolean))],
+           /* a match report's own clubs and score, when the caller has them */
+           home: x.home || null, away: x.away || null, homeScore: x.homeScore, awayScore: x.awayScore };
 }
 /* the cover into a plate: host the plate, after the child it goes over (the brand's print) */
 function art(host, after, it, opts) {

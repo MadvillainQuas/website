@@ -203,8 +203,8 @@ console.log('\nthe pages hand the card their league');
   ok('a report without a cover gets the result as its head', /if \(!a\.cover_path && N\.plate\) \{ const h = heroOf\(g, league, a\)/.test(one));
   const hero = page.slice(page.indexOf('function heroOf('), page.indexOf('async function reportGame('));
   ok('the head opens the box score', /link\.href = gameHref\(g\.id\)/.test(hero) && /aria-label/.test(hero));
-  ok('...FINAL with the day only for a final game, LIVE for one opened again',
-     /N\.plate\(row, \{ league, live: g\.status === 'live', when: g\.status === 'final' \? day : '' \}\)/.test(hero));
+  ok('...FINAL with the day only for a final game, LIVE for one opened again (and the desk\'s cover over a final one: newsart.test)',
+     /N\.plate\(row, \{ league, live: g\.status === 'live', final: g\.status === 'final', when: g\.status === 'final' \? day : '',/.test(hero));
 }
 
 console.log('\nthe print (kit/news.css)');

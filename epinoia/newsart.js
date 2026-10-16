@@ -594,10 +594,19 @@ function drawArt(ctx, W, H, f, images, o) {
     const o2 = W * 0.016;
     ctx.beginPath(); ctx.moveTo(cut + lean + o2, 0); ctx.lineTo(cut - lean + o2, H); ctx.stroke();
     ctx.restore();
+    /* A FINISHED GAME (a match report's cover, opts.final): the league's mark at the top, FINAL under the score, the
+       loser's number dimmed, and a strap only for a number worth saying (the topic would only say FINAL again) */
+    const final = !!(opt.final && f.score);
+    let top0 = safeTop;
+    if (opt.leagueMark && im.brand) {
+      const lr = Math.max(9, Math.min(H * 0.085, W * 0.05));
+      disc(ctx, W / 2, pad * 0.3 + lr, lr, im.brand, { name: f.brand.name });
+      top0 = Math.max(top0, pad * 0.3 + lr * 2 + pad * 0.15);
+    }
     const strapS = Math.max(9, H * 0.036), strapH = strapS * 1.75;
-    const avail = H - safeTop - pad * 0.7 - strapH * 1.5;
+    const avail = H - top0 - pad * 0.7 - strapH * 1.5;
     const R = Math.min(avail * 0.34, W * 0.15);
-    const cy = safeTop + R * 1.04;
+    const cy = top0 + R * 1.04;
     const xa = W * 0.2, xb = W - xa;
     disc(ctx, xa, cy, R, im.clubs && im.clubs[0], a);
     disc(ctx, xb, cy, R, im.clubs && im.clubs[1], b);
@@ -611,14 +620,40 @@ function drawArt(ctx, W, H, f, images, o) {
       return w.length > 1 && sizeOf(full) < R * 0.3 ? w[w.length - 1].toUpperCase() : full;
     });
     names.forEach(n => { nameS = Math.min(nameS, sizeOf(n)); });
+    /* too small to read on a small card: the clubs' three letters instead, as the result plate prints them */
+    if (nameS < 10) {
+      const code = c => (c.short && /^[\p{L}\p{N}]{2,5}$/u.test(c.short) ? c.short : clubWords(c).slice(-1)[0].replace(/[^\p{L}\p{N}]/gu, '').slice(0, 3)).toUpperCase();
+      names.splice(0, 2, code(a), code(b));
+      nameS = Infinity;
+      names.forEach(n => { nameS = Math.min(nameS, sizeOf(n)); });
+    }
     [[names[0], xa], [names[1], xb]].forEach(([n, x]) => {
       lines(ctx, [[{ text: n, colour: '#ffffff' }]], x, cy + R + nameS * 1.25, nameS, { align: 'center', stretch: 'condensed', weight: 800, shadow: 'rgba(0,0,0,0.5)' });
     });
     const mid = f.score ? f.score[0] + '–' + f.score[1] : 'V';
     const sz = fit(ctx, [[{ text: mid, colour: '#fff' }]], W * (f.score ? 0.27 : 0.14), R * (f.score ? 0.95 : 1.25), { max: R * 1.25 });
-    lines(ctx, [[{ text: mid, colour: '#ffffff' }]], W / 2, cy + sz * 0.36, sz, { align: 'center', shadow: 'rgba(0,0,0,0.55)' });
-    const strap = f.number ? f.number.value + ' ' + f.number.label : T(f.topic.words.join(' '));
-    if (opt.strap !== false) pill(ctx, strap, W / 2, H - pad * 0.7 - strapH, strapS, pal.accent, '#0b0d10', 'center');
+    const dim = 'rgba(255,255,255,0.55)';
+    const lose = final && +f.score[0] !== +f.score[1] ? (+f.score[0] < +f.score[1] ? 0 : 1) : -1;
+    const segs = f.score ? [{ text: String(f.score[0]), colour: lose === 0 ? dim : '#ffffff' }, { text: '–', colour: final ? dim : '#ffffff' },
+                            { text: String(f.score[1]), colour: lose === 1 ? dim : '#ffffff' }] : [{ text: mid, colour: '#ffffff' }];
+    if (final) {
+      /* THE BOARD: the score on a dark panel of its own, the divider passing behind it, FINAL under the numbers */
+      font(ctx, sz, 900, 'extra-condensed');
+      const tw = segs.reduce((w, x) => w + ctx.measureText(x.text).width, 0);
+      const fs = Math.max(8, Math.min(strapS * 0.95, sz * 0.2));
+      const bw = tw + sz * 0.5, bh = sz * 0.95 + fs * 2.2;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = sz * 0.25;
+      ctx.fillStyle = 'rgba(8,10,14,0.86)';
+      rr(ctx, W / 2 - bw / 2, cy - sz * 0.6, bw, bh, sz * 0.12); ctx.fill();
+      ctx.restore();
+      lines(ctx, [segs], W / 2, cy + sz * 0.3, sz, { align: 'center' });
+      pill(ctx, T('FINAL'), W / 2, cy + sz * 0.3 + fs * 0.45, fs, '#ffffff', '#0b0d10', 'center');
+    } else {
+      lines(ctx, [segs], W / 2, cy + sz * 0.36, sz, { align: 'center', shadow: 'rgba(0,0,0,0.55)' });
+    }
+    const strap = f.number ? f.number.value + ' ' + f.number.label : final ? null : T(f.topic.words.join(' '));
+    if (strap && opt.strap !== false) pill(ctx, strap, W / 2, H - pad * 0.7 - strapH, strapS, pal.accent, '#0b0d10', 'center');
   } else if (f.layout === 'club') {
     const c = f.clubs[0];
     ground(ctx, W, H, pal, f.seed, { lightX: wide ? W * 0.72 : W * 0.5 });
@@ -780,7 +815,8 @@ function fonts() {
 }
 
 /* A COVER ON THE PAGE. host: the plate (position: relative); item: { title, summary, kind, brand, leagues: [slug],
-   home, away, homeScore, awayScore }; opts: { safeTop, after (the plate's child it goes over) }. The canvas is laid over whatever the plate already shows,
+   home, away, homeScore, awayScore }; opts: { safeTop, after (the plate's child it goes over) or before (a selector
+   for the child it goes under), final (a finished game's cover), leagueMark (the brand's mark at the top) }. The canvas is laid over whatever the plate already shows,
    and only once it is drawn: a story whose cover cannot be drawn keeps its print. */
 function mount(host, item, o) {
   const d = root.document;
@@ -804,7 +840,8 @@ function mount(host, item, o) {
     drawArt(ctx, w, h, facts, images, opt);
     if (!cv.parentNode) {
       const after = opt.after && opt.after.parentNode === host ? opt.after : null;
-      host.insertBefore(cv, after ? after.nextSibling : host.firstChild);
+      const before = typeof opt.before === 'string' ? host.querySelector(':scope > ' + opt.before) : null;
+      host.insertBefore(cv, before || (after ? after.nextSibling : host.firstChild));
       host.classList.add('has-art');
     }
   };

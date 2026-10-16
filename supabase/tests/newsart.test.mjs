@@ -122,6 +122,34 @@ for (const [k, facts] of Object.entries(cases)) {
   }
 }
 
+{
+  /* A MATCH REPORT'S COVER (opts.final): the board says FINAL, never FINAL SCORE again; the league's mark at the top;
+     a small card's clubs by their three letters */
+  const rep = A.analyse({ title: 'Sharks own the paint to beat Leicester Riders', summary: 'Fahro Alihodzic did the most damage, with 25 points.',
+                          kind: 'league', home: clubs[6], away: { name: 'Leicester Riders', short: 'LEI', colour: '#e2022e' }, homeScore: 85, awayScore: 75,
+                          brand: { name: 'Super League' } }, {});
+  const c = recorder(560, 315);
+  A.drawArt(c, 560, 315, rep, { clubs: [img(200, 200, 'crest'), img(200, 200, 'crest')], brand: img(100, 100, 'league') }, { final: true, leagueMark: true, safeTop: 0.04 });
+  /* a pill is drawn a letter at a time (its tracking): its words read joined */
+  const texts = c.log.filter(e => e.kind === 'text').map(e => e.t), all = texts.join('');
+  ok('a finished game\'s cover: FINAL on the board, the night\'s number as its strap, no FINAL SCORE', all.includes('FINAL') && !all.includes('FINALSCORE')
+     && all.includes('25POINTS') && texts.includes('85') && texts.includes('75'), texts);
+  ok('...the league\'s mark drawn at the top', c.log.some(e => e.kind === 'image' && e.tag === 'league' && e.y0 < 60));
+  ok('...and every word on the picture', !off(c.log, 560, 315).length);
+  const small = recorder(120, 70);
+  A.drawArt(small, 120, 70, rep, { clubs: [], brand: null }, { final: true, safeTop: 0.04 });
+  const st = small.log.filter(e => e.kind === 'text').map(e => e.t);
+  ok('...on a small card the clubs are their three letters', st.includes('SHE') && st.includes('LEI'), st);
+  const noNum = A.analyse({ title: 'Lions beat Sharks', summary: '', kind: 'league', home: clubs[2], away: clubs[6], homeScore: 80, awayScore: 70 }, {});
+  const c2 = recorder(560, 315);
+  A.drawArt(c2, 560, 315, noNum, { clubs: [] }, { final: true });
+  ok('...and no strap at all when there is no number to say', !/SCORE|LATEST/.test(c2.log.filter(e => e.kind === 'text').map(e => e.t).join('')));
+}
+const newsJs = src('news.js');
+ok('a match report\'s card and its head wear the cover once the game is final (never a live one), over the plate and under its grain',
+   /if \(isMatch && !a\.cover_path && !o\.live\) matchArt\(/.test(newsJs) && /if \(o\.final && !o\.live/.test(newsJs) && /before: '\.club-grain'/.test(newsJs)
+   && /final: g\.status === 'final'/.test(src('news/news-page.js')));
+
 console.log('\nthe posts');
 const art = { title: 'Lonnie Walker joins Besiktas', summary: 'Besiktas have signed Lonnie Walker, via multiple reports.', kind: 'story', brand: { name: 'Desk' },
               url: 'https://example.org/a', league: { name: 'EuroLeague', slug: 'euroleague' } };

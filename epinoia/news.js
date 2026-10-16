@@ -200,12 +200,26 @@ function matchPlate(a, o, plate, ink) {
     .map(k => ownColour(a[k + '_colour'])).find(c => c && lum(c) <= 0.7);
   return cardInk || ink;
 }
+/* the cover of a finished game (newsart.js through newscard.js): drawn over the plate, under its grain */
+function matchArt(plate, a, lg, opts) {
+  const K = typeof window !== 'undefined' ? window.EpinoiaNewsCard : null;
+  if (!K || !K.art || a.home_score == null || a.away_score == null) return;
+  const club = k => ({ name: a[k + '_name'] || a[k + '_short'] || '', short: a[k + '_short'], colour: a[k + '_colour'],
+                       colour2: a[k + '_colour_2'], logo: a[k + '_logo'] });
+  const logo = lg && lg.logo_path && typeof window.epinoiaLogoUrl === 'function' ? window.epinoiaLogoUrl(lg.logo_path, 128) : null;
+  K.art(plate, null, { title: a.title, summary: a.standfirst, kind: 'league', home: club('home'), away: club('away'),
+                       homeScore: a.home_score, awayScore: a.away_score,
+                       brand: { name: (lg && lg.name) || '', colour: (lg && lg.colour_a) || null, logo } },
+        Object.assign({ final: true, leagueMark: true, before: '.club-grain' }, opts || {}));
+}
 /* THE PLATE ON ITS OWN, for the article's head (news-page.js): a.home_* / a.away_* as news_public names them */
 function plate(a, opts) {
   const p = el('div', 'club-plate art-plate');
   const ink = matchPlate(a, Object.assign({ full: true }, opts || {}), p, tint(String(a.home_name || '') + String(a.away_name || '')));
   p.style.setProperty('--ink-c', ink);
   p.appendChild(el('div', 'club-grain'));
+  const o = opts || {};
+  if (o.final && !o.live && o.title !== undefined) matchArt(p, Object.assign({}, a, { title: o.title, standfirst: o.standfirst }), o.league, { safeTop: 0.04 });
   return p;
 }
 
@@ -265,6 +279,9 @@ function card(a, opts) {
   if (flag && !flagOnLine) plate.appendChild(flag);
 
   plate.appendChild(el('div', 'club-grain'));
+  /* A FINISHED GAME'S REPORT wears the desk's cover over its result plate (Louie, 2026-10-16): the clubs' halves, their
+     crests, the score with FINAL, the league's mark and the night's number - the plate stays underneath */
+  if (isMatch && !a.cover_path && !o.live) matchArt(plate, a, o.league, { safeTop: 0.04 });
 
   /* THE HEADLINE ON ITS OWN PANEL, under the print. Laid over the plate on a scrim it fought the
      crests and the score for the same space, and on a narrow card lost; here it has the card's
