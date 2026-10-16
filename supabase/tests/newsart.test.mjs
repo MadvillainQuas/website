@@ -132,8 +132,17 @@ for (const [k, facts] of Object.entries(cases)) {
   A.drawArt(c, 560, 315, rep, { clubs: [img(200, 200, 'crest'), img(200, 200, 'crest')], brand: img(100, 100, 'league') }, { final: true, leagueMark: true, safeTop: 0.04 });
   /* a pill is drawn a letter at a time (its tracking): its words read joined */
   const texts = c.log.filter(e => e.kind === 'text').map(e => e.t), all = texts.join('');
-  ok('a finished game\'s cover: FINAL on the board, the night\'s number as its strap, no FINAL SCORE', all.includes('FINAL') && !all.includes('FINALSCORE')
-     && all.includes('25POINTS') && texts.includes('85') && texts.includes('75'), texts);
+  ok('a finished game\'s cover: FINAL on the board, the night\'s number as its strap - with whose it is - and no FINAL SCORE', all.includes('FINAL') && !all.includes('FINALSCORE')
+     && all.includes('ALIHODZIC25PTS') && texts.includes('85') && texts.includes('75'), texts);
+  /* A PLAYER'S NUMBER NAMES THE PLAYER (Louie: "27 points" alone "is very vague vs. something like '11 point comeback'") */
+  const strap = (t, sm, h, w) => A.strapOf(A.analyse({ title: t, summary: sm, kind: 'league', home: h || clubs[2], away: w || clubs[6], homeScore: 80, awayScore: 70 }, {}));
+  ok('a player\'s points: the family name with them (POMES 27 PTS)', strap('Bristol Flyers live off second chances to beat Leicester Riders',
+     'Lorenzo Pomes did the most damage, with 27 points. Leicester Riders have lost five in a row.') === 'POMES 27 PTS');
+  ok('...the name nearest before the number, not a club earlier in the sentence (FELIZ 8 THREES)',
+     strap('Real Madrid cruises past ASVEL as Andres Feliz hits eight threes', '') === 'FELIZ 8 THREES');
+  ok('...and no strap at all when the words never say whose they are', strap('Lions beat Sharks', 'The bench added 31 points between them.') === null);
+  ok('a club\'s number stays as it is (11 POINT COMEBACK, 11–0 RUN)', strap('Cheshire Phoenix come from 11 down to beat Manchester', '') === '11 POINT COMEBACK'
+     && strap('Liverpool blow it open with an 11-0 run', '') === '11–0 RUN');
   ok('...the league\'s mark drawn at the top', c.log.some(e => e.kind === 'image' && e.tag === 'league' && e.y0 < 60));
   ok('...and every word on the picture', !off(c.log, 560, 315).length);
   const small = recorder(120, 70);

@@ -121,7 +121,7 @@ function compose(article, facts, over) {
     sub: a.brand && a.brand.name && a.kind === 'story' ? 'via ' + a.brand.name : '',
     title: topic.key === 'injury' ? ['INJURY', 'REPORT'] : topic.words.slice(0, 2),
     quote: f.quote || '', who: who ? up(who) : '', whoLine: '',
-    stat: f.number ? { value: f.number.value, label: f.number.label, who: who ? up(who) : '' } : { value: '', label: '', who: '' },
+    stat: f.number ? { value: f.number.value, label: f.number.label, who: up(f.number.who || (f.number.player ? '' : who) || '') } : { value: '', label: '', who: '' },
     score: f.layout === 'duel' ? { home: f.clubs[0], away: f.clubs[1], hs: f.score ? f.score[0] : '', as: f.score ? f.score[1] : '', label: 'FINAL' } : null,
     club: lead, rows: [], tableHead: lead ? lead.name : '', sponsor: { text: '', name: '' },
     icon: topic.key === 'injury' ? 'cross' : f.quote ? 'quote' : topic.key === 'award' ? 'star' : 'bolt',

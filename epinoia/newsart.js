@@ -243,12 +243,12 @@ function numberOf(text) {
   if ((m = /\b(\d{1,2})[–—-](\d{1,2})\s+(run|parcial)\b/i.exec(t))) return { value: m[1] + '–' + m[2], label: 'RUN' };
   if ((m = /\bfrom\s+(\d{1,2})\s+(?:points\s+)?down\b/i.exec(t))) return { value: m[1], label: 'POINT COMEBACK' };
   if ((m = /\b(\d{1,2})[-\s]point\s+(game|night|performance|haul|effort|outing|comeback|win|victory|deficit)\b/i.exec(t))) {
-    return /comeback|deficit/i.test(m[2]) ? { value: m[1], label: 'POINT COMEBACK' } : { value: m[1], label: 'POINTS' };
+    return /comeback|deficit/i.test(m[2]) ? { value: m[1], label: 'POINT COMEBACK' } : { value: m[1], label: 'POINTS', player: true, at: m.index };
   }
   if ((m = /\b(\d{1,3})\s+(points|pts|rebounds|assists|steals|blocks|threes|three-pointers|triples|puntos|punti|rebotes|rimbalzi)\b/i.exec(t))) {
-    if (+m[1] >= 5) return { value: m[1], label: STATW[m[2].toLowerCase()] };
+    if (+m[1] >= 5) return { value: m[1], label: STATW[m[2].toLowerCase()], player: true, at: m.index };
   }
-  if ((m = /\b(\w+)\s+(threes|three-pointers|triples)\b/i.exec(t)) && WORDN[m[1].toLowerCase()] >= 5) return { value: String(WORDN[m[1].toLowerCase()]), label: 'THREES' };
+  if ((m = /\b(\w+)\s+(threes|three-pointers|triples)\b/i.exec(t)) && WORDN[m[1].toLowerCase()] >= 5) return { value: String(WORDN[m[1].toLowerCase()]), label: 'THREES', player: true, at: m.index };
   if ((m = /\b(\d{1,2}|\w+)\s+(?:straight|consecutive|in a row)\s*(wins|games|losses|victories)?\b/i.exec(t))) {
     const v = /^\d+$/.test(m[1]) ? +m[1] : WORDN[m[1].toLowerCase()];
     if (v >= 3) return { value: String(v), label: (m[2] && /loss/i.test(m[2]) ? 'STRAIGHT LOSSES' : 'IN A ROW') };
@@ -329,7 +329,23 @@ function analyse(a0, o) {
     clubs = clubs.length ? [clubs[0], named.find(n => fold(n.name) !== fold(clubs[0].name)) || named[1]] : named;
     names = names.slice(2);
   }
-  const number = numberOf(title) || numberOf(summary);
+  const inTitle = numberOf(title);
+  const number = inTitle || numberOf(summary);
+  /* A PLAYER'S NUMBER IS NOTHING WITHOUT THE PLAYER (Louie, 2026-10-16: "27 points" on its own "is very vague"): whose it
+     is, from the sentence that says it - and a points haul nobody is named for is not put on a cover */
+  if (number && number.player) {
+    const text = inTitle ? title : summary;
+    const start = Math.max(text.lastIndexOf('. ', number.at), text.lastIndexOf('! ', number.at), text.lastIndexOf('? ', number.at)) + 1;
+    const ends = ['. ', '! ', '? '].map(x => text.indexOf(x, number.at)).filter(i => i >= 0);
+    const sentence = text.slice(start, ends.length ? Math.min(...ends) + 1 : text.length);
+    const bad = avoid.map(fold).filter(Boolean);
+    /* the name nearest before the number ("as Andres Feliz hits eight threes"), else the first after it */
+    const here = number.at - start;
+    const named = runsIn(sentence).filter(n => !bad.some(b => fold(n).includes(b) || b.includes(fold(n))))
+      .map(n => ({ n, i: sentence.indexOf(n) })).filter(x => x.i >= 0);
+    const before = named.filter(x => x.i < here).pop();
+    number.who = (before || named.find(x => x.i > here) || {}).n || null;
+  }
   const topic = topicOf(title, a.kind, summary);
   const quote = quoteOf(a.quote || summary) || quoteOf(title);
   /* two clubs named make a game only when the story is one: a result, a preview, a score, "v" */
@@ -551,6 +567,17 @@ function ghost(ctx, W, H, word, pal) {
   });
   ctx.restore();
 }
+/* THE STRAP A NUMBER MAKES: a club's (11 POINT COMEBACK, 11–0 RUN) as it is; a player's with the player's family name
+   (POMES 27 PTS), or none at all when the words never say whose it is */
+const SHORT = { POINTS: 'PTS', REBOUNDS: 'REB', ASSISTS: 'AST', STEALS: 'STL', BLOCKS: 'BLK' };
+function strapOf(f) {
+  const n = f && f.number;
+  if (!n) return null;
+  if (!n.player) return n.value + ' ' + n.label;
+  if (!n.who) return null;
+  const nl = nameLines(n.who);
+  return nl[nl.length - 1] + ' ' + n.value + ' ' + (SHORT[n.label] || n.label);
+}
 /* the subject's name as two lines: the given names over the family name, or one line when it is one word */
 function nameLines(n) {
   const w = clean(n).split(' ');
@@ -652,7 +679,7 @@ function drawArt(ctx, W, H, f, images, o) {
     } else {
       lines(ctx, [segs], W / 2, cy + sz * 0.36, sz, { align: 'center', shadow: 'rgba(0,0,0,0.55)' });
     }
-    const strap = f.number ? f.number.value + ' ' + f.number.label : final ? null : T(f.topic.words.join(' '));
+    const strap = strapOf(f) || (final ? null : T(f.topic.words.join(' ')));
     if (strap && opt.strap !== false) pill(ctx, strap, W / 2, H - pad * 0.7 - strapH, strapS, pal.accent, '#0b0d10', 'center');
   } else if (f.layout === 'club') {
     const c = f.clubs[0];
@@ -681,13 +708,13 @@ function drawArt(ctx, W, H, f, images, o) {
     const s = fit(ctx, ls, boxW, boxH, { max: H * 0.3 });
     const y0 = wide ? top + (H - pad - top - ls.length * s * 0.92) * 0.42 + s * 0.8 : top + s * 0.8;
     const yEnd = lines(ctx, ls, boxX, y0, s, { shadow: 'rgba(0,0,0,0.35)' });
-    const strap = f.number ? f.number.value + ' ' + f.number.label : T(f.topic.words.join(' '));
+    const strap = strapOf(f) || T(f.topic.words.join(' '));
     if (yEnd + s * 0.25 + H * 0.07 < H - pad * 0.4) pill(ctx, strap, boxX, yEnd + s * 0.3, Math.max(9, H * 0.034), pal.accent, '#0b0d10');
   } else if (f.layout === 'number') {
     ground(ctx, W, H, pal, f.seed);
     slash(ctx, W, H, W * 0.6, pal.accent, { alpha: 0.1 });
     const n = f.number;
-    const who = f.names[0] ? f.names[0].toUpperCase() : null;
+    const who = n.who || f.names[0] ? (n.who || f.names[0]).toUpperCase() : null;
     const boxW = wide ? W * 0.62 : W - pad * 2;
     const ns = fit(ctx, [[{ text: n.value, colour: pal.accent }]], boxW * (n.value.length > 3 ? 1 : 0.62), (H - safeTop - pad) * 0.64, { max: H * 0.62 });
     const labelS = fit(ctx, [[{ text: n.label, colour: '#fff' }]], boxW, ns * 0.22, { stretch: 'condensed', max: ns * 0.2 });
@@ -867,6 +894,6 @@ function mount(host, item, o) {
   return cv;
 }
 
-return { analyse, drawArt, mount, clubsFor, palette, font, fit, lines, wrap, cover, contain, disc, pill, ground, slash, rr, load, crest,
+return { analyse, strapOf, drawArt, mount, clubsFor, palette, font, fit, lines, wrap, cover, contain, disc, pill, ground, slash, rr, load, crest,
          fonts, nameLines, clubWords, initials, hex, lum, mix, rgba, numberOf, scoreOf, topicOf, quoteOf, namesOf, clubsIn, runsIn, tintHex, T };
 }));
