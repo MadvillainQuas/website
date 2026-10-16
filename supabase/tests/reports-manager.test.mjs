@@ -221,7 +221,7 @@ RM._t.use({ from });
   ok('PRIME CLUB + PLAYERS beside every club PRIME (each opponent, the own report, each club of the Synergy tab)',
      (src.match(/primeAllBtn\(/g) || []).length >= 4 && /rm-prime-all/.test(src));
   ok('...it primes the club report then each ZIP player’s report, one at a time, in a window of its own (not a frame inside the zoomed console) that waits for the report’s own Primed line',
-     /&tab=report&prime=1', win\)/.test(src) && /window\.open\('about:blank', 'epinoia-prime'/.test(src) && !/el\('iframe'\)/.test(src) && /querySelector\('\.rp-primed'\)/.test(src) && /for \(let i = 0; i < jobs\.length && !RUN\.stop; i\+\+\)/.test(src));
+     /&tab=report&prime=1' \+ \(j\.k === 't' \? VS_Q\(vs\) : ''\), win\)/.test(src) && /window\.open\('about:blank', 'epinoia-prime'/.test(src) && !/el\('iframe'\)/.test(src) && /querySelector\('\.rp-primed'\)/.test(src) && /for \(let i = 0; i < jobs\.length && !RUN\.stop; i\+\+\)/.test(src));
   ok('...closing the manager mid-run asks first', /Reports are being primed\. Close and stop them\?/.test(src));
   ok('a stored report has "delete stored" (the file, then its row), and a club "delete stored (club + players)"',
      /'delete stored'/.test(src) && /'delete stored \(club \+ players\)'/.test(src) && /storage\.from\('primed'\)\.remove\(\[r\.path\]\)/.test(src) && /from\('primed_reports'\)\.delete\(\)/.test(src));
@@ -417,22 +417,24 @@ function world(st) {
 /* ---------------------------------------------------------------- PRIME REPORT stores it for sending (0229) --- */
 console.log('\nPRIME REPORT stores it for sending (0229)');
 {
+  /* the opponents' copies primed from the address's club's row (compared with it: --vs-<club>), as the mailer sends only those */
+  const VSP = id => 'team/' + id + '--vs-' + TEAM + '.pdf';
   const primed = () => [
-    { kind: 'team', ref_id: 'P', path: 'team/P.pdf', primed_at: '2026-10-07T08:00:00Z' },
-    { kind: 'team', ref_id: 'J', path: 'team/J.pdf', primed_at: '2026-10-07T08:00:00Z' },
+    { kind: 'team', ref_id: 'P', path: VSP('P'), primed_at: '2026-10-07T08:00:00Z' },
+    { kind: 'team', ref_id: 'J', path: VSP('J'), primed_at: '2026-10-07T08:00:00Z' },
     { kind: 'player', ref_id: 'pP1', path: 'player/pP1.pdf', primed_at: '2026-10-07T08:05:00Z' },
     { kind: 'team', ref_id: 'Q', path: 'team/Q.pdf', primed_at: '2026-10-07T08:10:00Z' },
     { kind: 'team', ref_id: 'OLD', path: 'team/OLD.pdf', primed_at: '2026-09-01T00:00:00Z' }];
-  const files = { 'team/P.pdf': '%PDF-1.7 primed Phoenix', 'team/J.pdf': '%PDF-1.7 primed JackJumpers', 'player/pP1.pdf': '%PDF-1.7 primed Mitch Creek', 'team/Q.pdf': 'q', 'team/OLD.pdf': 'old' };
+  const files = { [VSP('P')]: '%PDF-1.7 primed Phoenix', [VSP('J')]: '%PDF-1.7 primed JackJumpers', 'player/pP1.pdf': '%PDF-1.7 primed Mitch Creek', 'team/Q.pdf': 'q', 'team/OLD.pdf': 'old' };
   M.newRun();
   const calls = world({ primed: primed(), files, newer: ['J'] });
   await quiet(() => M.requests(NOW));
   const [sun, re] = calls.filter(c => c.k === 'mail');
   const att = f => Buffer.from(sun.files.find(a => a.filename === f).content, 'base64').toString();
   ok('a club report primed and stored is the one sent: Phoenix\'s attachment is the stored file, not drawn again', att('scouting-report-south-east-melbourne-phoenix.pdf') === '%PDF-1.7 primed Phoenix' &&
-     !calls.some(c => c.k === 'pdf' && c.path === '/epinoia/t/?t=P&tab=report'), sun.files.map(a => a.filename));
+     !calls.some(c => c.k === 'pdf' && /^\/epinoia\/t\/\?t=P&/.test(c.path)), sun.files.map(a => a.filename));
   ok('...one primed before a game the club has played since is drawn again (the JackJumpers\'), and the club\'s own (not primed) as always',
-     calls.some(c => c.k === 'pdf' && c.path === '/epinoia/t/?t=J&tab=report') && att('scouting-report-tasmania-jackjumpers.pdf') !== '%PDF-1.7 primed JackJumpers' &&
+     calls.some(c => c.k === 'pdf' && c.path === '/epinoia/t/?t=J&tab=report&rpvs=' + TEAM + '&rpadd=cmp,lmisc') && att('scouting-report-tasmania-jackjumpers.pdf') !== '%PDF-1.7 primed JackJumpers' &&
      calls.some(c => c.k === 'pdf' && c.path === `/epinoia/t/?t=${TEAM}&tab=report`) && calls.some(c => c.k === 'newer?' && c.team === 'J' && /^gt\.2026-10-07T08/.test(decodeURIComponent(c.since))), calls.filter(c => c.k === 'newer?'));
   const zip = unzip(Buffer.from(re.files[0].content, 'base64'));
   ok('...a player report primed and stored goes in the players\' ZIP as it was stored', zip.out[0].data.toString() === '%PDF-1.7 primed Mitch Creek' && !calls.some(c => c.k === 'pdf' && c.path === '/epinoia/p/?p=pP1&tab=report'));
@@ -440,12 +442,20 @@ console.log('\nPRIME REPORT stores it for sending (0229)');
   const n = await quiet(() => M.cleanPrimed(NOW));
   const gone = calls.filter(c => c.k === 'unstore').map(c => c.path).sort().join(' '), rows = calls.filter(c => c.k === 'unprime').map(c => c.kind + ' ' + c.ref).sort().join(' | ');
   ok('once the run has emailed them they are deleted, file and row: the sent ones, the stale one and one older than two weeks', n === 4 &&
-     gone === 'player/pP1.pdf team/J.pdf team/OLD.pdf team/P.pdf' && rows === 'eq.player eq.pP1 | eq.team eq.J | eq.team eq.OLD | eq.team eq.P', [n, gone, rows]);
+     gone === ['player/pP1.pdf', VSP('J'), 'team/OLD.pdf', VSP('P')].sort().join(' ') && rows === 'eq.player eq.pP1 | eq.team eq.J | eq.team eq.OLD | eq.team eq.P', [n, gone, rows]);
+  /* a copy primed for another club, or for none, is not this club's comparison: drawn afresh, and kept for its own club */
+  M.newRun();
+  const other = world({ primed: [{ kind: 'team', ref_id: 'P', path: 'team/P.pdf', primed_at: '2026-10-07T08:00:00Z' }], files: { 'team/P.pdf': '%PDF-1.7 primed for nobody' } });
+  await quiet(() => M.requests(NOW));
+  const sun2 = other.find(c => c.k === 'mail');
+  ok('an opposition report primed for no club (or another) is not sent to this one: drawn afresh, compared with this club, and the copy left',
+     Buffer.from(sun2.files.find(a => a.filename === 'scouting-report-south-east-melbourne-phoenix.pdf').content, 'base64').toString() !== '%PDF-1.7 primed for nobody' &&
+     other.some(c => c.k === 'pdf' && c.path === '/epinoia/t/?t=P&tab=report&rpvs=' + TEAM + '&rpadd=cmp,lmisc') && (await quiet(() => M.cleanPrimed(NOW))) === 0, other.filter(c => c.k === 'pdf').map(c => c.path));
   ok('...a primed report no email has carried yet stays for the email that will (Q)', !/team\/Q\.pdf/.test(gone));
 }
 {
   M.newRun();
-  const calls = world({ primed: [{ kind: 'team', ref_id: 'P', path: 'team/P.pdf', primed_at: '2026-10-07T08:00:00Z' }], files: { 'team/P.pdf': '%PDF primed' }, resend: 500 });
+  const calls = world({ primed: [{ kind: 'team', ref_id: 'P', path: 'team/P--vs-' + TEAM + '.pdf', primed_at: '2026-10-07T08:00:00Z' }], files: { ['team/P--vs-' + TEAM + '.pdf']: '%PDF primed' }, resend: 500 });
   await quiet(() => M.requests(NOW));
   const n = await quiet(() => M.cleanPrimed(NOW));
   ok('an email that did not go leaves its primed copy for the next try', n === 0 && !calls.some(c => c.k === 'unstore'), calls.filter(c => c.k === 'unstore'));
@@ -466,7 +476,7 @@ console.log('\nPRIME REPORT stores it for sending (0229)');
      (rmSrc => /'start priming'/.test(rmSrc) && /add CSVs for these players/.test(rmSrc) && /function closeRunBtn/.test(rmSrc))(read('epinoia', 'admin', 'platform', 'reports-manager.js')));
   ok('...drawn at email weight, in the private bucket under its kind and id, its row written, then READ BACK',
      /scale: 2, quality: 0\.84/.test(rp) && /c\.storage\.from\('primed'\)\.upload\(path, new root\.Blob\(\[bytes\], \{ type: 'application\/pdf' \}\), \{ upsert: true/.test(rp) &&
-     /const path = o\.kind \+ '\/' \+ o\.id \+ '\.pdf';/.test(rp) && /from\('primed_reports'\)\.upsert\(row, \{ onConflict: 'kind,ref_id' \}\)/.test(rp) && /from\('primed_reports'\)\.select\('bytes,primed_at'\)/.test(rp));
+     /const path = o\.kind \+ '\/' \+ o\.id \+ \(vs \? '--vs-' \+ vs : ''\) \+ '\.pdf';/.test(rp) && /from\('primed_reports'\)\.upsert\(row, \{ onConflict: 'kind,ref_id' \}\)/.test(rp) && /from\('primed_reports'\)\.select\('bytes,primed_at'\)/.test(rp));
   ok('...and says what it did: RAPM and Synergy read back where the mailer reads them, the pages, the stored file; green, or amber with what is not done',
      /function primedSay\(results\)/.test(rp) && /'rp-primed ' \+ \(good \? 'ok' : 'gap'\)/.test(rp) && /let there = await rapmRemote\(holder\.key\);/.test(rp) &&
      /c\.from\('synergy_profiles'\)\.select\('player_id'\)\.in\('player_id', ids\)/.test(rp) && /stored for sending \(/.test(rp));
@@ -474,7 +484,8 @@ console.log('\nPRIME REPORT stores it for sending (0229)');
   ok('raster.js gives the PDF\'s bytes without downloading it (the download uses them too)', /async function pdfBytes\(nodes, opt\)/.test(read('epinoia', 'raster.js')) &&
      /const bytes = await pdfBytes\(nodes, opt\);/.test(read('epinoia', 'raster.js')) && /savePdf, pdfBytes,/.test(read('epinoia', 'raster.js')));
   const src = read('epinoia', 'admin', 'platform', 'reports-manager.js');
-  ok('the reports manager says which reports are stored for sending, and when', /from\('primed_reports'\)\.select\('kind,ref_id,primed_at'\)/.test(src) && /\\u2713 stored /.test(src));
+  ok('the reports manager says which reports are stored for sending, and when (an opposition report by the club it was primed for)', /from\('primed_reports'\)\.select\('kind,ref_id,primed_at,path'\)/.test(src) && /\\u2713 stored /.test(src) &&
+     /stored\.get\('team:' \+ o\.id \+ '@' \+ r\.team_id\), 't', r\.team_id\)/.test(src));
 }
 /* 0229 on a real Postgres */
 {

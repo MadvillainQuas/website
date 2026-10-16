@@ -44,5 +44,29 @@ ok('only his clubs\' games are read', /or=\(home_team_id\.in\.\(\$\{tids\.join\(
 ok('his joint line takes his row\'s place in the page\'s field', /out\.field = \(B\.field \|\| \[\]\)\.map\(r => \(r === B\.mine \? J : r\)\)/.test(P));
 ok('offered when his season has more than one competition, said on the cover', /RP_SEASON\.comps\.length > 1/.test(P) && /' · ranked among the players of ' \+ scopeText\(\)/.test(P));
 
+console.log('\nthe opposition report: compared with the club it goes to, and lineups - misc. (Louie, 2026-10-16)');
+{
+  const RT = rd('epinoia', 'report-teampages.js'), RJ = rd('epinoia', 'report.js'), TJ = rd('epinoia', 't', 'team.js'), MJ = rd('scripts', 'report_mailer.mjs');
+  const SJ = rd('epinoia', 'season.js'), SH = rd('supabase', 'functions', '_shared', 'season.js');
+  ok('two pages before the legend, off unless asked for', /return \[cover, main, shots, players, synergy, depth, combos, clutch, week, cmp, lmisc, legend\];/.test(RT) &&
+     /key: 'cmp', title: 'Comparison', page: 'COMPARISON', on: false/.test(RT) && /key: 'lmisc', title: 'Lineups – misc\.', page: 'LINEUPS – MISC\.', on: false/.test(RT));
+  ok('...asked for by the address (?rpadd=), for that view only, never kept as the reader\'s choice', /get\('rpadd'\)/.test(RJ) && /addMods\.forEach\(k => \{ conf\.on\[k\] = true; \}\);/.test(RJ) &&
+     /state\.onlyMods = onlyMods\.length > 0 \|\| addMods\.length > 0;/.test(RJ));
+  ok('the club it is compared with comes from ?rpvs= (never the report\'s own club)', /get\('rpvs'\); return v && \/\^\[0-9a-f-\]\{36\}\$\/i\.test\(v\) && v !== team\.id \? v : null;/.test(TJ));
+  ok('the comparison\'s figures: rating and the four factors, the style of play, the defence - as asked', ["['ortg', 'ORTG'", "['ff_efg', 'eFG%'", "['ff_ftr', 'FTA RATE'", "['ff_oreb', 'OREB%'", "['ff_tov', 'TOV%'",
+     "['cmp_top', 'AVG TIME OF POSSESSION'", "['ev_half_pts_sh', '% OF PTS IN HALF COURT'", "['ev_transition_pts_sh', '% OF PTS IN TRANSITION'", "['tm_hc_ast_pct', 'HALF-COURT AST%'",
+     "['ast_sh_all', 'SHARE OF BASKETS ASSISTED'", "['fl_stop_pct', 'STOP%'", "['evd_half_efg', 'DEF HALF-COURT eFG%'", "['tr_def_delta', 'TRANSITION PTS v OPP AVERAGE'", "['blk_pct', 'BLK%'"].every(x => RT.includes(x)));
+  ok('...stops from every club\'s play-by-play, possession time from the shot clock, both clubs the same way', /GF\.attachTeams\(S, D\)/.test(RT) && /SCk\.compute\(\{ events: g\.events \|\| \[\] \}\)/.test(RT));
+  ok('...a figure every club has the same of is left out', /const spread = k => new Set\(/.test(RT));
+  ok('a club\'s BLK%: blocks per opponent two-point attempt, in the season line and its server copy', /blk_pct: r1\(pct\(A\.blk, num\(O\.fga\) - num\(O\.fg3a\)\)\),/.test(SJ) && /blk_pct: r1\(pct\(A\.blk, num\(O\.fga\) - num\(O\.fg3a\)\)\),/.test(SH));
+  ok('small lineups: the designated 5 (the most centre-like by the season\'s breakdown) under 60% of their minutes at C', /const LM_SMALL = 0\.6, LM_OREB = 12, LM_DREB = 27/.test(RT) &&
+     /const isSmall = r => \{ const sh = cShare\(fiveOf\(r\.ids\)\); return sh != null && sh < LM_SMALL; \};/.test(RT));
+  ok('...against physical and rebounding bigs: an opponent on the floor with OREB% 12+ or DREB% over 27, by their season now', /\+p\.oreb_pct >= LM_OREB \|\| \+p\.dreb_pct > LM_DREB/.test(RT) &&
+     /faced\.filter\(r => r\.oids\.some\(id => bigs\.has\(id\)\)\)/.test(RT));
+  ok('...each with ORTG, DRTG, NET and the four factors at both ends', ["['ortg', 'ORTG'", "['drtg', 'DRTG'", "['net', 'NET'", "['efg', 'eFG%'", "['tov', 'TOV%'", "['oreb', 'OREB%'", "['ftr', 'FTr'",
+     "['defg', 'OPP eFG%'", "['dtov', 'OPP TOV%'", "['drb', 'DREB%'", "['dftr', 'OPP FTr'"].every(x => RT.includes(x)));
+  ok('the Sunday email\'s opposition reports carry them, compared with the address\'s club', /&tab=report&rpvs=\$\{team\.id\}&rpadd=cmp,lmisc`/.test(MJ));
+}
+
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

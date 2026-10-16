@@ -82,9 +82,11 @@
   font-size:7px; letter-spacing:.12em; color:var(--lvr-dim) }
 .lvm-h b{ font-weight:400; text-align:center; color:var(--lvr-ink) }
 .lvm-h span:first-child{ color:var(--lvr-l) } .lvm-h span:last-child{ color:var(--lvr-r) }
-.lvm-row{ display:grid; grid-template-columns:40px minmax(0,1fr) 40px; align-items:center; gap:6px }
+/* the figures take the width they need (a fixed 40px let "35.7%" run over its bar in a report's player card, Louie 2026-10-16) */
+.lvm-row{ display:grid; grid-template-columns:max-content minmax(0,1fr) max-content; align-items:center; gap:6px }
 .lvm-row.none{ grid-template-columns:auto 1fr }
-.lvm-v{ font-family:var(--f-score,var(--f-ui)); font-size:13px; line-height:1; font-variant-numeric:tabular-nums }
+.lvm-v{ font-family:var(--f-score,var(--f-ui)); font-size:13px; line-height:1; font-variant-numeric:tabular-nums; white-space:nowrap; min-width:34px }
+.rp-pages .lvm-v{ font-size:11px; min-width:30px }
 .lvm-v.r{ text-align:right }
 .lvm-v.l.w{ color:var(--lvr-l) } .lvm-v.r.w{ color:var(--lvr-r) }
 .lvm-mid{ display:grid; gap:2px; min-width:0 }

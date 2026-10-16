@@ -291,7 +291,7 @@ async function drawAddresses() {
       const primes = el('div', 'rm-primes');
       primes.appendChild(el('small', null, 'PRIME REPORT:'));
       const opps = [...new Map((ahead.get(r.team_id) || []).map(o => [o.id, o])).values()];
-      opps.forEach(o => { primes.appendChild(primeLink(o.name + ' \u00b7 ' + dayOf(o.at), o.id, o.name, stored.get('team:' + o.id))); primes.appendChild(primeAllBtn(o.id, o.name, stored)); });
+      opps.forEach(o => { primes.appendChild(primeLink(o.name + ' \u00b7 ' + dayOf(o.at), o.id, o.name, stored.get('team:' + o.id + '@' + r.team_id), 't', r.team_id)); primes.appendChild(primeAllBtn(o.id, o.name, stored, r.team_id)); });
       if (!opps.length) primes.appendChild(el('small', 'rm-mt', 'no games in the next two weeks'));
       primes.appendChild(primeLink('own report: ' + (t.name || 'the club'), r.team_id, t.name || 'the club', stored.get('team:' + r.team_id)));
       primes.appendChild(primeAllBtn(r.team_id, t.name || 'the club', stored));
@@ -606,16 +606,21 @@ async function upcoming(ids) {
 }
 /* THE REPORTS PRIMED AND STORED FOR SENDING (0229 primed_reports): 'kind:id' -> when; none before 0229 */
 async function primedNow() {
-  const { data, error } = await sb.from('primed_reports').select('kind,ref_id,primed_at');
-  return new Map((error ? [] : data || []).map(r => [r.kind + ':' + r.ref_id, r.primed_at]));
+  const { data, error } = await sb.from('primed_reports').select('kind,ref_id,primed_at,path');
+  /* kept twice: by the report, and by the report compared with one club (an opposition report primed from that club's row) */
+  const m = new Map();
+  (error ? [] : data || []).forEach(r => { const vs = /--vs-([0-9a-f-]{36})\.pdf$/i.exec(r.path || ''); m.set(r.kind + ':' + r.ref_id + (vs ? '@' + vs[1] : ''), r.primed_at); });
+  return m;
 }
 const hm = iso => { const d = new Date(iso); return dayOf(iso) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
 /* PRIME REPORT for one report: it opens primed (report.js ?prime=1: RAPM, Synergy, every page) and stores it for sending; one
    already stored says when (at), and goes with the next email that carries it */
-function primeLink(text, id, who, at, kind) {
+/* vs: an opposition report primed from a club's row is that club's (its Comparison and Lineups - misc. pages, ?rpvs=&rpadd=) */
+const VS_Q = vs => (vs ? '&rpvs=' + encodeURIComponent(vs) + '&rpadd=cmp,lmisc' : '');
+function primeLink(text, id, who, at, kind, vs) {
   const k = kind || 't';
   const a = el('a', 'ep-btn mini rm-prime', text);
-  a.href = SITE + k + '/?' + k + '=' + encodeURIComponent(id) + '&tab=report&prime=1'; a.target = '_blank'; a.rel = 'noopener';
+  a.href = SITE + k + '/?' + k + '=' + encodeURIComponent(id) + '&tab=report&prime=1' + VS_Q(vs); a.target = '_blank'; a.rel = 'noopener';
   a.title = 'Open ' + poss(who) + ' report made ready - RAPM worked out and kept, Synergy read, every page built - and store it for sending';
   if (!at) return a;
   const w = el('span', 'rm-primed-at');
@@ -896,8 +901,8 @@ function primeInWindow(url, w) {
     setTimeout(tick, 2000);
   });
 }
-function primeAllBtn(teamId, name, stored) {
-  const b = btn('PRIME CLUB + PLAYERS', 'mini rm-prime-all', () => primeAll(teamId, name));
+function primeAllBtn(teamId, name, stored, vs) {
+  const b = btn('PRIME CLUB + PLAYERS', 'mini rm-prime-all', () => primeAll(teamId, name, vs));
   b.title = 'Prime ' + poss(name) + ' club report and every player report its players’ ZIP carries (10+ minutes a game over more than two games, not released), each with its Synergy CSVs and RAPM, and store them all for sending';
   if (!(stored && stored.has('team:' + teamId))) return b;
   const w = el('span', 'rm-primed-at');
@@ -913,7 +918,7 @@ function primeAllBtn(teamId, name, stored) {
 }
 /* FIRST, THE CHECKLIST: whose reports will be primed (the club and every ZIP player), each player's Synergy file kept or not, and
    "add CSVs" for this club's players before anything is drawn (matched on the Synergy tab, then kept); "start priming" when ready. */
-async function primeAll(teamId, name) {
+async function primeAll(teamId, name, vs) {
   if (RUN.busy) { say('A priming run is going already: wait for it, or close the reports manager to stop it.', 'warn'); return; }
   const box = RUN.box;
   box.textContent = ''; box.classList.add('on');
@@ -953,13 +958,13 @@ async function primeAll(teamId, name) {
     }
   });
   add.title = 'Synergy CSV files for ' + poss(name) + ' players: matched to its squad on the Synergy files tab, where you keep them';
-  bar.append(btn('start priming', 'mini rm-prime-all', () => runPrime(teamId, name, squad)), add,
+  bar.append(btn('start priming', 'mini rm-prime-all', () => runPrime(teamId, name, squad, vs)), add,
     btn('check again', 'mini', () => drawList()), closeRunBtn('cancel'));
 }
 function closeRunBtn(text) {
   return btn(text || '✕ close', 'mini', () => { if (RUN.busy) RUN.stop = true; else { RUN.box.textContent = ''; RUN.box.classList.remove('on'); } });
 }
-async function runPrime(teamId, name, squad) {
+async function runPrime(teamId, name, squad, vs) {
   if (RUN.busy) return;
   /* the run's window, opened at once from the click (a window opened later, after an await, is a blocked pop-up) */
   const win = window.open('about:blank', 'epinoia-prime', 'width=1320,height=1000');
@@ -986,7 +991,7 @@ async function runPrime(teamId, name, squad) {
       const j = jobs[i], li = lines[i];
       li.className = 'go'; li.textContent = j.name + ': priming…';
       li.scrollIntoView({ block: 'nearest' });
-      const r = await primeInWindow(SITE + j.k + '/?' + j.k + '=' + encodeURIComponent(j.id) + '&tab=report&prime=1', win);
+      const r = await primeInWindow(SITE + j.k + '/?' + j.k + '=' + encodeURIComponent(j.id) + '&tab=report&prime=1' + (j.k === 't' ? VS_Q(vs) : ''), win);
       li.className = r.ok ? 'ok' : 'gap';
       li.textContent = j.name + ': ' + (r.ok ? '' : '⚠ ') + r.text.replace(/^[✓⚠]\s*/, '');
       if (r.ok) good++;

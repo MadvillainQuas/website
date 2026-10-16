@@ -1694,7 +1694,12 @@ function ui(state) {
   const onlyMods = (() => { try { return (new URLSearchParams(root.location.search).get('rpmods') || '').split(',').map(s => s.trim()).filter(Boolean); } catch (_) { return []; } })()
     .filter(k => o.modules.some(m => m.key === k));
   if (onlyMods.length) o.modules.forEach(m => { conf.on[m.key] = onlyMods.indexOf(m.key) >= 0; });
-  state.onlyMods = onlyMods.length > 0;
+  /* ?rpadd=cmp,lmisc - THOSE PAGES TOO, for this view only (the mailer's opposition report: the comparison with the club it goes
+     to, and lineups - misc.; Louie 2026-10-16) */
+  const addMods = (() => { try { return (new URLSearchParams(root.location.search).get('rpadd') || '').split(',').map(s => s.trim()).filter(Boolean); } catch (_) { return []; } })()
+    .filter(k => o.modules.some(m => m.key === k));
+  addMods.forEach(k => { conf.on[k] = true; });
+  state.onlyMods = onlyMods.length > 0 || addMods.length > 0;
   panel.innerHTML = '';
   const wrap = el('div', 'rp');
   /* THE INSIGHTS (scoutinsights.js, Louie 2026-10-08): the scout's written read - how to prepare, the strengths, the
@@ -1992,7 +1997,10 @@ function ui(state) {
     try {
       const bytes = await X.pdfBytes(sheets, { w: PAGE.w, h: PAGE.h, scale: 2, quality: 0.84, title: (state.c && state.c.docTitle) || 'Report', outline: state.outline || null,
         onProgress: (i, n) => say('drawing page ' + i + ' of ' + n + ' for sending\u2026') });
-      const path = o.kind + '/' + o.id + '.pdf';
+      /* A COPY COMPARED WITH ONE CLUB (?rpvs=, an opposition report's comparison, 2026-10-16) says which in its name, so the mailer
+         sends it only to that club's addresses (report_mailer.mjs) */
+      const vs = (() => { try { const v = new URLSearchParams(root.location.search).get('rpvs'); return v && /^[0-9a-f-]{36}$/i.test(v) ? v : ''; } catch (_) { return ''; } })();
+      const path = o.kind + '/' + o.id + (vs ? '--vs-' + vs : '') + '.pdf';
       say('storing it for sending\u2026');
       const up = await c.storage.from('primed').upload(path, new root.Blob([bytes], { type: 'application/pdf' }), { upsert: true, contentType: 'application/pdf' });
       if (up && up.error) return { ok: false, text: 'not stored for sending (' + (up.error.message || up.error) + ')' };

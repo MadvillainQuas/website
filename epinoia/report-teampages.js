@@ -1376,8 +1376,195 @@ function modules(ctx) {
       return [block(W.render(rep, { window: 'the last seven days', saveable: false }))];
     }
   };
+  /* ---------------- COMPARISON (an opposition report: ?rpvs= the club it is emailed to, ?rpadd=cmp) ----------------
+     Louie, 2026-10-16: "for the opposition team reports, at the bottom before the legend ... a 'comparison' section that shows
+     crucial stats ... in a similar manner to [the box score's offensive rating & four factors]". The report's club against the
+     club the report goes to, each figure both clubs' own over the season: a value box each (tinted by its place among the
+     competition's clubs, the place under it), a bar each from the middle (how far along the clubs' range it sits), and a pill
+     saying who is ahead and by how much - or, for a style (time of possession, where the points come from, how many are
+     assisted), who does more of it. Possession time, stop% and the half-court AST% are worked out from the competition's
+     play-by-play (ctx.fieldGames), both clubs the same way. */
+  const CMP = [
+    ['Offensive rating & four factors', [['ortg', 'ORTG', '', false], ['ff_efg', 'eFG%', 'pp', false], ['ff_ftr', 'FTA RATE', 'pp', false],
+      ['ff_oreb', 'OREB%', 'pp', false], ['ff_tov', 'TOV%', 'pp', true]]],
+    ['Style of play', [['cmp_top', 'AVG TIME OF POSSESSION', 's', null], ['ev_half_pts_sh', '% OF PTS IN HALF COURT', 'pp', null],
+      ['ev_transition_pts_sh', '% OF PTS IN TRANSITION', 'pp', null], ['tm_hc_ast_pct', 'HALF-COURT AST%', 'pp', null], ['ast_sh_all', 'SHARE OF BASKETS ASSISTED', 'pp', null]]],
+    ['Defence', [['fl_stop_pct', 'STOP%', 'pp', false], ['evd_half_efg', 'DEF HALF-COURT eFG%', 'pp', true],
+      ['tr_def_delta', 'TRANSITION PTS v OPP AVERAGE', '', true], ['blk_pct', 'BLK%', 'pp', false]]]
+  ];
+  /* a colour each, told apart on paper: the other club's own when it differs enough, else a blue */
+  const hexRgb = h => { const m = /^#?([0-9a-f]{6})$/i.exec(String(h || '')); if (!m) return null; const n = parseInt(m[1], 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const apart = (a, b) => { const x = hexRgb(a), y = hexRgb(b); return !x || !y || Math.abs(x[0] - y[0]) + Math.abs(x[1] - y[1]) + Math.abs(x[2] - y[2]) > 120; };
+  const cmp = {
+    key: 'cmp', title: 'Comparison', page: 'COMPARISON', on: false,
+    async build(c, R) {
+      const vsId = ctx.vs ? ctx.vs() : null;
+      if (!vsId) return [];
+      const T = await season();
+      if (!T || !T.mine) return [];
+      const { S, mine } = T;
+      const info = ctx.teamInfo ? await ctx.teamInfo(vsId).catch(() => null) : null;
+      /* stop%: every club's, from the competition's play-by-play (game/flow.js attachTeams, written onto S.teams) */
+      try { const GF = root.EpinoiaGameFlow, D = root.EpinoiaData; if (GF && GF.attachTeams && D) await GF.attachTeams(S, D); } catch (e) { if (root.console) root.console.warn('[report comparison stops]', e); }
+      const teams = S.teams.map(r => Object.assign({}, r));
+      deriveTeams(teams, S.games);
+      const me = teams.find(r => r.id === mine.id), us = teams.find(r => r.id === vsId);
+      const usName = (info && (info.short_name || info.name)) || 'your club', meName = c.club || c.name;
+      if (!us) return [block(title('Comparison', esc(meName) + ' and ' + esc(usName)) + '<div class="rp-empty">' + esc((info && info.name) || 'Your club') + ' has no games in this competition yet, so the two cannot be compared on it.</div>')];
+      /* the half-court AST% of every club, and both clubs' time of possession, from the competition's play-by-play */
+      try {
+        const HT = await hcTeams(S.games);
+        if (HT) teams.forEach(r => { const t = HT.get(r.id); r.tm_hc_ast_pct = t && t.m >= HC_TEAM_MIN ? Math.round(1000 * t.a / t.m) / 10 : null; });
+        else me.tm_hc_ast_pct = await halfCourtAst();
+      } catch (_) { /* without it */ }
+      try {
+        const G = ctx.fieldGames ? await ctx.fieldGames().catch(() => null) : null, SCk = root.EpinoiaShotClock;
+        if (G && SCk && SCk.summary) {
+          const sides = new Map((S.games || []).map(g => [g.id, [g.home_team_id, g.away_team_id]]));
+          const acc = new Map(teams.map(r => [r.id, []]));
+          G.forEach(g => {
+            const ids = sides.get(g.id);
+            if (!ids) return;
+            let Rr = null;
+            try { Rr = SCk.compute({ events: g.events || [] }); } catch (_) { Rr = null; }
+            ((Rr && Rr.chances) || []).forEach(ch => { if (ch.second || ch.dur == null) return; const l = acc.get(ids[ch.team]); if (l) l.push(ch); });
+          });
+          teams.forEach(r => { const l = acc.get(r.id), sm = l && l.length ? SCk.summary(l) : null; r.cmp_top = sm && E.isNum(sm.avgDur) ? Math.round(10 * sm.avgDur) / 10 : null; });
+        }
+      } catch (e) { if (root.console) root.console.warn('[report comparison possession]', e); }
+      ['fl_stop_pct', 'blk_pct'].forEach(k => teams.forEach(r => { if (r[k] == null) { const src = S.teams.find(t => t.id === r.id); if (src && src[k] != null) r[k] = src[k]; } }));
+      const keys = CMP.flatMap(g => g[1].map(x => x[0]));
+      const Rk = E.ranker(teams.filter(r => !r.__prior), keys);
+      const colA = c.accent || '#08603f';
+      let colB = info && info.colour ? E.inkOn(info.colour) : '#2e4f9e';
+      if (!apart(colA, colB)) colB = apart(colA, '#2e4f9e') ? '#2e4f9e' : '#b4572e';
+      const fmt = (v, unit) => (E.isNum(v) ? (unit === 's' ? (+v).toFixed(1) + '<small>s</small>' : (+v).toFixed(1)) : '\u2014');
+      const row = ([k, label, unit, low]) => {
+        const a = me[k], b = us[k];
+        const vals = teams.filter(r => !r.__prior && E.isNum(r[k])).map(r => +r[k]);
+        const lo = Math.min(...vals), hi = Math.max(...vals);
+        const len = v => (!E.isNum(v) ? 0 : vals.length > 2 && hi > lo ? 14 + 86 * (v - lo) / (hi - lo) : Math.max(14, 100 * Math.abs(v) / Math.max(Math.abs(a) || 0, Math.abs(b) || 0, 1e-9)));
+        const box = (v, r, side) => { const rr = rankOf(teams, k, r.id, !!low); const p = Rk.pct(k, r.id);
+          return '<div class="rp-cmp-v ' + side + '" data-b="' + (E.isNum(v) && p != null ? E.band(p, low === null) : 9) + '"><b>' + fmt(v, unit) + '</b>' +
+            (rr ? '<small>' + (low === null ? E.ordinal(rr.r) + ' most' : E.ordinal(rr.r) + ' of ' + rr.n) + '</small>' : '') + '</div>'; };
+        let pill = '';
+        if (E.isNum(a) && E.isNum(b)) {
+          const d = Math.round(10 * Math.abs(a - b)) / 10;
+          if (d < 0.05) pill = '<span class="rp-cmp-p lv">LEVEL</span>';
+          else {
+            const aMore = a > b, aBetter = low === null ? null : (low ? a < b : a > b);
+            const toA = low === null ? aMore : aBetter;
+            const who = toA ? meName : usName, col = low === null ? '#5d6b64' : (toA ? colA : colB);
+            pill = '<span class="rp-cmp-p' + (low === null ? ' st' : '') + '" style="--pc:' + col + '">' + (toA ? '\u25c0 ' : '') + '+' + d.toFixed(1) + (unit === 'pp' ? ' pp' : unit === 's' ? 's' : '') + ' ' +
+              esc(String(who).toUpperCase()) + (low === null ? ' MORE' : '') + (toA ? '' : ' \u25b6') + '</span>';
+          }
+        }
+        return '<div class="rp-cmp-row">' + box(a, me, 'a') +
+          '<div class="rp-cmp-m"><div class="rp-cmp-bar"><span class="h l"><i style="width:' + len(a).toFixed(1) + '%;background:' + colA + '"></i></span>' +
+          '<span class="h r"><i style="width:' + len(b).toFixed(1) + '%;background:' + colB + '"></i></span></div>' +
+          '<span class="rp-cmp-l"' + (E.STATS[k] ? ' data-lg="' + esc(k) + '"' : '') + '>' + esc(label) + '</span>' + pill + '</div>' + box(b, us, 'b') + '</div>';
+      };
+      R.legend.push(...keys.filter(k => E.STATS[k]));
+      R.legendExtra.push(['COMPARISON', 'Each figure is both clubs’ own over the season in this competition. The box is tinted by the club’s place among the competition’s clubs (green the top quarter, red the bottom; blue to purple a style, neither good nor bad); the bars run from the middle, as far as each figure sits along the clubs’ range; the pill says who is ahead and by how much (pp: percentage points), or for a style who does more of it.'],
+        ['AVG TIME OF POSSESSION', 'How long a possession runs before it ends in a shot, a turnover or free throws, from the play-by-play: every first chance with a timed start (second chances after an offensive rebound left out).'],
+        ['STOP%', 'The share of the other side’s possessions held scoreless.'], ['BLK%', 'Blocks per two-point attempt by the opponents.']);
+      const crest = (url, name) => (url ? '<img src="' + esc(url) + '" alt="">' : '') + '<span>' + esc(name) + '</span>';
+      const head = '<div class="rp-cmp-hd"><span class="a" style="color:' + colA + '">' + crest(c.crest, meName) + '</span><span class="b" style="color:' + colB + '">' + crest(ctx.logoUrl && info ? ctx.logoUrl(info.logo_path) : null, usName) + '</span></div>';
+      const out = [];
+      CMP.forEach(([gt, list], i) => {
+        /* a figure every club has the same of (transition points against the opponents' own average before any club has a
+           transition game with a known average) says nothing about either: left out */
+        const spread = k => new Set(teams.filter(r => !r.__prior && E.isNum(r[k])).map(r => (+r[k]).toFixed(1))).size > 1;
+        const rows = list.filter(x => (E.isNum(me[x[0]]) || E.isNum(us[x[0]])) && spread(x[0]));
+        if (!rows.length) return;
+        out.push(block((i === 0 ? title('Comparison', esc(meName) + ' against ' + esc((info && info.name) || usName) + ' · ' + (c.scope || 'this season') + ' · each club’s own over the season') : '') +
+          '<div class="rp-cmp"><h4>' + esc(gt) + '</h4>' + head + rows.map(row).join('') + '</div>', 'rp-cmpb'));
+      });
+      return out;
+    }
+  };
+
+  /* ---------------- LINEUPS - MISC. (an opposition report, ?rpadd=lmisc) ----------------
+     Louie, 2026-10-16: "% of time spent in small lineups (% of mins for the designed 5 in lineups for that individual that is less
+     than 60% at the 5 spot - retroactively calculated over their games to what their position mins% are now), ORTG, DRTG and NET
+     RTG + the four factors off and def. Ratings vs. Physical/Rebounding Bigs (minutes spent [retroactively calculated] vs. a player
+     with at either least 12% OREB% or above 27% DREB% individually and their ratings + four factors off and def)".
+       SMALL: the five's designated 5 is its player who plays most like a centre (the highest average spot of the season's position
+       breakdown, the games' position files); a lineup is small when that player has under 60% of their minutes this season at C -
+       their breakdown as it is now, over every game of theirs.
+       AGAINST PHYSICAL BIGS: the minutes the other side had on the floor a player whose season OREB% is 12 or more, or DREB% over 27
+       (30 minutes or more, so a cameo's rate does not count) - their numbers as they are now, over every game. */
+  const LM_SMALL = 0.6, LM_OREB = 12, LM_DREB = 27, LM_MIN = 30;
+  const lmisc = {
+    key: 'lmisc', title: 'Lineups – misc.', page: 'LINEUPS – MISC.', on: false,
+    async build(c, R) {
+      const T = await season();
+      if (!T || !T.mine) return [];
+      const { S, mine } = T, X = LE(), D = root.EpinoiaData;
+      if (!X || !D) return [];
+      const head = title('Lineups – misc.', [c.scope, 'small lineups, and the minutes against physical and rebounding bigs · ratings per 100 possessions'].filter(Boolean).join(' · '));
+      const scoped = new Set((S.games || []).map(g => g.id));
+      const logs = await ctx.clubLogs(scoped).catch(() => null);
+      const recs = (logs && logs.recs) || [];
+      if (!recs.length) return [block(head + '<div class="rp-empty">No lineups on record for this club in this scope yet.</div>')];
+      /* each player's season at each position, from the club's games' position files */
+      const games = (S.games || []).filter(g => g.home_team_id === mine.id || g.away_team_id === mine.id);
+      const files = D.posFiles ? await D.posFiles(games.map(g => g.id)).catch(() => new Map()) : new Map();
+      const pos = new Map();
+      games.forEach(g => { const f = files.get(g.id); if (!f || !Array.isArray(f.t)) return; const t = f.t[g.home_team_id === mine.id ? 0 : 1] || {};
+        Object.keys(t).forEach(pid => { const a = t[pid]; if (!Array.isArray(a)) return; const r = pos.get(pid) || [0, 0, 0, 0, 0]; for (let k = 0; k < 5; k++) r[k] += +a[k + 1] || 0; pos.set(pid, r); }); });
+      const tot = pid => { const r = pos.get(pid); return r ? r.reduce((x, y) => x + y, 0) : 0; };
+      const spot = pid => { const r = pos.get(pid), t = tot(pid); return t ? r.reduce((x, v, k) => x + (k + 1) * v, 0) / t : null; };
+      const cShare = pid => { const t = tot(pid); return t ? pos.get(pid)[4] / t : null; };
+      const fiveOf = ids => { let best = null, bs = -1; (ids || []).forEach(p => { const v = spot(p); if (v != null && v > bs) { bs = v; best = p; } }); return best; };
+      const known = recs.filter(r => fiveOf(r.ids) != null);
+      const isSmall = r => { const sh = cShare(fiveOf(r.ids)); return sh != null && sh < LM_SMALL; };
+      const small = known.filter(isSmall), other = known.filter(r => !isSmall(r));
+      /* the physical and rebounding bigs of the competition, by their season now */
+      const bigs = new Map((S.players || []).filter(p => (+p.min || 0) >= LM_MIN && (+p.oreb_pct >= LM_OREB || +p.dreb_pct > LM_DREB)).map(p => [p.id, p]));
+      const faced = recs.filter(r => Array.isArray(r.oids) && r.oids.length);
+      const vsBig = faced.filter(r => r.oids.some(id => bigs.has(id))), noBig = faced.filter(r => !r.oids.some(id => bigs.has(id)));
+      const L = list => (list.length ? X.line(X.sum(list)) : null);
+      const Ls = L(small), Lo = L(other), Lv = L(vsBig), Ln = L(noBig);
+      /* who: the designated 5s of the small lineups (their minutes there, their share at C), and the bigs faced */
+      const minsBy = (list, key) => { const m = new Map(); list.forEach(r => (key(r) || []).forEach(p => m.set(p, (m.get(p) || 0) + (+r.dur || 0) / 60000))); return m; };
+      const smallFives = minsBy(small, r => [fiveOf(r.ids)]);
+      const bigMins = minsBy(vsBig, r => r.oids.filter(id => bigs.has(id)));
+      const ids = [...new Set([...smallFives.keys(), ...bigMins.keys()])];
+      const meta = ids.length && ctx.meta ? await ctx.meta(ids).catch(() => ({})) : {};
+      const nm = id => (meta[id] && meta[id].name) || 'Player';
+      const f1 = v => (E.isNum(v) ? (+v).toFixed(1) : '\u2014');
+      const ROWS = [['RATINGS', [['ortg', 'ORTG', false], ['drtg', 'DRTG', true], ['net', 'NET', false]]],
+        ['OFFENCE · FOUR FACTORS', [['efg', 'eFG%', false], ['tov', 'TOV%', true], ['oreb', 'OREB%', false], ['ftr', 'FTr', false]]],
+        ['DEFENCE · FOUR FACTORS', [['defg', 'OPP eFG%', true], ['dtov', 'OPP TOV%', false], ['drb', 'DREB%', false], ['dftr', 'OPP FTr', true]]]];
+      const table = (A, B, la, lb) => {
+        const minA = A ? A.mins : 0, minB = B ? B.mins : 0, all = minA + minB;
+        const cell = (Lx, Ly, k, low) => { const v = Lx ? Lx[k] : null, w = Ly ? Ly[k] : null;
+          const better = E.isNum(v) && E.isNum(w) && Math.abs(v - w) >= 0.05 && (low ? v < w : v > w);
+          return '<td class="' + (better ? 'up' : '') + '">' + (k === 'net' && E.isNum(v) ? (v > 0 ? '+' : '') + (+v).toFixed(1) : f1(v)) + '</td>'; };
+        return '<table class="rp-tbl rp-lm"><thead><tr><th class="l"></th><th>' + esc(la) + '</th><th>' + esc(lb) + '</th></tr></thead><tbody>' +
+          '<tr class="mn"><td class="l">MINUTES</td><td>' + (A ? Math.round(minA) + '<small> · ' + (all ? (100 * minA / all).toFixed(1) : '0') + '%</small>' : '\u2014') + '</td><td>' +
+            (B ? Math.round(minB) + '<small> · ' + (all ? (100 * minB / all).toFixed(1) : '0') + '%</small>' : '\u2014') + '</td></tr>' +
+          ROWS.map(([g, list]) => '<tr class="grp"><td class="l" colspan="3">' + esc(g) + '</td></tr>' +
+            list.map(([k, l, low]) => '<tr><td class="l">' + esc(l) + '</td>' + cell(A, B, k, low) + cell(B, A, k, low) + '</tr>').join('')).join('') + '</tbody></table>';
+      };
+      const few = (A, n) => (A && A.mins < n ? '<p class="rp-note">Few minutes in this split so far (' + Math.round(A.mins) + '): read it as an early sign, not a rate.</p>' : '');
+      const listOf = (m, txt) => [...m].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([id, mins]) => '<li><b>' + esc(nm(id)) + '</b> ' + txt(id, mins) + '</li>').join('');
+      const smallBlock = '<div class="rp-g rp-gx rp-lmg"><h4>SMALL LINEUPS <span>the designated 5 under 60% of their minutes at C</span></h4>' +
+        (Ls || Lo ? table(Ls, Lo, 'SMALL LINEUPS', 'OTHER LINEUPS') + few(Ls, 20) : '<div class="rp-empty">No positions on record for this club’s players yet.</div>') +
+        (smallFives.size ? '<p class="rp-lm-k">THE 5 IN THOSE LINEUPS</p><ul class="rp-lm-who">' + listOf(smallFives, (id, m) => Math.round(m) + ' min there · ' + Math.round(100 * (cShare(id) || 0)) + '% of their minutes at C') + '</ul>' : '') + '</div>';
+      const bigBlock = '<div class="rp-g rp-gx rp-lmg"><h4>AGAINST PHYSICAL & REBOUNDING BIGS <span>an opponent on the floor with OREB% 12+ or DREB% over 27</span></h4>' +
+        (Lv || Ln ? table(Lv, Ln, 'v PHYSICAL BIGS', 'OTHER MINUTES') + few(Lv, 20) : '<div class="rp-empty">No opposing lineups on record for this club’s games yet.</div>') +
+        (bigMins.size ? '<p class="rp-lm-k">THE BIGS FACED</p><ul class="rp-lm-who">' + listOf(bigMins, (id, m) => { const p = bigs.get(id) || {};
+          return Math.round(m) + ' min against · OREB% ' + f1(p.oreb_pct) + ' · DREB% ' + f1(p.dreb_pct); }) + '</ul>' : '') + '</div>';
+      R.legendExtra.push(['SMALL LINEUPS', 'A lineup’s designated 5 is its player who plays most like a centre (the highest average position of their season’s minutes at each spot). The lineup is small when that player has under 60% of their minutes this season at C. Each player is read by their position breakdown as it is now, over every game.'],
+        ['AGAINST PHYSICAL & REBOUNDING BIGS', 'The minutes the other side had a player on the floor whose season offensive rebound rate is 12% or more, or defensive rebound rate over 27% (players with 30 minutes or more), read by their numbers as they are now over every game. Only minutes from the play-by-play, where the other side’s five is known.']);
+      return [block(head + E.colsHTML([smallBlock, bigBlock], h => h, () => 1) +
+        '<p class="rp-note">Ratings are per 100 possessions; the better of the two figures in a row is marked. The four factors at both ends: eFG%, turnovers per 100 plays, offensive rebound rate, free-throw rate - and what the opponents managed of each.</p>', 'rp-lmb')];
+    }
+  };
   const legend = { key: 'legend', title: 'Legend', on: true };
-  return [cover, main, shots, players, synergy, depth, combos, clutch, week, legend];
+  return [cover, main, shots, players, synergy, depth, combos, clutch, week, cmp, lmisc, legend];
 }
 
 return { modules, TEAM_STATS };

@@ -1064,3 +1064,34 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 .rp-wk-z span{ position:relative; z-index:1; font-family:var(--f-ui); font-weight:700; font-size:10px; color:var(--ink-2) }
 .rp-wk-z b{ position:relative; z-index:1; font-family:var(--f-ui); font-weight:800; font-size:12px; color:var(--ink); font-variant-numeric:tabular-nums }
 .rp-wk-z i{ position:absolute; left:0; top:0; bottom:0; background:color-mix(in srgb,var(--rp-a,#08603f) 18%,transparent) }
+
+/* COMPARISON (report-teampages.js cmp; an opposition report, the club it goes to on the right): the box score's offensive rating
+   & four factors, season against season - a value box each, a bar each from the middle, a pill for who is ahead */
+.rp-cmp{ margin:0 0 10px; padding:10px 12px 6px; border:1px solid #dfe6e2; border-radius:12px; background:#f7f9f8 }
+.rp-cmp h4{ margin:0 0 6px; font-family:var(--f-ui); font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink) }
+.rp-cmp-hd{ display:flex; justify-content:space-between; align-items:center; margin:0 0 6px; font-family:var(--f-ui); font-size:9px; font-weight:800; letter-spacing:.14em; text-transform:uppercase }
+.rp-cmp-hd span{ display:inline-flex; align-items:center; gap:5px } .rp-cmp-hd img{ width:16px; height:16px; object-fit:contain }
+.rp-cmp-row{ display:grid; grid-template-columns:64px minmax(0,1fr) 64px; gap:8px; align-items:center; padding:6px 6px; margin:0 0 5px; border:1px solid #e3e9e6; border-radius:9px; background:#fff }
+.rp-cmp-v{ display:flex; flex-direction:column; align-items:center; gap:1px; padding:4px 2px; border-radius:6px; background:#eef2f0 }
+.rp-cmp-v[data-b]{ background:color-mix(in srgb,var(--fb,#c9d3cd) 24%,#ffffff); box-shadow:inset 0 0 0 1.2px var(--fb,#c9d3cd) }
+.rp-cmp-v[data-b="1"]{ --fb:var(--b1) } .rp-cmp-v[data-b="2"]{ --fb:var(--b2) } .rp-cmp-v[data-b="3"]{ --fb:var(--b3) } .rp-cmp-v[data-b="4"]{ --fb:var(--b4) }
+.rp-cmp-v[data-b="5"]{ --fb:var(--b5) } .rp-cmp-v[data-b="6"]{ --fb:var(--b6) } .rp-cmp-v[data-b="7"]{ --fb:var(--b7) } .rp-cmp-v[data-b="8"]{ --fb:var(--b8) } .rp-cmp-v[data-b="9"]{ --fb:var(--b0) }
+.rp-cmp-v b{ font-family:var(--f-ui); font-size:14px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; line-height:1.1 }
+.rp-cmp-v b small{ font-size:9px; font-weight:700 } .rp-cmp-v small{ font-family:var(--f-ui); font-size:7.5px; font-weight:700; color:var(--ink-3); letter-spacing:.04em }
+.rp-cmp-m{ display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0 }
+.rp-cmp-bar{ display:grid; grid-template-columns:1fr 1fr; width:100%; height:7px; border-radius:999px; background:#e9f1ec; overflow:hidden }
+.rp-cmp-bar .h{ display:flex; height:100% } .rp-cmp-bar .h.l{ justify-content:flex-end } .rp-cmp-bar .h.r{ justify-content:flex-start }
+.rp-cmp-bar i{ display:block; height:100% } .rp-cmp-bar .h.l i{ border-radius:999px 0 0 999px } .rp-cmp-bar .h.r i{ border-radius:0 999px 999px 0 }
+.rp-cmp-l{ font-family:var(--f-ui); font-size:8px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-2); text-align:center }
+.rp-cmp-p{ display:inline-block; padding:2px 9px; border-radius:999px; font-family:var(--f-ui); font-size:8.5px; font-weight:800; letter-spacing:.04em; white-space:nowrap;
+  color:var(--pc,#5d6b64); background:color-mix(in srgb,var(--pc,#5d6b64) 12%,#ffffff); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pc,#5d6b64) 45%,#ffffff) }
+.rp-cmp-p.lv{ color:#5d6b64; background:#f0f3f1; box-shadow:inset 0 0 0 1px #cfd8d3 }
+.rp-cmp-p.st{ font-weight:700 }
+
+/* LINEUPS - MISC. (report-teampages.js lmisc): two splits, each a table of its minutes against the rest */
+.rp-lm{ width:100%; margin:4px 0 6px } .rp-lm th, .rp-lm td{ text-align:right; font-variant-numeric:tabular-nums }
+.rp-lm .l{ text-align:left } .rp-lm tr.grp td{ padding-top:7px; font-size:8px; font-weight:800; letter-spacing:.12em; color:var(--ink-3) }
+.rp-lm td.up{ font-weight:800; color:#0a6d43 } .rp-lm tr.mn td{ font-weight:800 } .rp-lm small{ font-weight:600; color:var(--ink-3) }
+.rp-lm-k{ margin:6px 0 2px; font-family:var(--f-ui); font-size:8px; font-weight:800; letter-spacing:.12em; color:var(--ink-3) }
+.rp-lm-who{ margin:0; padding-left:14px; font-size:9.5px; line-height:1.45; color:var(--ink-2) } .rp-lm-who b{ color:var(--ink) }
+.rp-lmg h4{ white-space:normal; line-height:1.3 } .rp-lmg h4 span{ display:block; margin-top:2px; white-space:normal }

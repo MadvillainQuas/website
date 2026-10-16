@@ -1359,7 +1359,12 @@ function reportTab(team) {
     /* the league's regression: never the linked side's games */
     rapm: window.EpinoiaRAPM ? ((ids, fn) => window.EpinoiaRAPM.season(D, (ids || []).filter(id => !RP_LINKED_IDS.has(id)), fn).then(r => r.rapm)) : null,
     bigGames: D.BIG_GAMES || 0,
-    week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 }) : null
+    week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.teamWeek(api, team.id, { name: team.name, league: ACCESS.slug, days: 7 }) : null,
+    /* THE CLUB IT IS COMPARED WITH (?rpvs=, the mailer's: the club an opposition report is emailed to; Louie, 2026-10-16) and
+       its name and colours */
+    vs: () => { const v = new URLSearchParams(location.search).get('rpvs'); return v && /^[0-9a-f-]{36}$/i.test(v) && v !== team.id ? v : null; },
+    teamInfo: async id => ((await api('teams?id=eq.' + id + '&select=id,name,short_name,colour,logo_path').catch(() => [])) || [])[0] || null,
+    logoUrl: path => (window.epinoiaLogoUrl && path ? window.epinoiaLogoUrl(path, 128) : null)
   };
   REPORT = E.mount({
     tabs: '#ttabs', panel: '#reportsec', kind: 'team', id: team.id, label: 'Scouting Report',

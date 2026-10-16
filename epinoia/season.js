@@ -694,6 +694,8 @@ function finishTeam(A) {
     dff_tov:  r1(pct(num(O.tov), num(O.fga) + 0.44 * num(O.fta) + num(O.tov))),
     dff_oreb: r1(pct(num(O.oreb), num(O.oreb) + A.dreb)),
     dff_ftr:  r1(pct(num(O.fta), num(O.fga))),
+    /* BLK% (2026-10-16, the opposition report's comparison): blocks per opponent two-point attempt, as a player's is */
+    blk_pct: r1(pct(A.blk, num(O.fga) - num(O.fg3a))),
 
     /* ratings */
     ortg: r1(pct(A.pts, poss)), drtg: r1(pct(num(O.pts), oppPoss)),

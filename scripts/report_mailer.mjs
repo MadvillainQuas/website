@@ -426,10 +426,13 @@ export const PRIMED = new Map();                     // 'kind:id' -> { path, sen
 export function newRun() { PRIMED.clear(); PLAYER_PDF.clear(); SYN_ALL = undefined; JOIN_ON = undefined; }
 const PRIMED_DAYS = 14;
 const SK = () => ({ apikey: env.SUPABASE_SERVICE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY });
-async function primedPdf(kind, id, clubId, name) {
+async function primedPdf(kind, id, clubId, name, vs) {
   try {
     const [row] = await rest(`primed_reports?kind=eq.${kind}&ref_id=eq.${id}&select=path,primed_at`);
     if (!row) return null;
+    /* an opposition report is compared with the club it goes to (2026-10-16): a copy primed for another club, or for none, is
+       not that club's - drawn afresh (and the copy kept for its own club) */
+    if (vs && !String(row.path || '').endsWith('--vs-' + vs + '.pdf')) return null;
     const key = kind + ':' + id;
     const newer = clubId ? await rest(`games?or=(home_team_id.eq.${clubId},away_team_id.eq.${clubId})&status=eq.final&finalised_at=gt.${encodeURIComponent(row.primed_at)}&select=id&limit=1`) : [];
     if (newer.length) { console.log('primed', key, 'is older than a game since: drawn afresh'); PRIMED.set(key, { path: row.path, stale: true }); return null; }
@@ -442,8 +445,8 @@ async function primedPdf(kind, id, clubId, name) {
   } catch (_) { return null; }
 }
 /* A REPORT FOR AN EMAIL: the primed copy when there is a fresh one, else drawn; `used` takes the primed keys of the email */
-async function reportPdf(kind, id, clubId, path, name, used) {
-  const got = await primedPdf(kind, id, clubId, name);
+async function reportPdf(kind, id, clubId, path, name, used, vs) {
+  const got = await primedPdf(kind, id, clubId, name, vs);
   if (got) { used.push(got.primed); return { filename: got.filename, content: got.content }; }
   return pdfOf(path, name);
 }
@@ -643,7 +646,10 @@ async function sendWeek(sub, team, tz, sent, W, day, given) {
   const week = 'Week of ' + shortDay(W.from.toISOString(), tz);
   for (const o of uniq) {
     console.log('opponent', club, '->', o.oname);
-    const pdf = await reportPdf('team', o.oid, o.oid, `/epinoia/t/?t=${o.oid}&tab=report`, `scouting-report-${slug(o.oname)}`, used);
+    /* THE OPPOSITION REPORT, COMPARED WITH THE CLUB IT GOES TO (Louie, 2026-10-16): ?rpvs= the address's club, ?rpadd= its
+       Comparison and Lineups - misc. pages. A primed copy is sent only when it was primed for this club (the reports manager's
+       PRIME REPORT on this club's row); any other is drawn afresh for it */
+    const pdf = await reportPdf('team', o.oid, o.oid, `/epinoia/t/?t=${o.oid}&tab=report&rpvs=${team.id}&rpadd=cmp,lmisc`, `scouting-report-${slug(o.oname)}`, used, team.id);
     const when = next.filter(g => g.home_team_id === o.oid || g.away_team_id === o.oid).map(g => shortDay(g.tipoff_at, tz)).join(', ');
     await keep(sub, day, pdf, { kind: 'opp', ref: day + ':' + o.oid, title: o.oname, subtitle: week + ' · ' + club + ' play them ' + when });
     att.push(pdf);
