@@ -996,6 +996,10 @@ jobs:
         # team spacing: teammates' three-point points per 100 possessions while he plays (season.js); 3PT consistency:
         # accuracy and volume recalculated after every game, computed for one player when his profile opens (consistency.js)
         run: node supabase/tests/consistency.test.mjs
+      - name: Left v right on the player profile and the reports
+        # eFG% from each side of the floor and FG% by distance, all shots or unassisted (misses read by shot type), over a
+        # player's whole career (lvr.js); the profile card, the bars' all-seasons line, the reports' page and squad cards
+        run: node supabase/tests/lvr.test.mjs
 
       - name: robots.txt is at the root, slow, and polite
         # crawlers read /robots.txt at the domain root only; the old file under /epinoia/ was never read

@@ -66,7 +66,7 @@ const PI = rd('epinoia', 'p', 'index.html');
 {
   const g = groupsOf(PI);
   const want = [
-    ['Full advanced stats', ['League percentile', 'Clutch time']],             // first, and the default tab (Louie, 2026-10-15)
+    ['Full advanced stats', ['League percentile', 'Clutch time', 'Left v right']],             // first, and the default tab (Louie, 2026-10-15)
     ['Career stats', ['Career stats']],
     ['Events', ['Events']],
     ['Game log', ['Game log']],

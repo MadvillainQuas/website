@@ -146,6 +146,13 @@ function reportTab(pl, name, team) {
     scopeKey: () => (RP_COMBINE ? 'all' : 'home'),
     pos: () => rpGet('pos', 60000),
     shots: () => rpGet('shots'),
+    /* LEFT V RIGHT over his whole career (lvr.js career, the profile card's own read, kept for the visit): every season and
+       competition, whatever the report's scope - Louie, 2026-10-16 */
+    lvr: async () => {
+      const pids = await rpGet('lvrPids', 60000);
+      const LV = window.EpinoiaLvR;
+      return LV && pids && pids.length ? LV.career({ D: window.EpinoiaData, pids }) : null;
+    },
     floor: () => rpGet('floor'),
     week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.playerWeek(api, pl.id, { name, league: ACCESS_LEAGUE.slug, days: 7 }) : null,
     /* the league's games of the scope shown (RAPM is the league's regression; report.js keeps it per set of games) */
@@ -756,12 +763,95 @@ const keep = (k, v) => { try { localStorage.setItem(k, v); } catch (_) { /* fine
 /* SIMILAR PLAYERS (similar.js, p/similar-ui.js): the panel that takes the bars' place. SIM_CTX is the line it is asked about
    (the competition and the profile he played it under; null where there is none), SIM_CTL the panel drawn from its file */
 let simOpen = false, SIM_CTX = null, SIM_CTL = null;
+/* FULL ADVANCED STATS OVER HIS WHOLE CAREER (Louie, 2026-10-16: "a button on full advanced stats to have it show accumulated
+   stats across all competitions and seasons for that player instead of just the current season"). His career line is every
+   final game of his, every season and competition, under this profile and every profile linked to it (0178), summed as one
+   before any rate is worked out (data.js season, opts.alias and opts.gameIds) - and ranked against the field of the season
+   shown, in his season line's place, since a career has no field of its own. The starters / bench split, the 3PT
+   consistency card and similar players are a season's, and step aside while it shows. Kept in the browser. */
+let barsSpan = 'season';
+try { if (localStorage.getItem('epinoia_bars_span') === 'career') barsSpan = 'career'; } catch (_) { /* private mode */ }
+let CAREER_SRC = null;                      // boot: { me, pids }
+let CAREER_ROW, CAREER_INFO = null;         // undefined until asked; then his line (or null: none)
+let CAREER_P = null;
+function careerLine() {
+  if (CAREER_P) return CAREER_P;
+  const D = window.EpinoiaData, src = CAREER_SRC;
+  if (!D || !src || !src.pids.length) { CAREER_ROW = null; return Promise.resolve(null); }
+  CAREER_P = (async () => {
+    const who = src.pids.length > 1 ? 'in.(' + src.pids.join(',') + ')' : 'eq.' + src.pids[0];
+    const gl = await D.all(`player_game_stats?player_uuid=${who}&select=game_id,games!inner(status,competition_id)&games.status=eq.final`);
+    const gids = [...new Set((gl || []).map(r => r.game_id).filter(Boolean))];
+    const comps = [...new Set((gl || []).map(r => r.games && r.games.competition_id).filter(Boolean))];
+    if (!gids.length || !comps.length) return null;
+    const alias = { player: new Map(src.pids.filter(p => p !== src.me).map(p => [p, src.me])) };
+    const S = await D.season(comps, { rows: false, trim: true, gameIds: gids, alias, allowBig: true });
+    const row = (S.players || []).find(r => r.id === src.me) || null;
+    CAREER_INFO = row ? { games: gids.length, comps: comps.length } : null;
+    return row;
+  })();
+  CAREER_P.then(r => { CAREER_ROW = r; }, e => { console.warn('[career line]', e); CAREER_ROW = null; CAREER_P = null; });
+  return CAREER_P;
+}
 /* COMPARE PLAYER (p/compare-ui.js): CMP_CTX is the line the picker sets against another -- this one, its field and what the
    chart calls it (null where there is no line); cmpOpen keeps the picker open through a redraw of the bars */
 let CMP_CTX = null, cmpOpen = false;
 
 /* ONE BAR, IN ITS OWN CARD: label and value across the top with his percentile under the value, the fill,
    and under it how far the value sits above or below the league average (the field the bar is ranked in) */
+/* ---- LEFT V RIGHT (lvr.js; Louie, 2026-10-16) ----
+   His eFG% from each side of the floor, and his shots by distance on each side, all of them or only his unassisted ones:
+   always over every season and competition he has played (lvr.js career, his profile and every linked one), whatever the
+   scope the rest of the page shows. Read when the card first comes on screen - a career is a lot of play-by-play - and
+   kept for the visit. A shot-location analytic, so it keeps the shot zones' lock (pLocked('shotZones')). */
+let LVR_MODE = 'all', LVR_DATA = null;
+try { if (localStorage.getItem('epinoia_lvr_mode') === 'un') LVR_MODE = 'un'; } catch (_) { /* private mode */ }
+function paintLvR(pids) {
+  const host = $('#lvr'), sec = $('#lvrSec'), LV = window.EpinoiaLvR, D = window.EpinoiaData;
+  if (!host) return;
+  if (!LV || !D || !pids || !pids.length) { if (sec) sec.style.display = 'none'; return; }
+  const locked = () => {
+    if (!pLocked('shotZones')) return false;
+    host.innerHTML = accessTeaser({ key: 'shotZones', title: 'Left v right',
+      lines: ['His eFG% from each side of the floor, and every shot distance with its FG%, over his whole career - part of Epinoia analytics.'] });
+    return true;
+  };
+  if (locked()) return;
+  host.innerHTML = '<div class="lvr-card"><div class="lvr-load">Reading his shots from every game he has played\u2026</div></div>';
+  let started = false;
+  const go = () => {
+    if (started) return;
+    started = true;
+    if (locked()) return;
+    LV.career({ D, pids, onProgress: (d, n) => { const l = host.querySelector('.lvr-load'); if (l) l.textContent = 'Reading his shots: ' + d + ' of ' + n + ' games\u2026'; } })
+      .then(c => { LVR_DATA = c; drawLvR(); },
+            e => { console.warn('[left v right]', e); host.innerHTML = '<div class="lvr-card"><div class="lvr-load">His shots could not be read just now.</div></div>'; });
+  };
+  if (typeof IntersectionObserver === 'function') {
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); go(); } }, { rootMargin: '300px' });
+    io.observe(host);
+  } else go();
+}
+function drawLvR() {
+  const host = $('#lvr'), LV = window.EpinoiaLvR, c = LVR_DATA;
+  if (!host || !LV || !c) return;
+  const un = LVR_MODE === 'un';
+  const sum = LV.split(c.shots, { unassisted: un });
+  const card = el('div', 'lvr-card');
+  const top = el('div', 'lvr-bar-top');
+  top.appendChild(segs('shots', [['all', 'all shots'], ['un', 'unassisted']], LVR_MODE, v => {
+    LVR_MODE = v; keep('epinoia_lvr_mode', v); drawLvR();
+  }));
+  top.appendChild(el('span', 'lvr-basis', LV.basis(c) + ' \u00b7 ' + sum.n + (sum.n === 1 ? ' located shot' : ' located shots')));
+  card.appendChild(top);
+  const g = el('div');
+  g.innerHTML = LV.cardHTML(sum, { note: un ? LV.UN_NOTE : '',
+    empty: un && !c.gamesWithAssists ? 'His games do not log assists, so his unassisted shots cannot be told apart.' : 'No located shots in his games yet.' });
+  card.appendChild(g);
+  host.textContent = '';
+  host.appendChild(card);
+}
+
 function barCard(k, label, mine, ranks, pool) {
   const C = window.EpinoiaCards;
   const v = mine[k];
@@ -1273,6 +1363,24 @@ function paintBars(mine, field) {
       'Percentiles appear once enough of the competition has played.'));
     return;
   }
+  /* THIS SEASON OR HIS WHOLE CAREER (barsSpan): his career line in his season line's place in the field */
+  const spanSegs = () => segs('span', [['season', 'this season'], ['career', 'all seasons']], barsSpan, v => {
+    barsSpan = v; keep('epinoia_bars_span', v); if (LAST_BARS) paintBars(LAST_BARS.mine, LAST_BARS.field);
+  });
+  if (barsSpan === 'career' && CAREER_ROW === undefined) {
+    const sw0 = el('div', 'barswitch');
+    sw0.appendChild(spanSegs());
+    host.appendChild(sw0);
+    host.appendChild(el('div', 'empty', 'Adding up every season and competition he has played\u2026'));
+    careerLine().then(() => { if (LAST_BARS && barsSpan === 'career') paintBars(LAST_BARS.mine, LAST_BARS.field); }, () => {});
+    return;
+  }
+  const career = barsSpan === 'career' && !!CAREER_ROW;
+  if (career) {
+    const c = Object.assign({}, mine, CAREER_ROW, { id: mine.id });
+    field = field.some(r => r.id === mine.id) ? field.map(r => (r.id === mine.id ? c : r)) : field.concat([c]);
+    mine = c;
+  }
   const SE = window.EpinoiaSeason, C = window.EpinoiaCards, VU = window.EpinoiaVsUnits;
   /* the per-75 box score (simple view) on every line, so its percentiles and the popup's chart read it like any other key */
   if (VU) field.forEach(VU.per75);
@@ -1297,15 +1405,18 @@ function paintBars(mine, field) {
   const ranks = SE.percentiles(field, keys, BAR_LOW, group ? (r => posMap.get(r.id) || null) : null);
   const pool = group ? field.filter(r => posMap.get(r.id) === group) : field;
   $('#barNote').textContent = 'vs ' + pool.length + ' ' +
-    (group ? (SE.positionLabel ? SE.positionLabel(group) : 'players') : 'players');
+    (group ? (SE.positionLabel ? SE.positionLabel(group) : 'players') : 'players') +
+    (career && CAREER_INFO ? ' · his career: ' + CAREER_INFO.games + ' games, every season and competition, against this season\u2019s field'
+      : barsSpan === 'career' ? ' · no career line to add up yet: this season' : '');
 
   /* AGAINST THE STARTERS OR THE BENCH: worked out on the first ask (vsLines), the bars drawn as ALL until it is */
-  const unit = barsVs !== 'all' && !pLocked('splits') && VU ? barsVs : null;
+  const unit = barsVs !== 'all' && !pLocked('splits') && VU && !career ? barsVs : null;
   const V = unit ? vsLines(mine) : null;
   const vsOn = V && V.state === 'ready' ? V : null;
 
   /* the switches sit above the bars, where the note they change is */
   const sw = el('div', 'barswitch');
+  sw.appendChild(spanSegs());
   sw.appendChild(segs('view', [['scout', 'scouting view'], ['simple', 'simple view']], barsView, v => {
     barsView = v; keep('epinoia_bars_view', v); paintBars(mine, field);
   }));
@@ -1327,7 +1438,7 @@ function paintBars(mine, field) {
   /* FIND SIMILAR PLAYERS, left of expand all: four games or fifty minutes in the line shown (similar.js eligible), and a
      competition to look him up in. Pressed, the bars slide off to the left and the matches come in from the right. */
   const SU = window.EpinoiaSimilarUI, SS = window.EpinoiaSimilar;
-  const simOk = !!(SU && SS && SIM_CTX && SS.eligible(mine));
+  const simOk = !!(SU && SS && SIM_CTX && !career && SS.eligible(mine));
   const sb = el('button', 'ep-btn sim-btn', 'find similar players');
   sb.type = 'button';
   if (SS && SU) {
@@ -1406,7 +1517,7 @@ function paintBars(mine, field) {
           /* a group inside the card, not folded: the distances of the shooting card, impact's on/off and BPM */
           const g = el('div', 'bsub');
           g.appendChild(el('div', 'bsub-h', blk.title));
-          g.appendChild(cardsOf(blk.rows, blk.consistency ? consistencyCard : null));
+          g.appendChild(cardsOf(blk.rows, blk.consistency && !career ? consistencyCard : null));
           b.appendChild(g);
         } else b.appendChild(cardsOf(blk.rows));
       });
@@ -2129,6 +2240,11 @@ async function seasonLog(ids, sn) {
        ?s= names the season, ?c= a competition of it; both can be sent and reloaded into. */
     const scopes = await playerScopes(pl, team);
     const SEASONS = scopes.seasons;
+    /* his career, for the bars' ALL SEASONS and the Left v right card (and the report's): this profile and every linked one */
+    const careerIds = [...new Set([pl.id].concat(scopes.ids || []))];
+    CAREER_SRC = { me: pl.id, pids: careerIds };
+    rpGive('lvrPids', careerIds);
+    try { paintLvR(careerIds); } catch (e) { console.warn('[left v right]', e); }
     /* ADJUST TO LEAGUE (paintAdjust): offered once his leagues are known, beside everything else being drawn */
     setupAdjust(scopes).catch(e => console.warn('[adjust]', e));
     const KIND_LABEL = { league: 'League', cup: 'Cup', trophy: 'Trophy', playoff: 'Playoffs', friendly: 'Friendlies' };

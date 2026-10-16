@@ -196,6 +196,41 @@ function modules(ctx) {
     }
   };
 
+  /* ---------------- LEFT V RIGHT ---------------- */
+  /* A PAGE OF ITS OWN (lvr.js; Louie, 2026-10-16): his eFG% from each side of the floor and every shot distance's FG% on each
+     side, all his shots and then only his unassisted ones, and where his unassisted shots come from on the court - always over
+     every season and competition he has played (lvr.js career, the profile card's own read), whatever the report's scope */
+  const lvr = {
+    key: 'lvr', title: 'Left v right', page: 'LEFT V RIGHT', on: true,
+    async build(c, R) {
+      const LV = root.EpinoiaLvR, SC = root.EpinoiaShotChart;
+      const C = LV && ctx.lvr ? await ctx.lvr().catch(() => null) : null;
+      if (!LV || !C || !C.shots || !C.shots.length) return [block('<div class="rp-empty">No located shots for this player yet.</div>')];
+      const all = LV.split(C.shots), un = LV.split(C.shots, { unassisted: true });
+      const out = [];
+      out.push(block(title('Left v right', 'his shooting from each side of the floor, facing the basket · ' + LV.basis(C) + ' · ' + all.n + ' located shots') +
+        '<div class="rp-two rp-lvr"><div><div class="rp-cap">All shots<span>eFG% by side, FG% by distance</span></div>' + LV.cardHTML(all, { compact: true }) + '</div>' +
+        '<div><div class="rp-cap">Unassisted<span>his own shots: see the legend</span></div>' +
+        LV.cardHTML(un, { compact: true, empty: C.gamesWithAssists ? 'No unassisted shots.' : 'His games do not log assists.' }) + '</div></div>'));
+      const ush = LV.unassistedShots(C.shots);
+      if (SC && ush.length) {
+        const colour = c.accent || '#08603f';
+        const court = view => {
+          const h = E.el('div');
+          SC.renderZones({ host: h, shots: ush, colour, minAttempts: 3, games: C.games, zones: true, table: false, view, controls: false });
+          return h.innerHTML;
+        };
+        const made = ush.filter(x => x.made).length;
+        out.push(block(title('Unassisted shot chart', ush.length + ' shots of his own · ' + made + ' made · every season and competition') +
+          '<div class="rp-two"><div><div class="rp-cap">Zones<span>tinted against each zone’s break-even</span></div>' + court('zones') + '</div>' +
+          '<div><div class="rp-cap">Every unassisted shot<span>made ● missed ×</span></div>' + court('shots') + '</div></div>'));
+      }
+      R.legendExtra.push(['LEFT V RIGHT', 'His shots from the left and the right side of the floor, facing the basket, over every season and competition he has played: each side’s eFG% at the head; a row per distance (at the rim to 1.25 m, short twos to 3 m, mid-range to 5 m, long twos, corner threes, threes above the break) with the FG% and makes-attempts on each side, the bar as long as the share of that side’s shots from there and filled to the FG%.'],
+        ['UNASSISTED', 'His shots without a pass behind them, from the games that log assists. A make is his own when no assist was given for it. A miss is never marked, so it is read by its shot type: a pull-up, step-back, fadeaway, floater, hook, putback or tip-in is his own, an alley-oop was a pass, and any other miss counts as his own in the share his makes from that distance were. The shot chart draws every shot at least half his own.']);
+      return out;
+    }
+  };
+
   /* ---------------- ON THE FLOOR WITH ---------------- */
   const floor = {
     key: 'floor', title: 'On the floor with', page: 'ON THE FLOOR WITH', on: true,
@@ -281,7 +316,7 @@ function modules(ctx) {
   };
 
   const legend = { key: 'legend', title: 'Legend', on: true };
-  return [cover, main, shots, floor, week, legend];
+  return [cover, main, shots, lvr, floor, week, legend];
 }
 
 return { modules };

@@ -697,6 +697,15 @@ function modules(ctx) {
           sh.forEach(x => { const k = String(x.pid); if (!shotsBy.has(k)) shotsBy.set(k, []); shotsBy.get(k).push(x); });
         }
       } catch (_) { /* without the corner charts */ }
+      /* LEFT V RIGHT for a player with no Synergy file (lvr.js; Louie, 2026-10-16): his eFG% from each side of the floor, all
+         his shots and his unassisted ones, over every season and competition he has played - one read of the squad's games */
+      const LV = root.EpinoiaLvR;
+      let lvrBy = new Map();
+      const noSyn = squad.filter(r => !syn.get(String(r.id))).map(r => r.id);
+      if (LV && noSyn.length && root.EpinoiaData) {
+        try { lvrBy = await LV.careers({ D: root.EpinoiaData, pids: noSyn }); }
+        catch (e) { if (root.console) root.console.warn('[report left v right]', e); }
+      }
       const allKeys = new Set();
       const sets = {};
       ['guard', 'wing', 'big'].forEach(g => { sets[g] = E.groupsFor(R.state, 'players', g); sets[g].forEach(x => x[1].forEach(k => allKeys.add(k))); });
@@ -744,7 +753,9 @@ function modules(ctx) {
         /* his Synergy drives are in the shot profile's own runs (DRIVE L / R at the rim, mid-range, three: report.js synergyOnRow),
            and what his man shot at him in his defence group; a player with no file has neither */
         const groups = (E.groupsOn ? E.groupsOn(sets[grp], r) : sets[grp]).map(([t, ks]) => '<div class="rp-pg2"><h5>' + esc(t) + '</h5><div class="rp-cells">' + E.groupCellsHTML(ks, r, Rk) + '</div></div>').join('');
-        const chart = (prof && E.driveChartHTML ? E.driveChartHTML(prof, { compact: true }) : '') || (E.shotMixHTML ? E.shotMixHTML(r) : '');
+        const lv = !prof && LV ? lvrBy.get(String(r.id)) : null;
+        const lvMini = lv && lv.shots.length ? LV.miniHTML(LV.split(lv.shots), LV.split(lv.shots, { unassisted: true })) : '';
+        const chart = (prof && E.driveChartHTML ? E.driveChartHTML(prof, { compact: true }) : '') || lvMini || (E.shotMixHTML ? E.shotMixHTML(r) : '');
         const mz = E.miniZonesHTML ? E.miniZonesHTML(shotsBy.get(String(r.id)) || []) : '';
         out.push(block((i === 0 ? head : '') + '<div class="rp-pcard"><div class="rp-pid">' + ph + '<div class="rp-pname">' + (m.jersey ? '#' + esc(m.jersey) + ' ' : '') + esc(nm) + '</div>' +
           '<div class="rp-pmeta">' + esc(grp) + ' · ' + (r.gp || 0) + ' gp · ' + f1(r.mpg) + ' mpg · ' + f1(r.ppg) + ' ppg</div>' +
@@ -758,7 +769,8 @@ function modules(ctx) {
         ['VOL / 100', 'Shots from that zone per 100 of the team’s possessions while they are on the floor: where they shoot, not how well, so it is not inflated by minutes or pace.'],
         ['ASSISTED%', 'The share of their baskets in a zone that came off a pass. Coloured the other way round: a low share (green) means they create their own shots there.'],
         ['HALF-COURT FIGURES', 'Leave out fast breaks, second chances and shots off turnovers: how they do against a set defence.'],
-        ['SHOT MIX', 'Where there is no Synergy file: bar length is how often they shoot from the rim, mid-range or three, the solid part how often it goes in.'],
+        ['LEFT V RIGHT', 'Where there is no Synergy file: their eFG% from the left and the right side of the floor (facing the basket), all their shots and their unassisted ones, over every season and competition they have played; the bar between is how their shots split between the sides. Unassisted: makes without an assist, and misses read by their shot type (pull-ups, step-backs, fadeaways, floaters, hooks and putbacks are their own; any other miss counts in the share their makes from that distance were).'],
+        ['SHOT MIX', 'Where there is neither a Synergy file nor located shots: bar length is how often they shoot from the rim, mid-range or three, the solid part how often it goes in.'],
         ['DRIVES L/R', 'From their Synergy file, going left then right. FG% green or red against their own on drives in every direction; ATT% blue to purple against their own share in every direction, deeper the more of it.'],
         ['± (ON/OFF)', 'The team’s figure with them on the floor minus with them off it. Noisy for a player with few minutes.'],
         ['THE CORNER COURT', 'Orange: they shoot better than break-even from that zone. Blue: worse. Grey: too few shots.']]));

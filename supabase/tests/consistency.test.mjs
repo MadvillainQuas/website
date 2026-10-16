@@ -94,7 +94,7 @@ const rim = pjs.slice(pjs.indexOf("title: 'at the rim'"), pjs.indexOf("title: 'm
 ok('TEAM SPACING is a bar in "at the rim", ranked like the others (higher is more room)', /\['team_spacing','TEAM SPACING'\]/.test(rim) && !/'team_spacing'/.test(pjs.slice(pjs.indexOf('const BAR_LOW'), pjs.indexOf('];', pjs.indexOf('const BAR_LOW')))));
 ok('...with a tooltip that says what it is', /team_spacing: 'How stretched the floor/.test(pjs));
 const three = pjs.slice(pjs.indexOf("title: 'three-pointers'"), pjs.indexOf("title: 'free throws'"));
-ok('3PT CONSISTENCY sits with the three-pointers, as a card of its own', /consistency: true/.test(three) && /'3PT CONSISTENCY'/.test(pjs) && /blk\.consistency \? consistencyCard : null/.test(pjs));
+ok('3PT CONSISTENCY sits with the three-pointers, as a card of its own', /consistency: true/.test(three) && /'3PT CONSISTENCY'/.test(pjs) && /blk\.consistency && !career \? consistencyCard : null/.test(pjs));
 ok('...worked out from the game log the page already reads, not asked for again', /LOG_ROWS = rows;/.test(pjs) && /K\.fromLog\(LOG_ROWS, SCOPE_IDS/.test(pjs) && !/consistency[^\n]*api\(/i.test(pjs));
 ok('...for this player only: nothing about it is computed in season.js or for the league', !/consistency/i.test(rd('epinoia', 'season.js')));
 ok('...cut to the competitions in view, so the log query names each game’s competition', /games(!inner)?\(tipoff_at,competition_id,/.test(pjs) && /SCOPE_IDS = ids;/.test(pjs));

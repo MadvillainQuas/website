@@ -2071,7 +2071,22 @@
       'No statistics yet: they fill in as games are finalised.': 'まだスタッツはありません。試合が確定すると反映されます。',
       'Stars & Fan Picks': 'スターとファン投票',
       'Fans’ picks': 'ファン投票の結果',
-      'The news could not be read just now.': 'ニュースを読み込めませんでした。'
+      'The news could not be read just now.': 'ニュースを読み込めませんでした。',
+      'Left v right': '左 vs 右',
+      'every season and competition': '全シーズン・全大会',
+      'Short two': 'ショート2P',
+      'Long two': 'ロング2P',
+      'Corner three': 'コーナー3P',
+      'Above the break': 'トップ・ウイングの3P',
+      '5 m to the line': '5mから3Pライン',
+      'the corners': 'コーナー',
+      'Bar: the share of that side’s shots from there': 'バー: そのサイドのシュートのうち、その距離から打った割合',
+      'filled to the FG%': '塗りはFG%',
+      'Reading his shots from every game he has played…': '出場した全試合のシュートを読み込み中…',
+      'His shots could not be read just now.': '現在シュートを読み込めません。',
+      'No located shots in his games yet.': '位置データのあるシュートはまだありません。',
+      'Adding up every season and competition he has played…': '全シーズン・全大会を集計中…',
+      'unassisted: his makes without an assist; a miss by its shot type (pull-up, step-back, fadeaway, floater, hook, putback: his own), any other miss shared out as his makes from that distance were; games that log assists': 'アシストなし: アシストの付かない成功。失敗はシュートの種類で判定（プルアップ、ステップバック、フェイダウェイ、フローター、フック、プットバックは自力）、その他の失敗はその距離での成功の自力率で配分。アシストを記録する試合のみ'
     },
 
     ctx: {

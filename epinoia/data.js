@@ -664,8 +664,15 @@ async function season(competitionId, opts) {
     if (!allowBig && gamesIn(token) > BIG_GAMES) return tooBig(list, opts, gamesIn(token));
   }
 
-  const games = await all(`games?${scope}` +
-    `&status=in.(final,finalising)&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at`);
+  const gsel = `&status=in.(final,finalising)&select=id,home_team_id,away_team_id,home_score,away_score,tipoff_at`;
+  /* a long list of games (a player's career, p/player.js careerLine) is asked for a hundred at a time, so the in.() filter
+     never outgrows a URL */
+  let games;
+  if (only && only.length > 100) {
+    const base = list.length === 1 ? `competition_id=eq.${list[0]}` : `competition_id=in.(${list.join(',')})`;
+    games = [];
+    for (let i = 0; i < only.length; i += 100) games.push(...await all(`games?${base}&id=in.(${only.slice(i, i + 100).join(',')})` + gsel));
+  } else games = await all(`games?${scope}` + gsel);
   if (!games.length) return { games: [], players: [], teams: [], byId: {} };
   /* the same guard for a read that had no token to go on (a caller that keeps the rows, or a
      count the server declined): the line from the latest file, and the rows never */

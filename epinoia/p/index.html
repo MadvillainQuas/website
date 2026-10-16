@@ -32,6 +32,7 @@
 <script src="../motion.js?v=853" defer></script>
 <link rel="stylesheet" href="../kit/sitpanel.css?v=853">
 <link rel="stylesheet" href="../kit/cards.css?v=853">
+<link rel="stylesheet" href="../kit/lvr.css?v=853">
 <link rel="stylesheet" href="../kit/similar.css?v=853">
 <link rel="stylesheet" href="../kit/access.css?v=853">
 <!-- the club's "released" button (offerRelease), styled with the injury report it feeds -->
@@ -421,6 +422,14 @@
       <span class="note" id="clutchNote"></span></div>
     <div id="pclutch"></div>
   </div>
+
+  <!-- left v right (lvr.js, Louie 2026-10-16): his eFG% from each side of the floor and his shots by distance, all of them
+       or only his unassisted ones - always over every season and competition he has played, whatever the scope above -->
+  <div class="sec" id="lvrSec">
+    <div class="sec-h"><span class="idx">01b</span><h2>Left v right</h2>
+      <span class="note" id="lvrNote">every season and competition</span></div>
+    <div id="lvr"></div>
+  </div>
   </div>
 
   <div class="pgrp-group" data-pgrp-key="career" data-pgrp-name="Career stats">
@@ -510,6 +519,7 @@
 <script src="../weekly.js?v=853" defer></script>
 <script src="../possessions.js?v=853" defer></script>
 <script src="../situations.js?v=853" defer></script>
+<script src="../lvr.js?v=853" defer></script>
 <!-- his clutch time (player.js paintClutch): clutch.js finds the engine vsunits.js loads when it is needed -->
 <script src="../clutch.js?v=853" defer></script>
 <script src="../rapm.js?v=853" defer></script>

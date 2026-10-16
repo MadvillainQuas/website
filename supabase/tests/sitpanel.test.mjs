@@ -393,7 +393,7 @@ console.log('\nboth profiles load the panel and draw it inside their own try');
      lp > 0 && se > lp && ev > se && phtml.lastIndexOf('data-pgrp-key=', ev) === phtml.indexOf('data-pgrp-key="events"') &&
      /<div class="sec" id="eventsSec">\s*<div class="sec-h"><span class="idx">03<\/span><h2>Events<\/h2><span class="note" id="eventsNote"><\/span><\/div>\s*<div id="events"><\/div>\s*<\/div>/.test(phtml));
   const idx = [...phtml.matchAll(/<span class="idx">([^<]+)<\/span><h2>([^<]+)<\/h2>/g)].map(m => m[1] + ' ' + m[2]);
-  ok('p/index.html: the sections numbered in the groups\' order', JSON.stringify(idx) === JSON.stringify(['V On video', '01 League percentile', '01a Clutch time', '02 Career stats', '03 Events', '04 Game log', '05 Shot chart', '06 On the floor with']), idx.join(' / '));
+  ok('p/index.html: the sections numbered in the groups\' order', JSON.stringify(idx) === JSON.stringify(['V On video', '01 League percentile', '01a Clutch time', '01b Left v right', '02 Career stats', '03 Events', '04 Game log', '05 Shot chart', '06 On the floor with']), idx.join(' / '));
   ok('p/index.html: the shot chart is a section of its own, before On the floor with',
      /<div class="sec" id="shotsec">[\s\S]*?<div id="shotchart"><\/div>\s*<\/div>/.test(phtml) && phtml.indexOf('id="shotsec"') < phtml.indexOf('id="withpanel"'));
 
