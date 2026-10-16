@@ -300,7 +300,7 @@ ok('...its three places: home (the GO page), feed (the wall), your stamps, each 
    && /platformRow\('▣', 'your stamps', 'go\/stamps\/', \/\\\/epinoia\\\/go\\\/stamps\\\/\//.test(nav));
 ok('GO\'s pages open the rail on it, and are nobody\'s league (the wall\'s ?l= is its own filter)',
    /nav\.dataset\.view = onGo \? 'go' : 'root';/.test(nav) && /setView\(onGo \? 'go' : .*country === null \? 'home' : 'root', false\)/.test(nav)
-   && /const PLATFORM_PAGE = \/\\\/epinoia\\\/\(home\|games\|scouting\|go\)\\\/\/;/.test(nav));
+   && /const PLATFORM_PAGE = \/\\\/epinoia\\\/\(home\|games\|scouting\|go\|membership\|reports\|setup-league\)\\\/\/;/.test(nav));
 ok('the phone\'s bar on GO\'s pages: home (GO\'s), feed, stamps, profile',
    /const GO_TABS = \[/.test(nav) && /\(onGo \? GO_TABS : PLATFORM_TABS\)\.forEach/.test(nav)
    && ["href: 'go/',", "href: 'go/photos/',", "href: 'go/stamps/',", "href: 'me/',"].every(h => nav.slice(nav.indexOf('const GO_TABS'), nav.indexOf('function paintPlatformTabs')).includes(h)));
@@ -447,7 +447,7 @@ ok('...and it is not a row of the root rail under EPINOIA GO itself (Louie: afte
 ok('GO\'s phone bar has it: home, feed, stamps, find, profile',
    (t => ['go/', 'go/photos/', 'go/stamps/', 'go/nearby/', 'me/'].every((h, i, a) => t.includes("href: '" + h + "'") && (!i || t.indexOf("href: '" + h + "'") > t.indexOf("href: '" + a[i - 1] + "'"))))(
      navSrc.slice(navSrc.indexOf('const GO_TABS'), navSrc.indexOf('function paintPlatformTabs'))));
-ok('GO\'s pages, this one too, are nobody\'s league (the rail opens on GO)', /\\\/epinoia\\\/\(home\|games\|scouting\|go\)\\\//.test(navSrc) && /const onGo = \/\\\/epinoia\\\/go\\\//.test(navSrc));
+ok('GO\'s pages, this one too, are nobody\'s league (the rail opens on GO)', /\\\/epinoia\\\/\(home\|games\|scouting\|go\|membership\|reports\|setup-league\)\\\//.test(navSrc) && /const onGo = \/\\\/epinoia\\\/go\\\//.test(navSrc));
 ok('...the page loads the go, game and report words (the record and the story are the game page\'s)', /data-i18n-packs="go game report"/.test(nbHtml));
 ok('...the rail\'s and the bar\'s words, and every sentence of the page, in Japanese and Spanish',
    ['ja', 'es'].every(code => { const core = rd('epinoia', 'i18n', code + '.js'), go = rd('epinoia', 'i18n', code, 'go.js');

@@ -567,10 +567,15 @@
       'more starters': 'más titulares',
       'tired legs': 'piernas cansadas',
       'Minutes go to fresh legs first, and nobody past 90% of the game: deep into the game a man tires, the more so the more of the offence he carries, and a bench man handed a starter’s minutes meets better players': 'Los minutos van primero a piernas frescas y nadie pasa del 90% del partido: con muchos minutos un jugador se cansa, más cuanto más ataque carga, y un suplente con minutos de titular se enfrenta a mejores jugadores',
-      'what the position is worth, from the win model': 'lo que vale la posición, según el modelo de victorias'
+      'what the position is worth, from the win model': 'lo que vale la posición, según el modelo de victorias',
+      'Its team managers and statisticians, and whoever the club shares it with, open it with a membership that includes it.': 'La abren sus mánagers y estadísticos, y quien la reciba de la propia entidad, con una membresía que la incluya.',
+      'Work for the club? Sign in with the address the club gave, or ask the club to share it with you.': '¿Trabajas para el club? Inicia sesión con la dirección que te dio el club o pídele que la comparta contigo.',
+      'Every position charted against the same position at every club in the league, and the win model.': 'Cada posición comparada con la misma posición en todos los clubes de la liga, y el modelo de victorias.'
     },
     keep: ['Elo', 'P75', 'BPM'],
     patterns: [
+      /* the front office is the club's own (0279): the club's name passes through */
+      [/^The front office is for (.+)’s own staff$/, (m) => 'La oficina técnica es solo para el personal de ' + m[1]],
       [/^(\d+)-(\d+) · projected (\d+) wins$/, (m) => m[1] + '-' + m[2] + ' · ' + m[3] + ' victorias proyectadas'],
       [/^Record (\d+)-(\d+) · Pythagorean ([−+\-]?[\d.,]+) · from its factors ([−+\-]?[\d.,]+) wins$/, (m) => 'Balance ' + m[1] + '-' + m[2] + ' · pitagórico ' + m[3] + ' · por sus factores ' + m[4] + ' victorias'],
       [/^Record (\d+)-(\d+) · Pythagorean ([−+\-]?[\d.,]+) wins$/, (m) => 'Balance ' + m[1] + '-' + m[2] + ' · pitagórico ' + m[3] + ' victorias'],

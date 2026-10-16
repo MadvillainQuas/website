@@ -257,6 +257,7 @@ function reportTab(pl, name, team) {
     /* the player report is sold on its own (0220, access.js CATALOGUE.locks.playerReport); the league is read when
        the check is made, as the page learns it after the tab is drawn */
     lock: { key: 'playerReport', what: 'The player report', get league() { return ACCESS_LEAGUE.id; }, get leagueSlug() { return ACCESS_LEAGUE.slug; },
+            pdf: { kind: 'player_pdf', subject: pl.id, name },
             lines: ['A printable A4 scouting report on any player: main stats by position, his shot chart, on and off the floor.'] },
     modules: RPm.modules(ctx),
     /* THE INSIGHTS (scoutinsights.js): the scout's read of him from the line and the field the pages draw */

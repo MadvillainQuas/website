@@ -375,11 +375,18 @@ Developers → Webhooks → **Add destination**:
    version, not the function's. On any other version an invoice names its subscription in a
    different place and the period end moves. Payments would be recorded but would never reach the
    member.
-3. Events: these eight. The function records and ignores anything else.
+3. Events: these ten. The function records and ignores anything else.
    `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
    `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`, `invoice.upcoming`,
-   `customer.subscription.trial_will_end` (the free-trial reminder, 6.4b). An endpoint made before
-   2026-10-02 has the first seven: edit it and add the eighth.
+   `customer.subscription.trial_will_end` (the free-trial reminder, 6.4b),
+   `checkout.session.async_payment_succeeded` and `charge.refunded` (a report PDF paid once, and its
+   refund, migration 0279). An endpoint made before 2026-10-02 has the first seven, and one made before
+   2026-10-16 the first eight: edit it and add the rest.
+   A report PDF is drawn by the server, not unlocked in the buyer's browser: the report worker
+   (report-mail.yml) draws it, keeps it in their dashboard and emails it. The live lane starts that worker
+   within two minutes of a purchase (scripts/ingest/console_kick.py, nothing to set up; restart the lane
+   after pulling). With `GITHUB_DISPATCH_TOKEN` and `GITHUB_REPO` set as function secrets (as for
+   console-kick, docs/backfills.md) the webhook starts it the moment the payment lands.
 4. Destination type: webhook endpoint. URL:
    `https://hhvofgqqadtyvcjudhjx.supabase.co/functions/v1/billing/webhook`
 5. Create it, then **Reveal** the signing secret (`whsec_…`). That is `STRIPE_WEBHOOK_SECRET`.
@@ -429,6 +436,12 @@ Checks (Command Prompt):
   test mode.
 
 ### 6.7 Products and prices
+
+**Since migration 0279 this step is optional for Epinoia's own plans.** A platform plan (a tier, the
+Manager pass, report emails, a league, a report PDF) with a price and no Stripe price id is sold at
+exactly its price: checkout states the amount itself (VAT included), so a price changed in the console
+(Plans → Who gets what, Sold on their own) is the price charged, with nothing to make in Stripe. The
+steps below are still how a **league's own** plan is priced, and remain possible for a platform plan.
 
 Product catalogue → **Add product**, one for each plan:
 - Name: the plan's name.

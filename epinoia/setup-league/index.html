@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- LIGHT: the default theme; appmode.js turns it dark before paint for a reader who chose dark. -->
+<meta name="theme-color" content="#f3faf6">
+<link rel="manifest" href="/epinoia/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EPINOIΛ">
+<!-- PUBLIC. A private league of one's own, bought on the page (setup.js): the 'league_setup' plan (0279), its name,
+     address and colour carried to the payment window as the checkout's details (access.js buy -> paywindow.js, framing
+     payframe.html from this site under default-src 'self'); built by billing_provision, the buyer its administrator.
+     teamcolour.js makes the colour picked readable in the preview, as a league's own pages do. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co">
+<!-- seo:head -->
+<title>Set Up Your Own Private Basketball League | Epinoia</title>
+<meta name="description" content="Set up a private basketball league on Epinoia: your seasons, teams, fixtures, results and statistics, run by you from the league console, seen by those you invite.">
+<meta name="epinoia-page" content="Set up a league">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+<link rel="canonical" href="https://prophesyscouting.co.uk/epinoia/setup-league/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Epinoia">
+<meta property="og:title" content="Set Up Your Own Private Basketball League | Epinoia">
+<meta property="og:description" content="Set up a private basketball league on Epinoia: your seasons, teams, fixtures, results and statistics, run by you from the league console, seen by those you invite.">
+<meta property="og:url" content="https://prophesyscouting.co.uk/epinoia/setup-league/">
+<meta property="og:image" content="https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="EPINOIΛ: live basketball scores, fixtures, standings and advanced stats">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@Prophesy_Scout">
+<meta name="twitter:title" content="Set Up Your Own Private Basketball League | Epinoia">
+<meta name="twitter:description" content="Set up a private basketball league on Epinoia: your seasons, teams, fixtures, results and statistics, run by you from the league console, seen by those you invite.">
+<meta name="twitter:image" content="https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png">
+<meta name="twitter:image:alt" content="EPINOIΛ: live basketball scores, fixtures, standings and advanced stats">
+<!-- /seo:head -->
+<link rel="icon" type="image/png" sizes="32x32" href="../brand/epinoia-mark-32.png">
+<link rel="apple-touch-icon" href="../brand/epinoia-app-180.png">
+<script src="../appmode.js?v=877"></script>
+<script src="../i18n.js?v=877" data-i18n-packs="account"></script>
+<script src="../glyphs.js?v=877" defer></script>
+<link rel="stylesheet" href="../kit/epinoia-kit.css?v=877">
+<link rel="stylesheet" href="../kit/nav.css?v=877">
+<link rel="stylesheet" href="../kit/labeltype.css?v=877">
+<link rel="stylesheet" href="../kit/motion.css?v=877">
+<script src="../motion.js?v=877" defer></script>
+<link rel="stylesheet" href="../kit/access.css?v=877">
+<link rel="stylesheet" href="../kit/page.css?v=877">
+<link rel="stylesheet" href="../kit/sales.css?v=877">
+<link rel="stylesheet" href="../kit/sectitle.css?v=877">
+<link rel="stylesheet" href="../kit/teletext.css?v=877">
+<link rel="stylesheet" href="../kit/legibility.css?v=877">
+<!-- seo:ld -->
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Set Up Your Own Private Basketball League | Epinoia","description":"Set up a private basketball league on Epinoia: your seasons, teams, fixtures, results and statistics, run by you from the league console, seen by those you invite.","url":"https://prophesyscouting.co.uk/epinoia/setup-league/","inLanguage":"en","isPartOf":{"@id":"https://prophesyscouting.co.uk/epinoia/#website"},"primaryImageOfPage":{"@type":"ImageObject","url":"https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png","width":1200,"height":630}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Epinoia","item":"https://prophesyscouting.co.uk/epinoia/home/"},{"@type":"ListItem","position":2,"name":"Set up a league"}]}</script>
+<!-- /seo:ld -->
+</head>
+<body>
+<!-- THE PAGE STANDARD (docs/page-standard.md): the centred head, a section per part with its title and subtitle and no
+     number; data-std has nav.js add the teletext line, the quick keys, ON THIS PAGE and each section's SKIP.
+     kit/sales.css is this page's look, shared with membership/ and reports/. -->
+<div class="ep-frame sl" id="setup" data-std>
+  <div class="topbar">
+    <a href="../home/" class="plain"><span class="wm epinoia-mark" aria-label="Epinoia">EPINOIΛ</span></a>
+    <span id="ctx" class="ep-micro"></span>
+  </div>
+
+  <header class="hero pg-head">
+    <h1>Set up a league</h1>
+    <p class="pg-sub">Your own private league on Epinoia, built the moment you pay, with you as its administrator.</p>
+  </header>
+
+  <!-- WHAT YOU GET, and the price -->
+  <section class="sec" id="what" aria-labelledby="whatH">
+    <div class="sec-h"><h2 id="whatH">What you get</h2>
+      <p class="note">A private league, built for you and run by you</p></div>
+    <div class="sec-b sl-wrap">
+      <div class="sl-get">
+        <ul class="sl-feats">
+          <li><span class="sl-fi" aria-hidden="true">&#x2699;&#xFE0E;</span><b>You are its administrator</b><span>Run everything from the league console, and appoint who scores the games</span></li>
+          <li><span class="sl-fi" aria-hidden="true">◷</span><b>Seasons and teams</b><span>Set up each season, its clubs and their squads</span></li>
+          <li><span class="sl-fi" aria-hidden="true">▥</span><b>Fixtures and results</b><span>Put the games in the calendar and record every result</span></li>
+          <li><span class="sl-fi" aria-hidden="true">∑</span><b>Statistics</b><span>Box scores, tables and leaders, worked out from every game</span></li>
+          <li><span class="sl-fi" aria-hidden="true">&#x2709;&#xFE0E;</span><b>Invite who sees it</b><span>Send a link to the players, coaches and fans you choose</span></li>
+          <li><span class="sl-fi" aria-hidden="true">◈</span><b>Private</b><span>Only the people you invite can see it: it is not listed or searchable</span></li>
+        </ul>
+        <aside class="sl-tier sl-tier-price top" id="suPrice" aria-live="polite"><p class="sl-wait">Reading the price…</p></aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUILD IT: name, address (checked as it is typed), colour; then the payment window -->
+  <section class="sec" id="build" aria-labelledby="buildH">
+    <div class="sec-h"><h2 id="buildH">Build your league</h2>
+      <p class="note">Name it, choose its address and its colour, then pay</p></div>
+    <div class="sec-b sl-wrap">
+      <div class="sl-build">
+        <form class="sl-form sl-form-lg" id="suForm" novalidate>
+          <div class="sl-field sl-wide">
+            <label for="suName">The league’s name</label>
+            <input type="text" id="suName" class="ep-input" maxlength="60" autocomplete="off" placeholder="e.g. Northside Sunday League">
+            <p class="sl-check bad hide" id="suNameMsg">A name is 2 to 60 characters</p>
+          </div>
+          <div class="sl-field sl-wide">
+            <label for="suSlug">Its address</label>
+            <div class="sl-slug"><span class="pre" translate="no">epinoia/l/?l=</span><input type="text" id="suSlug" class="ep-input" maxlength="40" autocomplete="off" spellcheck="false" translate="no" placeholder="northside-sunday-league"></div>
+            <p class="sl-check" id="suSlugMsg" aria-live="polite"></p>
+          </div>
+          <div class="sl-field sl-wide">
+            <label for="suColour">Its colour</label>
+            <div class="sl-colour"><input type="color" id="suColour" value="#93f2bf"><span id="suColourHex" translate="no">#93f2bf</span></div>
+          </div>
+          <div class="sl-act"><button type="button" class="ep-btn pri sl-go" id="suGo" disabled>Set up my league</button></div>
+          <p class="sl-fine">You can change the colour later, and add a logo, in the league console.</p>
+        </form>
+        <div class="sl-preview" id="suPreview" aria-hidden="true" data-i18n-ctx="plans">
+          <p class="sl-eye">Preview</p>
+          <div class="sl-pv-card">
+            <span class="sl-pv-mono" id="suPvMono" translate="no">L</span>
+            <b class="sl-pv-name" id="suPvName">Your league</b>
+            <span class="sl-pv-tag">Private league</span>
+            <span class="sl-pv-addr" id="suPvAddr" translate="no">prophesyscouting.co.uk/epinoia/l/?l=your-league</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- YOURS: my_paid_leagues; away while signed out (or before 0279) -->
+  <section class="sec hide" id="yours" aria-labelledby="yoursH">
+    <div class="sec-h"><h2 id="yoursH">Your leagues</h2>
+      <p class="note">The leagues you set up, and how each one stands</p></div>
+    <div class="sec-b sl-wrap" id="yoursBody"></div>
+  </section>
+</div>
+<script src="../config.js?v=877" defer></script>
+<script src="../access.js?v=877" defer></script>
+<script src="../teamcolour.js?v=877" defer></script>
+<script src="setup.js?v=877" defer></script>
+<script src="../nav.js?v=877" defer></script>
+</body>
+</html>

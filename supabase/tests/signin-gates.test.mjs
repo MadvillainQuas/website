@@ -75,7 +75,9 @@ console.log('who must sign in first');
 {
   const { A } = page();
   ok('signed out on a club page: an account comes first', A.signinFirst() === true);
-  const keys = Object.keys(A.CATALOGUE.locks).filter(k => ['gameFlow', 'gameConnections', 'gameAdvanced', 'gameReport'].indexOf(k) < 0);
+  /* a section the matrix makes Free (0279: Manager mode to start) asks for nothing; its game has its own sign-in door */
+  ok('...a section Free in the matrix asks for no account (Manager mode, to start)', A.gateOf('manager') === 'free' && A.featureLocked('manager', 'L1') === false && A.lockReason('manager', 'L1') === null);
+  const keys = Object.keys(A.CATALOGUE.locks).filter(k => ['gameFlow', 'gameConnections', 'gameAdvanced', 'gameReport'].indexOf(k) < 0 && A.gateOf(k) !== 'free');
   ok('...every lockable feature is locked and says sign in (WOWY, lineups, both reports, shot zones, the columns, the CSV, What wins...)',
      keys.length >= 12 && keys.every(k => A.featureLocked(k, 'L1') && A.lockReason(k, 'L1') === 'signin') && ['wowy', 'lineups', 'clubReport', 'playerReport', 'statColumns', 'csv', 'model'].every(k => keys.includes(k)),
      keys.filter(k => !A.featureLocked(k, 'L1')).join());

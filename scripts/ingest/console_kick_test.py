@@ -45,9 +45,11 @@ def ok(what, cond, saw=None):
 class Q:
     """the two queues as PostgREST would answer them, and every patch written"""
 
-    def __init__(self, backfills=(), resets=(), reports=(), no_column=False, no_reports=False):
+    def __init__(self, backfills=(), resets=(), reports=(), no_column=False, no_reports=False, pdfs=None):
         self.rows = {"season_backfills": [dict(r) for r in backfills], "league_resets": [dict(r) for r in resets],
                      "report_mail_requests": [dict(r) for r in reports]}
+        if pdfs is not None:                    # before 0279 there is no such table
+            self.rows["access_purchases"] = [dict(r) for r in pdfs]
         self.no_column, self.no_reports = no_column, no_reports
         self.selects, self.patches = [], []
 
@@ -57,6 +59,11 @@ class Q:
             raise RuntimeError('relation "report_mail_requests" does not exist')
         if self.no_column and "dispatched_at" in query:
             raise RuntimeError("column season_backfills.dispatched_at does not exist")
+        if table not in self.rows:
+            raise RuntimeError('relation "' + table + '" does not exist')
+        if table == "access_purchases":         # render_state, paid ones only, fewer than three tries
+            return [dict(r) for r in self.rows[table] if r.get("render_state", "queued") == "queued" and r.get("status", "paid") == "paid"
+                    and r.get("render_attempts", 0) < 3]
         # by state, as PostgREST would: a row with none is a queued one (the rows these tests were written with)
         want = "running" if "state=eq.running" in query else "queued"
         return [dict(r) for r in self.rows[table] if r.get("state", "queued") == want]
@@ -172,8 +179,37 @@ only = Q(backfills=[{"id": "b1", "dispatched_at": None}], reports=[{"id": "q1", 
 said = K.kick(only, env=ENV, now=NOW, send=send, kinds=("report",))
 ok("a kind on its own: the mailer's start asks about report requests only", said.startswith("started the worker for 1") and {t for t, _ in only.selects} == {"report_mail_requests"} and send.flows == ["report-mail.yml"])
 import inspect  # noqa: E402
-ok("the live lane's own call (no kinds named) takes all three", inspect.signature(K.kick).parameters["kinds"].default == ("backfill", "reset", "report") and
-   K.WORKFLOWS == {"backfill": "console-jobs.yml", "reset": "console-jobs.yml", "report": "report-mail.yml"} and K.TABLES["report"] == "report_mail_requests")
+ok("the live lane's own call (no kinds named) takes all four (a paid PDF too, 0279)", inspect.signature(K.kick).parameters["kinds"].default == ("backfill", "reset", "report", "pdf") and
+   K.WORKFLOWS == {"backfill": "console-jobs.yml", "reset": "console-jobs.yml", "report": "report-mail.yml", "pdf": "report-mail.yml"} and K.TABLES["report"] == "report_mail_requests"
+   and K.TABLES["pdf"] == "access_purchases")
+
+# A PAID PDF WAITING TO BE DRAWN (0279): the mailer is started for it, and it is stamped so it is not started again every two minutes
+send, calls = sender()
+bought = Q(pdfs=[{"id": "u1", "requested_at": iso(NOW - 30), "dispatched_at": None}])
+said = K.kick(bought, env=ENV, now=NOW, send=send)
+pq = [q for t, q in bought.selects if t == "access_purchases"]
+ok("a paid PDF waiting: report-mail.yml is started, and the purchase stamped (render_state queued, as it was read)",
+   said.startswith("started the worker for 1") and send.flows == ["report-mail.yml"] and
+   [(t, q) for t, q, _ in bought.patches] == [("access_purchases", "id=in.(u1)&render_state=eq.queued")] and
+   "dispatched_at" in bought.patches[0][2], (said, send.flows, bought.patches))
+ok("...read as the claim reads it: paid, queued, fewer than three tries, oldest first, paid_at as when it was asked for",
+   len(pq) == 1 and all(x in pq[0] for x in ("render_state=eq.queued", "status=eq.paid", "render_attempts=lt.3", "requested_at:paid_at", "order=paid_at.asc")), pq)
+send, calls = sender()
+both = Q(reports=[{"id": "q1", "requested_at": iso(NOW - 60), "dispatched_at": None}], pdfs=[{"id": "u1", "requested_at": iso(NOW - 30), "dispatched_at": None}])
+said = K.kick(both, env=ENV, now=NOW, send=send)
+ok("...a PDF and a send-now together start the mailer once, and both are stamped",
+   said.startswith("started the worker for 2") and send.flows == ["report-mail.yml"] and sorted(t for t, _, _ in both.patches) == ["access_purchases", "report_mail_requests"], (said, send.flows))
+send, calls = sender()
+again = Q(pdfs=[{"id": "u1", "requested_at": iso(NOW - 300), "dispatched_at": iso(NOW - 120)}])
+ok("...one started two minutes ago is not started again", K.kick(again, env=ENV, now=NOW, send=send) == "already started" and not send.flows)
+send, calls = sender()
+gone = Q(pdfs=[{"id": "u1", "status": "refunded", "dispatched_at": None}, {"id": "u2", "render_attempts": 3, "dispatched_at": None},
+               {"id": "u3", "render_state": "done", "dispatched_at": None}])
+ok("...a refunded one, one tried three times, and one drawn are not waiting", K.kick(gone, env=ENV, now=NOW, send=send) == "nothing queued" and not send.flows)
+send, calls = sender()
+pre = Q(backfills=[{"id": "b1", "dispatched_at": None}])
+said = K.kick(pre, env=ENV, now=NOW, send=send)
+ok("...before 0279 (no purchases table) the others are started all the same", said.startswith("started the worker for 1") and send.flows == ["console-jobs.yml"], said)
 
 send, calls = sender()
 old = Q(backfills=[{"id": "b1"}], no_column=True)

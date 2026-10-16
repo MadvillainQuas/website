@@ -184,10 +184,12 @@ function planForm(o) {
   r2.appendChild(field('WHAT THE PLAN SAYS', blurb, '1 1 100%'));
   wrap.appendChild(r2);
 
-  wrap.appendChild(el('div', 'ax-sub', 'What it unlocks'));
+  /* A COLUMN OF THE MATRIX (0279, o.matrix): what it opens is ticked in Who gets what, not here */
+  if (o.matrix) wrap.appendChild(el('div', 'ax-hint', 'What this tier opens is ticked in its column of Who gets what, below.'));
+  else wrap.appendChild(el('div', 'ax-sub', 'What it unlocks'));
   const feats = el('div', 'ax-feats');
   const boxes = {};
-  allowed.forEach(k => {
+  if (!o.matrix) allowed.forEach(k => {
     const cell = el('div');
     const lab = el('label', 'sw');
     const box = el('input'); box.type = 'checkbox';
@@ -200,7 +202,7 @@ function planForm(o) {
     feats.appendChild(cell);
   });
   wrap.appendChild(feats);
-  if (!o.leagueId) {
+  if (!o.leagueId && !o.matrix) {
     wrap.appendChild(el('div', 'ax-hint',
       'A plan sold by Epinoia can unlock the analytics and the reports, in any mix: each ' +
       'mix is a tier. It never opens a league: a league that closes its doors does so for ' +
@@ -230,11 +232,10 @@ function planForm(o) {
       ? 'Sold on the league’s own Stripe account: the money goes to the league, less ' +
         'Epinoia’s fee. Create the price in the league’s Stripe account once payouts ' +
         'are connected, and paste its id here.'
-      : 'Sold on Epinoia’s Stripe account. Create the price in Epinoia’s Stripe ' +
-        'dashboard and paste its id here.') +
-      ' Make the Stripe price the same amount, recurring every ' + every.value +
-      ', with tax included, so a fan pays exactly the price they were shown. ' +
-      'Without an id the plan is listed but cannot be bought.';
+      : 'Sold on Epinoia’s Stripe account. Leave this empty and the price above is charged exactly as it is, ' +
+        'with nothing to make in Stripe; or create a price in Epinoia’s Stripe dashboard and paste its id here.') +
+      (seller === 'league' ? ' Make the Stripe price the same amount, recurring every ' + every.value +
+      ', with tax included, so a fan pays exactly the price they were shown. Without an id the plan is listed but cannot be bought.' : '');
   };
   drawSellerHint();
   every.addEventListener('change', drawSellerHint);
@@ -276,8 +277,8 @@ function planForm(o) {
     const say = o.say || (() => {});
     const n = name.value.trim();
     if (!n) return say('Give the plan a name.', 'err');
-    const features = allowed.filter(k => boxes[k].checked);
-    if (!features.length) return say('Tick at least one thing the plan unlocks.', 'err');
+    const features = o.matrix ? [] : allowed.filter(k => boxes[k].checked);
+    if (!o.matrix && !features.length) return say('Tick at least one thing the plan unlocks.', 'err');
     const pennies = toPennies(price.value);
     if (pennies == null) return say('Write the price in pounds, like 4.99.', 'err');
     const pid = priceId.value.trim();
@@ -310,6 +311,8 @@ function planForm(o) {
       seller
     };
     if (p.id) payload.id = p.id;
+    /* a column of the matrix keeps whatever features it had (a tier from before the matrix) and is a tier */
+    if (o.matrix) { delete payload.features; if (!p.id) payload.kind = 'tier'; }
     if (trial) payload.trial_months = trial.value === '' ? null : Number(trial.value);
     save.disabled = true;
     try { await o.save(payload); } finally { save.disabled = false; }
@@ -1115,5 +1118,5 @@ function mount(o) {
   load();
 }
 
-return { mount, planForm, money, per, featureWords, FEATURES };
+return { mount, planForm, money, per, featureWords, toPennies, FEATURES };
 }));

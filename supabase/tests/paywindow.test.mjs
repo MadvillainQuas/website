@@ -24,6 +24,15 @@ const ok = (what, cond, saw) => { if (cond) { pass++; console.log('  PASS  ' + w
 console.log('\nthe words a fan agrees to');
 ok('the pay-now box is the billing function\'s wording, under its version', P.NOW_WORDING === B.CONSENT[P.NOW_VERSION] && P.NOW_VERSION === '2026-09-a');
 ok('the free-trial box is the trial wording, under the trial version', P.TRIAL_WORDING === B.CONSENT[P.TRIAL_VERSION] && P.TRIAL_VERSION === B.TRIAL_CONSENT);
+/* 0279: a PDF bought once, and only tiers in the membership list */
+ok('the PDF box is the billing function\'s wording for something bought once', P.PURCHASE_WORDING === B.CONSENT[P.PURCHASE_VERSION] && P.PURCHASE_VERSION === B.PURCHASE_CONSENT);
+{
+  const S = P.summary({ price_pennies: 1500, currency: 'gbp', interval: 'once' }, 0);
+  ok('a PDF\'s step before money: its price paid once, nothing renews, under its own wording', /£15\.00, including any VAT\. Paid once/.test(S.price) && S.button === 'Pay £15.00' && S.version === P.PURCHASE_VERSION, S);
+  ok('the membership list shows tiers (and plans from before 0279), not passes, report emails, leagues or PDFs',
+     P.isTier({ kind: 'tier' }) && P.isTier({}) && !P.isTier({ kind: 'manager' }) && !P.isTier({ kind: 'player_pdf' }) && !P.isTier({ kind: 'league_setup' }));
+  ok('a PDF lands as a credit, not as a membership state', P.landed({ known: true, subscriptions: 9, features: [] }, { kind: 'player_pdf', subsBefore: 0 }) === false);
+}
 ok('the age box is the billing function\'s', P.ADULT_WORDING === B.ADULT_WORDING);
 
 console.log('\nwhat is offered');

@@ -2120,7 +2120,10 @@
       'men': '男子',
       'women': '女子',
       'Back to the system': 'システムに戻る',
-      'university basketball': '大学バスケットボール'
+      'university basketball': '大学バスケットボール',
+      'membership: what is free, what a free account adds and what each tier opens': 'メンバーシップ: 無料の内容、無料アカウントで加わる内容、各プランで利用できる内容',
+      'reports: a player’s or a club’s scouting reports, emailed to you': 'レポート: 選手やクラブのスカウティングレポートをメールでお届け',
+      'set up a league: your own private league on Epinoia, run by you': 'リーグを作る: あなたが運営する、Epinoiaのプライベートリーグ'
     },
 
     ctx: {
@@ -2673,7 +2676,9 @@
         'search': '検索',
         'search bar': '検索バー',
         'leaderboards': 'ランキング',
-        'your page': 'あなたのページ'
+        'your page': 'あなたのページ',
+        'reports': 'レポート',
+        'set up a league': 'リーグを作る'
       },
       /* the phone bar has a fifth of a phone's width per label */
       tab: {
@@ -3103,6 +3108,9 @@
     },
 
     patterns: [
+      /* the membership card on a locked section: the tier that opens it and its price (access.js teaserHTML, 0279) */
+      [/^Included in (.+) \(([£€$][\d.,]+) a (month|year)\)( and higher tiers)?\.$/,
+        m => m[1] + '（' + m[2] + '/' + (m[3] === 'year' ? '年' : '月') + '）' + (m[4] ? '以上の会員プラン' : '会員プラン') + 'に含まれています。'],
       /* a college system's hub and its conferences (college.js, home.js, nav.js, search.js; 2026-10-16) */
       [/^(.+)’s page →$/, '$1のページ →'],
       [/^(.+) Main Hub$/, '$1 メインハブ'],

@@ -22,7 +22,12 @@ own half-hourly cron went hours without a run too (two runs in four hours, measu
 hour). So the live lane starts report-mail.yml for a queued request exactly as it starts console-jobs.yml for a
 backfill, each workflow on its own: no extra token, no function to deploy.
 
-    python scripts/ingest/console_kick.py --kick [backfill|reset|report]   start the worker if anything (of that kind) is queued
+A REPORT PDF PAID FOR ONCE IS KICKED THE SAME WAY (0279, 2026-10-16). The buyer is told it comes "within a few minutes";
+the billing webhook starts report-mail.yml itself only where GITHUB_DISPATCH_TOKEN is set (it is not, as console-kick
+says), so a paid PDF waiting to be drawn (access_purchases, render_state queued) is one more kind the lane starts the
+mailer for, every two minutes, and stamps dispatched_at on as it does the others.
+
+    python scripts/ingest/console_kick.py --kick [backfill|reset|report|pdf]   start the worker if anything (of that kind) is queued
     python scripts/ingest/console_kick.py --queued backfill                exit 0 when a backfill is queued, 1 when none is
 
 Nothing but the standard library: the workflow asks --queued BEFORE it installs Chrome and the scraper, so a run
@@ -42,8 +47,11 @@ WORKFLOW = "console-jobs.yml"
 REPORT_WORKFLOW = "report-mail.yml"
 KICK_AGAIN_S = 15 * 60          # a request still queued this long after a dispatch is dispatched again
 REPORT_GIVE_UP_S = 3 * 3600     # a "send next week's reports now" nobody took in three hours is given up (0226), not started again
-TABLES = {"backfill": "season_backfills", "reset": "league_resets", "report": "report_mail_requests"}
-WORKFLOWS = {"backfill": WORKFLOW, "reset": WORKFLOW, "report": REPORT_WORKFLOW}      # the worker that takes each kind
+TABLES = {"backfill": "season_backfills", "reset": "league_resets", "report": "report_mail_requests", "pdf": "access_purchases"}
+WORKFLOWS = {"backfill": WORKFLOW, "reset": WORKFLOW, "report": REPORT_WORKFLOW, "pdf": REPORT_WORKFLOW}      # the worker that takes each kind
+# a paid PDF's queue is not a request table: its state is render_state, it was asked for when it was paid, and a refunded one or one
+# that failed three times is not waiting (pdf_render_claim's own rule)
+PDF_QUEUED = "render_state=eq.queued&status=eq.paid&render_attempts=lt.3&select=id,requested_at:paid_at,dispatched_at&order=paid_at.asc"
 
 
 def _at(iso) -> float | None:
@@ -80,6 +88,13 @@ def queued(q, kinds=("backfill", "reset")) -> list[dict]:
     out = []
     for kind in kinds:
         table = TABLES[kind]
+        if kind == "pdf":
+            try:
+                rows = q.select(table, PDF_QUEUED)
+            except Exception:
+                continue            # 0279 is not applied: nothing bought, and the others are not held up
+            out += [dict(r, _kind=kind) for r in rows or []]
+            continue
         try:
             rows = q.select(table, "state=eq.queued&select=id,requested_at,dispatched_at&order=requested_at.asc")
         except Exception:
@@ -178,9 +193,9 @@ def dispatch(repo: str, token: str, ref: str = "main", workflow: str = WORKFLOW,
         return False, str(exc)[:200]
 
 
-def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill", "reset", "report")) -> str:
+def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill", "reset", "report", "pdf")) -> str:
     """Start console-jobs.yml when a backfill or reset is queued, and report-mail.yml when a "send next week's reports
-    now" is, each when nobody has started it for KICK_AGAIN_S. Never raises: the live lane calls this between polls of
+    now" or a paid PDF is, each when nobody has started it for KICK_AGAIN_S. Never raises: the live lane calls this between polls of
     live games, and nothing here is worth a missed score."""
     try:
         e = env if env is not None else os.environ
@@ -212,7 +227,8 @@ def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill"
                     try:
                         # a stale running row is stamped too (2026-10-16): unstamped, it was started again every two
                         # minutes while another backfill held the worker, each new run cancelling the one waiting
-                        q.patch(TABLES[kind], f"id=in.({','.join(ids)})&" + ("state=in.(queued,running)" if kind in LEASED else "state=eq.queued"),
+                        q.patch(TABLES[kind], f"id=in.({','.join(ids)})&" + ("state=in.(queued,running)" if kind in LEASED
+                                                                             else "render_state=eq.queued" if kind == "pdf" else "state=eq.queued"),
                                 {"dispatched_at": stamp})
                     except Exception:
                         pass        # before 0217: started all the same, just not noted

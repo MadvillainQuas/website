@@ -25,6 +25,9 @@
    or payments not switched on: the plans are shown, and nothing can be started.
 
      window.EpinoiaPayWindow.open({ href, key, leagueSlug, planId, confirming })
+     window.EpinoiaPayWindow.open({ product: 'player_pdf' | 'club_pdf' | 'manager', subject, subjectName, what })   (0279)
+     window.EpinoiaPayWindow.open({ planId, details, what })   report emails, a league: straight to the step before money
+   The membership list shows Epinoia's tiers (and a league's own plans) only; the rest is bought where it is offered.
    The pure parts are exported for supabase/tests/paywindow.test.mjs.
    ============================================================================ */
 (function (root, factory) {
@@ -39,6 +42,11 @@ const NOW_WORDING = 'Start my access now. I understand that access begins straig
 const TRIAL_VERSION = '2026-10-t';
 const TRIAL_WORDING = 'Start my free trial now. I understand that access begins straight away and that, unless I cancel before the free trial ends, my membership is then charged automatically and renews until I cancel. Once my access has started I lose my 14-day right to cancel, but I can cancel online at any time.';
 const ADULT_WORDING = 'I am 18 or over.';
+/* a PDF bought once (0279), word for word the billing function's CONSENT['2026-10-p'] */
+const PURCHASE_VERSION = '2026-10-p';
+const PURCHASE_WORDING = 'Give me my report now. I understand it is supplied straight away, so once it has been supplied I lose my 14-day right to cancel.';
+const ONCE = ['player_pdf', 'club_pdf'];
+const isTier = p => !p || !p.kind || p.kind === 'tier';
 const PENDING_KEY = 'epinoia_pay_pending';
 const WAIT_MS = 60000, POLL_MS = 2000;
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -72,6 +80,13 @@ function ordered(plans) {
 }
 /* what the step before money says, and what its button says */
 function summary(p, trial, now) {
+  if (p && p.interval === 'once') {
+    return {
+      price: money(p.price_pennies, p.currency) + ', including any VAT. Paid once: nothing renews.',
+      renew: 'One PDF of the report as it stands today, emailed to you and kept in Your Dashboard within a few minutes of payment.',
+      button: 'Pay ' + money(p.price_pennies, p.currency), version: PURCHASE_VERSION, wording: PURCHASE_WORDING
+    };
+  }
   const price = money(p.price_pennies, p.currency) + ' a ' + per(p);
   if (trial) {
     return {
@@ -98,6 +113,7 @@ const slugOf = href => { try { return new URL(href, 'https://x.invalid').searchP
 /* the membership has landed: a new subscription, or every feature the plan sells */
 function landed(st, pending) {
   if (!st || !st.known || !pending) return false;
+  if (ONCE.indexOf(pending.kind) >= 0) return false;          // a PDF lands as a credit (confirmStep asks for it), not a state
   if (st.subscriptions > (pending.subsBefore || 0)) return true;
   const want = (pending.features || []).filter(f => f !== 'league');
   return want.length > 0 && want.every(f => (f === 'analytics' ? st.analyticsOk && (st.features || []).indexOf('analytics') >= 0 : (st.features || []).indexOf(f) >= 0));
@@ -233,7 +249,11 @@ async function plansStep(ctx) {
   ctx.payments = !!(bs.status === 200 && bs.data && bs.data.configured);
   ctx.pk = bs.status === 200 && bs.data && typeof bs.data.publishable_key === 'string' ? bs.data.publishable_key : null;
   ctx.signedIn = !!(await token());
-  const plans = ordered(pl && !pl.error ? pl.data : []);
+  /* Epinoia's tiers and a league's own plans; a pass, report emails, a league and a PDF are bought where they are offered.
+     The tiers that open what the reader reached for (ctx.key) come first, and say so. */
+  const all = ordered((pl && !pl.error ? pl.data : []).filter(isTier));
+  const opens = p => !!(ctx.key && Array.isArray(p.privileges) && p.privileges.indexOf(ctx.key) >= 0);
+  const plans = ctx.key ? all.filter(opens).concat(all.filter(p => !opens(p))) : all;
   list.textContent = '';
   if (!plans.length) {
     list.appendChild(el('p', 'pw-wait', 'Nothing is on sale here yet, so there is nothing to buy.'));
@@ -247,6 +267,7 @@ async function plansStep(ctx) {
     head.appendChild(el('b', null, p.name || 'Membership'));
     head.appendChild(el('span', 'pw-scope', p.league_id ? (ctx.leagueName || 'This league') : 'Every league'));
     card.appendChild(head);
+    if (opens(p)) card.appendChild(el('span', 'pw-trial', 'Opens this'));
     if (trial) card.appendChild(el('span', 'pw-trial', months(trial) + ' free'));
     const price = el('div', 'pw-price');
     if (trial) price.appendChild(el('span', 'pw-then', 'then '));
@@ -276,8 +297,9 @@ function consentStep(ctx, p) {
   W.h.textContent = p.name || 'Membership';
   W.body.textContent = '';
   const sum = el('div', 'pw-sum');
-  sum.append(el('p', 'pw-what', (p.league_id ? (ctx.leagueName || 'This league') + ' only' : 'Every league')),
+  sum.append(el('p', 'pw-what', ctx.what || (p.league_id ? (ctx.leagueName || 'This league') + ' only' : 'Every league')),
              el('p', 'pw-cost', S.price), el('p', 'pw-renew', S.renew));
+  if (p.includes_tier_name) sum.appendChild(el('p', 'pw-renew', 'Comes with ' + p.includes_tier_name + ' membership while it runs.'));
   W.body.appendChild(sum);
   const form = el('form', 'pw-form');
   form.noValidate = true;   // the window says what is missing, in its own words
@@ -289,12 +311,12 @@ function consentStep(ctx, p) {
   };
   const [l1, now] = box('pwNow', S.wording), [l2, adult] = box('pwAdult', ADULT_WORDING);
   const go = el('button', 'ep-btn pri pw-order', S.button); go.type = 'submit';
-  const back = el('button', 'ep-btn mini', 'other plans'); back.type = 'button';
-  back.addEventListener('click', () => plansStep(Object.assign(ctx, { planId: null })));
+  const back = el('button', 'ep-btn mini', ctx.direct ? 'cancel' : 'other plans'); back.type = 'button';
+  back.addEventListener('click', () => (ctx.direct ? shut() : plansStep(Object.assign(ctx, { planId: null }))));
   const row = el('div', 'pw-row'); row.append(go, back);
   form.append(l1, l2, row);
   W.body.appendChild(form);
-  W.body.appendChild(el('p', 'pw-fine', 'You can cancel online at any time from Your account. The card is taken by Stripe; Epinoia never sees it.'));
+  W.body.appendChild(el('p', 'pw-fine', (p.interval === 'once' ? '' : 'You can cancel online at any time from Your account. ') + 'The card is taken by Stripe; Epinoia never sees it.'));
   form.addEventListener('submit', async e => {
     e.preventDefault();
     if (!now.checked || !adult.checked) { msg('Tick both boxes to continue.', 'bad'); (!now.checked ? now : adult).focus(); return; }
@@ -309,15 +331,15 @@ async function payStep(ctx, p, S, undo) {
   const next = hereFor(root.location);
   /* on the page when there is a publishable key and this page may frame its own site; else Stripe's own page */
   const embedded = !!ctx.pk && framesSelf();
-  const res = await billing({ action: 'checkout', planId: p.id, next, embedded,
+  const res = await billing({ action: 'checkout', planId: p.id, next, embedded, details: ctx.details || undefined,
     consent: { version: S.version, acknowledged: true, adult: true } });
   if (!W) return;
-  const pending = { planId: p.id, features: p.features || [], leagueId: p.league_id || ctx.leagueId || null, leagueSlug: ctx.leagueSlug || '',
-    subsBefore: ctx.st ? ctx.st.subscriptions : 0, at: Date.now() };
+  const pending = { planId: p.id, kind: p.kind || 'tier', subject: ctx.details && ctx.details.subject_id || null, features: p.features || [],
+    leagueId: p.league_id || ctx.leagueId || null, leagueSlug: ctx.leagueSlug || '', subsBefore: ctx.st ? ctx.st.subscriptions : 0, at: Date.now() };
   try { root.sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending)); } catch (_) { /* the subscription count still tells */ }
   /* Stripe's own page, coming back here: when this page cannot frame the payment, or the frame cannot start */
   const hosted = async () => {
-    const again = await billing({ action: 'checkout', planId: p.id, next, consent: { version: S.version, acknowledged: true, adult: true } });
+    const again = await billing({ action: 'checkout', planId: p.id, next, details: ctx.details || undefined, consent: { version: S.version, acknowledged: true, adult: true } });
     if (again.status === 200 && typeof again.data.url === 'string' && /^https:\/\//.test(again.data.url)) { root.location.assign(again.data.url); return; }
     if (!W) return;
     consentStep(ctx, p); msg(refusal(again), 'bad');
@@ -365,19 +387,32 @@ async function confirmStep(pending) {
      exactly what landing a membership does. Marked as confirming, so access.js opens the window again after it. */
   if (p) { p.confirming = true; try { root.sessionStorage.setItem(PENDING_KEY, JSON.stringify(p)); } catch (_) { /* one try */ } }
   let ok = !!(p && p.done);   // landed before a reload: say so straight away
+  const once = !!(p && ONCE.indexOf(p.kind) >= 0);
   while (!ok && a && Date.now() < until) {
-    let st = null;
-    try { st = await a.load(Object.assign(p && p.leagueId ? { leagueId: p.leagueId } : p && p.leagueSlug ? { leagueSlug: p.leagueSlug } : {}, { force: true })); } catch (_) { st = null; }
-    if (landed(st, p)) { ok = true; break; }
+    if (once) {
+      let c = null;
+      try { c = a.pdfPurchase ? await a.pdfPurchase(p.kind, p.subject) : null; } catch (_) { c = null; }
+      if (c) { ok = true; break; }
+    } else {
+      let st = null;
+      try { st = await a.load(Object.assign(p && p.leagueId ? { leagueId: p.leagueId } : p && p.leagueSlug ? { leagueSlug: p.leagueSlug } : {}, { force: true })); } catch (_) { st = null; }
+      if (landed(st, p)) { ok = true; break; }
+    }
     await new Promise(r => setTimeout(r, POLL_MS));
   }
+  /* the page that offered it hears that it landed (the report draws itself for its download; the reports and league pages read again) */
+  if (ok && p) { try { root.dispatchEvent(new CustomEvent('epinoia:paid', { detail: { kind: p.kind, subject: p.subject, planId: p.planId } })); } catch (_) { /* old browser */ } }
   /* kept, marked done, until the fan closes the window: the page may be reloading itself right now (above) */
   if (p) { p.done = ok; try { root.sessionStorage.setItem(PENDING_KEY, JSON.stringify(p)); } catch (_) { /* fine */ } }
   if (!W) return;
   W.onShut = () => { try { root.sessionStorage.removeItem(PENDING_KEY); } catch (_) { /* fine */ } };
   if (ok) {
-    w.h.textContent = copy('modalDone') || 'Payment confirmed: welcome.';
-    line.textContent = 'Everything your membership opens is open now, here and on every page. A confirmation is on its way by email.';
+    const k = p && p.kind;
+    w.h.textContent = once ? 'Payment confirmed' : (copy('modalDone') || 'Payment confirmed: welcome.');
+    line.textContent = once ? 'Your PDF is being drawn now: it is emailed to you and kept in Your Dashboard within a few minutes.'
+      : k === 'league_setup' ? 'Your league is being built: it appears on this page in a moment, with a link to run it.'
+      : k === 'player_mail' || k === 'team_mail' ? 'Your report emails are set up: the first comes with the next game, or next week\u2019s reports. A confirmation is on its way by email.'
+      : 'Everything your membership opens is open now, here and on every page. A confirmation is on its way by email.';
   } else {
     w.h.textContent = 'Payment received';
     line.textContent = 'Your membership is taking longer than usual to switch on. It will appear on its own within a few minutes; ' +
@@ -389,14 +424,51 @@ async function confirmStep(pending) {
   setTimeout(() => { try { done.focus(); } catch (_) { /* fine */ } }, 0);
 }
 
+/* A THING BOUGHT DIRECTLY (0279): a PDF of one report, the Manager pass, report emails, a league: its plan found (by
+   id, or the one on sale of its kind), then the step before money. Signed out: a sign-in that comes back here. */
+async function directStep(ctx, o) {
+  const w = frame(o.title || 'Buy');
+  w.ctx = ctx;
+  const wait = el('p', 'pw-wait', 'Reading the price…');
+  w.body.appendChild(wait);
+  const [pl, bs, of] = await Promise.all([rpc('access_plans_public', { p_league: null }), billing({ action: 'status' }), rpc('my_trial_offers', { p_league: null })]);
+  if (!W || W.ctx !== ctx) return;
+  /* a tier's free trial as this buyer is due it (a past member is not) */
+  ctx.offers = of && !of.error && of.data && typeof of.data === 'object' ? of.data : null;
+  ctx.payments = !!(bs.status === 200 && bs.data && bs.data.configured);
+  ctx.pk = bs.status === 200 && bs.data && typeof bs.data.publishable_key === 'string' ? bs.data.publishable_key : null;
+  ctx.signedIn = !!(await token());
+  const list = pl && !pl.error && Array.isArray(pl.data) ? pl.data : [];
+  const p = o.planId ? list.find(x => x.id === o.planId) : list.filter(x => x.kind === o.product).sort((a, b) => (a.sort || 0) - (b.sort || 0))[0];
+  wait.remove();
+  if (!p || p.purchasable === false) { w.body.appendChild(el('p', 'pw-wait', 'This is not on sale yet.')); return; }
+  if (!ctx.payments) { w.body.appendChild(el('p', 'pw-wait', 'Payments open soon. Nothing has been charged.')); return; }
+  if (!ctx.signedIn) {
+    w.body.appendChild(el('p', 'pw-lead', 'Sign in first: what you buy belongs to your EPINOIA account. You come straight back here.'));
+    const go = el('a', 'ep-btn pri', 'Sign in'); go.href = signinHref(hereFor(root.location));
+    w.body.appendChild(go);
+    return;
+  }
+  try { const a = A(); ctx.st = a ? await a.load({}) : null; } catch (_) { ctx.st = null; }
+  consentStep(ctx, p);
+}
+
 /* ---------------------------------------------------------------- open --- */
 function open(o) {
   o = o || {};
+  /* the window's words are the account pack's, and it opens on pages that do not load it (a report, the Manager door) */
+  try { if (root.EpinoiaI18n && typeof root.EpinoiaI18n.need === 'function') root.EpinoiaI18n.need('account'); } catch (_) { /* English it is */ }
   const ctx = { href: o.href || '/epinoia/join/', key: o.key || null, leagueSlug: o.leagueSlug || slugOf(o.href || ''), planId: o.planId || null };
   if (o.confirming) return confirmStep(null);
+  if (o.product || (o.planId && (o.details || o.direct))) {
+    ctx.direct = true;
+    ctx.what = o.what || null;
+    ctx.details = o.product && ONCE.indexOf(o.product) >= 0 ? { subject_id: o.subject, subject_name: o.subjectName || '' } : (o.details || null);
+    return directStep(ctx, o);
+  }
   return plansStep(ctx);
 }
 
-return { open, close: shut, trialOf, trialEndWords, ordered, summary, hereFor, slugOf, landed, money, framesSelfFrom,
-  NOW_VERSION, NOW_WORDING, TRIAL_VERSION, TRIAL_WORDING, ADULT_WORDING };
+return { open, close: shut, trialOf, trialEndWords, ordered, summary, hereFor, slugOf, landed, money, framesSelfFrom, isTier,
+  NOW_VERSION, NOW_WORDING, TRIAL_VERSION, TRIAL_WORDING, ADULT_WORDING, PURCHASE_VERSION, PURCHASE_WORDING };
 }));

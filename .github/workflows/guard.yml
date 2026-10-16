@@ -324,6 +324,18 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/video-clubs.test.mjs
 
+      - name: Membership tiers as a matrix, PDFs paid once, and subscriptions that build (0279)
+        # every migration on PGlite: Free opens a section to everyone, Signed in to any account, a tier to its holders (a
+        # grant of a tier, a product that comes with one); a PDF paid once queued, drawn by the report worker on its ticket
+        # and kept as the buyer's own file, refunded; report emails added and paused, a private league built and its buyer's
+        # administration taken and given back; the front office for the club's own people with a tier; Manager mode's
+        # clubs written only while it is open. Then the three pages under EPINOIA GO (membership, reports, set up a
+        # league): their shells and rail rows, the tier cards drawn from the matrix, what each checkout is sent.
+        run: |
+          npm i --no-save @electric-sql/pglite
+          node supabase/tests/tiers.test.mjs
+          node supabase/tests/sales-pages.test.mjs
+
       - name: Live on demand - NCAA D2's games followed in full only while watched (0264)
         # on PGlite: watch_game marks a live (or due) game of an on-demand league watched and nothing else, a renewal within
         # 30 s writes nothing; live_frames_wanted is quiet for an unwatched on-demand game and unchanged for every other league

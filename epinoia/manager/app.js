@@ -639,6 +639,7 @@ async function route() {
   const name = A.route.name;
   const open = ['boards'];
   if (!A.signedIn && !open.includes(name)) return door(main);
+  if (A.locked && !open.includes(name)) return paidDoor(main);
   if (A.lgError && A.club && name !== 'settings' && name !== 'new') { main.textContent = ''; main.appendChild(h('div.mg-panel', A.lgError)); return; }
   if (!A.club && name !== 'new' && !open.includes(name)) { A.go('/new'); return; }
   if (A.club && A.club.status === 'draft' && !['squad', 'tactics', 'new', 'settings', 'boards', 'player'].includes(name)) { A.go('/squad'); return; }
@@ -664,6 +665,30 @@ function door(main) {
     h('p.mg-sub', h('a', { href: '#/boards' }, 'See the leaderboards')))));
 }
 
+/* MANAGER MODE IS FOR MEMBERS (0279, when the matrix's Free tick is taken off its row): the Manager pass at its price, or
+   the tier that includes it; the leaderboards stay open. Bought on the page (the payment window), then the page opens. */
+async function paidDoor(main) {
+  main.textContent = '';
+  const AX = root.EpinoiaAccess;
+  try { if (AX && AX.loadWall) await AX.loadWall(); } catch (_) { /* the prices are what is known */ }
+  const prod = AX && AX.products ? AX.products().manager : null;
+  const tiers = AX && AX.tiersFor ? AX.tiersFor('manager') : [];
+  const price = prod && prod.purchasable !== false && prod.price_pennies > 0 ? AX.amountText(prod.price_pennies, prod.currency) + (prod.interval === 'year' ? ' a year' : ' a month') : null;
+  const go = h('button.mg-btn.primary.big', price ? 'Play for ' + price : 'See membership');
+  go.addEventListener('click', () => {
+    if (price && AX.buy) AX.buy({ product: 'manager', title: 'Manager pass', what: 'EPINOIA Manager: every league, every season' });
+    else root.location.href = AX && AX.joinHref ? AX.joinHref({}) : '../membership/';
+  });
+  main.appendChild(h('div.mg-door', h('div.mg-panel.glow',
+    h('div', h('span.mg-word', { translate: 'no' }, 'Manager')),
+    h('h1', 'Manager mode is for members'),
+    h('p', 'Draft a squad from the players of every league on EPINOIA within your budget, set your lineups and tactics, and play the real clubs on the real calendar. Every game is simulated from the players\u2019 own numbers.'),
+    h('p', go),
+    tiers.length ? h('p.mg-sub', 'Also included in ' + tiers[0].name + ' membership.') : null,
+    h('p.mg-sub', h('a', { href: '#/boards' }, 'See the leaderboards')))));
+  root.addEventListener('epinoia:paid', () => root.location.reload(), { once: true });
+}
+
 /* ------------------------------------------------------------------ start --- */
 async function start() {
   /* a page changed while the club is still opening waits for it: the first route below reads the hash as it is then
@@ -672,6 +697,7 @@ async function start() {
   root.addEventListener('hashchange', () => { if (ready) route(); });
   try { A.signedIn = await site().signedIn(); } catch (_) { A.signedIn = false; }
   if (A.signedIn) {
+    try { A.locked = site().managerOpen ? !(await site().managerOpen()) : false; } catch (_) { A.locked = false; }
     try { A.uid = await site().userId(); } catch (_) { A.uid = null; }
     /* administrators may play practice games (#/practice; this browser's own clubs in local mode) */
     try { A.isAdmin = site().LOCAL ? true : await site().isAdmin(); } catch (_) { A.isAdmin = false; }

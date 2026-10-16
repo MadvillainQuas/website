@@ -782,3 +782,96 @@ The page that drew the lock redraws on the change (`emit({ reason: 'preview' })`
 scouting's premium columns the same way. The privacy page says all this (**Previews when signed out**).
 
 Tests: `supabase/tests/previews.test.mjs`.
+
+## 15. Membership tiers as a matrix, and things sold on their own (0279, 2026-10-16)
+
+Louie: each gated section gets a tickbox matrix with addable tiers, from Free to the highest tier, with
+"Signed in" as a column too; a player report PDF for £15 (adjustable) and a club report PDF; the front office
+for paying club staff with a team analytics tier; Manager mode optionally paid (£1 a month to start); and three
+sidebar pages to buy them (Membership, Reports, Set up a league). Answered: the £15 is **one PDF download** of the
+report as it stands that day; a report subscription is **the report emails**, self-service; a league is a
+**monthly** subscription.
+
+**The matrix** (`access_gates`, platform console → Plans → *Who gets what*). Rows are the lockable sections
+(`category`: analytics, reports, club, manager; `sort`), columns Free, Signed in and Epinoia's tiers
+(`access_plans.kind = 'tier'`, `league_id` null, in `sort` order). A row is `gate = 'free'` (everyone, signed out
+too), `'signin'` (any account) or `'tiers'` (the tiers whose `privileges` name its key). A tick covers every column
+to its right. Saved at once by `platform_save_matrix`. The old gates (analytics, club_report, player_report) were
+converted once: each plan's privileges are what its features opened, and a section that was 'free' (which still
+asked for an account) became 'signin'. A plan's ticks are what it opens; a plan with none (a league's own, or one
+older than the matrix) opens what its features opened (`access_feature_keys`).
+
+**Who holds a section**: `access_privileges_for(user, league)`: staff everything; otherwise the live
+subscriptions' plans (with the tier a plan comes with, `includes_tier`), the live grants of a tier (`grant_tier`,
+`access_grants.plan_id`) or of features, and in a league that keeps its analytics free (its own setting) the
+analytics sections there. `gate_open(key, league)`: free → open; memberships off → open; signin → an account;
+league admins; tiers → the privileges; old gates as 0222. `access_state` carries `privileges` (top level and per
+league); `access_wall` the rows' categories, the tiers on sale with what they open, and one product of each kind.
+
+**In the browser** (`access.js`): `featureLocked` asks the matrix first (free, then sign-in first, signin, tiers →
+`privilegeOk`); `signinFirst` never asks for a Free section, and the box score's own tabs and game pages stay open
+signed out unless memberships are on and the row says Signed in. A wall from a database before 0279 reads its
+'free' as 'signin', as it meant. `tiersFor(key)`, `products()`, `wallTiers()`, `wallGates()`; teasers name the
+cheapest tier that opens a section; `joinHref` points at `membership/` for Epinoia's tiers (a league's own plans
+stay on `join/`). `buy(o)` opens the payment window on anything: `{ planId }`, `{ product, subject, subjectName }`,
+`{ planId, details }`.
+
+**Things sold on their own** (`access_plans.kind`, Epinoia's only, priced in *Sold on their own*):
+- `player_pdf` / `club_pdf` (`interval = 'once'`): Checkout in payment mode (`paymentParams`, consent
+  `2026-10-p`); the webhook records the paid session (`billing_record_purchase`, once per session) in
+  `access_purchases` and starts the report worker (report-mail.yml, `GITHUB_DISPATCH_TOKEN`). **The PDF is drawn
+  by the server, never unlocked in the buyer's browser**: the worker takes the job (`pdf_render_claim`), draws
+  the report headless, keeps it in the private `reports` bucket as a file of the buyer's own (`report_files.user_id`,
+  their dashboard, a signed link for them alone; `pdf_render_done`) and emails it; a failure is tried again,
+  three times in all (`pdf_render_failed`). `my_pdf_purchase(kind, subject)` says where it has got to, and the
+  report tab says so. `charge.refunded` takes a PDF not yet drawn out of the queue.
+- `manager`: the Manager pass (privileges `manager`). Manager mode is free while its row is Free; untick it and
+  the game shows a paid door (manager/app.js `paidDoor`), and a trigger refuses writing a fan's clubs
+  (`manager_teams_gate`).
+- `player_mail` (`mail_kinds` weekly, matchups) / `team_mail` (games, opponents, own, zip): bought on the Reports
+  page with `details` (the player or club, the address, the name, the zone).
+- `league_setup`: bought on Set up a league with `details` (name, address, colour).
+Any of them may come with a tier (`includes_tier`). Free trials are a tier's only.
+
+**What a subscription builds** (`billing_provision`, run by `billing_apply_subscription` on every write, never
+raising): the checkout's `details` (written before payment, `access_checkouts.details`) are copied onto the
+subscription; live, a `report_mail_players` / `report_mail_subs` row is added or switched back on (linked by
+`access_subscription_id`, `trial_until` cleared), or a private league is built (its address made free if taken, a
+season ready) with the buyer as `league_admin`; ended, the address is paused, or the buyer's administration is
+removed and the league stays private (`leagues.setup_lapsed_at`) until paid again. A problem is kept on the row
+(`provision_error`) and shown in *Built and sold*.
+
+**Prices without Stripe**: a platform plan with a price and no `stripe_price_id` is sold at its price
+(`inlinePriced`, Checkout `price_data`), so the console's price is the price charged. `priceProblem` still checks a
+plan that names its own Stripe price. A league's plan still needs its price on its own account.
+
+**Front office**: `front_office_access(team)` → 'ok' | 'signin' | 'staff' (not the club's own people: its team
+managers, statisticians and whoever it shared the front office with) | 'members' (the club's, without a tier that
+ticks `frontOffice`). Everything open while memberships are off. t/team.js asks it and falls back to the old rule
+before 0279.
+
+Tests: `supabase/tests/tiers.test.mjs` (every migration on PGlite), billing, access, paywindow, memlock,
+signin-gates, sales-pages.
+
+**Previews and what the locks hold** (Louie, 2026-10-16: "a 'preview' access feature ... 3 pages in the reports and a
+small amount of things in front office", and "make certain that the preview isn't bypassable at all"):
+- A locked report draws its **first three pages** (`o.lock.preview`, 3) and stops: report.js breaks out of building
+  once they are drawn, so nothing past them (and no legend) is computed in the reader's browser; nothing to
+  download, print or prime; the cards (the PDF to buy, the membership card) under them. The report waits for the
+  reader's access answer and the matrix before drawing anything, and `privilegeOk` falls back to Epinoia's own
+  answer, then shuts while memberships are on: a paid report is never drawn on an answer that has not arrived.
+- A locked front office shows its depth chart (`frontOfficePreview`, static: no league views); the GM view, the
+  positions against the league and the win model stay behind the card. The club page asks `front_office_access`
+  directly (signed out too); an error shuts it while memberships are on.
+- A paid section with memberships on never says "an account is free": `signinFirst` is false for anything but a
+  Signed-in row, so the membership card shows, with its own sign-in link for members.
+- `window.EpinoiaAccess` is frozen and a non-writable, non-configurable window property: a console line cannot
+  replace `featureLocked`. The `epinoia_access_sim` switch's 'member' opens nothing unless `access_state` says the
+  reader is a platform administrator ('locked' still shows anyone the locks). The report worker's page is unlocked
+  only by a ticket the database made with the service key (`report_bot_ticket` / `report_bot_ok`, six hours), never
+  by `EPINOIA_RP_BOT` alone.
+- **What no browser-side lock can hold**: the report is assembled in the reader's browser from the same public data
+  the statistics pages show, by public code. Someone who rewrites that code in their own browser (a debugger, a
+  local override) and runs it against the public data could draw the rest themselves. The paid PDF itself is not
+  reachable that way (the server draws it, the bucket is private), and closing even the rest would mean drawing
+  every report on the server and holding back the data it reads - a larger change, not made.

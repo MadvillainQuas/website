@@ -531,7 +531,7 @@ console.log('\nevery report the mailer draws');
 {
   const src = read('scripts', 'report_mailer.mjs');
   const pdf = src.slice(src.indexOf('export async function pdfOf('), src.indexOf('/* the attachments in parts'));
-  ok('is primed, with the Synergy numbers the admins kept, when 0228 is there', /window\.EPINOIA_RP_BOT = true; if \(s\) \{ window\.EPINOIA_RP_PRIME = true; window\.EPINOIA_SYNERGY = s; \}/.test(pdf) &&
+  ok('is primed, with the Synergy numbers the admins kept, when 0228 is there (and carries the worker\'s ticket, 0279)', /window\.EPINOIA_RP_BOT = true; if \(t\) window\.EPINOIA_RP_TICKET = t; if \(s\) \{ window\.EPINOIA_RP_PRIME = true; window\.EPINOIA_SYNERGY = s; \}/.test(pdf) &&
      /synergy_profiles\?select=player_id,profile&order=player_id&limit=1000&offset=/.test(src));
   ok('...waits until it is built and done priming, RAPM included', /window\.__rpBuilt > 0 && !window\.__rpBusy/.test(pdf) && /timeout: 600000/.test(pdf));
   ok('...and keeps RAPM it worked out, for the next report of that league and season', /keepRapm\(await page\.evaluate\(\(\) => window\.__rpRapm \|\| null\)/.test(pdf) && /report_rapm\?on_conflict=key/.test(src));

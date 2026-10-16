@@ -2095,7 +2095,8 @@ let plans = null;
 
 const PLAN_MISSING = e => !!e && (e.code === 'PGRST202' ||
   /schema cache|could not find the function/i.test(e.message || ''));
-const planPriced = p => p.has_price != null ? !!p.has_price : !!p.stripe_price_id;
+/* can it be bought: its own Stripe price, or (0279) Epinoia's plan with a price the checkout states itself */
+const planPriced = p => p.purchasable != null ? !!p.purchasable : p.has_price != null ? !!p.has_price : !!p.stripe_price_id;
 const planMoney = p => window.EpinoiaAccessUI
   ? window.EpinoiaAccessUI.money(p.price_pennies, p.currency) + ' ' + window.EpinoiaAccessUI.per(p.interval)
   : String(p.price_pennies) + 'p / ' + p.interval;
@@ -2134,6 +2135,11 @@ async function loadPlans() {
     plans: d.plans || [],
     leagues: d.leagues || [],
     totals: d.totals || {},
+    /* 0279: the matrix's rows, what subscriptions built and the PDFs sold (absent before it) */
+    matrix: Array.isArray(d.gates),
+    gates: d.gates || [],
+    built: d.built || [],
+    purchases: d.purchases || [],
     trials: !tr.error && tr.data && typeof tr.data === 'object' && !td.error
       ? { own: tr.data, platform: Number(td.data) || 0 } : null
   };
@@ -2141,6 +2147,9 @@ async function loadPlans() {
   drawPlanTiles();
   drawAnalyticsDefault();
   drawTrials();
+  drawMatrix();
+  drawProducts();
+  drawBuilt();
   drawWall();
   drawPlatformPlans();
   drawLeagueAccess();
@@ -2238,6 +2247,12 @@ function drawPlatformGrantForm() {
     lab.append(b, document.createTextNode(' ' + ((F[k] || {}).label || k)));
     r2.appendChild(lab);
   });
+  /* OR A TIER (0279 grant_tier): everything its column of Who gets what opens */
+  const tierSel = el('select', 'ep-input');
+  tierSel.appendChild(Object.assign(el('option', null, 'or a tier…'), { value: '' }));
+  ((plans && plans.plans) || []).filter(p => !p.league_id && ['tier', 'manager'].indexOf(p.kind || 'tier') >= 0)
+    .forEach(p => tierSel.appendChild(Object.assign(el('option', null, p.name + (p.active === false ? ' (off sale)' : '')), { value: p.id })));
+  if (plans && plans.matrix) r2.appendChild(tierSel);
   const go = el('button', 'ep-btn pri', 'give access'); go.type = 'button';
   r2.appendChild(go);
   host.append(r1, r2);
@@ -2245,14 +2260,19 @@ function drawPlatformGrantForm() {
     const e = email.value.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return say('Enter the email address the person signs in with.', 'err');
     const features = PLATFORM_FEATURES.filter(k => boxes[k].checked);
-    if (!features.length) return say('Tick what the access unlocks.', 'err');
+    const tierId = tierSel.value;
+    if (!features.length && !tierId) return say('Tick what the access unlocks, or choose a tier.', 'err');
     const expires = len.value();
     if (expires === undefined) return say('Choose a day still to come for the trial to end, or no end date.', 'err');
     go.disabled = true;
-    const id = await rpc('grant_access', { p_league: null, p_email: e, p_features: features, p_expires: expires, p_note: note.value.trim() || null });
+    const id = tierId
+      ? await rpc('grant_tier', { p_email: e, p_plan: tierId, p_expires: expires, p_note: note.value.trim() || null })
+      : await rpc('grant_access', { p_league: null, p_email: e, p_features: features, p_expires: expires, p_note: note.value.trim() || null });
     go.disabled = false;
     if (!id) return;
-    say('Access given to ' + e + ': ' + features.map(k => (F[k] || { label: k }).label).join(' + ') +
+    const tierName = tierId ? (tierSel.options[tierSel.selectedIndex] || {}).textContent : null;
+    tierSel.value = '';
+    say('Access given to ' + e + ': ' + (tierName || features.map(k => (F[k] || { label: k }).label).join(' + ')) +
         (expires ? ', a free trial until ' + new Date(expires).toLocaleDateString() : ', with no end date') + ', in every league.', 'ok');
     email.value = ''; note.value = '';
     PLATFORM_FEATURES.forEach(k => { boxes[k].checked = false; });
@@ -2262,7 +2282,8 @@ function drawPlatformGrantForm() {
 async function loadPlatformGrants() {
   const host = $('#plGrants');
   if (!host) return;
-  const { data, error } = await sb.from('access_grants').select('id,email,features,expires_at,note,created_at')
+  const sel = plans && plans.matrix ? 'id,email,features,plan_id,expires_at,note,created_at' : 'id,email,features,expires_at,note,created_at';
+  const { data, error } = await sb.from('access_grants').select(sel)
     .is('league_id', null).is('revoked_at', null).order('created_at', { ascending: false }).limit(200);
   host.textContent = '';
   if (error) { host.appendChild(el('p', 'note bad', 'The grants could not be read: ' + (error.message || error))); return; }
@@ -2275,7 +2296,8 @@ async function loadPlatformGrants() {
     const row = el('div', 'card');
     const c0 = el('div');
     c0.appendChild(el('div', 'nm', g.email));
-    c0.appendChild(el('div', 'mt', (g.features || []).map(k => (F[k] || { label: k }).label).join(' + ') + (g.note ? ' \u00b7 ' + g.note : '')));
+    const tierOf = g.plan_id && plans ? (plans.plans.find(p => p.id === g.plan_id) || {}).name : null;
+    c0.appendChild(el('div', 'mt', (tierOf ? tierOf + ' (a tier)' : (g.features || []).map(k => (F[k] || { label: k }).label).join(' + ')) + (g.note ? ' \u00b7 ' + g.note : '')));
     /* ITS LENGTH, changed in place (0275 set_access_grant_expiry) */
     c0.appendChild(TRIAL.edit(g.expires_at, async end => {
       const { error: e3 } = await sb.rpc('set_access_grant_expiry', { p_grant: g.id, p_expires: end });
@@ -2542,6 +2564,243 @@ function drawTrials() {
   }
 }
 
+/* WHO GETS WHAT (0279; Louie, 2026-10-16: "each gated section have an organised tickbox matrix and addable membership
+   tiers ... starting with 'free' column and ending with the highest tier", and "being logged in is another tier"). A row
+   each lockable section (access_gates), grouped; a column for Free (everyone, signed out too), Signed in (any free
+   account) and each of Epinoia's tiers in its order (new tier adds one). A tick opens the row to that column, and Free or
+   Signed in ticked covers every column to its right. Saved at once (platform_save_matrix, audited); pages read it within
+   five minutes. */
+const MATRIX_GROUPS = [['analytics', 'Analytics'], ['reports', 'Reports'], ['club', 'For clubs'], ['manager', 'Manager mode']];
+function matrixCss() {
+  if (document.getElementById('mx-style')) return;
+  const st = el('style'); st.id = 'mx-style';
+  st.textContent = '.mx th.c,.mx td.c{text-align:center;min-width:86px}.mx th.c small{display:block;font-weight:400;opacity:.75}' +
+    '.mx tr.grp td{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;background:var(--panel-2,#eef4f0)}' +
+    '.mx td.c input{width:18px;height:18px;cursor:pointer}.mx td.c input:disabled{cursor:default;opacity:.55}.mx th.off{opacity:.6}' +
+    '.mx td.k .mt{max-width:420px}.mx-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}' +
+    '.pr-card{border:1px solid var(--rule,#ddd);border-radius:10px;padding:10px 12px;margin:0 0 10px}.pr-card .row{flex-wrap:wrap;gap:8px;align-items:center}' +
+    '.pr-card h4{margin:0 0 6px;font-size:14px}.pr-kinds{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px}';
+  document.head.appendChild(st);
+}
+function drawMatrix() {
+  const host = $('#plMatrix'); if (!host) return;
+  host.textContent = '';
+  matrixCss();
+  if (!plans.matrix) { host.appendChild(el('p', 'note bad', 'Run migration 0279 (membership tiers as a matrix) to tick who gets what.')); return; }
+  const A = window.EpinoiaAccess;
+  const label = k => (A && A.CATALOGUE && A.CATALOGUE.locks[k] ? A.CATALOGUE.locks[k].label : k);
+  const what = k => (A && A.CATALOGUE && A.CATALOGUE.locks[k] ? A.CATALOGUE.locks[k].what : '');
+  const tiers = plans.plans.filter(p => !p.league_id && (p.kind || 'tier') === 'tier')
+    .sort((a, b) => ((a.sort || 0) - (b.sort || 0)) || (a.price_pennies - b.price_pennies));
+  host.appendChild(el('p', 'lead', 'Tick who gets each section. Free opens it to everyone, signed out too; Signed in to anyone with a ' +
+    'free account; a tier to its members (and to whoever buys something that comes with that tier). Free or Signed in ticked ' +
+    'covers every column to its right. Platform and league administrators always see everything.' +
+    (plans.membershipsEnabled === false ? ' Memberships are switched off: nothing is locked until they are, but an account is still asked for wherever Free is not ticked.' : ''))).dataset.i18nCtx = 'prose';
+  const bar = el('div', 'mx-bar');
+  const add = el('button', 'ep-btn', 'new tier'); add.type = 'button';
+  add.addEventListener('click', () => openPlanForm(null));
+  bar.append(add, el('span', 'mt', tiers.length ? 'A column each tier, in its order on the page (edit a tier to move it).' : 'No tiers yet: add one to sell sections.'));
+  host.appendChild(bar);
+
+  /* the state: each row's gate and each tier's ticks, as stored and as changed */
+  const gates = {}; plans.gates.forEach(g => { gates[g.key] = g.gate; });
+  const ticks = {}; tiers.forEach(t => { ticks[t.id] = new Set(t.privileges || []); });
+  const orig = JSON.stringify([gates, tiers.map(t => [t.id, [...ticks[t.id]].sort()])]);
+  const wrap = el('div', 'scroll');
+  const tbl = el('table', 'tbl mx');
+  const hr = tbl.createTHead().insertRow();
+  hr.appendChild(el('th', null, 'Section'));
+  const th = (t, sub, cls) => { const c = el('th', 'c' + (cls ? ' ' + cls : ''), t); if (sub) c.appendChild(el('small', null, sub)); hr.appendChild(c); return c; };
+  th('Free', 'everyone');
+  th('Signed in', 'a free account');
+  tiers.forEach(t => {
+    const c = th(t.name, planMoney(t) + (t.active === false ? ' · off sale' : planPriced(t) ? '' : ' · not buyable'), t.active === false ? 'off' : '');
+    const e = el('button', 'ep-btn mini', 'edit'); e.type = 'button'; e.addEventListener('click', () => openPlanForm(t));
+    c.appendChild(e);
+  });
+  const body = tbl.createTBody();
+  const cells = {};       // key -> { free, signin, tiers: { id: box } }
+  const paint = key => {
+    const c = cells[key], g = gates[key];
+    c.free.checked = g === 'free';
+    c.signin.checked = g === 'free' || g === 'signin'; c.signin.disabled = g === 'free';
+    tiers.forEach(t => { const b = c.tiers[t.id]; b.checked = g === 'free' || g === 'signin' || ticks[t.id].has(key); b.disabled = g === 'free' || g === 'signin'; });
+  };
+  MATRIX_GROUPS.forEach(([cat, name]) => {
+    const rows = plans.gates.filter(g => (g.category || 'analytics') === cat).sort((a, b) => ((a.sort || 0) - (b.sort || 0)) || a.key.localeCompare(b.key));
+    if (!rows.length) return;
+    const gr = body.insertRow(); gr.className = 'grp';
+    const gc = gr.insertCell(); gc.colSpan = 3 + tiers.length; gc.textContent = name;
+    rows.forEach(g => {
+      const tr = body.insertRow();
+      const k = tr.insertCell(); k.className = 'k';
+      k.append(el('div', 'nm', label(g.key)), el('div', 'mt', what(g.key)));
+      const box = () => { const b = el('input'); b.type = 'checkbox'; return b; };
+      const c = cells[g.key] = { free: box(), signin: box(), tiers: {} };
+      const cell = b => { const td = tr.insertCell(); td.className = 'c'; td.appendChild(b); };
+      cell(c.free); cell(c.signin);
+      tiers.forEach(t => { c.tiers[t.id] = box(); cell(c.tiers[t.id]); });
+      c.free.addEventListener('change', () => { gates[g.key] = c.free.checked ? 'free' : 'signin'; paint(g.key); dirty(); });
+      c.signin.addEventListener('change', () => { gates[g.key] = c.signin.checked ? 'signin' : 'tiers'; paint(g.key); dirty(); });
+      tiers.forEach(t => c.tiers[t.id].addEventListener('change', () => {
+        if (c.tiers[t.id].checked) ticks[t.id].add(g.key); else ticks[t.id].delete(g.key);
+        dirty();
+      }));
+      paint(g.key);
+    });
+  });
+  wrap.appendChild(tbl);
+  host.appendChild(wrap);
+  const save = el('button', 'ep-btn', 'save who gets what'); save.type = 'button';
+  const note = el('span', 'mt', '');
+  const dirty = () => { const now = JSON.stringify([gates, tiers.map(t => [t.id, [...ticks[t.id]].sort()])]); save.classList.toggle('pri', now !== orig); note.textContent = now !== orig ? 'not saved yet' : ''; };
+  save.addEventListener('click', async () => {
+    const before = {}; plans.gates.forEach(g => { before[g.key] = g.gate; });
+    const freed = Object.keys(gates).filter(k => gates[k] === 'free' && before[k] !== 'free');
+    if (freed.length && !confirm('Open ' + freed.map(label).join(', ') + ' to everyone, signed out too?')) return;
+    const payload = { gates, tiers: {} };
+    tiers.forEach(t => { payload.tiers[t.id] = [...ticks[t.id]].sort(); });
+    save.disabled = true;
+    const out = await rpc('platform_save_matrix', { p: payload });
+    save.disabled = false;
+    if (!out) return;
+    say('Who gets what is saved. Pages pick it up within five minutes.', 'ok');
+    loadPlans();
+  });
+  const r = el('div', 'row'); r.append(save, note);
+  host.appendChild(r);
+}
+
+/* SOLD ON THEIR OWN (0279): a report's PDF paid once (from its Report tab), the Manager pass, a player's and a club's
+   report emails (the Reports page; as many tiers of each as wanted), and a league built when paid (Set up a league).
+   Each priced here, on sale or not, and coming with a membership tier or not. A price is charged exactly as written. */
+const PRODUCT_KINDS = [
+  ['player_pdf', 'Player report PDF', 'One PDF of a player’s report as it stands that day, bought from the player’s Report tab and downloaded once.', false],
+  ['club_pdf', 'Club report PDF', 'One PDF of a club’s report as it stands that day, bought from the club’s Report tab and downloaded once.', false],
+  ['manager', 'Manager pass', 'Manager mode on its own. It is free while Manager mode has Free (or Signed in) ticked in Who gets what: untick them to charge for it. A tier ticked on its row includes it too.', false],
+  ['player_mail', 'A player’s report emails', 'Bought on the Reports page: a player picked and an address, the weekly report every Monday morning (and the match-up reports where ticked). Add tiers for different mixes.', true],
+  ['team_mail', 'A club’s report emails', 'Bought on the Reports page: a club picked and an address; each tier sends what is ticked. Add tiers for different mixes.', true],
+  ['league_setup', 'Your own league', 'Bought on Set up a league: a private league built as soon as it is paid, its buyer its administrator. If the subscription ends, the league stays (private) and the buyer stops administering it until it is paid again.', false]];
+const MAIL_KINDS = {
+  player_mail: [['weekly', 'the weekly player report'], ['matchups', 'the match-up reports']],
+  team_mail: [['games', 'each game’s analysis'], ['opponents', 'the opponents’ scouting reports'], ['own', 'the club’s own report'], ['zip', 'the players’ reports (ZIP)']]
+};
+function drawProducts() {
+  const host = $('#plProducts'); if (!host) return;
+  host.textContent = '';
+  matrixCss();
+  if (!plans.matrix) { host.appendChild(el('p', 'note bad', 'Run migration 0279 to sell these.')); return; }
+  const UI = window.EpinoiaAccessUI;
+  const tiers = plans.plans.filter(p => !p.league_id && (p.kind || 'tier') === 'tier');
+  host.appendChild(el('p', 'lead', 'Priced here and charged exactly as written (VAT included); nothing to make in Stripe. Each can come with a membership ' +
+    'tier: while it runs its buyer has that tier too.')).dataset.i18nCtx = 'prose';
+  PRODUCT_KINDS.forEach(([kind, title, hint, many]) => {
+    const list = plans.plans.filter(p => !p.league_id && p.kind === kind);
+    const box = el('div', 'pr-card');
+    box.appendChild(el('h4', null, title));
+    box.appendChild(el('p', 'mt', hint));
+    const rowFor = p => {
+      const once = kind === 'player_pdf' || kind === 'club_pdf';
+      const r = el('div', 'row');
+      const name = el('input', 'ep-input'); name.maxLength = 60; name.value = p.name || title; name.style.minWidth = '200px';
+      const price = el('input', 'ep-input'); price.inputMode = 'decimal'; price.style.width = '90px';
+      price.value = p.price_pennies != null ? (Number(p.price_pennies) / 100).toFixed(2) : '';
+      const every = el('select', 'ep-input');
+      [['month', 'a month'], ['year', 'a year']].forEach(([v, t]) => every.appendChild(Object.assign(el('option', null, t), { value: v })));
+      every.value = p.interval === 'year' ? 'year' : 'month';
+      const tier = el('select', 'ep-input');
+      tier.appendChild(Object.assign(el('option', null, 'no tier with it'), { value: '' }));
+      tiers.forEach(t => tier.appendChild(Object.assign(el('option', null, 'comes with ' + t.name), { value: t.id })));
+      tier.value = p.includes_tier || '';
+      const onLab = el('label', 'sw'), on = el('input'); on.type = 'checkbox'; on.checked = p.active !== false && !!p.id;
+      onLab.append(on, document.createTextNode(' on sale'));
+      r.append(name, el('span', 'mt', '£'), price, once ? el('span', 'mt', 'once') : every, tier, onLab);
+      const kinds = {};
+      if (MAIL_KINDS[kind]) {
+        const kd = el('div', 'pr-kinds');
+        MAIL_KINDS[kind].forEach(([k, t]) => {
+          const lab = el('label', 'sw'), b = el('input'); b.type = 'checkbox';
+          b.checked = p.mail_kinds ? p.mail_kinds.indexOf(k) >= 0 : true;
+          if (k === 'weekly') { b.checked = true; b.disabled = true; }
+          kinds[k] = b; lab.append(b, document.createTextNode(' ' + t)); kd.appendChild(lab);
+        });
+        r.appendChild(kd);
+      }
+      const blurb = el('input', 'ep-input'); blurb.maxLength = 400; blurb.placeholder = 'what the page says about it (optional)'; blurb.value = p.blurb || ''; blurb.style.flex = '1 1 100%';
+      r.appendChild(blurb);
+      const go = el('button', 'ep-btn mini pri', p.id ? 'save' : 'add'); go.type = 'button';
+      if (p.id) r.appendChild(el('span', 'mt', (p.holders || 0) + (once ? ' sold' : ' running')));
+      r.appendChild(go);
+      go.addEventListener('click', async () => {
+        const pennies = UI && UI.toPennies ? UI.toPennies(price.value) : Math.round(Number(price.value) * 100);
+        if (pennies == null || !(pennies >= 0)) return say('Write the price in pounds, like 15 or 4.99.', 'err');
+        if (on.checked && pennies === 0) return say('A price of £0 cannot be on sale: set a price, or untick on sale.', 'err');
+        const payload = { kind, name: name.value.trim() || title, blurb: blurb.value.trim(), price_pennies: pennies,
+          interval: once ? 'once' : every.value, active: on.checked, includes_tier: tier.value || '', seller: 'platform', league_id: null };
+        if (MAIL_KINDS[kind]) payload.mail_kinds = MAIL_KINDS[kind].map(([k]) => k).filter(k => kinds[k].checked);
+        if (p.id) payload.id = p.id;
+        go.disabled = true;
+        const id = await rpc('save_access_plan', { p: payload });
+        go.disabled = false;
+        if (!id) return;
+        say('“' + payload.name + '” saved' + (payload.active ? ', on sale.' : ', not on sale.'), 'ok');
+        loadPlans();
+      });
+      return r;
+    };
+    list.sort((a, b) => ((a.sort || 0) - (b.sort || 0)) || (a.price_pennies - b.price_pennies)).forEach(p => box.appendChild(rowFor(p)));
+    if (!list.length || many) {
+      const more = el('button', 'ep-btn mini', list.length ? 'add another tier' : 'add it'); more.type = 'button';
+      more.addEventListener('click', () => { box.insertBefore(rowFor({ kind, interval: 'month' }), more); more.remove(); });
+      box.appendChild(more);
+    }
+    host.appendChild(box);
+  });
+}
+
+/* BUILT AND SOLD (0279): every report subscription and league bought (what it is for, whether it is running, what was
+   built, a problem building it), and the PDFs sold */
+function drawBuilt() {
+  const host = $('#plBuilt'); if (!host) return;
+  host.textContent = '';
+  if (!plans.matrix) return;
+  const day = iso => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+  if (!plans.built.length && !plans.purchases.length) { host.appendChild(el('p', 'note', 'Nothing bought yet.')); return; }
+  if (plans.built.length) {
+    const wrap = el('div', 'scroll'), t = el('table', 'tbl');
+    const hr = t.createTHead().insertRow();
+    ['Bought', 'By', 'For', 'State'].forEach(h => hr.appendChild(el('th', null, h)));
+    const body = t.createTBody();
+    plans.built.forEach(b => {
+      const tr = body.insertRow();
+      tr.insertCell().appendChild(el('div', 'nm', b.plan_name || b.kind));
+      tr.insertCell().appendChild(el('span', 'mt', (b.email || '') + ' · ' + day(b.created_at)));
+      const d = b.details || {};
+      const forWords = b.kind === 'league_setup' ? (d.league_name || '') + (d.slug ? ' (' + d.slug + ')' : '')
+        : (d.email ? 'to ' + d.email + ' · ' : '') + (b.kind === 'player_mail' ? 'player ' : 'club ') + String(d.player_id || d.team_id || '').slice(0, 8);
+      tr.insertCell().appendChild(el('span', 'mt', forWords));
+      tr.insertCell().appendChild(el('span', 'pill' + (b.error ? ' pa' : b.active ? ' la' : ''), b.error ? 'not built: ' + b.error : (b.active ? 'running' : b.status) + (b.provision && b.provision.league_id ? ' · league built' : b.provision ? ' · set up' : '')));
+    });
+    wrap.appendChild(t); host.appendChild(wrap);
+  }
+  if (plans.purchases.length) {
+    host.appendChild(el('div', 'ax-sub', 'PDFs sold'));
+    const wrap = el('div', 'scroll'), t = el('table', 'tbl');
+    const hr = t.createTHead().insertRow();
+    ['Report', 'By', 'Paid', 'Downloaded'].forEach(h => hr.appendChild(el('th', null, h)));
+    const body = t.createTBody();
+    plans.purchases.forEach(u => {
+      const tr = body.insertRow();
+      tr.insertCell().appendChild(el('div', 'nm', (u.kind === 'club_pdf' ? 'Club: ' : 'Player: ') + (u.subject_name || String(u.subject_id).slice(0, 8))));
+      tr.insertCell().appendChild(el('span', 'mt', u.email || ''));
+      const paid = window.EpinoiaAccessUI ? window.EpinoiaAccessUI.money(u.amount_pennies, u.currency) : (u.amount_pennies / 100).toFixed(2);
+      tr.insertCell().appendChild(el('span', 'mt', paid + ' · ' + day(u.paid_at) + (u.status === 'refunded' ? ' · refunded' : '') + (u.livemode === false ? ' · test' : '')));
+      tr.insertCell().appendChild(el('span', 'mt', u.used_at ? day(u.used_at) : 'not yet'));
+    });
+    wrap.appendChild(t); host.appendChild(wrap);
+  }
+}
+
 /* WHAT IS BEHIND THE WALL (0222). Every lockable section of the site (access.js CATALOGUE.locks, one list for the pages
    and this editor) with what opens it - free to everyone, the analytics, the club report or the player report - and the
    title and up to three lines its teaser shows when it is locked (blank: the page's own words). Saved a row at a time
@@ -2587,10 +2846,12 @@ async function drawWall() {
     'read for five minutes, so a change reaches every visitor within five minutes.' +
     (plans && plans.membershipsEnabled === false ? ' Memberships are switched off, so nothing is locked until they are switched on.' : ''))).dataset.i18nCtx = 'prose';
 
+  /* with the matrix (0279) who gets each section is ticked in Who gets what; this table words its teaser */
+  const matrix = Array.isArray(w && w.tiers);
   const wrap = el('div', 'scroll');
   const t = el('table', 'tbl');
   const hr = t.createTHead().insertRow();
-  ['Section', 'Opens with', 'Teaser, when locked', ''].forEach(h => hr.appendChild(el('th', null, h)));
+  (matrix ? ['Section', 'Teaser, when locked', ''] : ['Section', 'Opens with', 'Teaser, when locked', '']).forEach(h => hr.appendChild(el('th', null, h)));
   const body = t.createTBody();
   Object.keys(A.CATALOGUE.locks).forEach(key => {
     const L = A.CATALOGUE.locks[key], cur = rows[key] || { gate: L.gate };
@@ -2601,7 +2862,8 @@ async function drawWall() {
     const sel = el('select', 'ep-input');
     Object.keys(GATE_WORDS).forEach(g => { const o = el('option', null, GATE_WORDS[g]); o.value = g; sel.appendChild(o); });
     sel.value = cur.gate || L.gate;
-    tr.insertCell().appendChild(sel);
+    if (matrix) { const o2 = el('option', null, cur.gate); o2.value = cur.gate; if (!GATE_WORDS[cur.gate]) sel.appendChild(o2); sel.value = cur.gate || L.gate; }
+    else tr.insertCell().appendChild(sel);
     const c2 = tr.insertCell();
     const ti = el('input', 'ep-input'); ti.maxLength = 120; ti.placeholder = 'the page\'s own title'; ti.value = cur.title || '';
     const li = el('textarea', 'ep-input'); li.rows = 2; li.maxLength = 480; li.placeholder = 'the page\'s own lines: up to three, one a line';
@@ -2623,7 +2885,7 @@ async function drawWall() {
       const out = await rpc('platform_set_gate', { p_key: key, p_gate: sel.value, p_title: ti.value.trim() || null, p_lines: lines.length ? lines : null });
       save.disabled = false;
       if (!out) return;
-      say('“' + L.label + '” opens with ' + GATE_WORDS[sel.value] + '.', 'ok');
+      say(matrix ? '“' + L.label + '”: its teaser is saved.' : '“' + L.label + '” opens with ' + GATE_WORDS[sel.value] + '.', 'ok');
       drawWall();
     });
     ac.appendChild(save);
@@ -2666,13 +2928,13 @@ function openPlanForm(plan) {
   const A = window.EpinoiaAccessUI;
   if (!A) return say('access-ui.js did not load, so plans cannot be edited. Reload the page.', 'err');
   const form = A.planForm({
-    plan, leagueId: null, features: PLATFORM_FEATURES, seller: 'platform', say,
+    plan, leagueId: null, features: PLATFORM_FEATURES, seller: 'platform', say, matrix: !!(plans && plans.matrix),
     trial: plans && plans.trials ? { platform: plans.trials.platform, own: trialOwn(plan) } : null,
     cancel: () => { host.textContent = ''; },
     save: async payload => {
       payload.league_id = null;
       payload.seller = 'platform';
-      payload.features = (payload.features || []).filter(k => PLATFORM_FEATURES.indexOf(k) >= 0);   // never the league
+      if (payload.features) payload.features = payload.features.filter(k => PLATFORM_FEATURES.indexOf(k) >= 0);   // never the league
       const tm = payload.trial_months; delete payload.trial_months;
       const id = await rpc('save_access_plan', { p: payload });
       if (!id) return false;
@@ -2684,8 +2946,8 @@ function openPlanForm(plan) {
       host.textContent = '';
       say(payload.id
         ? '“' + payload.name + '” saved.' + (payload.active ? '' : ' It is not on sale.')
-        : '“' + payload.name + '” created.' +
-          (payload.stripe_price_id ? '' : ' Add its Stripe price id to put it on sale.'), 'ok');
+        : '“' + payload.name + '” created.' + (plans && plans.matrix ? ' Tick what it opens in its column of Who gets what.' :
+          (payload.stripe_price_id ? '' : ' Add its Stripe price id to put it on sale.')), 'ok');
       loadPlans();
       return true;
     }
@@ -2703,7 +2965,7 @@ function planStateWords(p) {
 
 function drawPlatformPlans() {
   const host = $('#plList'); host.textContent = '';
-  const rows = plans.plans.filter(p => !p.league_id);
+  const rows = plans.plans.filter(p => !p.league_id && (p.kind || 'tier') === 'tier');
   if (!rows.length) {
     host.appendChild(el('div', 'empty', 'No platform plans yet.'));
     return;
@@ -2718,11 +2980,11 @@ function drawPlatformPlans() {
     if (p.active === false) tr.style.opacity = '.55';
     const c0 = tr.insertCell();
     c0.appendChild(el('div', 'nm', p.name));
-    c0.appendChild(el('div', 'mt', 'unlocks ' + planFeatures(p.features) +
+    c0.appendChild(el('div', 'mt', (plans.matrix ? (p.privileges || []).length + ' sections ticked' : 'unlocks ' + planFeatures(p.features)) +
       ' · order ' + (p.sort || 0) + (p.blurb ? ' · ' + p.blurb : '')));
     tr.insertCell().appendChild(el('span', 'mt', planMoney(p)));
     tr.insertCell().appendChild(el('span', 'mt', trialWords(p) || '—'));
-    tr.insertCell().appendChild(el('span', 'mt', p.stripe_price_id || '—'));
+    tr.insertCell().appendChild(el('span', 'mt', p.stripe_price_id || (plans.matrix && planPriced(p) ? 'its own price' : '—')));
     tr.insertCell().appendChild(el('span', 'pill' + (p.active === false ? '' :
       planPriced(p) ? ' la' : ' pa'), planStateWords(p)));
     const ac = tr.insertCell(); ac.className = 'ac';

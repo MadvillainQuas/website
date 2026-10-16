@@ -1681,8 +1681,26 @@
       'the rows add up to the final margin, the home side’s minus the away side’s': 'las filas suman la diferencia final, la del local menos la del visitante',
       'the last five results, this game last': 'los cinco últimos resultados, este partido el último',
       'record, place in the table and run': 'balance, puesto en la clasificación y racha',
-      'the next fixture': 'el próximo partido'
+      'the next fixture': 'el próximo partido',
+      'Buy this report as a PDF': 'Comprar este informe en PDF',
+      'Buy it again, as it stands today': 'Comprarlo de nuevo, tal como está hoy',
+      'Your PDF of this report is ready': 'Tu PDF de este informe está listo',
+      'Your PDF of this report is being prepared': 'Estamos preparando tu PDF de este informe',
+      'It was emailed to you and is kept in Your Dashboard, to open or download again.': 'Te lo hemos enviado por correo y queda guardado en tu panel para abrirlo o descargarlo de nuevo.',
+      'It is drawn for you now: it is emailed to you and kept in Your Dashboard within a few minutes.': 'Lo estamos generando ahora: en unos minutos te llegará por correo y quedará guardado en tu panel.',
+      'A preview: the first 3 pages. The rest of the report opens with a free EPINOIA account.': 'Vista previa: las 3 primeras páginas. El resto del informe se abre con una cuenta gratuita de EPINOIA.',
+      'A preview: the first 3 pages. The rest of the report opens with a membership, or as a PDF.': 'Vista previa: las 3 primeras páginas. El resto del informe se abre haciéndote socio o comprándolo en PDF.',
+      'A preview: the first 3 pages. The rest of the report opens with a membership.': 'Vista previa: las 3 primeras páginas. El resto del informe se abre haciéndote socio.'
     },
+
+    /* the report's PDF card (0279): the price passes through */
+    patterns: [
+      [/^([£€$][\d.,]+), including any VAT, paid once: the report as it stands today, emailed to you and kept in Your Dashboard\.$/, m => m[1] + ', IVA incluido, pago único: el informe tal como está hoy, enviado por correo y guardado en tu panel.'],
+      [/^Buy the PDF · ([£€$][\d.,]+)$/, m => 'Comprar el PDF · ' + m[1]],
+      /* the payment window's title and line for the PDF (report.js buy card) */
+      [/^Buy (.+)’s report as a PDF$/, 'Comprar el informe de $1 en PDF'],
+      [/^The (player|club) report: (.+)$/, m => (m[1] === 'club' ? 'Informe del club' : 'Informe del jugador') + ': ' + m[2]]
+    ],
 
     ctxPatterns: {
       /* one per template (the full stop is read off, then the template is matched without it),

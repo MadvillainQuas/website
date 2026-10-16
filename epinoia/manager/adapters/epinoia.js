@@ -282,6 +282,9 @@ async function rotation(teamId, compIds) {
   return v;
 }
 async function isAdmin() { try { return (await rpc('is_platform_admin', {})) === true; } catch (_) { return false; } }
+/* MANAGER MODE, PAID FOR OR NOT (0279): open to this fan by the matrix's 'manager' section ('free' to start; a pass or a
+   tier that ticks it). An answer the database cannot give is open: the database still refuses a club it should not write */
+async function managerOpen() { if (LOCAL) return true; try { return (await rpc('gate_open', { p_key: 'manager', p_league: null })) !== false; } catch (_) { return true; } }
 
-return { leagues, league, card, formFor, values, setValues, medianRange, clubs, create, save, remove, board, boardLeagues, badges, isAdmin, signedIn, userId, signinHref, rpc, rest, rotation, FORM_KEYS, LOCAL };
+return { leagues, league, card, formFor, values, setValues, medianRange, clubs, create, save, remove, board, boardLeagues, badges, isAdmin, managerOpen, signedIn, userId, signinHref, rpc, rest, rotation, FORM_KEYS, LOCAL };
 }));

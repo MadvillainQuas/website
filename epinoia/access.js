@@ -101,7 +101,13 @@
 (function (root, factory) {
   const api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.EpinoiaAccess = api;
+  /* FIXED IN PLACE (Louie, 2026-10-16: "make certain that the preview isn't bypassable"): frozen, and a window property
+     nothing can replace or redefine, so a line typed into a browser's console cannot swap featureLocked for one that
+     says "open" */
+  else {
+    try { Object.defineProperty(root, 'EpinoiaAccess', { value: Object.freeze(api), writable: false, configurable: false, enumerable: true }); }
+    catch (_) { root.EpinoiaAccess = api; }
+  }
 }(typeof globalThis !== 'undefined' ? globalThis : self, function (root) {
 
 const BROWSER = typeof window !== 'undefined' && typeof document !== 'undefined';
@@ -211,7 +217,11 @@ const CATALOGUE = Object.freeze({
     gameFlow:        Object.freeze({ gate: 'analytics', label: 'Game flow tab', what: 'The box score Game flow tab' }),
     gameConnections: Object.freeze({ gate: 'analytics', label: 'Connections tab', what: 'The box score Connections tab' }),
     gameAdvanced:    Object.freeze({ gate: 'analytics', label: 'Advanced tab', what: 'The box score Advanced tab' }),
-    videoRuns:       Object.freeze({ gate: 'analytics', label: 'Video runs', what: 'Scoring runs in the video hub' })
+    videoRuns:       Object.freeze({ gate: 'analytics', label: 'Video runs', what: 'Scoring runs in the video hub' }),
+    /* 0279: the club page's Front office tab, for the club's own people with a tier that ticks it (front_office_access),
+       and playing EPINOIA Manager ('free' to start; the leaderboards are always open) */
+    frontOffice: Object.freeze({ gate: 'tiers', label: 'Front office', what: 'The club page Front office tab: the depth chart, the GM view and the win model, for the club\u2019s own staff' }),
+    manager:     Object.freeze({ gate: 'free', label: 'Manager mode', what: 'Playing EPINOIA Manager (the leaderboards are always open)' })
   }),
   barKeys: key => /^ev_/.test(String(key == null ? '' : key)),
   wowyPreviewMax: 1
@@ -225,12 +235,16 @@ function isPremiumColumn(key) {
 
 /* Is this lockable feature (CATALOGUE.locks) locked for this viewer? Unknown keys are free. The gate is the
    platform's (0222) where it set one, else the default above; a free section is open to everyone. */
+/* THE MATRIX (0279): Free is open to everyone signed out; Signed in to any account; a tier's section to whoever holds a
+   tier that ticks it. The old gates (a database before 0279) answer as before. */
 function featureLocked(key, league) {
   const L = CATALOGUE.locks[String(key)];
   if (!L) return false;
-  if (signinFirst(key)) return !previewActive(key);
   const g = gateOf(key);
   if (g === 'free') return false;
+  if (signinFirst(key)) return !previewActive(key);
+  if (g === 'signin') return false;
+  if (g === 'tiers') return !privilegeOk(key, league);
   if (g === 'analytics') return !analyticsOk(league);
   return !featureOk(g, league);
 }
@@ -254,13 +268,29 @@ function signedInish() {
   const s = stored();
   return !!(s && s.refresh && s.refresh !== deadRefresh);
 }
-/* true when this reader must sign in before `key` (any lockable feature when no key is named) can open, here */
+/* true when this reader must sign in before `key` (any lockable feature when no key is named) can open, here. A section
+   the matrix makes Free never asks (0279). The box score's own tabs, the game's report and every game page or embed stay
+   open signed out as they were - unless memberships are switched on and the matrix says Signed in for that section. */
 function signinFirst(key) {
   if (!BROWSER) return false;
   const k = key == null ? null : String(key);
-  if (k != null && (!CATALOGUE.locks[k] || SIGNIN_FREE.indexOf(k) >= 0)) return false;
-  if (gamePage()) return false;
-  return !signedInish();
+  if (k != null && !CATALOGUE.locks[k]) return false;
+  if (k != null && gateOf(k) === 'free') return false;
+  /* A SECTION AN ACCOUNT ALONE DOES NOT OPEN, with memberships on: the membership card says so, with its own sign-in link
+     for members - never "an account is free", nor a free look (Louie, 2026-10-16: "when it's behind a paywall there's no
+     point of having the sign in text") */
+  if (k != null && gateOf(k) !== 'signin' && membershipsOn()) return false;
+  if (signedInish()) return false;
+  const exempt = (k != null && SIGNIN_FREE.indexOf(k) >= 0) || gamePage();
+  if (exempt && !(k != null && gateOf(k) === 'signin' && membershipsOn())) return false;
+  return true;
+}
+/* memberships switched on, by any answer the server gave this page for the account signed in now */
+function membershipsOn() {
+  if (sim() === 'locked') return true;               // an administrator previewing the locks sees them as members will
+  const uk = userKey();
+  for (const e of states.values()) if (e.user === uk && e.st && e.st.known) return e.st.membershipsEnabled !== false;
+  return false;
 }
 /* why a feature is shut: 'signin', 'membership', or null when it is open */
 function lockReason(key, league) {
@@ -474,7 +504,7 @@ function peekHTML(key) {
    set, and the page draws what it always drew. */
 const WALL_KEY = 'epinoia_access_wall';
 const WALL_MS = 5 * 60 * 1000;
-const GATES = Object.freeze(['free', 'analytics', 'club_report', 'player_report']);
+const GATES = Object.freeze(['free', 'signin', 'tiers', 'analytics', 'club_report', 'player_report']);
 /* the shared words, as written here; any of them may be replaced in the platform console. {league} is the league's name */
 const COPY = Object.freeze({
   teaserTitle: 'Advanced analytics are for members',
@@ -514,10 +544,15 @@ const COPY = Object.freeze({
 let WALL = null, wallP = null, WALL_OFF = false;
 function wallOf(j) {
   const gates = {};
-  (Array.isArray(j && j.gates) ? j.gates : []).forEach(g => {
+  const list = Array.isArray(j && j.gates) ? j.gates : [];
+  /* a database before 0279 knows no matrix: its 'free' meant "for an account", as it always had */
+  const matrix = Array.isArray(j && j.tiers) || list.some(g => g && (g.gate === 'signin' || g.gate === 'tiers'));
+  list.forEach(g => {
     if (!g || typeof g.key !== 'string' || GATES.indexOf(g.gate) < 0) return;
     gates[g.key] = {
-      gate: g.gate,
+      gate: !matrix && g.gate === 'free' ? 'signin' : g.gate,
+      category: typeof g.category === 'string' ? g.category : 'analytics',
+      sort: Number.isFinite(Number(g.sort)) ? Number(g.sort) : 100,
       title: typeof g.title === 'string' && g.title.trim() ? g.title.trim().slice(0, 120) : null,
       lines: Array.isArray(g.lines) ? g.lines.filter(l => typeof l === 'string' && l.trim()).map(l => l.trim()).slice(0, 3) : null
     };
@@ -525,7 +560,18 @@ function wallOf(j) {
   const copy = {}, c = j && j.copy && typeof j.copy === 'object' ? j.copy : {};
   Object.keys(COPY).forEach(k => { if (typeof c[k] === 'string' && c[k].trim()) copy[k] = c[k].trim().slice(0, 300); });
   const tm = Math.floor(Number(j && j.trial_months));
-  return { gates, copy, trialMonths: tm > 0 && tm <= 12 ? tm : 0 };
+  /* the tiers on sale, each with what it opens, and the things sold on their own (0279) */
+  const tiers = (Array.isArray(j && j.tiers) ? j.tiers : []).filter(t => t && typeof t.id === 'string').map(t => ({
+    id: t.id, name: String(t.name || 'Membership').slice(0, 60), price_pennies: Math.max(0, Number(t.price_pennies) || 0),
+    currency: String(t.currency || 'gbp'), interval: t.interval === 'year' ? 'year' : 'month',
+    privileges: Array.isArray(t.privileges) ? t.privileges.filter(k => typeof k === 'string') : [], purchasable: t.purchasable !== false }));
+  const products = {};
+  const pr = j && j.products && typeof j.products === 'object' ? j.products : {};
+  Object.keys(pr).forEach(k => { const x = pr[k]; if (x && typeof x.id === 'string') products[k] = {
+    id: x.id, name: String(x.name || ''), price_pennies: Math.max(0, Number(x.price_pennies) || 0), currency: String(x.currency || 'gbp'),
+    interval: x.interval === 'once' ? 'once' : x.interval === 'year' ? 'year' : 'month', purchasable: x.purchasable !== false,
+    includes_tier_name: typeof x.includes_tier_name === 'string' ? x.includes_tier_name : null }; });
+  return { gates, copy, trialMonths: tm > 0 && tm <= 12 ? tm : 0, matrix, tiers, products };
 }
 function loadWall(until) {
   if (WALL_OFF || WALL) return Promise.resolve(WALL);
@@ -569,6 +615,27 @@ function copyOf(k, league) {
 }
 /* the months free a new member is offered (0223), 0 when trials are off or nobody has said */
 function trialMonths() { return WALL && WALL.trialMonths > 0 ? WALL.trialMonths : 0; }
+/* A SECTION OF THE MATRIX (0279): the viewer holds it in this league (or, with no league, Epinoia's own), by the
+   server's answer. As every answer here: the simulation first, memberships switched off opens it, no answer fails open. */
+function privilegeOk(key, league) {
+  const m = sim();
+  if (m === 'locked') return false;
+  if (m === 'member') return true;
+  /* the league's answer, else Epinoia's own (a tier holds in every league); with neither, shut while memberships are known
+     to be on - a paid section is never opened by an answer that has not arrived yet */
+  let st = raw(league);
+  if (!(st && st.known)) st = raw(null);
+  if (st && st.known) return st.membershipsEnabled === false || (st.privileges || []).indexOf(String(key)) >= 0;
+  return !membershipsOn();
+}
+/* the tiers on sale that open a section, cheapest first; the things sold on their own, by kind */
+function tiersFor(key) {
+  const k = String(key);
+  return ((WALL && WALL.tiers) || []).filter(t => t.privileges.indexOf(k) >= 0).sort((a, b) => a.price_pennies - b.price_pennies);
+}
+function products() { return (WALL && WALL.products) || {}; }
+function wallTiers() { return (WALL && WALL.tiers) || []; }
+function wallGates() { return (WALL && WALL.gates) || {}; }
 /* A FEATURE SOLD ON ITS OWN (club_report, player_report): the viewer holds it in this league, by the server's
    answer. As the analytics: the simulation first, memberships switched off opens it, and no answer fails open. */
 function featureOk(feature, league) {
@@ -855,9 +922,16 @@ function watchSdk(client) {
   } catch (_) { /* an SDK without it: the storage and visibility checks remain */ }
 }
 
+/* THE PREVIEW SWITCH (localStorage epinoia_access_sim): 'locked' shows anyone the locks as a non-member meets them; 'member'
+   opens them, and only for a platform administrator by the server's answer (access_state platform_admin, 0279) - a value a
+   reader typed into their own browser opens nothing */
 function sim() {
   const v = sget('localStorage', SIM_KEY);
-  return v === 'locked' || v === 'member' ? v : '';
+  if (v === 'locked') return v;
+  if (v !== 'member') return '';
+  const uk = userKey();
+  for (const e of states.values()) if (e.user === uk && e.st && e.st.known && e.st.platformAdmin === true) return 'member';
+  return '';
 }
 
 /* ----------------------------------------------------------------- state --- */
@@ -876,13 +950,15 @@ function shape(x) {
     fixturesPublic: x.fixturesPublic !== false,
     analytics: x.analytics === 'members' ? 'members' : 'free',
     features: Array.isArray(x.features) ? x.features.filter(f => typeof f === 'string') : [],
+    privileges: Array.isArray(x.privileges) ? x.privileges.filter(f => typeof f === 'string') : [],
     canView: !enabled || x.canView !== false,
     analyticsOk: !enabled || x.analyticsOk !== false,
     hasPlans: !!x.hasPlans,
     hasLeaguePlans: !!x.hasLeaguePlans,
     subscriptions: Math.max(0, parseInt(x.subscriptions, 10) || 0),
     analyticsDefault: x.analyticsDefault === 'members' ? 'members' : 'free',
-    membershipsEnabled: enabled
+    membershipsEnabled: enabled,
+    platformAdmin: x.platformAdmin === true
   };
 }
 function failOpen(extra) {
@@ -905,6 +981,7 @@ function fromPayload(payload, leagueId) {
     signedIn: !!p.signed_in,
     subscriptions: p.subscriptions,
     analyticsDefault: p.analytics_default,
+    platformAdmin: p.platform_admin === true,
     /* the master switch; left off by an older payload, it reads as on and the
        payload's own answers stand */
     membershipsEnabled: typeof p.memberships_enabled === 'boolean' ? p.memberships_enabled : true
@@ -916,7 +993,8 @@ function fromPayload(payload, leagueId) {
   if (!leagueId) {
     return shape(Object.assign({
       known: true, analytics: p.analytics_default,
-      analyticsOk: typeof p.analytics_ok === 'boolean' ? p.analytics_ok : true
+      analyticsOk: typeof p.analytics_ok === 'boolean' ? p.analytics_ok : true,
+      privileges: p.privileges
     }, base));
   }
   const e = (Array.isArray(p.leagues) ? p.leagues : []).find(x => x && x.id === leagueId);
@@ -931,6 +1009,7 @@ function fromPayload(payload, leagueId) {
     fixturesPublic: e.fixtures_public !== false,
     analytics,
     features,
+    privileges: e.privileges,
     canView: typeof e.can_view === 'boolean' ? e.can_view
       : (accessMode === 'open' || features.indexOf('league') !== -1),
     analyticsOk: typeof e.analytics_ok === 'boolean' ? e.analytics_ok
@@ -1320,7 +1399,8 @@ function joinHref(o) {
   if (x.leagueSlug) q.push('l=' + encodeURIComponent(String(x.leagueSlug)));
   const next = safePath(x.next != null ? x.next : here());
   if (next) q.push('next=' + encodeURIComponent(next));
-  return ROOT_PATH + 'join/' + (q.length ? '?' + q.join('&') : '');
+  /* Epinoia's tiers are the membership page (0279), a league's own way in the join page */
+  return ROOT_PATH + (x.leagueSlug || !(WALL && WALL.matrix) ? 'join/' : 'membership/') + (q.length ? '?' + q.join('&') : '');
 }
 function signinHref(next) {
   const n = safePath(next != null ? next : here());
@@ -1412,9 +1492,12 @@ function teaserHTML(o) {
   const x = Object.assign({}, o || {});
   if (x.key) { const w = lockWords(x.key); if (w.title) x.title = w.title; if (w.lines) x.lines = w.lines; }
   const slug = x.leagueSlug ? String(x.leagueSlug) : '';
-  const plans = plansFor(stateBySlug(slug));
+  /* a section Epinoia's tiers open (0279): what is on sale is those tiers, bought on the membership page, whatever the
+     league sells */
+  const tierLock = !!((x.key || x.peek) && gateOf(x.key || x.peek) === 'tiers' && WALL && WALL.matrix);
+  const plans = tierLock ? tiersFor(x.key || x.peek).some(t => t.purchasable !== false) : plansFor(stateBySlug(slug));
   const signedIn = !!session();
-  const join = joinHref({ leagueSlug: slug });
+  const join = tierLock ? joinHref({}) : joinHref({ leagueSlug: slug });
 
   const trial = trialMonths() > 0;
   const go = '<a class="ep-lock-go' + (trial ? ' ep-lock-trial' : '') + '" href="' + esc(join) + '"' + (x.key ? ' data-lock="' + esc(x.key) + '"' : '') + '>' +
@@ -1429,6 +1512,10 @@ function teaserHTML(o) {
   const title = plans ? (x.title || copyOf('teaserTitle')) : copyOf('membersOnly');
   const given = x.lines == null ? [FEATURES.analytics.blurb] : (Array.isArray(x.lines) ? x.lines : [x.lines]);
   const lines = given.filter(l => l != null && String(l).trim()).slice(0, 3);
+  /* the tier that opens it, cheapest first (0279): named, with its price */
+  const lockKey = x.key || x.peek;
+  const tier = lockKey && gateOf(lockKey) === 'tiers' ? tiersFor(lockKey)[0] : null;
+  if (tier && lines.length < 3) lines.push('Included in ' + tier.name + ' (' + priceText(tier.price_pennies, tier.currency, tier.interval) + ')' + (tiersFor(lockKey).length > 1 ? ' and higher tiers' : '') + '.');
   const cta = [];
   if (plans) cta.push(go);
   /* a grant is keyed on an email address and only counts once its holder signs
@@ -1490,6 +1577,35 @@ function paywallHTML(o) {
     (trial ? '<span class="ep-lock-badge">' + esc(copyOf('trialBadge')) + '</span>' : '') +
     (cta.length ? '<div class="ep-lock-cta">' + cta.join('') + '</div>' : '') +
     '</section>';
+}
+
+/* ------------------------------------------------------ a PDF bought once ---
+   THE BUYER'S ONE DOWNLOAD (0279 my_pdf_credit / use_pdf_credit): the unused paid PDF of a player's ('player_pdf') or a
+   club's ('club_pdf') report, or null; used by the download. Asked with the session's own token. */
+async function rpcAuth(fn, args) {
+  const f = net(), c = cfg();
+  const s = await sessionReady().catch(() => null);
+  if (!f || !c.supabaseUrl || !c.supabaseAnonKey || !s || !s.token) return { error: 'signin' };
+  try {
+    const r = await f(c.supabaseUrl + '/rest/v1/rpc/' + fn, { method: 'POST', cache: 'no-store', body: JSON.stringify(args || {}),
+      headers: { apikey: c.supabaseAnonKey, Authorization: 'Bearer ' + s.token, 'Content-Type': 'application/json', Accept: 'application/json' } });
+    return r && r.ok ? { data: await r.json() } : { error: r ? r.status : 0 };
+  } catch (_) { return { error: 0 }; }
+}
+/* THE BUYER'S LATEST PDF OF THIS REPORT (0279 my_pdf_purchase): { id, state, ready, paid_at, rendered_at }, or null. Drawn by
+   the server and delivered to their dashboard and inbox: nothing is unlocked in the browser for it. */
+async function pdfPurchase(kind, subject) {
+  if (!session() && !signedInish()) return null;
+  const r = await rpcAuth('my_pdf_purchase', { p_kind: kind, p_subject: subject });
+  return r.data && typeof r.data === 'object' && r.data.id ? r.data : null;
+}
+/* BUY ANYTHING ON THE PAGE (the payment window): a tier ({ planId }), a pass or a PDF ({ product: kind, subject,
+   subjectName }), report emails or a league ({ planId, details }) */
+function buy(o) {
+  /* a plan named is bought as it is (a tier, the Manager pass), straight to the step before money */
+  const x = Object.assign({ href: joinHref({}) }, o || {});
+  if (x.planId) x.direct = true;
+  return payWindow().then(P => P.open(x), () => { location.assign(joinHref({})); });
 }
 
 /* ----------------------------------------------------------- watch auth --- */
@@ -1624,6 +1740,7 @@ return {
   signinFirst, lockReason, signinHTML, signinNeed, signinArt: () => SIGNIN_ART,
   previewActive, previewLeft, takePreview, peekPress, peekHTML, peekText, queuePeekFill, peekSubject, REPORT_KEYS, PEEK_NEVER,
   gateOf, lockWords, copyOf, loadWall, trialMonths,
+  privilegeOk, tiersFor, products, wallTiers, wallGates, membershipsOn, pdfPurchase, buy,
   teaserHTML, paywallHTML, joinHref, authHeaders, onChange,
   session, sessionReady, fromPayload, signinHref, safePath, priceText, amountText, forget,
   /* for supabase/tests/access.test.mjs only: a fake network, a shorter deadline,

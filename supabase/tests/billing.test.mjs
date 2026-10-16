@@ -49,7 +49,8 @@ import {
   subscriptionIdFromEvent, subscriptionRow, matchingCheckout, grantsAccess, graceUntil,
   deliveryMode, planAccountProblem, transitionEmails, eventEmails, emailFacts,
   escapeHtml, longDate, welcomeEmail, endNoticeEmail, paymentFailedEmail, renewalReminderEmail,
-  TRIAL_CONSENT, trialEnd, submitMessage, trialEndingEmail
+  TRIAL_CONSENT, trialEnd, submitMessage, trialEndingEmail,
+  PURCHASE_CONSENT, ONCE_KINDS, BUILD_KINDS, inlinePriced, inlinePriceData, detailsFor, paymentParams, PAYMENT_EVENTS, purchaseRow
 } from '../functions/_shared/billing.js';
 
 let pass = 0, fail = 0;
@@ -301,7 +302,7 @@ console.log('prices');
 console.log('checkout');
 {
   const V = '2026-09-a';
-  eq(Object.keys(CONSENT), [V, TRIAL_CONSENT], 'the consent wording is versioned: the one the join page shows, and a new member\'s free trial (0223)');
+  eq(Object.keys(CONSENT), [V, TRIAL_CONSENT, PURCHASE_CONSENT], 'the consent wording is versioned: the one the join page shows, a new member\'s free trial (0223), and a PDF bought once (0279)');
   eq(CONSENT[V], 'Start my access now. I understand that access begins straight away, so once it has started I lose my 14-day right to cancel.',
      'the wording is exactly the contract\'s');
   eq(consentProblem({ version: V, acknowledged: true, adult: true }), null, 'both boxes ticked on a known wording is enough');
@@ -376,7 +377,7 @@ console.log('checkout');
   eq(checkoutParams({ ...base, plan: platformPlan, next: '//evil.com' }).params.cancel_url,
      'https://prophesyscouting.co.uk/epinoia/me/', 'a bad next becomes Your account, not a refusal');
   throws(() => checkoutParams({ ...base, plan: platformPlan, consentVersion: 'made-up' }), 'an unknown consent version cannot reach Stripe');
-  throws(() => checkoutParams({ ...base, plan: { ...platformPlan, stripe_price_id: null } }), 'nor can a plan with no price');
+  throws(() => checkoutParams({ ...base, plan: { ...platformPlan, stripe_price_id: null, price_pennies: 0 } }), 'nor can a plan with no price at all');
 
   const c = customerParams({ userId: USER, email: 'fan@example.com', account: 'acct_League1' });
   eq([c.path, c.account, c.idempotencyKey, c.params.metadata.user_id],
@@ -846,7 +847,7 @@ console.log('the function');
   // one await between the two: the re-fetch's own
   ok(stamp > 0 && stamp < refetch && sync.slice(stamp, refetch).split('await').length === 2,
      'the fetch time is taken immediately before the re-fetch, with nothing else awaited in between');
-  ok(/admin\.rpc\('billing_apply_subscription', \{\s*p_row: subscriptionRow\(sub, \{ userId, planId, account, checkout \}\),\s*p_fetched_at: fetchedAt\s*\}\)/.test(sync),
+  ok(/admin\.rpc\('billing_apply_subscription', \{\s*p_row: subscriptionRow\(sub, \{ userId, planId, account, checkout, checkoutId: meta\.checkout_id \}\),\s*p_fetched_at: fetchedAt\s*\}\)/.test(sync),
      'the write is billing_apply_subscription(p_row, p_fetched_at)');
   ok(!/oneOffEmails/.test(src) && /transitionEmails\(result, \{ welcomed: !!row\?\.welcomed_at \}\)/.test(sync),
      'the welcome and end notices come from what the write reports');
@@ -955,6 +956,71 @@ console.log('the function');
   ok(/embedded: body\.embedded === true/.test(fn) && /if \(embedded\) return json\(\{ client_secret: session\.client_secret, account: call\.account \|\| null \}\)/.test(fn),
      'the function asks for it only when the window says so, and answers the secret and the league\'s account');
   ok(/publishable_key: \/\^pk_\(test\|live\)_\[A-Za-z0-9\]\+\$\/\.test\(pk\) \? pk : null/.test(fn), 'status names the publishable key (public by design), or none');
+}
+
+
+/* ------------------------------------------------- 0279: prices, PDFs, what a checkout builds --- */
+console.log('0279: a price the plan states, a PDF bought once, what a checkout builds');
+{
+  const SITE = 'https://prophesyscouting.co.uk';
+  const P = '0c0c0c0c-0000-4000-8000-000000000001', S = '0d0d0d0d-0000-4000-8000-000000000002', CK = '0e0e0e0e-0000-4000-8000-000000000003';
+  const tier = { id: P, league_id: null, kind: 'tier', name: 'Pro', features: [], price_pennies: 500, currency: 'gbp', interval: 'month', stripe_price_id: null, seller: 'platform', active: true };
+  ok(planProblem(tier) === null && inlinePriced(tier), 'Epinoia\'s plan with a price and no Stripe price is on sale at its own price');
+  ok(planProblem({ ...tier, seller: 'league' })?.status === 409, '...a league\'s own plan still needs its price on its own account');
+  ok(planProblem({ ...tier, price_pennies: 0 })?.status === 409, '...and nothing is sold for nothing');
+  const d = inlinePriceData(tier);
+  ok(d.unit_amount === 500 && d.currency === 'gbp' && d.tax_behavior === 'inclusive' && d.recurring.interval === 'month' && d.recurring.interval_count === 1 && d.product_data.name === 'Pro',
+     'the price made from the plan: its amount, VAT included, every month', d);
+  const c = checkoutParams({ plan: tier, userId: S, email: 'a@b.c', customerId: 'cus_1', siteUrl: SITE, checkoutId: CK, consentVersion: '2026-09-a' });
+  ok(!c.params.line_items[0].price && c.params.line_items[0].price_data.unit_amount === 500 && c.params.mode === 'subscription', '...in the subscription\'s one line', c.params.line_items);
+  ok(checkoutParams({ plan: { ...tier, stripe_price_id: 'price_1Abc' }, userId: S, customerId: 'cus_1', siteUrl: SITE, checkoutId: CK, consentVersion: '2026-09-a' }).params.line_items[0].price === 'price_1Abc',
+     'a plan with a Stripe price of its own still uses it');
+  const pdf = { ...tier, kind: 'player_pdf', name: 'Player report PDF', price_pennies: 1500, interval: 'once' };
+  throws(() => checkoutParams({ plan: pdf, userId: S, customerId: 'cus_1', siteUrl: SITE, checkoutId: CK, consentVersion: '2026-09-a' }), 'a PDF is never a subscription');
+  ok(ONCE_KINDS.join() === 'player_pdf,club_pdf' && BUILD_KINDS.join() === 'player_mail,team_mail,league_setup', 'what is bought once, and what a subscription builds');
+  const pay = paymentParams({ plan: pdf, userId: S, email: 'a@b.c', customerId: 'cus_1', siteUrl: SITE, next: '/epinoia/p/?p=x&tab=report', checkoutId: CK,
+                              consentVersion: PURCHASE_CONSENT, subjectId: P, subjectName: 'Sam Smith' });
+  ok(pay.params.mode === 'payment' && pay.account === null && pay.params.line_items[0].price_data.unit_amount === 1500 && !pay.params.line_items[0].price_data.recurring,
+     'a PDF: a payment, once, at its price, on Epinoia\'s account', pay.params);
+  ok(pay.params.metadata.subject_id === P && pay.params.metadata.kind === 'player_pdf' && pay.params.payment_intent_data.metadata.checkout_id === CK &&
+     pay.params.success_url === SITE + '/epinoia/p/?p=x&tab=report&joined=1' && pay.idempotencyKey === 'payment-' + CK,
+     '...naming the report it is of on the session and the payment, back to the same report', pay.params.metadata);
+  ok(/£15\.00, including any VAT, paid once/.test(pay.params.custom_text.submit.message), '...and saying above the button that it is paid once');
+  throws(() => paymentParams({ plan: pdf, userId: S, customerId: 'cus_1', siteUrl: SITE, checkoutId: CK, consentVersion: '2026-09-a', subjectId: P }), 'only under a PDF\'s own wording');
+  throws(() => paymentParams({ plan: tier, userId: S, customerId: 'cus_1', siteUrl: SITE, checkoutId: CK, consentVersion: PURCHASE_CONSENT, subjectId: P }), 'a tier is not bought once');
+  const emb = paymentParams({ plan: pdf, userId: S, customerId: 'cus_1', siteUrl: SITE, next: '/epinoia/p/', checkoutId: CK, consentVersion: PURCHASE_CONSENT, subjectId: P, embedded: true });
+  ok(emb.params.ui_mode === 'embedded' && !emb.params.success_url && emb.params.return_url === SITE + '/epinoia/p/?joined=1' && emb.idempotencyKey === 'payment-' + CK + '-embedded',
+     '...in the payment window too');
+  ok(PAYMENT_EVENTS.join() === 'checkout.session.completed,checkout.session.async_payment_succeeded,charge.refunded', 'the paid, the paid later and the refunded');
+  const sess = { id: 'cs_test_1', mode: 'payment', payment_status: 'paid', amount_total: 1500, currency: 'gbp', payment_intent: 'pi_1', livemode: false,
+                 metadata: { user_id: S, plan_id: P, subject_id: P, subject_name: 'Sam Smith', checkout_id: CK } };
+  const row = purchaseRow(sess);
+  ok(row && row.amount_pennies === 1500 && row.stripe_payment_intent === 'pi_1' && row.subject_id === P && row.checkout_id === CK && row.livemode === false,
+     'a paid session recorded as what it bought', row);
+  ok(purchaseRow({ ...sess, payment_status: 'unpaid' }) === null && purchaseRow({ ...sess, mode: 'subscription' }) === null && purchaseRow({ ...sess, metadata: {} }) === null,
+     '...not one unpaid, a subscription\'s, or one naming nothing of ours');
+  ok(detailsFor('player_mail', {}).error && detailsFor('team_mail', { player_id: P }).error, 'report emails need their player, or their club');
+  const pm = detailsFor('player_mail', { player_id: P, email: ' Coach@Club.TEST ', tz: 'Europe/London', name: 'Sam', extra: 'no' }).details;
+  ok(pm.player_id === P && pm.email === 'coach@club.test' && pm.tz === 'Europe/London' && pm.name === 'Sam' && !('extra' in pm), '...kept clean: the address lower-cased, nothing else carried', pm);
+  ok(detailsFor('player_mail', { player_id: P, tz: '"; drop' }).details.tz === 'UTC' && /email/.test(detailsFor('team_mail', { team_id: P, email: 'nope' }).error),
+     '...a zone it cannot read is UTC, an address that is not one refused');
+  ok(/name/.test(detailsFor('league_setup', { league_name: 'x' }).error) && /address/.test(detailsFor('league_setup', { league_name: 'Hoops', slug: 'Bad Slug' }).error) &&
+     detailsFor('league_setup', { league_name: 'Sunday Hoops', slug: 'sunday-hoops', colour: '#123456' }).details.colour === '#123456', 'a league: its name, a good address, its colour');
+  ok(detailsFor('player_pdf', { subject_id: P, subject_name: 'Sam' }).details.subject_id === P && detailsFor('club_pdf', {}).error, 'a PDF names its player or club');
+  const sub = { id: 'sub_1', status: 'active', customer: 'cus_1', items: { data: [{ current_period_end: 1792108800 }] } };
+  ok(subscriptionRow(sub, { userId: S, planId: P, checkoutId: CK }).checkout_id === CK && !('checkout_id' in subscriptionRow(sub, { userId: S, planId: P })),
+     'a subscription row names its checkout, for what it builds, only when there is one');
+  const fn = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'functions', 'billing', 'index.ts'), 'utf8');
+  ok(/if \(once !== \(body\.consent\.version === PURCHASE_CONSENT\)\)/.test(fn) && /body\.consent\.version === TRIAL_CONSENT && kind !== 'tier'/.test(fn) &&
+     /const det = detailsFor\(kind, body\.details\);/.test(fn) && /adult_confirmed: true,\n\s*details\n/.test(fn),
+     'the function: the wording fits what is bought, a trial a tier\'s only, what it is of checked and kept with the evidence');
+  ok(/rpc\('league_slug_free'/.test(fn) && /\.in\('render_state', \['queued', 'running'\]\)/.test(fn) && /Your PDF of this report is being prepared/.test(fn) && /if \(plan\.stripe_price_id && !once\)/.test(fn),
+     '...a league\'s address taken, a PDF of the report still being drawn, a Stripe price compared only when there is one');
+  ok(/if \(data && data\.recorded === true\) await kickReportWorker\(notes\);/.test(fn) && /actions\/workflows\/report-mail\.yml\/dispatches/.test(fn),
+     'a paid PDF starts the report worker that draws it (never fatal: its schedule is the floor)');
+  ok(/PAYMENT_EVENTS\.includes\(event\.type\) && \(event\.type === 'charge\.refunded' \|\| event\.data\.object\?\.mode === 'payment'\)/.test(fn) &&
+     /admin\.rpc\('billing_record_purchase', \{ p: row \}\)/.test(fn) && /throw new NotSynced\('recording '/.test(fn) && /admin\.rpc\('billing_refund_purchase'/.test(fn),
+     'the webhook: a paid PDF recorded (retried until it is), a refund taken back');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -1,0 +1,240 @@
+/* ============================================================================
+   THE SALES PAGES: membership/ (the tiers), reports/ (the report emails) and setup-league/ (a league of one's own).
+
+   On the page standard (kit/page.css, sectitle.css), this sheet adds what they sell with: the tier card (.sl-tier) -
+   a panel with a coloured cap, the price in the score face, a button, then what it opens as a ticked list - the
+   comparison table, a form, and the reader's own rows. Every colour is a kit token, so the light theme is the kit's.
+   The cards sit side by side as their section allows (a container query, so the rail and the 150% zoom are counted),
+   two to a row on a tablet, one on a phone.
+   ============================================================================ */
+.sl{--sl-r:14px;--sl-cap:var(--rule-2);--sl-glow:color-mix(in oklch,var(--lume) 26%,transparent)}
+.sl .sl-wrap{container-type:inline-size;max-width:1120px;margin-left:auto;margin-right:auto}
+.sl .hide{display:none !important}
+.sl-wait{margin:0;padding:calc(var(--u)*3) 0;text-align:center;font-family:var(--f-micro);font-size:9.5px;letter-spacing:.08em;color:var(--ink-3)}
+.sl-note{max-width:640px;margin:0 auto calc(var(--u)*3);padding:10px 16px;text-align:center;border-radius:10px;
+  border:1px solid color-mix(in oklch,var(--amber) 50%,transparent);background:color-mix(in oklch,var(--amber) 9%,transparent);
+  color:var(--ink);font-size:13.5px;line-height:1.5}
+.sl-eye{margin:0;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.sl-fine{margin:calc(var(--u)*1.5) 0 0;font-size:12.5px;line-height:1.55;color:var(--ink-3)}
+.sl-soon-l{margin-top:6px !important;font-size:13px;color:var(--ink-3)}
+
+/* ---- the cards ---- */
+.sl-tiers{display:grid;gap:14px;grid-template-columns:minmax(0,1fr);align-items:stretch;margin:0 auto}
+@container (min-width:430px){ .sl-tiers:not([data-n="1"]){grid-template-columns:repeat(2,minmax(0,1fr))} }
+@container (min-width:600px){
+  .sl-tiers[data-n="3"],.sl-tiers[data-n="5"],.sl-tiers[data-n="6"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .sl-tiers[data-n="4"]{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@container (min-width:780px){ .sl-tiers[data-n="5"]{grid-template-columns:repeat(5,minmax(0,1fr))} }
+/* the report tiers are fewer and wordier: never narrower than a readable card */
+.sl-rgrid{max-width:900px}
+.sl-rgrid[data-n="1"]{max-width:380px}
+@container (min-width:600px){ .sl-rgrid[data-n="4"]{grid-template-columns:repeat(2,minmax(0,1fr))} }
+
+.sl-tier{position:relative;display:flex;flex-direction:column;min-width:0;padding:20px 16px 16px;text-align:left;
+  background:var(--panel);border:1px solid var(--rule-2);border-radius:var(--sl-r);
+  transition:transform .18s var(--ease),box-shadow .18s var(--ease),border-color .18s var(--ease)}
+/* the cap: a band of the card's colour along its top edge */
+.sl-tier::before{content:"";position:absolute;left:-1px;right:-1px;top:-1px;height:5px;border-radius:var(--sl-r) var(--sl-r) 0 0;background:var(--sl-cap)}
+/* the column's colour: Free the ink, Signed in the aqua, a tier (and a report tier) the lume */
+.sl-tier.k-free{--sl-cap:color-mix(in oklch,var(--ink) 30%,transparent)}
+.sl-tier.k-signin{--sl-cap:var(--aqua)}
+.sl-tier.k-tier,.sl-tier.sl-rtier{--sl-cap:var(--lume)}
+@media (hover:hover){ .sl-tier:not(.sl-soon):not(.sl-tier-price):hover{transform:translateY(-2px);box-shadow:0 16px 32px -20px rgba(0,0,0,.55)} }
+/* THE HIGHEST TIER: the kit's gradient for its cap and its edge, and a little light around it */
+.sl-tier.top{border-color:color-mix(in oklch,var(--lume) 70%,var(--aqua));
+  background:linear-gradient(180deg,color-mix(in oklch,var(--lume) 7%,var(--panel)),var(--panel) 46%);
+  box-shadow:0 0 0 1px color-mix(in oklch,var(--lume) 45%,transparent),0 18px 44px -22px var(--sl-glow)}
+.sl-tier.top::before{height:6px;background:linear-gradient(100deg,var(--lume),var(--aqua),var(--violet))}
+/* the reader's own */
+.sl-tier.mine{box-shadow:0 0 0 2px var(--lume)}
+/* nothing on sale yet: a dashed card where a tier would be */
+.sl-tier.sl-soon{border-style:dashed;background:transparent;justify-content:center;text-align:center;align-items:center}
+.sl-tier.sl-soon::before{display:none}
+.sl-tier.sl-soon h3{color:var(--ink-3)}
+
+/* a card is its own container, so a tier's name is sized to the card it is in (four across on a desktop, one on a
+   phone) and a long name ("Team analytics suite") breaks between its words, never inside one */
+.sl-tiers > .sl-tier{container-type:inline-size}
+.sl-th h3,.sl-tier > h3{margin:4px 0 0;font-family:var(--f-score);font-weight:400;font-size:clamp(20px,16cqi,30px);line-height:.95;
+  letter-spacing:.02em;text-transform:uppercase;color:var(--ink);overflow-wrap:break-word}
+.sl-tier.top .sl-th h3{background-image:linear-gradient(100deg,var(--lume),var(--aqua));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+/* a new member's free trial, under the price it comes before */
+.sl-trial{align-self:flex-start;margin:8px 0 0;padding:3px 9px;border-radius:999px;background:#1f9d55;color:#ffffff;
+  font-family:var(--f-ui);font-weight:800;font-size:10.5px;line-height:1.35}
+.sl-price{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin:12px 0 0}
+.sl-price b{font-family:var(--f-score);font-weight:400;font-size:46px;line-height:.9;color:var(--lume)}
+.sl-tiers > .sl-tier .sl-price b{font-size:clamp(34px,30cqi,46px)}
+.sl-tier.k-free .sl-price b,.sl-tier.k-signin .sl-price b{color:var(--ink)}
+.sl-price span{font-family:var(--f-micro);font-size:9px;letter-spacing:.06em;color:var(--ink-2)}
+.sl-blurb{margin:10px 0 0;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.sl-with{margin:10px 0 0;font-family:var(--f-micro);font-size:8.5px;line-height:1.8;letter-spacing:.06em;color:var(--lume)}
+.sl-act{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}
+.sl-go{width:100%;min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;border-radius:10px;line-height:1.3}
+/* a button that cannot be pressed yet reads as a label, in either theme (the kit's light rules are four classes deep),
+   and without the primary button's sheen (teletext.css) */
+.sl .sl-act .ep-btn[disabled],.sl .sl-act .ep-btn[disabled]:hover,
+:root[data-theme="light"] .sl .sl-act .ep-btn[disabled],:root[data-theme="light"] .sl .sl-act .ep-btn[disabled]:hover{
+  cursor:default;background:transparent;color:var(--ink-3);border-color:var(--rule-2);border-style:dashed;filter:none;box-shadow:none}
+.sl .sl-act .ep-btn[disabled]::after{display:none}
+.sl-own{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:44px;border-radius:10px;
+  border:1px solid var(--lume);color:var(--lume);font-family:var(--f-micro);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
+.sl-own.quiet{border-style:dashed;border-color:var(--rule-2);color:var(--ink-3)}
+
+/* what a column opens: the base it builds on, then what is new, by category */
+.sl-gets{flex:1;margin-top:16px;padding-top:14px;border-top:1px dashed var(--rule-2)}
+.sl-base{margin:0 0 4px;font-family:var(--f-ui);font-weight:700;font-size:12.5px;line-height:1.45;color:var(--ink)}
+.sl-gets h4{margin:12px 0 6px;font-family:var(--f-micro);font-weight:400;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--lume)}
+.sl-tier.k-signin .sl-gets h4{color:var(--aqua)}
+.sl-tier.k-free .sl-gets h4{color:var(--ink-3)}
+.sl-ticks{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.sl-gets .sl-ticks{margin-top:0}
+.sl-ticks li{display:grid;grid-template-columns:16px minmax(0,1fr);gap:6px;font-size:13px;line-height:1.4;color:var(--ink)}
+.sl-tk{font-weight:800;color:var(--lume)}
+.sl-tier.k-free .sl-tk{color:var(--ink-3)}
+.sl-tier.k-signin .sl-tk{color:var(--aqua)}
+.sl-none{margin:8px 0 0;font-size:12.5px;color:var(--ink-3)}
+
+/* one report as a PDF, under the cards */
+.sl-pdf{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 16px;max-width:760px;margin:calc(var(--u)*3) auto 0;
+  padding:12px 18px;border:1px solid var(--rule);border-radius:999px;background:var(--panel);text-align:center}
+.sl-pdf-k{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.sl-pdf-v{display:inline-flex;align-items:baseline;gap:6px;font-size:13px;color:var(--ink-2)}
+.sl-pdf-v b{font-family:var(--f-score);font-weight:400;font-size:22px;line-height:1;color:var(--lume)}
+.sl-pdf-w{font-size:12.5px;color:var(--ink-3)}
+
+/* ---- the comparison: scrolls inside its own box on a phone, never the page ---- */
+.sl-cmpwrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--rule-2);border-radius:12px;background:var(--panel)}
+.sl-cmpwrap:focus-visible{outline:2px solid var(--lume);outline-offset:2px}
+.sl-cmp{width:100%;min-width:520px;border-collapse:separate;border-spacing:0}
+.sl-cmp th,.sl-cmp td{padding:9px 10px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:middle}
+.sl-cmp thead th{background:var(--panel-2);font-family:var(--f-micro);font-weight:400;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-2);border-bottom:1px solid var(--rule-2);vertical-align:bottom}
+.sl-cmp thead th.c{text-align:center}
+.sl-cmp thead .cn{display:block;color:var(--ink)}
+.sl-cmp thead .cp{display:block;margin-top:4px;text-transform:none;letter-spacing:.04em;font-size:8px;color:var(--ink-3)}
+.sl-cmp thead .cp b{font-family:var(--f-score);font-weight:400;font-size:18px;letter-spacing:0;color:var(--lume)}
+.sl-cmp thead th.top{background:linear-gradient(180deg,color-mix(in oklch,var(--lume) 16%,var(--panel-2)),var(--panel-2))}
+.sl-cmp tbody th{min-width:170px;max-width:340px;font-family:var(--f-ui);font-weight:400;font-size:13.5px;line-height:1.4;color:var(--ink)}
+.sl-cmp tbody th small{display:block;margin-top:2px;font-size:11.5px;line-height:1.4;color:var(--ink-3)}
+.sl-cmp th:first-child{position:sticky;left:0;z-index:1;background:var(--panel);box-shadow:1px 0 0 var(--rule)}
+.sl-cmp thead th:first-child{background:var(--panel-2);z-index:2}
+.sl-cmp tr.grp th{padding-top:16px;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--lume);
+  background:color-mix(in oklch,var(--lume) 6%,var(--panel))}
+.sl-cmp td.c{width:92px;text-align:center;font-family:var(--f-ui);font-weight:800;font-size:16px}
+.sl-cmp td.yes{color:var(--lume)}
+.sl-cmp td.no{color:var(--ink-3);opacity:.55;font-weight:400}
+.sl-cmp td.top{background:color-mix(in oklch,var(--lume) 6%,transparent)}
+.sl-cmp tbody tr:last-child > *{border-bottom:0}
+
+/* ---- the Manager pass: one strip ---- */
+.sl-strip{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(180px,220px);align-items:center;gap:14px 24px;max-width:860px;margin:0 auto;
+  padding:18px 22px;border:1px solid var(--rule-2);border-radius:var(--sl-r);background:var(--panel);position:relative;overflow:hidden}
+.sl-strip::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--amber),var(--lume))}
+.sl-strip-t b{font-family:var(--f-score);font-weight:400;font-size:26px;line-height:1;text-transform:uppercase}
+.sl-strip-t p{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.sl-strip .sl-price{margin:0}
+.sl-strip .sl-act{margin:0}
+
+/* ---- good to know ---- */
+.sl-faq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:900px;margin:0 auto}
+.sl-faq > div{padding:14px 16px;border:1px solid var(--rule);border-radius:12px;background:var(--panel)}
+.sl-faq dt{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--lume)}
+.sl-faq dd{margin:6px 0 0;font-size:13.5px;line-height:1.55;color:var(--ink-2)}
+@container (max-width:560px){ .sl-faq{grid-template-columns:minmax(0,1fr)} }
+
+/* ---- the forms ---- */
+.sl-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px;max-width:900px;margin:0 auto calc(var(--u)*3);
+  padding:18px;border:1px solid var(--rule-2);border-radius:var(--sl-r);background:var(--panel);text-align:left}
+.sl-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sl-field.sl-wide{grid-column:1 / -1}
+.sl-field label{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.sl-field label .opt{color:var(--ink-3);text-transform:none;letter-spacing:.04em}
+.sl-field .ep-input{width:100%;max-width:none;min-height:44px;font-family:var(--f-ui);font-size:15px;border-radius:10px}
+.sl-field select.ep-input{padding-right:8px}
+.sl-check{margin:0;min-height:1.4em;font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;line-height:1.7;color:var(--ink-3)}
+.sl-check.good{color:var(--lume)}
+.sl-check.bad{color:var(--flare)}
+@container (max-width:620px){ .sl-form{grid-template-columns:minmax(0,1fr);padding:14px} }
+
+/* the picker: the site's search under the box */
+.sl-pick{position:relative}
+.sl-found{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;margin:0;padding:4px;list-style:none;max-height:320px;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--rule-2);border-radius:10px;box-shadow:0 18px 40px -18px rgba(0,0,0,.6)}
+.sl-found li.none{padding:10px 12px;font-size:13px;color:var(--ink-3)}
+.sl-found button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:9px 12px;border:0;border-radius:8px;
+  background:none;color:var(--ink);text-align:left;cursor:pointer;font-family:var(--f-ui)}
+.sl-found button b{font-size:14.5px}
+.sl-found button small{font-size:12px;color:var(--ink-3)}
+.sl-found button:hover,.sl-found button:focus-visible{background:color-mix(in oklch,var(--lume) 12%,transparent);outline:none}
+.sl-chosen{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:2px 0 0;font-size:14.5px;color:var(--ink)}
+.sl-chosen.none{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.08em;color:var(--ink-3)}
+.sl-chosen b{font-weight:800}
+.sl-chosen .sub{font-size:12.5px;color:var(--ink-3)}
+.sl-change{margin-left:auto;padding:4px 10px;border:1px solid var(--rule-2);border-radius:999px;background:none;color:var(--ink-2);
+  font-family:var(--f-micro);font-size:8px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.sl-change:hover{border-color:var(--lume);color:var(--lume)}
+.sl-tier.ready{border-color:color-mix(in oklch,var(--lume) 60%,transparent)}
+
+/* ---- a PDF's price, on the reports page ---- */
+.sl-pdfs{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;max-width:760px;margin:0 auto}
+.sl-pdfc{flex:1 1 240px;max-width:360px;padding:18px 18px 16px;border:1px solid var(--rule-2);border-radius:var(--sl-r);background:var(--panel);text-align:left;position:relative}
+.sl-pdfc::before{content:"";position:absolute;left:-1px;right:-1px;top:-1px;height:5px;border-radius:var(--sl-r) var(--sl-r) 0 0;background:var(--amber)}
+.sl-pdfs + .sl-fine{max-width:620px;margin:calc(var(--u)*2) auto 0;text-align:center}
+
+/* ---- the reader's own: a row each ---- */
+.sl-subs{display:flex;flex-direction:column;max-width:860px;margin:0 auto;border:1px solid var(--rule-2);border-radius:var(--sl-r);background:var(--panel);overflow:hidden}
+.sl-sub{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px 16px;padding:14px 16px;border-top:1px solid var(--rule);text-align:left}
+.sl-sub:first-child{border-top:0}
+.sl-sub-t{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sl-sub-t b{font-family:var(--f-ui);font-weight:800;font-size:15px;overflow-wrap:anywhere}
+.sl-sub-t small{font-size:12.5px;line-height:1.45;color:var(--ink-3);overflow-wrap:anywhere}
+.sl-sub-t .st{font-family:var(--f-micro);font-size:8.5px;letter-spacing:.06em;line-height:1.7;color:var(--lume)}
+.sl-sub-t .st.bad{color:var(--flare)}
+.sl-sub-t .st.end{color:var(--amber)}
+.sl-sub-a{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.sl-sub-a .ep-btn{text-decoration:none;min-height:40px;display:inline-flex;align-items:center;border-radius:10px}
+@container (max-width:520px){ .sl-sub{grid-template-columns:minmax(0,1fr)} .sl-sub-a{justify-content:flex-start} }
+
+/* ---- setting up a league: what you get, the price beside it ---- */
+.sl-get{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,300px);gap:18px;align-items:start;max-width:980px;margin:0 auto}
+.sl-feats{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sl-feats li{display:grid;grid-template-columns:34px minmax(0,1fr);grid-template-rows:auto auto;column-gap:12px;row-gap:2px;align-items:start;
+  padding:14px;border:1px solid var(--rule);border-radius:12px;background:var(--panel);text-align:left}
+.sl-fi{grid-row:1 / span 2;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;
+  background:color-mix(in oklch,var(--lume) 14%,transparent);color:var(--lume);font-size:17px;line-height:1}
+.sl-feats b{font-family:var(--f-ui);font-weight:800;font-size:14px;line-height:1.3}
+.sl-feats li > span:last-child{font-size:12.5px;line-height:1.45;color:var(--ink-2)}
+.sl-tier-price{align-self:stretch}
+.sl-soonbig{margin:12px 0 0;font-family:var(--f-score);font-size:30px;line-height:1;text-transform:uppercase;color:var(--ink-3)}
+@container (max-width:700px){ .sl-get{grid-template-columns:minmax(0,1fr)} .sl-tier-price{justify-self:center;width:100%;max-width:520px} }
+@container (max-width:460px){ .sl-feats{grid-template-columns:minmax(0,1fr)} }
+
+/* the form and its preview, side by side */
+.sl-build{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,320px);gap:18px;align-items:start;max-width:980px;margin:0 auto}
+.sl-build .sl-form{margin:0;grid-template-columns:minmax(0,1fr)}
+.sl-slug{display:flex;align-items:stretch;min-width:0;border:1px solid var(--rule-2);border-radius:10px;overflow:hidden;background:var(--panel)}
+.sl-slug .pre{display:flex;align-items:center;padding:0 10px;font-family:var(--f-data);font-size:12px;color:var(--ink-3);background:var(--panel-2);
+  border-right:1px solid var(--rule);white-space:nowrap}
+.sl-slug .ep-input{border:0;border-radius:0;min-width:0;flex:1;font-family:var(--f-data);font-size:13.5px}
+.sl-colour{display:flex;align-items:center;gap:12px}
+.sl-colour input[type=color]{width:56px;height:44px;padding:3px;border:1px solid var(--rule-2);border-radius:10px;background:var(--panel);cursor:pointer}
+.sl-colour span{font-family:var(--f-data);font-size:13px;color:var(--ink-2)}
+.sl-build .sl-go{max-width:320px}
+.sl-preview{position:sticky;top:16px;--lg:#93f2bf;--lg-ink:var(--lume);--lg-on:#04100b}
+.sl-pv-card{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:8px;padding:22px 16px 18px;text-align:center;border-radius:var(--sl-r);
+  border:1px solid color-mix(in oklch,var(--lg) 55%,var(--rule-2));
+  background:radial-gradient(120% 80% at 50% 0%,color-mix(in oklch,var(--lg) 22%,transparent),transparent 70%),var(--panel)}
+.sl-pv-mono{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:var(--lg);color:var(--lg-on);
+  font-family:var(--f-score);font-size:28px;line-height:1;box-shadow:0 10px 24px -12px var(--lg)}
+.sl-pv-name{font-family:var(--f-score);font-weight:400;font-size:28px;line-height:.95;text-transform:uppercase;color:var(--lg-ink);overflow-wrap:anywhere}
+.sl-pv-tag{padding:3px 10px;border-radius:999px;border:1px solid var(--rule-2);font-family:var(--f-micro);font-size:7.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.sl-pv-addr{font-family:var(--f-data);font-size:11px;line-height:1.4;color:var(--ink-3);overflow-wrap:anywhere}
+@container (max-width:640px){ .sl-build{grid-template-columns:minmax(0,1fr)} .sl-preview{position:static} }
+
+@media (max-width:560px){
+  .sl-tier{padding:18px 14px 14px}
+  .sl-price b{font-size:40px}
+  .sl-strip{grid-template-columns:minmax(0,1fr);padding:16px 16px 16px 20px}
+  .sl-pdf{border-radius:14px}
+}

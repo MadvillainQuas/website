@@ -394,7 +394,7 @@ ok('the rail: a Scouting row "transfer matrix" to scouting/transfer/, after what
   const m = /const scoutingRow = platformRow\('[^']+', 'scouting', 'scouting\/', (\/.*?\/),/.exec(nav);
   const re = m && new Function('return ' + m[1])();
   ok('...and global scouting\'s row no longer lights on it', re && re.test('/epinoia/scouting/') && re.test('/epinoia/scouting/index.html') && !re.test('/epinoia/scouting/transfer/'));
-  ok('the teletext layer takes it as a page of the standard, not as global scouting', /\[\/\^scouting\\\/\$\/, 'scouting'\]/.test(nav) && /\/\\\/epinoia\\\/\(home\|games\|scouting\|go\)\\\/\//.test(nav));
+  ok('the teletext layer takes it as a page of the standard, not as global scouting', /\[\/\^scouting\\\/\$\/, 'scouting'\]/.test(nav) && /\/\\\/epinoia\\\/\(home\|games\|scouting\|go\|membership\|reports\|setup-league\)\\\/\//.test(nav));
 }
 const A = require(path.join(ROOT, 'epinoia', 'access.js'));
 ok('the lock: CATALOGUE.locks.transferMatrix, on What wins\' gate (analytics), with a label and where it shows', A.CATALOGUE.locks.transferMatrix &&

@@ -413,7 +413,7 @@ const M = await import(pathToFileURL(path.join(ROOT, 'scripts', 'report_mailer.m
   const RJS = read('epinoia', 'report.js'), PPJ = read('epinoia', 'report-playerpages.js'), PLJ = read('epinoia', 'p', 'player.js'), RAS = read('epinoia', 'raster.js');
   ok('report.js: ?rpmods= draws those pages alone, and keeps nothing of it as the reader\'s choice', /get\('rpmods'\)/.test(RJS) && /if \(onlyMods\.length\) o\.modules\.forEach\(m => \{ conf\.on\[m\.key\] = onlyMods\.indexOf\(m\.key\) >= 0; \}\);/.test(RJS) &&
      /on: state\.onlyMods \? \(store\.get\(key, \{\}\)\.on \|\| \{\}\) : conf\.on/.test(RJS));
-  ok('...the bot\'s pages handed over as JPEGs with their links (raster.js pagesOf, the same drawing as the PDF)', /if \(root\.EPINOIA_RP_BOT\) root\.__rpPages = async/.test(RJS) && /async function pagesOf\(nodes, opt\)/.test(RAS) && /return pdfFromJpegs\(await pagesOf\(nodes, o\)/.test(RAS));
+  ok('...the bot\'s pages handed over as JPEGs with their links (raster.js pagesOf, the same drawing as the PDF; only on a page whose ticket the server allowed, 0279)', /if \(root\.EPINOIA_RP_BOT && state\.bot === true\) root\.__rpPages = async/.test(RJS) && /async function pagesOf\(nodes, opt\)/.test(RAS) && /return pdfFromJpegs\(await pagesOf\(nodes, o\)/.test(RAS));
   const MJ2 = read('scripts', 'report_mailer.mjs');
   ok('where they play is read from the clubs\' position files of the season, every competition (snapshots/pos), not the player page',
      /storage\/v1\/object\/public\/snapshots\/pos\//.test(MJ2) && /export async function clubPositions\(teamId\)/.test(MJ2) && !/rpfield/.test(PLJ));

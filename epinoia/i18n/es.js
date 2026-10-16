@@ -2122,7 +2122,10 @@
       'men': 'masculino',
       'women': 'femenino',
       'Back to the system': 'Volver al sistema',
-      'university basketball': 'Baloncesto universitario'
+      'university basketball': 'Baloncesto universitario',
+      'membership: what is free, what a free account adds and what each tier opens': 'socios: qué es gratis, qué añade una cuenta gratuita y qué abre cada plan',
+      'reports: a player’s or a club’s scouting reports, emailed to you': 'informes: los informes de scouting de un jugador o de un club, por correo',
+      'set up a league: your own private league on Epinoia, run by you': 'crea tu liga: tu propia liga privada en Epinoia, gestionada por ti'
     },
 
     ctx: {
@@ -2675,7 +2678,9 @@
         'search': 'buscar',
         'search bar': 'barra de búsqueda',
         'leaderboards': 'Clasificaciones',
-        'your page': 'Tu página'
+        'your page': 'Tu página',
+        'reports': 'Informes',
+        'set up a league': 'Crea tu liga'
       },
       /* the phone bar has a fifth of a phone's width per label */
       tab: {
@@ -3104,6 +3109,9 @@
     },
 
     patterns: [
+      /* the membership card on a locked section: the tier that opens it and its price (access.js teaserHTML, 0279) */
+      [/^Included in (.+) \(([£€$][\d.,]+) a (month|year)\)( and higher tiers)?\.$/,
+        m => 'Incluido en el plan de socio ' + m[1] + ' (' + m[2] + ' al ' + (m[3] === 'year' ? 'año' : 'mes') + ')' + (m[4] ? ' y en los superiores' : '') + '.'],
       /* a college system's hub and its conferences (college.js, home.js, nav.js, search.js; 2026-10-16) */
       [/^(.+)’s page →$/, 'Página de $1 →'],
       [/^(.+) Main Hub$/, 'Portada principal de $1'],

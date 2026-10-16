@@ -1624,25 +1624,93 @@ function mount(o) {
      clubReport / playerReport). Locked, the tab still opens - on blurred rows and the membership card instead of the
      report - and wears the lock; the answer is asked again whenever the viewer's access changes (a sign-in, a join) */
   const AX = () => root.EpinoiaAccess;
-  /* the mailer's headless browser (scripts/report_mailer.mjs) sets EPINOIA_RP_BOT before the page's own scripts run: the
-     reports it emails were bought by the member they are sent to */
-  const isLocked = () => !root.EPINOIA_RP_BOT && !!(o.lock && AX() && typeof AX().featureLocked === 'function' && AX().featureLocked(o.lock.key, o.lock.league));
+  /* THE REPORT WORKER'S PAGE (scripts/report_mailer.mjs, headless) opens every report: it was bought by whoever it is sent to.
+     It is believed only on a ticket the database made for it with the service key (0279 report_bot_ok), never on a flag a
+     reader could set in their own browser; before 0279 (no such function) the flag stands, as everything was open then.
+     Until the answer is in, nothing is drawn. */
+  state.bot = root.EPINOIA_RP_BOT ? null : false;
+  const botP = !root.EPINOIA_RP_BOT ? Promise.resolve(false) : (async () => {
+    const c = root.EPINOIA_CONFIG || {};
+    try {
+      const r = await root.fetch(c.supabaseUrl + '/rest/v1/rpc/report_bot_ok', { method: 'POST', cache: 'no-store',
+        headers: { apikey: c.supabaseAnonKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ p_ticket: String(root.EPINOIA_RP_TICKET || '') }) });
+      if (r.status === 404) return true;
+      return r.ok ? (await r.json()) === true : false;
+    } catch (_) { return false; }
+  })().then(v => { state.bot = v; return v; });
+  const lockedNow = () => state.bot !== true && !!(o.lock && AX() && typeof AX().featureLocked === 'function' && AX().featureLocked(o.lock.key, o.lock.league));
+  /* A LOCKED REPORT IS NEVER DRAWN ON A GUESS: the reader's answer (Epinoia's own, and the league's when it is known) and the
+     matrix are read before anything is built */
+  state.accessReady = !o.lock;
+  const accessP = !o.lock || !AX() ? Promise.resolve() : Promise.all([
+    typeof AX().load === 'function' ? AX().load({}).catch(() => null) : null,
+    o.lock.league && typeof AX().load === 'function' ? AX().load({ leagueId: o.lock.league }).catch(() => null) : null,
+    typeof AX().loadWall === 'function' ? AX().loadWall().catch(() => null) : null
+  ]).then(() => { state.accessReady = true; });
+  /* A PDF BOUGHT ONCE (0279; o.lock.pdf = { kind: 'player_pdf' | 'club_pdf', subject, name }): offered where the lock is a
+     paid one, and DRAWN BY THE SERVER once paid (the report worker), emailed and kept in the buyer's dashboard: nothing of
+     the report opens in their browser for it. The tab says where their PDF has got to. */
+  const pdf = o.lock && o.lock.pdf && o.lock.pdf.subject ? o.lock.pdf : null;
+  state.bought = null;
+  const loadBought = () => (pdf && AX() && typeof AX().pdfPurchase === 'function'
+    ? AX().pdfPurchase(pdf.kind, pdf.subject).then(c => { state.bought = c || null; return state.bought; }, () => null) : Promise.resolve(null));
+  const isLocked = lockedNow;
   const markTab = () => {
     const l = isLocked();
     btn.classList.toggle('rp-tab-locked', l);
     const why = l && AX() && typeof AX().lockReason === 'function' ? AX().lockReason(o.lock.key, o.lock.league) : null;
     if (l) btn.title = (o.lock.what || 'The report') + (why === 'signin' ? ': sign in to see it' : ': for members'); else btn.removeAttribute('title');
   };
+  /* WHAT A LOCKED REPORT OFFERS: where the lock is a paid one (an account alone would not open it: a PDF is no answer to
+     "sign in, it is free"), the PDF bought already and where it has got to, or its PDF to buy; then the card that says how
+     it opens */
+  const why = () => (AX() && typeof AX().lockReason === 'function' ? AX().lockReason(o.lock.key, o.lock.league) : null);
+  const lockCards = () => {
+    const wrap = document.createDocumentFragment();
+    const paid = why() !== 'signin';
+    const got = paid ? state.bought : null;
+    if (got) {
+      const card = el('div', 'rp-buycard');
+      const dash = (root.location.pathname.replace(/\/epinoia\/.*$/, '') || '') + '/epinoia/profile/';
+      card.append(el('b', null, got.ready ? 'Your PDF of this report is ready' : 'Your PDF of this report is being prepared'),
+                  el('span', null, got.ready ? 'It was emailed to you and is kept in Your Dashboard, to open or download again.'
+                                            : 'It is drawn for you now: it is emailed to you and kept in Your Dashboard within a few minutes.'));
+      const go = el('a', 'ep-btn', 'Your Dashboard'); go.href = dash;
+      card.appendChild(go);
+      wrap.appendChild(card);
+    }
+    const prod = paid && pdf && AX() && typeof AX().products === 'function' ? AX().products()[pdf.kind] : null;
+    if (prod && prod.purchasable !== false && prod.price_pennies > 0 && !(got && !got.ready)) {
+      const price = AX().amountText(prod.price_pennies, prod.currency);
+      const card = el('div', 'rp-buycard');
+      card.append(el('b', null, got ? 'Buy it again, as it stands today' : 'Buy this report as a PDF'),
+                  el('span', null, price + ', including any VAT, paid once: the report as it stands today, emailed to you and kept in Your Dashboard.'));
+      const go = el('button', 'ep-btn pri', 'Buy the PDF · ' + price); go.type = 'button';
+      go.addEventListener('click', () => AX().buy({ product: pdf.kind, subject: pdf.subject, subjectName: pdf.name || '',
+        title: 'Buy ' + (pdf.name ? pdf.name + '’s report' : 'this report') + ' as a PDF', what: (o.lock.what || 'The report') + (pdf.name ? ': ' + pdf.name : '') }));
+      card.appendChild(go);
+      wrap.appendChild(card);
+    }
+    const t = el('div', 'rp-lockcard');
+    t.innerHTML = AX() && typeof AX().teaserHTML === 'function'
+      ? AX().teaserHTML({ leagueSlug: o.lock.leagueSlug, peek: o.lock.key, title: (o.lock.what || 'The report') + ' is for members', lines: o.lock.lines || [] }) : '';
+    wrap.appendChild(t);
+    return wrap;
+  };
+  state.lockCards = lockCards;
+  /* A PREVIEW (Louie, 2026-10-16: "a 'preview' access feature ... that gives free access to 3 pages in the reports"): a
+     locked report draws its first pages and stops (ui: state.preview; nothing past them is computed), the cards under
+     them, and nothing to download, print or prime; o.lock.preview 0 draws the blurred rows instead */
+  const PREVIEW = o.lock && Number.isFinite(o.lock.preview) ? Math.max(0, o.lock.preview) : 3;
+  state.previewWords = n => (why() === 'signin' ? 'A preview: the first ' + n + ' pages. The rest of the report opens with a free EPINOIA account.'
+    : 'A preview: the first ' + n + ' pages. The rest of the report opens with a membership' + (pdf && AX() && AX().products && AX().products()[pdf.kind] ? ', or as a PDF.' : '.'));
   const lockedPanel = () => {
     panel.textContent = '';
     const wrap = el('div', 'rp rp-locked');
     const M = root.EpinoiaMemLock;
     const ph = M && typeof M.placeholder === 'function' ? M.placeholder({ what: o.lock.what || 'The report', rows: 8, key: o.lock.key }) : null;
     if (ph) wrap.appendChild(ph);
-    const t = el('div', 'rp-lockcard');
-    t.innerHTML = AX() && typeof AX().teaserHTML === 'function'
-      ? AX().teaserHTML({ leagueSlug: o.lock.leagueSlug, peek: o.lock.key, title: (o.lock.what || 'The report') + ' is for members', lines: o.lock.lines || [] }) : '';
-    wrap.appendChild(t);
+    wrap.appendChild(lockCards());
     panel.appendChild(wrap);
     state.lockedShown = true;
   };
@@ -1657,7 +1725,27 @@ function mount(o) {
       if (!tabs.querySelector('.ep-tab.on')) { const prof = tabs.querySelector('.ep-tab[data-p="profile"]'); if (prof) prof.classList.add('on'); }
       return;
     }
-    if (isLocked()) { lockedPanel(); return; }
+    /* the worker's page: nothing until the server has answered for its ticket; a locked one, nothing until the reader's
+       access is known */
+    if (state.bot === null) { botP.then(() => { markTab(); if (ST.open) show(true); }); return; }
+    if (!state.accessReady && state.bot !== true) {
+      if (!state.waiting) { state.waiting = true; panel.textContent = ''; panel.appendChild(el('p', 'rp-status', 'reading\u2026')); }
+      accessP.then(() => { state.waiting = false; markTab(); if (ST.open) show(true); });
+      return;
+    }
+    if (state.waiting) { state.waiting = false; panel.textContent = ''; state.built = false; }
+    if (isLocked()) {
+      if (PREVIEW > 0) {
+        if (!state.preview) { panel.textContent = ''; state.built = false; state.lockedShown = false; }
+        state.preview = PREVIEW;
+        if (!state.built) { state.built = true; ui(state); }
+        else if (state.cutPreview) state.cutPreview();
+        return;
+      }
+      lockedPanel(); return;
+    }
+    /* opened (signed in, joined): the whole report, built afresh */
+    if (state.preview) { state.preview = 0; panel.textContent = ''; state.built = false; }
     if (state.lockedShown) { state.lockedShown = false; panel.textContent = ''; state.built = false; }
     if (!state.built) { state.built = true; ui(state); }
     else if (state.dirty && state.rebuild) { state.dirty = false; state.rebuild(); }
@@ -1672,7 +1760,14 @@ function mount(o) {
   if (/^(report|weekly)$/.test(new URLSearchParams(root.location.search).get('tab') || '')) setTimeout(() => show(true), 0);
   if (o.lock) {
     markTab();
-    if (AX() && typeof AX().onChange === 'function') AX().onChange(() => { markTab(); if (ST.open) show(true); });
+    botP.then(() => markTab());
+    const again = () => { markTab(); if (ST.open) show(true); };
+    if (AX() && typeof AX().onChange === 'function') AX().onChange(() => { loadBought().then(again); });
+    if (pdf) {
+      loadBought().then(c => { if (c) again(); });
+      /* bought in the payment window: where the PDF has got to, read again */
+      root.addEventListener('epinoia:paid', e => { const d = e && e.detail; if (d && d.subject === pdf.subject) loadBought().then(again); });
+    }
   }
   /* the page's scope changed (another season or competition): built again now if it is open, else when it is next */
   const refresh = () => { if (!state.built) return; if (ST.open && state.rebuild) state.rebuild(); else state.dirty = true; };
@@ -1780,7 +1875,23 @@ function ui(state) {
   bPrime.title = 'Make the report ready for sending in one go: RAPM worked out (or read where it already was) and kept for every report of this league and season, Synergy read, every page built, then the PDF stored for the next email that carries it (deleted once emailed)';
   const bPdf = mk('Download PDF', 'pri', () => download('pdf'));
   const bImg = mk('Download images', '', () => download('png'));
-  mk('Print', '', () => printPages(pages));
+  const bPrint = mk('Print', '', () => printPages(pages));
+  /* A PREVIEW (0279): nothing to download, print or prime; the first pages kept after every build, the cards under them */
+  if (state.preview) {
+    outs.hidden = true;
+    state.cutPreview = () => {
+      if (!state.preview) return;
+      const n = state.preview, sheets = [...pages.querySelectorAll('.rp-pg')];
+      if (!sheets.length) return;
+      sheets.slice(n).forEach(s => s.remove());
+      let end = wrap.querySelector('.rp-preview-end');
+      if (!end) { end = el('div', 'rp-preview-end'); pages.after(end); }
+      end.textContent = '';
+      end.appendChild(el('p', 'rp-preview-note', state.previewWords ? state.previewWords(n) : ''));
+      if (state.lockCards) end.appendChild(state.lockCards());
+    };
+    state.onBuilt = (state.onBuilt || []).concat(() => { if (state.cutPreview) state.cutPreview(); });
+  }
   outs.appendChild(status);
   bar.appendChild(outs);
   /* WHAT PRIME REPORT DID, read back where it is kept (primedSay) */
@@ -1843,7 +1954,7 @@ function ui(state) {
   /* THE PAGES THEMSELVES, for the mailer to put several reports in one PDF (the match-up report, 2026-10-16): each page a JPEG
      at the email's weight (as Download PDF draws it for the mailer), with its links, and the report's bookmarks and title.
      The JPEGs go back as base64 (what a page can hand to Playwright). */
-  if (root.EPINOIA_RP_BOT) root.__rpPages = async () => {
+  if (root.EPINOIA_RP_BOT && state.bot === true) root.__rpPages = async () => {
     const X = root.EpinoiaRaster;
     const sheets = [...pages.querySelectorAll('.rp-pg')];
     if (!X || !X.pagesOf || !sheets.length) return null;
@@ -1897,6 +2008,8 @@ function ui(state) {
       c.file = 'epinoia-report-' + String(c.name || 'report').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
       state.c = c;
       for (const m of o.modules) {
+        /* A PREVIEW stops once its pages are drawn: nothing past them is computed in a reader's browser it is locked for */
+        if (state.preview && pagesNew.querySelectorAll('.rp-pg').length > state.preview) break;
         if (R.stale()) return;
         if (!conf.on[m.key]) continue;
         if (m.key === 'cover') {
@@ -1921,7 +2034,7 @@ function ui(state) {
         const at = layout(pagesNew, c, m.page || m.title, blocks, { pack: m.pack === true ? true : m.pack === 'flow' ? 'flow' : false });
         toc.push([m.page || m.title, [...pagesNew.querySelectorAll('.rp-pg')].indexOf(at) + 1]);
       }
-      const lg = o.modules.find(m => m.key === 'legend');
+      const lg = state.preview ? null : o.modules.find(m => m.key === 'legend');
       /* every stat a page printed by its key has its entry, whichever module drew it (linkLegend links it there) */
       if (lg && conf.on.legend) R.legend.push(...[...pagesNew.querySelectorAll('[data-lg]')].map(e => e.getAttribute('data-lg')).filter(Boolean));
       if (lg && conf.on.legend && (R.legend.length || R.legendExtra.length)) {

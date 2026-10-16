@@ -921,11 +921,86 @@ async function profileDepth(team, win, all) {
    releases and the ages; and, for the win model, two members-only files through EpinoiaWinFile (the league's `fo`
    file and the club's own) and the fixtures to come. The files carry the club's minutes at each position (A.1), so
    the depth chart is filled from the floor where they arrive. */
+/* THE FRONT OFFICE'S PREVIEW (0279): the depth chart as the open tab draws it (the club's lineups where they can be read,
+   else the projection), with its positions not opening their league view. True when it was drawn. */
+async function frontOfficePreview(team, hostD) {
+  const X = window.EpinoiaDepth;
+  if (!X || !hostD) return false;
+  try {
+    const { chartIn } = await depthInput(team);
+    const link = p => '../p/?p=' + encodeURIComponent(p.id);
+    const gameMin = X.gameMinutes ? X.gameMinutes(team.leagues || {}) : 40;
+    let c = X.chart(chartIn);
+    if (X.splitChart) c = X.splitChart(c, gameMin);
+    try {
+      const fp = X.floorPos ? await floorMinutes(team) : null;
+      const cs = fp && X.slotChart ? X.slotChart(Object.assign({ pos: fp, gameMin, all: false }, chartIn)) : null;
+      if (cs) c = cs;
+    } catch (_) { /* the projection stands */ }
+    /* static: the positions are headings, not the league view's buttons (as the profile's copy draws them) */
+    hostD.innerHTML = X.chartHTML(c, { link, static: true });
+    hostD.insertBefore(el('p', 'fo-preview', 'A preview: the depth chart. The GM view, each position against the league and the win model open with the front office.'), hostD.firstChild);
+    return true;
+  } catch (_) { return false; }
+}
+
+/* THE CLUB'S OWN PEOPLE WITH A TIER THAT OPENS IT (0279, front_office_access): 'ok', 'signin', 'staff' (not the club's),
+   'members' (the club's, without the tier); null where the database cannot say (before 0279): the old rule above */
+async function frontOfficeAccess(team) {
+  /* asked straight of the database with the reader's own token, or none: the club page carries no SDK, and a signed-out
+     reader must be answered too ('signin'), not passed to the old rule */
+  const c = window.EPINOIA_CONFIG || {}, A = window.EpinoiaAccess;
+  if (!c.supabaseUrl || !c.supabaseAnonKey) return null;
+  let s = null;
+  try { s = A && A.sessionReady ? await A.sessionReady() : null; } catch (_) { s = null; }
+  try {
+    const r = await fetch(c.supabaseUrl + '/rest/v1/rpc/front_office_access', { method: 'POST', cache: 'no-store',
+      headers: { apikey: c.supabaseAnonKey, Authorization: 'Bearer ' + (s && s.token ? s.token : c.supabaseAnonKey), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_team: team.id }) });
+    if (r.status === 404) return null;                       // before 0279: the old rule
+    /* an answer the database could not give: shut while memberships are on (the paid tab is never opened by an error), else as before */
+    const shut = A && A.membershipsOn && A.membershipsOn() ? 'members' : null;
+    if (!r.ok) return shut;
+    const v = await r.json();
+    return typeof v === 'string' ? v : 'members';
+  } catch (_) { return A && A.membershipsOn && A.membershipsOn() ? 'members' : null; }
+}
 async function frontOffice(team) {
   const hostD = $('#depth'), hostG = $('#gmview'), hostM = $('#wmodel');
   const X = window.EpinoiaDepth, D = window.EpinoiaData;
   if (ACCESS.paywall || !hostD || !X || !D) return;
-  if (!frontOfficeOpen(team)) {
+  const fa = await frontOfficeAccess(team);
+  if (fa && fa !== 'ok') {
+    /* A PREVIEW (Louie, 2026-10-16: "a small amount of things in front office"): the depth chart, drawn; the GM view, each
+       position against the league and the win model stay behind the card, which goes where the GM view would be */
+    const shown = await frontOfficePreview(team, hostD);
+    const hostCard = shown && hostG ? hostG : hostD;
+    if (!shown) hostD.innerHTML = '';
+    if (fa === 'staff') {
+      hostCard.innerHTML = '';
+      const card = el('div', 'ep-lock');
+      const tx = el('div', 'ep-lock-tx');
+      tx.append(el('div', 'ep-lock-t', 'The front office is for ' + (team.name || 'the club') + '\u2019s own staff'),
+        el('p', 'ep-lock-l', 'Its team managers and statisticians, and whoever the club shares it with, open it with a membership that includes it.'),
+        el('p', 'ep-lock-l', 'Work for the club? Sign in with the address the club gave, or ask the club to share it with you.'));
+      card.appendChild(tx);
+      hostCard.appendChild(card);
+    } else {
+      hostCard.innerHTML = accessTeaser({ key: 'frontOffice', title: 'The front office', lines: [
+        'Who starts, who backs up, and at which position, projected from the club\'s own games.',
+        'Every position charted against the same position at every club in the league, and the win model.'] });
+    }
+    if (hostG && hostCard !== hostG) hostG.textContent = '';
+    if (hostM) hostM.textContent = '';
+    return;
+  }
+  if (!fa && !frontOfficeOpen(team)) {
+    if (await frontOfficePreview(team, hostD) && hostG) {
+      hostG.innerHTML = accessTeaser({ key: 'frontOffice', title: 'The front office', lines: [
+        'Every position charted against the same position at every club in the league, and the win model.'] });
+      modelLocked(hostM, team);
+      return;
+    }
     hostD.innerHTML = accessTeaser({ compact: true, title: 'The front office', lines: [
       'Who starts, who backs up, and at which position, projected from the club\'s own games.',
       'Every position charted against the same position at every club in the league.',
@@ -1370,6 +1445,7 @@ function reportTab(team) {
     tabs: '#ttabs', panel: '#reportsec', kind: 'team', id: team.id, label: 'Scouting Report',
     /* the club report is sold on its own (0220, access.js CATALOGUE.locks.clubReport) */
     lock: { key: 'clubReport', what: 'The club report', league: lg.id || null, get leagueSlug() { return ACCESS.slug || lg.slug || ''; },
+            pdf: { kind: 'club_pdf', subject: team.id, name: team.name },
             lines: ['A printable A4 scouting report on any club: four factors, shot charts, the squad, lineups and the shot clock.'] },
     modules: RT.modules(ctx),
     /* THE INSIGHTS (scoutinsights.js): the scout's read of the club from the season the pages draw - its shot zones read

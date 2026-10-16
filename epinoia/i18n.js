@@ -315,9 +315,13 @@
     if (!loaded.core) return;
     D = compile(lang, merge([loaded.core].concat(packs.filter(p => loaded[p]).map(p => loaded[p]))));
   };
+  /* A PACK THAT LANDS LATE (need(), or a slow one) TRANSLATES AGAIN WHAT WAS TRANSLATED BEFORE IT, from the English: a
+     Spanish price had its decimal comma already ("£15,00, including any VAT"), was marked done, and the pack's sentence for
+     it was never tried (2026-10-16, the payment window on a report page) */
+  let again = false;
   const settle = name => {
     waiting.delete(name);
-    if (started) { if (D) doTree(html); }       // a pack that arrived after the page was shown
+    if (started) { if (D) { again = true; try { doTree(html); } finally { again = false; } } }       // a pack that arrived after the page was shown
     else if (!waiting.size && D) start();
   };
 
@@ -344,6 +348,16 @@
       loaded[name] = dict;
       rebuild();
       settle(name);
+    },
+    /* A PACK THE PAGE DID NOT NAME, ASKED FOR WHEN ITS TEXT APPEARS (2026-10-16): the payment window opens on any page (a
+       player's report PDF, the Manager pass) and its words are the account pack's, so it asks for that pack as it opens; the
+       pack lands, and the page (the window with it) is translated again. English, or a pack already there: nothing. */
+    need(name) {
+      const n = String(name || '');
+      if (lang === 'en' || !/^[a-z]+$/.test(n) || packs.indexOf(n) >= 0) return;
+      packs.push(n);
+      if (!started) waiting.add(n);
+      load('i18n/' + lang + '/' + n + '.js', n);
     },
     whenReady(fn) { if (started || lang === 'en') fn(); else pending.push(fn); },
     misses() { return [...missed].sort((a, b) => b[1] - a[1]).map(([s, n]) => n + '  ' + s); }
@@ -450,13 +464,15 @@
     /* a sentence's full stop left on its own after a link or a bold word: in the language's
        own mark, and without the space English put before nothing */
     const loneMark = D.punct && /^\s*[.?!]\s*$/.test(v);
-    if (!(HAS_LATIN.test(v) || loneMark || (D.decimal !== '.' && /\d\.\d/.test(v))) || done.get(n) === v) return;
+    const redo = again && done.get(n) === v && orig.has(n) && !loneMark;
+    if (!redo && (!(HAS_LATIN.test(v) || loneMark || (D.decimal !== '.' && /\d\.\d/.test(v))) || done.get(n) === v)) return;
     const p = n.parentElement;
     if (!p || (walked !== true && skipped(n))) return;
+    const src = redo ? orig.get(n) : v;
     const out = loneMark ? v.replace(/^\s*([.?!])/, (m, c) => D.punct[c] || c)
-                         : translateText(D, v, ctxsFor(p), debug ? miss : null);
+                         : translateText(D, src, ctxsFor(p), debug ? miss : null);
     if (out == null || out === v) return;
-    orig.set(n, v);
+    orig.set(n, src);
     done.set(n, out);
     n.data = out;
   }

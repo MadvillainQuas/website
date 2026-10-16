@@ -185,6 +185,14 @@ console.log('\n3. the language row: the bottom of the foot');
      i18n.indexOf('patchDialogs();') < i18n.indexOf("createElement('script')"));
   ok('a page names its packs on the script tag, and each is fetched beside the core',
      /data-i18n-packs/.test(i18n) && /load\('i18n\/' \+ lang \+ '\/' \+ p \+ '\.js', p\)/.test(i18n));
+  ok('a pack the page did not name is fetched when asked for (need), never in English, once (2026-10-16)',
+     /need\(name\) \{/.test(i18n) && /if \(lang === 'en' \|\| !\/\^\[a-z\]\+\$\/\.test\(n\) \|\| packs\.indexOf\(n\) >= 0\) return;/.test(i18n) &&
+     /packs\.push\(n\);/.test(i18n));
+  ok('...and a pack that lands late translates again, from the English, what was translated before it (a Spanish price)',
+     /again = true; try \{ doTree\(html\); \} finally \{ again = false; \}/.test(i18n) &&
+     /const redo = again && done\.get\(n\) === v && orig\.has\(n\) && !loneMark;/.test(i18n) && /const src = redo \? orig\.get\(n\) : v;/.test(i18n));
+  ok('...the payment window asks for the account pack as it opens (it opens on a report and the Manager door)',
+     /root\.EpinoiaI18n\.need\('account'\)/.test(read('epinoia', 'paywindow.js')));
 }
 
 /* ---- 4. the dictionaries agree with each other ------------------------------------ */

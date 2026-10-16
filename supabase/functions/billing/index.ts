@@ -4,7 +4,8 @@
 //   POST { action: 'status' }                                  -> { configured, connect, publishable_key }
 //   POST { action: 'checkout', planId, next,
 //          consent: { version, acknowledged: true, adult: true },
-//          embedded? }                                        -> { url } or, embedded, { client_secret, account }
+//          details?, embedded? }                              -> { url } or, embedded, { client_secret, account }
+//        (0279: details say what a report subscription, a league or a PDF is of; a PDF is a payment, once)
 //   POST { action: 'portal', subscriptionId?, cancel?, next }  -> { url }
 //   POST { action: 'connect', leagueId, next }                 -> { url }
 //   POST /functions/v1/billing/webhook    (Stripe, signed)     -> { ok }
@@ -71,6 +72,7 @@ import {
   isUuid, isStripeId, verifyWebhook, stripeRequest, siteOrigin, publicStripeError,
   consentProblem, planProblem, testModeProblem, priceParams, priceProblem, TRIAL_CONSENT,
   checkoutParams, customerParams, portalParams,
+  PURCHASE_CONSENT, ONCE_KINDS, BUILD_KINDS, detailsFor, paymentParams, PAYMENT_EVENTS, purchaseRow,
   connectAccountParams, accountLinkParams, accountRow,
   subscriptionIdFromEvent, subscriptionRow, matchingCheckout, grantsAccess, graceUntil,
   deliveryMode, planAccountProblem, transitionEmails, eventEmails, emailFacts,
@@ -95,7 +97,7 @@ const env = (k: string) => (Deno.env.get(k) ?? '').trim();
 const MAX_EVENT_CHARS = 1_000_000;
 const OUTBOUND_MS = 15_000;
 
-const PLAN_COLUMNS = 'id, league_id, name, features, price_pennies, currency, interval, stripe_price_id, seller, active, trial_months';
+const PLAN_COLUMNS = 'id, league_id, kind, name, features, price_pennies, currency, interval, stripe_price_id, seller, active, trial_months, mail_kinds, includes_tier';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -189,6 +191,44 @@ async function checkout(admin: any, who: Who, body: any) {
   const bad = planProblem(plan);
   if (bad) return json({ error: bad.error }, bad.status);
 
+  /* WHAT IS BOUGHT (0279): the wording fits it (a PDF its own, never a subscription's; a free trial a tier's only), and
+     what it is of or builds is checked before any money: the player or club exists, a league's address is free */
+  const kind: string = plan.kind || 'tier';
+  const once = ONCE_KINDS.includes(kind);
+  if (once !== (body.consent.version === PURCHASE_CONSENT)) {
+    return json({ error: 'The wording you agreed to has changed. Reload the page and tick the boxes again.' }, 400);
+  }
+  if (body.consent.version === TRIAL_CONSENT && kind !== 'tier') {
+    return json({ error: 'A free trial is for a membership tier. Reload the page to see the price.' }, 409);
+  }
+  const det = detailsFor(kind, body.details);
+  if (det.error) return json({ error: det.error }, 400);
+  const details: any = det.details;
+  const exists = async (table: string, id: string) => {
+    const { data, error } = await admin.from(table).select('id').eq('id', id).maybeSingle();
+    if (error) throw error;
+    return !!data;
+  };
+  if ((kind === 'player_mail' && !(await exists('players', details.player_id))) || (kind === 'player_pdf' && !(await exists('players', details.subject_id)))) {
+    return json({ error: 'That player is not on Epinoia.' }, 404);
+  }
+  if ((kind === 'team_mail' && !(await exists('teams', details.team_id))) || (kind === 'club_pdf' && !(await exists('teams', details.subject_id)))) {
+    return json({ error: 'That club is not on Epinoia.' }, 404);
+  }
+  if (kind === 'league_setup' && details.slug) {
+    const { data: free, error: slugErr } = await admin.rpc('league_slug_free', { p_slug: details.slug });
+    if (slugErr) throw slugErr;
+    if (free !== true) return json({ error: 'That league address is taken: try another.' }, 409);
+  }
+  /* a PDF of this report already paid for and still being drawn: no second charge for the same report (one drawn
+     already can be bought again: the report moves on with every game) */
+  if (once) {
+    const { data: busy, error: crErr } = await admin.from('access_purchases').select('id')
+      .eq('user_id', who.user.id).eq('kind', kind).eq('subject_id', details.subject_id).eq('status', 'paid').in('render_state', ['queued', 'running']).limit(1);
+    if (crErr) throw crErr;
+    if ((busy || []).length) return json({ error: 'Your PDF of this report is being prepared: it is emailed to you and kept in Your Dashboard within a few minutes.' }, 409);
+  }
+
   let account: string | null = null;
   let fee: number | null = null;
   if (plan.seller === 'league') {
@@ -210,11 +250,16 @@ async function checkout(admin: any, who: Who, body: any) {
 
   /* Buying the same plan twice is always a mistake, and a second charge is
      the kind nobody notices until the statement. */
+  /* A league is bought as many times as there are leagues, a player's or a club's emails once a player or a club, and
+     a PDF is not a subscription at all (above) */
   const { data: held, error: heldErr } = await admin.from('access_subscriptions')
-    .select('status, current_period_end, past_due_since').eq('user_id', who.user.id).eq('plan_id', plan.id);
+    .select('status, current_period_end, past_due_since, details').eq('user_id', who.user.id).eq('plan_id', plan.id);
   if (heldErr) throw heldErr;
-  if ((held || []).some((r: any) => grantsAccess(r.status, r.current_period_end, r.past_due_since))) {
-    return json({ error: 'You already have this plan. Manage it from Your account.' }, 409);
+  const subjectKey = kind === 'player_mail' ? 'player_id' : kind === 'team_mail' ? 'team_id' : null;
+  if (!once && kind !== 'league_setup' && (held || []).some((r: any) => grantsAccess(r.status, r.current_period_end, r.past_due_since) &&
+      (!subjectKey || (r.details && r.details[subjectKey] === details[subjectKey])))) {
+    return json({ error: subjectKey ? 'You already have these reports for that ' + (kind === 'player_mail' ? 'player' : 'club') + '. Manage them from Your account.'
+                                    : 'You already have this plan. Manage it from Your account.' }, 409);
   }
 
   /* The price the buyer has been shown, and is about to consent to, must be
@@ -234,17 +279,21 @@ async function checkout(admin: any, who: Who, body: any) {
     }
   }
 
-  const pc = priceParams(plan, account);
-  let price: any = null;
-  try {
-    price = await stripe(pc.method, pc.path, pc.params, { account: pc.account });
-  } catch (e) {
-    if (!(e instanceof StripeError && e.code === 'resource_missing')) throw e;
-  }
-  const mismatch = priceProblem(plan, price);
-  if (mismatch) {
-    console.error('[billing] plan ' + plan.id + ' (' + plan.stripe_price_id + (account ? ' on ' + account : '') + ') refused: ' + mismatch);
-    return json({ error: mismatch }, 409);
+  /* a Stripe price of the plan's own must be what the plan says (priceProblem); a price the plan states itself is
+     made from the plan, so there is nothing to compare */
+  if (plan.stripe_price_id && !once) {
+    const pc = priceParams(plan, account);
+    let price: any = null;
+    try {
+      price = await stripe(pc.method, pc.path, pc.params, { account: pc.account });
+    } catch (e) {
+      if (!(e instanceof StripeError && e.code === 'resource_missing')) throw e;
+    }
+    const mismatch = priceProblem(plan, price);
+    if (mismatch) {
+      console.error('[billing] plan ' + plan.id + ' (' + plan.stripe_price_id + (account ? ' on ' + account : '') + ') refused: ' + mismatch);
+      return json({ error: mismatch }, 409);
+    }
   }
 
   const customerId = await customerFor(admin, who.user, account);
@@ -260,15 +309,21 @@ async function checkout(admin: any, who: Who, body: any) {
     stripe_account_id: account,
     consent_version: body.consent.version,
     acknowledged_at: new Date().toISOString(),
-    adult_confirmed: true
+    adult_confirmed: true,
+    details
   });
   if (ckErr) throw ckErr;
 
-  const build = (cid: string) => checkoutParams({
-    plan, userId: who.user.id, email: who.user.email, customerId: cid, account,
-    feePercent: fee, siteUrl: env('SITE_URL'), next: body.next,
-    checkoutId, consentVersion: body.consent.version, trialMonths, embedded: body.embedded === true
-  });
+  const build = (cid: string) => once
+    ? paymentParams({
+        plan, userId: who.user.id, email: who.user.email, customerId: cid, siteUrl: env('SITE_URL'), next: body.next,
+        checkoutId, consentVersion: body.consent.version, subjectId: details.subject_id, subjectName: details.subject_name,
+        embedded: body.embedded === true })
+    : checkoutParams({
+        plan, userId: who.user.id, email: who.user.email, customerId: cid, account,
+        feePercent: fee, siteUrl: env('SITE_URL'), next: body.next,
+        checkoutId, consentVersion: body.consent.version, trialMonths, embedded: body.embedded === true
+      });
   let call = build(customerId);
   let session: any;
   try {
@@ -485,6 +540,9 @@ async function webhook(req: Request) {
   try {
     if (event.type === 'account.updated') {
       await refreshAccount(admin, event, notes);
+    } else if (PAYMENT_EVENTS.includes(event.type) && (event.type === 'charge.refunded' || event.data.object?.mode === 'payment')) {
+      /* a PDF bought once (0279): recorded when paid, taken back when refunded */
+      await purchaseEvent(admin, event, notes);
     } else if (SUBSCRIPTION_EVENTS.includes(event.type)) {
       const subId = subscriptionIdFromEvent(event);
       if (subId) await syncSubscription(admin, event, subId, mode === 'first', notes);
@@ -510,6 +568,46 @@ async function webhook(req: Request) {
   if (notes.length) console.error('[billing] ' + event.id + ' notes:', notes.join(' | '));
   if (mode === 'resync') result.resynced = true;
   return json(result);
+}
+
+/* A PDF PAID FOR ONCE (0279): the paid Session recorded through billing_record_purchase, once per session; a refund
+   takes the download back. The money has been taken, so a record that fails is retried (NotSynced, 500). Only on
+   Epinoia's own account: a league sells no PDFs. */
+async function purchaseEvent(admin: any, event: any, notes: string[]) {
+  if (event.account) { notes.push('a payment on a connected account is not a PDF of ours'); return; }
+  const o = event.data.object || {};
+  if (event.type === 'charge.refunded') {
+    const pi = typeof o.payment_intent === 'string' ? o.payment_intent : o.payment_intent?.id;
+    if (!isStripeId('pi', pi)) { notes.push('a refund that names no payment'); return; }
+    const { error } = await admin.rpc('billing_refund_purchase', { p_payment_intent: pi });
+    if (error) throw new NotSynced('refunding ' + pi + ': ' + describe(error));
+    return;
+  }
+  const row = purchaseRow(o);
+  if (!row) {
+    notes.push(o.payment_status === 'paid' ? 'a paid payment that names no PDF of ours' : 'not paid yet (async_payment_succeeded will say when it is)');
+    return;
+  }
+  const { data, error } = await admin.rpc('billing_record_purchase', { p: row });
+  if (error) throw new NotSynced('recording ' + row.stripe_session_id + ': ' + describe(error));
+  /* THE PDF IS DRAWN BY THE REPORT WORKER, started now (its half-hourly schedule is the floor) */
+  if (data && data.recorded === true) await kickReportWorker(notes);
+}
+
+/* report-mail.yml, dispatched with the secret console-kick uses (Supabase secrets are the project's): GITHUB_DISPATCH_TOKEN,
+   GITHUB_REPO, GITHUB_REF. Never fatal: the job is queued in the database, and the worker's schedule takes it. */
+async function kickReportWorker(notes: string[]) {
+  const token = env('GITHUB_DISPATCH_TOKEN'), repo = env('GITHUB_REPO'), ref = env('GITHUB_REF') || 'main';
+  if (!token || !/^[\w.-]+\/[\w.-]+$/.test(repo)) { notes.push('the report worker was not started (no dispatch token): its schedule draws the PDF'); return; }
+  try {
+    const r = await send('https://api.github.com/repos/' + repo + '/actions/workflows/report-mail.yml/dispatches', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28',
+                 'Content-Type': 'application/json', 'User-Agent': 'epinoia-billing' },
+      body: JSON.stringify({ ref })
+    });
+    if (!r.ok) notes.push('starting the report worker: GitHub answered ' + r.status);
+  } catch (e) { notes.push('starting the report worker failed: ' + describe(e)); }
 }
 
 async function syncSubscription(admin: any, event: any, subId: string, first: boolean, notes: string[]) {
@@ -594,7 +692,7 @@ async function syncSubscription(admin: any, event: any, subId: string, first: bo
   const checkout = before?.cooling_off_waived_at ? null : await checkoutFor(admin, meta.checkout_id, userId, planId);
 
   const { data: result, error } = await admin.rpc('billing_apply_subscription', {
-    p_row: subscriptionRow(sub, { userId, planId, account, checkout }),
+    p_row: subscriptionRow(sub, { userId, planId, account, checkout, checkoutId: meta.checkout_id }),
     p_fetched_at: fetchedAt
   });
   if (error) {

@@ -1743,8 +1743,26 @@
       'the rows add up to the final margin, the home side’s minus the away side’s': '各行の合計が最終点差（ホームからアウェーを引いた値）',
       'the last five results, this game last': '直近5試合（右端がこの試合）',
       'record, place in the table and run': '成績・順位・連勝/連敗',
-      'the next fixture': '次の試合'
+      'the next fixture': '次の試合',
+      'Buy this report as a PDF': 'このレポートをPDFで購入',
+      'Buy it again, as it stands today': '今日時点の内容で再購入',
+      'Your PDF of this report is ready': 'このレポートのPDFが用意できました',
+      'Your PDF of this report is being prepared': 'このレポートのPDFを作成中です',
+      'It was emailed to you and is kept in Your Dashboard, to open or download again.': 'メールでお送りしました。マイダッシュボードにも保存されており、いつでも開いたりダウンロードしたりできます。',
+      'It is drawn for you now: it is emailed to you and kept in Your Dashboard within a few minutes.': 'ただいま作成中です。数分以内にメールでお送りし、マイダッシュボードにも保存します。',
+      'A preview: the first 3 pages. The rest of the report opens with a free EPINOIA account.': 'プレビュー：最初の3ページです。続きは無料のEPINOIAアカウントで開けます。',
+      'A preview: the first 3 pages. The rest of the report opens with a membership, or as a PDF.': 'プレビュー：最初の3ページです。続きはメンバーシップ、またはPDFの購入で開けます。',
+      'A preview: the first 3 pages. The rest of the report opens with a membership.': 'プレビュー：最初の3ページです。続きはメンバーシップで開けます。'
     },
+
+    /* the report's PDF card (0279): the price passes through */
+    patterns: [
+      [/^([£€$][\d.,]+), including any VAT, paid once: the report as it stands today, emailed to you and kept in Your Dashboard\.$/, m => m[1] + '（VAT込み）、1回払い：今日時点のレポートをメールでお送りし、マイダッシュボードにも保存します。'],
+      [/^Buy the PDF · ([£€$][\d.,]+)$/, m => 'PDFを購入 · ' + m[1]],
+      /* the payment window's title and line for the PDF (report.js buy card) */
+      [/^Buy (.+)’s report as a PDF$/, '$1のレポートをPDFで購入'],
+      [/^The (player|club) report: (.+)$/, m => (m[1] === 'club' ? 'クラブレポート' : '選手レポート') + '：' + m[2]]
+    ],
 
     ctxPatterns: {
       /* one per template (the full stop is read off, then the template is matched without it),

@@ -346,6 +346,15 @@ async function keepRapm(r) {
   } catch (e) { console.warn('RAPM not kept (' + r.key + '):', e.message || e); }
 }
 /* opt.context: a browser context of the caller's (a test routes the page's calls through it) */
+/* THE WORKER'S TICKET (0279): its pages are unlocked by a ticket the database made for it with the service key
+   (report_bot_ok), never by a flag a reader could set in their own browser. One a run; none before 0279. */
+let BOT_TICKET;
+export async function botTicket() {
+  if (BOT_TICKET !== undefined) return BOT_TICKET;
+  try { BOT_TICKET = await rest('rpc/report_bot_ticket', { method: 'POST', body: '{}' }); } catch (_) { BOT_TICKET = null; }
+  if (typeof BOT_TICKET !== 'string') BOT_TICKET = null;
+  return BOT_TICKET;
+}
 export async function pdfOf(path, name, opt = {}) {
   if (hooks.pdf) return hooks.pdf(path, name);
   let ctx = opt.context;
@@ -353,8 +362,8 @@ export async function pdfOf(path, name, opt = {}) {
     if (!browser) { const { chromium } = await import('playwright'); browser = await chromium.launch(); }
     ctx = await browser.newContext({ viewport: { width: 1300, height: 1000 }, acceptDownloads: true });
   }
-  const syn = await synergyAll();
-  await ctx.addInitScript(s => { window.EPINOIA_RP_BOT = true; if (s) { window.EPINOIA_RP_PRIME = true; window.EPINOIA_SYNERGY = s; } }, syn);
+  const syn = await synergyAll(), ticket = await botTicket();
+  await ctx.addInitScript(([s, t]) => { window.EPINOIA_RP_BOT = true; if (t) window.EPINOIA_RP_TICKET = t; if (s) { window.EPINOIA_RP_PRIME = true; window.EPINOIA_SYNERGY = s; } }, [syn, ticket]);
   const page = await ctx.newPage();
   try {
     await page.goto(SITE + path, { waitUntil: 'domcontentloaded', timeout: 120000 });
@@ -1049,7 +1058,7 @@ export function opponentsIn(teamId, games) {
 async function botPage(path, wait, fn) {
   if (!browser) { const { chromium } = await import('playwright'); browser = await chromium.launch(); }
   const ctx = await browser.newContext({ viewport: { width: 1300, height: 1000 } });
-  await ctx.addInitScript(s => { window.EPINOIA_RP_BOT = true; if (s) window.EPINOIA_SYNERGY = s; }, await synergyAll());
+  await ctx.addInitScript(([s, t]) => { window.EPINOIA_RP_BOT = true; if (t) window.EPINOIA_RP_TICKET = t; if (s) window.EPINOIA_SYNERGY = s; }, [await synergyAll(), await botTicket()]);
   const page = await ctx.newPage();
   try {
     await page.goto(SITE + path, { waitUntil: 'domcontentloaded', timeout: 120000 });
@@ -1380,6 +1389,58 @@ export async function playerRound(now = new Date()) {
   return { failed, n: (subs || []).length };
 }
 
+/* ------------------------------------------------------------------ a report's PDF, bought once (0279) --- */
+/* THE PDF A READER PAID FOR, DRAWN HERE (Louie, 2026-10-16: "make certain that the preview isn't bypassable at all to grab
+   the rest of the pdf"): never opened in the buyer's browser. Each paid purchase is a job (pdf_render_claim): the player's
+   or club's report drawn as it stands today, kept in the private 'reports' bucket as a file of the buyer's own
+   (<user id>/pdf/<day>/<file>.pdf: their dashboard, a signed link for them alone), and emailed. A drawing that fails is
+   tried again on the next run, three times in all (pdf_render_failed); before 0279 there are no jobs. */
+export function pdfEmail({ name, kind, day }) {
+  const what = kind === 'club_pdf' ? 'club' : 'player';
+  const dash = PUBLIC + '/epinoia/profile/';
+  const subject = 'Your ' + what + ' report: ' + name;
+  const blocks = [
+    P('Here is the PDF you bought of ' + esc(name) + '\u2019s ' + what + ' report, as it stands today.'),
+    P('It is attached, and kept in <a href="' + esc(dash) + '">Your Dashboard</a> to open or download again whenever you like.'),
+    P('Thank you for your support.')];
+  return { subject, html: layout({ colour: '#08603f', kicker: 'Scouting report \u00b7 PDF', title: name, meta: day, greeting: 'Hello,', blocks,
+    files: [{ label: 'Scouting report: ' + name }], kept: true, foot: 'You receive this because you bought this report on Epinoia.' }) };
+}
+let pdfAway = false; /* the queue not there (before 0279): asked once a run, not between every address */
+export async function pdfRound(now = new Date()) {
+  if (DRY || pdfAway) return { failed: 0, n: 0 };
+  let jobs;
+  try { jobs = await rest('rpc/pdf_render_claim', { method: 'POST', body: JSON.stringify({ p_limit: 5 }) }); }
+  catch (e) { pdfAway = true; console.warn('PDF jobs skipped (0279 not applied?):', e.message || e); return { failed: 0, n: 0 }; }
+  let failed = 0;
+  for (const j of Array.isArray(jobs) ? jobs : []) {
+    const club = j.kind === 'club_pdf';
+    const name = j.subject_name || (club ? 'The club' : 'The player');
+    const day = now.toISOString().slice(0, 10);
+    try {
+      const pdf = await pdfOf((club ? '/epinoia/t/?t=' : '/epinoia/p/?p=') + encodeURIComponent(j.slug || j.subject_id) + '&tab=report',
+        'epinoia-' + (club ? 'club' : 'player') + '-report-' + slugName(name) + '-' + day);
+      const path = j.user_id + '/pdf/' + day + '/' + String(pdf.filename).replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+/, '').slice(0, 150);
+      const body = Buffer.from(pdf.content, 'base64');
+      const r = await fetch(env.SUPABASE_URL + '/storage/v1/object/reports/' + path, { method: 'POST', body,
+        headers: { apikey: env.SUPABASE_SERVICE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY, 'Content-Type': 'application/pdf', 'x-upsert': 'true' } });
+      if (!r.ok) throw new Error('storage ' + r.status + ': ' + (await r.text()).slice(0, 200));
+      await rest('rpc/pdf_render_done', { method: 'POST', body: JSON.stringify({ p_id: j.id, p_path: path, p_bytes: body.length, p_title: name,
+        p_subtitle: (club ? 'Club report' : 'Player report') + ' \u00b7 ' + day }) });
+      console.log('[' + j.email + '] PDF of ' + name + ' drawn and kept');
+      if (j.email) {
+        try { const E = pdfEmail({ name, kind: j.kind, day }); await send(j.email, E.subject, E.html, [pdf]); }
+        catch (e) { console.warn('[' + j.email + '] PDF kept, not emailed:', e.message || e); }
+      }
+    } catch (e) {
+      failed++;
+      console.error('[' + j.email + '] PDF of ' + name + ':', e.message || e);
+      try { await rest('rpc/pdf_render_failed', { method: 'POST', body: JSON.stringify({ p_id: j.id, p_error: String(e.message || e) }) }); } catch (_) { /* the stale lease frees it */ }
+    }
+  }
+  return { failed, n: (jobs || []).length };
+}
+
 /* ------------------------------------------------------------------ everybody --- */
 async function main() {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) { console.error('SUPABASE_URL and SUPABASE_SERVICE_KEY are needed'); process.exit(1); }
@@ -1388,6 +1449,13 @@ async function main() {
   let failed = 0;
   /* the console's "send next week's reports now" first (0226); that table is away until the migration is applied, which must not stop the rounds */
   try { failed += await requests(); } catch (e) { console.warn('send-now requests skipped:', e.message || e); }
+  /* THE PDFs BOUGHT ONCE (0279): drawn, kept and emailed before the rounds, so a buyer waits minutes and not behind a Sunday's
+     reports; and once more at the end for any bought while the run went on. Before 0279 nothing. */
+  let pdfs = 0;
+  const pdfs1 = async () => {
+    try { const PD = await pdfRound(); failed += PD.failed; pdfs += PD.n; } catch (e) { console.warn('PDFs skipped:', e.message || e); }
+  };
+  await pdfs1();
   /* A FREE TRIAL THAT HAS ENDED (0275): an address's clubs all go quiet, and the address is told once */
   const over = subs.filter(s => trialOver(s) && !(env.ONLY && s.email !== env.ONLY));
   const byMail = new Map();
@@ -1401,12 +1469,15 @@ async function main() {
     if (trialOver(s)) continue;
     try { failed += (await one(s, s.teams || { id: s.team_id, name: 'your club' })) || 0; }
     catch (e) { failed++; console.error('[' + s.email + ']', e.message || e); }
+    await pdfs1(); /* one cheap claim between addresses: a PDF bought during a long Sunday is not kept waiting for its end */
   }
   /* AN ACCOUNT'S ACCESS GIVEN BY EMAIL THAT HAS ENDED (0275): told once */
   try { const n = await grantEnds(); if (n) console.log(n + ' account(s) told their access has ended'); } catch (e) { console.warn('ended access not told (0275 not applied?):', e.message || e); }
   /* THE PLAYERS' WEEKLY REPORTS (0272): Monday mornings, and any "send now"; before 0272 the table is not there */
   let players = 0;
   try { const PR = await playerRound(); failed += PR.failed; players = PR.n; } catch (e) { console.warn('player reports skipped:', e.message || e); }
+  await pdfs1();
+  if (pdfs) console.log(pdfs + ' PDF(s) drawn');
   /* the primed copies emailed in this run, the stale and the old, deleted (0229) */
   try { const n = await cleanPrimed(); if (n) console.log(n + ' primed report(s) deleted'); } catch (e) { console.warn('primed copies not cleaned:', e.message || e); }
   if (browser) await browser.close();

@@ -207,8 +207,8 @@ console.log('\nstate from an access_state payload');
                             analytics: 'members', features: ['analytics', 'league', 7], can_view: true, analytics_ok: true, has_plans: true })] };
   const s = A.fromPayload(p, 'L9');
   eq('every field mapped', s, { known: true, signedIn: true, leagueId: 'L9', slug: 'nbl', name: 'NBL', accessMode: 'members',
-    fixturesPublic: false, analytics: 'members', features: ['analytics', 'league'], canView: true, analyticsOk: true,
-    hasPlans: true, hasLeaguePlans: true, subscriptions: 2, analyticsDefault: 'members', membershipsEnabled: true });
+    fixturesPublic: false, analytics: 'members', features: ['analytics', 'league'], privileges: [], canView: true, analyticsOk: true,
+    hasPlans: true, hasLeaguePlans: true, subscriptions: 2, analyticsDefault: 'members', membershipsEnabled: true, platformAdmin: false });
   ok('has_league_plans is its own answer, not has_plans', A.fromPayload({ leagues: [entry('X', { has_plans: true, has_league_plans: false })] }, 'X').hasLeaguePlans === false &&
      A.fromPayload({ leagues: [entry('X', { has_plans: false, has_league_plans: true })] }, 'X').hasPlans === false);
   ok('an older payload without has_league_plans shows the link (unknown is not "none")',
@@ -324,7 +324,15 @@ console.log('\nsimulation');
   ok('locked: get() says so', A.get('mem-in').simulated === 'locked' && A.get('mem-in').canView === false && A.get('open').analyticsOk === false);
   ok('locked: authHeaders still follow the server (a member keeps the token)', !!A.authHeaders('mem-in').Authorization);
   setSim('member');
-  ok('member: both true where the server said no', A.canView('mem-out') === true && A.analyticsOk('mem-out') === true);
+  /* 0279: 'member' is a platform administrator's preview alone, by the server's answer: a reader who typed it opens nothing */
+  ok('member, set by a reader who is not a platform administrator: opens nothing', A.canView('mem-out') === false && A.get('open').simulated !== 'member');
+  setSim('');
+  fresh(); signIn();
+  const asAdmin = [entry('open'), entry('mem-in', { access_mode: 'members', features: ['league'], can_view: true }), entry('mem-out', { access_mode: 'members', can_view: false })];
+  A._test.transport(fakeServer(asAdmin, { top: { platform_admin: true } }));
+  for (const id of ['open', 'mem-in', 'mem-out']) await A.load({ leagueId: id });
+  setSim('member');
+  ok('member, a platform administrator\'s: both true where the server said no', A.canView('mem-out') === true && A.analyticsOk('mem-out') === true);
   ok('member: authHeaders do not pretend', Object.keys(A.authHeaders('mem-out')).length === 0);
   setSim('nonsense');
   ok('any other value is ignored', A.canView('mem-out') === false && A.analyticsOk('open') === true && !('simulated' in A.get('open')));
@@ -454,6 +462,35 @@ console.log('\npaywallHTML');
   ok('the analytics teaser in the first league still offers the analytics plan', A.teaserHTML({ leagueSlug: 'nbl' }).includes('/join/?l=nbl'));
 }
 
+/* ====================================================== the matrix (0279) === */
+console.log('\nthe matrix: Free, Signed in and the tiers (0279)');
+{
+  fresh();
+  A._test.transport(fakeServer([entry('slb', { privileges: ['events'], features: [] })], { top: { privileges: ['manager'], platform_admin: true } }));
+  await A.load({ leagueSlug: 'slb' }); await A.load({});
+  A._test.wall({ gates: [{ key: 'events', gate: 'tiers' }, { key: 'wowy', gate: 'tiers' }, { key: 'csv', gate: 'free' }, { key: 'shotZones', gate: 'signin' }, { key: 'manager', gate: 'tiers', category: 'manager' }],
+                 tiers: [{ id: 't2', name: 'Pro plus', price_pennies: 900, currency: 'gbp', interval: 'month', privileges: ['wowy'] },
+                         { id: 't1', name: 'Pro', price_pennies: 500, currency: 'gbp', interval: 'month', privileges: ['events', 'wowy'] }],
+                 products: { player_pdf: { id: 'p1', name: 'Player report PDF', price_pennies: 1500, interval: 'once' }, bad: { name: 'no id' } } });
+  ok('a tier\'s section open to whoever holds it here, shut to the rest', A.featureLocked('events', 'slb') === false && A.featureLocked('wowy', 'slb') === true);
+  ok('...Free and Signed in open (signed in, as the tests are)', A.featureLocked('csv', 'slb') === false && A.featureLocked('shotZones', 'slb') === false);
+  ok('...with no league, what is held across Epinoia', A.featureLocked('manager') === false && A.privilegeOk('manager') === true);
+  ok('...a matrix that says Free stays Free (no account asked)', A.gateOf('csv') === 'free' && A.wallGates().manager.category === 'manager');
+  ok('the tiers that open a section, cheapest first', A.tiersFor('wowy').map(t => t.name).join() === 'Pro,Pro plus' && A.tiersFor('csv').length === 0);
+  ok('the teaser names the cheapest tier that opens it, and its price', A.teaserHTML({ leagueSlug: 'slb', key: 'wowy' }).includes('Included in Pro (£5.00 a month) and higher tiers.'));
+  ok('the things sold on their own, by kind (one with no id dropped)', A.products().player_pdf.price_pennies === 1500 && A.products().player_pdf.interval === 'once' && !A.products().bad);
+  ok('Epinoia\'s tiers are the membership page; a league\'s own plans the join page', /\/membership\/(\?|$)/.test(A.joinHref({})) && /\/join\/\?l=slb/.test(A.joinHref({ leagueSlug: 'slb' })));
+  setSim('locked');
+  ok('the simulation locks a tier\'s section too', A.featureLocked('events', 'slb') === true);
+  setSim('member');
+  ok('...and opens it', A.featureLocked('wowy', 'slb') === false);
+  setSim('');
+  A._test.wall({ gates: [{ key: 'wowy', gate: 'tiers' }], tiers: [] });
+  const off = fakeServer([entry('off', { privileges: [] })], { top: { memberships_enabled: false } });
+  A._test.transport(off); await A.load({ leagueSlug: 'off' });
+  ok('memberships switched off: a tier\'s section is open', A.featureLocked('wowy', 'off') === false);
+}
+
 /* ========================================================== the wall (0222) === */
 console.log('\nwhat is behind the wall, as the platform set it (0222)');
 {
@@ -494,7 +531,8 @@ console.log('\nwhat is behind the wall, as the platform set it (0222)');
   });
   await A.load({ leagueSlug: 'slb' });
   const call = srv.calls.find(c => c.url.endsWith('/rpc/access_wall'));
-  ok('the wall is read with the first answer, signed out (no Authorization)', walls === 1 && call && !(call.init.headers || {}).Authorization && A.gateOf('shotZones') === 'free' && A.trialMonths() === 3);
+  /* a database before 0279 knows no matrix: its 'free' meant "for an account" (signed in first), and still does */
+  ok('the wall is read with the first answer, signed out (no Authorization)', walls === 1 && call && !(call.init.headers || {}).Authorization && A.gateOf('shotZones') === 'signin' && A.trialMonths() === 3);
   await A.load({ leagueSlug: 'slb' });
   ok('...once a page', walls === 1);
   A._test.reset(); A._test.wall(null);
@@ -530,8 +568,8 @@ console.log('\nwhat is behind the wall, as the platform set it (0222)');
   const missing = [...asked].filter(k => !A.CATALOGUE.locks[k]);
   ok('...and every key asked about is one the platform console can move', missing.length === 0, missing);
   const sql = rd('supabase', 'migrations', '0222_access_gates.sql') + rd('supabase', 'migrations', '0231_previews.sql') +
-    rd('supabase', 'migrations', '0265_transfer_matrix_gate.sql');
-  ok('...each seeded as a row by 0222 (the game report by 0231, the transfer matrix by 0265)', Object.keys(A.CATALOGUE.locks).every(k => sql.includes("('" + k + "', ") || sql.includes("select '" + k + "', ")));
+    rd('supabase', 'migrations', '0265_transfer_matrix_gate.sql') + rd('supabase', 'migrations', '0279_tiers_and_products.sql');
+  ok('...each seeded as a row by 0222 (the game report by 0231, the transfer matrix by 0265, the front office and Manager mode by 0279)', Object.keys(A.CATALOGUE.locks).every(k => sql.includes("('" + k + "', ") || sql.includes("select '" + k + "', ")));
   ok('the transfer matrix page asks for its own lock, and it rides on the analytics gate as What wins does',
      /const KEY = 'transferMatrix'/.test(rd('epinoia', 'scouting', 'transfer', 'page.js')) && A.CATALOGUE.locks.transferMatrix.gate === A.CATALOGUE.locks.model.gate);
 }

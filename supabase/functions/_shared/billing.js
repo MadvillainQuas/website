@@ -84,8 +84,15 @@ export const DEFAULT_CONNECT_NEXT = '/epinoia/admin/';
 export const CONSENT = Object.freeze({
   '2026-09-a': 'Start my access now. I understand that access begins straight away, so once it has started I lose my 14-day right to cancel.',
   /* a new member's free trial (0223): the months free and the first charge are in the order summary and on Stripe's page */
-  '2026-10-t': 'Start my free trial now. I understand that access begins straight away and that, unless I cancel before the free trial ends, my membership is then charged automatically and renews until I cancel. Once my access has started I lose my 14-day right to cancel, but I can cancel online at any time.'
+  '2026-10-t': 'Start my free trial now. I understand that access begins straight away and that, unless I cancel before the free trial ends, my membership is then charged automatically and renews until I cancel. Once my access has started I lose my 14-day right to cancel, but I can cancel online at any time.',
+  /* a report PDF bought once (0279): digital content supplied at once */
+  '2026-10-p': 'Give me my report now. I understand it is supplied straight away, so once it has been supplied I lose my 14-day right to cancel.'
 });
+/* the wording for something bought once (a PDF): checkout takes it for a PDF only, and a PDF only with it */
+export const PURCHASE_CONSENT = '2026-10-p';
+/* WHAT IS SOLD (access_plans.kind, 0279): a membership tier or pass, report emails, a league, or a PDF bought once */
+export const ONCE_KINDS = Object.freeze(['player_pdf', 'club_pdf']);
+export const BUILD_KINDS = Object.freeze(['player_mail', 'team_mail', 'league_setup']);
 /* the wording that asks for a free trial: checkout gives one only to whoever ticked it, and only when they are due one */
 export const TRIAL_CONSENT = '2026-10-t';
 export const ADULT_WORDING = 'I am 18 or over.';
@@ -430,13 +437,75 @@ export function consentProblem(consent) {
   return null;
 }
 
+/* A PRICE THE PLAN STATES ITSELF (0279): Epinoia's plan with a price and no Stripe price of its own is sold at exactly
+   its price (Checkout's price_data), so a price changed in the console is the price charged with nothing to make in
+   Stripe. A league's own plan still names its price on its own account. */
+export const inlinePriced = (plan) => !!plan && !plan.stripe_price_id && plan.seller !== 'league' && Number(plan.price_pennies) > 0;
+
 /** null when the plan can be bought; else { status, error }. */
 export function planProblem(plan) {
   if (!plan) return { status: 404, error: 'That plan does not exist.' };
   if (plan.active === false) return { status: 409, error: 'That plan is no longer on sale.' };
+  if (inlinePriced(plan)) return null;
   // the shape too: the id goes into a Stripe URL path next
   if (!isStripeId('price', plan.stripe_price_id)) return { status: 409, error: 'That plan cannot be bought yet.' };
   return null;
+}
+
+/* the line item a price stated by the plan makes: the amount, VAT included (every page says so), renewing as the plan
+   does, or once for a PDF */
+export function inlinePriceData(plan) {
+  const once = plan.interval === 'once';
+  const d = {
+    currency: String(plan.currency || 'gbp').toLowerCase(),
+    unit_amount: Math.round(Number(plan.price_pennies) || 0),
+    tax_behavior: 'inclusive',
+    product_data: { name: String(plan.name || 'Epinoia').slice(0, 120), metadata: { plan_id: plan.id } }
+  };
+  if (!once) d.recurring = { interval: plan.interval === 'year' ? 'year' : 'month', interval_count: 1 };
+  return d;
+}
+
+/* WHAT A CHECKOUT BUILDS (0279), checked and cleaned before any money: the player of a player's report emails, the club
+   of a club's, the league to build; for a PDF, the player or club it is of. -> { details } or { error } */
+const TZ_RE = /^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/;
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+export function detailsFor(kind, raw) {
+  const x = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  const out = {};
+  if (kind === 'player_mail' || kind === 'team_mail') {
+    const key = kind === 'player_mail' ? 'player_id' : 'team_id';
+    if (!isUuid(x[key])) return { error: kind === 'player_mail' ? 'Pick the player whose reports to send.' : 'Pick the club whose reports to send.' };
+    out[key] = x[key];
+    const email = str(x.email, 200).toLowerCase();
+    if (email && !EMAIL_RE.test(email)) return { error: 'That email address does not look right.' };
+    if (email) out.email = email;
+    const name = str(x.name, 60);
+    if (name) out.name = name;
+    const tz = str(x.tz, 60);
+    out.tz = TZ_RE.test(tz) ? tz : 'UTC';
+    return { details: out };
+  }
+  if (kind === 'league_setup') {
+    const name = str(x.league_name, 60);
+    if (name.length < 2) return { error: 'Give the league a name of 2 to 60 characters.' };
+    out.league_name = name;
+    const slug = str(x.slug, 40).toLowerCase();
+    if (slug && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) return { error: 'The league address is lower-case letters and numbers, with single hyphens between words.' };
+    if (slug) out.slug = slug;
+    const colour = str(x.colour, 7);
+    if (/^#[0-9a-fA-F]{6}$/.test(colour)) out.colour = colour;
+    return { details: out };
+  }
+  if (kind === 'player_pdf' || kind === 'club_pdf') {
+    if (!isUuid(x.subject_id)) return { error: kind === 'player_pdf' ? 'Say which player\u2019s report this is.' : 'Say which club\u2019s report this is.' };
+    out.subject_id = x.subject_id;
+    const nm = str(x.subject_name, 120);
+    if (nm) out.subject_name = nm;
+    return { details: out };
+  }
+  return { details: null };
 }
 
 /* ------------------------------------------------------------ test mode --- */
@@ -593,7 +662,8 @@ export function trialEnd(months, now = Date.now()) {
  * customer.subscription.* event and every re-fetch carries.
  */
 export function checkoutParams({ plan, userId, email, customerId, account, feePercent, siteUrl, next, checkoutId, consentVersion, trialMonths, now, embedded }) {
-  if (!plan || !plan.stripe_price_id) throw new Error('that plan cannot be bought yet');
+  if (!plan || (!plan.stripe_price_id && !inlinePriced(plan))) throw new Error('that plan cannot be bought yet');
+  if (plan.interval === 'once') throw new Error('a PDF bought once is a payment, not a subscription (paymentParams)');
   if (!userId || !checkoutId) throw new Error('a checkout needs the buyer and its checkout record');
   if (typeof consentVersion !== 'string' || !hasOwn(CONSENT, consentVersion)) {
     throw new Error('unknown consent version: ' + String(consentVersion));
@@ -628,7 +698,7 @@ export function checkoutParams({ plan, userId, email, customerId, account, feePe
 
   const params = {
     mode: 'subscription',
-    line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
+    line_items: [plan.stripe_price_id ? { price: plan.stripe_price_id, quantity: 1 } : { price_data: inlinePriceData(plan), quantity: 1 }],
     client_reference_id: userId,
     metadata,
     subscription_data,
@@ -661,6 +731,63 @@ export function checkoutParams({ plan, userId, email, customerId, account, feePe
     params,
     account: byLeague ? account : null,
     idempotencyKey: 'checkout-' + checkoutId + (embedded ? '-embedded' : '')
+  };
+}
+
+/**
+ * A PDF BOUGHT ONCE (0279): Checkout in payment mode, the price the plan states (or its own one-time Stripe price),
+ * Epinoia's account only. The metadata names the buyer, the plan, the player or club the report is of and the checkout
+ * evidence, on the Session and on the PaymentIntent, so the webhook's record (purchaseRow) and a refund find them.
+ * -> { method, path, params, account: null, idempotencyKey }
+ */
+export function paymentParams({ plan, userId, email, customerId, siteUrl, next, checkoutId, consentVersion, subjectId, subjectName, embedded }) {
+  if (!plan || plan.interval !== 'once') throw new Error('only a PDF is bought once');
+  if (!plan.stripe_price_id && !inlinePriced(plan)) throw new Error('that PDF cannot be bought yet');
+  if (!userId || !checkoutId || !isUuid(subjectId)) throw new Error('a purchase needs the buyer, its checkout record and what it is of');
+  if (consentVersion !== PURCHASE_CONSENT) throw new Error('a PDF is bought under its own wording: ' + String(consentVersion));
+  const back = siteOrigin(siteUrl) + safeNext(next);
+  const metadata = { user_id: userId, plan_id: plan.id, kind: String(plan.kind || ''), subject_id: subjectId,
+                     subject_name: String(subjectName || '').slice(0, 120), checkout_id: checkoutId, consent_version: consentVersion };
+  const params = {
+    mode: 'payment',
+    line_items: [plan.stripe_price_id ? { price: plan.stripe_price_id, quantity: 1 } : { price_data: inlinePriceData(plan), quantity: 1 }],
+    client_reference_id: userId,
+    metadata,
+    payment_intent_data: { metadata: { ...metadata } },
+    custom_text: { submit: { message: money(plan.price_pennies, plan.currency) + ', including any VAT, paid once. The PDF is emailed to you and kept in Your Dashboard within a few minutes of payment.' } },
+    success_url: withJoined(back),
+    cancel_url: back
+  };
+  if (embedded) {
+    params.ui_mode = 'embedded';
+    params.redirect_on_completion = 'if_required';
+    params.return_url = withJoined(back);
+    delete params.success_url;
+    delete params.cancel_url;
+  }
+  if (customerId) params.customer = customerId;
+  else if (email) params.customer_email = email;
+  return { method: 'POST', path: '/checkout/sessions', params, account: null,
+           idempotencyKey: 'payment-' + checkoutId + (embedded ? '-embedded' : '') };
+}
+
+/* the paid one-off events (0279): a card paid at once, a slower method paid later, a refund */
+export const PAYMENT_EVENTS = Object.freeze(['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'charge.refunded']);
+
+/** A paid payment-mode Session -> p for billing_record_purchase, or null when it is not one of ours, or not paid yet. */
+export function purchaseRow(session) {
+  if (!session || session.mode !== 'payment' || session.payment_status !== 'paid') return null;
+  const m = session.metadata || {};
+  if (!isUuid(m.user_id) || !isUuid(m.plan_id) || !isUuid(m.subject_id)) return null;
+  if (typeof session.id !== 'string' || !/^cs_[A-Za-z0-9_]+$/.test(session.id)) return null;
+  return {
+    user_id: m.user_id, plan_id: m.plan_id, subject_id: m.subject_id, subject_name: m.subject_name || null,
+    amount_pennies: Number.isFinite(session.amount_total) ? session.amount_total : null,
+    currency: String(session.currency || 'gbp').toLowerCase(),
+    stripe_session_id: session.id,
+    stripe_payment_intent: idOf(session.payment_intent),
+    checkout_id: isUuid(m.checkout_id) ? m.checkout_id : null,
+    livemode: session.livemode !== false
   };
 }
 
@@ -803,7 +930,7 @@ export function subscriptionIdFromEvent(event) {
  * the person acknowledged losing the 14-day right — which the RPC only writes
  * while nothing is stored, so a later event cannot blank or move it.
  */
-export function subscriptionRow(sub, { userId, planId = null, account = null, checkout = null } = {}) {
+export function subscriptionRow(sub, { userId, planId = null, account = null, checkout = null, checkoutId = null } = {}) {
   if (!sub || !isStripeId('sub', sub.id)) throw new Error('that is not a subscription');
   if (!isUuid(userId)) throw new Error('a subscription row needs the member it belongs to');
   const item = sub.items?.data?.[0] || null;
@@ -821,7 +948,9 @@ export function subscriptionRow(sub, { userId, planId = null, account = null, ch
     trial_end: isoFromUnix(sub.trial_end),
     ended_at: isoFromUnix(sub.ended_at),
     livemode: sub.livemode !== false,
-    cooling_off_waived_at: checkout && checkout.acknowledged_at ? checkout.acknowledged_at : null
+    cooling_off_waived_at: checkout && checkout.acknowledged_at ? checkout.acknowledged_at : null,
+    /* the checkout whose details say what this subscription builds (0279), read only from this member's own for this plan */
+    ...(isUuid(checkoutId) ? { checkout_id: checkoutId } : {})
   };
 }
 

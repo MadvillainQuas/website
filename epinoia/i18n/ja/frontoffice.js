@@ -567,10 +567,15 @@
       'more starters': '先発相手が増える',
       'tired legs': '疲労',
       'Minutes go to fresh legs first, and nobody past 90% of the game: deep into the game a man tires, the more so the more of the offence he carries, and a bench man handed a starter’s minutes meets better players': '出場時間はまず疲れていない選手へ、試合の90%を超える選手はいない。長時間出場すると疲労し、攻撃の負担が大きいほど影響が大きい。先発級の出場時間を得た控えはより強い相手と対戦する',
-      'what the position is worth, from the win model': '勝利モデルによるポジションの価値'
+      'what the position is worth, from the win model': '勝利モデルによるポジションの価値',
+      'Its team managers and statisticians, and whoever the club shares it with, open it with a membership that includes it.': 'クラブのチームマネージャーと統計担当、そしてクラブが共有した人が、これを含むメンバーシップで開けます。',
+      'Work for the club? Sign in with the address the club gave, or ask the club to share it with you.': 'クラブのスタッフの方は、クラブから伝えられたアドレスでログインするか、クラブに共有を依頼してください。',
+      'Every position charted against the same position at every club in the league, and the win model.': '各ポジションをリーグ全クラブの同じポジションと比較したチャートと、勝利モデル。'
     },
     keep: ['Elo', 'P75', 'BPM'],
     patterns: [
+      /* the front office is the club's own (0279): the club's name passes through */
+      [/^The front office is for (.+)’s own staff$/, (m) => 'フロントオフィスは' + m[1] + 'のスタッフ専用です'],
       [/^(\d+)-(\d+) · projected (\d+) wins$/, (m) => m[1] + '勝' + m[2] + '敗 · 予想' + m[3] + '勝'],
       [/^Record (\d+)-(\d+) · Pythagorean ([−+\-]?[\d.,]+) · from its factors ([−+\-]?[\d.,]+) wins$/, (m) => '成績 ' + m[1] + '勝' + m[2] + '敗 · ピタゴラス ' + m[3] + ' · 要因から ' + m[4] + '勝'],
       [/^Record (\d+)-(\d+) · Pythagorean ([−+\-]?[\d.,]+) wins$/, (m) => '成績 ' + m[1] + '勝' + m[2] + '敗 · ピタゴラス ' + m[3] + '勝'],

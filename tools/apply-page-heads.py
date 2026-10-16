@@ -81,6 +81,17 @@ PAGES = {
     "join/": ("Membership: Advanced Basketball Analytics | Epinoia",
               "Box scores, tables and player pages are free. Membership adds the analysis on top: where points came from, where shots were taken and who plays well together.",
               "Membership", False, "Membership", "WebPage"),
+    # the sales pages (2026-10-16): Epinoia's tiers, the report emails and a private league of one's own. Public price
+    # lists, so open to search (join/ above stays the long form a league's own plans use, and stays out)
+    "membership/": ("Membership Tiers: What Each One Opens | Epinoia",
+                    "Compare Epinoia's membership tiers side by side: what is free, what a free account adds and what each tier opens, from shot zones and lineups to scouting reports.",
+                    "Membership", True, "Membership", "WebPage"),
+    "reports/": ("Basketball Scouting Reports by Email | Epinoia",
+                 "Subscribe to a basketball player's or club's scouting reports by email: the weekly player report, every game's analysis, opponent scouting and the club's own report.",
+                 "Reports", True, "Reports", "WebPage"),
+    "setup-league/": ("Set Up Your Own Private Basketball League | Epinoia",
+                      "Set up a private basketball league on Epinoia: your seasons, teams, fixtures, results and statistics, run by you from the league console, seen by those you invite.",
+                      "Set up a league", True, "Set up a league", "WebPage"),
     "go/": ("EPINOIA GO: Stamp the Arenas You Visit | Epinoia",
             "EPINOIA GO stamps the arenas you go to, at the game, with your phone: your travels on a map, the distance between them and the fans' photographs of each game.",
             "EPINOIA GO", False, "EPINOIA GO", "WebPage"),

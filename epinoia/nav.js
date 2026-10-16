@@ -280,7 +280,9 @@
      not about it. */
   /* EPINOIA GO's pages are nobody's league either - and the wall uses ?l= for its own filter, a league's
      id, which read as a league here drew that league's tab bar with links that went nowhere. */
-  const PLATFORM_PAGE = /\/epinoia\/(home|games|scouting|go)\//;
+  /* The sales pages (membership, reports, setting up a league; 2026-10-16) are the platform's too: a ?l= carried in
+     from a league's page must not draw that league's rail over a price list that is Epinoia's. */
+  const PLATFORM_PAGE = /\/epinoia\/(home|games|scouting|go|membership|reports|setup-league)\//;
   const onPlatform = PLATFORM_PAGE.test(here);
   const atHome = /\/epinoia\/home\/$/.test(here);
   const onGo = /\/epinoia\/go\//.test(here);
@@ -725,6 +727,15 @@
      game"): the game itself, a page of its own */
   const managerRow = platformRow('⛉', 'manager', 'manager/', /\/epinoia\/manager\//,
                                  'EPINOIA Manager: build a club from real players and play a real league’s season');
+  /* WHAT IS SOLD (Louie, 2026-10-16: "Underneath epinoia go on the sidebar ... a 'MEMBERSHIP' page and 'REPORTS' and
+     'SET UP A LEAGUE' page"): the tiers side by side, the report emails, and a private league of one's own */
+  const membershipRow = platformRow('✦', 'membership', 'membership/', /\/epinoia\/membership\//,
+                                    'membership: what is free, what a free account adds and what each tier opens');
+  /* the envelope drawn as text (U+2709 U+FE0E), never an emoji, as the cog on the bar */
+  const reportsRow = platformRow('✉︎', 'reports', 'reports/', /\/epinoia\/reports\//,
+                                 'reports: a player’s or a club’s scouting reports, emailed to you');
+  const setupRow = platformRow('⊕', 'set up a league', 'setup-league/', /\/epinoia\/setup-league\//,
+                               'set up a league: your own private league on Epinoia, run by you');
   /* THE HOME RAIL IN SECTIONS (Louie, 2026-10-09): home; MAIN - fixtures, leagues ›, scouting › (its own layer: scouting,
      the injury report, what wins); VIDEO & FEED - news, videos; EPINOIA GO - GO ›, the Manager */
   const onScout = /\/epinoia\/(scouting|injuries|winning)\//.test(here);
@@ -740,7 +751,8 @@
   });
   const sec = t => { const d = el('div', 'rsec', t); d.setAttribute('aria-hidden', 'true'); return d; };
   hlist.textContent = '';
-  hlist.append(homeLink, sec('Main'), fixturesRow, leaguesRow, scoutMove, sec('Video & feed'), newsRow, videosRow, sec('EPINOIA GO'), goRow, managerRow);
+  hlist.append(homeLink, sec('Main'), fixturesRow, leaguesRow, scoutMove, sec('Video & feed'), newsRow, videosRow, sec('EPINOIA GO'), goRow, managerRow,
+               membershipRow, reportsRow, setupRow);
   const scouthead = el('div', 'phead');
   const scoutback = el('button', 'back', '‹');
   scoutback.type = 'button'; scoutback.title = 'Back'; scoutback.setAttribute('aria-label', 'Back to the Epinoia menu');
