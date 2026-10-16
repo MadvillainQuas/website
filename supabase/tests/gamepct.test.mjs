@@ -220,6 +220,16 @@ console.log('\nthe game page');
   const zooms = kit.match(/@media \(min-width:\d+px\)\{ body\{ zoom:[\d.]+ \} \}/g) || [];
   ok('theme.css carries the kit\'s zoom steps to the letter (' + zooms.length + ')', zooms.length === 2 && zooms.every(z => theme.includes(z)));
   ok('the league\'s colours paint the tabs, the switches and the ground', /body\.league-themed \.tabbtn\.on/.test(theme) && /body\.league-themed \.mv-switch button\.on/.test(theme) && /body\.league-themed\{[\s\S]*?background:/.test(theme));
+  {
+    const gj = read('epinoia', 'game', 'game.js'), mc = read('epinoia', 'game', 'modern.css');
+    ok('the box score opens on Modern every time, and a choice kept from before is not read (Louie, 2026-10-16)',
+       /let boxMode = 'modern';/.test(gj) && !/getItem\('epinoia_box_mode'\)/.test(gj) && !/setItem\('epinoia_box_mode'/.test(gj));
+    ok('...beside the switch, in Modern only, a card saying to tap a player\'s circle',
+       /\(boxMode === 'modern' \? '<p class="mv-hint" role="note">/.test(gj) && /Tap a player’s circle for their full stat line/.test(gj));
+    ok('...its circle a solid disc of the switch\'s colour (the league\'s on a themed page), its pulse off for reduced motion',
+       /\.mv-hint-ic\{[^}]*background:var\(--hint-c\)/.test(mc) && /prefers-reduced-motion:reduce\)\{ \.mv-hint-ic\{ animation:none \} \}/.test(mc) &&
+       /body\.league-themed \.mv-hint\{ --hint-c:var\(--league-a\); --hint-on:var\(--league-on-a\) \}/.test(theme));
+  }
   ok('the shading is --good and --bad, never the league\'s colour', /\.gp-b6\{ --gp:color-mix\(in oklch,var\(--good\)/.test(theme) && !/\.gp-b\d\{[^}]*--lume/.test(theme));
   ok('the statistics pages\' heat and chips are green for good on a league\'s or club\'s own page too',
      /heatStyle[\s\S]{0,600}var\(--good\) 34%/.test(read('epinoia', 'fulltable.js')) && /\.sp-pct\.b3\{--sp-b:var\(--good\)\}/.test(read('epinoia', 'kit', 'sitpanel.css')));

@@ -4,6 +4,24 @@
 .mv-switch button{ border:none; background:none; color:var(--text-secondary); font-family:var(--f-head); font-size:11px; font-weight:600;
   letter-spacing:.6px; text-transform:uppercase; padding:8px 16px; border-radius:999px; cursor:pointer }
 .mv-switch button:hover{ color:var(--text-primary) }
+/* the switch and, in Modern, the card beside it saying to tap a circle (game.js boxSwitchHTML); under it on a phone */
+.mv-bar{ display:flex; flex-wrap:wrap; align-items:center; gap:10px 12px; margin:0 0 12px; min-width:0 }
+.mv-bar .mv-switch{ margin:0 }
+.mv-hint{ --hint-c:var(--team0); --hint-on:var(--bg-base);
+  display:flex; align-items:center; gap:12px; margin:0; padding:7px 14px 7px 8px; min-width:0; flex:0 1 auto;
+  border:1px solid var(--border-subtle); background:var(--bg-glass); border-radius:12px;
+  border-left:3px solid var(--hint-c); box-shadow:0 1px 2px rgba(0,0,0,.06);
+  font-family:var(--f-ui); font-size:13px; line-height:1.35; color:var(--text-secondary) }
+/* the circle: a solid disc of the switch's colour, the rings in the switch's own ink, a soft ring pulsing out of it */
+.mv-hint-ic{ display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; width:32px; height:32px;
+  border-radius:50%; background:var(--hint-c); color:var(--hint-on);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--hint-c) 22%,transparent); animation:mv-hint-ping 2.4s ease-out infinite }
+.mv-hint-ic svg{ width:20px; height:20px }
+@keyframes mv-hint-ping{
+  0%{ box-shadow:0 0 0 3px color-mix(in srgb,var(--hint-c) 22%,transparent), 0 0 0 3px color-mix(in srgb,var(--hint-c) 45%,transparent) }
+  70%,100%{ box-shadow:0 0 0 3px color-mix(in srgb,var(--hint-c) 22%,transparent), 0 0 0 12px color-mix(in srgb,var(--hint-c) 0%,transparent) } }
+@media (prefers-reduced-motion:reduce){ .mv-hint-ic{ animation:none } }
+@media (max-width:640px){ .mv-hint{ flex:1 1 100%; font-size:12.5px } }
 .mv-switch button.on{ background:linear-gradient(135deg,var(--team0),color-mix(in srgb,var(--team0) 70%,transparent)); color:var(--bg-base); box-shadow:0 0 14px var(--team0-glow) }
 .mv-tag{ color:color-mix(in srgb,var(--c,var(--text-muted)) 70%,var(--text-muted)) }
 .mv-benchlabel{ border-top-color:color-mix(in srgb,var(--c,var(--border-subtle)) 30%,transparent) }

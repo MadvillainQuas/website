@@ -410,7 +410,8 @@
       'full play-by-play starting - within half a minute': 'テキスト速報を開始中（30秒以内）',
       'stops': 'ストップ',
       'Kills (4+ consecutive stops: the opponent held scoreless)': 'Kills（4回以上連続のストップ：相手を無得点に抑える）',
-      'No kills (4+ consecutive stops) yet': 'Kills（4回以上連続のストップ）はまだありません'
+      'No kills (4+ consecutive stops) yet': 'Kills（4回以上連続のストップ）はまだありません',
+      'Tap a player’s circle for their full stat line: shooting, usage, rates and their ratings on the floor.': '選手のサークルをタップすると、シュート、使用率、各種レート、出場中のレーティングまで全成績を表示します。'
     },
 
     ctx: {

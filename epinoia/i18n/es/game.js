@@ -417,7 +417,8 @@
       'full play-by-play starting - within half a minute': 'las jugadas completas llegan en menos de medio minuto',
       'stops': 'stops',
       'Kills (4+ consecutive stops: the opponent held scoreless)': 'Kills (4+ stops seguidos: el rival sin anotar)',
-      'No kills (4+ consecutive stops) yet': 'Todavía no hay kills (4+ stops seguidos)'
+      'No kills (4+ consecutive stops) yet': 'Todavía no hay kills (4+ stops seguidos)',
+      'Tap a player’s circle for their full stat line: shooting, usage, rates and their ratings on the floor.': 'Toca el círculo de un jugador para ver su línea completa: tiro, uso, porcentajes y sus valoraciones en pista.'
     },
 
     ctx: {

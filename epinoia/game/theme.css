@@ -61,6 +61,8 @@ body.league-themed .tabbtn.on,
 :root[data-theme="light"] body.league-themed .tabbtn.on,
 body.league-themed .mv-switch button.on,
 body.league-themed .cx-toggle button.on{ background:var(--league-a); color:var(--league-on-a); box-shadow:none }
+/* the box score's tap-a-circle card (game.js boxSwitchHTML) takes the switch's colour */
+body.league-themed .mv-hint{ --hint-c:var(--league-a); --hint-on:var(--league-on-a) }
 /* cards and hairlines the scorer drew in mint */
 body.league-themed .glass{ border-color:color-mix(in oklch,var(--league-a) 16%,transparent) }
 body.league-themed table.bx td{ border-bottom-color:color-mix(in oklch,var(--league-a) 10%,transparent) }

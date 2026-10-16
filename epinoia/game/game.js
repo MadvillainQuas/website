@@ -492,7 +492,7 @@ const BODIES = {
     return window.EpinoiaReportView.render(g, window.EpinoiaReport.halftime(g), reportLook());
   },
   /* TWO WAYS TO READ THE SAME NUMBERS. Traditional is the table; Modern is the five on the
-     floor drawn on a half court with the bench beneath (modern.js). The choice is remembered. */
+     floor drawn on a half court with the bench beneath (modern.js). Modern on every page open. */
   box:     d => boxSwitchHTML() + (boxMode === 'modern' && window.EpinoiaModernBox
                 ? window.EpinoiaModernBox.render(d)
                 : B.qstripHTML(d) + B.matchDetailsHTML() + B.bxTeamHTML(d, 0) + B.bxTeamHTML(d, 1)),
@@ -655,12 +655,22 @@ async function squadPhotos(hostEl) {
   });
 }
 
-let boxMode = 'trad';
-try { if (localStorage.getItem('epinoia_box_mode') === 'modern') boxMode = 'modern'; } catch (_) { /* default */ }
+/* MODERN EVERY TIME THE PAGE OPENS (Louie, 2026-10-16): Traditional lasts while the reader stays on the page, and is not
+   remembered (a choice kept from before, epinoia_box_mode, is no longer read) */
+let boxMode = 'modern';
+/* the switch, and beside it in Modern a card saying what the circles do: the full line is behind a tap, and nothing on the
+   court says so (Louie, 2026-10-16) */
+const TAP_IC = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">' +
+  '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".6"/>' +
+  '<circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/>' +
+  '<circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg>';
 function boxSwitchHTML() {
-  return '<div class="mv-switch" role="tablist">' +
+  return '<div class="mv-bar"><div class="mv-switch" role="tablist">' +
     [['trad', 'traditional'], ['modern', 'modern']].map(m =>
       '<button type="button" role="tab" data-boxmode="' + m[0] + '"' + (boxMode === m[0] ? ' class="on" aria-selected="true"' : '') + '>' + m[1] + '</button>').join('') +
+    '</div>' +
+    (boxMode === 'modern' ? '<p class="mv-hint" role="note"><span class="mv-hint-ic">' + TAP_IC + '</span>' +
+      '<span>Tap a player’s circle for their full stat line: shooting, usage, rates and their ratings on the floor.</span></p>' : '') +
     '</div>';
 }
 let seasonAsked = false;
@@ -729,7 +739,6 @@ function bindBoxSwitch(el) {
       if (boxMode === b.dataset.boxmode) return;
       boxMode = b.dataset.boxmode;
       if (boxMode === 'modern') ensureSeasonPositions();
-      try { localStorage.setItem('epinoia_box_mode', boxMode); } catch (_) { /* fine */ }
       if (window.EpinoiaModernBox) window.EpinoiaModernBox.hidePop();
       lastBodyKey = '';
       renderBody();
