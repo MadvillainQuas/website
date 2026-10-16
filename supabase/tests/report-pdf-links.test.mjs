@@ -84,7 +84,7 @@ console.log('\n4. the report marks its links and hands over the bookmarks');
 const R = rd('epinoia', 'report.js'), RS = rd('epinoia', 'raster.js');
 ok('the contents\' lines carry data-goto', /<li data-goto="' \+ n \+ '"/.test(R));
 ok('every page\'s number goes back to the contents', /n\.setAttribute\('data-goto', '1'\)/.test(R));
-ok('both PDFs (download, PRIME REPORT) are handed the bookmarks', (R.match(/outline: state\.outline \|\| null/g) || []).length === 2);
+ok('both PDFs (download, PRIME REPORT) and the mailer\'s pages (__rpPages, the match-up report) are handed the bookmarks', (R.match(/outline: state\.outline \|\| null/g) || []).length === 3);
 ok('each block is told its section', /setAttribute\('data-mod', m\.page \|\| m\.title\)/.test(R));
 ok('raster.js reads the links off each page before drawing it', /const links = linksOf\(nodes\[i\]\)/.test(RS));
 

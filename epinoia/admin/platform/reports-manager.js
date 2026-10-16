@@ -362,8 +362,26 @@ function playerGameList(rows, tz, max = 20) {
   list.forEach(g => { g.on = g.monday === latest; });
   return list;
 }
-/* the games ticked for a player's send now: an array of game ids, 'week' (no ticks to be had: the week of their latest game),
-   or null (not sent) */
+/* THE CLUB'S GAMES TO COME, for the match-ups (0274; Louie, 2026-10-16: "selectable in the send now if clicked"): the next three
+   weeks', at most eight, those of the week now beginning ticked when the address has its match-ups on */
+const MUMAX = 8;                                             // 0274's check
+async function playerUpcoming(x) {
+  const { data: re } = await sb.from('roster_entries').select('teams(id)').eq('player_id', x.player_id).order('created_at', { ascending: false }).limit(1);
+  const tid = re && re[0] && re[0].teams && re[0].teams.id;
+  if (!tid) return [];
+  const now = new Date(), to = new Date(now.getTime() + 21 * 864e5);
+  const { data, error } = await sb.from('games').select('id,tipoff_at,status,home_team_id,away_team_id,home:home_team_id(name),away:away_team_id(name)')
+    .or('home_team_id.eq.' + tid + ',away_team_id.eq.' + tid).in('status', ['scheduled', 'live'])
+    .gte('tipoff_at', now.toISOString()).lt('tipoff_at', to.toISOString()).order('tipoff_at').limit(MUMAX);
+  if (error) throw error;
+  const thisWeek = mondayOfYmd(ymdIn(now.toISOString(), x.tz));
+  return (data || []).map(g => {
+    const home = g.home_team_id === tid, opp = ((home ? g.away : g.home) || {}).name || 'opponent';
+    return { id: g.id, label: (home ? 'v ' : 'at ') + opp, hint: dayIn(g.tipoff_at, x.tz), on: !!x.send_matchups && mondayOfYmd(ymdIn(g.tipoff_at, x.tz)) === thisWeek };
+  });
+}
+/* what a player's send now carries: { games: the report's games ([] for the match-ups alone), mu: the games whose opponents' match-ups
+   go }, 'week' (no ticks to be had: the week of their latest game), or null (not sent) */
 async function pickPlayerGames(x, pname) {
   if (!H.askPick) return confirm('Send ' + x.email + ' ' + pname + '’s report for the week of their latest game now?') ? 'week' : null;
   let ids = [x.player_id];
@@ -374,30 +392,47 @@ async function pickPlayerGames(x, pname) {
     .in('player_uuid', ids).eq('games.status', 'final').gte('games.tipoff_at', new Date(Date.now() - 200 * 864e5).toISOString());
   if (error) throw error;
   const list = playerGameList(data, x.tz);
-  if (!list.length) { say(pname + ' has played no game in the last 200 days: there is nothing to send.', 'warn'); return null; }
+  const up = await playerUpcoming(x).catch(() => []);
+  if (!list.length && !up.length) { say(pname + ' has played no game in the last 200 days and their club has none to come: there is nothing to send.', 'warn'); return null; }
+  const groups = [];
+  if (list.length) groups.push({ head: pname + ': games', note: 'Their last ' + list.length + (list.length === 1 ? ' game' : ' games') + ', newest first. The week of their latest game is ticked; at most ' + PMAX + '. Untick them all to send the match-ups alone',
+    items: list.map(g => ({ key: g.id, label: g.label, hint: g.hint, on: g.on })) });
+  if (up.length) groups.push({ head: 'Potential match-ups: games to come', note: 'For each game ticked, the opponent’s players ' + pname + ' could be matched up onto (their position or one up), in a second PDF: each one’s title page, shot chart, left v right and connections. At most ' + MUMAX,
+    items: up.map(g => ({ key: 'mu:' + g.id, label: g.label, hint: g.hint, on: g.on })) });
   const t = await H.askPick({ title: 'Send ' + pname + '’s report now', go: 'send now',
-    lead: 'Tick the games the report is of: its games section draws each one, its shot chart and full stats line, and the email lists them. The rest of the report is their season as always. It goes to ' + x.email + ' at the mailer’s next run.',
-    groups: [{ head: pname + ': games', note: 'Their last ' + list.length + (list.length === 1 ? ' game' : ' games') + ', newest first. The week of their latest game is ticked; at most ' + PMAX,
-      items: list.map(g => ({ key: g.id, label: g.label, hint: g.hint, on: g.on })) }] });
+    lead: 'Tick the games the report is of: its games section draws each one, its shot chart and full stats line, and the email lists them. The rest of the report is their season as always.' + (up.length ? ' Tick games to come for the match-ups that go with it.' : '') + ' It goes to ' + x.email + ' at the mailer’s next run.',
+    groups });
   if (!t) return null;
   const games = list.filter(g => t.get(g.id)).map(g => g.id);
-  if (!games.length) { say('Tick a game or more: nothing was sent.', 'warn'); return null; }
+  const mu = up.filter(g => t.get('mu:' + g.id)).map(g => g.id);
+  if (!games.length && !mu.length) { say('Tick a game or more: nothing was sent.', 'warn'); return null; }
   if (games.length > PMAX) { say('At most ' + PMAX + ' games in one report: nothing was sent, untick some.', 'warn'); return null; }
-  return games;
+  return { games, mu };
 }
 async function sendPlayerNow(x, pname, b) {
   const games = await pickPlayerGames(x, pname).catch(e => { oops(e); return null; });
   if (!games) return;
   b.disabled = true;
   const at = new Date().toISOString();
-  let { error } = await sb.from('report_mail_players').update(Array.isArray(games) ? { send_now_at: at, send_now_games: games } : { send_now_at: at }).eq('id', x.id);
-  /* before 0273 there is no send_now_games: say so, and send the week only if asked to */
-  if (error && Array.isArray(games) && /send_now_games|schema cache|column/i.test(error.message || '')) {
+  const pick = games === 'week' ? null : games;
+  const upd = { send_now_at: at };
+  if (pick && pick.games.length) upd.send_now_games = pick.games;
+  if (pick && pick.mu.length) { upd.send_now_matchups = pick.mu; upd.send_now_report = pick.games.length ? null : false; }
+  let { error } = await sb.from('report_mail_players').update(upd).eq('id', x.id);
+  /* before 0274 there are no match-up columns, before 0273 no send_now_games: say so, and send what can go only if asked to */
+  if (error && pick && pick.mu.length && /send_now_matchups|send_now_report|schema cache|column/i.test(error.message || '')) {
+    if (!pick.games.length || !confirm('The match-ups need migration 0274, which is not applied yet. Send the report alone?')) { if (!pick.games.length) say('The match-ups need migration 0274, which is not applied yet: nothing was sent.', 'warn'); b.disabled = false; return; }
+    delete upd.send_now_matchups; delete upd.send_now_report;
+    ({ error } = await sb.from('report_mail_players').update(upd).eq('id', x.id));
+  }
+  if (error && pick && pick.games.length && /send_now_games|schema cache|column/i.test(error.message || '')) {
     if (!confirm('Choosing the games needs migration 0273, which is not applied yet. Send the week of their latest game instead?')) { b.disabled = false; return; }
     ({ error } = await sb.from('report_mail_players').update({ send_now_at: at }).eq('id', x.id));
   }
   if (error) { oops(error); b.disabled = false; return; }
-  say(pname + '’s report ' + (Array.isArray(games) ? 'of ' + (games.length === 1 ? 'one game' : games.length + ' games') : 'for the week of their latest game') + ' goes to ' + x.email + ' at the mailer’s next run.', 'ok');
+  const what = !pick ? 'report for the week of their latest game' : (pick.games.length ? 'report of ' + (pick.games.length === 1 ? 'one game' : pick.games.length + ' games') : 'match-ups') +
+    (pick.games.length && pick.mu.length ? ' and their match-ups (' + (pick.mu.length === 1 ? 'one game' : pick.mu.length + ' games') + ' to come)' : !pick.games.length ? ' for ' + (pick.mu.length === 1 ? 'one game' : pick.mu.length + ' games') + ' to come' : '');
+  say(pname + '’s ' + what + ' go' + (pick && !pick.games.length ? '' : 'es') + ' to ' + x.email + ' at the mailer’s next run.', 'ok');
   draw();
 }
 /* a player, found as the name is typed (the site's search): resolves to { id, slug, label } on picking */
@@ -439,6 +474,10 @@ async function drawPlayers() {
   const email = el('input', 'ep-input'); email.type = 'email'; email.placeholder = 'their@email'; email.style.minWidth = '220px';
   const name = el('input', 'ep-input'); name.placeholder = 'first name (optional)';
   const tz = tzSelect();
+  /* THEIR POTENTIAL MATCH-UPS too (0274): the players of each club they play that week they could be matched up onto */
+  const muLab = el('label', 'rm-mt'); const muCb = el('input'); muCb.type = 'checkbox';
+  muLab.append(muCb, document.createTextNode(' and their potential match-ups each week'));
+  muLab.title = 'With the Monday email, a second PDF: every player of each club they play that week whom they could be matched up onto (their position or one up), each with a title page, the shot chart, left v right and connections';
   const finder = playerFinder(pk => {
     who = pk; chosen.textContent = pk.label; chosen.classList.remove('none'); chosen.setAttribute('translate', 'no');
     /* their league's clock is the reader's, most likely (it can still be changed) */
@@ -450,13 +489,14 @@ async function drawPlayers() {
     const e = email.value.trim().toLowerCase();
     if (!who) { say('Pick the player from the list as you type their name.', 'warn'); return; }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { say('That email address does not look right.', 'warn'); return; }
-    const { error } = await sb.from('report_mail_players').upsert({ email: e, player_id: who.id, name: name.value.trim() || null, tz: tz.value || 'UTC', active: true }, { onConflict: 'email,player_id' });
-    if (error) { oops(error); return; }
-    say(e + ' will be sent ' + who.label + '’s weekly report, every Monday morning.', 'ok');
+    const row = Object.assign({ email: e, player_id: who.id, name: name.value.trim() || null, tz: tz.value || 'UTC', active: true }, muCb.checked ? { send_matchups: true } : {});
+    const { error } = await sb.from('report_mail_players').upsert(row, { onConflict: 'email,player_id' });
+    if (error) { oops(/send_matchups|schema cache|column/i.test(error.message || '') ? new Error('The match-ups need migration 0274, which is not applied yet: untick them to add the player.') : error); return; }
+    say(e + ' will be sent ' + who.label + '’s weekly report' + (muCb.checked ? ' and their potential match-ups' : '') + ', every Monday morning.', 'ok');
     draw();
   });
   const r1 = el('div', 'rm-row'); r1.append(finder, chosen);
-  const r2 = el('div', 'rm-row'); r2.style.marginTop = '6px'; r2.append(email, name, tz, save);
+  const r2 = el('div', 'rm-row'); r2.style.marginTop = '6px'; r2.append(email, name, tz, muLab, save);
   add.append(r1, r2);
   body.appendChild(add);
 
@@ -474,10 +514,15 @@ async function drawPlayers() {
     const nm = el('div'); const b = el('b', null, pname); b.setAttribute('translate', 'no');
     nm.append(b, el('br'), el('small', null, x.email + (x.name ? ' (' + x.name + ')' : '')));
     const st = el('div');
-    st.appendChild(el('small', null, x.tz + (x.active ? '' : ' · paused')));
+    st.appendChild(el('small', null, x.tz + (x.send_matchups ? ' · with match-ups' : '') + (x.active ? '' : ' · paused')));
     st.appendChild(el('br'));
     st.appendChild(el('small', null, x.last_at ? 'last ' + new Date(x.last_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) + ': ' + (x.last_detail || '') : 'nothing sent yet'));
-    if (x.send_now_at) { st.appendChild(el('br')); st.appendChild(el('small', 'rm-stored', 'send now queued' + (Array.isArray(x.send_now_games) && x.send_now_games.length ? ': ' + (x.send_now_games.length === 1 ? 'one game' : x.send_now_games.length + ' games') : ': the week of their latest game'))); }
+    if (x.send_now_at) {
+      const mu = Array.isArray(x.send_now_matchups) && x.send_now_matchups.length ? ' + match-ups (' + (x.send_now_matchups.length === 1 ? 'one game' : x.send_now_matchups.length + ' games') + ')' : '';
+      st.appendChild(el('br'));
+      st.appendChild(el('small', 'rm-stored', 'send now queued' + (x.send_now_report === false ? ': match-ups alone' + mu.replace(' + match-ups', '') :
+        (Array.isArray(x.send_now_games) && x.send_now_games.length ? ': ' + (x.send_now_games.length === 1 ? 'one game' : x.send_now_games.length + ' games') : ': the week of their latest game') + mu)));
+    }
     const acts = el('div', 'acts');
     if (x.active) {
       const now = btn(x.send_now_at ? 'queued' : 'send now', 'mini', () => sendPlayerNow(x, pname, now));
@@ -485,6 +530,12 @@ async function drawPlayers() {
       now.title = 'Email them their report now, of the games you tick';
       acts.appendChild(now);
     }
+    const muB = btn(x.send_matchups ? 'match-ups on' : 'match-ups off', 'mini' + (x.send_matchups ? ' pri' : ''), async () => {
+      const { error } = await sb.from('report_mail_players').update({ send_matchups: !x.send_matchups }).eq('id', x.id);
+      if (error) oops(/send_matchups|schema cache|column/i.test(error.message || '') ? new Error('The match-ups need migration 0274, which is not applied yet.') : error); else draw();
+    });
+    muB.title = 'With the Monday email, their potential match-ups: every player of each club they play that week whom they could be matched up onto (their position or one up), each with a title page, the shot chart, left v right and connections';
+    acts.appendChild(muB);
     acts.appendChild(btn(x.active ? 'pause' : 'resume', 'mini', async () => { const { error } = await sb.from('report_mail_players').update({ active: !x.active }).eq('id', x.id); if (error) oops(error); else draw(); }));
     acts.appendChild(btn('remove', 'mini danger', async () => {
       if (!confirm(x.email + ' will no longer be sent ' + pname + '’s weekly report.')) return;

@@ -48,10 +48,14 @@ async function playersTab(RM) {
 
   const calls = [], said = [];
   let shown = null, answer = null;
-  const q = { select: () => q, in: (k, v) => { calls.push(['in', k, v]); return q; }, eq: (k, v) => { calls.push(['eq', k, v]); return q; },
-    gte: k => { calls.push(['gte', k]); return q; }, then: (res, rej) => Promise.resolve({ data: rows, error: null }).then(res, rej) };
-  RM._t.use({ rpc: async (fn, a) => { calls.push(['rpc', fn, a]); return { data: { players: [{ id: 'p2' }] }, error: null }; }, from: t => { calls.push(['from', t]); return q; } });
-  RM._t.hooks({ say: (t, k) => said.push([t, k]), askPick: async o => { shown = o; return answer ? answer(o) : new Map(o.groups[0].items.map(i => [i.key, i.on])); } });
+  /* each table its own answer: their games, their club (roster_entries), the club's games to come (0274's match-ups) */
+  const UPG = [];
+  const DATA = { player_game_stats: () => rows, roster_entries: () => [{ teams: { id: 'tU' } }], games: () => UPG };
+  const qOf = t => { const q = { select: () => q, in: (k, v) => { calls.push(['in', k, v]); return q; }, eq: (k, v) => { calls.push(['eq', k, v]); return q; },
+    gte: k => { calls.push(['gte', k]); return q; }, lt: () => q, or: () => q, order: () => q, limit: () => q,
+    then: (res, rej) => Promise.resolve({ data: (DATA[t] || (() => []))(), error: null }).then(res, rej) }; return q; };
+  RM._t.use({ rpc: async (fn, a) => { calls.push(['rpc', fn, a]); return { data: { players: [{ id: 'p2' }] }, error: null }; }, from: t => { calls.push(['from', t]); return qOf(t); } });
+  RM._t.hooks({ say: (t, k) => said.push([t, k]), askPick: async o => { shown = o; return answer ? answer(o) : new Map([].concat(...o.groups.map(g => g.items)).map(i => [i.key, i.on])); } });
   const x = { player_id: 'p1', email: 'sam@example.com', tz: 'Australia/Sydney' };
   let got = await RM._t.pickPlayerGames(x, 'Sam Smith');
   ok('send now asks: their games read from every profile of theirs (linked_players), finals in the last 200 days',
@@ -59,15 +63,33 @@ async function playersTab(RM) {
      calls.some(c => c[0] === 'in' && c[1] === 'player_uuid' && c[2].join() === 'p1,p2') && calls.some(c => c[0] === 'eq' && c[1] === 'games.status' && c[2] === 'final') && calls.some(c => c[0] === 'gte' && c[1] === 'games.tipoff_at'), calls);
   ok('...the ticks shown: their games newest first, the latest week ticked, the address named; what is ticked is what goes',
      shown.groups[0].items.map(i => i.key).join() === [GID(3), GID(2), GID(1)].join() && shown.groups[0].items.filter(i => i.on).length === 2 && /sam@example\.com/.test(shown.lead) && shown.go === 'send now' &&
-     got.join() === [GID(3), GID(2)].join(), [shown.groups[0].items, got]);
+     got.games.join() === [GID(3), GID(2)].join() && got.mu.length === 0 && shown.groups.length === 1, [shown.groups[0].items, got]);
   answer = o => new Map(o.groups[0].items.map(i => [i.key, i.key === GID(1)]));
   got = await RM._t.pickPlayerGames(x, 'Sam Smith');
-  ok('...another game ticked instead: that one alone', got.join() === GID(1), got);
+  ok('...another game ticked instead: that one alone', got.games.join() === GID(1), got);
   answer = o => new Map(o.groups[0].items.map(i => [i.key, false]));
   got = await RM._t.pickPlayerGames(x, 'Sam Smith');
   ok('...none ticked: nothing goes, and it says so', got === null && /Tick a game or more/.test(said[said.length - 1][0]));
   answer = () => null;
   ok('...cancelled: nothing goes', (await RM._t.pickPlayerGames(x, 'Sam Smith')) === null);
+
+  /* POTENTIAL MATCH-UPS (0274; Louie, 2026-10-16: "selectable in the send now if clicked") */
+  const UID = n => 'cccccccc-0000-4000-8000-0000000000' + String(n).padStart(2, '0');
+  UPG.push({ id: UID(1), tipoff_at: new Date(Date.now() + 3600e3).toISOString(), status: 'scheduled', home_team_id: 'tU', away_team_id: 'tX', home: { name: 'Ours' }, away: { name: 'Xenon' } },
+           { id: UID(2), tipoff_at: new Date(Date.now() + 15 * 864e5).toISOString(), status: 'scheduled', home_team_id: 'tY', away_team_id: 'tU', home: { name: 'Yttrium' }, away: { name: 'Ours' } });
+  answer = null;
+  const xm = Object.assign({}, x, { send_matchups: true });
+  got = await RM._t.pickPlayerGames(xm, 'Sam Smith');
+  const G2 = shown.groups[1];
+  ok('the club\'s games to come are a second group: each opponent "v"/"at", their own key; with the match-ups on, the one this week ticked, not the one in a fortnight',
+     G2 && /Potential match-ups/.test(G2.head) && G2.items.map(i => i.key + ' ' + i.label).join('|') === 'mu:' + UID(1) + ' v Xenon|mu:' + UID(2) + ' at Yttrium' &&
+     G2.items[0].on && !G2.items[1].on && got.mu.join() === UID(1) && got.games.length === 2, [G2, got]);
+  got = await RM._t.pickPlayerGames(x, 'Sam Smith');
+  ok('...with the match-ups off, none ticked to start with', shown.groups[1].items.every(i => !i.on) && got.mu.length === 0);
+  answer = o => new Map([].concat(...o.groups.map(g => g.items)).map(i => [i.key, i.key === 'mu:' + UID(2)]));
+  got = await RM._t.pickPlayerGames(x, 'Sam Smith');
+  ok('...no game of the report ticked, a game to come ticked: the match-ups alone', got && got.games.length === 0 && got.mu.join() === UID(2), got);
+  UPG.length = 0;
   rows.length = 0;
   answer = null; shown = null;
   ok('...no game in 200 days: nothing to tick, nothing goes, and it says why', (await RM._t.pickPlayerGames(x, 'Sam Smith')) === null && shown === null && /no game in the last 200 days/.test(said[said.length - 1][0]));

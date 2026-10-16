@@ -541,7 +541,9 @@ function modules(ctx) {
       if (!SI || !SI.develop || !F.main) return [];
       const D = SI.develop(Object.assign({ name: c.name }, F));
       if (!D || (!D.keep.length && !D.work.length && !D.week.length)) return [];
-      const li = x => '<li><b>' + esc(x.head) + '</b> ' + esc(x.text) + (x.act ? '<span class="rp-in-do">' + esc(x.act) + '</span>' : '') + '</li>';
+      /* the finding and its evidence; NOT the highlighted coaching line under it (x.act, "Arrive under control: a jump stop...") -
+         Louie, 2026-10-16: the report says what the numbers show, the playing advice is the coach's */
+      const li = x => '<li><b>' + esc(x.head) + '</b> ' + esc(x.text) + '</li>';
       const col = (h, xs, cls) => (xs.length ? '<div class="rp-in-col ' + cls + '"><h4>' + esc(h) + '</h4><ul>' + xs.map(li).join('') + '</ul></div>' : '');
       const html = title('Actionable insights', 'for ' + ({ guard: 'a guard', wing: 'a wing', big: 'a big' }[D.group] || 'a player') + ' · read from every page of this report · ranked among ' + D.n + ' ' + D.who) +
         (D.intro ? '<p class="rp-in-intro">' + esc(D.intro) + '</p>' : '') +

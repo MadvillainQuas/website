@@ -438,7 +438,9 @@ function linksOf(node) {
   }).filter(l => l.w > 0 && l.h > 0 && l.page > 0);
 }
 /* the PDF's bytes, a page per node, without downloading it (report.js PRIME REPORT keeps them for sending, 0229) */
-async function pdfBytes(nodes, opt) {
+/* the pages as JPEGs, each with its links - what a PDF is made of; the mailer's match-up report (report.js __rpPages) takes
+   them from several reports and writes one PDF of them all */
+async function pagesOf(nodes, opt) {
   const o = opt || {};
   const pages = [];
   for (let i = 0; i < nodes.length; i++) {
@@ -448,7 +450,11 @@ async function pdfBytes(nodes, opt) {
     pages.push({ bytes: new Uint8Array(await (await blobOf(c, 'image/jpeg', o.quality || 0.9)).arrayBuffer()), w: c.width, h: c.height, links });
     c.width = c.height = 1;
   }
-  return pdfFromJpegs(pages, { title: o.title, date: new Date(), outline: o.outline || null });
+  return pages;
+}
+async function pdfBytes(nodes, opt) {
+  const o = opt || {};
+  return pdfFromJpegs(await pagesOf(nodes, o), { title: o.title, date: new Date(), outline: o.outline || null });
 }
 async function savePdf(nodes, name, opt) {
   const bytes = await pdfBytes(nodes, opt);
@@ -468,5 +474,5 @@ async function saveImages(nodes, name, opt) {
   else download(new root.Blob([zip(files)], { type: 'application/zip' }), name + '-pages.zip', o.track);
 }
 
-return { canvasOf, savePdf, pdfBytes, saveImages, pdfFromJpegs, zip, crc32, PROPS };
+return { canvasOf, savePdf, pdfBytes, pagesOf, saveImages, pdfFromJpegs, zip, crc32, PROPS };
 }));

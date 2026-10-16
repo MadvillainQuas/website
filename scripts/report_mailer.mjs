@@ -51,6 +51,8 @@
    ============================================================================ */
 import { pathToFileURL } from 'node:url';
 import { deflateRawSync } from 'node:zlib';
+import { createRequire } from 'node:module';
+const requireCjs = createRequire(import.meta.url);
 
 const env = process.env;
 const SITE = (env.SITE || 'http://127.0.0.1:8765').replace(/\/$/, '');
@@ -315,7 +317,9 @@ export function sundayEmail({ sub, team, games, ownDue, tz, monday, noReport, pi
 /* ------------------------------------------------------------------ the PDFs and sending --- */
 let browser = null;
 /* a test's own drawing, in place of Chromium: hooks.pdf(path, name) answers { filename, content } */
-export const hooks = { pdf: null };
+/* hooks: what a test puts in place of the browser - pdf(path, name), field(slug) (a player's page's __rpField), pages(slug)
+   (a player's truncated report pages, report.js __rpPages) */
+export const hooks = { pdf: null, positions: null, pages: null, index: null };
 /* SYNERGY FOR EVERY REPORT (0228): every profile the admins kept, { player id: profile }, read once a run with the service
    key (the table answers admins only: the data is licensed). null when it cannot be read (0228 not applied): then the
    reports are drawn as before 0228, not primed either. */
@@ -864,7 +868,7 @@ export function playerLine(r) {
 export const playedIn = r => !!r && r.games && r.games.status === 'final' && !!r.stats && (+r.stats.min > 0 || (r.stats.adv && +r.stats.adv.min > 0));
 /* THE EMAIL: the week's games their way round, and what the report attached holds. With picked ({ from, to }: the first and
    last days of the games chosen in the console), the games chosen instead of a week. */
-export function playerEmail({ sub, name, team, week, games, tz, picked }) {
+export function playerEmail({ sub, name, team, week, games, tz, picked, matchups, mumeta }) {
   const colour = colourOf(team), ink = inkOn(colour), n = games.length;
   const lg = ((team && team.leagues) || {}).name || '';
   const span = picked ? daySpan(picked.from, picked.to) : weekSpan(week);
@@ -887,10 +891,12 @@ export function playerEmail({ sub, name, team, week, games, tz, picked }) {
       picked ? '<b>Selected games</b>: your shot chart from each of these games, and your full stats line from each' : '<b>Games played during the week</b>: your shot chart from each game, and your full stats line from each',
       '<b>Actionable insights</b>: what is working and what to work on, for your position']),
     NOTE(ink, 'Every figure is coloured against the players of your position, green good and red poor; the legend at the back explains each statistic, and every stat named links to it.'),
+    ...matchupBlocks(matchups, mumeta),
     P(picked ? 'All the best.' : 'Have a good week.')];
+  const mu = matchupBlocks(matchups).length > 0;
   return { subject, html: layout({ colour, kicker: (picked ? 'Player report' : 'Weekly player report') + (lg ? ' · ' + lg : ''), title: `${name}: ${n === 1 ? 'one game' : (NUM[n] || n) + ' games'}${picked ? '' : ' this week'}`,
     meta: span + (team && team.name ? ' · ' + team.name : ''), greeting: sub.name ? 'Hi ' + sub.name + ',' : 'Hello,', blocks,
-    files: [{ label: 'Player report: ' + name + ', ' + span }], kept: false,
+    files: [{ label: 'Player report: ' + name + ', ' + span }].concat(mu ? [{ label: 'Potential match-ups: ' + name }] : []), kept: false,
     foot: 'You receive this because a weekly player report was set up for this address on Epinoia. To change or stop it, simply reply to this email and let us know.' }) };
 }
 /* every profile of theirs (0178: the same person in another competition's feed), else their own */
@@ -921,7 +927,8 @@ async function clubStillPlaying(teamId, from, to, now) {
 }
 const notePlayer = (s, detail, clear) => (DRY ? Promise.resolve() : rest(`report_mail_players?id=eq.${s.id}`, { method: 'PATCH',
   body: JSON.stringify(Object.assign({ last_at: new Date().toISOString(), last_detail: String(detail).slice(0, 400) },
-    clear ? Object.assign({ send_now_at: null }, 'send_now_games' in s ? { send_now_games: null } : {}) : {})) }).catch(e => console.warn('[' + s.email + '] note:', e.message || e)));
+    clear ? Object.assign({ send_now_at: null }, 'send_now_games' in s ? { send_now_games: null } : {},
+      'send_now_matchups' in s ? { send_now_matchups: null } : {}, 'send_now_report' in s ? { send_now_report: null } : {}) : {})) }).catch(e => console.warn('[' + s.email + '] note:', e.message || e)));
 async function logPlayerWeek(s, week, detail) {
   if (DRY) return;
   for (let i = 0; ; i++) {
@@ -929,6 +936,257 @@ async function logPlayerWeek(s, week, detail) {
     catch (e) { if (i >= 2) throw e; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
   }
 }
+/* ------------------------------------------------------------------ potential match-ups (0274) ---
+   THE PLAYERS THEY COULD BE MATCHED UP ONTO (Louie, 2026-10-16), in ONE PDF beside their own report: every club they play in
+   the week ahead (or the games "send now" ticked), and on each the rotation players at their position or one position up
+   (epinoia/matchup.js, by the position breakdown of every game of the season, every competition: clubPositions). Each of those
+   players is drawn truncated, over their whole season (?rpscope=all) - the title page, the shot chart, left v right and
+   connections (report.js ?rpmods=) - and the pages of them all
+   are written into one PDF (raster.js pdfFromJpegs, the report's own writer), bookmarked club by club and player by player.
+   With the Monday email when the address has send_matchups ticked: that week's opponents (Monday 8 am to Sunday). */
+export const MATCHUP_MAX = 15;                         // players in one match-up PDF (five pages each, about a megabyte: it stays an email's size)
+export const MATCHUP_MODS = 'cover,shots,lvr,conn';
+let MU_LIB = null;
+const muLib = () => MU_LIB || (MU_LIB = { M: requireCjs('../epinoia/matchup.js'), X: requireCjs('../epinoia/raster.js') });
+const UG_SEL = 'id,tipoff_at,status,home_team_id,away_team_id,home:home_team_id(name),away:away_team_id(name)';
+/* the club's games still to play from `from` to `to`, in order */
+async function upcomingGames(teamId, from, to) {
+  if (!teamId) return [];
+  return (await rest(`games?or=(home_team_id.eq.${teamId},away_team_id.eq.${teamId})&status=in.(scheduled,live)` +
+    `&tipoff_at=gte.${encodeURIComponent(from.toISOString())}&tipoff_at=lt.${encodeURIComponent(to.toISOString())}&select=${UG_SEL}&order=tipoff_at.asc`)) || [];
+}
+/* the games "send now" ticked, any still to finish, in order */
+async function gamesById(ids) {
+  if (!ids || !ids.length) return [];
+  return ((await rest(`games?id=in.(${ids.join(',')})&select=${UG_SEL}&order=tipoff_at.asc`)) || []).filter(g => g.status !== 'final' && g.status !== 'void');
+}
+/* the opponents of a club's games, in the order they come, a club once (at its first game) */
+export function opponentsIn(teamId, games) {
+  const seen = new Set(), out = [];
+  (games || []).forEach(g => {
+    const home = g.home_team_id === teamId, id = home ? g.away_team_id : g.home_team_id;
+    if (!teamId || (!home && g.away_team_id !== teamId) || !id || seen.has(id)) return;
+    seen.add(id);
+    out.push({ id, name: ((home ? g.away : g.home) || {}).name || 'opponent', home, tipoff_at: g.tipoff_at, game: g.id });
+  });
+  return out;
+}
+/* a page of the site in the mailer's browser, as the bot (and with the Synergy files, as every report is drawn), until `wait` */
+async function botPage(path, wait, fn) {
+  if (!browser) { const { chromium } = await import('playwright'); browser = await chromium.launch(); }
+  const ctx = await browser.newContext({ viewport: { width: 1300, height: 1000 } });
+  await ctx.addInitScript(s => { window.EPINOIA_RP_BOT = true; if (s) window.EPINOIA_SYNERGY = s; }, await synergyAll());
+  const page = await ctx.newPage();
+  try {
+    await page.goto(SITE + path, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await page.waitForFunction(wait, null, { timeout: 600000 });
+    return await fn(page);
+  } finally { await ctx.close(); }
+}
+/* THE SEASON'S GAMES OF A CLUB, every competition: its finals since the season its latest game is in began (a split season's
+   1 August, "2026-27"; a calendar one's 1 January, "2026") */
+async function seasonGames(teamId) {
+  if (!teamId) return [];
+  const last = await rest(`games?or=(home_team_id.eq.${teamId},away_team_id.eq.${teamId})&status=eq.final&select=id,tipoff_at,competitions(seasons(name))&order=tipoff_at.desc&limit=1`);
+  if (!last || !last[0]) return [];
+  const sn = String((((last[0].competitions || {}).seasons) || {}).name || '').trim();
+  const m = /(\d{4})/.exec(sn), year = m ? +m[1] : new Date(last[0].tipoff_at).getUTCFullYear();
+  const from = /^\d{4}$/.test(sn) ? year + '-01-01' : year + '-08-01';
+  return (await rest(`games?or=(home_team_id.eq.${teamId},away_team_id.eq.${teamId})&status=eq.final&tipoff_at=gte.${from}` +
+    '&select=id,home_team_id,away_team_id&order=tipoff_at.desc&limit=200')) || [];
+}
+/* a game's position file (snapshots/pos/<game>.json, written at finalise: each player's [seconds on the floor, at PG, SG, SF, PF,
+   C]), or null */
+async function posFile(id) {
+  try {
+    const r = await fetch(env.SUPABASE_URL + '/storage/v1/object/public/snapshots/pos/' + id + '.json');
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j && j.v === 1 && j.game === id && Array.isArray(j.t) && j.t.length === 2 ? j : null;
+  } catch (_) { return null; }
+}
+/* A CLUB'S PLAYERS AND WHERE THEY PLAY: the position breakdown of the profile (p/player.js paintPosBreakdown), over every game of
+   the club's season, every competition - player id -> { sec: [PG..C seconds], s: seconds on the floor, gp } */
+export async function clubPositions(teamId) {
+  if (hooks.positions) return hooks.positions(teamId);
+  const games = await seasonGames(teamId), out = new Map();
+  for (let i = 0; i < games.length; i += 8) {
+    await Promise.all(games.slice(i, i + 8).map(async g => {
+      const f = await posFile(g.id);
+      if (!f) return;
+      const t = f.t[g.home_team_id === teamId ? 0 : 1] || {};
+      Object.keys(t).forEach(pid => {
+        const a = t[pid];
+        if (!Array.isArray(a)) return;
+        const r = out.get(pid) || { sec: [0, 0, 0, 0, 0], s: 0, gp: 0 };
+        for (let k = 0; k < 5; k++) r.sec[k] += +a[k + 1] || 0;
+        r.s += +a[0] || 0;
+        if (+a[0] > 0) r.gp++;
+        out.set(pid, r);
+      });
+    }));
+  }
+  return out;
+}
+/* a player's truncated report as pages: { title, outline, pages: [{ b64, w, h, links }] } */
+async function pagesOfPlayer(slug) {
+  if (hooks.pages) return hooks.pages(slug);
+  return botPage('/epinoia/p/?p=' + encodeURIComponent(slug) + '&tab=report&rpscope=all&rpmods=' + MATCHUP_MODS,
+    () => window.__rpBuilt > 0 && !window.__rpBusy && !window.__rpBuilding && typeof window.__rpPages === 'function',
+    async p => { await p.waitForTimeout(1500); return p.evaluate(() => window.__rpPages()); });
+}
+/* ONE PDF OF THEM ALL: parts [{ head, kids: [{ title, got }] }] - each player's pages in turn, their links moved to where their
+   pages now are, and the bookmarks a club, then its players, then each player's own sections. `front`: a page that goes first
+   (the index, indexPage: its links already name the pages its players start on, as matchupPlan counts them) */
+export function stitchPages(parts, title, front) {
+  const { X } = muLib();
+  const pages = [], outline = [];
+  if (front) { pages.push({ bytes: Buffer.from(front.b64, 'base64'), w: front.w, h: front.h, links: front.links || [] }); outline.push({ title: 'Index', page: 1 }); }
+  const shift = (list, base) => (list || []).filter(o => o && o.page > 0).map(o => ({ title: o.title, page: o.page + base, kids: shift(o.kids, base) }));
+  (parts || []).forEach(part => {
+    const node = { title: part.head, page: pages.length + 1, kids: [] };
+    (part.kids || []).forEach(k => {
+      const base = pages.length;
+      ((k.got && k.got.pages) || []).forEach(pg => pages.push({ bytes: Buffer.from(pg.b64, 'base64'), w: pg.w, h: pg.h,
+        links: (pg.links || []).map(l => Object.assign({}, l, { page: l.page + base })) }));
+      if (pages.length > base) node.kids.push({ title: k.title, page: base + 1, kids: shift(k.got.outline, base) });
+    });
+    if (node.kids.length) outline.push(node);
+  });
+  return pages.length > (front ? 1 : 0) ? X.pdfFromJpegs(pages, { title, date: new Date(), outline }) : null;
+}
+/* where each player starts once the index is the first page: [{ head, players: [{ name, rel, mpg, page }] }] */
+export function matchupPlan(parts, frontPages = 1) {
+  let at = frontPages;
+  return (parts || []).map(part => ({ head: part.head, players: (part.kids || []).filter(k => k.got && k.got.pages && k.got.pages.length).map(k => {
+    const page = at + 1; at += k.got.pages.length;
+    return { name: k.name, rel: k.rel, mpg: k.mpg, pos: k.pos, page };
+  }) })).filter(x => x.players.length);
+}
+/* THE INDEX (Louie, 2026-10-16: "an auto index (just for players) at the start of the pdf that allows the user to skip to different
+   players"): a page of its own, in the report's type, every club and its players with the page each starts on, every row a link
+   there. Drawn as the reports are - an A4 page in the mailer's browser, a JPEG - with each row's box as its link. */
+export function indexHTML(plan, meta) {
+  const { M } = muLib();
+  const ink = inkOn(meta.colour || '#08603f');
+  const rows = plan.map(c => '<section><h2>' + esc(c.head) + '</h2>' + c.players.map(p =>
+    '<a class="row" data-goto="' + p.page + '"><b>' + esc(p.name) + '</b><span class="rel">' + (p.pos ? esc(p.pos) + ' · ' : '') + esc(M.REL[p.rel] || '') + ' · ' + p.mpg + ' min a game</span>' +
+    '<span class="dots"></span><span class="pg">' + p.page + '</span></a>').join('') + '</section>').join('');
+  return '<!doctype html><html><head><meta charset="utf-8"><base href="' + esc(SITE) + '/epinoia/">' +
+    '<style>@font-face{font-family:Archivo;src:url(kit/fonts/archivo.woff2) format("woff2");font-weight:100 900}' +
+    '@font-face{font-family:EpinoiaMark;src:url(brand/epinoia-mark.woff2) format("woff2")}' +
+    'html,body{margin:0;width:794px;height:1123px;background:#fff;color:#0d1f17;font-family:Archivo,Arial,sans-serif}' +
+    '.pg-wrap{position:relative;width:794px;height:1123px;box-sizing:border-box;padding:46px 48px}' +
+    '.top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid ' + ink + ';padding-bottom:14px}' +
+    '.mark{font-family:EpinoiaMark,Archivo,sans-serif;font-size:22px;letter-spacing:.02em}' +
+    '.kick{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#5b6b63}' +
+    'h1{margin:26px 0 4px;font-size:34px;font-weight:800;letter-spacing:-.01em}' +
+    '.sub{margin:0 0 6px;font-size:13px;color:#3d4d45}' +
+    '.how{margin:0 0 22px;font-size:11px;color:#5b6b63;line-height:1.5}' +
+    'h2{margin:18px 0 6px;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:' + ink + '}' +
+    '.row{display:flex;align-items:baseline;gap:10px;padding:9px 2px;border-bottom:1px solid #e4ebe7;text-decoration:none;color:inherit}' +
+    '.row b{font-size:16px;font-weight:700;white-space:nowrap}.rel{font-size:11px;color:#5b6b63;white-space:nowrap}' +
+    '.dots{flex:1;border-bottom:1px dotted #b8c4be;transform:translateY(-4px)}.pg{font-size:15px;font-weight:800;color:' + ink + ';min-width:22px;text-align:right}' +
+    '.foot{position:absolute;left:48px;right:48px;bottom:34px;display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#5b6b63}' +
+    '</style></head><body><div class="pg-wrap"><div class="top"><span class="mark">EPINOIΛ</span><span class="kick">Potential match-ups · confidential</span></div>' +
+    '<h1>Potential match-ups</h1><p class="sub">' + esc(meta.name) + (meta.pos ? ' (' + esc(meta.pos) + ')' : '') + (meta.team ? ' · ' + esc(meta.team) : '') + (meta.span ? ' · ' + esc(meta.span) : '') + '</p>' +
+    '<p class="how">The players of each club ahead whom ' + esc(meta.name) + ' could be matched up onto: the same position, then one position up, by where each has played this season (the position breakdown of every game, every competition). Each has a title page, the shot chart, left v right and connections over their whole season. Click a name to go to it.</p>' +
+    rows + '<div class="foot"><span>Index</span><span>Prepared with Epinoia</span></div></div></body></html>';
+}
+export async function indexPage(plan, meta) {
+  if (hooks.index) return hooks.index(plan, meta);
+  if (!browser) { const { chromium } = await import('playwright'); browser = await chromium.launch(); }
+  const ctx = await browser.newContext({ viewport: { width: 794, height: 1123 }, deviceScaleFactor: 2 });
+  const page = await ctx.newPage();
+  try {
+    /* on the site's own address first: from a blank page its fonts are another origin's, and refused */
+    await page.goto(SITE + '/epinoia/version.txt', { timeout: 60000 }).catch(() => null);
+    await page.setContent(indexHTML(plan, meta), { waitUntil: 'networkidle', timeout: 60000 });
+    await page.evaluate(() => document.fonts && document.fonts.ready);
+    const links = await page.evaluate(() => [...document.querySelectorAll('[data-goto]')].map(e => {
+      const r = e.getBoundingClientRect();
+      return { x: r.left / 794, y: r.top / 1123, w: r.width / 794, h: r.height / 1123, page: +e.getAttribute('data-goto') };
+    }));
+    const jpg = await page.screenshot({ type: 'jpeg', quality: 85 });
+    return { b64: jpg.toString('base64'), w: 1588, h: 2246, links };
+  } finally { await ctx.close(); }
+}
+/* THE MATCH-UP REPORT of a player against these games: { pdf | null, lines: [{ head, who: [{ name, rel, mpg }], none }], why } */
+export async function matchupReport({ name, slug, playerIds, team, tz, games, day }) {
+  const { M } = muLib();
+  const opps = opponentsIn(team && team.id, games);
+  if (!opps.length) return { pdf: null, lines: [], why: 'no game of their club to come' };
+  /* where they play: their seconds at each spot in their club's games of the season (every profile of theirs) */
+  const ours = await clubPositions(team.id).catch(e => { console.warn('match-ups, ' + name + ':', e.message || e); return new Map(); });
+  const mine = { sec: [0, 0, 0, 0, 0] };
+  (playerIds || []).forEach(id => { const r = ours.get(id); if (r) r.sec.forEach((x, k) => { mine.sec[k] += x; }); });
+  const players = [];
+  for (const o of opps) {
+    const theirs = await clubPositions(o.id).catch(() => new Map());
+    theirs.forEach((r, pid) => players.push({ id: pid, team: o.id, spot: M.spotOf(r.sec), mpg: r.gp ? r.s / 60 / r.gp : 0, gp: r.gp }));
+  }
+  const R = M.matchups({ me: { id: (playerIds || [])[0], spot: M.spotOf(mine.sec) }, players, teams: opps.map(o => o.id) });
+  if (!R.ok) return { pdf: null, lines: [], why: R.why };
+  let left = MATCHUP_MAX;
+  const plan = opps.map(o => { const list = (R.byTeam.get(o.id) || []).slice(0, Math.max(0, left)); left -= list.length; return { o, list, had: (R.byTeam.get(o.id) || []).length }; });
+  const ids = [...new Set(plan.flatMap(x => x.list.map(c => c.id)))];
+  const people = ids.length ? (await rest(`players?id=in.(${ids.join(',')})&select=id,slug,first_name,last_name`)) || [] : [];
+  const byId = new Map(people.map(p => [p.id, p]));
+  const parts = [], lines = [];
+  for (const { o, list, had } of plan) {
+    const head = (o.home ? 'v ' : 'at ') + o.name + ' (' + dayShort(o.tipoff_at, tz) + ')';
+    const kids = [], who = [];
+    for (const c of list) {
+      const p = byId.get(c.id);
+      if (!p || !p.slug) continue;
+      const nm = ((p.first_name || '') + ' ' + (p.last_name || '')).trim() || 'player';
+      const got = await pagesOfPlayer(p.slug).catch(e => { console.warn('match-up page, ' + nm + ':', e.message || e); return null; });
+      if (!got || !got.pages || !got.pages.length) continue;
+      kids.push({ title: nm + ' · ' + (c.pos ? c.pos + ', ' : '') + M.REL[c.rel], got, name: nm, rel: c.rel, mpg: c.mpg, pos: c.pos });
+      who.push({ name: nm, rel: c.rel, mpg: c.mpg, pos: c.pos });
+    }
+    parts.push({ head, kids });
+    lines.push({ head, who, none: who.length ? null : had ? 'their reports could not be drawn' : list.length ? null : 'no player of theirs has this season’s numbers to match on' });
+  }
+  const listed = matchupPlan(parts, 1);
+  const ahead = (games || []).map(g => local(tz, new Date(g.tipoff_at)).date).sort();
+  /* the index first; one that cannot be drawn leaves the PDF without it (the bookmarks still list every player) */
+  const front = listed.length ? await indexPage(listed, { name, pos: R.me && R.me.pos, team: team && team.name, colour: team && team.colour,
+    span: ahead.length ? daySpan(ahead[0], ahead[ahead.length - 1]) : '' }).catch(e => { console.warn('match-up index:', e.message || e); return null; }) : null;
+  const bytes = stitchPages(parts, name + ': potential match-ups', front);
+  if (!bytes) return { pdf: null, lines, why: 'no match-up could be drawn' };
+  return { pdf: { filename: 'epinoia-matchups-' + slugName(name) + '-' + (day || new Date().toISOString().slice(0, 10)) + '.pdf', content: Buffer.from(bytes).toString('base64') },
+           lines, me: R.me, why: null };
+}
+/* the email's lines on it */
+export function matchupBlocks(lines, me) {
+  if (!lines || !lines.some(l => l.who.length)) return [];
+  const { M } = muLib();
+  return [P('<b>Potential match-ups</b>, in the second PDF' + (me && me.pos ? ' (they play ' + esc(me.pos) + ')' : '') + ': the players of each club ahead they could be matched up onto, the same position or one position up, each with their title page, shot chart, left v right and connections:'),
+    UL(lines.map(l => '<b>' + esc(l.head) + '</b>: ' + (l.who.length ? l.who.map(w => esc(w.name) + ' <span style="color:#5b6b63">(' + (w.pos ? esc(w.pos) + ', ' : '') + esc(M.REL[w.rel]) + ', ' + w.mpg + ' min a game)</span>').join(', ') : esc(l.none || 'none drawn'))))];
+}
+/* THE EMAIL WITH THE MATCH-UPS ALONE: a week they did not play, or "send now" with no report ticked */
+export function matchupEmail({ sub, name, team, lines, tz, games, me }) {
+  const colour = colourOf(team), lg = ((team && team.leagues) || {}).name || '';
+  const days = (games || []).map(g => local(tz, new Date(g.tipoff_at)).date).sort();
+  const span = days.length ? daySpan(days[0], days[days.length - 1]) : '';
+  const subject = `${name}: potential match-ups${span ? ', ' + span : ''}`;
+  return { subject, html: layout({ colour, kicker: 'Potential match-ups' + (lg ? ' · ' + lg : ''), title: `${name}: who they could be guarding`,
+    meta: span + (team && team.name ? ' · ' + team.name : ''), greeting: sub.name ? 'Hi ' + sub.name + ',' : 'Hello,',
+    blocks: matchupBlocks(lines, me).concat([NOTE(inkOn(colour), 'A player is matched by where they have played this season: the minutes at each position in every game, every competition. The same position first, then one position up. Only players who play at least ten minutes a game are taken.'), P('All the best.')]),
+    files: [{ label: 'Potential match-ups: ' + name + (span ? ', ' + span : '') }], kept: false,
+    foot: 'You receive this because a weekly player report was set up for this address on Epinoia. To change or stop it, simply reply to this email and let us know.' }) };
+}
+/* what goes with an email: the match-up report of these games, or nothing (said in the run's log) */
+async function matchupsFor(s, P, name, team, tz, games, now = new Date()) {
+  if (!games || !games.length) return null;
+  const MU = await matchupReport({ name, slug: P.slug || s.player_id, playerIds: await linkedIds(s.player_id), team, tz, games, day: local(tz, now).date }).catch(e => ({ pdf: null, lines: [], why: e.message || String(e) }));
+  console.log('[' + s.email + '] ' + name + ': match-ups ' + (MU.pdf ? MU.lines.map(l => l.who.length).reduce((a, b) => a + b, 0) + ' player(s)' : 'none - ' + MU.why));
+  return MU;
+}
+/* the rest of the week, at the address's time: now to next Monday 00:00 */
+const restOfWeek = (tz, now) => ({ from: now, to: weekBounds(tz, mondayOf(local(tz, now).date)).to });
+
 export async function onePlayer(s, now = new Date()) {
   const P = s.players || { id: s.player_id };
   const name = ((P.first_name || '') + ' ' + (P.last_name || '')).trim() || 'The player';
@@ -937,9 +1195,12 @@ export async function onePlayer(s, now = new Date()) {
   const tz = okZone(s.tz, team.leagues && team.leagues.timezone);
   const ids = await linkedIds(s.player_id);
   const asked = !!s.send_now_at;
+  /* THE MATCH-UPS "SEND NOW" TICKED (0274): those upcoming games' opponents; with send_now_report false, nothing else */
+  const muAsked = asked && Array.isArray(s.send_now_matchups) ? [...new Set(s.send_now_matchups.map(String))].filter(id => /^[0-9a-f-]{36}$/i.test(id)).slice(0, 8) : [];
+  if (asked && s.send_now_report === false) return matchupsOnly(s, P, name, team, tz, await gamesById(muAsked), true, null, now);
   /* SEND NOW WITH THE GAMES CHOSEN (0273): the report of those games, whatever week they were in */
   const chosen = asked && Array.isArray(s.send_now_games) ? [...new Set(s.send_now_games.map(String))].filter(id => /^[0-9a-f-]{36}$/i.test(id)).slice(0, MAX_PICKED) : [];
-  if (chosen.length) return chosenGames(s, P, name, team, tz, ids, chosen);
+  if (chosen.length) return chosenGames(s, P, name, team, tz, ids, chosen, muAsked, now);
   let week, catchUp = false;
   if (asked) {
     week = await latestWeek(ids, tz, now);
@@ -952,21 +1213,48 @@ export async function onePlayer(s, now = new Date()) {
   }
   const B = weekBounds(tz, week);
   const games = (await playerGamesIn(ids, B.from, B.to)).map(playerLine);
-  /* a week they did not play goes unsent; not logged, so a game finalised late still brings it on the Tuesday */
-  if (!games.length) { if (asked) await notePlayer(s, 'Send now: no game of theirs in the week of ' + weekSpan(week) + ', so nothing was sent.', true); return 0; }
+  /* THE MATCH-UPS THAT GO WITH IT (0274): the games "send now" ticked; on a Monday with send_matchups, the club's games of the
+     week now beginning */
+  const RW = restOfWeek(tz, now);
+  const muGames = asked ? await gamesById(muAsked) : s.send_matchups ? await upcomingGames(team.id, RW.from, RW.to).catch(() => []) : [];
+  /* a week they did not play goes unsent; not logged, so a game finalised late still brings it on the Tuesday - unless its
+     match-ups go: then they go alone (once their club's games of the week are over), and the week is logged */
+  if (!games.length) {
+    if (!asked && muGames.length && !(team.id && await clubStillPlaying(team.id, B.from, B.to, now))) return matchupsOnly(s, P, name, team, tz, muGames, false, week, now);
+    if (asked) await notePlayer(s, 'Send now: no game of theirs in the week of ' + weekSpan(week) + ', so nothing was sent.', true);
+    return 0;
+  }
   if (!asked && !catchUp && team.id && await clubStillPlaying(team.id, B.from, B.to, now)) { console.log('[' + s.email + '] ' + name + ': a game of the week is still to finish; waiting'); return 0; }
   const file = 'epinoia-player-report-' + String(name).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) + '-' + week;
   console.log('[' + s.email + '] ' + name + ': the week of ' + week + ', ' + games.length + ' game(s)' + (asked ? ' (send now)' : catchUp ? ' (caught up)' : ''));
   const pdf = await pdfOf('/epinoia/p/?p=' + encodeURIComponent(P.slug || s.player_id) + '&tab=report&rpweek=' + week, file);
-  const E = playerEmail({ sub: s, name, team, week, games, tz });
-  await send(s.email, E.subject, E.html, [pdf]);
-  await logPlayerWeek(s, week, games.length + ' game(s)' + (asked ? ', send now' : ''));
-  await notePlayer(s, 'Sent the week of ' + weekSpan(week) + ' (' + (games.length === 1 ? 'one game' : games.length + ' games') + ')' + (asked ? ', asked for' : ''), asked);
+  const MU = await matchupsFor(s, P, name, team, tz, muGames, now);
+  const E = playerEmail({ sub: s, name, team, week, games, tz, matchups: MU && MU.pdf ? MU.lines : null, mumeta: MU && MU.me });
+  await send(s.email, E.subject, E.html, [pdf].concat(MU && MU.pdf ? [MU.pdf] : []));
+  await logPlayerWeek(s, week, games.length + ' game(s)' + (asked ? ', send now' : '') + (MU && MU.pdf ? ', match-ups' : ''));
+  await notePlayer(s, 'Sent the week of ' + weekSpan(week) + ' (' + (games.length === 1 ? 'one game' : games.length + ' games') + ')' + muNote(MU) + (asked ? ', asked for' : ''), asked);
+  return 0;
+}
+const muCount = MU => (MU && MU.lines ? MU.lines.reduce((a, l) => a + l.who.length, 0) : 0);
+const muNote = MU => (!MU ? '' : MU.pdf ? ' and the match-ups (' + muCount(MU) + ' player' + (muCount(MU) === 1 ? '' : 's') + ')' : '; no match-ups: ' + MU.why);
+/* THE MATCH-UPS ALONE: "send now" with no report ticked, or a week they did not play (`week`: logged, so the Monday is not
+   tried again every half hour, whether they went or not) */
+async function matchupsOnly(s, P, name, team, tz, games, asked, week, now = new Date()) {
+  const MU = await matchupsFor(s, P, name, team, tz, games, now);
+  if (!MU || !MU.pdf) {
+    if (week) await logPlayerWeek(s, week, 'no game; no match-ups: ' + (MU ? MU.why : 'no game of their club to come'));
+    if (asked) await notePlayer(s, 'Send now: no match-up report (' + (MU ? MU.why : 'none of the games ticked is still to come') + '), so nothing was sent.', true);
+    return 0;
+  }
+  const E = matchupEmail({ sub: s, name, team, lines: MU.lines, tz, games, me: MU.me });
+  await send(s.email, E.subject, E.html, [MU.pdf]);
+  if (week) await logPlayerWeek(s, week, 'no game; match-ups only');
+  await notePlayer(s, 'Sent the potential match-ups alone (' + muCount(MU) + ' player' + (muCount(MU) === 1 ? '' : 's') + ')' + (asked ? ', asked for' : ''), asked);
   return 0;
 }
 export const MAX_PICKED = 12;
 const slugName = name => String(name).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
-async function chosenGames(s, P, name, team, tz, ids, chosen) {
+async function chosenGames(s, P, name, team, tz, ids, chosen, muAsked, now = new Date()) {
   const rows = (await rest(`player_game_stats?player_uuid=in.(${ids.join(',')})&game_id=in.(${chosen.join(',')})&select=${PG_SEL}&games.status=eq.final`) || [])
     .filter(playedIn).sort((a, b) => String(a.games.tipoff_at).localeCompare(String(b.games.tipoff_at)))
     .filter((r, i, a) => a.findIndex(x => x.game_id === r.game_id) === i);             // a game once, whichever of their profiles has it
@@ -976,8 +1264,9 @@ async function chosenGames(s, P, name, team, tz, ids, chosen) {
   console.log('[' + s.email + '] ' + name + ': ' + rows.length + ' chosen game(s), ' + span + ' (send now)');
   const pdf = await pdfOf('/epinoia/p/?p=' + encodeURIComponent(P.slug || s.player_id) + '&tab=report&rpgames=' + rows.map(r => r.game_id).join(','),
     'epinoia-player-report-' + slugName(name) + '-' + from + (to !== from ? '-to-' + to : ''));
-  const E = playerEmail({ sub: s, name, team, games, tz, picked: { from, to } });
-  await send(s.email, E.subject, E.html, [pdf]);
+  const MU = await matchupsFor(s, P, name, team, tz, await gamesById(muAsked || []), now);
+  const E = playerEmail({ sub: s, name, team, games, tz, picked: { from, to }, matchups: MU && MU.pdf ? MU.lines : null, mumeta: MU && MU.me });
+  await send(s.email, E.subject, E.html, [pdf].concat(MU && MU.pdf ? [MU.pdf] : []));
   /* THE WHOLE OF A WEEK CHOSEN (every game of theirs in it, nothing from another): that week counts as sent, so its Monday does
      not send the same report again. A part of a week, or games from several, leave the Monday email as it was. */
   const mondays = [...new Set(days.map(mondayOf))];
@@ -987,7 +1276,7 @@ async function chosenGames(s, P, name, team, tz, ids, chosen) {
     const got = new Set(rows.map(r => r.game_id));
     if (all && all.every(r => got.has(r.game_id))) await logPlayerWeek(s, mondays[0], rows.length + ' game(s), chosen');
   }
-  await notePlayer(s, 'Sent ' + (rows.length === 1 ? 'one chosen game' : rows.length + ' chosen games') + ' (' + span + ')' +
+  await notePlayer(s, 'Sent ' + (rows.length === 1 ? 'one chosen game' : rows.length + ' chosen games') + ' (' + span + ')' + muNote(MU) +
     (rows.length < chosen.length ? '; ' + (chosen.length - rows.length === 1 ? 'one chosen was not a final they played in' : (chosen.length - rows.length) + ' chosen were not finals they played in') : ''), true);
   return 0;
 }

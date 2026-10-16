@@ -1689,6 +1689,12 @@ function ui(state) {
     title: saved.title || o.title || 'Scouting report',
     subtitle: null, tpl: saved.tpl || {}
   };
+  /* ?rpmods=cover,shots,lvr,conn - THOSE PAGES ALONE, for this view only (the mailer's match-up report, Louie 2026-10-16: "1
+     title page, the 2 shot chart pages, then left vs right and connections"): nothing of it is kept as the reader's choice */
+  const onlyMods = (() => { try { return (new URLSearchParams(root.location.search).get('rpmods') || '').split(',').map(s => s.trim()).filter(Boolean); } catch (_) { return []; } })()
+    .filter(k => o.modules.some(m => m.key === k));
+  if (onlyMods.length) o.modules.forEach(m => { conf.on[m.key] = onlyMods.indexOf(m.key) >= 0; });
+  state.onlyMods = onlyMods.length > 0;
   panel.innerHTML = '';
   const wrap = el('div', 'rp');
   /* THE INSIGHTS (scoutinsights.js, Louie 2026-10-08): the scout's written read - how to prepare, the strengths, the
@@ -1782,7 +1788,7 @@ function ui(state) {
   panel.appendChild(wrap);
   state.pages = pages;
   state.ins = ins;
-  const persist = () => store.set(key, { on: conf.on, title: conf.title, tpl: conf.tpl, scope: conf.scope });
+  const persist = () => store.set(key, { on: state.onlyMods ? (store.get(key, {}).on || {}) : conf.on, title: conf.title, tpl: conf.tpl, scope: conf.scope });
   let tm = null;
   tIn.oninput = () => { conf.title = tIn.value; persist(); clearTimeout(tm); tm = setTimeout(rebuild, 350); };
   sIn.oninput = () => { conf.subtitle = sIn.value; clearTimeout(tm); tm = setTimeout(rebuild, 350); };
@@ -1828,6 +1834,23 @@ function ui(state) {
     bPdf.disabled = bImg.disabled = false;
     return done;
   }
+
+  /* THE PAGES THEMSELVES, for the mailer to put several reports in one PDF (the match-up report, 2026-10-16): each page a JPEG
+     at the email's weight (as Download PDF draws it for the mailer), with its links, and the report's bookmarks and title.
+     The JPEGs go back as base64 (what a page can hand to Playwright). */
+  if (root.EPINOIA_RP_BOT) root.__rpPages = async () => {
+    const X = root.EpinoiaRaster;
+    const sheets = [...pages.querySelectorAll('.rp-pg')];
+    if (!X || !X.pagesOf || !sheets.length) return null;
+    const z = pages.style.getPropertyValue('--rp-z');
+    pages.style.setProperty('--rp-z', '1');
+    try {
+      const got = await X.pagesOf(sheets, { w: PAGE.w, h: PAGE.h, scale: 2, quality: 0.82 });
+      const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return root.btoa(s); };
+      return { title: (state.c && state.c.docTitle) || 'Report', outline: state.outline || null,
+               pages: got.map(p => ({ b64: b64(p.bytes), w: p.w, h: p.h, links: p.links || [] })) };
+    } finally { pages.style.setProperty('--rp-z', z || '1'); fit(); }
+  };
 
   /* every build is kept as state.current; one that a newer build overtakes stops where it is (R.stale), so whoever needs the
      WHOLE report (PRIME) waits until the newest build has finished: state.lastDone === state.running */

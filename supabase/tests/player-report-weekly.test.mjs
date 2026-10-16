@@ -23,6 +23,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(here, '..', '..');
 const read = (...p) => readFileSync(path.join(ROOT, ...p), 'utf8');
+/* a PDF's bookmark titles (raster.js pdfUni: UTF-16 with its byte-order mark, in hex), read back */
+const pdfTitles = txt => [...txt.matchAll(/\/Title <FEFF([0-9A-Fa-f]*)>/g)].map(m => { let t = ''; for (let i = 0; i < m[1].length; i += 4) t += String.fromCharCode(parseInt(m[1].slice(i, i + 4), 16)); return t; });
 const require = createRequire(import.meta.url);
 let pass = 0, fail = 0;
 const ok = (what, cond, saw) => { if (cond) { pass++; console.log('  PASS  ' + what); } else { fail++; console.log('  FAIL  ' + what + (saw === undefined ? '' : '  -- saw ' + JSON.stringify(saw).slice(0, 500))); } };
@@ -268,12 +270,155 @@ const M = await import(pathToFileURL(path.join(ROOT, 'scripts', 'report_mailer.m
   await M.playerRound(new Date('2026-10-19T06:30:00Z'));
   await M.playerRound(THU);
   ok('nothing at 7:30 on the Monday, nothing on the Thursday unasked', !W.sent.length);
+
+  /* POTENTIAL MATCH-UPS (0274; Louie, 2026-10-16) - stand-ins for the clubs' position files (where each player has played
+     this season) and the browser (the opponents' truncated pages) */
+  const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString('base64');
+  const pos = (sec, s, gp) => ({ sec, s, gp });
+  /* ours: Sam at 75% SG, 25% SF (a shooting guard, 2.25); Bristol (tb): a PG and an SG (both the same position for a guard),
+     an SF (one up), a PF (two up: not), an SG who barely plays; Leeds (tl): a centre only */
+  const CLUBS = {
+    t1: new Map([['pl1', pos([0, 4500, 1500, 0, 0], 6000, 4)]]),
+    tb: new Map([['b-pg', pos([6400, 0, 0, 0, 0], 6400, 4)], ['b-sg', pos([0, 6000, 0, 0, 0], 6000, 4)], ['b-sf', pos([0, 0, 5000, 0, 0], 5000, 4)],
+                 ['b-pf', pos([0, 0, 0, 7000, 0], 7000, 4)], ['b-dnp', pos([0, 600, 0, 0, 0], 600, 4)]]),
+    tl: new Map([['l-c', pos([0, 0, 0, 0, 6000], 6000, 4)]])
+  };
+  M.hooks.positions = teamId => CLUBS[teamId] || new Map();
+  const pageCalls = [], indexPlans = [];
+  M.hooks.index = (plan, meta) => { indexPlans.push({ plan, meta }); return { b64: JPEG, w: 10, h: 14, links: plan.flatMap(c => c.players.map(pl => ({ x: 0, y: 0, w: 0.5, h: 0.05, page: pl.page }))) }; };
+  M.hooks.pages = slug => { pageCalls.push(slug); return { title: slug, outline: [{ title: 'Shot chart', page: 2 }],
+    pages: [{ b64: JPEG, w: 10, h: 14, links: [{ x: 0, y: 0, w: 0.1, h: 0.1, page: 2 }] }, { b64: JPEG, w: 10, h: 14, links: [] }] }; };
+  const UP = [{ id: U(7), tipoff_at: '2026-10-21T19:00:00Z', status: 'scheduled', home_team_id: 't1', away_team_id: 'tb', home: { name: 'Ours' }, away: { name: 'Bristol' } },
+              { id: U(8), tipoff_at: '2026-10-25T17:00:00Z', status: 'scheduled', home_team_id: 'tl', away_team_id: 't1', home: { name: 'Leeds' }, away: { name: 'Ours' } }];
+  const PEOPLE = [['b-sg', 'Bea', 'Same'], ['b-sf', 'Ben', 'Up'], ['l-c', 'Lee', 'Centre'], ['b-pg', 'Bo', 'Guard'], ['b-pf', 'Pat', 'Forward']].map(([id, f, l]) => ({ id, first_name: f, last_name: l, slug: 'x-' + id }));
+  const fetch2 = globalThis.fetch;
+  globalThis.fetch = async (url, opt = {}) => {
+    const u = String(url), pth = u.replace('https://db.example/rest/v1/', '');
+    const res = x => ({ ok: true, status: 200, text: async () => JSON.stringify(x), json: async () => x });
+    if (pth.startsWith('games?or=') && pth.includes('status=in.(scheduled,live)')) { W.upAsked = (W.upAsked || 0) + 1; return res(W.up || []); }
+    if (pth.startsWith('games?id=in.')) { const ids = pth.match(/id=in\.\(([^)]*)\)/)[1].split(','); return res((W.up || []).filter(g => ids.includes(g.id))); }
+    if (pth.startsWith('players?id=in.')) { const ids = pth.match(/id=in\.\(([^)]*)\)/)[1].split(','); return res(PEOPLE.filter(x => ids.includes(x.id))); }
+    return fetch2(url, opt);
+  };
+  W = world({ games: [game('2026-10-15T19:00:00Z')], up: UP, sub: { send_matchups: true } });
+  await M.playerRound(MON);
+  const mu = W.sent[0] && W.sent[0].attachments[1];
+  ok('match-ups ticked: the Monday email carries a second PDF, of the week now beginning\'s opponents', W.sent.length === 1 && W.sent[0].attachments.length === 2 &&
+     /^epinoia-matchups-sam-smith-2026-10-19\.pdf$/.test(mu && mu.filename) && /^%PDF/.test(Buffer.from(mu.content, 'base64').toString('latin1')), W.sent[0] && W.sent[0].attachments.map(a => a.filename));
+  ok('...Bristol: their position first - a guard\'s is either guard spot, the PG and the SG by minutes - then the SF one up; not the PF two up, not the guard who barely plays',
+     pageCalls.slice(0, 3).join() === 'x-b-pg,x-b-sg,x-b-sf' && !pageCalls.includes('x-b-pf'), pageCalls);
+  ok('...Leeds has only a centre: their rotation player nearest above, so no opponent goes without one', pageCalls[3] === 'x-l-c' && pageCalls.length === 4, pageCalls);
+  const pdfTxt = Buffer.from(mu.content, 'base64').toString('latin1');
+  const IX = indexPlans[0];
+  ok('...an index first, just of the players: each club, its players, their position and the page each starts on (after the index: 2, 4, 6, 8)',
+     IX && IX.plan.map(c => c.head.replace(/ \(.*$/, '') + ':' + c.players.map(x => x.name + '/' + x.pos + '@' + x.page).join('+')).join('|') === 'v Bristol:Bo Guard/PG@2+Bea Same/SG@4+Ben Up/SF@6|at Leeds:Lee Centre/C@8' &&
+     IX.meta.name === 'Sam Smith' && IX.meta.pos === 'SG' && IX.meta.team === 'Ours', IX && IX.plan);
+  ok('...the index the first page and the first bookmark, its rows links to the players\' pages', pdfTitles(pdfTxt)[0] === 'Index' &&
+     (pdfTxt.match(/\/Subtype \/Link/g) || []).length >= 4 + 4, pdfTitles(pdfTxt));
+  ok('...one PDF of them all: nine pages (the index and four players), bookmarked by club, then player, then each one\'s own sections',
+     (pdfTxt.match(/\/Type \/Page\b/g) || []).length === 9 && pdfTitles(pdfTxt).some(t => /^v Bristol/.test(t)) && pdfTitles(pdfTxt).some(t => /^at Leeds/.test(t)) &&
+     pdfTitles(pdfTxt).includes('Bea Same · SG, same position') && pdfTitles(pdfTxt).includes('Shot chart'), pdfTitles(pdfTxt));
+  ok('...the email names them: their position, what that is to Sam, minutes a game; and Sam\'s own', /Potential match-ups<\/b>, in the second PDF \(they play SG\)/.test(W.sent[0].html) &&
+     /Bo Guard <span[^>]*>\(PG, same position, 26\.7 min a game\)/.test(W.sent[0].html) && /Ben Up <span[^>]*>\(SF, one position up/.test(W.sent[0].html), W.sent[0].html.slice(0, 200));
+  ok('...and the console is told', /and the match-ups \(4 players\)/.test(W.patched[0].last_detail) && /match-ups/.test(W.posted[0].detail), [W.patched, W.posted]);
+  W = world({ games: [game('2026-10-15T19:00:00Z')], up: UP });
+  pageCalls.length = 0;
+  await M.playerRound(MON);
+  ok('match-ups not ticked: the email as before, nothing more drawn or asked', W.sent.length === 1 && W.sent[0].attachments.length === 1 && !pageCalls.length && !W.upAsked);
+  W = world({ games: [game('2026-10-08T19:00:00Z')], up: UP, sub: { send_matchups: true } });
+  await M.playerRound(MON);
+  ok('a week they did not play, match-ups ticked: the match-ups go alone, and the week is logged', W.sent.length === 1 && W.sent[0].attachments.length === 1 &&
+     /^Sam Smith: potential match-ups, 21–25 October 2026$/.test(W.sent[0].subject) && W.posted.length === 1 && /match-ups only/.test(W.posted[0].detail), [W.sent.map(x => x.subject), W.posted]);
+  W = world({ games: [], up: UP, sub: { send_now_at: '2026-10-22T11:58:00Z', send_now_report: false, send_now_matchups: [U(8)] } });
+  pageCalls.length = 0;
+  await M.playerRound(THU);
+  ok('send now with the match-ups alone (send_now_report false): Leeds\' only, and the request cleared with its match-ups',
+     W.sent.length === 1 && pageCalls.join() === 'x-l-c' && W.patched[0].send_now_at === null && W.patched[0].send_now_matchups === null && W.patched[0].send_now_report === null, [pageCalls, W.patched]);
+  W = world({ games: GU(), up: UP, sub: { send_now_at: '2026-10-22T11:58:00Z', send_now_games: [U(2)], send_now_matchups: [U(7)] } });
+  await M.playerRound(THU);
+  ok('send now with games and match-ups: the report of the games, and the match-ups of the games to come ticked', W.sent.length === 1 && W.sent[0].attachments.length === 2 && /and the match-ups/.test(W.patched[0].last_detail));
   globalThis.fetch = realFetch;
-  M.hooks.pdf = null;
+  M.hooks.pdf = M.hooks.positions = M.hooks.pages = M.hooks.index = null;
 
   const MJ = read('scripts', 'report_mailer.mjs');
   ok('main() runs the players\' round after the clubs, and a database before 0272 only skips it', /try \{ const PR = await playerRound\(\); failed \+= PR\.failed; players = PR\.n; \} catch \(e\) \{ console\.warn\('player reports skipped:'/.test(MJ));
   ok('...with the address\'s ONLY filter, and every profile of the player\'s (linked_players)', /if \(env\.ONLY && s\.email !== env\.ONLY\) continue;\s*try \{ failed \+= \(await onePlayer\(s, now\)\)/.test(MJ) && /rest\('rpc\/linked_players'/.test(MJ));
+}
+
+/* ======================================================================== potential match-ups (0274) === */
+{
+  const require2 = (await import('node:module')).createRequire(import.meta.url);
+  const MU = require2('../../epinoia/matchup.js');
+  ok('where a player plays: the average spot of their seconds at PG..C - 75% SG and 24% SF is a shooting guard (Dan Hadley\'s breakdown)',
+     Math.abs(MU.spotOf([0, 75, 24, 0, 0]) - 2.242) < 0.001 && MU.posOf(MU.spotOf([0, 75, 24, 0, 0])) === 'SG' && MU.spotOf([0, 0, 0, 0, 0]) === null && MU.posOf(4.6) === 'C');
+  const R_ = (a, b) => MU.relOf(a, b);
+  ok('the same position: theirs, and for a guard either guard spot (a PG and an SG guard each other)',
+     R_(2, 1) === 'same' && R_(1, 2) === 'same' && R_(2, 2) === 'same' && R_(3, 3) === 'same' && R_(5, 5) === 'same' && R_(3, 2) === null);
+  ok('...one position up: the next above (a guard\'s is SF); two up, or down, is neither; a centre has none up',
+     R_(2, 3) === 'up' && R_(1, 3) === 'up' && R_(3, 4) === 'up' && R_(4, 5) === 'up' && R_(2, 4) === null && R_(4, 3) === null && R_(5, 4) === null);
+  const P = (id, team, spot, mpg, gp) => ({ id, team, spot, mpg, gp: gp == null ? 5 : gp });
+  const players = [P('g1', 'A', 1, 30), P('g2', 'A', 2.1, 29), P('g3', 'A', 1.3, 28), P('g4', 'A', 1.9, 27), P('g5', 'A', 2.2, 26), P('f1', 'A', 3, 20), P('p1', 'A', 4, 35),
+    P('g6', 'A', 2, 8), P('g7', 'A', 2, 25, 1), P('c1', 'C', 5, 30), P('c2', 'C', 4.4, 20)];
+  const R = MU.matchups({ me: { spot: 2.24 }, players, teams: ['A', 'B', 'C'] });
+  const A = R.byTeam.get('A').map(x => x.id + ':' + x.rel);
+  ok('a club of five guards and a forward: four guards by minutes, and the last place for the forward one position up',
+     A.join() === 'g1:same,g2:same,g3:same,g4:same,f1:up' && R.me.pos === 'SG', A);
+  ok('...not under ten minutes a game, nor a single game, nor two positions up', !A.some(x => /^(g6|g7|p1):/.test(x)));
+  ok('...a club with nobody at either gives their rotation player nearest above (the PF before the centre)', R.byTeam.get('C').map(x => x.id + ':' + x.rel).join() === 'c2:near', R.byTeam.get('C'));
+  ok('...a club with no position files gives none', R.byTeam.get('B').length === 0);
+  ok('no position for them (no minutes on the floor): no match-ups, and why', !MU.matchups({ me: { spot: null }, players, teams: ['A'] }).ok &&
+     /position is not known/.test(MU.matchups({ me: {}, players, teams: ['A'] }).why));
+  ok('a guards\' club with nobody one position up: all five places guards', MU.matchups({ me: { spot: 2 }, players: players.filter(x => x.id !== 'f1'), teams: ['A'] }).byTeam.get('A').length === 5);
+
+  const M2 = await import('../../scripts/report_mailer.mjs');
+  const games = [{ id: 'g1', tipoff_at: '2026-10-21T19:00:00Z', home_team_id: 'us', away_team_id: 'A', home: { name: 'Us' }, away: { name: 'Alpha' } },
+                 { id: 'g2', tipoff_at: '2026-10-23T19:00:00Z', home_team_id: 'B', away_team_id: 'us', home: { name: 'Beta' }, away: { name: 'Us' } },
+                 { id: 'g3', tipoff_at: '2026-10-25T19:00:00Z', home_team_id: 'us', away_team_id: 'A', home: { name: 'Us' }, away: { name: 'Alpha' } },
+                 { id: 'g4', tipoff_at: '2026-10-25T19:00:00Z', home_team_id: 'B', away_team_id: 'C', home: { name: 'Beta' }, away: { name: 'Gamma' } }];
+  const O = M2.opponentsIn('us', games);
+  ok('the opponents of the games ahead: in the order they come, a club once, only games of his club', O.map(o => (o.home ? 'v ' : 'at ') + o.name).join() === 'v Alpha,at Beta', O);
+  const J = Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString('base64');
+  const pg = links => ({ b64: J, w: 10, h: 14, links });
+  const bytes = M2.stitchPages([{ head: 'v Alpha', kids: [{ title: 'A One', got: { outline: [{ title: 'Connections', page: 2 }], pages: [pg([{ x: 0, y: 0, w: .1, h: .1, page: 2 }]), pg([])] } },
+                                                        { title: 'A Two', got: { outline: [], pages: [pg([{ x: 0, y: 0, w: .1, h: .1, page: 1 }])] } }] },
+                                { head: 'at Beta', kids: [] }], 'T');
+  const txt = Buffer.from(bytes).toString('latin1');
+  const pageObjs = [...txt.matchAll(/(\d+) 0 obj\n<< \/Type \/Page\b/g)].map(m => +m[1]);
+  ok('one PDF: every player\'s pages in turn, a club with none left out of the bookmarks', pageObjs.length === 3 && pdfTitles(txt).join('|') === 'v Alpha|A One|Connections|A Two', pdfTitles(txt));
+  ok('...each page\'s links moved to where its report\'s pages now are (A Two\'s page 1 is the third)', new RegExp('/Dest \\[' + pageObjs[2] + ' 0 R').test(txt) && new RegExp('/Dest \\[' + pageObjs[1] + ' 0 R').test(txt), pageObjs);
+  ok('nothing drawn: no PDF', M2.stitchPages([{ head: 'x', kids: [] }], 'T') === null && M2.stitchPages([{ head: 'x', kids: [] }], 'T', pg([])) === null);
+  /* THE INDEX (Louie, 2026-10-16: "an auto index (just for players) at the start of the pdf") */
+  const parts = [{ head: 'v Alpha', kids: [{ name: 'A One', rel: 'same', mpg: 20, got: { pages: [pg([]), pg([]), pg([])] } }, { name: 'A Two', rel: 'up', mpg: 15, got: { pages: [pg([])] } }] },
+                 { head: 'at Beta', kids: [{ name: 'B Gone', rel: 'same', mpg: 12, got: null }] }, { head: 'v Gamma', kids: [{ name: 'G One', rel: 'near', mpg: 30, got: { pages: [pg([]), pg([])] } }] }];
+  const plan = M2.matchupPlan(parts, 1);
+  ok('the index\'s pages: each player where their pages begin after it (2, 5, 6), a club none of whose players was drawn left out',
+     plan.map(c => c.head + ':' + c.players.map(x => x.page).join(',')).join('|') === 'v Alpha:2,5|v Gamma:6', plan);
+  const front = { b64: J, w: 10, h: 14, links: plan.flatMap(c => c.players.map(x => ({ x: 0, y: 0, w: .5, h: .05, page: x.page }))) };
+  const withIx = Buffer.from(M2.stitchPages(parts, 'T', front)).toString('latin1');
+  const objs = [...withIx.matchAll(/(\d+) 0 obj\n<< \/Type \/Page\b/g)].map(m => +m[1]);
+  ok('...the index the first of the PDF\'s pages, each row a link to the page its player begins on', objs.length === 7 && pdfTitles(withIx)[0] === 'Index' &&
+     [2, 5, 6].every(n => new RegExp('/Dest \\[' + objs[n - 1] + ' 0 R').test(withIx)), objs);
+  const IH = M2.indexHTML(plan, { name: 'Dan Hadley', team: 'Loughborough Riders', colour: '#123456', span: '17–24 October 2026' });
+  ok('...drawn in the report\'s type: every player a row naming what they are to them, minutes and page, each row a link',
+     (IH.match(/data-goto="/g) || []).length === 3 && /data-goto="5"><b>A Two<\/b><span class="rel">one position up · 15 min a game/.test(IH) && /Dan Hadley · Loughborough Riders · 17–24 October 2026/.test(IH) &&
+     !/\b(he|his|him)\b/.test(IH.replace(/<[^>]*>/g, ' ')), IH.slice(0, 300));
+  const blocks = M2.matchupBlocks([{ head: 'v Alpha (Tue 21 Oct)', who: [{ name: 'A One', rel: 'same', mpg: 24.5 }, { name: 'A Two', rel: 'up', mpg: 18 }] }, { head: 'at Beta (Thu 23 Oct)', who: [], none: 'no player of theirs has this season’s numbers to match on' }]).join('');
+  ok('the email\'s lines: each club, its players and what they are to him, and a club with none said why', /v Alpha \(Tue 21 Oct\)<\/b>: A One <span[^>]*>\(same position, 24\.5 min a game\)<\/span>, A Two <span[^>]*>\(one position up/.test(blocks) && /at Beta[^]*no player of theirs/.test(blocks), blocks);
+  ok('...and none at all when nobody was drawn', M2.matchupBlocks([{ head: 'x', who: [] }]).length === 0);
+  ok('the truncated report: the title page, the shot chart, left v right and connections', M2.MATCHUP_MODS === 'cover,shots,lvr,conn' && M2.MATCHUP_MAX === 15);
+
+  const RJS = read('epinoia', 'report.js'), PPJ = read('epinoia', 'report-playerpages.js'), PLJ = read('epinoia', 'p', 'player.js'), RAS = read('epinoia', 'raster.js');
+  ok('report.js: ?rpmods= draws those pages alone, and keeps nothing of it as the reader\'s choice', /get\('rpmods'\)/.test(RJS) && /if \(onlyMods\.length\) o\.modules\.forEach\(m => \{ conf\.on\[m\.key\] = onlyMods\.indexOf\(m\.key\) >= 0; \}\);/.test(RJS) &&
+     /on: state\.onlyMods \? \(store\.get\(key, \{\}\)\.on \|\| \{\}\) : conf\.on/.test(RJS));
+  ok('...the bot\'s pages handed over as JPEGs with their links (raster.js pagesOf, the same drawing as the PDF)', /if \(root\.EPINOIA_RP_BOT\) root\.__rpPages = async/.test(RJS) && /async function pagesOf\(nodes, opt\)/.test(RAS) && /return pdfFromJpegs\(await pagesOf\(nodes, o\)/.test(RAS));
+  const MJ2 = read('scripts', 'report_mailer.mjs');
+  ok('where they play is read from the clubs\' position files of the season, every competition (snapshots/pos), not the player page',
+     /storage\/v1\/object\/public\/snapshots\/pos\//.test(MJ2) && /export async function clubPositions\(teamId\)/.test(MJ2) && !/rpfield/.test(PLJ));
+  ok('...and each opponent drawn over their whole season (?rpscope=all)', /&tab=report&rpscope=all&rpmods=' \+ MATCHUP_MODS/.test(MJ2));
+  ok('ACTIONABLE INSIGHTS without the highlighted coaching line (Louie, 2026-10-16)', !/rp-in-do/.test(PPJ) && /const li = x => '<li><b>' \+ esc\(x\.head\) \+ '<\/b> ' \+ esc\(x\.text\) \+ '<\/li>';/.test(PPJ) && !/rp-in-do/.test(read('epinoia', 'kit', 'report.css')));
+  const MIG = read('supabase', 'migrations', '0274_player_matchup_reports.sql');
+  ok('0274: the match-ups tick, send now\'s games to come (at most eight) and the match-ups alone', /add column if not exists send_matchups boolean not null default false/.test(MIG) &&
+     /send_now_matchups uuid\[\]\s*\n\s*check \(send_now_matchups is null or cardinality\(send_now_matchups\) between 1 and 8\)/.test(MIG) && /add column if not exists send_now_report boolean/.test(MIG));
 }
 
 /* ======================================================================== 0272 === */
@@ -344,12 +489,12 @@ console.log('\nthe console: the reports manager\'s Players tab (admin/platform/r
      !/Promise\.all\(\[loadOverview\(\)[^\n]*loadMail/.test(PJ), [rp.length, ac.length]);
   ok('the Players tab: a player found by name in the site\'s search, the address, a first name, the time zone (their league\'s when picked); added once an address and a player',
      /sb\.rpc\('site_search', \{ p_q: q, p_limit: 12 \}\)/.test(RJ) && /select\('teams\(leagues\(timezone\)\)'\)\.eq\('player_id', pk\.id\)/.test(RJ) &&
-     /from\('report_mail_players'\)\.upsert\(\{ email: e, player_id: who\.id,/.test(RJ) && /\{ onConflict: 'email,player_id' \}/.test(RJ));
+     /const row = Object\.assign\(\{ email: e, player_id: who\.id,/.test(RJ) && /from\('report_mail_players'\)\.upsert\(row, \{ onConflict: 'email,player_id' \}\)/.test(RJ));
   ok('...each with what the mailer last did, send now, pause and remove; read again while a send now waits; a database before 0272 says so',
      /btn\(x\.send_now_at \? 'queued' : 'send now', 'mini', \(\) => sendPlayerNow\(x, pname, now\)\)/.test(RJ) && /update\(\{ active: !x\.active \}\)/.test(RJ) && /from\('report_mail_players'\)\.delete\(\)\.eq\('id', x\.id\)/.test(RJ) &&
      /pTimer = setTimeout\(\(\) => \{ if \(dlg && dlg\.open && tab === 'pl' && !document\.hidden\) draw\(\); \}, 30000\);/.test(RJ) && /Players’ weekly reports arrive with migration 0272/.test(RJ));
   ok('send now asks which games (platform.js askPick, handed to the manager) and writes them (0273); before 0273 it asks before sending the week',
-     /pickWeek, askPick, weekOf, ownDueFor, weekWords \}, which\)/.test(PJ) && /update\(Array\.isArray\(games\) \? \{ send_now_at: at, send_now_games: games \} : \{ send_now_at: at \}\)/.test(RJ) &&
+     /pickWeek, askPick, weekOf, ownDueFor, weekWords \}, which\)/.test(PJ) && /if \(pick && pick\.games\.length\) upd\.send_now_games = pick\.games;/.test(RJ) && /\.update\(upd\)\.eq\('id', x\.id\)/.test(RJ) &&
      /Choosing the games needs migration 0273, which is not applied yet\. Send the week of their latest game instead\?/.test(RJ));
 }
 
