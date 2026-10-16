@@ -40,6 +40,7 @@ await db.exec(mig('0178_entity_links.sql'));
 await db.exec(mig('0181_youth_teams.sql'));
 await db.exec(mig('0182_league_follows_team_gender.sql'));
 await db.exec(mig('0278_link_suggestions_fast.sql'));   // the suggestions read the stored keys from here on (every assertion below runs on 0278)
+await db.exec(mig('0281_link_search_fast.sql'));       // and the editor's player search the stored folded names (0281)
 
 const q = async (sql, p) => (await db.query(sql, p)).rows;
 const as = async (role, admin, fn) => {                    // run something as a browser role
@@ -402,6 +403,19 @@ await q(`update players set birth_year = 2000 where id = $1`, [rn]);
 ok('...and nothing else about a player touches them', (await drift()) === 0);
 ok('the table is not readable from a browser', !(await q(`select has_table_privilege('anon', 'public.player_link_keys', 'select') a, has_table_privilege('authenticated', 'public.player_link_keys', 'select') b`)).some(r => r.a || r.b));
 ok('the six thousand players\' suggestions are now well inside a request (the site has nineteen thousand)', tPlayers < 3000, tPlayers);
+
+console.log('-- 0281: the editor\'s player search reads the stored names');
+{
+  const al = await player('Kristaps', 'Porzingis', 1995);
+  await q(`update players set aliases = array['K. Porziņģis'] where id = $1`, [al]);
+  const find = async qq => (await as('authenticated', true, () => q(`select platform_link_search('player', $1) j`, [qq])))[0].j.rows.map(r => r.id);
+  ok('an alias is found once the trigger has stored it (accents folded)', (await find('k porzingis')).includes(al), await find('k porzingis'));
+  ok('...the name surname first, and words typed in any order as the starts of its words',
+     (await find('porzingis kristaps')).includes(al) && (await find('kris porz')).includes(al) && (await find('porz kris')).includes(al));
+  ok('...and a word that starts no word of the name finds nothing', !(await find('kris zing')).includes(al));
+  const n = (await q(`select count(*)::int n from players p left join player_link_keys k on k.player_id = p.id where k.name_fold is distinct from link_fold(p.first_name || ' ' || coalesce(p.last_name, ''))`))[0].n;
+  ok('every player\'s folded name is stored and right', n === 0, n);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

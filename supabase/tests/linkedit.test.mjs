@@ -195,6 +195,22 @@ console.log('-- linking');
   m2.toggle.fire('click');
   m2.input.value = 'x1'; m2.input.fire('input'); await until(() => m2.msg.classList.contains('err'), 900);
   ok('a database without the functions says so', /migration 0178/.test(m2.msg.textContent), m2.msg.textContent);
+  /* A SEARCH THE SERVER CUT OFF (Louie, 2026-10-16: "it sometimes comes up with error and usually takes a long time") */
+  let tries = 0, release = null;
+  const m3 = mounted({ results: async () => {
+    tries++;
+    if (tries === 1) { const e = new Error('canceling statement due to statement timeout'); e.code = '57014'; throw e; }
+    await new Promise(r => { release = r; });
+    return [{ id: 'q9', slug: 'q9', name: 'Maxwell Club', league: 'NBL', competitions: [] }];
+  } });
+  const rpc0 = m3.c.sb.rpc;
+  m3.c.sb.rpc = async (name, args) => { try { return await rpc0(name, args); } catch (e) { return { error: e }; } };
+  m3.toggle.fire('click');
+  m3.input.value = 'max'; m3.input.fire('input'); await until(() => tries === 2, 900);
+  ok('while a search is out the panel says it is searching', /searching/.test(m3.msg.textContent), m3.msg.textContent);
+  release(); await until(() => m3.list && !m3.list.hidden, 900);
+  ok('...a search cut off at the time limit is asked once more, and its answer shown, no error', tries === 2 && !m3.msg.classList.contains('err') && m3.msg.textContent === '', m3.msg.textContent);
+  ok('...and a cut-off that happens twice is said plainly', /took too long \(the server is busy\): try again, or type more of the name/.test(E.errorWords({ code: '57014', message: 'canceling statement due to statement timeout' })));
 }
 
 /* --------------------------------------------------------------- unlinking --- */

@@ -91,6 +91,8 @@ function unlinkedWords(card, res, kind) {
 function errorWords(e) {
   const msg = (e && (e.message || String(e))) || 'Something went wrong.';
   if ((e && e.code === '42501') || /permission denied|administrators only/i.test(msg)) return 'Refused: only platform administrators can edit links.';
+  /* a search the server cut off at its time limit (57014) is said as what it is, not as the database's words */
+  if ((e && e.code === '57014') || /statement timeout|canceling statement/i.test(msg)) return 'The search took too long (the server is busy): try again, or type more of the name.';
   if ((e && e.code === 'PGRST202') || /schema cache/i.test(msg)) {
     if (/team_merge/i.test(msg)) return 'Merging clubs is not on the server yet: migration 0188 has not been applied.';
     if (/merge/i.test(msg)) return 'Merging is not on the server yet: migration 0183 has not been applied.';
@@ -321,8 +323,13 @@ function mount(o) {
     const q = input.value.trim();
     if (!q) { closeList(); return; }
     const mine = ++seq;
+    say('searching\u2026');                            // a slow answer is seen to be on its way (Louie, 2026-10-16)
+    const ask = () => rpc('platform_link_search', { p_kind: kind, p_q: q, p_limit: SHOWN, p_exclude: excluded() });
+    const cutOff = e => (e && e.code === '57014') || /statement timeout|canceling statement/i.test((e && e.message) || '');
     try {
-      const res = await rpc('platform_link_search', { p_kind: kind, p_q: q, p_limit: SHOWN, p_exclude: excluded() });
+      let res;
+      try { res = await ask(); }
+      catch (e) { if (mine !== seq || !cutOff(e)) throw e; res = await ask(); }   // a busy moment: once more, then the reason
       if (mine !== seq) return;                       // a slower answer to an older question never replaces a newer one
       say('');
       drawList(res, q);
