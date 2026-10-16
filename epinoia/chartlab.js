@@ -144,7 +144,7 @@ const newAxes = ent => ({ x: ENT_DEFAULTS[ent === 't' ? 't' : 'p'].x, y: ENT_DEF
   xm: 'a', ym: 'a', y2: '', xl: 0, yl: 0 });
 function defaultState(ent) {
   ent = ent === 't' ? 't' : 'p';
-  return { ent, a: newAxes(ent), b: null, sz: '', co: 'c', nm: 's', fn: 0, qd: 1, qc: 0, tr: 0, tb: 0, cr: 1,
+  return { ent, a: newAxes(ent), b: null, sz: '', co: 'c', nm: 's', fn: 0, qd: 1, qc: 0, tr: 0, tb: 0, cr: 1, lo: 0,
     pin: [], hl: [], gp: null, mn: 0, ps: '', tx: {}, lb: {} };
 }
 const KEYRE = /^[A-Za-z0-9_]{1,48}$/;
@@ -183,6 +183,7 @@ function sanitizeState(raw) {
   ['qd', 'qc', 'tr', 'tb'].forEach(k => { if (r[k] !== undefined) s[k] = r[k] ? 1 : 0; });
   s.cr = r.cr === 0 || r.cr === false ? 0 : 1;
   s.fn = r.fn === 1 || r.fn === true ? 1 : 0;
+  s.lo = ent === 't' && (r.lo === 1 || r.lo === true) ? 1 : 0;        // LOGOS: clubs only
   s.pin = uniqIds(r.pin, PIN_MAX);
   s.hl = uniqIds(r.hl, HL_MAX);
   s.gp = isNum(r.gp) ? clamp(Math.round(r.gp), 0, 999) : null;
@@ -209,7 +210,7 @@ function compactState(state) {
   const ax = (a, base) => { const c = {}; Object.keys(base).forEach(k => { if (a[k] !== base[k]) c[k] = a[k]; }); return c; };
   const ca = ax(s.a, d.a); if (Object.keys(ca).length) o.a = ca;
   if (s.b) { o.b = ax(s.b, newAxes(s.ent)); o.b.x = s.b.x; o.b.y = s.b.y; }
-  ['sz', 'co', 'nm', 'fn', 'qd', 'qc', 'tr', 'tb', 'cr', 'gp', 'mn', 'ps'].forEach(k => { if (!same(s[k], d[k])) o[k] = s[k]; });
+  ['sz', 'co', 'nm', 'fn', 'qd', 'qc', 'tr', 'tb', 'cr', 'lo', 'gp', 'mn', 'ps'].forEach(k => { if (!same(s[k], d[k])) o[k] = s[k]; });
   if (s.pin.length) o.pin = s.pin;
   if (s.hl.length) o.hl = s.hl;
   if (Object.keys(s.tx).length) o.tx = s.tx;
@@ -250,7 +251,7 @@ function decodeState(str) {
     const o = JSON.parse(fromB64u(s.slice(2)));
     if (!o || typeof o !== 'object') return null;
     return sanitizeState({ ent: o.e, a: o.a, b: o.b ? Object.assign({}, o.b) : null, sz: o.sz, co: o.co, nm: o.nm, fn: o.fn, qd: o.qd, qc: o.qc,
-      tr: o.tr, tb: o.tb, cr: o.cr, pin: o.pin, hl: o.hl, gp: o.gp, mn: o.mn, ps: o.ps, tx: o.tx, lb: o.lb });
+      tr: o.tr, tb: o.tb, cr: o.cr, lo: o.lo, pin: o.pin, hl: o.hl, gp: o.gp, mn: o.mn, ps: o.ps, tx: o.tx, lb: o.lb });
   } catch (_) { return null; }
 }
 /* the state as it must be for the URL of a page: the query string with ?cl= set (or removed for a plain default chart) */
@@ -351,7 +352,9 @@ function deriveRow(kind, r) {
   } else { o.pred_efg = null; o.morey = null; o.efg_sh = null; o.efg_vs = null; }
   return o;
 }
-const needsZones = k => /^z_/.test(k) || k === 'pred_efg' || k === 'efg_sh' || k === 'efg_vs' || k === 'morey';
+/* a club column the page fills from every game's log (opts.prepare): the shot zones (shotchart.js) and stops & runs (game/flow.js
+   attachTeams, fl_) */
+const needsZones = k => /^(z_|fl_)/.test(k) || k === 'pred_efg' || k === 'efg_sh' || k === 'efg_vs' || k === 'morey';
 
 /* decimals a column prints, read off its own formatter over a few rows: "58.2" 1, "12" 0, "+3.9" 1, "6.2-11.4" 1 */
 function dpOf(col, get, rows) {
@@ -469,7 +472,10 @@ const PRESET_DEFS = [
   { id: 'three-t', label: 'Threes: volume vs accuracy', ent: 't', a: { x: 'p3a_pg', y: 'p3_pct' } },
   { id: 'ball', label: 'Ball movement: assists vs turnovers', ent: 't', a: { x: 'apg', y: 'topg' } },
   { id: 't-dual', label: 'Two charts: pace/net and offence/defence', ent: 't', a: { x: 'pace', y: 'net' }, b: { x: 'ortg', y: 'drtg' } },
-  { id: 't-overlay', label: 'Overlay: offence and defence against pace (z-scores)', ent: 't', a: { x: 'pace', y: 'ortg', y2: 'drtg', ym: 'z' } }
+  { id: 't-overlay', label: 'Overlay: offence and defence against pace (z-scores)', ent: 't', a: { x: 'pace', y: 'ortg', y2: 'drtg', ym: 'z' } },
+  { id: 'stops', label: 'Stops: STOP% vs opponent STOP%', ent: 't', a: { x: 'fl_stop_pct', y: 'fl_opp_stop_pct' } },
+  { id: 'runs', label: 'Momentum: runs vs runs against', ent: 't', a: { x: 'fl_runs_pg', y: 'fl_opp_runs_pg' } },
+  { id: 'kills-net', label: 'Kills vs net rating', ent: 't', a: { x: 'fl_kills_pg', y: 'net' } }
 ];
 const presetKeys = p => [p.a.x, p.a.y, p.a.y2, p.b && p.b.x, p.b && p.b.y].filter(Boolean);
 /* the presets whose statistics all exist (and are not locked) for this entity */
@@ -1026,6 +1032,11 @@ function buildChart(cfg) {
   const paths = new Map(), hits = [];
   const inPlot = (px, py) => px >= x0 - 1 && px <= x0 + pw + 1 && py >= y0 - 1 && py <= y0 + ph + 1;
   const placedPts = [];
+  /* LOGOS (cfg.logos, clubs only; Louie, 2026-10-16): every club its crest in a circle instead of a dot - its initials on its
+     colour where it has none, or the crest does not load - sized with the dots (and by the size statistic, when one is set) */
+  const logoOn = !!cfg.logos && cfg.kind === 'team' && !ovl2;
+  const logoPts = [];
+  const logoR = p => Math.max(7 * fs, Math.min(16 * fs, (cfg.size ? rOf(p) * 1.35 : (n <= 20 ? 11 : n <= 40 ? 9.5 : n <= 80 ? 8 : 7) * fs)));
   pts.forEach(p => {
     const sers = ovl2 ? [0, 1] : [0];
     sers.forEach(ser => {
@@ -1034,11 +1045,12 @@ function buildChart(cfg) {
       const px = X(p.x), py = Y(yv);
       if (!isFinite(px) || !isFinite(py)) return;
       const isHi = hi.has(p.e.id);
-      const r = rOf(p);
+      const r = logoOn ? logoR(p) : rOf(p);
       const rec = { id: p.e.id, ser, px, py, r: isHi ? 11 * fs : r, hi: isHi, p, inside: inPlot(px, py) };
       hits.push(rec);
       if (!rec.inside) return;
       if (isHi) { placedPts.push(rec); if (!ovl2 || !ser) return; }
+      if (logoOn && !ser) { logoPts.push(rec); return; }
       const col = colourOf(p, ser);
       const key = col + '|' + ser;
       let e = paths.get(key);
@@ -1049,6 +1061,24 @@ function buildChart(cfg) {
   const ring = n <= 80;
   const dots = S('g', { 'clip-path': 'url(#' + clipId + ')', class: 'cl-dots', opacity: dimOn ? (T.dark ? 0.4 : 0.28) : null }); g.appendChild(dots);
   paths.forEach(e => dots.appendChild(S('path', { d: e.d.join(''), fill: e.col, 'fill-opacity': n > 250 ? 0.66 : 0.92, stroke: ring ? T.ground : null, 'stroke-width': ring ? 1.6 : null })));
+  /* the crest discs, the biggest first so a small one is never hidden under a big one */
+  let lk = 0;
+  logoPts.slice().sort((a, b) => b.r - a.r).forEach(rec => {
+    const e = rec.p.e, R0 = rec.r, col = markColour(e.colour, T.ground) || T.ink3, url = cfg.crest ? cfg.crest(e) : null;
+    const gg = S('g', { transform: 'translate(' + num1(rec.px) + ' ' + num1(rec.py) + ')', 'data-id': e.id, class: 'cl-logo' });
+    gg.appendChild(S('circle', { r: R0 + 1.2, fill: T.ground }));
+    gg.appendChild(S('circle', { r: R0, fill: col }));
+    gg.appendChild(S('text', { y: R0 * 0.33, 'text-anchor': 'middle', fill: inkOn(col), 'font-size': Math.round(R0 * 0.78 * 10) / 10, 'font-weight': 800, 'font-family': FONT.ui },
+      initialsOf(e.short || e.name)));
+    if (url) {
+      const cid = uid + '-l' + (lk++);
+      gg.appendChild(S('circle', { r: R0 - 0.8, fill: '#fff', 'data-crest': 1 }));
+      const cp = S('clipPath', { id: cid }); cp.appendChild(S('circle', { r: R0 - 1.3 })); defs.appendChild(cp);
+      gg.appendChild(S('image', { href: url, x: -R0 + 1.3, y: -R0 + 1.3, width: 2 * R0 - 2.6, height: 2 * R0 - 2.6, 'clip-path': 'url(#' + cid + ')', preserveAspectRatio: 'xMidYMid meet', 'data-crest': 1 }));
+    }
+    gg.appendChild(S('circle', { r: R0, fill: 'none', stroke: col, 'stroke-width': 1.4 }));
+    dots.appendChild(gg);
+  });
 
   /* ---- highlighted entities: coloured discs with initials, or the club's crest ---- */
   const discs = S('g', { class: 'cl-discs', 'clip-path': 'url(#' + clipId + ')' }); g.appendChild(discs);
@@ -1884,6 +1914,7 @@ async function mountAsync(opts) {
       key('LINES', { on: !!state.qd, title: 'lines through the league averages (the origin in delta and z modes)', click: () => change(s => { s.qd = s.qd ? 0 : 1; }, 'all') }),
       key('QUADRANTS', { on: !!state.qc, title: 'name the four quarters and tint the one where both are better', click: () => change(s => { s.qc = s.qc ? 0 : 1; }, 'all') }),
       key('TREND', { on: !!state.tr, title: 'least-squares trend line with r', click: () => change(s => { s.tr = s.tr ? 0 : 1; }, 'all') }),
+      ...(state.ent === 't' ? [key('LOGOS', { on: !!state.lo, title: 'each club as its logo in a circle instead of a dot', click: () => change(s => { s.lo = s.lo ? 0 : 1; }, 'all') })] : []),
       key('DUAL', { on: dual, title: 'a second chart, linked to the first: the same players are lit in both', click: toggleDual }),
       key('TABLE', { on: !!state.tb, title: 'the plotted rows as a sortable table', click: () => change(s => { s.tb = s.tb ? 0 : 1; }, 'all') }),
       key('TEXT', { on: ui.text, title: 'edit the title, the axis titles, captions and labels', click: () => { ui.text = !ui.text; if (ui.text) ui.export = false; renderPanels(); renderStrip(); } }),
@@ -1944,7 +1975,8 @@ async function mountAsync(opts) {
     let size = null;
     if (sc) { const f = sizeScale(D.pts.map(p => sc.get(p.e.row))); size = { get: p => f(sc.get(p.e.row)), label: sc.label }; }
     return { W: o.W, H: o.H, fs: o.fs, theme: o.theme, uid: 'cl' + ci + (o.uid || ''), data: D, kind: kindOf(), co: state.co === 'p' && state.ent === 't' ? 'c' : state.co, size,
-      names: state.nm, full: !!state.fn, qd: state.qd, qc: state.qc, trend: state.tr, hi: hiSet(), must: pinSet(), view: o.view || {}, texts, labels: state.lb, crest: o.crest, editable: !!o.editable, zoomSpace: o.zoomSpace || 0 };
+      names: state.nm, full: !!state.fn, qd: state.qd, qc: state.qc, trend: state.tr, hi: hiSet(), must: pinSet(), view: o.view || {}, texts, labels: state.lb, crest: o.crest, editable: !!o.editable, zoomSpace: o.zoomSpace || 0,
+      logos: !!state.lo && state.ent === 't' };
   }
   const logoUrl = e => {
     if (!e || !e.logo) return null;
@@ -2476,7 +2508,8 @@ async function mountAsync(opts) {
   async function buildExport(noCrest) {
     const fonts = await fontCSS();
     const urls = new Map();
-    if (!noCrest) [...hiSet()].map(id => byId().get(id)).filter(Boolean).forEach(e => { const u = logoUrl(e); if (u) urls.set(e.id, u); });
+    const crestIds = state.lo && state.ent === 't' ? entOfPool().map(e => e.id) : [...hiSet()];
+    if (!noCrest) crestIds.map(id => byId().get(id)).filter(Boolean).forEach(e => { const u = logoUrl(e); if (u) urls.set(e.id, u); });
     const data = new Map();
     await Promise.all([...new Set(urls.values())].map(async u => { data.set(u, await crestData(u)); }));
     const gridW = Math.round(grid.clientWidth || wrap.clientWidth || 640);

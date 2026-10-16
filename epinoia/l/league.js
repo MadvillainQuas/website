@@ -697,6 +697,38 @@ async function renderLeaders() {
   });
 }
 
+/* EVERY GAME'S LOG, READ ONCE (2026-10-16): the shot zones (shotchart.js attachZoneStats) and stops & runs (game/flow.js
+   attachTeams) both want the event log of every game in scope. A copy of EpinoiaData whose events() keeps each game's log
+   for the page's life hands the second the first's read. */
+const EVENT_LOGS = new Map();                // game id -> Promise of its events
+function sharedData() {
+  const D = window.EpinoiaData;
+  if (!D) return D;
+  return Object.assign({}, D, {
+    events: async ids => {
+      const want = (ids || []).filter(Boolean), missing = want.filter(id => !EVENT_LOGS.has(id));
+      if (missing.length) {
+        const all = D.events(missing).then(evs => { const by = {}; evs.forEach(e => { (by[e.gameId] = by[e.gameId] || []).push(e); }); return by; });
+        missing.forEach(id => EVENT_LOGS.set(id, all.then(by => by[id] || [])));
+        all.catch(() => missing.forEach(id => EVENT_LOGS.delete(id)));
+      }
+      return (await Promise.all(want.map(id => EVENT_LOGS.get(id)))).flat();
+    }
+  });
+}
+/* the play-by-play's columns: the shot zones and stops & runs (members only; a competition too big to read whole has neither) */
+async function attachLogs(S) {
+  if (ANALYTICS_LOCKED || !S || !S.games) return;
+  const D = sharedData();
+  if (window.EpinoiaShotChart && window.EpinoiaShotChart.attachZoneStats) {
+    try { await window.EpinoiaShotChart.attachZoneStats(S, D); } catch (_) { /* the zones view shows dashes */ }
+  }
+  const GF = window.EpinoiaGameFlow;
+  if (GF && GF.attachTeams && S.games.length <= ((window.EpinoiaData && window.EpinoiaData.BIG_GAMES) || Infinity)) {
+    try { await GF.attachTeams(S, D); } catch (_) { /* the stops & runs view shows dashes */ }
+  }
+}
+
 /* ----------------------------------------------------------- team stats --- */
 async function renderTeamStats() {
   const pane = $('#pane-teams'); pane.textContent = '';
@@ -721,10 +753,8 @@ async function renderTeamStats() {
      WITHOUT ANALYTICS THE READ IS NOT MADE: it fetches the event log of every game in scope,
      and the only thing it feeds is the zone columns the table drops for this viewer. */
   if (!ANALYTICS_LOCKED) {
-    const holding = el('div', 'empty', 'reading every shot\u2026'); board.appendChild(holding);
-    try {
-      if (window.EpinoiaShotChart && window.EpinoiaShotChart.attachZoneStats) await window.EpinoiaShotChart.attachZoneStats(S, window.EpinoiaData);
-    } catch (_) { /* the table still draws; the zones view shows dashes */ }
+    const holding = el('div', 'empty', 'reading every game\u2019s play-by-play\u2026'); board.appendChild(holding);
+    await attachLogs(S);                    // the shot zones, then stops & runs, from one read of the logs
     holding.remove();
   }
   window.EpinoiaTable.render({
@@ -765,8 +795,7 @@ async function renderCharts() {
   Lab.mount({
     host: board, D: window.EpinoiaData, league, season, S, keep,
     leagueId: league.id, leagueSlug: league.slug,
-    prepare: () => (!ANALYTICS_LOCKED && window.EpinoiaShotChart && window.EpinoiaShotChart.attachZoneStats
-      ? window.EpinoiaShotChart.attachZoneStats(S, window.EpinoiaData) : null)
+    prepare: () => (!ANALYTICS_LOCKED ? attachLogs(S) : null)
   }).catch(e => { if (seq === chartSeq) board.appendChild(el('div', 'empty', 'Could not draw the chart: ' + e.message)); });
 }
 

@@ -354,6 +354,68 @@ function killsOf(evs, H, teams, lineups) {
   return { kills: out.sort((x, y) => x.startElapsed - y.startElapsed), stops };
 }
 
+/* STOPS AND RUNS FOR EVERY CLUB OF A SEASON (the league's team stats and charts; Louie, 2026-10-16): every game of the season
+   line S read (D.events, forty at a time; pass a D whose events() is shared with the shot zones' read and nothing is read
+   twice), each game's gameLine added up for each club and for its opponents, and written onto S.teams in place:
+     fl_gp            games with a log
+     fl_stop_pct      the other side's possessions it held scoreless, %      fl_opp_stop_pct  its own the other side held scoreless
+     fl_kills_pg      kills (four stops in a row) a game                      fl_opp_kills_pg  kills against it
+     fl_runs_pg       momentum runs (8+ unanswered) a game                    fl_opp_runs_pg   momentum runs against it
+     fl_best          its biggest run                                          fl_opp_best      the biggest run against it
+   Kept per set of games for the page's life. -> the sums by club id */
+const TEAM_FLOW = {};
+async function attachTeams(S, D) {
+  if (!S || !S.games || !S.games.length || !S.teams || !D || !D.events) return null;
+  const games = S.games.filter(g => g && g.id && g.home_team_id && g.away_team_id);
+  const key = games.map(g => g.id).sort().join(',');
+  let per = TEAM_FLOW[key];
+  if (!per) {
+    per = TEAM_FLOW[key] = (async () => {
+      const acc = {};
+      const z = () => ({ stops: 0, poss: 0, kills: 0, runs: 0, best: 0 });
+      for (let i = 0; i < games.length; i += 40) {
+        const batch = games.slice(i, i + 40);
+        const evs = await D.events(batch.map(g => g.id));
+        const byG = {};
+        (evs || []).forEach(e => { (byG[e.gameId] = byG[e.gameId] || []).push(e); });
+        batch.forEach(g => {
+          const ev = byG[g.id];
+          if (!ev || !ev.length) return;
+          let L = null;
+          try { L = gameLine({ teams: [{}, {}], starters: [[], []], events: ev }); } catch (_) { L = null; }
+          if (!L || !(L[0].poss + L[1].poss)) return;
+          [0, 1].forEach(s => {
+            const tid = s ? g.away_team_id : g.home_team_id;
+            const a = acc[tid] || (acc[tid] = { games: 0, own: z(), opp: z() });
+            a.games++;
+            [[a.own, L[s]], [a.opp, L[1 - s]]].forEach(([o, x]) => {
+              o.stops += x.stops; o.poss += x.poss; o.kills += x.kills; o.runs += x.runs; o.best = Math.max(o.best, x.best);
+            });
+          });
+        });
+        await new Promise(r => setTimeout(r, 0));
+      }
+      return acc;
+    })();
+    per.catch(() => { delete TEAM_FLOW[key]; });
+  }
+  const acc = await per;
+  const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100;
+  S.teams.forEach(t => {
+    const a = acc[t.id];
+    if (!a || !a.games) return;
+    t.fl_gp = a.games;
+    t.fl_stop_pct = a.own.poss ? r1(100 * a.own.stops / a.own.poss) : null;
+    t.fl_opp_stop_pct = a.opp.poss ? r1(100 * a.opp.stops / a.opp.poss) : null;
+    t.fl_kills_pg = r2(a.own.kills / a.games); t.fl_opp_kills_pg = r2(a.opp.kills / a.games);
+    t.fl_runs_pg = r2(a.own.runs / a.games); t.fl_opp_runs_pg = r2(a.opp.runs / a.games);
+    t.fl_best = a.own.best; t.fl_opp_best = a.opp.best;
+  });
+  return acc;
+}
+/* the keys attachTeams writes (the tables' and the chart lab's "needs the logs" test) */
+const TEAM_FLOW_KEYS = ['fl_gp', 'fl_stop_pct', 'fl_opp_stop_pct', 'fl_kills_pg', 'fl_opp_kills_pg', 'fl_runs_pg', 'fl_opp_runs_pg', 'fl_best', 'fl_opp_best'];
+
 /* A GAME'S STOPS AND RUNS, for a line that adds games up (the club's season line, t/seasonline.js; the box score's full
    stats): for each side, the other side's possessions it held scoreless and how many there were, its kills (four stops
    in a row) and its momentum runs (8+ unanswered points), and its biggest run. -> [{ stops, poss, kills, runs, best }] x2 */
@@ -1074,5 +1136,5 @@ function mounted(host) {
   });
 }
 
-return { compute, gameLine, KILL, summarise, render, margin: marginOnly, mounted, formatDuration, symAxis, inkTeams, clockText, hasFootage, timeline, normaliseOrder, keepOrder, orderNow, stateAt };
+return { compute, gameLine, attachTeams, TEAM_FLOW_KEYS, KILL, summarise, render, margin: marginOnly, mounted, formatDuration, symAxis, inkTeams, clockText, hasFootage, timeline, normaliseOrder, keepOrder, orderNow, stateAt };
 }));

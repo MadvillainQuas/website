@@ -159,7 +159,7 @@ console.log('\nthe statistics tables');
     const src = ft.slice(ft.indexOf('  team: ['), ft.indexOf(']\n};', ft.indexOf('  team: [')));
     const keys = [...src.matchAll(/\['([^']+)',/g)].map(m => m[1]);
     const cut = keys.indexOf('totals');
-    return cut > 0 && keys.slice(cut + 1).join() === 'z_rim,z_mid,z_three,z_cuts,z_rate,*' && /\.\.\.EV_PRESETS,\s*\n\s*\['\*',\s+'everything'\]\s*\n\s*\]\s*$/.test(src.trim() + '\n]');
+    return cut > 0 && keys.slice(cut + 1).join() === 'z_rim,z_mid,z_three,z_cuts,z_rate,fl,*' && /\.\.\.EV_PRESETS,\s*\n\s*\['fl',\s+'stops & runs'\],\s*\n\s*\['\*',\s+'everything'\]\s*\n\s*\]\s*$/.test(src.trim() + '\n]');
   })());
 }
 

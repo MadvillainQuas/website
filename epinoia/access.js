@@ -170,10 +170,10 @@ const FEATURES = Object.freeze({
    fulltable.js, so it cannot drift silently. */
 const CATALOGUE = Object.freeze({
   gameTabs: Object.freeze(['flow', 'connections', 'events', 'shotclock']),
-  columnPrefixes: Object.freeze(['ev_', 'evd_', 'z_', 'rb_']),
+  columnPrefixes: Object.freeze(['ev_', 'evd_', 'z_', 'rb_', 'fl_']),
   columns: Object.freeze(['pred_efg', 'efg_sh', 'efg_vs', 'morey']),
   presets: Object.freeze(['ev_second', 'ev_transition', 'ev_offTo', 'ev_ato', 'ev_half', 'ev_assist',
-                          'z_rim', 'z_mid', 'z_three', 'z_cuts', 'z_rate']),
+                          'z_rim', 'z_mid', 'z_three', 'z_cuts', 'z_rate', 'fl']),
   contextColumns: Object.freeze(['gp', 'mpg']),
   /* EVERY STATISTICS TABLE'S VIEWS PAST THESE ARE PART OF THE LOCK (2026-10-04): a player table's after MISC, a club
      table's after TOTALS (the events, the zones and "everything"), read by fulltable.js presetLocked on the league
@@ -207,7 +207,7 @@ const CATALOGUE = Object.freeze({
     lineups:     Object.freeze({ gate: 'analytics', label: 'Lineups', what: 'The club page lineup cards and combinations' }),
     wowy:        Object.freeze({ gate: 'analytics', label: 'With or without', what: 'The WOWY screen beyond its preview, the club WOWY and the teammates comparison' }),
     splits:      Object.freeze({ gate: 'analytics', label: 'Starters and bench splits', what: 'Ratings against starters and bench on the club and player pages' }),
-    statColumns: Object.freeze({ gate: 'analytics', label: 'Premium table columns', what: 'The events, zone and rebounding columns and presets of every statistics table and the chart lab' }),
+    statColumns: Object.freeze({ gate: 'analytics', label: 'Premium table columns', what: 'The events, zone, rebounding and stops & runs columns and presets of every statistics table and the chart lab' }),
     gameFlow:        Object.freeze({ gate: 'analytics', label: 'Game flow tab', what: 'The box score Game flow tab' }),
     gameConnections: Object.freeze({ gate: 'analytics', label: 'Connections tab', what: 'The box score Connections tab' }),
     gameAdvanced:    Object.freeze({ gate: 'analytics', label: 'Advanced tab', what: 'The box score Advanced tab' }),

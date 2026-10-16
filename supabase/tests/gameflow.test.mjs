@@ -161,6 +161,23 @@ console.log('\nkills, worked out by hand');
        /function stopsCard\(/.test(bx) && /stopsCard\(mirror, sec, sides, c0, c1\)/.test(bx) && /F\.gameLine\(S\)/.test(bx));
   }
 
+  /* EVERY CLUB OF A SEASON (attachTeams): the same game twice, home and away the other way round the second time */
+  {
+    const evs = K.events.map(e => Object.assign({ gameId: 'g1' }, e));
+    const flip = K.events.map(e => Object.assign({}, e, { gameId: 'g2', team: e.team == null ? e.team : 1 - e.team }));
+    const Sx = { games: [{ id: 'g1', home_team_id: 'H', away_team_id: 'A' }, { id: 'g2', home_team_id: 'A', away_team_id: 'H' }],
+                 teams: [{ id: 'H' }, { id: 'A' }] };
+    let reads = 0;
+    const Dx = { events: async ids => { reads++; return ids.flatMap(id => (id === 'g1' ? evs : id === 'g2' ? flip : [])); } };
+    await Flow.attachTeams(Sx, Dx);
+    const H = Sx.teams[0], A = Sx.teams[1];
+    ok('every club of a season: its stops, kills and runs a game over its games, and the same against it, written on the rows',
+       H.fl_gp === 2 && H.fl_kills_pg === GL[0].kills && H.fl_opp_kills_pg === GL[1].kills && H.fl_stop_pct === Math.round(1000 * GL[0].stops / GL[0].poss) / 10 &&
+       A.fl_stop_pct === H.fl_opp_stop_pct && H.fl_best === GL[0].best && Flow.TEAM_FLOW_KEYS.every(k => k in H), JSON.stringify(H));
+    await Flow.attachTeams(Sx, Dx);
+    ok('...read once for a set of games', reads === 1);
+  }
+
   /* eight stops in a row is two kills */
   const K2 = { teams: S.teams, starters: S.starters, events: [] };
   let c = 590000, z = 0;

@@ -253,7 +253,8 @@ console.log('-- membership: events and zone columns are locked when analytics ar
   function sparseCat() { return C.buildCatalogue('player', TB.PLAYER_COLS, TB.PRESETS.player, rowsFor(TB.PLAYER_COLS, 10).map(r => { const o = Object.assign({}, r); delete o.p3a_pg; delete o.p3_pct; return o; }), null, { zones: false }); }
   ok('a preset with a column the competition has no data for is left out', !C.presetsFor('p', sparseCat(), open).some(p => p.id === 'three') && C.presetsFor('p', sparseCat(), open).some(p => p.id === 'score-eff'));
   ok('a preset lists only columns of the catalogue', C.PRESET_DEFS.filter(p => p.ent === 'p').every(p => [p.a.x, p.a.y, p.a.y2, p.b && p.b.x, p.b && p.b.y].filter(Boolean).every(k => pcat.byKey.has(k))) &&
-    C.PRESET_DEFS.filter(p => p.ent === 't').every(p => [p.a.x, p.a.y, p.a.y2, p.b && p.b.x, p.b && p.b.y].filter(Boolean).every(k => tcat.byKey.has(k))), C.PRESET_DEFS.filter(p => p.ent === 'p').map(p => [p.a.x, p.a.y]).filter(a => !a.every(k => pcat.byKey.has(k))));
+    /* a club preset may use a column the page fills from the logs (stops & runs): the catalogue with them */
+    C.PRESET_DEFS.filter(p => p.ent === 't').every(p => [p.a.x, p.a.y, p.a.y2, p.b && p.b.x, p.b && p.b.y].filter(Boolean).every(k => tcatz.byKey.has(k))), C.PRESET_DEFS.filter(p => p.ent === 'p').map(p => [p.a.x, p.a.y]).filter(a => !a.every(k => pcat.byKey.has(k))));
   const p0 = C.PRESET_DEFS.find(p => p.id === 'p-overlay'), st = C.presetState(p0);
   ok('a preset is a state, and is recognised as that preset', st.a.y2 === 'ast_pct' && st.a.ym === 'z' && C.matchPreset(st, C.presetsFor('p', pcat, open)) === 'p-overlay' && C.matchPreset(C.defaultState('p'), C.presetsFor('p', pcat, open)) === 'score-eff');
   ok('the dual preset sets the second chart', C.presetState(C.PRESET_DEFS.find(p => p.id === 'p-dual')).b.x === 'apg');
@@ -416,6 +417,20 @@ console.log('-- export geometry: sizes, layout, wrapping, file names');
 
 /* the text boxes debounce their typing, each with its own timer: one shared timer let a quick edit in the next box cancel the last */
 ok('each text box keeps its own typing timer', (() => { const m = /const field = \(label, k, auto, cap\) => \{\s*let t;/.test(src); return m; })());
+
+/* LOGOS (Louie, 2026-10-16): every club its crest in a circle instead of a dot; kept in the link; clubs only */
+{
+  const t = C.sanitizeState({ ent: 't', lo: 1 }), p = C.sanitizeState({ ent: 'p', lo: 1 });
+  ok('LOGOS is a club chart\'s switch, kept in its link, and nothing on a players\' chart',
+     t.lo === 1 && p.lo === 0 && C.decodeState(C.encodeState(t)).lo === 1 && C.defaultState('t').lo === 0 && !/"lo"/.test(JSON.stringify(C.compactState(C.defaultState('t')))));
+  ok('...drawn as a crest disc per club (initials on its colour under the crest), the switch beside TREND, every crest in an export',
+     /const logoOn = !!cfg\.logos && cfg\.kind === 'team' && !ovl2;/.test(src) && /class: 'cl-logo'/.test(src) &&
+     /key\('LOGOS', \{ on: !!state\.lo/.test(src) && /logos: !!state\.lo && state\.ent === 't'/.test(src) &&
+     /const crestIds = state\.lo && state\.ent === 't' \? entOfPool\(\)\.map\(e => e\.id\) : \[\.\.\.hiSet\(\)\];/.test(src));
+  ok('stops & runs: a club column the page fills from the logs, with presets of its own',
+     C.needsZones('fl_stop_pct') && C.needsZones('fl_opp_runs_pg') && !C.needsZones('ppg') &&
+     ['stops', 'runs', 'kills-net'].every(id => C.PRESET_DEFS.some(p => p.id === id && p.ent === 't')));
+}
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

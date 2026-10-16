@@ -335,12 +335,12 @@ console.log('\nsimulation');
 console.log('\npremium columns against fulltable.js');
 {
   const all = Table.PLAYER_COLS.concat(Table.TEAM_COLS);
-  const byRule = k => /^(ev_|evd_|z_|rb_)/.test(k) || ['pred_efg', 'efg_sh', 'efg_vs', 'morey'].includes(k);
+  const byRule = k => /^(ev_|evd_|z_|rb_|fl_)/.test(k) || ['pred_efg', 'efg_sh', 'efg_vs', 'morey'].includes(k);
   const wrong = all.filter(c => A.isPremiumColumn(c.k) !== byRule(c.k)).map(c => c.k);
   ok('every column key in both catalogues classified by the rule (' + all.length + ' columns)', wrong.length === 0, wrong.join());
   const evCount = all.filter(c => /^ev_|^evd_/.test(c.k)).length, zCount = all.filter(c => /^z_/.test(c.k)).length;
   ok('the premium families are really there (' + evCount + ' events, ' + zCount + ' zone columns)', evCount > 40 && zCount >= 75);
-  for (const k of ['ev_second_ppg', 'evd_transition_ppp', 'ev_gp', 'z_rim_efg', 'z_all_att100', 'pred_efg', 'efg_sh', 'efg_vs', 'morey', 'ev_ast_pts_sh']) {
+  for (const k of ['fl_stop_pct', 'fl_opp_runs_pg', 'ev_second_ppg', 'evd_transition_ppp', 'ev_gp', 'z_rim_efg', 'z_all_att100', 'pred_efg', 'efg_sh', 'efg_vs', 'morey', 'ev_ast_pts_sh']) {
     ok(k + ' is premium', A.isPremiumColumn(k) === true && all.some(c => c.k === k));
   }
   for (const k of ['gp', 'ppg', 'fg_pct', 'rim_pct', 'rim_apg', 'mid_pct', 'paint', 'fast', 'sc', 'rapm', 'diff_net', 'efg', 'ff_efg', 'p3_share', 'name', 'rank']) {
@@ -350,7 +350,7 @@ console.log('\npremium columns against fulltable.js');
   ok('CATALOGUE.columns all exist in the team table', A.CATALOGUE.columns.every(k => Table.TEAM_COLS.some(c => c.k === k)));
   ok('barKeys: the player bars\' events keys only', A.CATALOGUE.barKeys('ev_ast_pts_sh') && A.CATALOGUE.barKeys('ev_rim_astp') && !A.CATALOGUE.barKeys('rim_pct') && !A.CATALOGUE.barKeys(undefined));
   eq('gameTabs', A.CATALOGUE.gameTabs, ['flow', 'connections', 'events', 'shotclock']);
-  eq('columnPrefixes', A.CATALOGUE.columnPrefixes, ['ev_', 'evd_', 'z_', 'rb_']);
+  eq('columnPrefixes', A.CATALOGUE.columnPrefixes, ['ev_', 'evd_', 'z_', 'rb_', 'fl_']);
   ok('wowyPreviewMax is 1', A.CATALOGUE.wowyPreviewMax === 1);
 }
 

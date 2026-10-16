@@ -220,7 +220,7 @@ const P = [
 const T = [
   { k:'rank', l:'#',    g:['id'], fmt:(r,i)=>String(i+1), sort:r=>r.__i },
   { k:'name', l:'TEAM', g:['id'], fmt:r=>r.name, text:true },
-  { k:'gp',   l:'GP',   g:['basic','four','shooting','scoring','ratings','totals','defense','z_rim','z_mid','z_three','z_cuts','z_rate'].concat(EV_GROUPS), fmt:r=>f0(r.gp) },
+  { k:'gp',   l:'GP',   g:['basic','four','shooting','scoring','ratings','totals','defense','z_rim','z_mid','z_three','z_cuts','z_rate','fl'].concat(EV_GROUPS), fmt:r=>f0(r.gp) },
 
   { k:'ppg',    l:'PPG',  g:['basic'], fmt:r=>f1(r.ppg),  heat:1, lead:1 },
   { k:'papg',   l:'OPP',  g:['basic'], fmt:r=>f1(r.papg), heat:1, low:1 },
@@ -434,6 +434,19 @@ function evColumns(CAT, team) {
 }
 evColumns(P, false);
 evColumns(T, true);
+/* STOPS & RUNS (Louie, 2026-10-16): from every game's play-by-play through game flow (game/flow.js attachTeams, which the
+   league page runs with the shot zones' read): the other side's possessions held scoreless, kills (four stops in a row),
+   momentum runs (8+ unanswered) and the biggest run, each beside the same against the club. Members' columns (fl_). */
+T.push(
+  { k:'fl_gp',           l:'LOG GP',     g:['fl'], fmt:r=>e0(r.fl_gp), t:'games with a play-by-play (the per-game values here are over these)' },
+  { k:'fl_stop_pct',     l:'STOP%',      g:['fl'], fmt:r=>f1(r.fl_stop_pct), heat:1, t:'the other side’s possessions held scoreless' },
+  { k:'fl_opp_stop_pct', l:'OPP STOP%',  g:['fl'], fmt:r=>f1(r.fl_opp_stop_pct), heat:1, low:1, t:'its own possessions the other side held scoreless' },
+  { k:'fl_kills_pg',     l:'KILLS',      g:['fl'], fmt:r=>f2(r.fl_kills_pg), heat:1, t:'kills a game: four stops in a row' },
+  { k:'fl_opp_kills_pg', l:'OPP KILLS',  g:['fl'], fmt:r=>f2(r.fl_opp_kills_pg), heat:1, low:1, t:'kills against it a game' },
+  { k:'fl_runs_pg',      l:'RUNS',       g:['fl'], fmt:r=>f2(r.fl_runs_pg), heat:1, t:'momentum runs a game: 8+ points unanswered' },
+  { k:'fl_opp_runs_pg',  l:'OPP RUNS',   g:['fl'], fmt:r=>f2(r.fl_opp_runs_pg), heat:1, low:1, t:'momentum runs against it a game' },
+  { k:'fl_best',         l:'BEST RUN',   g:['fl'], fmt:r=>(r.fl_best == null ? '—' : r.fl_best + '-0'), heat:1, sort:r=>r.fl_best, t:'its biggest run' },
+  { k:'fl_opp_best',     l:'OPP BEST',   g:['fl'], fmt:r=>(r.fl_opp_best == null ? '—' : r.fl_opp_best + '-0'), heat:1, low:1, sort:r=>r.fl_opp_best, t:'the biggest run against it' });
 
 /* THE ASSISTED SHARE OF EACH SHOT TYPE ALSO SITS IN THE SHOOTING VIEW, beside the volume and accuracy it belongs to (2026-10-06): the
    rim's and the mid-range's after their attempts, the three's after 3P%, the two-pointer's after 2P%. The same column as the assisted
@@ -492,6 +505,7 @@ const PRESETS = {
     ['z_cuts',   'zones: the cuts'],
     ['z_rate',   'zones: rate / 100 + eFG%'],
     ...EV_PRESETS,
+    ['fl',       'stops & runs'],
     ['*',        'everything']
   ]
 };
