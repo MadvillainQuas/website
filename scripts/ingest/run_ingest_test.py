@@ -300,5 +300,16 @@ ok("...and the pass reads its known games that way, ordered",
    "for r in sb.select_all(\"external_games\", f\"adapter=eq.{src['adapter']}&competition_code=eq.{src['code']}&select=external_id,external_status,payload_hash" in _src
    and "game_id,tipoff_at&order=external_id.asc\")" in _src)
 
+print("\n-- a final game closed with nobody in its roster is reopened when the feed has its players (FEB 2535749)")
+empty = {"teams": [{"name": "ALIMERKA OVIEDO BALONCESTO", "players": []}, {"name": "FIBWI MALLORCA BASQUET PALMA", "players": []}]}
+full = {"tm": {"1": {"pl": {"2825760": {}}}, "2": {"pl": {"2583212": {}}}}}
+ok("an empty roster and a feed with both squads: reopen", RI.lost_roster(empty, full) is True)
+ok("a roster with its players: left closed", RI.lost_roster({"teams": [{"players": [{"id": "x"}]}, {"players": []}]}, full) is False)
+ok("the feed still without players: left closed (nothing better to write)",
+   RI.lost_roster(empty, {"tm": {"1": {"pl": {}}, "2": {"pl": {"2583212": {}}}}}) is False and RI.lost_roster(empty, {}) is False)
+ok("no snapshot at all counts as empty", RI.lost_roster(None, full) is True)
+ok("...and the final read reopens on it, never on a refresh's own branch twice",
+   "if not n_ev or REFRESH[\"on\"] or healing:" in _src and "healing = bool(n_ev) and not REFRESH[\"on\"] and b.status == \"final\"" in _src)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

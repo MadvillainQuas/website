@@ -1079,6 +1079,20 @@ _GAME_COLS = "status,tipoff_at,competition_id,venue,home_score,away_score"
 _HAS_ARCHIVED = {"v": None}     # games.archived_at (0262): None until the first read says
 
 
+def lost_roster(snapshot, raw) -> bool:
+    """A FINAL GAME CLOSED WITH NOBODY IN IT IS NOT FINISHED (2026-10-16). Alimerka Oviedo 99-86 Fibwi Palma (FEB
+    2535749, 10 Oct): FEB's feed served the whole game with no player lines, so the live lane wrote 471 plays with no
+    player and a roster of nobody, and closed it at the whistle. A minute later the feed had both squads, but the
+    final read found the game final - a closed log is left alone without --refresh - and the box score stayed empty.
+    True when the stored roster names no player on either side and the feed now names players on both: the read
+    then reopens it, as --refresh does, and finalise-game rebuilds it."""
+    teams = (snapshot or {}).get("teams") or []
+    if any(t.get("players") for t in teams):
+        return False
+    tm = (raw or {}).get("tm") or {}
+    return all((tm.get(k) or {}).get("pl") for k in ("1", "2"))
+
+
 def game_now(sb: Supabase, game_id) -> list:
     """The game's row as write_platform compares against - with archived_at where the database has it.
 
@@ -1215,7 +1229,11 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                 if extra:
                     sb.patch("games", f"id=eq.{game_id}", extra)
                 return False
-            if not n_ev or REFRESH["on"]:
+            healing = bool(n_ev) and not REFRESH["on"] and b.status == "final" and lost_roster(
+                (sb.select("games", f"id=eq.{game_id}&select=roster_snapshot") or [{}])[0].get("roster_snapshot"), b.raw)
+            if healing:
+                print("    = closed with nobody in its roster - the feed has its players now: reopened to rewrite it")
+            if not n_ev or REFRESH["on"] or healing:
                 # A --refresh REOPENS a finished game as well: a final game's log is closed (the insert trigger refuses
                 # events), so a corrected translation - the players re-resolved by identity.py after the slot-cache
                 # fault - could never replace the wrong one, and finalise-game refuses a game that is already final.
