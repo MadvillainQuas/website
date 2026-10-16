@@ -423,7 +423,7 @@ const shortDay = (iso, tz) => { try { return new Date(iso).toLocaleDateString('e
    than two weeks. Before 0229 there is none, and every report is drawn as before. */
 export const PRIMED = new Map();                     // 'kind:id' -> { path, sent, stale }
 /* a run's own caches, empty again (supabase/tests: one run after another in one process) */
-export function newRun() { PRIMED.clear(); PLAYER_PDF.clear(); SYN_ALL = undefined; }
+export function newRun() { PRIMED.clear(); PLAYER_PDF.clear(); SYN_ALL = undefined; JOIN_ON = undefined; }
 const PRIMED_DAYS = 14;
 const SK = () => ({ apikey: env.SUPABASE_SERVICE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY });
 async function primedPdf(kind, id, clubId, name) {
@@ -786,6 +786,7 @@ export async function requests(now = new Date()) {
       if (!got.length) continue;                                        // another run has it
     }
     if (!s.active) { await mark('nothing', 'This address is paused: nothing was sent.'); continue; }
+    if (trialOver(s, now)) { await mark('nothing', 'Their free trial ended on ' + trialDay(s.trial_until) + ': extend it to send.'); continue; }
     const team = s.teams || { id: s.team_id, name: 'your club' }, tz = tzOf(s, team);
     try {
       const W = nextWeek(tz, now);
@@ -936,6 +937,73 @@ async function logPlayerWeek(s, week, detail) {
     catch (e) { if (i >= 2) throw e; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
   }
 }
+/* ------------------------------------------------------------------ free trials (0275) ---
+   FREE TRIALS (Louie, 2026-10-16: "add durations ... their 'subscription' lasts, and then require them to start payment (when I
+   set that up) after that subscription ends (like a free trial)"). A report address's trial_until (every club of the address
+   the same) and an account's access given by email (access_grants.expires_at) end on their day: from then nothing more goes to
+   the address, scheduled or asked for, and ONE email says the trial has ended - with the join page to subscribe once
+   memberships are switched on (the memberships_enabled setting), else asking for a reply. Its date moved on in the console,
+   the address is sent to again (and told again if that one ends too). */
+export const trialOver = (row, now = new Date()) => !!(row && row.trial_until && Date.parse(row.trial_until) <= now.getTime());
+const trialDay = iso => { try { return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); } catch (_) { return String(iso || '').slice(0, 10); } };
+let JOIN_ON;
+/* the join page, when there is something to buy on it (the master switch is on), else null */
+async function joinLink() {
+  if (JOIN_ON === undefined) {
+    try { const r = await rest('platform_settings?key=eq.memberships_enabled&select=value'); JOIN_ON = !!(r && r[0] && r[0].value === true); }
+    catch (_) { JOIN_ON = false; }
+  }
+  return JOIN_ON ? PUBLIC + '/epinoia/join/' : null;
+}
+export function trialEndedEmail({ name, what, until, join }) {
+  const subject = 'Your free trial of ' + what + ' has ended';
+  const blocks = [P('Your free trial of <b>' + esc(what) + '</b> ended on ' + esc(trialDay(until)) + ', so nothing more will be sent for now.'),
+    join ? P('To keep them coming, subscribe on Epinoia: <a href="' + esc(join) + '" style="color:#08603f;font-weight:bold">' + esc(join.replace(/^https?:\/\//, '')) + '</a>')
+         : P('To keep them coming, simply reply to this email and we will set it up for you.'),
+    P('Thank you for trying Epinoia.')];
+  return { subject, html: layout({ colour: '#08603f', kicker: 'Free trial', title: 'Your free trial has ended', meta: what,
+    greeting: name ? 'Hi ' + name + ',' : 'Hello,', blocks, files: [], kept: false,
+    foot: 'You receive this because a free trial was set up for this address on Epinoia. To change it, simply reply to this email.' }) };
+}
+/* the email that a report address's trial has ended, once (rows: one address's rows of that table, every one marked) */
+async function trialNotice(kind, rows, what, now = new Date()) {
+  const due = rows.filter(r => trialOver(r, now) && !r.trial_notified_at);
+  if (!due.length) return 0;
+  const E = trialEndedEmail({ name: due[0].name, what, until: due.map(r => r.trial_until).sort()[0], join: await joinLink() });
+  await send(due[0].email, E.subject, E.html, []);
+  if (!DRY) await rest((kind === 'player' ? 'report_mail_players' : 'report_mail_subs') + '?id=in.(' + due.map(r => r.id).join(',') + ')',
+    { method: 'PATCH', body: JSON.stringify({ trial_notified_at: new Date().toISOString() }) });
+  console.log('[' + due[0].email + '] told their free trial of ' + what + ' has ended');
+  return 1;
+}
+const FEATURE_WORDS = { analytics: 'the analytics', club_report: 'the club reports', player_report: 'the player reports', league: 'the league' };
+/* AN ACCOUNT'S ACCESS GIVEN BY EMAIL THAT HAS ENDED in the last week, not told yet: told once - unless another grant still
+   gives that address the same (a trial followed by a longer one) */
+export async function grantEnds(now = new Date()) {
+  const iso = now.toISOString(), week = new Date(now.getTime() - 7 * 864e5).toISOString();
+  const ended = await rest(`access_grants?revoked_at=is.null&ended_notified_at=is.null&expires_at=lt.${encodeURIComponent(iso)}&expires_at=gt.${encodeURIComponent(week)}` +
+    '&select=id,email,features,expires_at,league_id,leagues(name)&order=expires_at.asc');
+  if (!ended || !ended.length) return 0;
+  const mails = [...new Set(ended.map(g => g.email))];
+  const live = await rest(`access_grants?revoked_at=is.null&email=in.(${mails.map(m => '"' + m.replace(/"/g, '') + '"').join(',')})` +
+    `&or=(expires_at.is.null,expires_at.gt.${encodeURIComponent(iso)})&select=email,features,league_id`) || [];
+  const join = await joinLink();
+  let told = 0;
+  for (const g of ended) {
+    if (env.ONLY && g.email !== env.ONLY) continue;
+    const still = live.filter(l => l.email === g.email && (l.league_id || null) === (g.league_id || null));
+    const covered = (g.features || []).every(f => still.some(l => (l.features || []).includes(f)));
+    if (!covered) {
+      const what = listOf((g.features || []).map(f => FEATURE_WORDS[f] || f)) + (g.league_id && g.leagues && g.leagues.name ? ' of ' + g.leagues.name : ' on Epinoia');
+      const E = trialEndedEmail({ name: null, what, until: g.expires_at, join });
+      await send(g.email, E.subject, E.html, []);
+      told++;
+    }
+    if (!DRY) await rest('access_grants?id=eq.' + g.id, { method: 'PATCH', body: JSON.stringify({ ended_notified_at: new Date().toISOString() }) });
+  }
+  return told;
+}
+
 /* ------------------------------------------------------------------ potential match-ups (0274) ---
    THE PLAYERS THEY COULD BE MATCHED UP ONTO (Louie, 2026-10-16), in ONE PDF beside their own report: every club they play in
    the week ahead (or the games "send now" ticked), and on each the rotation players at their position or one position up
@@ -1286,6 +1354,13 @@ export async function playerRound(now = new Date()) {
   let failed = 0;
   for (const s of subs || []) {
     if (env.ONLY && s.email !== env.ONLY) continue;
+    /* A FREE TRIAL THAT HAS ENDED (0275): nothing more, scheduled or asked for, and once the email that says so */
+    if (trialOver(s, now)) {
+      try { await trialNotice('player', [s], ((s.players && ((s.players.first_name || '') + ' ' + (s.players.last_name || '')).trim()) || 'your') + ' player report', now); }
+      catch (e) { console.warn('[' + s.email + '] trial notice:', e.message || e); }
+      if (s.send_now_at) await notePlayer(s, 'Send now: their free trial ended on ' + trialDay(s.trial_until) + ', so nothing was sent - extend it to send.', true);
+      continue;
+    }
     try { failed += (await onePlayer(s, now)) || 0; }
     catch (e) { failed++; console.error('[' + s.email + '] player report:', e.message || e); await notePlayer(s, 'Not sent: ' + (e.message || e), false); }
   }
@@ -1300,11 +1375,22 @@ async function main() {
   let failed = 0;
   /* the console's "send next week's reports now" first (0226); that table is away until the migration is applied, which must not stop the rounds */
   try { failed += await requests(); } catch (e) { console.warn('send-now requests skipped:', e.message || e); }
+  /* A FREE TRIAL THAT HAS ENDED (0275): an address's clubs all go quiet, and the address is told once */
+  const over = subs.filter(s => trialOver(s) && !(env.ONLY && s.email !== env.ONLY));
+  const byMail = new Map();
+  over.forEach(s => { if (!byMail.has(s.email)) byMail.set(s.email, []); byMail.get(s.email).push(s); });
+  for (const [, rows] of byMail) {
+    try { await trialNotice('club', rows, listOf([...new Set(rows.map(r => (r.teams && r.teams.name) || 'your club'))]) + ' reports'); }
+    catch (e) { console.warn('[' + rows[0].email + '] trial notice:', e.message || e); }
+  }
   for (const s of subs) {
     if (env.ONLY && s.email !== env.ONLY) continue;
+    if (trialOver(s)) continue;
     try { failed += (await one(s, s.teams || { id: s.team_id, name: 'your club' })) || 0; }
     catch (e) { failed++; console.error('[' + s.email + ']', e.message || e); }
   }
+  /* AN ACCOUNT'S ACCESS GIVEN BY EMAIL THAT HAS ENDED (0275): told once */
+  try { const n = await grantEnds(); if (n) console.log(n + ' account(s) told their access has ended'); } catch (e) { console.warn('ended access not told (0275 not applied?):', e.message || e); }
   /* THE PLAYERS' WEEKLY REPORTS (0272): Monday mornings, and any "send now"; before 0272 the table is not there */
   let players = 0;
   try { const PR = await playerRound(); failed += PR.failed; players = PR.n; } catch (e) { console.warn('player reports skipped:', e.message || e); }

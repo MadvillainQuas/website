@@ -217,7 +217,7 @@ RM._t.use({ from });
   ok('...an address\'s club offers it for each club it plays in the next two weeks, or for its own report', /opps\.forEach\(o => \{ primes\.appendChild\(primeLink\(o\.name/.test(src) &&
      /primes\.appendChild\(primeLink\('own report: ' \+ \(t\.name \|\| 'the club'\), r\.team_id/.test(src) && /no games in the next two weeks/.test(src));
   ok('an address with all its clubs: one club or several added at once, another added to it, the ZIP switched for the address',
-     /\[\.\.\.picked\.keys\(\)\]\.map\(team_id => \(\{ email: e, team_id/.test(src) && /onConflict: 'email,team_id'/.test(src) && /update\(\{ \[k\]: cb\.checked \}\)\.in\('id', list\.map\(r => r\.id\)\)/.test(src) && /\['player_zip', 'players’ reports \(ZIP\)'/.test(src));
+     /\[\.\.\.picked\.keys\(\)\]\.map\(team_id => Object\.assign\(\{ email: e, team_id/.test(src) && /onConflict: 'email,team_id'/.test(src) && /update\(\{ \[k\]: cb\.checked \}\)\.in\('id', list\.map\(r => r\.id\)\)/.test(src) && /\['player_zip', 'players’ reports \(ZIP\)'/.test(src));
   ok('PRIME CLUB + PLAYERS beside every club PRIME (each opponent, the own report, each club of the Synergy tab)',
      (src.match(/primeAllBtn\(/g) || []).length >= 4 && /rm-prime-all/.test(src));
   ok('...it primes the club report then each ZIP player’s report, one at a time, in a window of its own (not a frame inside the zoomed console) that waits for the report’s own Primed line',
@@ -237,7 +237,7 @@ RM._t.use({ from });
   }
   const html = read('epinoia', 'admin', 'platform', 'index.html'), js = read('epinoia', 'admin', 'platform', 'platform.js');
   ok('the console opens it from Reports by email, with the Synergy reader on the page', /id="mailManage"/.test(html) && /<script src="\.\.\/\.\.\/synergy\.js\?v=\d+" defer><\/script>/.test(html) &&
-     /<script src="reports-manager\.js\?v=\d+" defer><\/script>/.test(html) && /EpinoiaReportsManager\.open\(sb, \{ say, oops, sendNow, sendLine, reload: loadMail, pickWeek, askPick, weekOf, ownDueFor, weekWords \}, which\)/.test(js));
+     /<script src="reports-manager\.js\?v=\d+" defer><\/script>/.test(html) && /EpinoiaReportsManager\.open\(sb, \{ say, oops, sendNow, sendLine, reload: loadMail, pickWeek, askPick, weekOf, ownDueFor, weekWords, trial: TRIAL \}, which\)/.test(js));
 }
 
 /* ---------------------------------------------------------------- the ZIP --- */

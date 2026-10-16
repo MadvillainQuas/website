@@ -342,7 +342,7 @@ const M = await import(pathToFileURL(path.join(ROOT, 'scripts', 'report_mailer.m
 
   const MJ = read('scripts', 'report_mailer.mjs');
   ok('main() runs the players\' round after the clubs, and a database before 0272 only skips it', /try \{ const PR = await playerRound\(\); failed \+= PR\.failed; players = PR\.n; \} catch \(e\) \{ console\.warn\('player reports skipped:'/.test(MJ));
-  ok('...with the address\'s ONLY filter, and every profile of the player\'s (linked_players)', /if \(env\.ONLY && s\.email !== env\.ONLY\) continue;\s*try \{ failed \+= \(await onePlayer\(s, now\)\)/.test(MJ) && /rest\('rpc\/linked_players'/.test(MJ));
+  ok('...with the address\'s ONLY filter, and every profile of the player\'s (linked_players)', /if \(env\.ONLY && s\.email !== env\.ONLY\) continue;[\s\S]{0,900}?try \{ failed \+= \(await onePlayer\(s, now\)\)/.test(MJ) && /rest\('rpc\/linked_players'/.test(MJ));
 }
 
 /* ======================================================================== potential match-ups (0274) === */
@@ -494,7 +494,7 @@ console.log('\nthe console: the reports manager\'s Players tab (admin/platform/r
      /btn\(x\.send_now_at \? 'queued' : 'send now', 'mini', \(\) => sendPlayerNow\(x, pname, now\)\)/.test(RJ) && /update\(\{ active: !x\.active \}\)/.test(RJ) && /from\('report_mail_players'\)\.delete\(\)\.eq\('id', x\.id\)/.test(RJ) &&
      /pTimer = setTimeout\(\(\) => \{ if \(dlg && dlg\.open && tab === 'pl' && !document\.hidden\) draw\(\); \}, 30000\);/.test(RJ) && /Players’ weekly reports arrive with migration 0272/.test(RJ));
   ok('send now asks which games (platform.js askPick, handed to the manager) and writes them (0273); before 0273 it asks before sending the week',
-     /pickWeek, askPick, weekOf, ownDueFor, weekWords \}, which\)/.test(PJ) && /if \(pick && pick\.games\.length\) upd\.send_now_games = pick\.games;/.test(RJ) && /\.update\(upd\)\.eq\('id', x\.id\)/.test(RJ) &&
+     /pickWeek, askPick, weekOf, ownDueFor, weekWords, trial: TRIAL \}, which\)/.test(PJ) && /if \(pick && pick\.games\.length\) upd\.send_now_games = pick\.games;/.test(RJ) && /\.update\(upd\)\.eq\('id', x\.id\)/.test(RJ) &&
      /Choosing the games needs migration 0273, which is not applied yet\. Send the week of their latest game instead\?/.test(RJ));
 }
 

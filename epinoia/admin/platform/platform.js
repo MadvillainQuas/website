@@ -1244,7 +1244,7 @@ async function loadMail() {
     b.dataset.wired = '1';
     b.addEventListener('click', () => {
       if (!window.EpinoiaReportsManager) { say('The reports manager has not loaded: reload the page.', 'warn'); return; }
-      window.EpinoiaReportsManager.open(sb, { say, oops, sendNow, sendLine, reload: loadMail, pickWeek, askPick, weekOf, ownDueFor, weekWords }, which).catch(oops);
+      window.EpinoiaReportsManager.open(sb, { say, oops, sendNow, sendLine, reload: loadMail, pickWeek, askPick, weekOf, ownDueFor, weekWords, trial: TRIAL }, which).catch(oops);
     });
   });
   if (go && !go.dataset.wired) {
@@ -2142,6 +2142,70 @@ async function loadPlans() {
   loadPlatformGrants();
 }
 
+/* FREE TRIALS (0275; Louie, 2026-10-16: "add durations to add them for/edit the duration their 'subscription' lasts, and then
+   require them to start payment ... after that subscription ends (like a free trial)"). One set of controls for a report
+   address (the reports manager), a player's address and an account's access given by email: a length when adding (none, two
+   weeks, a month, three months, or a day), and once added the end moved on (from today or from the end, whichever is later),
+   to a day, or taken off. An end is the end of its day. */
+const TRIAL = (() => {
+  const DAY = 864e5;
+  const css = () => {
+    if (document.getElementById('tr-style')) return;
+    const st = el('style'); st.id = 'tr-style';
+    st.textContent = '.tr-pick,.tr-edit{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}.tr-edit .ep-input{padding:2px 6px;font-size:12px;min-height:0;height:auto}' +
+      '.tr-over{color:#a3262f;font-weight:600}.tr-on{color:var(--muted,#555)}';
+    document.head.appendChild(st);
+  };
+  const endOf = ymd => { const [y, m, d] = String(ymd || '').split('-').map(Number); const t = new Date(y, m - 1, d, 23, 59, 59, 999); return isNaN(t) ? null : t; };
+  const day = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  /* what an end says: none, the day it runs to, or the day it ended */
+  const text = (until, now = Date.now()) => (!until ? 'no end date' : Date.parse(until) > now ? 'free trial until ' + day(until) : 'free trial ended ' + day(until));
+  const over = (until, now = Date.now()) => !!until && Date.parse(until) <= now;
+  /* a length chosen -> the end: null (no end), an ISO string, or undefined (a day not chosen, or already gone) */
+  function endFor(v, ymd, base, now = Date.now()) {
+    if (!v || v === 'none') return null;
+    if (v === 'date') { const t = endOf(ymd); return t && t.getTime() > now ? t.toISOString() : undefined; }
+    const from = Math.max(now, base ? Date.parse(base) || now : now);
+    const t = new Date(from + (+v) * DAY);
+    t.setHours(23, 59, 59, 999);
+    return t.toISOString();
+  }
+  /* THE LENGTH WHEN ADDING: { el, value() -> null | ISO | undefined } */
+  function pick() {
+    css();
+    const wrap = el('span', 'tr-pick');
+    const sel = el('select', 'ep-input');
+    [['none', 'no end date'], ['14', 'free trial: 2 weeks'], ['30', 'free trial: 1 month'], ['91', 'free trial: 3 months'], ['date', 'free trial until a day…']]
+      .forEach(([v, t]) => { const o = el('option', null, t); o.value = v; sel.appendChild(o); });
+    const d = el('input', 'ep-input'); d.type = 'date'; d.hidden = true;
+    sel.addEventListener('change', () => { d.hidden = sel.value !== 'date'; });
+    sel.title = 'How long it lasts: when a free trial ends, nothing more is sent (or opened) and they are emailed once that it has ended - with the join page once memberships are on';
+    wrap.append(sel, d);
+    return { el: wrap, value: () => endFor(sel.value, d.value) };
+  }
+  /* THE LENGTH ONCE ADDED: what it is, and a change -> onSet(null | ISO), which saves it and answers false to keep the choice */
+  function edit(until, onSet) {
+    css();
+    const wrap = el('span', 'tr-edit');
+    wrap.appendChild(el('small', over(until) ? 'tr-over' : 'tr-on', text(until)));
+    const sel = el('select', 'ep-input mini');
+    [['', 'change…'], ['14', '+ 2 weeks'], ['30', '+ 1 month'], ['91', '+ 3 months'], ['date', 'until a day…'], ['none', 'no end date']]
+      .forEach(([v, t]) => { const o = el('option', null, t); o.value = v; sel.appendChild(o); });
+    const d = el('input', 'ep-input mini'); d.type = 'date'; d.hidden = true;
+    const apply = async (v, ymd) => {
+      const end = endFor(v, ymd, until);
+      if (end === undefined) { say('Choose a day that is still to come.', 'err'); return; }
+      if ((await onSet(end)) === false) return;
+      say(end ? 'Their free trial now runs until ' + day(end) + '.' : 'No end date now: it goes on until changed.', 'ok');
+    };
+    sel.addEventListener('change', () => { const v = sel.value; d.hidden = v !== 'date'; if (v && v !== 'date') { sel.value = ''; apply(v); } });
+    d.addEventListener('change', () => { if (d.value) { apply('date', d.value); d.hidden = true; sel.value = ''; } });
+    wrap.append(sel, d);
+    return wrap;
+  }
+  return { pick, edit, text, over, endFor };
+})();
+
 /* WHAT EPINOIA SELLS, AND SO WHAT A PLATFORM PLAN OR A PLATFORM-WIDE GRANT MAY CARRY (0220): the analytics and the two
    reports, in any mix (each mix a tier); never a league, which each league opens for itself */
 const PLATFORM_FEATURES = ['analytics', 'club_report', 'player_report'];
@@ -2156,9 +2220,9 @@ function drawPlatformGrantForm() {
   const F = (window.EpinoiaAccessUI && window.EpinoiaAccessUI.FEATURES) || {};
   const r1 = el('div', 'row');
   const email = el('input', 'ep-input'); email.type = 'email'; email.placeholder = 'the address they sign in with';
-  const until = el('input', 'ep-input'); until.type = 'date'; until.title = 'until (optional): through that day';
+  const len = TRIAL.pick();
   const note = el('input', 'ep-input'); note.maxLength = 400; note.placeholder = 'note (optional): who, and why';
-  r1.append(email, until, note);
+  r1.append(email, len.el, note);
   const r2 = el('div', 'row');
   const boxes = {};
   PLATFORM_FEATURES.forEach(k => {
@@ -2175,20 +2239,15 @@ function drawPlatformGrantForm() {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return say('Enter the email address the person signs in with.', 'err');
     const features = PLATFORM_FEATURES.filter(k => boxes[k].checked);
     if (!features.length) return say('Tick what the access unlocks.', 'err');
-    let expires = null;
-    if (until.value) {
-      const [y, m, d] = until.value.split('-').map(Number);
-      const end = new Date(y, m - 1, d, 23, 59, 59, 999);
-      if (isNaN(end) || end.getTime() <= Date.now()) return say('That date has already passed. Leave it empty for access with no end date.', 'err');
-      expires = end.toISOString();
-    }
+    const expires = len.value();
+    if (expires === undefined) return say('Choose a day still to come for the trial to end, or no end date.', 'err');
     go.disabled = true;
     const id = await rpc('grant_access', { p_league: null, p_email: e, p_features: features, p_expires: expires, p_note: note.value.trim() || null });
     go.disabled = false;
     if (!id) return;
     say('Access given to ' + e + ': ' + features.map(k => (F[k] || { label: k }).label).join(' + ') +
-        (expires ? ', until ' + new Date(expires).toLocaleDateString() : ', with no end date') + ', in every league.', 'ok');
-    email.value = ''; until.value = ''; note.value = '';
+        (expires ? ', a free trial until ' + new Date(expires).toLocaleDateString() : ', with no end date') + ', in every league.', 'ok');
+    email.value = ''; note.value = '';
     PLATFORM_FEATURES.forEach(k => { boxes[k].checked = false; });
     loadPlatformGrants();
   });
@@ -2201,15 +2260,21 @@ async function loadPlatformGrants() {
   host.textContent = '';
   if (error) { host.appendChild(el('p', 'note bad', 'The grants could not be read: ' + (error.message || error))); return; }
   const now = Date.now();
-  const live = (data || []).filter(g => !g.expires_at || new Date(g.expires_at).getTime() > now);
+  /* the live, and those whose free trial ended in the last month (their length can still be moved on) */
+  const live = (data || []).filter(g => !g.expires_at || new Date(g.expires_at).getTime() > now - 31 * 864e5);
   if (!live.length) { host.appendChild(el('p', 'note', 'Nobody has access given this way yet.')); return; }
   const F = (window.EpinoiaAccessUI && window.EpinoiaAccessUI.FEATURES) || {};
   live.forEach(g => {
     const row = el('div', 'card');
     const c0 = el('div');
     c0.appendChild(el('div', 'nm', g.email));
-    c0.appendChild(el('div', 'mt', (g.features || []).map(k => (F[k] || { label: k }).label).join(' + ') +
-      (g.expires_at ? ' \u00b7 until ' + new Date(g.expires_at).toLocaleDateString() : ' \u00b7 no end date') + (g.note ? ' \u00b7 ' + g.note : '')));
+    c0.appendChild(el('div', 'mt', (g.features || []).map(k => (F[k] || { label: k }).label).join(' + ') + (g.note ? ' \u00b7 ' + g.note : '')));
+    /* ITS LENGTH, changed in place (0275 set_access_grant_expiry) */
+    c0.appendChild(TRIAL.edit(g.expires_at, async end => {
+      const { error: e3 } = await sb.rpc('set_access_grant_expiry', { p_grant: g.id, p_expires: end });
+      if (e3) { oops({ code: e3.code, message: /set_access_grant_expiry|schema cache|function/i.test(e3.message || '') ? 'Changing an end date needs migration 0275, which is not applied yet.' : 'set_access_grant_expiry: ' + (e3.message || e3) }); return false; }
+      loadPlatformGrants();
+    }));
     const x = el('button', 'ep-btn', 'revoke'); x.type = 'button';
     x.addEventListener('click', async () => {
       if (!window.confirm('Take this access away from ' + g.email + '?')) return;

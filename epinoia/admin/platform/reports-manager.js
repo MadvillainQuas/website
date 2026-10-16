@@ -204,6 +204,8 @@ async function drawAddresses() {
   const email = el('input', 'ep-input'); email.type = 'email'; email.placeholder = 'their@email'; email.style.minWidth = '220px';
   const name = el('input', 'ep-input'); name.placeholder = 'first name (optional)';
   const tz = tzSelect();
+  /* HOW LONG IT LASTS (0275): no end, or a free trial (platform.js TRIAL) */
+  const len = H.trial ? H.trial.pick() : null;
   const picked = new Map(), chips = el('div', 'rm-chips');
   const drawChips = () => { chips.textContent = ''; picked.forEach((c, id) => { const ch = el('span', 'rm-chip', c.label); const x = el('button', null, '×'); x.type = 'button'; x.title = 'take it off'; x.onclick = () => { picked.delete(id); drawChips(); }; ch.appendChild(x); chips.appendChild(ch); }); };
   const finder = clubFinder(c => { picked.set(c.id, c); if (c.tz && picked.size === 1 && [...tz.options].some(o => o.value === c.tz)) tz.value = c.tz; drawChips(); });
@@ -211,12 +213,16 @@ async function drawAddresses() {
     const e = email.value.trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { say('That email address does not look right.', 'warn'); return; }
     if (!picked.size) { say('Pick one club or more from the list as you type.', 'warn'); return; }
-    const { error } = await sb.from('report_mail_subs').upsert([...picked.keys()].map(team_id => ({ email: e, team_id, name: name.value.trim() || null, tz: tz.value || 'UTC', active: true })), { onConflict: 'email,team_id' });
-    if (error) { oops(error); return; }
-    say(e + ' will be sent the reports of ' + picked.size + (picked.size === 1 ? ' club.' : ' clubs.'), 'ok');
+    const until = len ? len.value() : null;
+    if (until === undefined) { say('Choose a day still to come for the free trial to end, or no end date.', 'warn'); return; }
+    const { error } = await sb.from('report_mail_subs').upsert([...picked.keys()].map(team_id => Object.assign({ email: e, team_id, name: name.value.trim() || null, tz: tz.value || 'UTC', active: true },
+      until ? { trial_until: until, trial_notified_at: null } : {})), { onConflict: 'email,team_id' });
+    if (error) { oops(trialErr(error)); return; }
+    say(e + ' will be sent the reports of ' + picked.size + (picked.size === 1 ? ' club' : ' clubs') + (until ? ', a free trial until ' + new Date(until).toLocaleDateString() : '') + '.', 'ok');
     draw();
   });
   const r1 = el('div', 'rm-row'); r1.append(email, name, tz);
+  if (len) r1.appendChild(len.el);
   add.append(r1, el('p', 'rm-mt', 'Its clubs (as many as it should be sent):'), finder, chips, save);
   body.appendChild(add);
 
@@ -230,7 +236,14 @@ async function drawAddresses() {
     const first = list[0];
     h.appendChild(el('b', null, addr + (first.name ? ' (' + first.name + ')' : '')));
     h.appendChild(el('span', 'rm-mt', first.tz + ' · ' + list.length + (list.length === 1 ? ' club' : ' clubs')));
-    const live = list.filter(r => r.active);
+    /* ITS LENGTH (0275), the same for every club of the address: changed for them all */
+    const ended = H.trial && 'trial_until' in first && H.trial.over(first.trial_until);
+    if (H.trial && 'trial_until' in first) h.appendChild(H.trial.edit(first.trial_until, async end => {
+      const { error } = await sb.from('report_mail_subs').update({ trial_until: end, trial_notified_at: null }).in('id', list.map(r => r.id));
+      if (error) { oops(trialErr(error)); return false; }
+      draw();
+    }));
+    const live = ended ? [] : list.filter(r => r.active);
     /* send now: the week's opponents, own reports and ZIP of each of its clubs, ticked (0263; platform.js pickWeek) */
     if (live.length && H.sendNow) h.appendChild(btn('send next week’s reports now', 'mini', async () => {
       let picks = null;
@@ -290,7 +303,8 @@ async function drawAddresses() {
     const more = el('div', 'rm-club');
     more.appendChild(el('small', null, 'Add a club to ' + addr + ':'));
     more.appendChild(clubFinder(async c => {
-      const { error } = await sb.from('report_mail_subs').upsert({ email: addr, team_id: c.id, name: first.name || null, tz: first.tz || 'UTC', active: true }, { onConflict: 'email,team_id' });
+      const { error } = await sb.from('report_mail_subs').upsert(Object.assign({ email: addr, team_id: c.id, name: first.name || null, tz: first.tz || 'UTC', active: true },
+        first.trial_until ? { trial_until: first.trial_until } : {}), { onConflict: 'email,team_id' });
       if (error) { oops(error); return; }
       say(addr + ' will be sent ' + c.label + '’s reports too.', 'ok'); draw();
     }));
@@ -333,6 +347,9 @@ function weekTicks(r, opps, picks, refs) {
 }
 
 /* ------------------------------------------------------------------ players --- */
+/* a write of a trial's columns before 0275: said as what it is */
+const trialErr = e => (/trial_|schema cache|column/i.test((e && e.message) || '') ? new Error('Free trials need migration 0275, which is not applied yet.') : e);
+
 /* PLAYERS' WEEKLY REPORTS (0272; until 2026-10-16 in the console's Reports tab): an address and a player - found by name in the
    site's search, as anyone on the site can be sent their own report (unlike a Synergy file's players, matched only to the clubs
    the reports are on) - and the time zone of its Monday morning. Each with what the mailer last did, send now, pause, remove.
@@ -475,6 +492,7 @@ async function drawPlayers() {
   const name = el('input', 'ep-input'); name.placeholder = 'first name (optional)';
   const tz = tzSelect();
   /* THEIR POTENTIAL MATCH-UPS too (0274): the players of each club they play that week they could be matched up onto */
+  const plen = H.trial ? H.trial.pick() : null;
   const muLab = el('label', 'rm-mt'); const muCb = el('input'); muCb.type = 'checkbox';
   muLab.append(muCb, document.createTextNode(' and their potential match-ups each week'));
   muLab.title = 'With the Monday email, a second PDF: every player of each club they play that week whom they could be matched up onto (their position or one up), each with a title page, the shot chart, left v right and connections';
@@ -489,14 +507,19 @@ async function drawPlayers() {
     const e = email.value.trim().toLowerCase();
     if (!who) { say('Pick the player from the list as you type their name.', 'warn'); return; }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { say('That email address does not look right.', 'warn'); return; }
-    const row = Object.assign({ email: e, player_id: who.id, name: name.value.trim() || null, tz: tz.value || 'UTC', active: true }, muCb.checked ? { send_matchups: true } : {});
+    const until = plen ? plen.value() : null;
+    if (until === undefined) { say('Choose a day still to come for the free trial to end, or no end date.', 'warn'); return; }
+    const row = Object.assign({ email: e, player_id: who.id, name: name.value.trim() || null, tz: tz.value || 'UTC', active: true }, muCb.checked ? { send_matchups: true } : {},
+      until ? { trial_until: until, trial_notified_at: null } : {});
     const { error } = await sb.from('report_mail_players').upsert(row, { onConflict: 'email,player_id' });
-    if (error) { oops(/send_matchups|schema cache|column/i.test(error.message || '') ? new Error('The match-ups need migration 0274, which is not applied yet: untick them to add the player.') : error); return; }
+    if (error) { oops(/trial_/i.test(error.message || '') ? trialErr(error) : /send_matchups|schema cache|column/i.test(error.message || '') ? new Error('The match-ups need migration 0274, which is not applied yet: untick them to add the player.') : error); return; }
     say(e + ' will be sent ' + who.label + '’s weekly report' + (muCb.checked ? ' and their potential match-ups' : '') + ', every Monday morning.', 'ok');
     draw();
   });
   const r1 = el('div', 'rm-row'); r1.append(finder, chosen);
-  const r2 = el('div', 'rm-row'); r2.style.marginTop = '6px'; r2.append(email, name, tz, muLab, save);
+  const r2 = el('div', 'rm-row'); r2.style.marginTop = '6px'; r2.append(email, name, tz);
+  if (plen) r2.appendChild(plen.el);
+  r2.append(muLab, save);
   add.append(r1, r2);
   body.appendChild(add);
 
@@ -523,8 +546,16 @@ async function drawPlayers() {
       st.appendChild(el('small', 'rm-stored', 'send now queued' + (x.send_now_report === false ? ': match-ups alone' + mu.replace(' + match-ups', '') :
         (Array.isArray(x.send_now_games) && x.send_now_games.length ? ': ' + (x.send_now_games.length === 1 ? 'one game' : x.send_now_games.length + ' games') : ': the week of their latest game') + mu)));
     }
+    if (H.trial && 'trial_until' in x) {
+      st.appendChild(el('br'));
+      st.appendChild(H.trial.edit(x.trial_until, async end => {
+        const { error } = await sb.from('report_mail_players').update({ trial_until: end, trial_notified_at: null }).eq('id', x.id);
+        if (error) { oops(trialErr(error)); return false; }
+        draw();
+      }));
+    }
     const acts = el('div', 'acts');
-    if (x.active) {
+    if (x.active && !(H.trial && H.trial.over(x.trial_until))) {
       const now = btn(x.send_now_at ? 'queued' : 'send now', 'mini', () => sendPlayerNow(x, pname, now));
       now.disabled = !!x.send_now_at;
       now.title = 'Email them their report now, of the games you tick';
