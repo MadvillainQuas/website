@@ -904,6 +904,7 @@ table.bx th,table.adv th,.qstrip th,.benchsep,.thead .tsub{
 .fsec[data-fsec="situational"]{--sec:#fb923c;}
 .fsec[data-fsec="assists"]{--sec:#22d3ee;}
 .fsec[data-fsec="outcomes"]{--sec:#818cf8;}
+.fsec[data-fsec="stops"]{--sec:#f472b6;}
 .fsec[data-fsec="players0"]{--sec:var(--team0);}
 .fsec[data-fsec="players1"]{--sec:var(--team1);}
 .fsec-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:14px 2px 10px;list-style:none;}

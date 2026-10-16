@@ -251,11 +251,11 @@ function compute(S) {
   });
   finalize();                                        // the run the game ended on
 
-  const kills = killsOf(inGameOrder((S && S.events) || [], H), H, teams, lineups);
+  const KS = killsOf(inGameOrder((S && S.events) || [], H), H, teams, lineups), kills = KS.kills;
   const summary = summarise(points);
   summary.homeKills = kills.filter(k => k.teamIdx === 0).reduce((a, k) => a + k.kills, 0);
   summary.awayKills = kills.filter(k => k.teamIdx === 1).reduce((a, k) => a + k.kills, 0);
-  return { points, playerRuns, teamRuns, kills, summary, period, lastElapsed, lineups, halves: H };
+  return { points, playerRuns, teamRuns, kills, stops: KS.stops, summary, period, lastElapsed, lineups, halves: H };
 }
 
 /* KILLS (Louie, 2026-10-16: "add kills alongside runs ... opposing team held scoreless"; then "4 stops in a row"): a
@@ -279,10 +279,12 @@ function compute(S) {
      * A possession that did nothing (a rebound at the buzzer, the clock run out) is neither, as before. */
 const KILL = 4;
 const HEAVE_MS = 3000;
+/* -> { kills: [...], stops: [for the side defending: { stops, poss }] } */
 function killsOf(evs, H, teams, lineups) {
   const P = root.EpinoiaPossessions ||
     (typeof require === 'function' ? (() => { try { return require('../possessions.js'); } catch (_) { return null; } })() : null);
-  if (!P || !P.enumerate || !evs.length) return [];
+  const none = { kills: [], stops: [{ stops: 0, poss: 0 }, { stops: 0, poss: 0 }] };
+  if (!P || !P.enumerate || !evs.length) return none;
   const E = P.enumerate({ events: evs });
   /* the free throws awarded for a technical foul: a free throw of one side after the other side's technical, in the same
      moment of the clock, before anything else happens */
@@ -340,9 +342,31 @@ function killsOf(evs, H, teams, lineups) {
     if (cur[d].length >= KILL) out.push(build(d, cur[d].map(u => u.js[0]).concat(cur[d][cur[d].length - 1].js.slice(-1)), cur[d].length));
     cur[d] = [];
   };
-  units.forEach(u => { const d = 1 - u.team; if (u.points > 0) close(d); else if (!heave(u)) cur[d].push(u); });
+  /* EACH SIDE'S STOPS: the other side's possessions (as above: one possession however the list split it, technical free
+     throws and an empty buzzer heave left out) and how many of them it held scoreless */
+  const stops = [{ stops: 0, poss: 0 }, { stops: 0, poss: 0 }];
+  units.forEach(u => {
+    const d = 1 - u.team;
+    if (u.points > 0) { stops[d].poss++; close(d); }
+    else if (!heave(u)) { stops[d].poss++; stops[d].stops++; cur[d].push(u); }
+  });
   close(0); close(1);
-  return out.sort((x, y) => x.startElapsed - y.startElapsed);
+  return { kills: out.sort((x, y) => x.startElapsed - y.startElapsed), stops };
+}
+
+/* A GAME'S STOPS AND RUNS, for a line that adds games up (the club's season line, t/seasonline.js; the box score's full
+   stats): for each side, the other side's possessions it held scoreless and how many there were, its kills (four stops
+   in a row) and its momentum runs (8+ unanswered points), and its biggest run. -> [{ stops, poss, kills, runs, best }] x2 */
+function gameLine(S) {
+  const F = compute(S);
+  const s = F.summary || {};
+  return [0, 1].map(t => ({
+    stops: (F.stops && F.stops[t] && F.stops[t].stops) || 0,
+    poss: (F.stops && F.stops[t] && F.stops[t].poss) || 0,
+    kills: (F.kills || []).filter(k => k.teamIdx === t).reduce((a, k) => a + k.kills, 0),
+    runs: (F.teamRuns || []).filter(r => r.teamIdx === t).length,
+    best: t === 0 ? (s.biggestHomeRun || 0) : (s.biggestAwayRun || 0)
+  }));
 }
 
 /* renderGameFlowTab's strip: lead changes and runs read off the flow points */
@@ -1050,5 +1074,5 @@ function mounted(host) {
   });
 }
 
-return { compute, summarise, render, margin: marginOnly, mounted, formatDuration, symAxis, inkTeams, clockText, hasFootage, timeline, normaliseOrder, keepOrder, orderNow, stateAt };
+return { compute, gameLine, KILL, summarise, render, margin: marginOnly, mounted, formatDuration, symAxis, inkTeams, clockText, hasFootage, timeline, normaliseOrder, keepOrder, orderNow, stateAt };
 }));

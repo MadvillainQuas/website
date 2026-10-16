@@ -183,9 +183,9 @@ await aok('three ratings on one row, then four groups; the rows that need a read
   const mark = walk(byClass(tiles[1], 'cs-strip')[0], x => x.tagName === 'B')[0];
   assert.equal(mark.style.left, '97.00%');
   const groups = walk(host, x => x.tagName === 'TBODY');
-  assert.deepEqual(groups.map(g => g.dataset.g), ['tempo', 'efficiency', 'distribution', 'matchups']);
+  assert.deepEqual(groups.map(g => g.dataset.g), ['tempo', 'efficiency', 'distribution', 'matchups', 'stops']);
   assert.deepEqual(groups.map(g => walk(g, x => x.className === 'r').map(r => r.dataset.k)),
-    [['pace', 'poss_time'], ['ppp', 'ts', 'ft_pct', 'morey'], ['ast_pct', 'helio', 'bench_min_pct'], ['vs_start', 'vs_bench']]);
+    [['pace', 'poss_time'], ['ppp', 'ts', 'ft_pct', 'morey'], ['ast_pct', 'helio', 'bench_min_pct'], ['vs_start', 'vs_bench'], ['stop_pct', 'kills_pg', 'runs_pg']]);
   const row = k => walk(host, x => x.className === 'r' && x.dataset.k === k)[0];
   const val = k => byClass(row(k), 'v')[0];
   assert.equal(val('ppp').textContent, '1.18');
@@ -316,8 +316,9 @@ console.log('\nthe team table\'s defence + rebounding');
     for (const k of ['rb_rim_orb', 'rb_mid_orb', 'rb_three_orb', 'rb_rim_drb', 'rb_mid_drb', 'rb_three_drb']) assert.match(SI.info(k).formula, /\(own (OREB|DREB) \+ opponents’ (DREB|OREB)\)/);
   });
   ok('the season line\'s new rows are explained, and listed for the club page', () => {
-    for (const k of ['poss_time', 'ppp', 'morey', 'helio', 'bench_min_pct', 'vs_start', 'vs_bench']) assert.ok(SI.info(k, 'team'), k);
-    assert.deepEqual(SL.KEYS, ['ortg', 'drtg', 'net', 'pace', 'poss_time', 'ppp', 'ts', 'ft_pct', 'morey', 'ast_pct', 'helio', 'bench_min_pct', 'vs_start', 'vs_bench']);
+    for (const k of ['poss_time', 'ppp', 'morey', 'helio', 'bench_min_pct', 'vs_start', 'vs_bench', 'stop_pct', 'kills_pg', 'runs_pg']) assert.ok(SI.info(k, 'team'), k);
+    assert.deepEqual(SL.KEYS, ['ortg', 'drtg', 'net', 'pace', 'poss_time', 'ppp', 'ts', 'ft_pct', 'morey', 'ast_pct', 'helio', 'bench_min_pct', 'vs_start', 'vs_bench',
+      'stop_pct', 'kills_pg', 'runs_pg']);
     assert.deepEqual(SI.TEAM_KEYS.slice(0, SL.KEYS.length), SL.KEYS);
   });
 }

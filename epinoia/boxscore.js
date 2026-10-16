@@ -991,6 +991,33 @@ function outcomeCard(mirror, sec, sides, c0, c1){
     '<div class="setup-note">neither: a foul and free throws, a turnover, the end of a period, or a rebound the feed did not log · team rebounds count</div>', true);
 }
 
+function flowLineOf(){
+  const F = globalThis.EpinoiaGameFlow;
+  if(!F || !F.gameLine || typeof S === 'undefined' || !S || !S.events) return null;
+  const memo = flowLineOf.memo;
+  if(memo && memo.ref === S.events && memo.len === S.events.length) return memo.out;
+  let out = null;
+  try { out = F.gameLine(S); } catch(e){ out = null; }
+  flowLineOf.memo = {ref:S.events, len:S.events.length, out};
+  return out;
+}
+
+function stopsCard(mirror, sec, sides, c0, c1){
+  const L = flowLineOf();
+  if(!L || !(L[0].poss + L[1].poss)) return '';
+  const cnt = (h,a,l,hb)=>{ const max=Math.max(h,a,1); return mirror(l, h, a, max, v=>String(v), hb!=null&&(hb?h>a:h<a), hb!=null&&(hb?a>h:a<h)); };
+  const pc = t=>L[t].poss ? 100*L[t].stops/L[t].poss : 0;
+  const h=pc(0), a=pc(1);
+  const rows = cnt(L[0].stops, L[1].stops, 'stops', true)+
+    mirror('stop %', h, a, 100, v=>v.toFixed(0)+'%', h>a, a>h, null,
+      h.toFixed(0)+'%<small class="ffsub">'+L[0].stops+'/'+L[0].poss+'</small>', a.toFixed(0)+'%<small class="ffsub">'+L[1].stops+'/'+L[1].poss+'</small>')+
+    cnt(L[0].kills, L[1].kills, 'kills (4 stops in a row)', true)+
+    cnt(L[0].runs, L[1].runs, 'momentum runs (8+ unanswered)', true)+
+    mirror('biggest run', L[0].best, L[1].best, Math.max(L[0].best, L[1].best, 1), v=>v+'-0', L[0].best>L[1].best, L[1].best>L[0].best);
+  return sec('stops', 'stops & runs', 'the other side\u2019s possessions held scoreless', sides+rows+
+    '<div class="setup-note">a stop: a possession of the other side held scoreless (an and-one counts with its basket; technical free throws and an empty heave at the buzzer are neither) · a kill: four stops in a row · game flow draws each one</div>', true);
+}
+
 function advHTML(d){
   const TA = [teamAdv(d,0), teamAdv(d,1)];
   const c0 = safeColour(S.teams[0].color, '#93f2bf'),
@@ -1090,7 +1117,8 @@ function advHTML(d){
   const sitRows = SIT.map(([l,k])=>{ const h=d.team[0][k], a=d.team[1][k]; const max=Math.max(h,a,1);
     return mirror(l, h, a, max, v=>String(v), h>a, a>h, k); }).join('');
   const mrCard = mrGroups.map(g=>sec(g.key, g.title, '', sides+g.rows.join(''), true)).join('')+
-    sec('situational', 'situational points', '', sides+sitRows, true)+assistCard(mirror, sec, sides, c0, c1)+outcomeCard(mirror, sec, sides, c0, c1);
+    sec('situational', 'situational points', '', sides+sitRows, true)+assistCard(mirror, sec, sides, c0, c1)+outcomeCard(mirror, sec, sides, c0, c1)+
+    stopsCard(mirror, sec, sides, c0, c1);
   // 4. player tables — game-relative bar ranges across both rosters, on-court diffs vs game average
   const gameAvg = {ortg:(TA[0].ortg+TA[1].ortg)/2, efg:(TA[0].efg+TA[1].efg)/2,
     orebp:(TA[0].orebp+TA[1].orebp)/2, tovp:(TA[0].tovp+TA[1].tovp)/2, ftr:(TA[0].ftr+TA[1].ftr)/2};
@@ -1162,5 +1190,5 @@ function rebuildPmap() {
   return PMAP;
 }
 
-return { gameFmt, PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, lineupRates, lineupCombos, periodPill, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, sitCompute, assistCard, outcomeCard, advHTML, luNames, lineupsHTML, rebuildPmap };
+return { gameFmt, PLEN, PMAP, ADV_GROUPS, advSort, esc, COLOUR_OK, safeColour, perName, fmtClock, fmtMin, tname, pname, mkP, mkOC, mkBox, mkT, cumEl, activeTags, COURT, courtSVG, arcSide, snapToValue, OFFICIAL_ROLES, matchDetailsHTML, FOUL_MARK, foulMarksByPlayer, scoresheetHTML, scoresheetDoc, printScoresheet, teamTotals, teamAdv, playerAdv, gpRate, playerAdvTable, lineupAgg, lineupRates, lineupCombos, periodPill, scoreHeadHTML, qstripHTML, teamChipsHTML, bxTeamHTML, pbpHTML, shotChartHTML, sitCompute, assistCard, outcomeCard, flowLineOf, stopsCard, advHTML, luNames, lineupsHTML, rebuildPmap };
 }));

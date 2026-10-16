@@ -35,6 +35,13 @@
    The other clubs' logs are not read on this page, so these are not ranked. Members only, as the shot clock
    analysis and the WOWY page's play-by-play are.
 
+   STOPS & RUNS (Louie, 2026-10-16), from the same logs through game flow (game/flow.js gameLine), the club beside its
+   opponents in every row:
+     STOP%          the other side's possessions held scoreless (one possession however the feed split it; technical
+                    free throws and an empty heave at the buzzer left out - flow.js killsOf)
+     KILLS          four stops in a row, a game
+     MOMENTUM RUNS  8+ points unanswered, a game, and the biggest of the scope
+
    BENCH MINS%: the share of the club's minutes played by those who did not start, from each game's starters and
    the players' minutes. A side whose starters were never recorded, or whose starters are not among its minutes
    (an id the lines do not use), is left out rather than counted all bench.
@@ -253,6 +260,11 @@ const GROUPS = [
       subRegular: 'the minutes the other side had 4+ of its regular starters on, or 4+ of that game’s starting five' },
     { k: 'vs_bench', l: 'VS BENCH', sub: 'the minutes it had two of its starters on, or fewer', dir: 1, dp: 1, signed: true, log: 'trio', part: 'bench',
       subRegular: 'every other minute' }
+  ] },
+  { key: 'stops', title: 'Stops & runs', rows: [
+    { k: 'stop_pct', l: 'STOP%', sub: 'the other side’s possessions held scoreless', dir: 0, dp: 1, unit: '%', log: 'flow', part: 'stop' },
+    { k: 'kills_pg', l: 'KILLS', sub: 'four stops in a row, a game', dir: 0, dp: 2, log: 'flow', part: 'kills' },
+    { k: 'runs_pg', l: 'MOMENTUM RUNS', sub: '8+ points unanswered, a game', dir: 0, dp: 2, log: 'flow', part: 'runs' }
   ] }
 ];
 const KEYS = RATINGS.concat(...GROUPS.map(g => g.rows)).map(d => d.k);
@@ -397,6 +409,28 @@ function logCell(d, x, nameOf) {
   return out;
 }
 
+/* a stops-and-runs row: the club and its opponents over the games read (x: clubFlow's { games, own, opp }) */
+function flowCell(d, x) {
+  const out = { v: null };
+  const pair = s => (d.part === 'stop' ? (s.poss ? 100 * s.stops / s.poss : null) : x.games ? s[d.part] / x.games : null);
+  const own = pair(x.own), opp = pair(x.opp);
+  out.v = own;
+  if (own == null) { out.why = 'no possession on record yet'; return out; }
+  const n = h('div', 'cst-vs');
+  const a = h('span', 'cst-vs-own'), b = h('span', 'cst-vs-opp');
+  a.append(txt('the club '), h('b', null, fmt(own, d)));
+  b.append(txt('opponents '), h('b', null, fmt(opp, d)));
+  const bar = h('span', 'cst-vs-bar');
+  if (opp != null && own + opp > 0) bar.style.setProperty('--own', (100 * own / (own + opp)).toFixed(1) + '%');
+  const more = d.part === 'stop' ? ' · ' + x.own.stops + ' of ' + x.own.poss + ' possessions'
+    : d.part === 'runs' ? ' · biggest ' + x.own.best + '-0, conceded ' + x.opp.best + '-0'
+    : ' · ' + x.own.kills + ' in all, ' + x.opp.kills + ' against';
+  n.append(a, bar, b, h('span', 'cst-vs-n', 'over ' + x.games + (x.games === 1 ? ' game' : ' games') + ' of the club’s own logs' + more +
+    ' · not ranked: the other clubs’ logs are not read here'));
+  out.note = n;
+  return out;
+}
+
 function statRow(d, S, mine, o) {
   const tr = h('tr', 'r');
   tr.dataset.k = d.k;
@@ -405,8 +439,11 @@ function statRow(d, S, mine, o) {
   th.append(h('span', 'cst-l', d.l), h('span', 'cst-sub', d.subRegular && o.split && o.split.mode === 'regular' ? d.subRegular : d.sub));
   if (d.log) {
     tr.appendChild(th);
-    const x = o.logs === undefined || (d.log === 'trio' && o.waitStarters && o.split.mode === 'regular') ? undefined : o.summary();
-    const c = x === undefined ? null : x && x.all ? logCell(d, x, o.nameOf) : { v: null, why: (x && x.why) || 'not recorded for this club' };
+    const x = d.log === 'flow' ? o.flow
+      : o.logs === undefined || (d.log === 'trio' && o.waitStarters && o.split.mode === 'regular') ? undefined : o.summary();
+    const c = x === undefined ? null
+      : d.log === 'flow' ? (x && x.own ? flowCell(d, x) : { v: null, why: (x && x.why) || 'not recorded for this club' })
+      : x && x.all ? logCell(d, x, o.nameOf) : { v: null, why: (x && x.why) || 'not recorded for this club' };
     const v = h('td', 'v' + (c && c.tone ? ' ' + c.tone : ''), x === undefined ? '…' : fmt(c.v, d));
     const n = h('td', 'cst-club');
     n.colSpan = 3;
@@ -493,7 +530,8 @@ function render(host, ctx) {
 
   const bx = h('span', 'cst-x');
   const o = { bind: ctx.bind, logs: undefined, nameOf: ctx.nameOf, pending: { bench_min_pct: !!ctx.bench }, extra: { bench_min_pct: bx },
-              split: loadSplit(), starters: null, waitStarters: !!ctx.starters };
+              split: loadSplit(), starters: null, waitStarters: !!ctx.starters,
+              flow: ctx.flow ? undefined : { why: 'not read here' } };
   /* the summary of the play-by-play under the split chosen, worked out once per choice */
   let memo = null;
   o.summary = () => {
@@ -546,7 +584,13 @@ function render(host, ctx) {
     ctl = nc;
     ['vs_start', 'vs_bench'].forEach(redraw);
   }
-  const logRows = ROWS.filter(d => d.log).map(d => d.k);
+  const logRows = ROWS.filter(d => d.log && d.log !== 'flow').map(d => d.k);
+  const flowRows = ROWS.filter(d => d.log === 'flow').map(d => d.k);
+  /* stops and runs: each game's game-flow line, the club's and its opponents', added up */
+  if (ctx.flow) {
+    Promise.resolve(ctx.flow).then(x => { o.flow = x || { why: 'not recorded for this club' }; flowRows.forEach(redraw); })
+      .catch(() => { o.flow = { why: 'the play-by-play could not be read' }; flowRows.forEach(redraw); });
+  }
 
   /* the play-by-play: the possession, heliocentrism, against the starters and the bench */
   Promise.resolve(ctx.logs).then(x => { o.logs = x || null; logRows.forEach(redraw); })
@@ -575,6 +619,6 @@ function render(host, ctx) {
   return wrap;
 }
 
-return { bench, regularStarters, splitRecs, logSummary, morey, place, band, ordinal, prepare, attachBench, render,
+return { bench, regularStarters, splitRecs, logSummary, flowCell, morey, place, band, ordinal, prepare, attachBench, render,
          loadSplit, mostStarts, SPLIT_DEFAULT, MIN_STARTS, MAX_STARTS, RATINGS, GROUPS, KEYS };
 }));

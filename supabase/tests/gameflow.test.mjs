@@ -143,6 +143,24 @@ console.log('\nkills, worked out by hand');
   const k3 = Flow.compute(K3).kills.find(x => x.teamIdx === 0);
   ok('...a fourth makes one; the away heave with a second left is no fifth', k3 && k3.stops === 4 && k3.kills === 1, JSON.stringify(Flow.compute(K3).kills.map(x => [x.teamIdx, x.stops])));
   ok('...with the home five on the floor, and counted in the summary', k[0] && k[0].lineupNames.length === 5 && F.summary.homeKills === 1 && F.summary.awayKills === 0);
+  /* A GAME'S STOPS AND RUNS (gameLine), for the season line and the box score's full stats */
+  const GL = Flow.gameLine(K);
+  ok('the game line: each side’s stops out of the other side’s possessions, its kills, its runs and its biggest run',
+     GL[0].stops === 4 && GL[0].kills === 1 && GL[0].poss === 5 && GL[1].kills === 0 && GL[0].best === F.summary.biggestHomeRun &&
+     GL[0].runs === F.teamRuns.filter(r => r.teamIdx === 0).length, JSON.stringify(GL));
+  {
+    const sl = fs.readFileSync(path.join(ROOT, 'epinoia', 't', 'seasonline.js'), 'utf8'), tj = fs.readFileSync(path.join(ROOT, 'epinoia', 't', 'team.js'), 'utf8');
+    const SL = require(path.join(ROOT, 'epinoia', 't', 'seasonline.js'));
+    const G = SL.GROUPS.find(g => g.key === 'stops');
+    ok('the club’s season line has Stops & runs: STOP%, KILLS, MOMENTUM RUNS, from its own play-by-play',
+       G && G.rows.map(r => r.k).join() === 'stop_pct,kills_pg,runs_pg' && G.rows.every(r => r.log === 'flow') &&
+       /flow: sectionLocked\('events'\) \? Promise\.resolve\(\{ why: 'for members, with the play-by-play' \}\) : clubFlow\(team, scoped\)/.test(tj) &&
+       /GF\.gameLine\(/.test(tj) && /game\/flow\.js\?v=\d+/.test(fs.readFileSync(path.join(ROOT, 'epinoia', 't', 'index.html'), 'utf8')) && /function flowCell/.test(sl));
+    const bx = fs.readFileSync(path.join(ROOT, 'epinoia', 'boxscore.js'), 'utf8');
+    ok('the box score’s full stats has a stops & runs section, from game flow where the page carries it',
+       /function stopsCard\(/.test(bx) && /stopsCard\(mirror, sec, sides, c0, c1\)/.test(bx) && /F\.gameLine\(S\)/.test(bx));
+  }
+
   /* eight stops in a row is two kills */
   const K2 = { teams: S.teams, starters: S.starters, events: [] };
   let c = 590000, z = 0;

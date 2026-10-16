@@ -1904,6 +1904,7 @@ async function teamStats(team, kind) {
       S, mine, LE: window.EpinoiaLineupEvents,
       bind: (node, d) => teamStatBind(node, d.k, d.l, S, mine, team),
       logs: sectionLocked('events') ? Promise.resolve({ why: 'for members, with the play-by-play' }) : clubLogs(team, scoped),
+      flow: sectionLocked('events') ? Promise.resolve({ why: 'for members, with the play-by-play' }) : clubFlow(team, scoped),
       starters: sectionLocked('splits') ? null : scopeStarters(scopeComps),
       bench: benchMinutes(S, team),
       nameOf: id => metaP.then(m => (m && m[id] && m[id].name && m[id].name !== 'Player') ? m[id].name : null)
@@ -2006,6 +2007,39 @@ async function clubLogs(team, scoped, logs) {
     LE.recordsOf(G, side).forEach(r => { r.oteam = oteam; recs.push(r); });
   }
   return recs.length ? { recs, games: n } : { why: 'no game with its starters on record yet' };
+}
+
+/* STOPS AND RUNS (the season line's Stops & runs rows; Louie, 2026-10-16): each game's game-flow line (game/flow.js gameLine:
+   the other side's possessions held scoreless, kills, momentum runs, the biggest run) for the club and for its opponents,
+   added up over the scope's games of the club's own logs. A game's line is kept for the page's life. */
+const flowLineCache = new Map();
+async function clubFlow(team, scoped) {
+  const GF = window.EpinoiaGameFlow;
+  if (!GF || !GF.gameLine) return { why: 'not available on this page' };
+  const { gs, byG, sideOf } = await seasonLogs(team);
+  const games = gs.filter(g => scoped.has(g.id) && (byG[g.id] || []).length);
+  if (!games.length) return { why: 'no game log in this scope yet' };
+  const z = () => ({ stops: 0, poss: 0, kills: 0, runs: 0, best: 0 });
+  const own = z(), opp = z();
+  let n = 0;
+  for (const g of games) {
+    let L = flowLineCache.get(g.id);
+    if (L === undefined) {
+      try {
+        L = GF.gameLine({ teams: (g.roster_snapshot && g.roster_snapshot.teams) || [{}, {}], starters: Array.isArray(g.starters) ? g.starters : [[], []],
+                          events: byG[g.id], status: 'final', period: g.period });
+      } catch (_) { L = null; }
+      flowLineCache.set(g.id, L);
+      await new Promise(r => setTimeout(r, 0));
+    }
+    if (!L) continue;
+    n++;
+    const s = sideOf[g.id];
+    [[own, L[s]], [opp, L[1 - s]]].forEach(([acc, x]) => {
+      acc.stops += x.stops; acc.poss += x.poss; acc.kills += x.kills; acc.runs += x.runs; acc.best = Math.max(acc.best, x.best);
+    });
+  }
+  return n ? { games: n, own, opp } : { why: 'no game log in this scope yet' };
 }
 
 /* EVERY GAME'S STARTERS IN THE SCOPE, for who counts as each club's regular starter (index_9: N games started or
