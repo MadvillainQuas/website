@@ -517,17 +517,17 @@ function artItem(it) {
 }
 /* the cover into a plate: host the plate, after the child it goes over (the brand's print) */
 function art(host, after, it, opts) {
-  newsArt().then(A => { if (A && host) A.mount(host, artItem(it), Object.assign({ after, safeTop: 0.36 }, opts || {})); }, () => { /* the print stays */ });
+  newsArt().then(A => { if (A && host) A.mount(host, artItem(it), Object.assign({ after, avoid: '.pc-badge,.pc-kind,.pc-partner', safeTop: 0.06 }, opts || {})); }, () => { /* the print stays */ });
 }
-/* a partner's card carries its pill over the plate's foot: the cover keeps its words above it */
-const cover = (host, after, it, partnered) => art(host, after, it, partnered ? { safeBottom: 0.2 } : null);
+/* the cover keeps its words clear of the plate's badge, its kind and a partner's pill, wherever they really sit (avoid) */
+const cover = (host, after, it) => art(host, after, it);
 /* a reading page's figure for a story with no picture: the cover at 16:9 under the masthead */
 function artFigure(it) {
   const fig = el('figure', 'pc-read-fig pc-read-art');
   const print = el('span', 'pc-flood');
   fig.appendChild(print);
   /* standing on its own under the masthead, the cover carries its publisher's mark and name itself */
-  art(fig, print, it, { safeTop: 0.06, chrome: true });
+  art(fig, print, it, { safeTop: 0.06, chrome: true, avoid: null });
   return fig;
 }
 

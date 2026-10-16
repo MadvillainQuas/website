@@ -71,14 +71,45 @@ ok('a match report brings its own clubs and score', f.layout === 'duel' && f.sco
   const sharks = [{ name: 'Sheffield Sharks', short: 'SHE', colour: '#1c2a5c' }, { name: 'Caledonia Gladiators', short: 'CAL', colour: '#00539f' }];
   const sum = 'The Sheffield Sharks got their season underway with a convincing 98-76 win at home against the Caledonia Gladiators.';
   const p1 = A.analyse({ title: '5 super-early predictions for the Sheffield Sharks', summary: sum, kind: 'article' }, { clubs: sharks });
-  ok('a feature about a club whose summary mentions a game: the club, its list as the strap, no score', p1.layout === 'club'
-     && p1.clubs.length === 1 && p1.clubs[0].name === 'Sheffield Sharks' && p1.score === null && A.strapOf(p1) === '5 PREDICTIONS' && p1.topic.key === 'predictions', p1);
+  ok('a list piece about a club whose summary mentions a game: the count leads (5 / SUPER-EARLY PREDICTIONS), the club its subject, no score',
+     p1.layout === 'number' && p1.club && p1.club.name === 'Sheffield Sharks' && p1.score === null && p1.number.value === '5'
+     && p1.number.phrase === 'super-early predictions' && p1.topic.key === 'predictions', p1);
   const p2 = A.analyse({ title: '5 super-early predictions for the Sheffield Sharks', summary: sum, kind: 'article' }, { clubs: [] });
   ok('...and with no clubs to find, never a duel of guesses', p2.layout === 'number' && !p2.clubs.length, p2.layout);
   const p3 = A.analyse({ title: 'Sheffield Sharks beat Caledonia Gladiators 98-76', summary: '', kind: 'article' }, { clubs: sharks });
   ok('a headline that is a result is still a duel with its score', p3.layout === 'duel' && String(p3.score) === '98,76');
   ok('a list piece counts its items: 3 takeaways, 10 storylines', A.numberOf('3 takeaways from the opener').label === 'TAKEAWAYS'
      && A.numberOf('10 storylines to watch this season').value === '10' && A.numberOf('Lions win 3 straight') !== null);
+}
+
+/* WHO LEADS THE COVER: what the headline names first (Louie, 2026-10-16: "the auto layout logic can do with a lot of work") */
+{
+  const man = [{ name: 'Manchester Basketball', short: 'MAN', colour: '#e2001a', colour2: '#1e5bb8' }];
+  const lau = A.analyse({ title: 'Caroline Lau: The Heartbeat of Manchester Basketball', kind: 'article',
+    summary: "Even with the abundance of talent at Manchester Basketball's disposal, Caroline Lau has established herself as the critical cog." }, { clubs: man });
+  ok('a person named before a club leads, in the club\'s colours with its crest beside her', lau.layout === 'name' && lau.names[0] === 'Caroline Lau'
+     && lau.club && lau.club.name === 'Manchester Basketball' && lau.palette.base === '#e2001a', lau);
+  ok('...the strap is the headline\'s own second half, never LATEST NEWS', A.strapFor(lau) === 'THE HEARTBEAT OF MANCHESTER BASKETBALL', A.strapFor(lau));
+  const go = an('Choosing to Go Bigger', 'London Lions won every domestic trophy last season. Cheshire Phoenix were second.');
+  ok('a capitalised phrase the summary never repeats is no person ("Go Bigger")', go.layout === 'club' && go.clubs[0].name === 'London Lions', go.layout);
+  const sima = an('Yankuba Sima parts ways with Valencia after one-year stint', 'Valencia and Yankuba Sima mutually terminate contract immediately');
+  ok('a player who leaves a club: the player leads, the club\'s crest beside him', sima.layout === 'name' && sima.club && sima.club.name === 'Valencia Basket');
+  const jp = A.analyse({ title: 'NBA公式Instagramがハッキング被害…“偽”暗号資産「NBAコイン」を宣伝', summary: '日本でも連日', kind: 'story', brand: { name: 'Basketball King' } }, {});
+  ok('a quotation mark alone makes no quote (a Japanese headline quoting a word)', jp.topic.key !== 'quote' && jp.layout === 'brand', jp.topic);
+  ok('...and with nothing to name and no quote, the strap is nothing rather than filler', A.strapFor(jp) === null);
+}
+/* THE SITE'S COVERS ARE SVG: vectors and real text, crisp at any size (Louie: "the text still looks a bit blurry") */
+{
+  const sv = A.svgContext(400, 250);
+  A.drawArt(sv, 400, 250, an('Valencia center reportedly moves to Germany', 'Yankuba Sima is leaving Valencia Basket.'), { clubs: [{ src: 'https://x/crest.png', width: 100, height: 100 }], brand: null }, { top: 40 });
+  const out = sv.svg();
+  ok('a cover drawn into the SVG context is an SVG of the cover\'s own size, its words as text, its crest as an image',
+     /^<svg [^>]*viewBox="0 0 400 250"/.test(out) && /<text [^>]*>VALENCIA<\/text>/.test(out) && /<image href="https:\/\/x\/crest\.png"/.test(out) && /<\/svg>$/.test(out), out.slice(0, 200));
+  ok('...every group it opens is closed', (out.match(/<g[ >]/g) || []).length === (out.match(/<\/g>/g) || []).length);
+  ok('...and words are escaped, never markup', !/<text[^>]*>[^<]*&(?!amp;|lt;|gt;|quot;)/.test(out));
+  const nc2 = src('newsart.js');
+  ok('the page mounts the cover as SVG, out of the translation, under the page\'s real badges', /svgContext\(w, h\)/.test(nc2) && /translate', 'no'/.test(nc2)
+     && /querySelectorAll\(opt\.avoid\)/.test(nc2));
 }
 
 console.log('\nthe colours');
@@ -248,7 +279,7 @@ ok('a card with no picture gets its cover, from newsart.js loaded beside newscar
 const ncss = src('kit/newscard.css');
 ok('a card with a drawn cover shows its publisher\'s badge (whose story it is), no grain over the drawing, and a partner\'s pill below the words',
    /\.pc-noimg \.pc-plate\.has-art > \.pc-badge\{display:flex\}/.test(ncss) && /\.pc-plate\.has-art > \.pc-grain\{display:none\}/.test(ncss)
-   && /partnered \? \{ safeBottom: 0\.2 \}/.test(nc) && /cover\(plate, f, it, partner\)/.test(nc) && /chrome: true/.test(nc)
+   && /avoid: '\.pc-badge,\.pc-kind,\.pc-partner'/.test(nc) && /chrome: true, avoid: null/.test(nc)
    && /\.club-plate\.has-art > \.club-grain\{display:none\}/.test(src('kit/news.css')));
 {
   /* the words stay above a partner's pill: nothing drawn in the bottom fifth but the ground */

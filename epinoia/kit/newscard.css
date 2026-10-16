@@ -334,3 +334,6 @@ a.pc-mast-brand:hover{background:rgba(0,0,0,.42)}
 .pc-noimg .pc-plate.has-art > .pc-reg.tl,.pc-noimg .pc-plate.has-art > .pc-reg.tr{display:none}
 .pc-plate.has-art > .pc-grain{display:none}
 .pc-noimg .pc-plate.has-art > .pc-partner{left:10px}
+
+/* the cover is an SVG now (newsart.js svgContext): vectors and real text, crisp at any size and zoom */
+.na-art > svg{display:block;width:100%;height:100%;pointer-events:none;user-select:none}

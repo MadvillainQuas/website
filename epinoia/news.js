@@ -210,7 +210,7 @@ function matchArt(plate, a, lg, opts) {
   K.art(plate, null, { title: a.title, summary: a.standfirst, kind: 'league', home: club('home'), away: club('away'),
                        homeScore: a.home_score, awayScore: a.away_score,
                        brand: { name: (lg && lg.name) || '', colour: (lg && lg.colour_a) || null, logo } },
-        Object.assign({ final: true, leagueMark: true, before: '.club-grain' }, opts || {}));
+        Object.assign({ final: true, leagueMark: true, before: '.club-grain', avoid: null }, opts || {}));
 }
 /* THE PLATE ON ITS OWN, for the article's head (news-page.js): a.home_* / a.away_* as news_public names them */
 function plate(a, opts) {
@@ -243,7 +243,7 @@ function card(a, opts) {
     const K = typeof window !== 'undefined' ? window.EpinoiaNewsCard : null;
     if (!a.cover_path && K && K.art) {
       K.art(plate, tone, { title: a.title, summary: a.standfirst, kind: 'league', leagues: [o.leagueSlug],
-                           brand: { name: (o.league && o.league.name) || '', colour: (o.league && o.league.colour_a) || null } }, { safeTop: 0.16 });
+                           brand: { name: (o.league && o.league.name) || '', colour: (o.league && o.league.colour_a) || null } }, { safeTop: 0.06, avoid: '.news-flag' });
     }
   }
 
