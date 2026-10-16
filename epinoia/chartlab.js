@@ -901,7 +901,8 @@ function buildChart(cfg) {
   const fs = cfg.fs || 1, uid = cfg.uid || 'c';
   const g = S('g', { 'data-chart': uid });
   const tk = 10 * fs, small = 8.5 * fs;
-  const mData = measureFn(tk, FONT.data, 400), mLab = measureFn(10.5 * fs, FONT.ui, 700), mMic = measureFn(10.5 * fs, FONT.ui, 700), mLeg = measureFn(10 * fs, FONT.ui, 600);
+  const mTag = measureFn(8.5 * fs, FONT.ui, 700);
+  const mData = measureFn(tk, FONT.ui, 500), mLab = measureFn(10.5 * fs, FONT.ui, 700), mMic = measureFn(10.5 * fs, FONT.ui, 700), mLeg = measureFn(10 * fs, FONT.ui, 600);
   const pts = D.pts, n = pts.length;
   const hi = cfg.hi || new Set(), pinned = cfg.must || new Set();
   const ovl2 = D.overlay;
@@ -966,24 +967,29 @@ function buildChart(cfg) {
   }
 
   /* ---- grid, axes, ticks (only inside the frame; the clip keeps a zoomed chart honest) ---- */
+  /* A CALMER FRAME (Louie, 2026-10-16: "more professional"): the plot on a faint panel, the horizontal lines a touch stronger
+     than the vertical ones (a scatter is read across), every number in Archivo with even-width figures, the two axes drawn once */
   const grid = S('g', { class: 'cl-grid' }); g.appendChild(grid);
+  grid.appendChild(S('rect', { x: x0, y: y0, width: pw, height: ph, fill: T.panel || T.ground, opacity: T.dark ? 0.45 : 0.7 }));
+  const tickTxt = { fill: T.ink3, 'font-size': tk, 'font-family': FONT.ui, 'font-weight': 500, style: 'font-variant-numeric:tabular-nums' };
   xt.ticks.forEach((v, i) => {
     const x = num1(X(v));
     if (x < x0 - 0.5 || x > x0 + pw + 0.5) return;
-    grid.appendChild(S('line', { x1: x, x2: x, y1: y0, y2: y0 + ph, stroke: T.rule, 'stroke-width': 1 }));
-    grid.appendChild(S('text', { x, y: y0 + ph + 5 * fs + tk, 'text-anchor': 'middle', fill: T.ink3, 'font-size': tk, 'font-family': FONT.data }, xTickStr[i]));
+    grid.appendChild(S('line', { x1: x, x2: x, y1: y0, y2: y0 + ph, stroke: T.rule, 'stroke-width': 1, opacity: 0.55 }));
+    grid.appendChild(S('text', Object.assign({ x, y: y0 + ph + 5 * fs + tk, 'text-anchor': 'middle' }, tickTxt), xTickStr[i]));
   });
   yt.ticks.forEach((v, i) => {
     const y = num1(Y(v));
     if (y < y0 - 0.5 || y > y0 + ph + 0.5) return;
-    grid.appendChild(S('line', { x1: x0, x2: x0 + pw, y1: y, y2: y, stroke: T.rule, 'stroke-width': 1 }));
-    grid.appendChild(S('text', { x: x0 - 5 * fs, y: y + tk * 0.36, 'text-anchor': 'end', fill: T.ink3, 'font-size': tk, 'font-family': FONT.data }, yTickStr[i]));
+    grid.appendChild(S('line', { x1: x0, x2: x0 + pw, y1: y, y2: y, stroke: T.rule, 'stroke-width': 1, opacity: 0.9 }));
+    grid.appendChild(S('text', Object.assign({ x: x0 - 6 * fs, y: y + tk * 0.36, 'text-anchor': 'end' }, tickTxt), yTickStr[i]));
   });
-  g.appendChild(S('line', { x1: x0, x2: x0 + pw, y1: y0 + ph, y2: y0 + ph, stroke: T.rule2, 'stroke-width': 1 }));
-  g.appendChild(S('line', { x1: x0, x2: x0, y1: y0, y2: y0 + ph, stroke: T.rule2, 'stroke-width': 1 }));
+  g.appendChild(S('line', { x1: x0, x2: x0 + pw, y1: y0 + ph, y2: y0 + ph, stroke: T.rule2, 'stroke-width': 1.2 }));
+  g.appendChild(S('line', { x1: x0, x2: x0, y1: y0, y2: y0 + ph, stroke: T.rule2, 'stroke-width': 1.2 }));
 
   /* ---- quadrants: the tint on the both-better quarter, the lines through the averages, the captions ---- */
   const cl = S('g', { 'clip-path': 'url(#' + clipId + ')' }); g.appendChild(cl);
+  const avgTags = S('g', { class: 'cl-avg', 'clip-path': 'url(#' + clipId + ')' });
   const xMid = D.xm === 'a' ? D.tx.mean : (D.xm === 'r' ? 50 : 0);
   const yMidSrc = D.overlay ? 0 : (D.ym === 'a' ? D.ty.mean : (D.ym === 'r' ? 50 : 0));
   const okMid = isNum(xMid) && isNum(yMidSrc) && (!D.xlog || xMid > 0) && (!D.ylog || yMidSrc > 0);
@@ -998,8 +1004,23 @@ function buildChart(cfg) {
   if (cfg.qd && okMid) {
     if (inX) cl.appendChild(S('line', { x1: num1(mx), x2: num1(mx), y1: y0, y2: y0 + ph, stroke: T.amber, 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }));
     if (inY) cl.appendChild(S('line', { x1: x0, x2: x0 + pw, y1: num1(my), y2: num1(my), stroke: T.amber, 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }));
-    if (inX) cl.appendChild(S('text', { x: num1(mx + 4), y: y0 + 9 * fs, fill: T.ink2, 'font-size': small, 'font-family': FONT.micro }, midLabel(D, 'x', xMid)));
-    if (inY) cl.appendChild(S('text', { x: x1 - 3, y: num1(my - 4), 'text-anchor': 'end', fill: T.ink2, 'font-size': small, 'font-family': FONT.micro }, midLabel(D, 'y', yMidSrc)));
+    /* each line's words on a small tag of the ground, ringed in the line's colour, in capitals; drawn over the dots and crests
+       (avgTags is put on after them) so a club sitting on the line never hides it */
+    const tag = (txt0, x, y, anchor) => {
+      const txt = String(txt0).toUpperCase();
+      const w = mTag(txt) + 10 * fs, hgt = small + 6 * fs, lx = anchor === 'end' ? x - w : x;
+      avgTags.appendChild(S('rect', { x: num1(lx), y: num1(y - hgt + 3 * fs), width: num1(w), height: num1(hgt), rx: num1(hgt / 2), fill: T.ground, stroke: T.amber, 'stroke-width': 1, opacity: 0.95 }));
+      avgTags.appendChild(S('text', { x: num1(lx + w / 2), y: num1(y - 0.5 * fs), 'text-anchor': 'middle', fill: T.ink2, 'font-size': small, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.06em' }, txt));
+    };
+    if (inX) tag(midLabel(D, 'x', xMid), mx + 4 * fs, y0 + 13 * fs, 'start');
+    /* the horizontal line's tag at whichever end has fewer clubs or players close by (the right end first) */
+    if (inY) {
+      const yTxt = String(midLabel(D, 'y', yMidSrc)).toUpperCase(), tw = mTag(yTxt) + 10 * fs, th = small + 6 * fs;
+      const near = (lx) => pts.filter(p => { const px = X(p.x), py = Y(p.y); return isFinite(px) && isFinite(py) && px > lx - 14 * fs && px < lx + tw + 14 * fs && Math.abs(py - (my - th / 2)) < th + 12 * fs; }).length;
+      const right = near(x1 - 4 * fs - tw), left = near(x0 + 4 * fs);
+      if (left < right) tag(yTxt, x0 + 4 * fs, my - 4 * fs, 'start'); else tag(yTxt, x1 - 4 * fs, my - 4 * fs, 'end');
+      avgTags.__ySide = left < right ? 'left' : 'right';
+    }
   }
 
   /* ---- the trend line(s) ---- */
@@ -1116,6 +1137,8 @@ function buildChart(cfg) {
     discs.appendChild(gg);
   });
 
+  g.appendChild(avgTags);
+
   /* ---- names ---- */
   const labelled = [];
   let hiddenLabels = 0, wanted = 0;
@@ -1134,11 +1157,12 @@ function buildChart(cfg) {
     wanted = items.length + tooMany;
     /* the average lines' own words and the quadrant captions are kept clear: each is offered to the placer as a row of small
        fixed markers, which no label may cover */
-    const mSm = measureFn(small, FONT.micro, 400), mCap = measureFn(9.5 * fs, FONT.ui, 700), keepOut = [];
+    const mSm = s2 => mTag(String(s2).toUpperCase()) + 10 * fs, mCap = measureFn(9.5 * fs, FONT.ui, 700), keepOut = [];
     const box = (x, y, w, hh) => keepOut.push({ x, y, w: w + 4, h: hh });
     if (cfg.qd && okMid) {
-      if (inX) box(mx + 4 - x0, 9 * fs - small, mSm(midLabel(D, 'x', xMid)), small + 3);
-      if (inY) { const w = mSm(midLabel(D, 'y', yMidSrc)); box(pw - 3 - w, my - 4 - y0 - small, w, small + 3); }
+      const th = small + 6 * fs;
+      if (inX) box(mx + 4 * fs - x0, 13 * fs - th + 3 * fs, mSm(midLabel(D, 'x', xMid)), th);
+      if (inY) { const w = mSm(midLabel(D, 'y', yMidSrc)); box(avgTags.__ySide === 'left' ? 4 * fs : pw - 4 * fs - w, my - 4 * fs - y0 - th + 3 * fs, w, th); }
     }
     if (cfg.qc && okMid) {
       const qs = quadrantTexts(D, cfg.texts);
@@ -1178,23 +1202,24 @@ function buildChart(cfg) {
   const yLabel = D.overlay ? (T_.ay || D.cy.title + ' & ' + D.cy2.title + ': z-scores') : yTitle;
   /* the Y title in the side's room under the BETTER arrow (which always sits at the top: every axis runs better-upwards), not
      centred on the whole side with that room kept clear at both ends - a large export's title was cut to "Net…" */
-  const yClear = measureFn(small, FONT.micro, 400)('better') + 18 * fs, yRoom = Math.max(50, ph - yClear - 4 * fs);
+  const yClear = measureFn(small, FONT.ui, 800)('BETTER') * 1.12 + 18 * fs, yRoom = Math.max(50, ph - yClear - 4 * fs);
   g.appendChild(S('text', ed({ transform: 'translate(' + num1(11 * fs) + ' ' + num1(y0 + yClear + yRoom / 2) + ') rotate(-90)', 'text-anchor': 'middle', fill: T.ink2, 'font-size': 10.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.03em' }, 'y'), fit(yLabel, yRoom, mMic)));
   {
     /* the direction that is better, in words and an arrow: at the foot of X, up the side of Y (both turned round for a
        lower-is-better statistic; z-scores and percentiles are already turned, so their arrows always point up and right) */
     const eff = () => false;      // every axis runs better-upwards now (flipOf)
     const xLowE = eff(D.xm, D.cx), yLowE = D.overlay ? false : eff(D.ym, D.cy);
-    const wB = measureFn(small, FONT.micro, 400)('better');
+    const wB = measureFn(small, FONT.ui, 800)('BETTER') * 1.12;       // Archivo capitals, tracked
     const tri = (x, y, dir) => S('path', { d: dir > 0 ? 'M0 -3.4L5.4 0L0 3.4Z' : 'M0 -3.4L-5.4 0L0 3.4Z', fill: T.good, transform: 'translate(' + num1(x) + ' ' + num1(y) + ') scale(' + fs + ')' });
     const bx = S('g', { class: 'cl-better' });
     const gx = S('g', { transform: 'translate(' + num1(x0 + pw) + ' ' + num1(H - 6 * fs) + ')' });
-    gx.appendChild(S('text', { x: xLowE ? 0 : -9 * fs, y: 0, 'text-anchor': 'end', fill: T.ink3, 'font-size': small, 'font-family': FONT.micro }, 'better'));
+    const betterTxt = { fill: T.good, 'font-size': small, 'font-family': FONT.ui, 'font-weight': 800, 'letter-spacing': '0.12em' };
+    gx.appendChild(S('text', Object.assign({ x: xLowE ? 0 : -9 * fs, y: 0, 'text-anchor': 'end' }, betterTxt), 'BETTER'));
     gx.appendChild(tri(xLowE ? -wB - 6 * fs : -4.5 * fs, -small * 0.36, xLowE ? -1 : 1));
     bx.appendChild(gx);
     const y0r = yLowE ? y0 + ph - 9 * fs : y0 + wB + 9 * fs;
     const gy = S('g', { transform: 'translate(' + num1(9.5 * fs) + ' ' + num1(y0r) + ') rotate(-90)' });
-    gy.appendChild(S('text', { x: 0, y: 0, 'text-anchor': 'start', fill: T.ink3, 'font-size': small, 'font-family': FONT.micro }, 'better'));
+    gy.appendChild(S('text', Object.assign({ x: 0, y: 0, 'text-anchor': 'start' }, betterTxt), 'BETTER'));
     gy.appendChild(tri(yLowE ? -4.5 * fs : wB + 4.5 * fs, -small * 0.36, yLowE ? -1 : 1));
     bx.appendChild(gy);
     g.appendChild(bx);
@@ -1379,7 +1404,7 @@ function composeExport(o) {
     svg.appendChild(t);
   };
   txt(tl, Object.assign({}, L.title, { y: L.title.y + L.title.lh * 0.12 }), { fill: theme.ink, 'font-family': "Jersey25, " + FONT.ui, 'font-weight': 400, 'letter-spacing': '0.02em' });
-  txt(sl, Object.assign({}, L.sub, { y: L.sub.y + L.sub.lh * 0.1 }), { fill: theme.ink2, 'font-family': FONT.ui, 'font-weight': 500 });
+  txt(sl, Object.assign({}, L.sub, { y: L.sub.y + L.sub.lh * 0.1 }), { fill: theme.ink3, 'font-family': FONT.ui, 'font-weight': 600, 'letter-spacing': '0.01em' });
   const crestUsed = new Set(), crestMissing = new Set();
   const fs = clamp(u * 1.1, 0.9, 1.4) * tx;
   L.charts.forEach((r, i) => {
@@ -1387,7 +1412,8 @@ function composeExport(o) {
     cfg.marks = cx / tx;                               // the marks at the chart size, whatever the words grew by
     const built = buildChart(cfg);
     const gg = S('g', { transform: 'translate(' + r.x + ' ' + r.y + ')' });
-    if (!o.transparent) gg.appendChild(S('rect', { x: 0.5, y: 0.5, width: r.w - 1, height: r.h - 1, fill: 'none', stroke: theme.rule2, 'stroke-width': 1 }));
+    /* the chart on a soft card: the panel's colour, rounded, a hairline - not a hard outline */
+    if (!o.transparent) gg.appendChild(S('rect', { x: 0.5, y: 0.5, width: r.w - 1, height: r.h - 1, rx: Math.round(10 * u), fill: theme.panel || 'none', 'fill-opacity': theme.dark ? 0.55 : 0.9, stroke: theme.rule, 'stroke-width': 1 }));
     gg.appendChild(built.g);
     svg.appendChild(gg);
   });
