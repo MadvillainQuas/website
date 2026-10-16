@@ -284,10 +284,11 @@ ok('a drop-down where a pointer can hover, a sheet from the foot of the screen o
 
 console.log('\nGO\'s own layer in the rail, and its own bar on a phone (7.9)');
 const navCss2 = rd('epinoia', 'kit', 'nav.css');
+/* nine panels since the college systems' conferences layer (2026-10-16): GO, the seventh, slides six ninths */
 ok('a seventh panel on the deck, GO\'s, sized and slid like the others',
    /const goPanel = el\('div', 'panel gopanel'\);/.test(nav) && /view === 'go'      \? goPanel/.test(nav)
    && /goPanel\.setAttribute\('aria-hidden', String\(v !== 'go'\)\)/.test(nav)
-   && /data-view="go"\] \.deck\{ transform:translateX\(-75%\)/.test(navCss2));
+   && /data-view="go"\] \.deck\{ transform:translateX\(-66\.6667%\)/.test(navCss2));
 ok('"EPINOIA GO ›" opens it and goes nowhere (a modified click is still the link); the sheet stays open',
    /goRow\.append\(el\('span', 'ic', '◎'\), goWord, el\('span', 'lgo', '›'\)\);/.test(nav)
    && /goRow\.dataset\.railMove = '1';/.test(nav) && /e\.preventDefault\(\);\s*setView\('go', true\);/.test(nav));
