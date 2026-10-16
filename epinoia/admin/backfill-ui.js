@@ -440,9 +440,10 @@ function draw(panel) {
 
     const sp = el('div', 'sp');
     /* A RUN THAT STOPPED (0266): its worker quiet for ten minutes - killed at its time limit, cancelled, lost - and the
-       request can be continued now rather than after 0135's ninety; the next run goes on from the games already written */
+       request can be continued now rather than after 0135's ninety; the next run goes on from the games already written.
+       Offered after thirty (2026-10-16): a live worker can be quiet past ten in discovery or post-processing. */
     const quiet = r.state === 'running' && r.heartbeat_at ? (Date.now() - Date.parse(r.heartbeat_at)) / 1000 : 0;
-    if (quiet > 600) {
+    if (quiet > 1800) {
       const c = el('button', 'ep-btn mini pri', 'continue from where it stopped');
       c.type = 'button';
       c.title = 'The worker has not reported for ' + Math.round(quiet / 60) + ' min: put the request back in the queue and start the worker';
@@ -469,8 +470,10 @@ function draw(panel) {
       x.type = 'button';
       x.addEventListener('click', async () => {
         x.disabled = true;
-        const { error } = await opts.sb.from('season_backfills').delete().eq('id', r.id);
+        const { data: gone, error } = await opts.sb.from('season_backfills').delete().eq('id', r.id).select('id');
         if (error) { x.disabled = false; return opts.say(error.message, 'err'); }
+        /* nothing deleted: the worker claimed it in the meantime, and only a queued row can go (2026-10-16) */
+        if (!gone || !gone.length) { opts.say('That request had already started, so it was not withdrawn.', 'err'); restart(); return; }
         opts.say('Request withdrawn.', 'ok');
         restart();
       });

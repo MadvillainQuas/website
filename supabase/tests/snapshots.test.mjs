@@ -351,6 +351,10 @@ console.log('\nseason.js version(): which code summed a season, in every name it
      && /if \(!rows\.length\) \{[\s\S]*?continue;\s*\}/.test(ev.slice(skip, up)), skip + '/' + up);
   ok('...and it is counted current (its event_files row takes the finalisation) so it is not asked again',
      /from\('event_files'\)\.upsert\(\s*\{ game_id: id, finalised_at: finalisedAt, built_at/.test(ev.slice(skip, up)));
+  /* (2026-10-16) a game public again after its file was removed has no file and no event_files row: its archive writes it */
+  const back = ev.indexOf('if (!rows.length && !held.has(id)) {');
+  ok('...unless its file was removed (no event_files row): then the log comes from its archive, before the empty-log skip',
+     back > 0 && back < skip && /const a = await D\.archive\(id\);\s*if \(a\) rows = D\.archiveLog\(a\);/.test(ev.slice(back, skip)));
 }
 
 {

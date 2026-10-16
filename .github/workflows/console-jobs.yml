@@ -154,8 +154,10 @@ jobs:
         # BACKFILL_DEADLINE (2026-10-15): a quarter of an hour before the job's 340 minutes. A season still being read then
         # stops between games and goes back in the queue (run_ingest.py out_of_time), and the step below starts the next
         # run at once - rather than the run being killed and the request waiting out its 90-minute lease.
+        # 300, not 315 (2026-10-16): this step starts after the checkout and the installs, and one source's schedule read,
+        # once begun, cannot be stopped half way - forty minutes less the setup leaves room for both.
         run: |
-          export BACKFILL_DEADLINE=$(( $(date +%s) + 315 * 60 ))
+          export BACKFILL_DEADLINE=$(( $(date +%s) + 300 * 60 ))
           for i in 1 2 3 4 5 6; do
             [ "$(date +%s)" -lt "$BACKFILL_DEADLINE" ] || { echo "out of time for this run: what is queued goes to the next"; break; }
             python -u scripts/ingest/console_kick.py --queued backfill || break

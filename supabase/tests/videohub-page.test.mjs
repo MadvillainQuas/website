@@ -27,6 +27,7 @@
 import path from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { gzipSync } from 'node:zlib';
 
 const ROOT = path.resolve(new URL('../..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 const rd = (...p) => readFileSync(path.join(ROOT, ...p), 'utf8').replace(/\r\n/g, '\n');
@@ -320,7 +321,7 @@ const LISTING = [
     video_jobs: [{ status: 'done' }] }
 ];
 
-async function bootWith({ search = '?l=bcb', listing = LISTING, access = null } = {}) {
+async function bootWith({ search = '?l=bcb', listing = LISTING, access = null, data = undefined, archived = null } = {}) {
   const ids = ['ctx', 'foot', 'fxLink', 'cover', 'picks', 'compWrap', 'teamWrap',
                'compPick', 'teamPick', 'gamePick', 'vidHost', 'accessWall'];
   const nodes = {};
@@ -344,8 +345,13 @@ async function bootWith({ search = '?l=bcb', listing = LISTING, access = null } 
     render: o => { log.renders.push(o); log.order.push('render:' + (o.game && o.game.id)); }
   };
   g.EpinoiaAccess = access;
+  g.EpinoiaData = data;
   g.fetch = async url => {
     log.urls.push(url);
+    /* an archived game (0262): no rows, no events file, the whole game gzipped in feed/archive */
+    if (archived && /\/snapshots\/events\//.test(url)) return new Response('not found', { status: 404 });
+    if (archived && /\/feed\/archive\//.test(url)) return new Response(gzipSync(Buffer.from(JSON.stringify(archived))), { status: 200 });
+    if (archived && /game_events\?/.test(url)) return { ok: true, status: 200, headers: { get: () => null }, json: async () => [] };
     const body = url.includes('leagues?slug=') ? [{ id: 'L1', slug: 'bcb', name: 'BCB' }]
       : /games\?select=id,tipoff_at/.test(url) ? listing
       : /games\?id=eq\./.test(url) ? [{ id: 'G', status: 'final', period: 4,
@@ -420,6 +426,24 @@ console.log('\nthe page boots');
   await settle();
   ok('filters that leave nothing say so rather than showing a dead picker',
      /No read game matches/.test(nodes['#vidHost'].innerHTML), nodes['#vidHost'].innerHTML);
+}
+{
+  /* AN ARCHIVED GAME'S PLAYS (0262, 2026-10-16): no rows in game_events, so the hub reads the log as the game page
+     does - the events file, the database, then the archive (data.js storedLog) - instead of offering no plays */
+  const DATA = require(path.join(ROOT, 'epinoia', 'data.js'));
+  const ARCH = { v: 2, game: 'G1', rows: [
+    { game_id: 'G1', seq: 2, t: 'shot_made', team: 1, pid: 'p2', period: 1, clock: 580000, payload: { pts: 3 }, created_at: '2026-09-12T17:32:00Z', id: 99 },
+    { game_id: 'G1', seq: 1, t: 'shot_made', team: 0, pid: 'p1', period: 1, clock: 599000, payload: { pts: 2 }, created_at: '2026-09-12T17:31:00Z', id: 98 }] };
+  const { log } = await bootWith({ data: DATA, archived: ARCH });
+  const r = log.renders[0];
+  ok('an archived game opens with its plays, from its archive, in seq order',
+     r && r.events.length === 2 && r.events[0].seq === 1 && r.events[1].pts === 3 && r.events[0].created_at === '2026-09-12T17:31:00Z',
+     JSON.stringify(r && r.events));
+  ok('...after its events file and the database were asked',
+     log.urls.some(u => /\/snapshots\/events\/G1\.json/.test(u)) && log.urls.some(u => /game_events\?game_id=eq\.G1/.test(u))
+     && log.urls.some(u => /\/feed\/archive\/G1\.json\.gz/.test(u)));
+  ok('the hub reads a final game through storedLog, a live one from the database', /D\.storedLog\(id, fromDb\)/.test(JS)
+     && /fetchLog\(row\.id, g\.status === 'final'\)/.test(JS));
 }
 {
   /* a link to one game opens that game rather than the newest */

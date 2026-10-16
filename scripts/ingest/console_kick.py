@@ -68,7 +68,7 @@ def stale(q, kind, now=None) -> list[dict]:
     cut = ((now or datetime.now(timezone.utc)) - timedelta(minutes=LEASE_MIN)).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
         rows = q.select(TABLES[kind], f"state=eq.running&or=(heartbeat_at.lt.{cut},and(heartbeat_at.is.null,claimed_at.lt.{cut}))"
-                                      "&select=id,requested_at")
+                                      "&select=id,requested_at,dispatched_at")
     except Exception:
         return []
     return [dict(r, _kind=kind, _stale=True) for r in rows or []]
@@ -122,6 +122,45 @@ def _creds(env=None) -> tuple[str | None, str | None]:
     return token, repo
 
 
+# A TOKEN THAT CAN READ IS NOT ONE THAT CAN START A RUN (2026-10-16). The lane machine has a fine-grained token in its user
+# environment (GITHUB_TOKEN, github_pat_...) with no Actions permission: it reads the repository, and GitHub answers 403 to
+# every dispatch with it. _creds() took it first and never looked at the GitHub CLI's own login (scopes repo + workflow),
+# so for as long as that variable was set the lane's two-minute kick failed every time - backfills queued from the console
+# ("not set up" there: console-kick has no secret) waited for GitHub's cron, and the mailer's cadence was not kept either.
+# Off a workflow, every token the machine has is a candidate, in order; a dispatch refused (401/403/404) tries the next,
+# and the one GitHub took is used first from then on.
+_GOOD: dict = {}
+
+
+def _tokens(env=None) -> list[str]:
+    """The tokens to try, best first: the one that last worked, the environment's, then the GitHub CLI login (off a workflow)."""
+    first, _ = _creds(env)
+    out = [t for t in (_GOOD.get("token"), first) if t]
+    if env is None and not os.environ.get("GITHUB_ACTIONS"):
+        try:
+            import subprocess
+            clean = {k: v for k, v in os.environ.items() if k not in ("GH_TOKEN", "GITHUB_TOKEN")}
+            cli = subprocess.run(["gh", "auth", "token"], env=clean, capture_output=True, text=True, timeout=15).stdout.strip()
+            if cli:
+                out.append(cli)
+        except Exception:
+            pass
+    return list(dict.fromkeys(out))
+
+
+def send_any(send, repo: str, tokens: list[str], ref: str, workflow: str) -> tuple[bool, str]:
+    """One dispatch, with each token in turn until GitHub takes one; a refusal (401/403/404) moves on, anything else stops."""
+    said = "no token"
+    for tok in tokens:
+        ok, said = send(repo, tok, ref, workflow)
+        if ok:
+            _GOOD["token"] = tok
+            return True, said
+        if not any(c in said for c in ("401", "403", "404")):
+            break
+    return False, said
+
+
 def dispatch(repo: str, token: str, ref: str = "main", workflow: str = WORKFLOW, opener=None) -> tuple[bool, str]:
     """One workflow_dispatch. GitHub answers 204 with no body when the run is created."""
     req = urllib.request.Request(
@@ -146,7 +185,8 @@ def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill"
     try:
         e = env if env is not None else os.environ
         token, repo = _creds(env)
-        if not (q and token and repo):
+        tokens = _tokens(env)
+        if not (q and tokens and repo):
             return "not set up"
         rows = queued(q, kinds)
         t = time.time() if now is None else now
@@ -162,7 +202,7 @@ def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill"
             if any(x is not None and t - x < KICK_AGAIN_S for x in (_at(r.get("dispatched_at")) for r in mine)):
                 why.append("already started")
                 continue
-            ok, said = send(repo, token, e.get("CONSOLE_JOBS_REF") or "main", workflow)
+            ok, said = send_any(send, repo, tokens, e.get("CONSOLE_JOBS_REF") or "main", workflow)
             if not ok:
                 why.append("dispatch failed: " + said)
                 continue
@@ -170,7 +210,10 @@ def kick(q, env=None, now: float | None = None, send=dispatch, kinds=("backfill"
                 ids = [r["id"] for r in mine if r["_kind"] == kind]
                 if ids:
                     try:
-                        q.patch(TABLES[kind], f"id=in.({','.join(ids)})&state=eq.queued", {"dispatched_at": stamp})
+                        # a stale running row is stamped too (2026-10-16): unstamped, it was started again every two
+                        # minutes while another backfill held the worker, each new run cancelling the one waiting
+                        q.patch(TABLES[kind], f"id=in.({','.join(ids)})&" + ("state=in.(queued,running)" if kind in LEASED else "state=eq.queued"),
+                                {"dispatched_at": stamp})
                     except Exception:
                         pass        # before 0217: started all the same, just not noted
             started += len(mine)
@@ -192,8 +235,10 @@ def mail_cadence(env=None, now: float | None = None, send=dispatch, opener=None)
     try:
         e = env if env is not None else os.environ
         token, repo = _creds(env)
-        if not (token and repo):
+        tokens = _tokens(env)
+        if not (tokens and repo):
             return "not set up"
+        token = tokens[0]
         req = urllib.request.Request(
             f"https://api.github.com/repos/{repo}/actions/workflows/{REPORT_WORKFLOW}/runs?per_page=1",
             headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
@@ -204,7 +249,7 @@ def mail_cadence(env=None, now: float | None = None, send=dispatch, opener=None)
         last = _at(runs[0].get("created_at")) if runs else None
         if last is not None and t - last < MAIL_EVERY_S:
             return "mailer ran recently"
-        ok, said = send(repo, token, e.get("CONSOLE_JOBS_REF") or "main", REPORT_WORKFLOW)
+        ok, said = send_any(send, repo, tokens, e.get("CONSOLE_JOBS_REF") or "main", REPORT_WORKFLOW)
         return "started the mailer" if ok else "dispatch failed: " + said
     except Exception as exc:
         return f"mail cadence failed: {exc}"[:200]

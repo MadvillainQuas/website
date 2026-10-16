@@ -96,7 +96,7 @@ said = K.kick(q, env=dict(ENV, CONSOLE_JOBS_REF="claude/x"), now=NOW, send=send)
 ok("a queued request nobody has started is started once, on the branch asked for, with the token",
    said.startswith("started the worker for 3") and calls == [("owner/site", "ghs_x", "claude/x")], (said, calls))
 ok("...and every queued row of both kinds says when", sorted((t, qq) for t, qq, _ in q.patches) ==
-   [("league_resets", "id=in.(r1)&state=eq.queued"), ("season_backfills", "id=in.(b1,b2)&state=eq.queued")] and
+   [("league_resets", "id=in.(r1)&state=in.(queued,running)"), ("season_backfills", "id=in.(b1,b2)&state=in.(queued,running)")] and
    all(b == {"dispatched_at": iso(NOW)} for _, _, b in q.patches), q.patches)
 
 send, calls = sender()
@@ -131,8 +131,8 @@ three = Q(backfills=[{"id": "b1"}], resets=[{"id": "r1"}], reports=[{"id": "q1",
 said = K.kick(three, env=ENV, now=NOW, send=send)
 ok("a backfill, a reset and two report requests: console-jobs.yml once and report-mail.yml once, every row noted",
    said.startswith("started the worker for 4") and sorted(send.flows) == ["console-jobs.yml", "report-mail.yml"] and
-   sorted((t, qq) for t, qq, _ in three.patches) == [("league_resets", "id=in.(r1)&state=eq.queued"), ("report_mail_requests", "id=in.(q1,q2)&state=eq.queued"),
-                                                    ("season_backfills", "id=in.(b1)&state=eq.queued")], (said, send.flows, three.patches))
+   sorted((t, qq) for t, qq, _ in three.patches) == [("league_resets", "id=in.(r1)&state=in.(queued,running)"), ("report_mail_requests", "id=in.(q1,q2)&state=eq.queued"),
+                                                    ("season_backfills", "id=in.(b1)&state=in.(queued,running)")], (said, send.flows, three.patches))
 
 send, calls = sender()
 judged = Q(backfills=[{"id": "b1", "dispatched_at": None}], reports=[{"id": "q1", "requested_at": iso(NOW - 300), "dispatched_at": iso(NOW - 60)}])
@@ -325,10 +325,70 @@ R._BEAT = {"q": pq, "id": "job", "at": 0}
 R.backfill_requeue(pq, {"id": "b1", "season": "2026"}, 41, 675)
 ok("out of time, the request goes back in the queue (only while still running), its line saying what is left",
    pq.patches == [("season_backfills", "id=eq.b1&state=eq.running", {"state": "queued", "worker": None, "claimed_at": None, "heartbeat_at": None,
-                                                                   "step": "41 game(s) still to read: a new run goes on from here"})] and R._BEAT is None, pq.patches)
+                                                                   "step": "41 game(s) still to read: a new run goes on from here",
+                                                                   "games_written": 675})] and R._BEAT is None, pq.patches)
+SRC_N = SRC.replace("\r\n", "\n")
 ok("...the pass stops between games and between sources, and is put back rather than closed",
-   'if out_of_time():\n                    tot["paused"] = len(todo) - g_i' in SRC.replace("\r\n", "\n") and 'if tot.get("paused"):\n            break' in SRC.replace("\r\n", "\n") and
-   'if job and tot.get("paused"):\n        backfill_requeue(queue, job, tot["paused"], tot["written"])\n    elif job:' in SRC.replace("\r\n", "\n"))
+   'if out_of_time():\n                    tot["paused"] = len(todo) - g_i' in SRC_N and 'if tot.get("paused"):\n            break' in SRC_N and
+   'if job and tot.get("paused"):\n        backfill_requeue(queue, job, tot["paused"], tot["written"], tot.get("paused_what") or "game(s)")\n    elif job:' in SRC_N)
+
+print("\nchained runs, a request put back under a live worker, and the lease's own clock (2026-10-16)")
+pq2 = Patches()
+R._BEAT = {"q": pq2, "id": "job", "at": 0}
+R.backfill_requeue(pq2, {"id": "b2", "season": "2026", "games_written": 653}, 10, 40)
+ok("the games written so far go back with the request: 653 before + 40 now = 693 on the row",
+   pq2.patches and pq2.patches[0][2]["games_written"] == 693, pq2.patches)
+
+
+class Closing:
+    """a queue whose row is in a given state, recording what is asked of it"""
+    def __init__(self, state="running", worker="gha:1"):
+        self.state, self.worker, self.calls = state, worker, []
+
+    def select(self, table, query):
+        return [{"state": self.state, "worker": self.worker}]
+
+    def rpc(self, fn, body=None):
+        self.calls.append((fn, body))
+
+
+cq = Closing()
+R._BEAT = {"q": cq, "id": "job", "at": 0}
+R.backfill_finish(cq, {"id": "b3", "season": "2026", "games_written": 653, "worker": "gha:1"}, "done", 1, 716, 63, None)
+ok("the run that finishes adds its own to the runs before: 653 + 63 = 716 written, not 63",
+   cq.calls and cq.calls[0][0] == "finish_season_backfill" and cq.calls[0][1]["p_written"] == 716 and R._BEAT is None, cq.calls)
+for state, worker, why in (("queued", None, "put back in the queue (the console's continue)"),
+                           ("running", "gha:2", "taken by the next run meanwhile")):
+    cq2 = Closing(state, worker)
+    R._BEAT = {"q": cq2, "id": "job", "at": 0}
+    R.backfill_finish(cq2, {"id": "b4", "season": "2026", "worker": "gha:1"}, "done", 1, 10, 10, None)
+    ok(f"a request {why} is not closed by the run that lost it", cq2.calls == [] and R._BEAT is None, cq2.calls)
+ok("the deadline is asked before each source too, not only between games",
+   'if job and src_i and out_of_time():\n            tot["paused"], tot["paused_what"] = len(sources) - src_i, "source(s)"' in SRC_N)
+ok("...and the sweeps wait for the next run when this one stopped for time",
+   'not (job and tot.get("paused")):\n        colour_sweep(sb)' in SRC_N)
+
+beats = []
+
+
+class Beats:
+    def rpc(self, fn, body=None):
+        beats.append(fn)
+
+
+real_sb = R.Supabase
+R.Supabase = lambda url, key: Beats()
+R._BEAT = {"q": Beats(), "id": "job-k", "at": time.time()}
+R.keepalive("u", "k", "job-k", every=1)
+time.sleep(3.5)
+n_running = len(beats)
+R._BEAT = None
+time.sleep(1.5)
+n_after = len(beats)
+time.sleep(1.5)
+R.Supabase = real_sb
+ok("the lease's own clock says 'still here' while the claim is held", n_running >= 1 and set(beats) == {"heartbeat_season_backfill"}, beats)
+ok("...and stops once the request is put back or closed", len(beats) == n_after, (n_after, len(beats)))
 
 # 2026-10-15: a worker killed at its time limit left NBL1 2026 "running" for hours; --queued said no every run
 print("\nthe lease that ran out")
@@ -387,7 +447,7 @@ try:
            f"console_kick.py --kick {name}" in last["run"] and last["env"].get("GH_TOKEN") == "${{ github.token }}")
     take = next(s for s in jobs["backfill"]["steps"] if s.get("name") == "Take every queued season backfill")["run"]
     ok("backfill: the deadline is a quarter of an hour before the job's limit, and no new season is taken past it",
-       "export BACKFILL_DEADLINE=$(( $(date +%s) + 315 * 60 ))" in take and '[ "$(date +%s)" -lt "$BACKFILL_DEADLINE" ] || {' in take and
+       "export BACKFILL_DEADLINE=$(( $(date +%s) + 300 * 60 ))" in take and '[ "$(date +%s)" -lt "$BACKFILL_DEADLINE" ] || {' in take and
        jobs["backfill"]["timeout-minutes"] >= 330)
     ok("the workflow may start itself (actions: write), and the cron stays as the floor",
        d["permissions"].get("actions") == "write" and d[True]["schedule"][0]["cron"] == "7-57/10 * * * *")
@@ -423,6 +483,30 @@ ok("no token: nothing, and no error", K.mail_cadence({}, NOW, fake, _runs(None))
 ok("a failed dispatch is said, not raised", K.mail_cadence(ENV, NOW, lambda *a: (False, "HTTP 403"), _runs(None)) == "dispatch failed: HTTP 403")
 ok("the live lane calls it beside the console's kick", "console_kick.mail_cadence()" in open(os.path.join(ROOT, "scripts", "ingest", "run_ingest.py"), encoding="utf-8").read())
 
+
+print("\na token that can read but not start a run (2026-10-16: the lane machine's github_pat_ got 403 on every dispatch)")
+K._GOOD.clear()
+tried = []
+def picky(repo, token, ref, workflow):
+    tried.append(token)
+    return (True, "HTTP 204") if token == "cli" else (False, "HTTP 403")
+ok("refused with the first token, taken with the next", K.send_any(picky, "o/r", ["pat", "cli"], "main", "console-jobs.yml") == (True, "HTTP 204")
+   and tried == ["pat", "cli"])
+tried.clear()
+ok("...and the one GitHub took goes first from then on", K._tokens({"GITHUB_TOKEN": "pat", "GITHUB_REPOSITORY": "o/r"})[0] == "cli")
+K.send_any(picky, "o/r", K._tokens({"GITHUB_TOKEN": "pat", "GITHUB_REPOSITORY": "o/r"}), "main", "console-jobs.yml")
+ok("...so the refused one is not asked again", tried == ["cli"], tried)
+K._GOOD.clear()
+tried.clear()
+ok("a network blip stops there: not a reason to try another token",
+   K.send_any(lambda *a: (tried.append(a[1]) or (False, "timed out")), "o/r", ["a", "b"], "main", "w") == (False, "timed out") and tried == ["a"])
+ok("every token refused: the last refusal is said", K.send_any(lambda *a: (False, "HTTP 403"), "o/r", ["a", "b"], "main", "w") == (False, "HTTP 403"))
+ok("in a test (env given) only that env's token is a candidate - the machine's gh login is never asked",
+   K._tokens({"GH_TOKEN": "x", "GITHUB_REPOSITORY": "o/r"}) == ["x"] and K._tokens({}) == [])
+src_k = open(os.path.join(ROOT, "scripts", "ingest", "console_kick.py"), encoding="utf-8").read()
+ok("the kick and the mailer's cadence both dispatch through send_any",
+   src_k.count("send_any(send, repo, tokens,") == 2 and "if not (q and tokens and repo):" in src_k)
+K._GOOD.clear()
 
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

@@ -208,9 +208,15 @@ class Supabase:
         r = self._again(lambda: self.s.post(f"{self.url}/rest/v1/{table}?on_conflict={on_conflict}", headers=h, json=rows, timeout=60))
         self._ok(r); return True
 
-    def patch(self, table: str, query: str, body: dict):
-        r = self._again(lambda: self.s.patch(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, json=body, timeout=30))
-        self._ok(r); return r.json() if r.text else None
+    def patch(self, table: str, query: str, body: dict, returning: bool = False):
+        """`returning`: the rows the filter actually changed come back (a list, empty when it matched nothing) - for a
+        write that must know it took (archive.py marks a game, then deletes only if the mark landed)."""
+        h = dict(self.h, Prefer="return=representation") if returning else self.h
+        r = self._again(lambda: self.s.patch(f"{self.url}/rest/v1/{table}?{query}", headers=h, json=body, timeout=30))
+        self._ok(r)
+        if returning:
+            return r.json() if r.text else []
+        return r.json() if r.text else None
 
     def delete(self, table: str, query: str):
         r = self.s.delete(f"{self.url}/rest/v1/{table}?{query}", headers=self.h, timeout=60)
@@ -1220,6 +1226,27 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
         elif cur and cur[0].get("status") == "final" and will_translate:
             # marked final without a scored log (an earlier run inserted it closed) → reopen it
             n_ev = sb.select("game_events", f"game_id=eq.{game_id}&select=seq&limit=1")
+            # AN ARCHIVED GAME HAS NO ROWS BECAUSE THEY ARE IN ITS FILE, NOT BECAUSE IT WAS NEVER SCORED (2026-10-16). It went
+            # down "no log: reopen" on any read of its feed, refresh or not, and was written in full from the payload - every
+            # play's wall stamp and created_at (what places it in a video) lost, then archived over its old file, and a feed
+            # that had gone back to "live" was never caught (that check asked for rows). Now: left as it is unless a --refresh
+            # asks for it, never from a feed that is no longer final, and when it is rewritten its rows are put back from the
+            # archive first, so the rewrite below is the ordinary one - from the first play that differs, stamps carried.
+            archived = bool(cur[0].get("archived_at")) and not n_ev
+            if archived and (not REFRESH["on"] or b.status != "final"):
+                if REFRESH["on"]:
+                    print(f"    = left archived: the feed says {b.status} now, not final - a refresh would rewrite the game from less")
+                if extra:
+                    sb.patch("games", f"id=eq.{game_id}", extra)
+                return False
+            if archived:
+                try:
+                    import archive as AR                        # here, not at the top: archive.py imports this module
+                    AR.restore_game(sb, AR.Store(sb.url, sb.key), game_id, log=print, reclose=False)
+                    n_ev = sb.select("game_events", f"game_id=eq.{game_id}&select=seq&limit=1")
+                    cur[0]["archived_at"] = None
+                except Exception as exc:                        # no archive file: the payload is all there is
+                    print(f"    (could not restore it from its archive first - written from the feed alone: {str(exc)[:160]})")
             if n_ev and REFRESH["on"] and b.status != "final":
                 # A FEED THAT NO LONGER SAYS FINAL IS NOT A BETTER COPY (2026-10-14). A scorer's laptop can upload an
                 # older state after the game: BCB's Falkirk Fury v Nottingham Hoods read final 85-118 on the feed on 28
@@ -1238,9 +1265,9 @@ def write_platform(sb: Supabase, src: dict, b: GameBundle, run: dict, observed: 
                 # events), so a corrected translation - the players re-resolved by identity.py after the slot-cache
                 # fault - could never replace the wrong one, and finalise-game refuses a game that is already final.
                 # Reopened, the log is rewritten from the first play that differs and finalise-game rebuilds the box.
-                # AN ARCHIVED GAME (0262) has no rows because they are in its archive file, and is written in full again
-                # from this payload: archived_at is cleared in the same write, which is the one change 0262's guard lets
-                # through, and finalise-game then rebuilds it from the new log as for any reopened game
+                # AN ARCHIVED GAME (0262) has had its rows put back above; one whose archive could not be read is written in
+                # full again from this payload: archived_at is cleared in the same write, which is the one change 0262's
+                # guard lets through, and finalise-game then rebuilds it from the new log as for any reopened game
                 sb.patch("games", f"id=eq.{game_id}", {"status": "live", **scores, **extra,
                                                        **({"archived_at": None} if cur[0].get("archived_at") else {})})
                 if n_ev:
@@ -1897,6 +1924,10 @@ def archive_on_final(sb: Supabase, game_id: str) -> str | None:
         import archive as AR                                    # here, not at the top: archive.py imports this module
         g = sb.select("games", f"id=eq.{game_id}&select=id,status,finalised_at,archived_at,home_team_id,away_team_id,competition_id")
         if not g or g[0].get("status") != "final" or g[0].get("archived_at"):
+            return None
+        # a members-only or private league's game never goes in the public buckets - due_games' rule, which this path
+        # skipped (2026-10-16): it keeps its rows
+        if game_id not in AR.public_ids(sb.url, [game_id]):
             return None
         what = AR.archive_game(sb, AR.Store(sb.url, sb.key), g[0], log=print)
         print(f"    = archived on final ({what})")
@@ -3252,6 +3283,7 @@ def backfill_claim(args) -> tuple[dict | None, "Supabase | None"]:
         if job:
             print(f"claimed backfill {job['id']} - {job['season']}")
             _BEAT = {"q": q, "id": job["id"], "at": time.time()}
+            keepalive(url, key, job["id"])
             # the console's first word from the worker, with a link to this run's log
             run = os.environ.get("GITHUB_RUN_ID")
             log = (f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run}"
@@ -3346,18 +3378,61 @@ def backfill_is_current(season) -> bool:
     return s == season_name_for()
 
 
-def backfill_requeue(q: "Supabase | None", job: dict, left: int, written: int) -> None:
-    """Out of time (out_of_time): the request goes back in the queue, said on its line, for the next run to go on with."""
+# THE LEASE IS KEPT BY A CLOCK OF ITS OWN (2026-10-16). beat() is called between games and at each new step, but a
+# worker can go a long while between two calls - one adapter's discover() of a big season, the tidying after a source,
+# the colour and link sweeps - and the console offers "continue from where it stopped" on a request not heard from for
+# 10 minutes (0266). Pressed on a worker that was only busy, the request went back in the queue under it: its progress
+# stopped landing, and its finish then closed a row the next run was about to take. A thread now says "still here" every
+# two minutes for as long as the claim is held; a run that is killed stops it, and the 90-minute lease does the rest.
+KEEPALIVE_S = 120
+
+
+def keepalive(url: str, key: str, job_id: str, every: float = KEEPALIVE_S) -> None:
+    import threading
+
+    def run():
+        c = Supabase(url, key)                    # its own client: a session is not shared between threads
+        last = time.time()
+        while _BEAT is not None and _BEAT.get("id") == job_id:
+            time.sleep(1)
+            if time.time() - last < every:
+                continue
+            last = time.time()
+            try:
+                c.rpc("heartbeat_season_backfill", {"p_id": job_id})
+            except Exception:
+                pass
+    threading.Thread(target=run, name="backfill-keepalive", daemon=True).start()
+
+
+def still_ours(q: "Supabase | None", job: dict) -> bool:
+    """Is the request still this run's - running, under this worker? Put back in the queue meanwhile (the console's
+    "continue", or a lease that ran out), it is the next run's to close, not this one's."""
+    if not q or job.get("_dry"):
+        return True
+    try:
+        r = q.select("season_backfills", f"id=eq.{job['id']}&select=state,worker")
+    except Exception:
+        return True                               # cannot tell: close it, as before
+    return bool(r) and r[0].get("state") == "running" and (not job.get("worker") or r[0].get("worker") == job.get("worker"))
+
+
+def backfill_requeue(q: "Supabase | None", job: dict, left: int, written: int, what: str = "game(s)") -> None:
+    """Out of time (out_of_time): the request goes back in the queue, said on its line, for the next run to go on with.
+    THE COUNT GOES WITH IT (2026-10-16): the games written so far are kept on the row, and the run that finishes adds its
+    own - NBL1 2026 ended on "63 of 716 written" after 653 had been written by the run before."""
     global _BEAT
     _BEAT = None
-    step = f"{left} game(s) still to read: a new run goes on from here"
-    line = f"backfill {job['season']} put back in the queue: {written} written in this run, {left} game(s) left"
+    so_far = int(job.get("games_written") or 0) + int(written or 0)
+    step = f"{left} {what} still to read: a new run goes on from here"
+    line = f"backfill {job['season']} put back in the queue: {written} written in this run ({so_far} in all), {left} {what} left"
     if not q or job.get("_dry"):
         print("[dry] " + line)
         return
     try:
         q.patch("season_backfills", f"id=eq.{job['id']}&state=eq.running",
-                {"state": "queued", "worker": None, "claimed_at": None, "heartbeat_at": None, "step": step})
+                {"state": "queued", "worker": None, "claimed_at": None, "heartbeat_at": None, "step": step,
+                 "games_written": so_far})
         print(line)
     except Exception as exc:
         print(f"(could not put the backfill back in the queue - the lease will, in 90 minutes: {exc})")
@@ -3368,10 +3443,15 @@ def backfill_finish(q: "Supabase | None", job: dict, state: str, sources_run: in
     """Close the queued row. Always called - a pass that threw still has to say so, because a row
     left on `running` blocks its league's season until the 90-minute lease expires."""
     global _BEAT
+    ours = still_ours(q, job)
     _BEAT = None
+    written = int(job.get("games_written") or 0) + int(written or 0)          # this run's, on top of the runs before it
     line = f"backfill {job['season']} {state}: {sources_run} source(s), {seen} seen, {written} written" + (f" - {error}" if error else "")
     if not q or job.get("_dry"):
         print("[dry] " + line)
+        return
+    if not ours:
+        print(f"backfill {job['season']}: put back in the queue while this run read it - left for the next run to close ({line})")
         return
     try:
         q.rpc("finish_season_backfill", {"p_id": job["id"], "p_state": state, "p_sources": sources_run,
@@ -3533,6 +3613,13 @@ def main() -> int:
             break                                # out of time: the rest is the next run's (out_of_time)
         adapter = get_adapter(src["adapter"])
         sfeed = repo_feed_of(src, feed)          # None for a source kept out of git (repo_feed: false)
+        # OUT OF TIME BEFORE A SOURCE IS BEGUN (2026-10-16): the check was only between games, so a source begun just
+        # before the deadline read its whole schedule and wrote its fixtures (716 for NBL1) and the run was killed before
+        # its first game - the request left "running" for the 90-minute lease, the thing the deadline exists to prevent
+        if job and src_i and out_of_time():
+            tot["paused"], tot["paused_what"] = len(sources) - src_i, "source(s)"
+            print(f"   out of time for this run: {len(sources) - src_i} source(s) left - back in the queue")
+            break
         run = {"source_id": src.get("id"), "worker": f"gha:{worker}", "games_seen": 0, "games_fetched": 0, "games_written": 0}
         run_id = None
         if sb and src.get("id"):
@@ -3718,6 +3805,10 @@ def main() -> int:
             for g in games:
                 if job and fixtures and (g.tipoff_at or g.home_name) and not (entries.get(g.external_id) or {}).get("hash"):
                     fx_i += 1
+                    if out_of_time():                # the fixtures are re-checked by the next run; its games are this one's left
+                        tot["paused"] = max(1, len(todo))
+                        print(f"   out of time while writing fixtures ({fx_i - 1} of {len(fixtures)}) - back in the queue")
+                        break
                     # THE FIXTURES, COUNTED (2026-10-15): 716 of them took NBL1 2026 a long while with the line unmoved
                     beat(100.0 * src_i / max(1, len(sources)), f"{label}: writing fixture {fx_i} of {len(fixtures)} ({job['season']})",
                          extra={"phase": "fixtures", "fixtures": len(fixtures), "fixtures_done": fx_i})
@@ -3739,11 +3830,17 @@ def main() -> int:
                 print(f"   {len(fixtures)} fixture(s) checked, {wrote} changed on the schedule")
             live_set = []
             t_games, last_game = time.time(), None
-            for g_i, g in enumerate(todo):
+            # A RUN READS AT MOST --max-games; A SEASON MAY HAVE MORE (2026-10-16). The rest were never read and the request
+            # said "done". Now what the cap left is counted, and the request goes back in the queue for it - if this run
+            # wrote anything (a season whose every game stays unreadable must not go round for ever).
+            if job and len(ready) > len(todo):
+                tot["more"] = tot.get("more", 0) + len(ready) - len(todo)
+            for g_i, g in enumerate(todo if not tot.get("paused") else []):
                 if out_of_time():
                     tot["paused"] = len(todo) - g_i
                     print(f"   out of time for this run: {len(todo) - g_i} game(s) left - back in the queue, the next run goes on from here")
                     break
+                tot["tried"] = tot.get("tried", 0) + 1
                 # a backfill's bar: each source an equal share, each game read a step through it. WITH THE DETAIL the
                 # platform console's BACKFILL WORKER tab shows (2026-10-15): the games read and left, written, failed,
                 # the pace and the time left on this source, and the last game written
@@ -3766,6 +3863,9 @@ def main() -> int:
                     fails["n"] += 1; fails["first"] = fails["first"] or f"{g.external_id}: {exc}"
                     continue
                 if not b:
+                    # NOTHING CAME BACK (a purged box score, a 403/404): counted, so a season whose every game is like
+                    # this is not "done" with nothing written (2026-10-16)
+                    tot["unavailable"] = tot.get("unavailable", 0) + 1
                     continue
                 run["games_fetched"] += 1
                 beat()                      # a backfill's lease, kept alive through a long season
@@ -3793,14 +3893,27 @@ def main() -> int:
                 if sfeed:
                     sfeed.write_game(src["code"], b)
                 entries[g.external_id] = entry
+                landed = True
                 if sb:
+                    # WRITTEN MEANS ON THE PLATFORM (2026-10-16): a write that threw, or one that could not place the game
+                    # (an unmatched club, no league), was counted as written - a season could end "done, 182 written" with
+                    # none of them on the site
+                    # (a backfill's count only: on an ordinary pass False is also a repo-feed source with no league, whose
+                    # games are written and followed live all the same)
                     try:
-                        write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every), venue=(g.extra or {}).get("venue"),
-                                       from_schedule=not (args.ids or args.catch_up or args.live_only))
+                        said = write_platform(sb, src, b, run, discovery_observed(b, t_obs, args.live_every), venue=(g.extra or {}).get("venue"),
+                                              from_schedule=not (args.ids or args.catch_up or args.live_only))
+                        landed = not (job and said is False)
                     except Exception as exc:
                         print(f"    (platform write failed: {exc})")
+                        if job:
+                            landed = False
+                            fails["n"] += 1; fails["first"] = fails["first"] or f"{g.external_id}: platform write failed: {exc}"
                 if args.fixture_out:
                     write_test_fixture(Path(args.fixture_out), src, b)
+                if not landed:
+                    tot["unwritten"] = tot.get("unwritten", 0) + 1
+                    continue
                 run["games_written"] += 1
                 if b.status == "live":
                     live_set.append(g)
@@ -3863,7 +3976,8 @@ def main() -> int:
                     print(f"   (competition format: {exc})")
             if not args.dry_run:
                 # a club entered in a competition with no game in it, once the schedule is clearly complete, is out of that season
-                if sb and not args.live_only:
+                # (not on a run that stopped for time: its schedule was not all written, and the time is the next run's)
+                if sb and not args.live_only and not tot.get("paused"):
                     try:
                         prune_empty_entries(sb, {c for c, _ in (run.get("_entered") or set())}, run)
                     except Exception as exc:
@@ -3883,7 +3997,7 @@ def main() -> int:
                     except Exception as exc:
                         print(f"    (feed_competitions upsert failed: {exc})")
                 # a gated league is judged on its finished games: none with minutes or a substitution -> dropped
-                if sb and rotationgate.gated(src):
+                if sb and rotationgate.gated(src) and not tot.get("paused"):
                     try:
                         said = rotationgate.judge(sb, src, gate_json)
                         if said:
@@ -3912,14 +4026,19 @@ def main() -> int:
             print(f"   done in {time.time() - t0:.1f}s - seen {run['games_seen']}, fetched {run['games_fetched']}, written {run['games_written']}")
     if repair is not None:
         return repair_report(sb, repair["games"], args.dry_run, args.strict, exit_code)
-    # crests read above -> colours, once for the whole pass (see colour_sweep)
-    if sb and not args.dry_run and not args.ids and not args.catch_up:
+    # a run that read what --max-games allowed and wrote something goes on in the next run, like one out of time
+    if job and not tot.get("paused") and tot.get("more") and tot["written"]:
+        tot["paused"] = tot["more"]
+        print(f"   {tot['more']} game(s) past this run's --max-games - back in the queue for them")
+    # crests read above -> colours, once for the whole pass (see colour_sweep) - not on a backfill run that has stopped
+    # for time: the request goes back in the queue first, while there is time to (the next run sweeps)
+    if sb and not args.dry_run and not args.ids and not args.catch_up and not (job and tot.get("paused")):
         colour_sweep(sb)
         link_sweep(sb)
     # the queued row is closed whatever happened: `running` left behind is a league whose season
     # nobody can ask for again until the lease expires
     if job and tot.get("paused"):
-        backfill_requeue(queue, job, tot["paused"], tot["written"])
+        backfill_requeue(queue, job, tot["paused"], tot["written"], tot.get("paused_what") or "game(s)")
     elif job:
         state, error = ("failed" if exit_code else "done"), tot["error"]
         if not exit_code and not tot["seen"]:
@@ -3941,6 +4060,14 @@ def main() -> int:
                 state = "failed"
                 error = (f"read {tot['written']} games, but " + ", ".join(p["label"] for p in empty) +
                          " came back with no games - its schedule could not be read this time; ask for the season again")
+            elif (tot.get("tried") and not (tot["written"] + int(job.get("games_written") or 0))
+                  and (tot.get("unavailable") or tot.get("unwritten") or bad)):
+                # NOTHING LANDED IS NOT "DONE" (2026-10-16): every game read came back empty (a source that has purged the
+                # season's box scores, a 403) or could not be placed on the platform, and the request said "filled in"
+                state = "failed"
+                error = (f"nothing could be written: of the {tot['tried']} game(s) read, {tot.get('unavailable', 0)} came back empty "
+                         f"from the source, {tot.get('unwritten', 0)} could not be placed (an unmatched club?), {bad} failed"
+                         " (games already on the site were left as they were)")
             elif bad > max(2, tot["seen"] // 50):
                 first = next((p["first"] for p in per if p["first"]), "")
                 state = "failed"
@@ -3950,7 +4077,10 @@ def main() -> int:
         # A SEASON THAT IS OVER GOES STRAIGHT INTO THE ARCHIVE TIER (0262, archive.py): its lines, stints and tables stay,
         # its play-by-play rows become files - which every page already reads - so history costs the database a fifth
         # of what it did. Only what was read cleanly, and never the season being played.
-        if sb and not args.dry_run and tot["written"] and not backfill_is_current(job["season"]):
+        # (done only, and only its own league: a failed league lookup left no slug, and due_games(None, season) is every
+        # league's games of that season name - 2026-10-16)
+        if (sb and not args.dry_run and tot["written"] and state == "done" and job.get("league_slug")
+                and not backfill_is_current(job["season"])):
             try:
                 import archive as AR
                 todo = AR.due_games(sb, job.get("league_slug"), job["season"], 0)

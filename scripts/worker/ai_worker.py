@@ -449,7 +449,14 @@ def load_pbp(src):
     if re.match(r'^https?://', src):
         r = requests.get(src, timeout=60)
         r.raise_for_status()
+        if src.split('?', 1)[0].endswith('.gz'):   # a raw feed archived gzipped beside itself (0262), as pbp_for_game reads it
+            import gzip
+            return json.loads(gzip.decompress(r.content))
         return r.json()
+    if src.endswith('.gz'):
+        import gzip
+        with gzip.open(src, 'rt', encoding='utf-8') as f:
+            return json.load(f)
     with io.open(src, encoding='utf-8') as f:
         return json.load(f)
 

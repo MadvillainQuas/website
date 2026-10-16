@@ -35,9 +35,10 @@ class FakeSB:
     def __init__(self, rows):
         self.url, self.key = "https://db.example", "k"
         self.rows = list(rows)
-        self.games = {"g1": {"id": "g1", "finalised_at": "2025-03-01T20:00:00+00:00", "archived_at": None,
+        self.games = {"g1": {"id": "g1", "status": "final", "finalised_at": "2025-03-01T20:00:00+00:00", "archived_at": None,
                              "home_team_id": "t1", "away_team_id": "t2", "competition_id": "c1"}}
         self.deleted, self.patched, self.upserted = [], [], []
+        self.on_select_games = None              # a hook: something happening to the game between two reads
 
     def select(self, table, q):
         if table == "game_events":
@@ -47,7 +48,11 @@ class FakeSB:
             out = [r for r in self.rows if after is None or r["seq"] > after]
             return out[:1000]
         if table == "games":
+            if self.on_select_games:
+                self.on_select_games(self)
             return [dict(self.games["g1"])]
+        if table == "players":
+            return [{"id": "p1", "first_name": "A", "consent_guardian": "A Parent", "consent_by": "u1"}]
         if table == "player_game_stats":
             return [{"game_id": "g1", "player_id": "p1", "team_idx": 0, "stats": {"pts": 10}}]
         if table == "competitions":
@@ -58,10 +63,19 @@ class FakeSB:
             return []
         return [{"table": table}]
 
-    def patch(self, table, q, body):
+    def patch(self, table, q, body, returning=False):
+        """the database's own rules, as 0262's guard and PostgREST's filters apply them"""
         self.patched.append((table, q, body))
-        if table == "games" and "archived_at" in body:
-            self.games["g1"]["archived_at"] = body["archived_at"]
+        if table != "games":
+            return [] if returning else None
+        g = self.games["g1"]
+        if ("status=eq.final" in q and g["status"] != "final") or ("archived_at=is.null" in q and g["archived_at"]):
+            return [] if returning else None
+        new = dict(g, **body)
+        if g["archived_at"] and new["archived_at"] and new["status"] != g["status"]:
+            raise RuntimeError("55000 game is archived")                       # games_archive_guard
+        g.update(new)
+        return [dict(g)] if returning else None
 
     def delete(self, table, q):
         self.deleted.append((table, q))
@@ -71,6 +85,15 @@ class FakeSB:
     def upsert(self, table, rows, on):
         self.upserted.append((table, rows if isinstance(rows, list) else [rows]))
         if table == "game_events":
+            self.insert(table, rows)
+
+    def insert(self, table, rows):
+        if table == "game_events":
+            if self.games["g1"]["status"] in ("final", "void"):
+                raise RuntimeError("game g1 is final - reopen it before scoring")     # 0001 reject_events_when_final
+            seqs = {r["seq"] for r in self.rows}
+            if any(r["seq"] in seqs for r in rows):
+                raise RuntimeError("duplicate key (game_id, seq)")
             self.rows = sorted(self.rows + list(rows), key=lambda r: r["seq"])
 
 
@@ -133,10 +156,59 @@ sb4, st4 = FakeSB(LOG), FakeStore(plain=json.dumps(stale).encode())
 A.archive_game(sb4, st4, sb4.games["g1"], log=lambda *a: None)
 ok("one that differs from the database is written from it", len(json.loads(st4.files[st4.public("snapshots", "events/g1.json")])["rows"]) == 1200)
 
-print("\n-- restored exactly")
+print("\n-- what a signed-out reader may not read stays out of the public archive (2026-10-16)")
+ok("no fan's prediction rows", "game_predictions" not in arc["page"])
+ok("...and no guardian's name or consent account on a player", arc["meta"]["players"] and all(
+   "consent_guardian" not in p and "consent_by" not in p for p in arc["meta"]["players"]) and arc["meta"]["players"][0]["first_name"] == "A")
+
+print("\n-- restored exactly (a final game takes no rows: it is opened, filled and closed again - 2026-10-16)")
 n = A.restore_game(sb, st, "g1", log=lambda *a: None)
 ok("every row back, as stored", n == 1200 and sb.rows == LOG, (n, len(sb.rows)))
-ok("...and the game is an ordinary one again", sb.games["g1"]["archived_at"] is None)
+ok("...and the game is an ordinary one again: not archived, final as it was", sb.games["g1"]["archived_at"] is None
+   and sb.games["g1"]["status"] == "final")
+ok("...its box score untouched (nothing deleted on the way)", sb.deleted == [("game_events", "game_id=eq.g1")])
+ok("a second restore puts nothing in twice", A.restore_game(sb, st, "g1", log=lambda *a: None) == 0 and sb.rows == LOG)
+half = FakeSB(LOG[:400])
+half.games["g1"].update(status="live", archived_at=None)          # a restore that stopped half way
+ok("one that stopped half way is finished: only the missing rows go in",
+   A.restore_game(half, st, "g1", log=lambda *a: None) == 800 and half.rows == LOG and half.games["g1"]["status"] == "live")
+sb6, st6 = FakeSB(LOG), FakeStore()
+A.archive_game(sb6, st6, sb6.games["g1"], log=lambda *a: None)
+A.restore_game(sb6, st6, "g1", log=lambda *a: None, reclose=False)
+ok("reclose=False (the ingest about to rewrite it): left live, rows back", sb6.games["g1"]["status"] == "live" and len(sb6.rows) == 1200)
+
+print("\n-- two archivers, or a reopen, at the same game (2026-10-16)")
+
+
+def archived_meanwhile(db):
+    if db.rows and not db.games["g1"]["archived_at"]:
+        db.games["g1"]["archived_at"] = "2026-10-16T02:00:00+00:00"   # the other run: marked, deleting
+        db.rows = db.rows[:1000]
+        db.on_select_games = None
+
+
+sb7, st7 = FakeSB(LOG), FakeStore()
+sb7.on_select_games = archived_meanwhile
+ok("archived by another run while this one read: skipped, neither file written", A.archive_game(sb7, st7, sb7.games["g1"], log=lambda *a: None)
+   == "skipped" and not st7.files and not sb7.deleted)
+sb8, st8 = FakeSB(LOG), FakeStore()
+real_put = st8.put
+
+
+def reopen_during_upload(bucket, path, data, ct, cache="3600"):
+    if path.endswith(".gz"):
+        sb8.games["g1"]["status"] = "live"                     # a --refresh reopened it while the archive was uploading
+    return real_put(bucket, path, data, ct, cache)
+
+
+st8.put = reopen_during_upload
+ok("reopened while the archive uploaded: the mark does not land, and nothing is deleted",
+   A.archive_game(sb8, st8, sb8.games["g1"], log=lambda *a: None) == "skipped" and not sb8.deleted and len(sb8.rows) == 1200
+   and sb8.games["g1"]["archived_at"] is None)
+sb9 = FakeSB(LOG)
+sb9.games["g1"]["status"] = "live"
+ok("a game no longer final when the archiver reaches it: skipped", A.archive_game(sb9, FakeStore(), sb9.games["g1"], log=lambda *a: None) == "skipped"
+   and not sb9.deleted)
 
 print("\n-- a game with no log has nothing to move")
 sb5, st5 = FakeSB([]), FakeStore()
@@ -181,8 +253,9 @@ class GameRow:
 
 
 moved = []
-real_archive = A.archive_game
+real_archive, real_public = A.archive_game, A.public_ids
 A.archive_game = lambda sb, store, game, dry=False, log=print: (moved.append(game["id"]), "archived")[1]
+A.public_ids = lambda url, ids: set(ids) - {"g5"}
 R._HAS_ARCHIVED["v"] = True
 ok("a final game, not yet archived: archived at once", R.archive_on_final(GameRow({"id": "g9", "status": "final", "archived_at": None}), "g9")
    == "archived" and moved == ["g9"], moved)
@@ -190,11 +263,13 @@ ok("...one already archived is left alone", R.archive_on_final(GameRow({"id": "g
    is None and moved == ["g9"])
 ok("...and one that did not reach final (a finalise that failed) too", R.archive_on_final(GameRow({"id": "g7", "status": "live", "archived_at": None}), "g7")
    is None and moved == ["g9"])
+ok("...and a members-only or private league's game is never put in the public buckets (2026-10-16)",
+   R.archive_on_final(GameRow({"id": "g5", "status": "final", "archived_at": None}), "g5") is None and moved == ["g9"])
 R._HAS_ARCHIVED["v"] = False
 db = GameRow({"id": "g6", "status": "final", "archived_at": None})
 ok("a database without 0262: nothing is tried, not even a read", R.archive_on_final(db, "g6") is None and db.asked == [])
 R._HAS_ARCHIVED["v"] = None
-A.archive_game = real_archive
+A.archive_game, A.public_ids = real_archive, real_public
 
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

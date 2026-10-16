@@ -251,7 +251,7 @@ Deno.serve(async (req) => {
      adds the creator of an ad-hoc game). Both are asked as the CALLER. A
      failed call leaves data null, which is a refusal, not a pass. */
   const { data: allowed } = await (isWorker ? admin : caller).from('games')
-    .select('id,status,competition_id').eq('id', gameId).maybeSingle();
+    .select('id,status,competition_id,archived_at').eq('id', gameId).maybeSingle();
   if (!allowed) return json({ error: 'not your game' }, 403);
   if (!isWorker) {
     const [{ data: scorer }, { data: manager }] = await Promise.all([
@@ -264,13 +264,24 @@ Deno.serve(async (req) => {
   // --------------------------------------------------------------- reopen ---
   if (reopen) {
     if (allowed.status !== 'final') return json({ error: 'game is not final' }, 409);
+    /* AN ARCHIVED GAME IS REFUSED BEFORE ANYTHING GOES (2026-10-16): 0262's trigger refuses the status change
+       below, and a reopen that went on regardless wiped the box score and still said ok. */
+    if (allowed.archived_at) {
+      return json({ error: 'this game is archived', detail: 'its play-by-play is in feed/archive/' + gameId +
+        '.json.gz - restore it first (python scripts/ingest/archive.py --worker-config --restore ' + gameId +
+        ') and then reopen it' }, 409);
+    }
     await admin.from('player_game_stats').delete().eq('game_id', gameId);
     await admin.from('team_game_stats').delete().eq('game_id', gameId);
     await admin.from('lineup_stints').delete().eq('game_id', gameId);
     /* the What wins line goes with the box score: a re-finalise writes it again with a later finalised_at, so the
        model builder reads the corrected game as a new one (an error here is not worth failing a reopen over) */
     await admin.from('game_features').delete().eq('game_id', gameId);
-    await admin.from('games').update({ status: 'live', finalised_at: null, finalised_by: null }).eq('id', gameId);
+    const { error: reopenErr } = await admin.from('games')
+      .update({ status: 'live', finalised_at: null, finalised_by: null }).eq('id', gameId);
+    // the box score has gone by now, so a refused update is said out loud: finalising it again rebuilds the lines
+    if (reopenErr) return json({ error: 'the game could not be reopened', detail: reopenErr.message +
+      ' - its box score was cleared; finalise it again to rebuild it' }, 500);
     await admin.from('audit_log').insert({ actor: user.id, action: 'reopen', subject: 'game', subject_id: gameId });
     /* The table counts final games only, so a reopened one has to leave it
        until it is finalised again, which rebuilds it once more. Not fatal: the

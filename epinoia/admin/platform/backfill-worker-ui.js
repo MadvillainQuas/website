@@ -44,8 +44,9 @@ const nameOf = id => (BYID.get(id) || {}).name || 'a league';
    90 minutes without a word. Past five minutes the tab says so, plainly. */
 const QUIET_S = 300;
 /* CONTINUED BY HAND (0266 resume_season_backfill): a request its worker has not spoken for in ten minutes can be put back in
-   the queue at once, rather than after 0135's ninety; the next run goes on from the games already written */
-const RESUME_S = 600;
+   the queue at once, rather than after 0135's ninety; the next run goes on from the games already written. Offered after
+   thirty, not the database's ten (2026-10-16): a live worker can be quiet that long in discovery or post-processing. */
+const RESUME_S = 1800;
 
 /* WHAT THE WORKER IS DOING, AS LINES (pure, for the test): from a running row's step and detail */
 function details(r, now) {
@@ -222,7 +223,7 @@ function drawNow(running, queued, counts) {
     const q = r.heartbeat_at ? (Date.now() - Date.parse(r.heartbeat_at)) / 1000 : 0;
     if (q > QUIET_S) card.appendChild(el('p', 'bfw-cov', 'The worker has not reported for ' + span(q) + '. It may have stopped: ' +
       '90 minutes after its last word the request goes back in the queue by itself, and the next run goes on from the games already written.' +
-      (q > RESUME_S ? ' Or continue it now:' : ' After ten minutes of silence it can be continued from here.')));
+      (q > RESUME_S ? ' Or continue it now:' : ' After thirty minutes of silence it can be continued from here.')));
     if (q > RESUME_S) card.appendChild(btn('continue from where it stopped', 'mini pri', e => resume(r, e.target)));
     box.appendChild(card);
   });
@@ -247,8 +248,10 @@ function drawQueue(queued) {
     row.appendChild(mid);
     row.appendChild(btn('cancel', 'mini', async e => {
       e.target.disabled = true;
-      const { error } = await sb.from('season_backfills').delete().eq('id', r.id).eq('state', 'queued');
+      const { data: gone, error } = await sb.from('season_backfills').delete().eq('id', r.id).eq('state', 'queued').select('id');
       if (error) { e.target.disabled = false; return oops(error); }
+      /* nothing deleted: the worker claimed it in the meantime (only a queued row can go) - 2026-10-16 */
+      if (!gone || !gone.length) { say(nameOf(r.league_id) + ' ' + r.season + ' had already started - not withdrawn.', 'err'); restart(); return; }
       say(nameOf(r.league_id) + ' ' + r.season + ': withdrawn.', 'ok');
       restart();
     }));

@@ -131,11 +131,13 @@ const EVENT_LANES = +(datajs.match(/const EVENT_LANES = (\d+);/) || [])[1];
 const EVENT_PAGE = +(datajs.match(/const EVENT_PAGE = (\d+);/) || [])[1];
 const eventsSrc = lift(datajs, 'async function gameLog(id)') + '\n' +
                   lift(datajs, 'async function fileLog(id)') + '\n' +
+                  lift(datajs, 'async function storedLog(id, readDb)') + '\n' +
                   lift(datajs, 'async function events(gameIds, opts)');
-/* the CDN, for the files of 0156: none unless a test puts one there */
+/* the CDN, for the files of 0156: none unless a test puts one there (and no archive, 0262: archive() answers null) */
 const noFiles = async () => ({ ok: false, status: 400, json: async () => ({ error: 'not_found' }) });
-const makeEvents = (get, cdn = noFiles) => new Function('get', 'EVENT_PAGE', 'EVENT_LANES', 'CFG', 'fetch',
-  eventsSrc + '\nreturn events;')(get, EVENT_PAGE, EVENT_LANES, () => ({ supabaseUrl: 'https://abcref.supabase.co' }), cdn);
+const makeEvents = (get, cdn = noFiles) => new Function('get', 'EVENT_PAGE', 'EVENT_LANES', 'CFG', 'fetch', 'archive', 'archiveLog',
+  eventsSrc + '\nreturn events;')(get, EVENT_PAGE, EVENT_LANES, () => ({ supabaseUrl: 'https://abcref.supabase.co' }), cdn,
+  async () => null, a => a.rows);
 
 function fakeLogs(sizes, failOn) {
   const calls = [];

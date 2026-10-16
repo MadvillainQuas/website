@@ -984,7 +984,7 @@ async function gameLog(id) {
 
 /* the file's rows, or null for anything but a file that names this game. AN ARCHIVED GAME (0262) has the same file;
    when it does not (a file removed, a reader's network refusing it) its archive answers instead - the same rows, from
-   the whole game held gzipped at feed/archive/<id>.json.gz */
+   the whole game held gzipped at feed/archive/<id>.json.gz - but only once the database has none (storedLog). */
 async function fileLog(id) {
   try {
     const c = CFG();
@@ -993,9 +993,21 @@ async function fileLog(id) {
       const j = await r.json();
       if (j && j.game === id && Array.isArray(j.rows)) return j.rows;
     }
-  } catch (_) { /* the archive, below */ }
+  } catch (_) { /* the database, then the archive */ }
+  return null;
+}
+
+/* A FINISHED GAME'S LOG, WHEREVER IT IS: the file, else the database (readDb, gameLog by default), else - the database
+   holding none - the archive. The archive only after the database (2026-10-16): a restored game (archive.py --restore
+   keeps its archive) has its rows back and its file removed while it is live, and the archive is the log before it was
+   rewritten. A caller that has already read the database for this game passes readDb = () => []. */
+async function storedLog(id, readDb) {
+  const f = await fileLog(id);
+  if (f) return f;
+  const rows = await (readDb ? readDb() : gameLog(id));
+  if (rows && rows.length) return rows;
   const a = await archive(id);
-  return a ? archiveLog(a) : null;
+  return a ? archiveLog(a) : (rows || []);
 }
 
 /* ---- THE ARCHIVE TIER (0262, scripts/ingest/archive.py) ----
@@ -1039,7 +1051,7 @@ async function events(gameIds, opts) {
   const lane = async () => {
     while (next < ids.length) {
       const i = next++;
-      try { logs[i] = (files && await fileLog(ids[i])) || await gameLog(ids[i]); } catch (e) { next = ids.length; throw e; }
+      try { logs[i] = files ? await storedLog(ids[i]) : await gameLog(ids[i]); } catch (e) { next = ids.length; throw e; }
     }
   };
   await Promise.all(Array.from({ length: Math.min(EVENT_LANES, ids.length) }, lane));
@@ -1178,7 +1190,7 @@ function pickSeason(seasons, ref) {
          seasons[0];
 }
 
-return { get, all, season, teamGames, TEAM_LINE_SELECT, statsForGames, stints, events, gameLog, archive, archiveLog, posFiles, playerMeta, teamMeta,
+return { get, all, season, teamGames, TEAM_LINE_SELECT, statsForGames, stints, events, gameLog, fileLog, storedLog, archive, archiveLog, posFiles, playerMeta, teamMeta,
          releases, context, pickSeason, PLAYER_STAT_KEYS, untrim, seasonToken, snapFile, attachSit, sitLines,
          pack, unpack, packMap, unpackMap, packSeason, unpackSeason, BIG_GAMES, gamesIn, seasonUnits, latestSeason: bigSeason };
 }));

@@ -41,10 +41,14 @@ ok('...once per page: asked again, it is not fetched again', (await D.archive(G)
 const log = D.archiveLog(a);
 ok("its log in the pages' columns, in seq order", log.length === 1200 && log[0].seq === 1 && log[1199].seq === 1200
    && Object.keys(log[0]).sort().join() === 'clock,created_at,game_id,payload,period,pid,seq,t,team');
-const ev = await D.events([G]);
+asked.length = 0;
+const D1 = (() => { delete require.cache[require.resolve(path.join(ROOT, 'epinoia/data.js'))]; return require(path.join(ROOT, 'epinoia/data.js')); })();
+const ev = await D1.events([G]);
 const flat = Array.isArray(ev[0]) ? ev[0] : ev;
 ok('events() with no event file: the archive answers, every row', flat.length === 1200 && flat[0].seq === 1, String(flat.length));
-ok('...and the database is never asked for its (absent) rows', !asked.some(u => u.includes('/rest/v1/game_events')));
+/* (2026-10-16) the database is asked before the archive: a restored game has its rows back and its archive still there */
+const iDb = asked.findIndex(u => u.includes('/rest/v1/game_events')), iArc = asked.findIndex(u => u.includes('/feed/archive/'));
+ok('...the archive only after the database came back with none', iDb >= 0 && iArc > iDb, iDb + '/' + iArc);
 
 console.log('\nwith the event file there, nothing changes');
 plainThere = true; asked.length = 0;
@@ -54,6 +58,30 @@ const flat2 = Array.isArray(ev2[0]) ? ev2[0] : ev2;
 ok('the file is read, as before', flat2.length === 1200 && asked.some(u => u.includes('/snapshots/events/')));
 ok('...and the archive is not fetched at all', !asked.some(u => u.includes('/feed/archive/')));
 ok('the same rows either way', JSON.stringify(flat2.map(r => [r.seq, r.t, r.team, r.pid, r.clock])) === JSON.stringify(flat.map(r => [r.seq, r.t, r.team, r.pid, r.clock])));
+
+/* A RESTORED GAME (archive.py --restore keeps the archive): live again, rows back in the database, its file removed.
+   Its log is the database's, never the archive's copy from before it was rewritten (2026-10-16). */
+console.log('\na restored game, being rewritten');
+plainThere = false; asked.length = 0;
+dbRows = [{ game_id: G, seq: 1, t: 'period_start', team: null, pid: null, period: 1, clock: 600000, payload: {}, created_at: '2026-10-16T10:00:00+00:00' }];
+const D3 = (() => { delete require.cache[require.resolve(path.join(ROOT, 'epinoia/data.js'))]; return require(path.join(ROOT, 'epinoia/data.js')); })();
+const ev3 = await D3.events([G]);
+const flat3 = Array.isArray(ev3[0]) ? ev3[0] : ev3;
+ok("the database's rows, not the archive's", flat3.length === 1 && flat3[0].t === 'period_start', String(flat3.length));
+ok('...and the archive is not fetched', !asked.some(u => u.includes('/feed/archive/')));
+
+/* REOPENING AN ARCHIVED GAME (finalise-game, 2026-10-16): 0262's trigger refuses the status change, and the reopen used
+   to delete the box score first and then say ok. It is refused before anything is deleted, and a failed update is said. */
+console.log('\nfinalise-game reopen and an archived game');
+const { readFileSync } = await import('node:fs');
+const FG = readFileSync(path.join(ROOT, 'supabase/functions/finalise-game/index.ts'), 'utf8');
+const ro = FG.slice(FG.indexOf('if (reopen) {'), FG.indexOf("if (allowed.status === 'final') return json({ error: 'already final' }"));
+const refuse = ro.indexOf('if (allowed.archived_at) {'), firstDelete = ro.indexOf(".delete().eq('game_id', gameId)");
+ok('the game is read with archived_at', /\.select\('id,status,competition_id,archived_at'\)/.test(FG));
+ok('an archived game is refused (409, restore it first) before any delete', refuse > 0 && firstDelete > refuse
+   && /archive\.py --worker-config --restore/.test(ro.slice(refuse, firstDelete)) && /, 409\);/.test(ro.slice(refuse, firstDelete)));
+ok("...and the games update's error is checked, not ignored", /const \{ error: reopenErr \} = await admin\.from\('games'\)/.test(ro)
+   && /if \(reopenErr\) return json\(/.test(ro));
 
 console.log(`\n${PASS} passed, ${FAIL} failed`);
 process.exit(FAIL ? 1 : 0);

@@ -91,5 +91,32 @@ ok("...and YouTube is not asked about streams of other clubs", asked == [], aske
 s = A.score_title("Elan Chalon v Manchester Basketball 30.09.26", "Elan Chalon", "Manchester Basketball", TIP, "2026-10-01T14:43:00+00:00")
 ok("a title dated another day is still judged by its date", s < 1.6, s)
 
+print("\n-- an archived game keeps its anchor (0262, 2026-10-16)")
+
+
+class _Sb:
+    def __init__(self, events):
+        self.events, self.patched = events, []
+
+    def select(self, table, q):
+        if table == "game_videos":
+            return [{"id": "v1", "video_ref": "fZ7i53g-FOY", "stream_started_at": "2026-10-07T17:55:00+00:00",
+                     "tip_at": "2026-10-07T18:02:00+00:00", "tip_wall": None, "channel_ref": FIBA}]
+        return self.events if table == "game_events" else []
+
+    def patch(self, table, q, body):
+        self.patched.append(body)
+
+
+WATCH["fZ7i53g-FOY"]["started_at"] = "2026-10-07T17:55:00+00:00"
+sb = _Sb([])
+A.complete(sb, "G", log=lambda *a: None)
+ok("no rows in game_events (its log is in feed/archive): tip_at is not withdrawn",
+   not any("tip_at" in p for p in sb.patched), sb.patched)
+sb = _Sb([{"seq": 1, "payload": {}, "period": 1, "clock": 600000, "created_at": "2026-10-07T18:02:00+00:00"}])
+A.complete(sb, "G", log=lambda *a: None)
+ok("...a log that is there and was not written live still withdraws it",
+   any(p.get("tip_at", "x") is None for p in sb.patched), sb.patched)
+
 print(f"\n{n['ok']} passed, {n['bad']} failed")
 sys.exit(1 if n["bad"] else 0)

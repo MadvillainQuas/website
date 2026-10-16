@@ -488,6 +488,14 @@ def log_is_timed(sb, game_id: str) -> bool:
     return (t1 - t0).total_seconds() * 1000 >= played * 0.6
 
 
+def has_log(sb, game_id: str) -> bool:
+    """Whether game_events holds any of the game's rows. An archived game (0262) has none; a failed read says no."""
+    try:
+        return bool(sb.select("game_events", f"game_id=eq.{game_id}&select=seq&limit=1"))
+    except Exception:
+        return False
+
+
 def tip_instant(sb, game_id: str) -> tuple[str | None, int | None]:
     """(tip_at iso, tip_wall ms): the first period_start's poll stamp; else, only for a log that was
     written live, that row's insert time; else nothing — the offset is then a person's (or the
@@ -623,7 +631,9 @@ def complete(sb, game_id: str, log=print) -> bool:
         tip_at, tip_wall = tip_instant(sb, game_id)
         if tip_wall:
             patch["tip_at"] = tip_at; patch["tip_wall"] = tip_wall
-        elif not tip_at:
+        elif not tip_at and has_log(sb, game_id):
+            # (2026-10-16) only a log that is THERE and fails the test withdraws it: an archived game (0262) has
+            # no rows in game_events, and its log being in feed/archive says nothing about the anchor
             patch["tip_at"] = None
     if not patch:
         return False

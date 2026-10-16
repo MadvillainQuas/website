@@ -179,5 +179,18 @@ L.LnbBrAdapter._schedule_at, L.LnbBrAdapter._season_ids = {}, {}
 print("\n-- the NBL")
 ok("2024-25 is the NBL's 2024, 2025 NBL1's 2025", (N.NblAdapter._year({"season": "2024-25"}, False), N.NblAdapter._year({"season": "2025"}, True)) == (2024, 2025))
 
+print("\n-- what a backfill counts as done (2026-10-16)")
+RI = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "run_ingest.py"), encoding="utf-8").read().replace("\r\n", "\n")
+ok("a game the source sends nothing for is counted, not passed over",
+   'tot["unavailable"] = tot.get("unavailable", 0) + 1\n                    continue' in RI)
+ok("a write that threw, or could not place the game, is not 'written' on a backfill",
+   "landed = not (job and said is False)" in RI and 'tot["unwritten"] = tot.get("unwritten", 0) + 1' in RI)
+ok("nothing landed (and nothing from the runs before) is failed, with what came back",
+   'not (tot["written"] + int(job.get("games_written") or 0))' in RI and 'error = (f"nothing could be written: of the' in RI)
+ok("a run cut at --max-games that wrote something is put back for the rest",
+   'if job and not tot.get("paused") and tot.get("more") and tot["written"]:' in RI)
+ok("the season is archived only when it was done, and only its own league's games",
+   'tot["written"] and state == "done" and job.get("league_slug")' in RI)
+
 print("\n%d passed, %d failed" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

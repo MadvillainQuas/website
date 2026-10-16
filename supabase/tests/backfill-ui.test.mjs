@@ -278,10 +278,15 @@ console.log('\ncontinue a backfill that stopped (0266 resume_season_backfill)');
   const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), 'utf8');
   const sql = read('supabase', 'migrations', '0266_resume_season_backfill.sql');
   const W = read('epinoia', 'admin', 'platform', 'backfill-worker-ui.js'), P = read('epinoia', 'admin', 'backfill-ui.js');
-  ok('both panels offer "continue from where it stopped" on a request quiet for ten minutes, through resume_season_backfill, then start the worker',
-     /const RESUME_S = 600;/.test(W) && /if \(q > RESUME_S\) card\.appendChild\(btn\('continue from where it stopped'/.test(W) &&
-     /sb\.rpc\('resume_season_backfill', \{ p_id: r\.id \}\)/.test(W) && /if \(quiet > 600\)/.test(P) && /opts\.sb\.rpc\('resume_season_backfill', \{ p_id: r\.id \}\)/.test(P) &&
+  /* thirty minutes in the panels (2026-10-16), the database's ten as the floor: a live worker can be quiet past ten */
+  ok('both panels offer "continue from where it stopped" on a request quiet for thirty minutes, through resume_season_backfill, then start the worker',
+     /const RESUME_S = 1800;/.test(W) && /if \(q > RESUME_S\) card\.appendChild\(btn\('continue from where it stopped'/.test(W) &&
+     /sb\.rpc\('resume_season_backfill', \{ p_id: r\.id \}\)/.test(W) && /if \(quiet > 1800\)/.test(P) && /opts\.sb\.rpc\('resume_season_backfill', \{ p_id: r\.id \}\)/.test(P) &&
      /heartbeat_at,finished_at/.test(P));
+  /* WITHDRAWN ONLY WHEN SOMETHING WENT (2026-10-16): a request the worker claimed meanwhile deletes nothing, and said "withdrawn" */
+  ok('both panels ask for the deleted row back, and say it had already started when none came back',
+     /\.delete\(\)\.eq\('id', r\.id\)\.eq\('state', 'queued'\)\.select\('id'\)/.test(W) && /if \(!gone \|\| !gone\.length\) \{[^}]*had already started/.test(W) &&
+     /\.delete\(\)\.eq\('id', r\.id\)\.select\('id'\)/.test(P) && /if \(!gone \|\| !gone\.length\) \{[^}]*had already started/.test(P));
   ok('...and before 0266 they say so, and that the request comes back by itself after 90 minutes',
      /Continuing by hand needs migration 0266/.test(W) && /Continuing by hand needs migration 0266/.test(P));
   let PGlite;

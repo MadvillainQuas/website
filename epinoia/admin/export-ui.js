@@ -270,6 +270,25 @@ function mount(opts) {
         step('event log — this is the slow one…');
         events = await pageAll(sb, 'game_events',
           'game_id,seq,t,team,pid,period,clock,payload', inGames, ['game_id', 'seq']);
+        /* AN ARCHIVED GAME (0262) HAS NO ROWS (2026-10-16): its log is its events file, else its archive (data.js
+           storedLog, the database already read). Asked only for the final games that came back with none. */
+        const D = globalThis.EpinoiaData;
+        const have = new Set(events.map(e => e.game_id));
+        const missing = games.filter(g => g.status === 'final' && !have.has(g.id)).map(g => g.id);
+        if (missing.length && D && D.storedLog) {
+          step('event log — ' + missing.length + ' archived game(s)…');
+          const logs = new Array(missing.length);
+          let next = 0;
+          const lane = async () => {
+            while (next < missing.length) {
+              const i = next++;
+              try { logs[i] = await D.storedLog(missing[i], () => []); } catch (_) { logs[i] = []; }
+            }
+          };
+          await Promise.all(Array.from({ length: Math.min(6, missing.length) }, lane));
+          logs.flat().forEach(r => events.push({ game_id: r.game_id, seq: r.seq, t: r.t, team: r.team, pid: r.pid,
+            period: r.period, clock: r.clock, payload: r.payload }));
+        }
       }
 
       const base = slug(season.name) + '-export';

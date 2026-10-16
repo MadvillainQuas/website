@@ -63,9 +63,14 @@ PAGE_TABLES = [
     ("game_features",     "game_id=eq.{id}",  "*"),
     ("game_officials",    "game_id=eq.{id}",  "*"),
     ("game_videos",       "game_id=eq.{id}",  "*"),
-    ("game_predictions",  "game_id=eq.{id}",  "*"),
     ("external_games",    "game_id=eq.{id}",  "*"),
 ]
+# THE ARCHIVE IS PUBLIC, SO IT HOLDS ONLY WHAT A SIGNED-OUT READER MAY READ (2026-10-16). It is written with the service key
+# into the public feed bucket. game_predictions (each fan's own pick and user id - no select for anon at all) was copied in
+# whole: none of the 2,125 games archived by then had a pick, but NCAA and U SPORTS games are archived the moment they are
+# final, picks and all. The page shows the tally (extra.prediction_tally), never the rows, so the table is not taken. And the
+# two players columns 0171 withholds from anon (a guardian's name, the account that recorded consent) are taken out.
+WITHHELD = {"players": ("consent_guardian", "consent_by")}
 # EVERY PLAYER THE GAME NAMES: its roster as it stood that night (games.roster_snapshot, which the page draws from),
 # and anybody with a line
 def _player_ids(page: dict) -> set:
@@ -160,7 +165,8 @@ def bundle_for(sb, game: dict, rows: list[dict]) -> dict:
     meta: dict = {}
     for table, col, ids_of in META:
         ids = sorted(x for x in ids_of(page) if x)
-        meta[table] = sb.select(table, f"{col}=in.({','.join(ids)})&select=*") if ids else []
+        got = sb.select(table, f"{col}=in.({','.join(ids)})&select=*") if ids else []
+        meta[table] = [{k: v for k, v in r.items() if k not in WITHHELD.get(table, ())} for r in got]
     comp = (meta.get("competitions") or [{}])[0]
     if comp.get("season_id"):
         meta["seasons"] = sb.select("seasons", f"id=eq.{comp['season_id']}&select=*")
@@ -211,6 +217,14 @@ def archive_game(sb, store: Store, game: dict, dry: bool = False, log=print) -> 
     rows = read_log(sb, gid)
     if not rows:
         return "no-log"                                 # nothing to move: the game keeps what it has
+    # TWO ARCHIVERS, OR A REOPEN, MEET HERE (2026-10-16). The nightly --due and a backfill's own archive run in separate
+    # workflow groups. If another archiver deleted this log while it was being read a page at a time, what came back is
+    # its first thousand rows - and they would have been written over both files. That archiver marked the game before it
+    # deleted anything, so the game is asked again now: already archived, or no longer final (somebody reopened it to
+    # rewrite it), and it is left to them.
+    now = sb.select("games", f"id=eq.{gid}&select=status,archived_at")
+    if not now or now[0].get("archived_at") or now[0].get("status") != "final":
+        return "skipped"
     # 1. THE PLAIN LOG, as every page reads it: kept, and written from the database if missing or different
     plain_url = store.public(BUCKET, f"events/{gid}.json")
     raw = store.get(plain_url)
@@ -243,8 +257,14 @@ def archive_game(sb, store: Store, game: dict, dry: bool = False, log=print) -> 
         got = None
     if not got or got.get("game") != gid or not same_log(got.get("rows") or [], rows):
         raise RuntimeError(f"{gid}: the archive read back does not match the log - nothing deleted")
-    # 3. MARKED, THEN THE ROWS GO
-    sb.patch("games", f"id=eq.{gid}&archived_at=is.null", {"archived_at": b["archived_at"]})
+    # 3. MARKED, THEN THE ROWS GO - only if the mark landed on a game still final and still unarchived. A game reopened
+    # since the read (a --refresh, the console) is live and being rewritten: its new rows are not this archive's to delete.
+    # Once marked, its status cannot change (0262) and nothing can be inserted (a final game), so the delete takes exactly
+    # the rows that were read and archived.
+    marked = sb.patch("games", f"id=eq.{gid}&status=eq.final&archived_at=is.null", {"archived_at": b["archived_at"]},
+                      returning=True)
+    if not marked:
+        return "skipped"
     sb.delete("game_events", f"game_id=eq.{gid}")
     # 4. THE RAW FEED, gzipped beside itself (a failure here leaves it as it was)
     try:
@@ -274,18 +294,37 @@ def gzip_raw(sb, store: Store, gid: str) -> None:
         store.remove(bucket, [path])
 
 
-def restore_game(sb, store: Store, gid: str, log=print) -> int:
-    """The rows back from the archive, exactly as stored; the game is then an ordinary one again."""
+def restore_game(sb, store: Store, gid: str, log=print, reclose: bool = True) -> int:
+    """The rows back from the archive, exactly as stored; the game is then an ordinary one again.
+
+    A FINAL GAME TAKES NO NEW ROWS (0001's reject_events_when_final, every role), so the rows used to bounce off the first
+    batch and --restore never worked (2026-10-16). The game is opened first - live, and archived_at cleared in the same
+    write, the one change 0262's guard lets through - then only the rows it does not have yet go in (a second run after a
+    restore that stopped half way: an existing row cannot be written over, 0030), and it is closed again as it was:
+    status final, its lines, finalised_at and box score untouched (nothing was deleted). `reclose=False` leaves it live,
+    for the ingest that is about to rewrite it and have finalise-game close it."""
     data = store.get(store.public(ARCHIVE_BUCKET, f"archive/{gid}.json.gz"))
     if not data:
         raise RuntimeError(f"{gid}: no archive file")
     b = json.loads(gzip.decompress(data))
-    rows = b.get("rows") or []
-    for i in range(0, len(rows), 500):
-        sb.upsert("game_events", rows[i:i + 500], "id")
-    sb.patch("games", f"id=eq.{gid}", {"archived_at": None})
-    log(f"    restored {gid}: {len(rows)} events")
-    return len(rows)
+    if b.get("game") != gid:
+        raise RuntimeError(f"{gid}: the archive file is another game's")
+    rows = sorted(b.get("rows") or [], key=lambda r: r.get("seq") or 0)
+    g = sb.select("games", f"id=eq.{gid}&select=status,archived_at")
+    if not g:
+        raise RuntimeError(f"{gid}: no such game")
+    was = g[0].get("status")
+    if was == "final" or g[0].get("archived_at"):
+        sb.patch("games", f"id=eq.{gid}", {"status": "live", "archived_at": None})
+    have = {r["seq"] for r in read_log(sb, gid)}
+    todo = [r for r in rows if r.get("seq") not in have]
+    for i in range(0, len(todo), 500):
+        sb.insert("game_events", todo[i:i + 500])
+    if reclose and was == "final":
+        sb.patch("games", f"id=eq.{gid}", {"status": "final"})
+    log(f"    restored {gid}: {len(todo)} event(s) put back" + (f", {len(rows) - len(todo)} already there" if len(todo) < len(rows) else "")
+        + ("" if (reclose or was != "final") else " - left live to be rewritten"))
+    return len(todo)
 
 
 def publishable_key() -> str | None:
@@ -316,7 +355,7 @@ def public_ids(url: str, ids: list[str]) -> set:
 def due_games(sb, league: str | None = None, season: str | None = None, limit: int = 300) -> list[dict]:
     """Finished, not archived, of a season that is over (or the one named), public (an event file), from a feed."""
     q = ("games?select=id,finalised_at,competition_id,competitions!inner(id,seasons!inner(name,league_id,leagues!inner(slug)))"
-         "&status=eq.final&archived_at=is.null&order=tipoff_at.asc")
+         "&status=eq.final&archived_at=is.null&order=tipoff_at.asc,id.asc")    # id too: a page is a stable slice only of a total order
     if league:
         q += f"&competitions.seasons.leagues.slug=eq.{league}"
     if season:

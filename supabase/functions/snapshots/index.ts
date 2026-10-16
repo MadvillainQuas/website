@@ -230,7 +230,14 @@ async function buildEventFiles(admin: any, D: any, finals: any[], started: numbe
     while (next < todo.length && Date.now() - started < WALL_MS) {
       const id = todo[next++];
       const finalisedAt = want.get(id);
-      const rows = await D.gameLog(id);
+      let rows = await D.gameLog(id);
+      /* ...UNLESS THE FILE WENT (2026-10-16): a game that stopped being a public final had its file removed and its
+         event_files row with it, so an archived one public again has neither - and no rows to write one from. Its
+         archive has the log (data.js archiveLog: the plain log's columns, in seq order); none means nothing to write. */
+      if (!rows.length && !held.has(id)) {
+        const a = await D.archive(id);
+        if (a) rows = D.archiveLog(a);
+      }
       if (!rows.length) {
         /* NO ROWS IS NOT AN EMPTY LOG. An archived game (0262, and every NCAA game the moment it is final) has had
            its rows moved into its files - and moving them marks event_files stale (0156's trigger on the delete), so

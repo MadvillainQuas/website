@@ -21,6 +21,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { withArchive } from '../lib/eventlog.mjs';          // an archived game's log (0262)
 
 const require = createRequire(import.meta.url);
 const E = require(path.resolve(process.cwd(), 'epinoia/engine.js'));
@@ -68,7 +69,7 @@ for (const [k, gids] of [...byComp.entries()].sort()) {
   const [adapter, code] = k.split('|');
   for (const gid of gids.slice(0, GAMES)) {
     const [rows, teams, official] = await Promise.all([
-      get(`game_events?select=t,seq,period,clock,team,pid,payload&game_id=eq.${gid}&order=seq&limit=4000`),
+      withArchive(url, gid, get(`game_events?select=t,seq,period,clock,team,pid,payload&game_id=eq.${gid}&order=seq&limit=4000`)),
       get(`games?select=home_team_id,away_team_id,starters,period,status&id=eq.${gid}`),
       get(`team_game_stats?select=team_idx,stats&game_id=eq.${gid}`)
     ]);

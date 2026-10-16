@@ -303,16 +303,22 @@ function boot() {
     if (r.created_at) { e.created_at = r.created_at; e.seq = r.seq; }
     return e;
   }
-  async function fetchLog(id) {
-    let events = [], from = 0;
-    for (;;) {
-      const page = await api('game_events?game_id=eq.' + encodeURIComponent(id) +
-        '&select=seq,t,team,pid,period,clock,payload,created_at&order=seq&offset=' + from + '&limit=1000');
-      events = events.concat(page);
-      if (page.length < 1000) break;
-      from += 1000;
-    }
-    return events;
+  async function fetchLog(id, final) {
+    const fromDb = async () => {
+      let events = [], from = 0;
+      for (;;) {
+        const page = await api('game_events?game_id=eq.' + encodeURIComponent(id) +
+          '&select=seq,t,team,pid,period,clock,payload,created_at&order=seq&offset=' + from + '&limit=1000');
+        events = events.concat(page);
+        if (page.length < 1000) break;
+        from += 1000;
+      }
+      return events;
+    };
+    /* A FINISHED GAME'S LOG AS THE GAME PAGE READS IT (2026-10-16): its file, the database, then its archive (0262).
+       An archived game - every D2 and U SPORTS final, past seasons nightly - has no rows, and came up with no plays. */
+    const D = root.EpinoiaData;
+    return (final && D && D.storedLog) ? D.storedLog(id, fromDb) : fromDb();
   }
 
   /* The scorer lower-cased everything as a style and the ingest wrote the
@@ -330,7 +336,7 @@ function boot() {
       '&select=id,status,period,roster_snapshot,starters,tip_winner,arrow_init&limit=1');
     if (!gs.length) throw new Error('that game is no longer readable');
     const g = gs[0];
-    const events = await fetchLog(row.id);
+    const events = await fetchLog(row.id, g.status === 'final');
     const snap = g.roster_snapshot;
     const club = i => (i === 0 ? row.home : row.away) || {};
     const colour = i => (/^#[0-9a-f]{6}$/i.test(String(club(i).colour || '')) ? club(i).colour : null);
