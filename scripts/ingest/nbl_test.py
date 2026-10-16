@@ -182,8 +182,9 @@ w26 = fresh().discover("", {"org": "wnbl", "stage": "finals", "season": "2025-26
 ok("WNBL 2025-26 finals: 7 games (their match_type is empty)", len(w26) == 7, len(w26))
 ok("...and 92 regular-season games", len(fresh().discover("", {"org": "wnbl", "stage": "regular", "season": "2025-26"})) == 92)
 w27 = fresh().discover("", {"org": "wnbl", "stage": "regular", "season": "2026-27"})
-ok("WNBL 2026-27: 99 fixtures, none played; a stats-platform crest asked for as a 200px PNG",
-   len(w27) == 99 and all(x.status == "scheduled" for x in w27)
+# the live service: the season tipped off on 2026-10-15, so a fixture is scheduled, live or final, never anything else
+ok("WNBL 2026-27: 99 fixtures, each scheduled, live or final; a stats-platform crest asked for as a 200px PNG",
+   len(w27) == 99 and all(x.status in ("scheduled", "live", "final") for x in w27)
    and any((x.extra["home_logo"] or "").endswith("?size=200&format=png") for x in w27))
 m26 = fresh().discover("", {"org": "nbl1", "stage": "regular", "gender": "men", "season": "2026"})
 by_conf = defaultdict(int)
