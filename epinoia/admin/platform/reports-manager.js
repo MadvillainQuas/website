@@ -1,14 +1,18 @@
 'use strict';
 /* ============================================================================
-   THE REPORTS MANAGER (2026-10-04; the platform console, Accounts > Reports by email > Open the reports manager).
-   Everything about the reports by email in one pop-up:
+   THE REPORTS MANAGER (2026-10-04; the platform console, Reports > Team reports by email > Open the reports manager).
+   Everything about the reports by email in one pop-up, a tab each (Louie, 2026-10-16: "two tabs in report manager (teams and
+   players)"):
 
-     ADDRESSES AND CLUBS  each address with ALL its clubs - an address can have several (report_mail_subs is a row an address
+     TEAMS        each address with ALL its clubs - an address can have several (report_mail_subs is a row an address
                  and a club) - its name and time zone, whether its clubs' players' reports follow the Sunday email in a ZIP
                  (0228 player_zip), and for each club: PRIME REPORT (a report made ready - RAPM, Synergy, every page - and
                  downloaded, report.js prime) of each club it plays in the next two weeks (the reports its Sunday email
                  carries) or of its own, send next week's reports now, pause, remove. An address is added with one club or
                  several at once, and a club is added to an address already there.
+     PLAYERS      the players' weekly reports (0272, until 2026-10-16 in the console's Reports tab): an address and a player,
+                 each with what the mailer last did, send now - of the games ticked (0273), the week of their latest game
+                 ticked to start with - pause, remove.
      SYNERGY FILES  the scraper's CSV files dropped in (synergy.js reads them; only the numbers are kept, 0228
                  synergy_profiles), each player in them matched to a player OF THE CLUBS THE REPORTS ARE ON - every club an
                  address is sent reports of, and every club those play in the next two weeks (the Sunday email's scouting
@@ -17,7 +21,7 @@
                  club's squad), then kept, for every report the site draws and the mailer sends. The kept ones listed, each
                  to open its report primed, or to remove.
 
-   platform.js opens it: EpinoiaReportsManager.open(sb, { say, oops, sendNow, sendLine, reload }).
+   platform.js opens it: EpinoiaReportsManager.open(sb, { say, oops, sendNow, sendLine, reload, pickWeek, askPick, ... }, tab?).
    ============================================================================ */
 (function () {
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
@@ -43,7 +47,8 @@ function style() {
 .rm-h{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 18px 10px; background:var(--panel,#fff); border-bottom:1px solid var(--rule,#ddd) }
 .rm-h h3{ margin:0; font-size:18px }
 .rm-tabs{ flex:none; display:flex; gap:6px; padding:10px 18px 0 }
-.rm-tabs button.on{ background:var(--ink,#111); color:var(--panel,#fff) }
+/* the open tab, marked: specific enough to beat the light theme's :root[data-theme="light"] .ep-btn (which hid it) */
+.rm .rm-tabs button.ep-btn.on{ background:var(--ink,#111); color:var(--panel,#fff); border-color:var(--ink,#111) }
 .rm-b{ flex:1 1 auto; min-height:0; padding:12px 18px 18px; overflow:auto }
 .rm-x{ font-size:15px !important; font-weight:800 }
 .rm-box{ border:1px solid var(--rule,#ddd); border-radius:12px; padding:10px 12px; margin:0 0 12px }
@@ -88,8 +93,9 @@ function fitZoom() {
   const z = parseFloat(getComputedStyle(document.body).zoom) || 1;
   dlg.style.setProperty('--rmz', String(z > 0 ? z : 1));
 }
-async function open(client, hooks) {
+async function open(client, hooks, which) {
   sb = client; H = hooks || {};
+  if (which === 'addr' || which === 'pl' || which === 'syn') tab = which;
   style();
   if (!dlg) {
     dlg = el('dialog', 'rm');
@@ -98,9 +104,9 @@ async function open(client, hooks) {
     x.setAttribute('aria-label', 'Close the reports manager'); x.title = 'Close (Esc)';
     head.append(el('h3', null, 'Reports manager'), x);
     const tabs = el('div', 'rm-tabs');
-    [['addr', 'Addresses and clubs'], ['syn', 'Synergy files']].forEach(([k, t]) => {
-      const b = btn(t, 'mini', () => { tab = k; tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); draw(); });
-      b.dataset.t = k; if (k === tab) b.classList.add('on'); tabs.appendChild(b);
+    [['addr', 'Teams'], ['pl', 'Players'], ['syn', 'Synergy files']].forEach(([k, t]) => {
+      const b = btn(t, 'mini', () => { tab = k; draw(); });
+      b.dataset.t = k; tabs.appendChild(b);
     });
     body = el('div', 'rm-b');
     RUN.box = el('div', 'rm-run');
@@ -117,6 +123,7 @@ async function open(client, hooks) {
   if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
   await draw();
 }
+const markTab = () => { if (dlg) dlg.querySelectorAll('.rm-tabs button').forEach(x => x.classList.toggle('on', x.dataset.t === tab)); };
 function closeAsked() {
   if (RUN.busy && !confirm('Reports are being primed. Close and stop them?')) return;
   RUN.stop = true;
@@ -126,9 +133,11 @@ const say = (t, k) => (H.say ? H.say(t, k) : null);
 const oops = e => (H.oops ? H.oops(e) : say(String(e && e.message || e), 'err'));
 
 async function draw() {
+  markTab();
+  clearTimeout(pTimer);
   body.textContent = '';
   body.appendChild(el('p', 'rm-mt', 'reading…'));
-  try { if (tab === 'syn') await drawSynergy(); else await drawAddresses(); }
+  try { if (tab === 'syn') await drawSynergy(); else if (tab === 'pl') await drawPlayers(); else await drawAddresses(); }
   catch (e) { body.textContent = ''; body.appendChild(el('p', 'rm-mt', 'Could not read them: ' + (e.message || e))); }
 }
 
@@ -321,6 +330,172 @@ function weekTicks(r, opps, picks, refs) {
   const own = tick('own report', due ? 'fortnight up' : 'not its fortnight', row.own != null ? row.own : ownDef, () => {});
   const zip = tick('players’ ZIP', '', row.players != null ? row.players : zipDef, () => {});
   return wrap;
+}
+
+/* ------------------------------------------------------------------ players --- */
+/* PLAYERS' WEEKLY REPORTS (0272; until 2026-10-16 in the console's Reports tab): an address and a player - found by name in the
+   site's search, as anyone on the site can be sent their own report (unlike a Synergy file's players, matched only to the clubs
+   the reports are on) - and the time zone of its Monday morning. Each with what the mailer last did, send now, pause, remove.
+   SEND NOW ASKS WHICH GAMES (0273 send_now_games; Louie, 2026-10-16: "give the option to select which games to include if 'send
+   now' is selected for player reports"): their last 20 games, newest first, those of the week of their latest game ticked (what
+   send now sent before); the report is drawn of the games ticked alone (p/?rpgames=). Before 0273, the week, once asked. */
+const PMAX = 12;                                             // the mailer's MAX_PICKED, and 0273's check
+let pTimer = 0;
+const ymdIn = (iso, tz) => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso)); } catch (_) { return String(iso || '').slice(0, 10); } };
+const mondayOfYmd = ymd => { const d = new Date(ymd + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7); return d.toISOString().slice(0, 10); };
+const dayIn = (iso, tz) => { try { return new Date(iso).toLocaleDateString('en-GB', { timeZone: tz || 'UTC', weekday: 'short', day: 'numeric', month: 'short' }); } catch (_) { return dayOf(iso); } };
+const playedIn = st => !!st && (+st.min > 0 || (st.adv && +st.adv.min > 0));
+/* their games as the send-now ticks list them: finals they played in, a game once, newest first, the latest's week ticked */
+function playerGameList(rows, tz, max = 20) {
+  const seen = new Set();
+  const list = (rows || []).filter(r => r.games && r.games.status === 'final' && playedIn(r.stats))
+    .sort((a, b) => String(b.games.tipoff_at).localeCompare(String(a.games.tipoff_at)))
+    .filter(r => !seen.has(r.game_id) && seen.add(r.game_id)).slice(0, max)
+    .map(r => {
+      const g = r.games, side = +r.team_idx === 1 ? 1 : 0, st = r.stats || {};
+      const us = side ? g.away_score : g.home_score, them = side ? g.home_score : g.away_score;
+      const opp = ((side ? g.home : g.away) || {}).name || 'opponent', ymd = ymdIn(g.tipoff_at, tz);
+      return { id: r.game_id, ymd, monday: mondayOfYmd(ymd), label: (side ? 'at ' : 'v ') + opp + ' (' + (us > them ? 'W' : us < them ? 'L' : 'D') + ' ' + us + '–' + them + ')',
+        hint: dayIn(g.tipoff_at, tz) + ' · ' + (+st.pts || 0) + ' pts' };
+    });
+  const latest = list.length ? list[0].monday : null;
+  list.forEach(g => { g.on = g.monday === latest; });
+  return list;
+}
+/* the games ticked for a player's send now: an array of game ids, 'week' (no ticks to be had: the week of their latest game),
+   or null (not sent) */
+async function pickPlayerGames(x, pname) {
+  if (!H.askPick) return confirm('Send ' + x.email + ' ' + pname + '’s report for the week of their latest game now?') ? 'week' : null;
+  let ids = [x.player_id];
+  /* every profile of theirs (0178), as the mailer reads them; a query builder is only "then"-able, so try, not .catch */
+  try { const L = await sb.rpc('linked_players', { p_player: x.player_id }); if (L && L.data && L.data.players) ids = [...new Set(ids.concat(L.data.players.map(p => p.id).filter(Boolean)))]; } catch (_) {}
+  const { data, error } = await sb.from('player_game_stats')
+    .select('game_id,team_idx,stats,games!inner(id,tipoff_at,status,home_score,away_score,home:home_team_id(name),away:away_team_id(name))')
+    .in('player_uuid', ids).eq('games.status', 'final').gte('games.tipoff_at', new Date(Date.now() - 200 * 864e5).toISOString());
+  if (error) throw error;
+  const list = playerGameList(data, x.tz);
+  if (!list.length) { say(pname + ' has played no game in the last 200 days: there is nothing to send.', 'warn'); return null; }
+  const t = await H.askPick({ title: 'Send ' + pname + '’s report now', go: 'send now',
+    lead: 'Tick the games the report is of: its games section draws each one, its shot chart and full stats line, and the email lists them. The rest of the report is their season as always. It goes to ' + x.email + ' at the mailer’s next run.',
+    groups: [{ head: pname + ': games', note: 'Their last ' + list.length + (list.length === 1 ? ' game' : ' games') + ', newest first. The week of their latest game is ticked; at most ' + PMAX,
+      items: list.map(g => ({ key: g.id, label: g.label, hint: g.hint, on: g.on })) }] });
+  if (!t) return null;
+  const games = list.filter(g => t.get(g.id)).map(g => g.id);
+  if (!games.length) { say('Tick a game or more: nothing was sent.', 'warn'); return null; }
+  if (games.length > PMAX) { say('At most ' + PMAX + ' games in one report: nothing was sent, untick some.', 'warn'); return null; }
+  return games;
+}
+async function sendPlayerNow(x, pname, b) {
+  const games = await pickPlayerGames(x, pname).catch(e => { oops(e); return null; });
+  if (!games) return;
+  b.disabled = true;
+  const at = new Date().toISOString();
+  let { error } = await sb.from('report_mail_players').update(Array.isArray(games) ? { send_now_at: at, send_now_games: games } : { send_now_at: at }).eq('id', x.id);
+  /* before 0273 there is no send_now_games: say so, and send the week only if asked to */
+  if (error && Array.isArray(games) && /send_now_games|schema cache|column/i.test(error.message || '')) {
+    if (!confirm('Choosing the games needs migration 0273, which is not applied yet. Send the week of their latest game instead?')) { b.disabled = false; return; }
+    ({ error } = await sb.from('report_mail_players').update({ send_now_at: at }).eq('id', x.id));
+  }
+  if (error) { oops(error); b.disabled = false; return; }
+  say(pname + '’s report ' + (Array.isArray(games) ? 'of ' + (games.length === 1 ? 'one game' : games.length + ' games') : 'for the week of their latest game') + ' goes to ' + x.email + ' at the mailer’s next run.', 'ok');
+  draw();
+}
+/* a player, found as the name is typed (the site's search): resolves to { id, slug, label } on picking */
+function playerFinder(onPick) {
+  const wrap = el('div', 'rm-pick');
+  const inp = el('input', 'ep-input'); inp.type = 'search'; inp.placeholder = 'player: type to find'; inp.style.minWidth = '240px';
+  const list = el('ul', 'rm-found'); list.hidden = true;
+  let tm = 0;
+  inp.addEventListener('input', () => {
+    clearTimeout(tm);
+    const q = inp.value.trim();
+    if (q.length < 2) { list.hidden = true; return; }
+    tm = setTimeout(async () => {
+      const { data } = await sb.rpc('site_search', { p_q: q, p_limit: 12 });
+      list.textContent = '';
+      (data || []).filter(x => x.kind === 'player').forEach(x => {
+        const where = x.sub || x.league_slug || '';
+        const li = el('li'); const nm = el('span', null, x.name + ' '); nm.setAttribute('translate', 'no');
+        li.append(nm, el('small', null, where));
+        li.addEventListener('click', () => { list.hidden = true; inp.value = ''; onPick({ id: x.id, slug: x.slug, label: x.name + (where ? ' (' + where + ')' : '') }); });
+        list.appendChild(li);
+      });
+      list.hidden = !list.childNodes.length;
+    }, 250);
+  });
+  wrap.append(inp, list);
+  return wrap;
+}
+async function drawPlayers() {
+  const q = await sb.from('report_mail_players').select('*,players(id,first_name,last_name,slug)').order('created_at', { ascending: false });
+  body.textContent = '';
+
+  /* AN ADDRESS AND A PLAYER */
+  const add = el('div', 'rm-box');
+  add.appendChild(el('h4', null, 'Add a player'));
+  add.appendChild(el('p', 'rm-mt', 'Every Monday morning, at the address’s time, their player report for the week just played (Monday to Sunday): the season’s pages, and the shot chart and full stats line of each game that week. A week they did not play is skipped.'));
+  let who = null;
+  const chosen = el('span', 'rm-sel none', 'no player picked');
+  const email = el('input', 'ep-input'); email.type = 'email'; email.placeholder = 'their@email'; email.style.minWidth = '220px';
+  const name = el('input', 'ep-input'); name.placeholder = 'first name (optional)';
+  const tz = tzSelect();
+  const finder = playerFinder(pk => {
+    who = pk; chosen.textContent = pk.label; chosen.classList.remove('none'); chosen.setAttribute('translate', 'no');
+    /* their league's clock is the reader's, most likely (it can still be changed) */
+    sb.from('roster_entries').select('teams(leagues(timezone))').eq('player_id', pk.id).order('created_at', { ascending: false }).limit(1)
+      .then(({ data }) => { const z = data && data[0] && data[0].teams && data[0].teams.leagues && data[0].teams.leagues.timezone;
+        if (z && [...tz.options].some(o => o.value === z)) tz.value = z; });
+  });
+  const save = btn('add', 'pri', async () => {
+    const e = email.value.trim().toLowerCase();
+    if (!who) { say('Pick the player from the list as you type their name.', 'warn'); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) { say('That email address does not look right.', 'warn'); return; }
+    const { error } = await sb.from('report_mail_players').upsert({ email: e, player_id: who.id, name: name.value.trim() || null, tz: tz.value || 'UTC', active: true }, { onConflict: 'email,player_id' });
+    if (error) { oops(error); return; }
+    say(e + ' will be sent ' + who.label + '’s weekly report, every Monday morning.', 'ok');
+    draw();
+  });
+  const r1 = el('div', 'rm-row'); r1.append(finder, chosen);
+  const r2 = el('div', 'rm-row'); r2.style.marginTop = '6px'; r2.append(email, name, tz, save);
+  add.append(r1, r2);
+  body.appendChild(add);
+
+  /* EACH ADDRESS AND ITS PLAYER */
+  if (q.error) { body.appendChild(el('p', 'rm-mt', /report_mail_players|schema cache|does not exist/i.test(q.error.message || '') ? 'Players’ weekly reports arrive with migration 0272: it has not been applied to this database yet.' : 'Could not read them: ' + q.error.message)); return; }
+  const rows = q.data || [];
+  if (!rows.length) { body.appendChild(el('p', 'rm-mt', 'No player is sent a weekly report yet.')); return; }
+  const box = el('div', 'rm-addr');
+  const h = el('div', 'rm-addr-h');
+  h.append(el('b', null, 'Weekly player reports'), el('span', 'rm-mt', rows.length + (rows.length === 1 ? ' address' : ' addresses') + ' · Monday mornings at their time'));
+  box.appendChild(h);
+  rows.forEach(x => {
+    const P = x.players || {}, pname = nameOf(P) || 'player';
+    const row = el('div', 'rm-club');
+    const nm = el('div'); const b = el('b', null, pname); b.setAttribute('translate', 'no');
+    nm.append(b, el('br'), el('small', null, x.email + (x.name ? ' (' + x.name + ')' : '')));
+    const st = el('div');
+    st.appendChild(el('small', null, x.tz + (x.active ? '' : ' · paused')));
+    st.appendChild(el('br'));
+    st.appendChild(el('small', null, x.last_at ? 'last ' + new Date(x.last_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) + ': ' + (x.last_detail || '') : 'nothing sent yet'));
+    if (x.send_now_at) { st.appendChild(el('br')); st.appendChild(el('small', 'rm-stored', 'send now queued' + (Array.isArray(x.send_now_games) && x.send_now_games.length ? ': ' + (x.send_now_games.length === 1 ? 'one game' : x.send_now_games.length + ' games') : ': the week of their latest game'))); }
+    const acts = el('div', 'acts');
+    if (x.active) {
+      const now = btn(x.send_now_at ? 'queued' : 'send now', 'mini', () => sendPlayerNow(x, pname, now));
+      now.disabled = !!x.send_now_at;
+      now.title = 'Email them their report now, of the games you tick';
+      acts.appendChild(now);
+    }
+    acts.appendChild(btn(x.active ? 'pause' : 'resume', 'mini', async () => { const { error } = await sb.from('report_mail_players').update({ active: !x.active }).eq('id', x.id); if (error) oops(error); else draw(); }));
+    acts.appendChild(btn('remove', 'mini danger', async () => {
+      if (!confirm(x.email + ' will no longer be sent ' + pname + '’s weekly report.')) return;
+      const { error } = await sb.from('report_mail_players').delete().eq('id', x.id); if (error) oops(error); else draw();
+    }));
+    row.append(nm, st, acts);
+    box.appendChild(row);
+  });
+  body.appendChild(box);
+  /* read again while a send now waits, as long as this tab is open */
+  if (rows.some(x => x.active && x.send_now_at)) pTimer = setTimeout(() => { if (dlg && dlg.open && tab === 'pl' && !document.hidden) draw(); }, 30000);
 }
 
 /* ------------------------------------------------------------------ the clubs the reports are on --- */
@@ -764,5 +939,5 @@ async function deleteStored(pairs) {
 }
 
 /* _t: for supabase/tests/reports-manager.test.mjs (a client of its own, the clubs and the suggestions) */
-window.EpinoiaReportsManager = { open, _t: { use: c => { sb = c; }, reportedClubs, upcoming, suggest, readFiles, EXTRA, PENDING, zipPlayers, zipSquad, deleteStored } };
+window.EpinoiaReportsManager = { open, _t: { use: c => { sb = c; }, hooks: h => { H = h; }, reportedClubs, upcoming, suggest, readFiles, EXTRA, PENDING, zipPlayers, zipSquad, deleteStored, playerGameList, pickPlayerGames } };
 }());

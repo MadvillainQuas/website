@@ -178,8 +178,8 @@ function wire() {
                      plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas,
                      analytics: loadAnalytics, links: loadLinks, maint: loadReset, news: loadNewsSources, newsroom: loadNewsroom,
                      manager: loadManager, bfw: loadBackfillWorker,
-                     /* the Reports tab (2026-10-16): the clubs' reports by email and the players' weekly reports */
-                     reports: () => Promise.all([loadMail(), loadPlayerMail()]) };
+                     /* the Reports tab (2026-10-16): the clubs' reports by email; the players' are the reports manager's Players tab */
+                     reports: loadMail };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -1236,15 +1236,17 @@ async function loadMail() {
       }, 250);
     });
   }
-  /* the reports manager (reports-manager.js): every address with all its clubs, PRIME REPORT, the Synergy files */
-  const manage = $('#mailManage');
-  if (manage && !manage.dataset.wired) {
-    manage.dataset.wired = '1';
-    manage.addEventListener('click', () => {
+  /* the reports manager (reports-manager.js): its Teams tab (every address with all its clubs, PRIME REPORT), its Players tab (the
+     players' weekly reports, 0272, with send now of the games ticked, 0273) and the Synergy files; a button opens it on each of the first two */
+  [['#mailManage', 'addr'], ['#mailManagePl', 'pl']].forEach(([id, which]) => {
+    const b = $(id);
+    if (!b || b.dataset.wired) return;
+    b.dataset.wired = '1';
+    b.addEventListener('click', () => {
       if (!window.EpinoiaReportsManager) { say('The reports manager has not loaded: reload the page.', 'warn'); return; }
-      window.EpinoiaReportsManager.open(sb, { say, oops, sendNow, sendLine, reload: loadMail, pickWeek, weekOf, ownDueFor, weekWords }).catch(oops);
+      window.EpinoiaReportsManager.open(sb, { say, oops, sendNow, sendLine, reload: loadMail, pickWeek, askPick, weekOf, ownDueFor, weekWords }, which).catch(oops);
     });
-  }
+  });
   if (go && !go.dataset.wired) {
     go.dataset.wired = '1';
     go.addEventListener('click', async () => {
@@ -1319,106 +1321,6 @@ async function loadMail() {
     host.appendChild(r);
   });
   if ([...asked.values()].some(mailOpen)) mailTimer = setTimeout(() => { if (!document.hidden) loadMail(); else mailTimer = setTimeout(loadMail, 15000); }, 15000);
-}
-
-/* ------------------------------------------------- players' weekly reports --- */
-/* A PLAYER'S WEEKLY REPORT (0272; Louie, 2026-10-16: "insert a player's email, and they then get a weekly player report sent
-   to them updated"): a player found by name (the site's search), the address, a first name for the greeting, and the time zone
-   whose Monday morning it goes on (their league's, once they are picked). The list: what the mailer last did for each, send now
-   (send_now_at: the week of their latest game at the next run), pause, remove. Read again every 30 seconds while a send now is
-   waiting. */
-const PMAIL = new Map();                                  // the player's label -> { id, slug }
-let pmailTimer = 0;
-async function loadPlayerMail() {
-  const host = $('#pmailList'), go = $('#pmailGo');
-  if (!host || !sb) return;
-  clearTimeout(pmailTimer);
-  const tz = $('#pmailTz');
-  if (tz && !tz.options.length) {
-    const here = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'UTC';
-    const zones = (Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : [here, 'UTC']);
-    zones.forEach(z => { const o = document.createElement('option'); o.value = o.textContent = z; if (z === here) o.selected = true; tz.appendChild(o); });
-  }
-  const pIn = $('#pmailPlayer');
-  if (pIn && !pIn.dataset.wired) {
-    pIn.dataset.wired = '1';
-    let tm = null;
-    pIn.addEventListener('input', () => {
-      clearTimeout(tm);
-      const q = pIn.value.trim();
-      const got = PMAIL.get(q);
-      if (got) {
-        /* a player picked: their league's clock is the reader's, most likely (it can still be changed) */
-        sb.from('roster_entries').select('teams(leagues(timezone))').eq('player_id', got.id).order('created_at', { ascending: false }).limit(1)
-          .then(({ data }) => { const z = data && data[0] && data[0].teams && data[0].teams.leagues && data[0].teams.leagues.timezone;
-            if (z && tz && [...tz.options].some(o => o.value === z)) tz.value = z; });
-        return;
-      }
-      if (q.length < 2) return;
-      tm = setTimeout(async () => {
-        const { data } = await sb.rpc('site_search', { p_q: q, p_limit: 12 });
-        const dl = $('#pmailPlayers'); dl.textContent = '';
-        (data || []).filter(x => x.kind === 'player').forEach(x => {
-          const label = x.name + (x.sub ? ' (' + x.sub + ')' : x.league_slug ? ' (' + x.league_slug + ')' : '');
-          PMAIL.set(label, { id: x.id, slug: x.slug });
-          const o = document.createElement('option'); o.value = label; dl.appendChild(o);
-        });
-      }, 250);
-    });
-  }
-  if (go && !go.dataset.wired) {
-    go.dataset.wired = '1';
-    go.addEventListener('click', async () => {
-      const email = $('#pmailEmail').value.trim().toLowerCase(), who = $('#pmailPlayer').value.trim(), p = PMAIL.get(who);
-      if (!p) { say('Pick the player from the list as you type their name.', 'warn'); return; }
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { say('That email address does not look right.', 'warn'); return; }
-      const { error } = await sb.from('report_mail_players').upsert({ email, player_id: p.id, name: $('#pmailName').value.trim() || null, tz: $('#pmailTz').value || 'UTC', active: true },
-        { onConflict: 'email,player_id' });
-      if (error) { oops(error); return; }
-      say(email + ' will be sent ' + who + '’s weekly report, every Monday morning.', 'ok');
-      $('#pmailEmail').value = ''; $('#pmailPlayer').value = ''; $('#pmailName').value = '';
-      loadPlayerMail();
-    });
-  }
-  const { data, error } = await sb.from('report_mail_players').select('*,players(id,first_name,last_name,slug)').order('created_at', { ascending: false });
-  host.textContent = '';
-  if (error) { host.appendChild(el('p', 'lead', /report_mail_players|schema cache|does not exist/i.test(error.message || '') ? 'Players’ weekly reports arrive with migration 0272: it has not been applied to this database yet.' : 'Could not read them: ' + error.message)); return; }
-  if (!(data || []).length) { host.appendChild(el('p', 'mt', 'No player is sent a weekly report yet.')); return; }
-  data.forEach(x => {
-    const P = x.players || {}, pname = ((P.first_name || '') + ' ' + (P.last_name || '')).trim() || 'player';
-    const r = el('div', 'row'); r.style.cssText = 'align-items:center;gap:4px 8px;margin-bottom:0;padding:8px 0;border-bottom:1px solid var(--rule)';
-    const who = el('span', 'grow');
-    const nm = el('span', null, pname); nm.setAttribute('translate', 'no');
-    who.append(nm, ' · ' + x.email + (x.name ? ' (' + x.name + ')' : ''));
-    who.style.overflowWrap = 'anywhere';
-    const what = el('span', 'mt', x.tz + ' · ' + (x.last_at ? fmtDate(x.last_at) + ': ' + (x.last_detail || '') : 'nothing sent yet') + (x.active ? '' : ' · paused'));
-    r.append(who, what);
-    const acts = el('div', 'row'); acts.style.cssText = 'flex-basis:100%;margin:0;gap:8px';
-    if (x.active) {
-      const now = el('button', 'ep-btn mini', x.send_now_at ? 'queued' : 'send now'); now.type = 'button';
-      now.disabled = !!x.send_now_at;
-      now.title = 'Email them the report for the week of their latest game at the mailer’s next run';
-      now.addEventListener('click', async () => {
-        now.disabled = true;
-        const { error: e } = await sb.from('report_mail_players').update({ send_now_at: new Date().toISOString() }).eq('id', x.id);
-        if (e) { oops(e); now.disabled = false; return; }
-        say(pname + '’s report for the week of their latest game goes to ' + x.email + ' at the mailer’s next run.', 'ok');
-        loadPlayerMail();
-      });
-      acts.appendChild(now);
-    }
-    const pause = el('button', 'ep-btn mini', x.active ? 'pause' : 'resume'); pause.type = 'button';
-    pause.addEventListener('click', async () => { const { error: e } = await sb.from('report_mail_players').update({ active: !x.active }).eq('id', x.id); if (e) oops(e); else loadPlayerMail(); });
-    const end = el('button', 'ep-btn mini danger', 'remove'); end.type = 'button';
-    end.addEventListener('click', async () => {
-      if (!confirm(x.email + ' will no longer be sent ' + pname + '’s weekly report.')) return;
-      const { error: e } = await sb.from('report_mail_players').delete().eq('id', x.id); if (e) oops(e); else loadPlayerMail();
-    });
-    acts.append(pause, end);
-    r.appendChild(acts);
-    host.appendChild(r);
-  });
-  if (data.some(x => x.active && x.send_now_at)) pmailTimer = setTimeout(() => { if (!document.hidden) loadPlayerMail(); else pmailTimer = setTimeout(loadPlayerMail, 30000); }, 30000);
 }
 
 /* --------------------------------------------------------------- leagues --- */

@@ -252,10 +252,14 @@ work on the work, in the scout's words. Rebound, steal and block notes wait for 
 They/their throughout: the site covers women's leagues.
 
 **The weekly email** (0272, `scripts/report_mailer.mjs playerRound`): an address and a player in `report_mail_players`
-(platform administrators only; the console's Reports tab, *Players' weekly reports*). Every Monday from 8 am at the address's time, the week
+(platform administrators only; the reports manager's **Players** tab, opened from the console's Reports tab). Every Monday from 8 am at the address's time, the week
 just played: the player's report drawn for that week, attached to an email listing its games. A week without a game of theirs
 is skipped and not logged. A Monday missed is caught up on the Tuesday; on the Monday a game of the club's still being played
-is waited for. *Send now* (`send_now_at`) sends the week of their latest game at the next run. One log row a week
+is waited for. *Send now* (`send_now_at`) asks which games: their last 20, newest first, the week of their latest game
+ticked to start with (0273 `send_now_games`, at most 12). The report is then drawn of those games alone (`p/?rpgames=`: the
+section is **SELECTED GAMES**, from the first game's day to the last's), and the email lists them. When the games ticked are
+every game of one week, that week is logged, so its Monday does not send it again. Before 0273, send now sends the week of
+their latest game at the next run, as it did. One log row a week
 (`report_mail_player_log`); the address carries what was last done (`last_at`, `last_detail`). Synergy profiles are handed to
 the page as for every report. Until 0272 is applied the round is skipped and the console says so.
 

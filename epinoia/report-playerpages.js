@@ -462,6 +462,7 @@ function modules(ctx) {
   const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const dayOf = ymd => { const d = new Date(ymd + 'T12:00:00Z'); return DAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()]; };
   const spanOf = (a, b) => { const x = new Date(a + 'T12:00:00Z'), y = new Date(b + 'T12:00:00Z');
+    if (a === b) return DAYS[x.getUTCDay()] + ' ' + x.getUTCDate() + ' ' + MONTHS[x.getUTCMonth()] + ' ' + x.getUTCFullYear();
     return DAYS[x.getUTCDay()] + ' ' + x.getUTCDate() + (x.getUTCMonth() === y.getUTCMonth() ? '' : ' ' + MONTHS[x.getUTCMonth()]) + ' – ' + DAYS[y.getUTCDay()] + ' ' + y.getUTCDate() + ' ' + MONTHS[y.getUTCMonth()] + ' ' + y.getUTCFullYear(); };
   const wkg = {
     key: 'wkg', title: 'Games played during the week', page: 'GAMES PLAYED DURING THE WEEK', on: true, pack: 'flow',
@@ -470,6 +471,9 @@ function modules(ctx) {
       const GF = root.EpinoiaGameFull, Box = root.EpinoiaBox;
       if (!W || !W.games || !W.games.length || !GF || !Box) return [];
       const gl = W.games;
+      /* THE GAMES CHOSEN (?rpgames=: a player's "send now" from the reports manager, 0273): the same section, named for them */
+      const picked = !!W.picked;
+      wkg.page = picked ? 'SELECTED GAMES' : 'GAMES PLAYED DURING THE WEEK';
       const where = g => (g.home ? 'vs ' : 'at ') + g.opp;
       const score = g => g.res + ' ' + g.us + '–' + g.them;
       const C = Box.COURT;
@@ -508,7 +512,7 @@ function modules(ctx) {
       const out = [];
       /* the courts, three to a row: a block of parts, so a week of many games carries its last row on */
       const rows = []; for (let i = 0; i < gl.length; i += 3) rows.push(gl.slice(i, i + 3));
-      out.push(E.splitBlock(rows, (ps, cont) => block((cont ? '' : title('Games played during the week', spanOf(W.monday, W.sunday) + ' · ' + n + (n === 1 ? ' game' : ' games') + ' · their shots in each, then their line as the match report prints it, each figure against its own game')) +
+      out.push(E.splitBlock(rows, (ps, cont) => block((cont ? '' : title(picked ? 'Selected games' : 'Games played during the week', spanOf(W.monday, W.sunday) + ' · ' + n + (n === 1 ? ' game' : ' games') + ' · their shots in each, then their line as the match report prints it, each figure against its own game')) +
         ps.map(r => '<div class="rp-wk" style="--n:' + (wide ? 1 : Math.min(3, n)) + '">' + r.map(card).join('') + '</div>').join(''))));
       /* the match report's three FULL STATS tables, a row a game */
       const nameCell = r => { const g = r.__g; return '<span class="fs-who"><b>' + esc(where(g)) + '</b><em>' + esc(dayOf(g.day) + ' · ' + score(g)) + '</em></span>'; };
@@ -517,8 +521,9 @@ function modules(ctx) {
           GF.table({ groups: Box.ADV_GROUPS, keep, rows: gl.map(g => Object.assign({ __g: g }, g.row)), ctxOf: r => r.__g.cx, nameCell, head: 'Game', cls: 'rp-wkfs' })));
       });
       R.facts = R.facts || {};
-      R.facts.week = { monday: W.monday, sunday: W.sunday, games: gl };
-      R.legendExtra.push(['GAMES PLAYED DURING THE WEEK', 'Their games of the week, Monday to Sunday in the league’s time zone: a court of their shots in each (made ●, missed ×), then the match report’s full stats, a row a game. Each figure is shaded by its percentile among players’ games in the league, a bar shows its size beside that game’s other players, and the on-court columns are the difference from that game’s average.']);
+      R.facts.week = { monday: W.monday, sunday: W.sunday, games: gl, picked };
+      if (picked) R.legendExtra.push(['SELECTED GAMES', 'The games chosen for this report: a court of their shots in each (made ●, missed ×), then the match report’s full stats, a row a game. Each figure is shaded by its percentile among players’ games in the league, a bar shows its size beside that game’s other players, and the on-court columns are the difference from that game’s average.']);
+      else R.legendExtra.push(['GAMES PLAYED DURING THE WEEK', 'Their games of the week, Monday to Sunday in the league’s time zone: a court of their shots in each (made ●, missed ×), then the match report’s full stats, a row a game. Each figure is shaded by its percentile among players’ games in the league, a bar shows its size beside that game’s other players, and the on-court columns are the difference from that game’s average.']);
       return out;
     }
   };
@@ -541,7 +546,7 @@ function modules(ctx) {
       const html = title('Actionable insights', 'for ' + ({ guard: 'a guard', wing: 'a wing', big: 'a big' }[D.group] || 'a player') + ' · read from every page of this report · ranked among ' + D.n + ' ' + D.who) +
         (D.intro ? '<p class="rp-in-intro">' + esc(D.intro) + '</p>' : '') +
         '<div class="rp-in-cols' + (D.keep.length && D.work.length ? '' : ' one') + '">' + col('What is working', D.keep, 'good') + col('What to work on', D.work, 'bad') + '</div>' +
-        (D.week.length ? '<div class="rp-in-col wk"><h4>This week</h4><ul>' + D.week.map(li).join('') + '</ul></div>' : '');
+        (D.week.length ? '<div class="rp-in-col wk"><h4>' + (F.week && F.week.picked ? 'These games' : 'This week') + '</h4><ul>' + D.week.map(li).join('') + '</ul></div>' : '');
       return [block(html, 'rp-in')];
     }
   };

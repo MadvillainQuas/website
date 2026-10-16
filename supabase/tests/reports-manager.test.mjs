@@ -29,6 +29,51 @@ delete process.env.ONLY; delete process.env.DRY;
 const M = await import(pathToFileURL(path.join(ROOT, 'scripts', 'report_mailer.mjs')).href);
 const S = (await import(pathToFileURL(path.join(ROOT, 'epinoia', 'synergy.js')).href)).default;
 
+/* ---------------------------------------------------------------- the Players tab: send now of the games ticked (0273) --- */
+async function playersTab(RM) {
+  console.log('\nthe Players tab: send now, of the games ticked');
+  const GID = n => 'bbbbbbbb-0000-4000-8000-0000000000' + String(n).padStart(2, '0');
+  const row = (n, iso, side, us, them, min, pid) => ({ game_id: GID(n), team_idx: side, player_uuid: pid || 'p1', stats: { pts: 10 + n, min: min == null ? 20 : min },
+    games: { id: GID(n), tipoff_at: iso, status: 'final', home_score: side ? them : us, away_score: side ? us : them, home: { name: side ? 'Home ' + n : 'Ours' }, away: { name: side ? 'Ours' : 'Away ' + n } } });
+  const rows = [row(1, '2026-10-01T18:00:00Z', 0, 80, 70), row(2, '2026-10-13T18:00:00Z', 1, 66, 71), row(3, '2026-10-17T22:30:00Z', 0, 90, 88),
+    row(4, '2026-10-16T18:00:00Z', 0, 50, 60, 0), row(3, '2026-10-17T22:30:00Z', 0, 90, 88, null, 'p2')];
+  const L = RM._t.playerGameList(rows, 'Australia/Sydney');
+  ok('their games as the ticks list them: finals they played in (no minutes, no game), a game once (two profiles of theirs in it), newest first',
+     L.map(g => g.id).join() === [GID(3), GID(2), GID(1)].join(), L.map(g => g.id));
+  ok('...their way round: home "v", away "at", the score theirs first, the day at the address\'s time and their points',
+     L[0].label === 'v Away 3 (W 90\u201388)' && L[1].label === 'at Home 2 (L 66\u201371)' && /^Sun 18 Oct \u00b7 13 pts$/.test(L[0].hint), L.map(g => [g.label, g.hint]));
+  ok('...the week of their latest game ticked to start with (Monday to Sunday at the address\'s time), the others not',
+     L[0].on && L[1].on && !L[2].on && L[0].monday === '2026-10-12', L.map(g => [g.ymd, g.monday, g.on]));
+  ok('...at most twenty', RM._t.playerGameList(Array.from({ length: 30 }, (_, i) => row(i + 10, new Date(Date.UTC(2026, 8, 1 + i, 18)).toISOString(), 0, 80, 70)), 'UTC').length === 20);
+
+  const calls = [], said = [];
+  let shown = null, answer = null;
+  const q = { select: () => q, in: (k, v) => { calls.push(['in', k, v]); return q; }, eq: (k, v) => { calls.push(['eq', k, v]); return q; },
+    gte: k => { calls.push(['gte', k]); return q; }, then: (res, rej) => Promise.resolve({ data: rows, error: null }).then(res, rej) };
+  RM._t.use({ rpc: async (fn, a) => { calls.push(['rpc', fn, a]); return { data: { players: [{ id: 'p2' }] }, error: null }; }, from: t => { calls.push(['from', t]); return q; } });
+  RM._t.hooks({ say: (t, k) => said.push([t, k]), askPick: async o => { shown = o; return answer ? answer(o) : new Map(o.groups[0].items.map(i => [i.key, i.on])); } });
+  const x = { player_id: 'p1', email: 'sam@example.com', tz: 'Australia/Sydney' };
+  let got = await RM._t.pickPlayerGames(x, 'Sam Smith');
+  ok('send now asks: their games read from every profile of theirs (linked_players), finals in the last 200 days',
+     calls.some(c => c[0] === 'rpc' && c[1] === 'linked_players' && c[2].p_player === 'p1') && calls.some(c => c[0] === 'from' && c[1] === 'player_game_stats') &&
+     calls.some(c => c[0] === 'in' && c[1] === 'player_uuid' && c[2].join() === 'p1,p2') && calls.some(c => c[0] === 'eq' && c[1] === 'games.status' && c[2] === 'final') && calls.some(c => c[0] === 'gte' && c[1] === 'games.tipoff_at'), calls);
+  ok('...the ticks shown: their games newest first, the latest week ticked, the address named; what is ticked is what goes',
+     shown.groups[0].items.map(i => i.key).join() === [GID(3), GID(2), GID(1)].join() && shown.groups[0].items.filter(i => i.on).length === 2 && /sam@example\.com/.test(shown.lead) && shown.go === 'send now' &&
+     got.join() === [GID(3), GID(2)].join(), [shown.groups[0].items, got]);
+  answer = o => new Map(o.groups[0].items.map(i => [i.key, i.key === GID(1)]));
+  got = await RM._t.pickPlayerGames(x, 'Sam Smith');
+  ok('...another game ticked instead: that one alone', got.join() === GID(1), got);
+  answer = o => new Map(o.groups[0].items.map(i => [i.key, false]));
+  got = await RM._t.pickPlayerGames(x, 'Sam Smith');
+  ok('...none ticked: nothing goes, and it says so', got === null && /Tick a game or more/.test(said[said.length - 1][0]));
+  answer = () => null;
+  ok('...cancelled: nothing goes', (await RM._t.pickPlayerGames(x, 'Sam Smith')) === null);
+  rows.length = 0;
+  answer = null; shown = null;
+  ok('...no game in 200 days: nothing to tick, nothing goes, and it says why', (await RM._t.pickPlayerGames(x, 'Sam Smith')) === null && shown === null && /no game in the last 200 days/.test(said[said.length - 1][0]));
+  RM._t.hooks({});
+}
+
 /* ---------------------------------------------------------------- the manager: the clubs the reports are on --- */
 console.log('\nthe clubs a Synergy file is matched to');
 const DAY = 864e5, now = Date.now(), at = d => new Date(now + d * DAY).toISOString();
@@ -77,6 +122,7 @@ const win = { EpinoiaSynergy: S };
 new Function('window', 'document', read('epinoia', 'admin', 'platform', 'reports-manager.js'))(win, undefined);
 const RM = win.EpinoiaReportsManager;
 ok('the manager loads on its own (it touches the page only when it is opened)', RM && typeof RM.open === 'function' && RM._t && typeof RM._t.reportedClubs === 'function');
+await playersTab(RM);
 RM._t.use({ from });
 {
   const { clubs, people } = await RM._t.reportedClubs();
@@ -132,7 +178,10 @@ RM._t.use({ from });
 }
 {
   const src = read('epinoia', 'admin', 'platform', 'reports-manager.js');
-  ok('the manager never searches the whole site for a match (no site_search)', !/site_search|rpc\(/.test(src));
+  /* the Players tab (2026-10-16) finds a player in the site's search, as the console's form did: anyone can be sent their own
+     report. A Synergy file's players never are: everything from the clubs the reports are on to the end */
+  const syn = src.slice(src.indexOf('/* ------------------------------------------------------------------ the clubs the reports are on --- */'));
+  ok('the manager never searches the whole site for a Synergy match (no site_search, no rpc, from the clubs the reports are on to the end)', syn.length > 5000 && !/site_search|rpc\(/.test(syn));
   ok('it can always be closed: the title bar and its close button never scroll away, its size takes the page\'s zoom back out (so it fits the screen), Esc or a click outside closes it',
      /\.rm\[open\]\{ display:flex; flex-direction:column \}/.test(src) && /\.rm-b\{ flex:1 1 auto; min-height:0;/.test(src) && /max-height:calc\(92vh \/ var\(--rmz, 1\)\)/.test(src) &&
      /getComputedStyle\(document\.body\)\.zoom/.test(src) && /if \(e\.target === dlg\) closeAsked\(\)/.test(src) && /function closeAsked\(\)/.test(src) && /aria-label', 'Close the reports manager'/.test(src));
@@ -166,7 +215,7 @@ RM._t.use({ from });
   }
   const html = read('epinoia', 'admin', 'platform', 'index.html'), js = read('epinoia', 'admin', 'platform', 'platform.js');
   ok('the console opens it from Reports by email, with the Synergy reader on the page', /id="mailManage"/.test(html) && /<script src="\.\.\/\.\.\/synergy\.js\?v=\d+" defer><\/script>/.test(html) &&
-     /<script src="reports-manager\.js\?v=\d+" defer><\/script>/.test(html) && /EpinoiaReportsManager\.open\(sb, \{ say, oops, sendNow, sendLine, reload: loadMail, pickWeek, weekOf, ownDueFor, weekWords \}\)/.test(js));
+     /<script src="reports-manager\.js\?v=\d+" defer><\/script>/.test(html) && /EpinoiaReportsManager\.open\(sb, \{ say, oops, sendNow, sendLine, reload: loadMail, pickWeek, askPick, weekOf, ownDueFor, weekWords \}, which\)/.test(js));
 }
 
 /* ---------------------------------------------------------------- the ZIP --- */

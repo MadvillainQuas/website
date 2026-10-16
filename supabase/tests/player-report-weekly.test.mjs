@@ -11,7 +11,8 @@
 //     a clock change, the email, and a whole round against a stand-in database and Resend: sent and logged once, a week not
 //     played skipped, a game still being played waited for on the Monday only, send now;
 //   * 0272 (PGlite): a platform administrator's alone, one row an address and a player, one log row a week;
-//   * the console: the form and the list (platform.js loadPlayerMail).
+//   * the console: the reports manager's Players tab (reports-manager.js), send now of the games ticked (0273), and
+//     the report and the email of those games (p/?rpgames=, the mailer's chosenGames).
 //
 //   TZ=UTC node supabase/tests/player-report-weekly.test.mjs
 import { readFileSync } from 'node:fs';
@@ -95,9 +96,16 @@ console.log('\ngames played during the week (report-playerpages.js, p/player.js 
      && /GF\.PARTS\.forEach\(\(\[what, keep, note\]\) => \{/.test(PP) && /ctxOf: r => r\.__g\.cx, nameCell, head: 'Game', cls: 'rp-wkfs'/.test(PP));
   ok('...a week of one game drawn side by side (the court and the game\'s tiles), never a card half the page wide', /const wide = gl\.length === 1;/.test(PP) && /'<div class="rp-wk-c wide">/.test(PP));
   ok('the week: ?rpweek= (the email\'s Monday), else his latest game\'s, Monday to Sunday in his league\'s time zone; every profile of his',
-     /const asked = new URLSearchParams\(location\.search\)\.get\('rpweek'\);/.test(PJ) && /if \(!monday\) monday = mondayOf\(rows\.map\(r => r\.__day\)\.sort\(\)\.pop\(\)\);/.test(PJ)
+     /const asked = new URLSearchParams\(location\.search\)\.get\('rpweek'\);/.test(PJ) && /if \(!monday\) monday = chosen\.length \? days\[0\] : mondayOf\(days\[days\.length - 1\]\);/.test(PJ)
      && /const tz = lgs\.timezone \|\| 'UTC';/.test(PJ) && /leagues\(id,slug,name,logo_path,colour_a,gender,timezone\)/.test(PJ)
      && /weekGames: \(\) => RP_WEEK \|\| \(RP_WEEK = loadWeekGames\(pl, team, rpGet\('lvrPids', 60000\)\)/.test(PJ));
+  ok('?rpgames= (a player\'s send now of the games chosen, 0273): those games alone, whatever their week, from their first day to their last, a game once',
+     /const chosen = \(new URLSearchParams\(location\.search\)\.get\('rpgames'\) \|\| ''\)\.split\(','\)\.filter\(id => \/\^\[0-9a-f-\]\{36\}\$\/i\.test\(id\)\)\.slice\(0, 12\);/.test(PJ)
+     && /\(chosen\.length \? `&game_id=in\.\(\$\{chosen\.join\(','\)\}\)&games\.status=eq\.final`/.test(PJ) && /const sunday = chosen\.length \? days\[days\.length - 1\] : ymdAdd\(monday, 6\);/.test(PJ)
+     && /return \{ monday, sunday, tz, games, picked: chosen\.length > 0 \};/.test(PJ));
+  ok('...the section named for them: SELECTED GAMES, its own legend entry, one day said once; the insights say "These games"',
+     /wkg\.page = picked \? 'SELECTED GAMES' : 'GAMES PLAYED DURING THE WEEK';/.test(PP) && /title\(picked \? 'Selected games' : 'Games played during the week'/.test(PP)
+     && /if \(picked\) R\.legendExtra\.push\(\['SELECTED GAMES'/.test(PP) && /if \(a === b\) return DAYS/.test(PP) && /F\.week && F\.week\.picked \? 'These games' : 'This week'/.test(PP));
   ok('...only games he played (minutes) and that are final', /const playedIn = st => !!st && \(\+st\.min > 0 \|\| \(st\.adv && \+st\.adv\.min > 0\)\);/.test(PJ) && /r\.games && r\.games\.status === 'final' && playedIn\(r\.stats\)/.test(PJ));
 }
 
@@ -186,7 +194,9 @@ const M = await import(pathToFileURL(path.join(ROOT, 'scripts', 'report_mailer.m
       const q = new URLSearchParams(p.split('?')[1]);
       const lo = Date.parse(decodeURIComponent((q.getAll('games.tipoff_at').find(x => x.startsWith('gte.')) || 'gte.1970').slice(4)));
       const hi = Date.parse(decodeURIComponent((q.getAll('games.tipoff_at').find(x => x.startsWith('lt.')) || 'lt.2999').slice(3)));
-      return res(W.games.filter(r => Date.parse(r.games.tipoff_at) >= lo && Date.parse(r.games.tipoff_at) < hi));
+      const gin = q.get('game_id'), gids = gin ? gin.replace(/^in\.\(|\)$/g, '').split(',') : null;
+      if (gids) W.askedGames = gids;
+      return res(W.games.filter(r => (!gids || gids.includes(r.game_id)) && Date.parse(r.games.tipoff_at) >= lo && Date.parse(r.games.tipoff_at) < hi));
     }
     if (p.startsWith('games?or=')) return res(W.open);
     return res([]);
@@ -224,6 +234,35 @@ const M = await import(pathToFileURL(path.join(ROOT, 'scripts', 'report_mailer.m
   W = world({ games: [], sub: { send_now_at: '2026-10-22T11:58:00Z' } });
   await M.playerRound(THU);
   ok('...with no game in 200 days: nothing sent, and the console told why', !W.sent.length && W.patched[0].send_now_at === null && /no game of theirs in the last 200 days/.test(W.patched[0].last_detail), W.patched);
+
+  ok('...a row read before 0273 (no send_now_games on it): the request cleared without naming the column', !('send_now_games' in W.patched[0]));
+
+  /* SEND NOW OF THE GAMES CHOSEN (0273; Louie, 2026-10-16) */
+  const U = n => 'aaaaaaaa-0000-4000-8000-00000000000' + n;
+  const gu = (n, iso, min) => { const r = game(iso, min); r.game_id = U(n); r.games.id = U(n); return r; };
+  const GU = () => [gu(1, '2026-10-01T19:00:00Z'), gu(2, '2026-10-15T19:00:00Z'), gu(3, '2026-10-17T18:00:00Z'), gu(4, '2026-10-17T20:00:00Z', 0)];
+  W = world({ games: GU(), sub: { send_now_at: '2026-10-22T11:58:00Z', send_now_games: [U(3), U(1), 'not-a-game', U(4), U(3)] } });
+  await M.playerRound(THU);
+  ok('two games of two weeks chosen: one email, the report drawn of those games (in the order played), not of a week',
+     W.sent.length === 1 && new RegExp('&tab=report&rpgames=' + U(1) + ',' + U(3) + '$').test(pdfs[pdfs.length - 1]) && W.askedGames.join() === [U(3), U(1), U(4)].join(), [pdfs[pdfs.length - 1], W.askedGames]);
+  ok('...the email: "Sam Smith: your player report, 1–17 October 2026", the games listed, the section named for them',
+     W.sent[0].subject === 'Sam Smith: your player report, 1–17 October 2026' && /with these two games/.test(W.sent[0].html) && /Selected games<\/b>/.test(W.sent[0].html) &&
+     !/Games played during the week/.test(W.sent[0].html) && (W.sent[0].html.match(/Bristol/g) || []).length === 2, W.sent[0].subject);
+  ok('...the request cleared with its games, and the console told what went (the one they did not play said)', W.patched.length === 1 && W.patched[0].send_now_at === null && W.patched[0].send_now_games === null &&
+     /^Sent 2 chosen games \(1–17 October 2026\); one chosen was not a final they played in$/.test(W.patched[0].last_detail), W.patched);
+  ok('...games of two weeks are no week: nothing logged, so each Monday email goes as it would', !W.posted.length);
+  W = world({ games: GU(), sub: { send_now_at: '2026-10-22T11:58:00Z', send_now_games: [U(2), U(3)] } });
+  await M.playerRound(THU);
+  ok('every game of one week chosen: that week logged, so its Monday does not send the same report again', W.sent.length === 1 && W.posted.length === 1 && W.posted[0].week === '2026-10-12' && /chosen/.test(W.posted[0].detail), W.posted);
+  W = world({ games: GU().concat([gu(5, '2026-10-13T19:00:00Z')]), sub: { send_now_at: '2026-10-22T11:58:00Z', send_now_games: [U(3)] } });
+  await M.playerRound(THU);
+  ok('...a part of a week chosen: sent, and the week not logged (its Monday email still has all of it)', W.sent.length === 1 && !W.posted.length &&
+     W.sent[0].subject === 'Sam Smith: your player report, 17 October 2026' && /with this game/.test(W.sent[0].html), [W.sent.map(x => x.subject), W.posted]);
+  W = world({ games: GU(), sub: { send_now_at: '2026-10-22T11:58:00Z', send_now_games: [U(4), U(8)] } });
+  await M.playerRound(THU);
+  ok('...none of them a game they played: nothing sent, the request cleared and the console told why', !W.sent.length && W.patched[0].send_now_at === null &&
+     /none of the 2 game\(s\) chosen is a final they played in/.test(W.patched[0].last_detail), W.patched);
+  ok('...at most twelve read, as 0273 allows', M.MAX_PICKED === 12 && /\.slice\(0, MAX_PICKED\)/.test(read('scripts', 'report_mailer.mjs')));
 
   W = world({ games: [game('2026-10-15T19:00:00Z')] });
   await M.playerRound(new Date('2026-10-19T06:30:00Z'));
@@ -274,28 +313,44 @@ console.log('\nthe database (0272)');
     ok('the mailer (service role) logs a week once', /duplicate key|unique/i.test(await err(`insert into public.report_mail_player_log (sub_id, week) values ('${sid}', '2026-10-12')`, { role: 'service_role' }) || ''));
     ok('...an administrator reads the log, nobody else writes it', (await as(`select * from public.report_mail_player_log`, { padmin: 'yes' })).length === 1 &&
        /permission denied|row-level security/i.test(await err(`insert into public.report_mail_player_log (sub_id, week) values ('${sid}', '2026-10-19')`, { padmin: 'yes' }) || ''));
+    /* 0273: the games chosen for a send now */
+    let a73 = true;
+    try { const M73 = read('supabase', 'migrations', '0273_player_report_games.sql'); await db.exec(M73); await db.exec(M73); } catch (e) { a73 = e.message; }
+    ok('0273 applies, twice', a73 === true, a73);
+    const ids = n => "array[" + Array.from({ length: n }, (_, i) => "'00000000-0000-0000-0000-" + String(i + 1).padStart(12, '0') + "'::uuid").join(',') + "]";
+    ok('...an administrator writes the games chosen with send now, one to twelve; thirteen, or none, is refused',
+       (await as(`update public.report_mail_players set send_now_at = now(), send_now_games = ${ids(3)} returning cardinality(send_now_games) n`, { padmin: 'yes' }))[0].n === 3 &&
+       /check/i.test(await err(`update public.report_mail_players set send_now_games = ${ids(13)}`, { padmin: 'yes' }) || '') &&
+       /check/i.test(await err(`update public.report_mail_players set send_now_games = '{}'::uuid[]`, { padmin: 'yes' }) || ''));
+    ok('...and nobody else can', (await as(`update public.report_mail_players set send_now_games = null returning id`)).length === 0);
     ok('a player deleted takes his addresses and their log with him', (await (async () => { await db.exec(`delete from public.players where id = '${P1}'`); return (await db.query('select count(*)::int n from public.report_mail_player_log')).rows[0].n; })()) === 0);
   }
 }
 
 /* ======================================================================== THE CONSOLE === */
-console.log('\nthe console (admin/platform)');
+console.log('\nthe console: the reports manager\'s Players tab (admin/platform/reports-manager.js)');
 {
-  const PJ = read('epinoia', 'admin', 'platform', 'platform.js'), PH = read('epinoia', 'admin', 'platform', 'index.html');
-  ok('the form: a player found by name, the address, a first name, the time zone; and the list', ['pmailPlayer', 'pmailPlayers', 'pmailEmail', 'pmailName', 'pmailTz', 'pmailGo', 'pmailList'].every(id => PH.includes('id="' + id + '"')));
-  ok('...the player from the site\'s search, their league\'s clock set when picked', /sb\.rpc\('site_search', \{ p_q: q, p_limit: 12 \}\)/.test(PJ) && /select\('teams\(leagues\(timezone\)\)'\)\.eq\('player_id', got\.id\)/.test(PJ));
-  ok('...added once an address and a player; send now, pause and remove on each; read when the Reports tab opens',
-     /from\('report_mail_players'\)\.upsert\(\{ email, player_id: p\.id,/.test(PJ) && /\{ onConflict: 'email,player_id' \}/.test(PJ) && /update\(\{ send_now_at: new Date\(\)\.toISOString\(\) \}\)/.test(PJ)
-     && /reports: \(\) => Promise\.all\(\[loadMail\(\), loadPlayerMail\(\)\]\) \};/.test(PJ));
-  /* the Reports tab (2026-10-16): both sections in its pane, none left in Accounts, and nothing of them read at the start */
+  const PJ = read('epinoia', 'admin', 'platform', 'platform.js'), PH = read('epinoia', 'admin', 'platform', 'index.html'), RJ = read('epinoia', 'admin', 'platform', 'reports-manager.js');
+  ok('the manager\'s tabs (Louie, 2026-10-16: "two tabs in report manager (teams and players)"): Teams, Players, and the Synergy files; the console opens it on Teams or on Players',
+     /\[\['addr', 'Teams'\], \['pl', 'Players'\], \['syn', 'Synergy files'\]\]/.test(RJ) && /\[\['#mailManage', 'addr'\], \['#mailManagePl', 'pl'\]\]/.test(PJ) && PH.includes('id="mailManagePl"') &&
+     /if \(which === 'addr' \|\| which === 'pl' \|\| which === 'syn'\) tab = which;/.test(RJ));
+  ok('...the players\' section has left the Reports tab: none of it on the page or in platform.js, the tab reads the clubs\' alone', !/id="pmail/.test(PH) && !/loadPlayerMail|PMAIL/.test(PJ) && /reports: loadMail \};/.test(PJ));
+  /* the Reports tab (2026-10-16): the clubs' section in its pane, none left in Accounts, and nothing of it read at the start */
   const paneOf = id => { const m = new RegExp('<div class="pane" id="pane-' + id + '">([\\s\\S]*?)\\n    </div>\\n').exec(PH); return m ? m[1] : ''; };
   const rp = paneOf('reports'), ac = paneOf('acct');
-  ok('the reports have a tab of their own, after Accounts: the clubs\' and the players\' sections in it, and none left in Accounts',
+  ok('the Reports tab, after Accounts: the clubs\' reports and the manager\'s two buttons in it, none left in Accounts, read when it opens',
      /data-p="acct" role="tab">Accounts<\/button>\n\s*<button class="ep-tab" data-p="reports" role="tab">Reports<\/button>/.test(PH) &&
-     ['mailManage', 'mailForm', 'mailList', 'pmailForm', 'pmailList'].every(id => rp.includes('id="' + id + '"')) &&
-     ac.includes('id="acctList"') && !/id="p?mail/.test(ac), [rp.length, ac.length]);
-  ok('...read when it opens, not at the console\'s start', !/Promise\.all\(\[loadOverview\(\)[^\n]*loadMail/.test(PJ));
-  ok('...and a database before 0272 says so', /Players’ weekly reports arrive with migration 0272/.test(PJ));
+     ['mailManage', 'mailManagePl', 'mailForm', 'mailList'].every(id => rp.includes('id="' + id + '"')) && ac.includes('id="acctList"') && !/id="p?mail/.test(ac) &&
+     !/Promise\.all\(\[loadOverview\(\)[^\n]*loadMail/.test(PJ), [rp.length, ac.length]);
+  ok('the Players tab: a player found by name in the site\'s search, the address, a first name, the time zone (their league\'s when picked); added once an address and a player',
+     /sb\.rpc\('site_search', \{ p_q: q, p_limit: 12 \}\)/.test(RJ) && /select\('teams\(leagues\(timezone\)\)'\)\.eq\('player_id', pk\.id\)/.test(RJ) &&
+     /from\('report_mail_players'\)\.upsert\(\{ email: e, player_id: who\.id,/.test(RJ) && /\{ onConflict: 'email,player_id' \}/.test(RJ));
+  ok('...each with what the mailer last did, send now, pause and remove; read again while a send now waits; a database before 0272 says so',
+     /btn\(x\.send_now_at \? 'queued' : 'send now', 'mini', \(\) => sendPlayerNow\(x, pname, now\)\)/.test(RJ) && /update\(\{ active: !x\.active \}\)/.test(RJ) && /from\('report_mail_players'\)\.delete\(\)\.eq\('id', x\.id\)/.test(RJ) &&
+     /pTimer = setTimeout\(\(\) => \{ if \(dlg && dlg\.open && tab === 'pl' && !document\.hidden\) draw\(\); \}, 30000\);/.test(RJ) && /Players’ weekly reports arrive with migration 0272/.test(RJ));
+  ok('send now asks which games (platform.js askPick, handed to the manager) and writes them (0273); before 0273 it asks before sending the week',
+     /pickWeek, askPick, weekOf, ownDueFor, weekWords \}, which\)/.test(PJ) && /update\(Array\.isArray\(games\) \? \{ send_now_at: at, send_now_games: games \} : \{ send_now_at: at \}\)/.test(RJ) &&
+     /Choosing the games needs migration 0273, which is not applied yet\. Send the week of their latest game instead\?/.test(RJ));
 }
 
 if (fail) { console.log(`\n${fail} failed, ${pass} passed`); process.exit(1); }

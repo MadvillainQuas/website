@@ -818,7 +818,9 @@ export async function requests(now = new Date()) {
    its GAMES PLAYED DURING THE WEEK section) attached to an email that lists the week's games. A week without a game of theirs
    goes unsent ("skip that week"). A Monday missed (a dropped cron) is caught up on the Tuesday, for that same week. On the
    Monday a game of the club's still being played or finalised is waited for; on the Tuesday nothing is. "Send now" (the
-   console's send_now_at) sends the week of their latest game at the next run, whatever the day. Logged once a week
+   console's send_now_at) sends the week of their latest game at the next run, whatever the day; or, the games chosen in the
+   reports manager (0273 send_now_games; Louie, 2026-10-16: "give the option to select which games to include if 'send now'
+   is selected for player reports"), the report drawn for those games alone (p/?rpgames=). Logged once a week
    (report_mail_player_log: address and week), so no week goes twice; what the mailer last did is left on the address
    (last_at, last_detail) for the console. */
 export const PLAYER_FROM_MIN = 8 * 60;
@@ -844,6 +846,13 @@ export function weekSpan(monday) {
   return a.getUTCMonth() === b.getUTCMonth() ? a.getUTCDate() + '–' + b.getUTCDate() + ' ' + MONTHS[b.getUTCMonth()] + ' ' + b.getUTCFullYear()
     : a.getUTCDate() + ' ' + MONTHS[a.getUTCMonth()] + (a.getUTCFullYear() === b.getUTCFullYear() ? '' : ' ' + a.getUTCFullYear()) + ' – ' + b.getUTCDate() + ' ' + MONTHS[b.getUTCMonth()] + ' ' + b.getUTCFullYear();
 }
+/* the days a report of chosen games covers: "11 October 2026", "3–11 October 2026", "28 September – 4 October 2026" */
+export function daySpan(a, b) {
+  if (!b || a === b) { const d = new Date(a + 'T12:00:00Z'); return d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
+  const x = new Date(a + 'T12:00:00Z'), y = new Date(b + 'T12:00:00Z');
+  return x.getUTCMonth() === y.getUTCMonth() && x.getUTCFullYear() === y.getUTCFullYear() ? x.getUTCDate() + '–' + y.getUTCDate() + ' ' + MONTHS[y.getUTCMonth()] + ' ' + y.getUTCFullYear()
+    : x.getUTCDate() + ' ' + MONTHS[x.getUTCMonth()] + (x.getUTCFullYear() === y.getUTCFullYear() ? '' : ' ' + x.getUTCFullYear()) + ' – ' + y.getUTCDate() + ' ' + MONTHS[y.getUTCMonth()] + ' ' + y.getUTCFullYear();
+}
 /* a game row of theirs as the email lists it: the side they were on, the score their way round, their line */
 export function playerLine(r) {
   const g = r.games || {}, side = +r.team_idx === 1 ? 1 : 0, s = r.stats || {};
@@ -853,12 +862,13 @@ export function playerLine(r) {
     pts: +s.pts || 0, reb: (+s.or || 0) + (+s.dr || 0), ast: +s.ast || 0, min: (s.adv && s.adv.minTxt) || '' };
 }
 export const playedIn = r => !!r && r.games && r.games.status === 'final' && !!r.stats && (+r.stats.min > 0 || (r.stats.adv && +r.stats.adv.min > 0));
-/* THE EMAIL: the week's games their way round, and what the report attached holds */
-export function playerEmail({ sub, name, team, week, games, tz }) {
+/* THE EMAIL: the week's games their way round, and what the report attached holds. With picked ({ from, to }: the first and
+   last days of the games chosen in the console), the games chosen instead of a week. */
+export function playerEmail({ sub, name, team, week, games, tz, picked }) {
   const colour = colourOf(team), ink = inkOn(colour), n = games.length;
   const lg = ((team && team.leagues) || {}).name || '';
-  const span = weekSpan(week);
-  const subject = `${name}: your week, ${span}`;
+  const span = picked ? daySpan(picked.from, picked.to) : weekSpan(week);
+  const subject = picked ? `${name}: your player report, ${span}` : `${name}: your week, ${span}`;
   const rows = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:2px 0 16px;border:1px solid #e4ebe7;border-radius:8px">' +
     games.map((o, i) => '<tr><td style="padding:9px 12px;' + (i ? 'border-top:1px solid #e4ebe7;' : '') + F + 'font-size:14px;color:#0d1f17;white-space:nowrap"><b>' + esc(dayShort(o.tipoff_at, tz)) + '</b></td>' +
       '<td style="padding:9px 12px;' + (i ? 'border-top:1px solid #e4ebe7;' : '') + F + 'font-size:14px;color:#0d1f17">' + (o.home ? 'v ' : 'at ') + '<b>' + esc(o.opp) + '</b>' +
@@ -866,7 +876,7 @@ export function playerEmail({ sub, name, team, week, games, tz }) {
       '<td align="right" style="padding:9px 12px;' + (i ? 'border-top:1px solid #e4ebe7;' : '') + F + 'font-size:14px;font-weight:bold;white-space:nowrap;color:' + (o.res === 'W' ? '#0a6d43' : o.res === 'L' ? '#a3262f' : '#0d1f17') + '">' +
         esc(o.res + ' ' + o.us + '–' + o.them) + '</td></tr>').join('') + '</table>';
   const blocks = [
-    P(`Here is your player report, updated with the week’s ${n === 1 ? 'game' : (NUM[n] || n) + ' games'}:`),
+    P(picked ? `Here is your player report, with ${n === 1 ? 'this game' : 'these ' + (NUM[n] || n) + ' games'}:` : `Here is your player report, updated with the week’s ${n === 1 ? 'game' : (NUM[n] || n) + ' games'}:`),
     rows,
     P('Inside:'),
     UL(['<b>Main stats</b>: your season line, every figure ranked against the players of your position in the competition',
@@ -874,11 +884,11 @@ export function playerEmail({ sub, name, team, week, games, tz }) {
       '<b>Left v right</b>: your shooting from each side of the floor',
       '<b>Connections</b>: the teammates you set up most, and the shots your passes become',
       '<b>On the floor with</b>: the team with you on and off, and your best and worst pairings',
-      '<b>Games played during the week</b>: your shot chart from each game, and your full stats line from each',
+      picked ? '<b>Selected games</b>: your shot chart from each of these games, and your full stats line from each' : '<b>Games played during the week</b>: your shot chart from each game, and your full stats line from each',
       '<b>Actionable insights</b>: what is working and what to work on, for your position']),
     NOTE(ink, 'Every figure is coloured against the players of your position, green good and red poor; the legend at the back explains each statistic, and every stat named links to it.'),
-    P('Have a good week.')];
-  return { subject, html: layout({ colour, kicker: 'Weekly player report' + (lg ? ' · ' + lg : ''), title: `${name}: ${n === 1 ? 'one game' : (NUM[n] || n) + ' games'} this week`,
+    P(picked ? 'All the best.' : 'Have a good week.')];
+  return { subject, html: layout({ colour, kicker: (picked ? 'Player report' : 'Weekly player report') + (lg ? ' · ' + lg : ''), title: `${name}: ${n === 1 ? 'one game' : (NUM[n] || n) + ' games'}${picked ? '' : ' this week'}`,
     meta: span + (team && team.name ? ' · ' + team.name : ''), greeting: sub.name ? 'Hi ' + sub.name + ',' : 'Hello,', blocks,
     files: [{ label: 'Player report: ' + name + ', ' + span }], kept: false,
     foot: 'You receive this because a weekly player report was set up for this address on Epinoia. To change or stop it, simply reply to this email and let us know.' }) };
@@ -910,7 +920,8 @@ async function clubStillPlaying(teamId, from, to, now) {
   return (rows || []).some(g => g.tipoff_at && Date.parse(g.tipoff_at) <= now.getTime() && now.getTime() - Date.parse(g.tipoff_at) <= SUNDAY_STALE_MS);
 }
 const notePlayer = (s, detail, clear) => (DRY ? Promise.resolve() : rest(`report_mail_players?id=eq.${s.id}`, { method: 'PATCH',
-  body: JSON.stringify(Object.assign({ last_at: new Date().toISOString(), last_detail: String(detail).slice(0, 400) }, clear ? { send_now_at: null } : {})) }).catch(e => console.warn('[' + s.email + '] note:', e.message || e)));
+  body: JSON.stringify(Object.assign({ last_at: new Date().toISOString(), last_detail: String(detail).slice(0, 400) },
+    clear ? Object.assign({ send_now_at: null }, 'send_now_games' in s ? { send_now_games: null } : {}) : {})) }).catch(e => console.warn('[' + s.email + '] note:', e.message || e)));
 async function logPlayerWeek(s, week, detail) {
   if (DRY) return;
   for (let i = 0; ; i++) {
@@ -926,6 +937,9 @@ export async function onePlayer(s, now = new Date()) {
   const tz = okZone(s.tz, team.leagues && team.leagues.timezone);
   const ids = await linkedIds(s.player_id);
   const asked = !!s.send_now_at;
+  /* SEND NOW WITH THE GAMES CHOSEN (0273): the report of those games, whatever week they were in */
+  const chosen = asked && Array.isArray(s.send_now_games) ? [...new Set(s.send_now_games.map(String))].filter(id => /^[0-9a-f-]{36}$/i.test(id)).slice(0, MAX_PICKED) : [];
+  if (chosen.length) return chosenGames(s, P, name, team, tz, ids, chosen);
   let week, catchUp = false;
   if (asked) {
     week = await latestWeek(ids, tz, now);
@@ -948,6 +962,33 @@ export async function onePlayer(s, now = new Date()) {
   await send(s.email, E.subject, E.html, [pdf]);
   await logPlayerWeek(s, week, games.length + ' game(s)' + (asked ? ', send now' : ''));
   await notePlayer(s, 'Sent the week of ' + weekSpan(week) + ' (' + (games.length === 1 ? 'one game' : games.length + ' games') + ')' + (asked ? ', asked for' : ''), asked);
+  return 0;
+}
+export const MAX_PICKED = 12;
+const slugName = name => String(name).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+async function chosenGames(s, P, name, team, tz, ids, chosen) {
+  const rows = (await rest(`player_game_stats?player_uuid=in.(${ids.join(',')})&game_id=in.(${chosen.join(',')})&select=${PG_SEL}&games.status=eq.final`) || [])
+    .filter(playedIn).sort((a, b) => String(a.games.tipoff_at).localeCompare(String(b.games.tipoff_at)))
+    .filter((r, i, a) => a.findIndex(x => x.game_id === r.game_id) === i);             // a game once, whichever of their profiles has it
+  if (!rows.length) { await notePlayer(s, 'Send now: none of the ' + chosen.length + ' game(s) chosen is a final they played in, so nothing was sent.', true); return 0; }
+  const days = rows.map(r => local(tz, new Date(r.games.tipoff_at)).date), from = days[0], to = days[days.length - 1];
+  const games = rows.map(playerLine), span = daySpan(from, to);
+  console.log('[' + s.email + '] ' + name + ': ' + rows.length + ' chosen game(s), ' + span + ' (send now)');
+  const pdf = await pdfOf('/epinoia/p/?p=' + encodeURIComponent(P.slug || s.player_id) + '&tab=report&rpgames=' + rows.map(r => r.game_id).join(','),
+    'epinoia-player-report-' + slugName(name) + '-' + from + (to !== from ? '-to-' + to : ''));
+  const E = playerEmail({ sub: s, name, team, games, tz, picked: { from, to } });
+  await send(s.email, E.subject, E.html, [pdf]);
+  /* THE WHOLE OF A WEEK CHOSEN (every game of theirs in it, nothing from another): that week counts as sent, so its Monday does
+     not send the same report again. A part of a week, or games from several, leave the Monday email as it was. */
+  const mondays = [...new Set(days.map(mondayOf))];
+  if (mondays.length === 1) {
+    const B = weekBounds(tz, mondays[0]);
+    const all = await playerGamesIn(ids, B.from, B.to).catch(() => null);
+    const got = new Set(rows.map(r => r.game_id));
+    if (all && all.every(r => got.has(r.game_id))) await logPlayerWeek(s, mondays[0], rows.length + ' game(s), chosen');
+  }
+  await notePlayer(s, 'Sent ' + (rows.length === 1 ? 'one chosen game' : rows.length + ' chosen games') + ' (' + span + ')' +
+    (rows.length < chosen.length ? '; ' + (chosen.length - rows.length === 1 ? 'one chosen was not a final they played in' : (chosen.length - rows.length) + ' chosen were not finals they played in') : ''), true);
   return 0;
 }
 /* every active address (none before 0272 is applied: the table is not there, which must not stop the clubs' rounds) */

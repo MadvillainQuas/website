@@ -537,8 +537,9 @@
     </div>
 
     <!-- REPORTS, A TAB OF THEIR OWN (Louie, 2026-10-16: "Can the reports (both team and player) be in its own tab in
-         platform?"): the clubs' reports by email and the players' weekly reports, until then at the foot of Accounts. Read
-         when the tab is first opened (and again on each opening), as the other tabs are. -->
+         platform?"): the clubs' reports by email, until then at the foot of Accounts, read when the tab is opened (and again on
+         each opening), as the other tabs are. The players' weekly reports are the reports manager's Players tab (2026-10-16:
+         "two tabs in report manager (teams and players)"). -->
     <div class="pane" id="pane-reports">
       <!-- 0221: REPORTS BY EMAIL. An address and a club: the game analysis after each of its games, its own report every
            other Sunday morning and its opponents' reports for the week ahead (scripts/report_mailer.mjs). -->
@@ -554,7 +555,9 @@
            reports ZIP, and the Synergy files, matched to the clubs the reports are on -->
       <div class="row" style="flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
         <button id="mailManage" class="ep-btn pri" type="button">open the reports manager</button>
-        <span class="mt">every address with all its clubs, PRIME REPORT, the players&rsquo; reports ZIP and the Synergy files</span>
+        <button id="mailManagePl" class="ep-btn" type="button">players&rsquo; weekly reports</button>
+        <span class="mt">Teams: every address with all its clubs, PRIME REPORT and the players&rsquo; reports ZIP. Players: the players&rsquo;
+          weekly reports, and send now of the games you tick. Synergy files.</span>
       </div>
       <div class="row" id="mailForm" style="flex-wrap:wrap;gap:8px;align-items:center">
         <input id="mailEmail" class="ep-input" type="email" placeholder="their@email" style="min-width:200px">
@@ -565,22 +568,6 @@
         <button id="mailGo" class="ep-btn pri" type="button">add</button>
       </div>
       <div id="mailList"></div>
-      <!-- 0272: A PLAYER'S WEEKLY REPORT (Louie, 2026-10-16). An address and a player: every Monday morning, at the address's
-           time, the player's report for the week just played (scripts/report_mailer.mjs playerRound). -->
-      <h3 id="pmailH">Players&rsquo; weekly reports</h3>
-      <p class="lead">Find a player and give the address their report goes to. Every Monday morning, at that address&rsquo;s time, it is
-        emailed their player report for the week just played, Monday to Sunday: the season&rsquo;s pages, and the shot chart and full stats
-        line of each game that week. A week they did not play is skipped. <b>Send now</b> emails the week of their latest game at the
-        mailer&rsquo;s next run, within half an hour.</p>
-      <div class="row" id="pmailForm" style="flex-wrap:wrap;gap:8px;align-items:center">
-        <input id="pmailPlayer" class="ep-input" type="text" placeholder="player: type to find" list="pmailPlayers" style="min-width:240px">
-        <datalist id="pmailPlayers"></datalist>
-        <input id="pmailEmail" class="ep-input" type="email" placeholder="their@email" style="min-width:200px">
-        <input id="pmailName" class="ep-input" type="text" placeholder="first name (optional)" style="width:150px">
-        <select id="pmailTz" class="ep-input"></select>
-        <button id="pmailGo" class="ep-btn pri" type="button">add</button>
-      </div>
-      <div id="pmailList"></div>
     </div>
 
     <div class="pane" id="pane-lgs">

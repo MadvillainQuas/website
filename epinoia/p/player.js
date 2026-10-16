@@ -87,7 +87,9 @@ const RP_LOG_GAMES = 600;
 /* GAMES PLAYED DURING THE WEEK (the report's section, report-playerpages.js; Louie, 2026-10-16): his games of one Monday-to-
    Sunday week in his league's time zone - the week ?rpweek= names (any day of it; the weekly email names its Monday), else
    the week of his latest game - each with his stored line as the match report's FULL STATS table prints it (gamefull.js),
-   read against its own game (both clubs' lines and every player's), and his located shots. Null when he played none. */
+   read against its own game (both clubs' lines and every player's), and his located shots. Null when he played none.
+   ?rpgames= (a player's "send now" with the games chosen in the reports manager, 0273) names the games instead, whatever
+   their week: monday and sunday are then the first and last of their days, and picked is true. */
 let RP_WEEK = null;
 const ymdIn = (iso, tz) => {
   try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso)); }
@@ -105,17 +107,20 @@ async function loadWeekGames(pl, team, pidsP) {
   const sel = 'game_id,team_idx,player_uuid,stats,games!inner(id,tipoff_at,status,home_score,away_score,competition_id,' +
     'home:home_team_id(name,short_name),away:away_team_id(name,short_name))';
   const asked = new URLSearchParams(location.search).get('rpweek');
-  let monday = /^\d{4}-\d{2}-\d{2}$/.test(asked || '') ? mondayOf(asked) : null;
+  const chosen = (new URLSearchParams(location.search).get('rpgames') || '').split(',').filter(id => /^[0-9a-f-]{36}$/i.test(id)).slice(0, 12);
+  let monday = !chosen.length && /^\d{4}-\d{2}-\d{2}$/.test(asked || '') ? mondayOf(asked) : null;
   /* the window read: the week asked for (a day either side, for the time zone), or the last 200 days to find his latest */
   const from = monday ? ymdAdd(monday, -1) : new Date(Date.now() - 200 * 864e5).toISOString().slice(0, 10);
   const to = monday ? ymdAdd(monday, 8) : ymdAdd(new Date().toISOString().slice(0, 10), 1);
   const rows = (await D.all(`player_game_stats?player_uuid=in.(${pids.join(',')})&select=${sel}` +
-    `&games.status=eq.final&games.tipoff_at=gte.${from}&games.tipoff_at=lt.${to}`))
-    .filter(r => r.games && r.games.status === 'final' && playedIn(r.stats));
+    (chosen.length ? `&game_id=in.(${chosen.join(',')})&games.status=eq.final` : `&games.status=eq.final&games.tipoff_at=gte.${from}&games.tipoff_at=lt.${to}`)))
+    .filter(r => r.games && r.games.status === 'final' && playedIn(r.stats))
+    .filter((r, i, a) => a.findIndex(x => x.game_id === r.game_id) === i);
   if (!rows.length) return null;
   rows.forEach(r => { r.__day = ymdIn(r.games.tipoff_at, tz); });
-  if (!monday) monday = mondayOf(rows.map(r => r.__day).sort().pop());
-  const sunday = ymdAdd(monday, 6);
+  const days = rows.map(r => r.__day).sort();
+  if (!monday) monday = chosen.length ? days[0] : mondayOf(days[days.length - 1]);
+  const sunday = chosen.length ? days[days.length - 1] : ymdAdd(monday, 6);
   const mine = rows.filter(r => r.__day >= monday && r.__day <= sunday)
     .sort((a, b) => String(a.games.tipoff_at).localeCompare(String(b.games.tipoff_at)));
   if (!mine.length) return { monday, sunday, tz, games: [] };
@@ -148,7 +153,7 @@ async function loadWeekGames(pl, team, pidsP) {
     games.push({ id: g.id, day: r.__day, tipoff: g.tipoff_at, home: side === 0, opp: (opp && (opp.short_name || opp.name)) || 'Opponent',
       oppFull: (opp && opp.name) || '', us, them, res: us > them ? 'W' : us < them ? 'L' : 'T', row, raw: r.stats, cx, shots, pid: r.player_uuid });
   }
-  return { monday, sunday, tz, games };
+  return { monday, sunday, tz, games, picked: chosen.length > 0 };
 }
 function reportTab(pl, name, team) {
   const E = window.EpinoiaReport, RPm = window.EpinoiaReportPlayer;

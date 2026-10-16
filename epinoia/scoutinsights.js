@@ -608,7 +608,7 @@ function develop(F) {
         ((+s.p2m || 0) + (+s.p3m || 0)) + ' of ' + ((+s.p2a || 0) + (+s.p3a || 0)) + ' from the field.') });
     }
     if (tsW != null && tsV != null && t.fga >= 15 && Math.abs(tsW - tsV) >= 8)
-      week.push({ head: tsW > tsV ? 'Above their season' : 'A cold week', text: proof(tsW > tsV ? 'Shot ' + fx(tsW - tsV) + ' points of TS better than their season: the shot diet held, so keep it.'
+      week.push({ head: tsW > tsV ? 'Above their season' : F.week.picked ? 'Below their season' : 'A cold week', text: proof(tsW > tsV ? 'Shot ' + fx(tsW - tsV) + ' points of TS better than their season: the shot diet held, so keep it.'
         : 'Shot ' + fx(tsV - tsW) + ' points of TS below their season: check the shot diet on the courts above before the shooting itself.') });
   }
   const top = (xs, n) => xs.sort((a, b) => b.s - a.s).slice(0, n).map(x => { const o = Object.assign({}, x); delete o.s; return o; });
