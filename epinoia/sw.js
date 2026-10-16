@@ -360,7 +360,8 @@ function clickTarget(data, action, origin) {
   try {
     const u = new URL(raw, origin + SITE_PATH);
     if (!/^https?:$/.test(u.protocol)) return home;
-    if (u.origin === origin && /^\/epinoia\/(index\.html)?$/.test(u.pathname) && !u.searchParams.get('l')) {
+    /* a college system's hub (?college=) is a page of the root document too, not the splash */
+    if (u.origin === origin && /^\/epinoia\/(index\.html)?$/.test(u.pathname) && !u.searchParams.get('l') && !u.searchParams.get('college')) {
       u.pathname = HOME_PATH;
     }
     return u.href;

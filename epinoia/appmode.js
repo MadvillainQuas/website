@@ -175,7 +175,10 @@
      away, whatever tag a copy-pasted head ends up carrying (the news archive is also a
      "no league" page, and a league page has ?l=). */
   var atFront = /^\/epinoia\/(index\.html)?$/.test(location.pathname || '');
-  if (water === 'front' && q && !param('l') && atFront) {
+  /* A COLLEGE SYSTEM'S HUB (?college=u-sports | ncaa-d2; mode.js m-college) is a page of this document too, not the
+     splash: in the app its "hub" link was sent to HOME (reported 2026-10-16: "when I tap on hub on mobile it doesn't
+     direct me to the page") */
+  if (water === 'front' && q && !param('l') && !param('college') && atFront) {
     root.style.display = 'none';
     try {
       location.replace('/epinoia/home/' + (location.search || '') + (location.hash || ''));

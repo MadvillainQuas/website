@@ -1004,6 +1004,7 @@ const client = (url, o = {}) => {
   eq('an empty url: HOME', W.clickTarget({ url: '' }, '', ORIGIN), ORIGIN + '/epinoia/home/');
   eq('a javascript: link goes nowhere but HOME', W.clickTarget({ url: 'javascript:alert(1)' }, '', ORIGIN), ORIGIN + '/epinoia/home/');
   eq('a league link still resolves under /epinoia/, not under HOME', W.clickTarget({ url: '?l=bcb' }, '', ORIGIN), ORIGIN + '/epinoia/?l=bcb');
+  eq('...and a college system\'s hub (2026-10-16)', W.clickTarget({ url: '?college=u-sports' }, '', ORIGIN), ORIGIN + '/epinoia/?college=u-sports');
   /* the notify deployed before HOME sends link-less rows to the site root */
   eq('the old notify\'s root link (site + \'\'): HOME, never the splash', W.clickTarget({ url: ORIGIN + '/epinoia/' }, '', ORIGIN), ORIGIN + '/epinoia/home/');
   eq('...as index.html too', W.clickTarget({ url: ORIGIN + '/epinoia/index.html' }, '', ORIGIN), ORIGIN + '/epinoia/home/');

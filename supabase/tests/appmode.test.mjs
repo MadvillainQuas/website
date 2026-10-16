@@ -171,6 +171,13 @@ function click(r, target, ev = {}) {
      && r.root.style.display !== 'none');
 }
 {
+  /* a college system's hub (2026-10-16): its "hub" tap in the app went to HOME */
+  const r = load('/epinoia/?college=u-sports', { water: 'front', session: { epinoia_app: '1' } });
+  const r2 = load('/epinoia/?college=ncaa-d2&g=women&source=twa', { water: 'front' });
+  ok('?college= in the app: the system\'s hub stays (U SPORTS, NCAA D2 women\'s)', r.cls.has('m-app') && r.replaced.length === 0
+     && r.root.style.display !== 'none' && r2.cls.has('m-app') && r2.replaced.length === 0, JSON.stringify([r.replaced, r2.replaced]));
+}
+{
   const r = load('/epinoia/?l=&source=pwa', { water: 'front' });
   ok('empty ?l= in the app is the splash (as mode.js says): off to HOME',
      r.replaced.length === 1 && r.replaced[0].to === '/epinoia/home/?l=&source=pwa', JSON.stringify(r.replaced));
