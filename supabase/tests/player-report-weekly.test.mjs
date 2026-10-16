@@ -284,9 +284,17 @@ console.log('\nthe console (admin/platform)');
   const PJ = read('epinoia', 'admin', 'platform', 'platform.js'), PH = read('epinoia', 'admin', 'platform', 'index.html');
   ok('the form: a player found by name, the address, a first name, the time zone; and the list', ['pmailPlayer', 'pmailPlayers', 'pmailEmail', 'pmailName', 'pmailTz', 'pmailGo', 'pmailList'].every(id => PH.includes('id="' + id + '"')));
   ok('...the player from the site\'s search, their league\'s clock set when picked', /sb\.rpc\('site_search', \{ p_q: q, p_limit: 12 \}\)/.test(PJ) && /select\('teams\(leagues\(timezone\)\)'\)\.eq\('player_id', got\.id\)/.test(PJ));
-  ok('...added once an address and a player; send now, pause and remove on each; read at the console\'s start',
+  ok('...added once an address and a player; send now, pause and remove on each; read when the Reports tab opens',
      /from\('report_mail_players'\)\.upsert\(\{ email, player_id: p\.id,/.test(PJ) && /\{ onConflict: 'email,player_id' \}/.test(PJ) && /update\(\{ send_now_at: new Date\(\)\.toISOString\(\) \}\)/.test(PJ)
-     && /loadMail\(\), loadPlayerMail\(\), loadPending\(\)/.test(PJ));
+     && /reports: \(\) => Promise\.all\(\[loadMail\(\), loadPlayerMail\(\)\]\) \};/.test(PJ));
+  /* the Reports tab (2026-10-16): both sections in its pane, none left in Accounts, and nothing of them read at the start */
+  const paneOf = id => { const m = new RegExp('<div class="pane" id="pane-' + id + '">([\\s\\S]*?)\\n    </div>\\n').exec(PH); return m ? m[1] : ''; };
+  const rp = paneOf('reports'), ac = paneOf('acct');
+  ok('the reports have a tab of their own, after Accounts: the clubs\' and the players\' sections in it, and none left in Accounts',
+     /data-p="acct" role="tab">Accounts<\/button>\n\s*<button class="ep-tab" data-p="reports" role="tab">Reports<\/button>/.test(PH) &&
+     ['mailManage', 'mailForm', 'mailList', 'pmailForm', 'pmailList'].every(id => rp.includes('id="' + id + '"')) &&
+     ac.includes('id="acctList"') && !/id="p?mail/.test(ac), [rp.length, ac.length]);
+  ok('...read when it opens, not at the console\'s start', !/Promise\.all\(\[loadOverview\(\)[^\n]*loadMail/.test(PJ));
   ok('...and a database before 0272 says so', /Players’ weekly reports arrive with migration 0272/.test(PJ));
 }
 

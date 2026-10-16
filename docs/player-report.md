@@ -134,7 +134,7 @@ on opening; the mailer primes the reports it draws itself.
 
 ## The reports manager and the players' reports (2026-10-04)
 
-**The reports manager** (platform console, Accounts > Reports by email > *open the reports manager*; `admin/platform/reports-manager.js`):
+**The reports manager** (platform console, Reports > Team reports by email > *open the reports manager*; `admin/platform/reports-manager.js`):
 
 - *Addresses and clubs*: each address with all its clubs (an address may have several: a `report_mail_subs` row is an address and
   a club), added with one club or several at once, or a club added to an address already there. For each club: PRIME REPORT (a
@@ -252,7 +252,7 @@ work on the work, in the scout's words. Rebound, steal and block notes wait for 
 They/their throughout: the site covers women's leagues.
 
 **The weekly email** (0272, `scripts/report_mailer.mjs playerRound`): an address and a player in `report_mail_players`
-(platform administrators only; the console's *Players' weekly reports*). Every Monday from 8 am at the address's time, the week
+(platform administrators only; the console's Reports tab, *Players' weekly reports*). Every Monday from 8 am at the address's time, the week
 just played: the player's report drawn for that week, attached to an email listing its games. A week without a game of theirs
 is skipped and not logged. A Monday missed is caught up on the Tuesday; on the Monday a game of the club's still being played
 is waited for. *Send now* (`send_now_at`) sends the week of their latest game at the next run. One log row a week

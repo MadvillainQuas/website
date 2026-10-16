@@ -160,7 +160,7 @@ async function gate() {
     const tab = asked && [...document.querySelectorAll('.ep-tab')].find(t => t.dataset.p === asked);
     if (tab) { hashTabOpened = true; tab.click(); }
   }
-  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention(), loadMail(), loadPlayerMail(), loadPending(), loadScouts()]);
+  await Promise.all([loadOverview(), loadLeagues(), loadPrivacyAttention(), loadPending(), loadScouts()]);
 }
 
 /* ------------------------------------------------------------------ tabs --- */
@@ -177,7 +177,9 @@ function wire() {
                      keys: loadKeys, audit: loadAudit, set: loadSettings,
                      plans: loadPlans, orgs: loadOrgs, priv: loadPrivacy, arenas: loadArenas,
                      analytics: loadAnalytics, links: loadLinks, maint: loadReset, news: loadNewsSources, newsroom: loadNewsroom,
-                     manager: loadManager, bfw: loadBackfillWorker };
+                     manager: loadManager, bfw: loadBackfillWorker,
+                     /* the Reports tab (2026-10-16): the clubs' reports by email and the players' weekly reports */
+                     reports: () => Promise.all([loadMail(), loadPlayerMail()]) };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });

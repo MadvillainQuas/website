@@ -34,7 +34,7 @@ the game analysis after each of its club's games, and on Sunday mornings the sco
   when it was first opened.
 
 **Whose they are.** An address in `report_mail_subs` belongs to the Epinoia account that signs in with it (a confirmed
-email, any case) — so hooking an account up to the report system is giving the platform console's **Reports by email**
+email, any case) — so hooking an account up to the report system is giving the platform console's **Team reports by email**
 the address that account signs in with. `report_mail_subs.user_id`, when set, hooks one account up whatever its address,
 and then that account alone.
 
@@ -47,8 +47,8 @@ Every report email says the reports are kept in the dashboard, with a link (`PUB
 
 ## Sending next week's reports now (0226)
 
-The Sunday email comes on Sunday morning. To send it sooner, the platform console's **Reports by email** (Accounts tab, at
-the bottom) has **send next week's reports now** on each address, and **send everyone next week's reports now** above the list when
+The Sunday email comes on Sunday morning. To send it sooner, the platform console's **Team reports by email** (the **Reports**
+tab) has **send next week's reports now** on each address, and **send everyone next week's reports now** above the list when
 there is more than one. Pressing it says what will go and asks first.
 
 - **What goes:** exactly the Sunday email, for the Monday-to-Sunday week that begins next Monday at the address's own time
@@ -85,7 +85,7 @@ there is more than one. Pressing it says what will go and asks first.
 2. The mailer (already built; nothing is sent until these exist), GitHub → Settings → Secrets → Actions:
    `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `RESEND_API_KEY`, `REPORTS_FROM` (for example
    `Epinoia Reports <reports@your-domain>`, a domain verified in Resend).
-3. Platform console → **Reports by email**: an address (the one the account signs in with) and a club.
+3. Platform console → **Reports** tab → **Team reports by email**: an address (the one the account signs in with) and a club.
 4. Actions → **report-mail** → Run workflow with `dry_run` on and `only` set to that address: it prints what it would
    build, keep and send, and sends nothing. Then run it with `dry_run` off, or wait for the half hour.
 

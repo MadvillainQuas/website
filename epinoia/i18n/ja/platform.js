@@ -1076,7 +1076,8 @@
       'remove them': '削除する',
       'Some files could not be removed; they stay on the list.': '一部のファイルを削除できませんでした。一覧に残しています。',
       'Photograph files left behind': '残った写真ファイル',
-      'Home games played by': 'ホームゲームを行ったクラブ'
+      'Home games played by': 'ホームゲームを行ったクラブ',
+      'Reports': 'レポート'
     },
 
     /* matched only as written: the pager's "next" (the core file has it as the next game), a

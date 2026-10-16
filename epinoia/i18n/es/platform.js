@@ -1080,7 +1080,8 @@
       'remove them': 'eliminarlos',
       'Some files could not be removed; they stay on the list.': 'Algunos archivos no se han podido eliminar; siguen en la lista.',
       'Photograph files left behind': 'Archivos de fotos sobrantes',
-      'Home games played by': 'Clubes que jugaron en casa aquí'
+      'Home games played by': 'Clubes que jugaron en casa aquí',
+      'Reports': 'Informes'
     },
 
     /* matched only as written: the pager's "next" (the core file has it as the next game), a
