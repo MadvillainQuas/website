@@ -84,6 +84,72 @@ let REPORT = null, PL_LISTED = '', SCOPE_GAMES = [], RP_SEASON = null;      // R
 let RP_FIELD = null;                                                       // the scope's games with their logs, once
 let RP_PRIOR = null;                                                       // the league's other seasons, once a scope
 const RP_LOG_GAMES = 600;
+/* GAMES PLAYED DURING THE WEEK (the report's section, report-playerpages.js; Louie, 2026-10-16): his games of one Monday-to-
+   Sunday week in his league's time zone - the week ?rpweek= names (any day of it; the weekly email names its Monday), else
+   the week of his latest game - each with his stored line as the match report's FULL STATS table prints it (gamefull.js),
+   read against its own game (both clubs' lines and every player's), and his located shots. Null when he played none. */
+let RP_WEEK = null;
+const ymdIn = (iso, tz) => {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(iso)); }
+  catch (_) { return String(iso || '').slice(0, 10); }
+};
+const ymdAdd = (ymd, n) => { const d = new Date(ymd + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const mondayOf = ymd => ymdAdd(ymd, -((new Date(ymd + 'T12:00:00Z').getUTCDay() + 6) % 7));
+const playedIn = st => !!st && (+st.min > 0 || (st.adv && +st.adv.min > 0));
+async function loadWeekGames(pl, team, pidsP) {
+  const D = window.EpinoiaData, GF = window.EpinoiaGameFull, B = window.EpinoiaBox, SC = window.EpinoiaShotChart;
+  if (!D || !GF || !B) return null;
+  const lgs = (team && team.leagues) || {};
+  const tz = lgs.timezone || 'UTC';
+  const pids = [pl.id].concat((await pidsP.catch(() => null)) || []).filter((v, i, a) => v && a.indexOf(v) === i);
+  const sel = 'game_id,team_idx,player_uuid,stats,games!inner(id,tipoff_at,status,home_score,away_score,competition_id,' +
+    'home:home_team_id(name,short_name),away:away_team_id(name,short_name))';
+  const asked = new URLSearchParams(location.search).get('rpweek');
+  let monday = /^\d{4}-\d{2}-\d{2}$/.test(asked || '') ? mondayOf(asked) : null;
+  /* the window read: the week asked for (a day either side, for the time zone), or the last 200 days to find his latest */
+  const from = monday ? ymdAdd(monday, -1) : new Date(Date.now() - 200 * 864e5).toISOString().slice(0, 10);
+  const to = monday ? ymdAdd(monday, 8) : ymdAdd(new Date().toISOString().slice(0, 10), 1);
+  const rows = (await D.all(`player_game_stats?player_uuid=in.(${pids.join(',')})&select=${sel}` +
+    `&games.status=eq.final&games.tipoff_at=gte.${from}&games.tipoff_at=lt.${to}`))
+    .filter(r => r.games && r.games.status === 'final' && playedIn(r.stats));
+  if (!rows.length) return null;
+  rows.forEach(r => { r.__day = ymdIn(r.games.tipoff_at, tz); });
+  if (!monday) monday = mondayOf(rows.map(r => r.__day).sort().pop());
+  const sunday = ymdAdd(monday, 6);
+  const mine = rows.filter(r => r.__day >= monday && r.__day <= sunday)
+    .sort((a, b) => String(a.games.tipoff_at).localeCompare(String(b.games.tipoff_at)));
+  if (!mine.length) return { monday, sunday, tz, games: [] };
+  const gids = [...new Set(mine.map(r => r.game_id))];
+  /* THE LOGS THE PAGE ALREADY READ (the club's last 40 games, "on the floor with"): a week's games are nearly always among
+     them; only one that is not (another club's, an older week) is read here */
+  const F = await rpGet('floor', 60000).catch(() => null);
+  const have = (F && F.logs) || {};
+  const need = gids.filter(id => !have[id]);
+  const [every, teams, extra] = await Promise.all([
+    D.all(`player_game_stats?game_id=in.(${gids.join(',')})&select=game_id,team_idx,stats`),
+    D.all(`team_game_stats?game_id=in.(${gids.join(',')})&select=game_id,team_idx,stats`),
+    need.length ? D.events(need).catch(() => []) : Promise.resolve([])
+  ]);
+  const evs = gids.flatMap(id => have[id] ? have[id].map(e => (e.gameId != null ? e : Object.assign({ gameId: id }, e))) : extra.filter(e => e.gameId === id));
+  const G = window.EpinoiaGamePct;
+  const games = [];
+  for (const r of mine) {
+    const g = r.games, side = +r.team_idx === 1 ? 1 : 0;
+    const TAs = [0, 1].map(t => ((teams.find(x => x.game_id === g.id && +x.team_idx === t) || {}).stats || {}).adv || {});
+    const cxg = GF.gameContext(TAs, every.filter(x => x.game_id === g.id).map(x => GF.fromStored(x.stats)), B.ADV_GROUPS);
+    const TT = cxg.TA[side], OT = cxg.TA[1 - side];
+    const row = GF.fromStored(r.stats);
+    const cx = { TT, OT, gameAvg: cxg.gameAvg, ranges: cxg.ranges,
+      rate: (col, a) => (G ? G.rate('player', col.k, { a, x: r.stats, TT, OT }, { league: lgs.slug }) : null) };
+    const gev = evs.filter(e => e.gameId === g.id);
+    const shots = SC && gev.length ? await SC.gather({ fetchEvents: async () => [gev], gameIds: [g.id], playerId: r.player_uuid }).catch(() => []) : [];
+    const us = side ? g.away_score : g.home_score, them = side ? g.home_score : g.away_score;
+    const opp = side ? g.home : g.away;
+    games.push({ id: g.id, day: r.__day, tipoff: g.tipoff_at, home: side === 0, opp: (opp && (opp.short_name || opp.name)) || 'Opponent',
+      oppFull: (opp && opp.name) || '', us, them, res: us > them ? 'W' : us < them ? 'L' : 'T', row, raw: r.stats, cx, shots, pid: r.player_uuid });
+  }
+  return { monday, sunday, tz, games };
+}
 function reportTab(pl, name, team) {
   const E = window.EpinoiaReport, RPm = window.EpinoiaReportPlayer;
   if (!E || !RPm || !pl || !pl.id || REPORT) return;
@@ -155,6 +221,11 @@ function reportTab(pl, name, team) {
     },
     floor: () => rpGet('floor'),
     week: () => window.EpinoiaWeekly ? window.EpinoiaWeekly.playerWeek(api, pl.id, { name, league: ACCESS_LEAGUE.slug, days: 7 }) : null,
+    /* his games of a week (loadWeekGames, above), read once a visit */
+    weekGames: () => RP_WEEK || (RP_WEEK = loadWeekGames(pl, team, rpGet('lvrPids', 60000)).catch(e => { console.warn('[report, the week]', e); return null; })),
+    /* his linked profiles' ids (every competition's row of him), for what reads his plays out of the logs */
+    pids: async () => [pl.id].concat((await rpGet('lvrPids', 60000).catch(() => null)) || []).filter((v, i, a) => v && a.indexOf(v) === i),
+    meta: ids => (window.EpinoiaData ? window.EpinoiaData.playerMeta(ids) : Promise.resolve({})),
     /* the league's games of the scope shown (RAPM is the league's regression; report.js keeps it per set of games) */
     gameIds: async () => { await rpGet('bars').catch(() => null); return SCOPE_GAMES.slice(); },
     /* every game of the scope with its frozen starters and its log, read once, for what only the play-by-play of the
@@ -2154,7 +2225,7 @@ async function seasonLog(ids, sn) {
         .catch(() => [])                              // an unapproved or withdrawn photo simply does not show
         : Promise.resolve([]),
       api(`roster_entries?player_id=eq.${pl.id}` +
-        `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name,logo_path,colour_a,gender))&order=created_at.desc&limit=1`)
+        `&select=jersey,position,teams(id,name,slug,colour,colour_2,colour_source,short_name,logo_path,leagues(id,slug,name,logo_path,colour_a,gender,timezone))&order=created_at.desc&limit=1`)
     ]);
     if (md.length) pl.__photoPath = md[0].storage_path;
     const entry = re[0] || {};

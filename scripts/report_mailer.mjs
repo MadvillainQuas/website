@@ -201,7 +201,7 @@ const colourOf = team => (/^#[0-9a-f]{6}$/i.test((team && team.colour) || '') ? 
 /* AN EMAIL, BUILT AS EMAIL IS: tables, inline styles, one column of 600px. The Epinoia bar, a band in the club's
    colour, the kind of email and its headline, then the letter; the attachments named; why it came and how to stop it */
 const F = 'font-family:Arial,Helvetica,sans-serif;';
-export function layout({ colour, kicker, title, meta, greeting, blocks, files, kept = true }) {
+export function layout({ colour, kicker, title, meta, greeting, blocks, files, kept = true, foot }) {
   const ink = inkOn(colour);
   const fileRows = (files || []).map(f => '<tr><td style="padding:7px 0;border-top:1px solid #e4ebe7;' + F + 'font-size:14px;color:#0d1f17">' +
     '<span style="display:inline-block;padding:2px 6px;margin-right:8px;border-radius:4px;background:' + ink + ';color:#ffffff;font-size:10px;font-weight:bold;letter-spacing:.06em">' + esc(f.kind || 'PDF') + '</span>' +
@@ -223,9 +223,10 @@ export function layout({ colour, kicker, title, meta, greeting, blocks, files, k
       (fileRows ? '<tr><td style="padding:18px 28px 6px"><div style="' + F + 'font-size:11px;font-weight:bold;letter-spacing:.14em;text-transform:uppercase;color:#5b6b63;margin-bottom:4px">Attached</div>' +
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">' + fileRows + '</table></td></tr>' : '') +
       '<tr><td style="padding:18px 28px 24px;' + F + 'font-size:12px;line-height:1.5;color:#7a8a82;border-top:1px solid #e4ebe7">' +
-        (kept ? 'Every report is also kept in your <a href="' + PUBLIC + '/epinoia/profile/#reports" style="color:#0d1f17;font-weight:bold">Epinoia dashboard</a>, to open or download again: sign in with this address. '
+        /* foot: an email's own why-and-how-to-stop (a player's weekly report, 0272), in place of the clubs' */
+        (foot ? esc(foot) : ((kept ? 'Every report is also kept in your <a href="' + PUBLIC + '/epinoia/profile/#reports" style="color:#0d1f17;font-weight:bold">Epinoia dashboard</a>, to open or download again: sign in with this address. '
               : 'The club reports are kept in your <a href="' + PUBLIC + '/epinoia/profile/#reports" style="color:#0d1f17;font-weight:bold">Epinoia dashboard</a> (sign in with this address); these player reports come in this email. ') +
-        'You receive these because your club’s reports were set up for this address on Epinoia. To change or stop them, simply reply to this email and let us know.' +
+        'You receive these because your club’s reports were set up for this address on Epinoia. To change or stop them, simply reply to this email and let us know.')) +
       '</td></tr>' +
     '</table></td></tr></table></body></html>';
 }
@@ -782,6 +783,157 @@ export async function requests(now = new Date()) {
   return failed;
 }
 
+/* ------------------------------------------------------------------ a player's own week (0272) --- */
+/* WEEKLY PLAYER REPORTS (Louie, 2026-10-16: "insert a player's email, and they then get a weekly player report sent to them
+   updated"): an address and a player (report_mail_players, platform administrators only), and every Monday from 8 am at the
+   address's time, the week just played, Monday to Sunday: the player's report drawn for that week (p/?p=&tab=report&rpweek=,
+   its GAMES PLAYED DURING THE WEEK section) attached to an email that lists the week's games. A week without a game of theirs
+   goes unsent ("skip that week"). A Monday missed (a dropped cron) is caught up on the Tuesday, for that same week. On the
+   Monday a game of the club's still being played or finalised is waited for; on the Tuesday nothing is. "Send now" (the
+   console's send_now_at) sends the week of their latest game at the next run, whatever the day. Logged once a week
+   (report_mail_player_log: address and week), so no week goes twice; what the mailer last did is left on the address
+   (last_at, last_detail) for the console. */
+export const PLAYER_FROM_MIN = 8 * 60;
+const ymdShift = (ymd, n) => { const d = new Date(ymd + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+export const mondayOf = ymd => ymdShift(ymd, -((new Date(ymd + 'T12:00:00Z').getUTCDay() + 6) % 7));
+/* the week an address's email is for at this instant, or null: on Monday from 8 am, the week before it; on Tuesday (a Monday
+   missed), the same week. `week` is that week's Monday, a date at the address's time. */
+export function playerWeekDue(tz, now = new Date()) {
+  const L = local(tz, now);
+  const back = L.wd === 'Mon' && L.hour * 60 + L.mi >= PLAYER_FROM_MIN ? 7 : L.wd === 'Tue' ? 8 : null;
+  return back == null ? null : { week: ymdShift(L.date, -back), catchUp: L.wd === 'Tue' };
+}
+/* Monday 00:00 to the next Monday 00:00 of a week, at the address's time */
+export function weekBounds(tz, monday) {
+  const [y, mo, d] = monday.split('-').map(Number);
+  const e = new Date(Date.UTC(y, mo - 1, d + 7));
+  return { from: new Date(midnight(y, mo, d, tz)), to: new Date(midnight(e.getUTCFullYear(), e.getUTCMonth() + 1, e.getUTCDate(), tz)) };
+}
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/* "6–12 October 2026", "29 September – 5 October 2026" */
+export function weekSpan(monday) {
+  const a = new Date(monday + 'T12:00:00Z'), b = new Date(ymdShift(monday, 6) + 'T12:00:00Z');
+  return a.getUTCMonth() === b.getUTCMonth() ? a.getUTCDate() + '–' + b.getUTCDate() + ' ' + MONTHS[b.getUTCMonth()] + ' ' + b.getUTCFullYear()
+    : a.getUTCDate() + ' ' + MONTHS[a.getUTCMonth()] + (a.getUTCFullYear() === b.getUTCFullYear() ? '' : ' ' + a.getUTCFullYear()) + ' – ' + b.getUTCDate() + ' ' + MONTHS[b.getUTCMonth()] + ' ' + b.getUTCFullYear();
+}
+/* a game row of theirs as the email lists it: the side they were on, the score their way round, their line */
+export function playerLine(r) {
+  const g = r.games || {}, side = +r.team_idx === 1 ? 1 : 0, s = r.stats || {};
+  const us = side ? g.away_score : g.home_score, them = side ? g.home_score : g.away_score;
+  const opp = ((side ? g.home : g.away) || {}).name || 'opponent';
+  return { tipoff_at: g.tipoff_at, home: side === 0, opp, us, them, res: us > them ? 'W' : us < them ? 'L' : 'T',
+    pts: +s.pts || 0, reb: (+s.or || 0) + (+s.dr || 0), ast: +s.ast || 0, min: (s.adv && s.adv.minTxt) || '' };
+}
+export const playedIn = r => !!r && r.games && r.games.status === 'final' && !!r.stats && (+r.stats.min > 0 || (r.stats.adv && +r.stats.adv.min > 0));
+/* THE EMAIL: the week's games their way round, and what the report attached holds */
+export function playerEmail({ sub, name, team, week, games, tz }) {
+  const colour = colourOf(team), ink = inkOn(colour), n = games.length;
+  const lg = ((team && team.leagues) || {}).name || '';
+  const span = weekSpan(week);
+  const subject = `${name}: your week, ${span}`;
+  const rows = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:2px 0 16px;border:1px solid #e4ebe7;border-radius:8px">' +
+    games.map((o, i) => '<tr><td style="padding:9px 12px;' + (i ? 'border-top:1px solid #e4ebe7;' : '') + F + 'font-size:14px;color:#0d1f17;white-space:nowrap"><b>' + esc(dayShort(o.tipoff_at, tz)) + '</b></td>' +
+      '<td style="padding:9px 12px;' + (i ? 'border-top:1px solid #e4ebe7;' : '') + F + 'font-size:14px;color:#0d1f17">' + (o.home ? 'v ' : 'at ') + '<b>' + esc(o.opp) + '</b>' +
+        '<div style="font-size:12px;color:#5b6b63">' + o.pts + ' pts · ' + o.reb + ' reb · ' + o.ast + ' ast' + (o.min ? ' · ' + esc(o.min) + ' min' : '') + '</div></td>' +
+      '<td align="right" style="padding:9px 12px;' + (i ? 'border-top:1px solid #e4ebe7;' : '') + F + 'font-size:14px;font-weight:bold;white-space:nowrap;color:' + (o.res === 'W' ? '#0a6d43' : o.res === 'L' ? '#a3262f' : '#0d1f17') + '">' +
+        esc(o.res + ' ' + o.us + '–' + o.them) + '</td></tr>').join('') + '</table>';
+  const blocks = [
+    P(`Here is your player report, updated with the week’s ${n === 1 ? 'game' : (NUM[n] || n) + ' games'}:`),
+    rows,
+    P('Inside:'),
+    UL(['<b>Main stats</b>: your season line, every figure ranked against the players of your position in the competition',
+      '<b>Shot chart</b>: where you shoot from and how well, in the half court and in transition',
+      '<b>Left v right</b>: your shooting from each side of the floor',
+      '<b>Connections</b>: the teammates you set up most, and the shots your passes become',
+      '<b>On the floor with</b>: the team with you on and off, and your best and worst pairings',
+      '<b>Games played during the week</b>: your shot chart from each game, and your full stats line from each',
+      '<b>Actionable insights</b>: what is working and what to work on, for your position']),
+    NOTE(ink, 'Every figure is coloured against the players of your position, green good and red poor; the legend at the back explains each statistic, and every stat named links to it.'),
+    P('Have a good week.')];
+  return { subject, html: layout({ colour, kicker: 'Weekly player report' + (lg ? ' · ' + lg : ''), title: `${name}: ${n === 1 ? 'one game' : (NUM[n] || n) + ' games'} this week`,
+    meta: span + (team && team.name ? ' · ' + team.name : ''), greeting: sub.name ? 'Hi ' + sub.name + ',' : 'Hello,', blocks,
+    files: [{ label: 'Player report: ' + name + ', ' + span }], kept: false,
+    foot: 'You receive this because a weekly player report was set up for this address on Epinoia. To change or stop it, simply reply to this email and let us know.' }) };
+}
+/* every profile of theirs (0178: the same person in another competition's feed), else their own */
+async function linkedIds(id) {
+  try {
+    const L = await rest('rpc/linked_players', { method: 'POST', body: JSON.stringify({ p_player: id }) });
+    const ids = ((L && L.players) || []).map(p => p.id).filter(Boolean);
+    return [...new Set([id].concat(ids))];
+  } catch (_) { return [id]; }
+}
+const PG_SEL = 'game_id,team_idx,player_uuid,stats,games!inner(id,tipoff_at,status,home_score,away_score,home:home_team_id(name),away:away_team_id(name))';
+async function playerGamesIn(ids, from, to) {
+  const rows = await rest(`player_game_stats?player_uuid=in.(${ids.join(',')})&select=${PG_SEL}&games.status=eq.final` +
+    `&games.tipoff_at=gte.${encodeURIComponent(from.toISOString())}&games.tipoff_at=lt.${encodeURIComponent(to.toISOString())}`);
+  return (rows || []).filter(playedIn).sort((a, b) => String(a.games.tipoff_at).localeCompare(String(b.games.tipoff_at)));
+}
+/* the Monday of the week of their latest game (send now), at the address's time */
+async function latestWeek(ids, tz, now) {
+  const since = new Date(now.getTime() - 200 * 864e5);
+  const rows = await playerGamesIn(ids, since, new Date(now.getTime() + 36e5));
+  return rows.length ? mondayOf(local(tz, new Date(rows[rows.length - 1].games.tipoff_at)).date) : null;
+}
+/* a game of the club's that week still being played or finalised (not one the feed lost: SUNDAY_STALE_MS after its tip-off) */
+async function clubStillPlaying(teamId, from, to, now) {
+  const rows = await rest(`games?or=(home_team_id.eq.${teamId},away_team_id.eq.${teamId})&status=in.(scheduled,live,finalising)` +
+    `&tipoff_at=gte.${encodeURIComponent(from.toISOString())}&tipoff_at=lt.${encodeURIComponent(to.toISOString())}&select=id,tipoff_at,status`).catch(() => []);
+  return (rows || []).some(g => g.tipoff_at && Date.parse(g.tipoff_at) <= now.getTime() && now.getTime() - Date.parse(g.tipoff_at) <= SUNDAY_STALE_MS);
+}
+const notePlayer = (s, detail, clear) => (DRY ? Promise.resolve() : rest(`report_mail_players?id=eq.${s.id}`, { method: 'PATCH',
+  body: JSON.stringify(Object.assign({ last_at: new Date().toISOString(), last_detail: String(detail).slice(0, 400) }, clear ? { send_now_at: null } : {})) }).catch(e => console.warn('[' + s.email + '] note:', e.message || e)));
+async function logPlayerWeek(s, week, detail) {
+  if (DRY) return;
+  for (let i = 0; ; i++) {
+    try { return await rest('report_mail_player_log?on_conflict=sub_id,week', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify({ sub_id: s.id, week, detail: detail || null }) }); }
+    catch (e) { if (i >= 2) throw e; await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
+  }
+}
+export async function onePlayer(s, now = new Date()) {
+  const P = s.players || { id: s.player_id };
+  const name = ((P.first_name || '') + ' ' + (P.last_name || '')).trim() || 'The player';
+  const re = await rest(`roster_entries?player_id=eq.${s.player_id}&select=teams(id,name,colour,leagues(name,timezone))&order=created_at.desc&limit=1`).catch(() => []);
+  const team = (re && re[0] && re[0].teams) || { id: null, name: '', colour: null };
+  const tz = okZone(s.tz, team.leagues && team.leagues.timezone);
+  const ids = await linkedIds(s.player_id);
+  const asked = !!s.send_now_at;
+  let week, catchUp = false;
+  if (asked) {
+    week = await latestWeek(ids, tz, now);
+    if (!week) { await notePlayer(s, 'Send now: no game of theirs in the last 200 days, so nothing was sent.', true); return 0; }
+  } else {
+    const due = playerWeekDue(tz, now);
+    if (!due) return 0;
+    week = due.week; catchUp = due.catchUp;
+    if ((await rest(`report_mail_player_log?sub_id=eq.${s.id}&week=eq.${week}&select=id`)).length) return 0;
+  }
+  const B = weekBounds(tz, week);
+  const games = (await playerGamesIn(ids, B.from, B.to)).map(playerLine);
+  /* a week they did not play goes unsent; not logged, so a game finalised late still brings it on the Tuesday */
+  if (!games.length) { if (asked) await notePlayer(s, 'Send now: no game of theirs in the week of ' + weekSpan(week) + ', so nothing was sent.', true); return 0; }
+  if (!asked && !catchUp && team.id && await clubStillPlaying(team.id, B.from, B.to, now)) { console.log('[' + s.email + '] ' + name + ': a game of the week is still to finish; waiting'); return 0; }
+  const file = 'epinoia-player-report-' + String(name).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) + '-' + week;
+  console.log('[' + s.email + '] ' + name + ': the week of ' + week + ', ' + games.length + ' game(s)' + (asked ? ' (send now)' : catchUp ? ' (caught up)' : ''));
+  const pdf = await pdfOf('/epinoia/p/?p=' + encodeURIComponent(P.slug || s.player_id) + '&tab=report&rpweek=' + week, file);
+  const E = playerEmail({ sub: s, name, team, week, games, tz });
+  await send(s.email, E.subject, E.html, [pdf]);
+  await logPlayerWeek(s, week, games.length + ' game(s)' + (asked ? ', send now' : ''));
+  await notePlayer(s, 'Sent the week of ' + weekSpan(week) + ' (' + (games.length === 1 ? 'one game' : games.length + ' games') + ')' + (asked ? ', asked for' : ''), asked);
+  return 0;
+}
+/* every active address (none before 0272 is applied: the table is not there, which must not stop the clubs' rounds) */
+export async function playerRound(now = new Date()) {
+  const subs = await rest('report_mail_players?active=eq.true&select=*,players(id,first_name,last_name,slug)');
+  let failed = 0;
+  for (const s of subs || []) {
+    if (env.ONLY && s.email !== env.ONLY) continue;
+    try { failed += (await onePlayer(s, now)) || 0; }
+    catch (e) { failed++; console.error('[' + s.email + '] player report:', e.message || e); await notePlayer(s, 'Not sent: ' + (e.message || e), false); }
+  }
+  return { failed, n: (subs || []).length };
+}
+
 /* ------------------------------------------------------------------ everybody --- */
 async function main() {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) { console.error('SUPABASE_URL and SUPABASE_SERVICE_KEY are needed'); process.exit(1); }
@@ -795,10 +947,13 @@ async function main() {
     try { failed += (await one(s, s.teams || { id: s.team_id, name: 'your club' })) || 0; }
     catch (e) { failed++; console.error('[' + s.email + ']', e.message || e); }
   }
+  /* THE PLAYERS' WEEKLY REPORTS (0272): Monday mornings, and any "send now"; before 0272 the table is not there */
+  let players = 0;
+  try { const PR = await playerRound(); failed += PR.failed; players = PR.n; } catch (e) { console.warn('player reports skipped:', e.message || e); }
   /* the primed copies emailed in this run, the stale and the old, deleted (0229) */
   try { const n = await cleanPrimed(); if (n) console.log(n + ' primed report(s) deleted'); } catch (e) { console.warn('primed copies not cleaned:', e.message || e); }
   if (browser) await browser.close();
-  console.log(subs.length + ' address(es), ' + failed + ' failed');
+  console.log(subs.length + ' address(es), ' + players + ' player address(es), ' + failed + ' failed');
   if (failed) process.exitCode = 1;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

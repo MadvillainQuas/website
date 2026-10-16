@@ -431,6 +431,192 @@ function player(B, o) {
   return edit(out, []);
 }
 
+/* ==================================================== the player's own notes ===== */
+/* WHAT IS WORKING AND WHAT TO WORK ON (the player report's INSIGHTS, report-playerpages.js; Louie, 2026-10-16: "actionable
+   insights using basketball language through reading the whole pdf (i.e. struggling to finish plays in transition, half court
+   ast% is low thus could pass more for a guard etc.)"). Written to the player and his coach, not to an opponent: each note is a
+   measure from the report with his place among his position, the evidence, and each thing to work on comes with the work, in
+   the scout's words (basketball-scouting-language: a term only with the evidence the lexicon pairs it with). His position
+   decides what is asked of him: a guard's creation for others and his handle, a wing's shot and closeouts, a big's finishing,
+   glass and rim. Read from what every section found (report-playerpages.js R.facts):
+     main   { mine, group, who, n, pct(k) }   the season line, and his percentile among his position (the good end high)
+     lvr    { all: { L, R } }                 left v right, his eFG% from each side of the floor
+     conn   { total, threes, rim, mates }     the assists he gave, paired with their baskets
+     week   { games: [{ raw, row, opp, home, res, us, them, shots }] }   the week's games
+   -> { name, group, who, n, intro, keep: [{ head, text }], work: [{ head, text, act }], week: [{ head, text }] } */
+function develop(F) {
+  const M = F && F.main;
+  if (!M || !M.mine) return null;
+  const r = M.mine, g = M.group || 'guard', who = M.who || 'players';
+  const P = k => { const p = M.pct ? M.pct(k) : null; return p == null ? null : +p; };
+  const v = k => num(r[k]);
+  const gp = num(r.gp) || 0, mpg = num(r.mpg) || 0;
+  const at = p => (p >= 99 ? 'the highest among ' + who : p <= 1 ? 'the lowest among ' + who : ord(p) + ' percentile among ' + who);
+  const keep = [], work = [];
+  const K = (s, head, text) => keep.push({ s, head, text: proof(text) });
+  const W = (s, head, text, act) => work.push({ s, head, text: proof(text), act: act ? proof(act) : null });
+  const sal = p => Math.abs(p - 50) / 50;
+  const enough = gp >= 2 && mpg >= 6;
+  /* a rate of rebounds, steals or blocks says nothing over a game or two: those notes wait for 80 minutes, the ball-security
+     note for 60, the shooting notes for their own attempts */
+  const mins = gp * mpg, fga = v('fga');
+  if (!enough) return { name: F.name || r.name, group: g, who, n: M.n || 0, intro: 'Too few minutes yet for notes worth reading: ' + gp + (gp === 1 ? ' game' : ' games') + '.', keep, work, week: [] };
+
+  /* ---- finishing ---- */
+  const trP = P('ev_transition_rim_pct'), trA = v('ev_transition_rimA'), trV = v('ev_transition_rim_pct');
+  if (trP != null && trV != null && (trA == null || trA >= 6)) {
+    if (trP <= 30) W(1.1 * sal(trP), 'Finishing in transition', 'Struggling to finish plays in transition: ' + fx(trV) + '% at the rim on the break (' + at(trP) + ').',
+      g === 'big' ? 'Run the rim and finish strong: catch it with two hands, chin it, and go straight up through the contact.'
+        : 'Arrive under control: a jump stop or a two-foot finish through the contact beats the one-foot runner into the trailing big. Slow down before the gather.');
+    else if (trP >= 75) K(0.8 * sal(trP), 'Finishes on the break', fx(trV) + '% at the rim in transition (' + at(trP) + ').');
+  }
+  const hrP = P('ev_half_rim_pct'), hrA = v('ev_half_rimA'), hrV = v('ev_half_rim_pct');
+  const rimP = P('rim_pct'), rimA = v('rimA'), rimV = v('rim_pct');
+  if (hrP != null && hrV != null && (hrA == null || hrA >= 10) && hrP <= 30) W(sal(hrP), 'Finishing in the half court', 'At the rim against a set defence: ' + fx(hrV) + '% (' + at(hrP) + ').',
+    g === 'big' ? 'Finish through length: catch, gather on two feet and go up strong; a pump fake on the early contest, and the drop step to the rim side.'
+      : 'Add touch over length: the floater and the runner against drop coverage, and use the rim to shield the shot from the contest.');
+  else if (rimP != null && rimV != null && (rimA == null || rimA >= 15)) {
+    if (rimP <= 25) W(0.9 * sal(rimP), 'Finishing at the rim', fx(rimV) + '% at the rim (' + at(rimP) + ').',
+      g === 'big' ? 'Two hands and two feet in traffic, and go up through the contact rather than around it.' : 'Finish with touch and with both hands; use the rim to protect the shot.');
+    else if (rimP >= 75) K(0.8 * sal(rimP), 'Finishes at the rim', fx(rimV) + '% at the rim (' + at(rimP) + ').');
+  }
+  /* ---- creating for others: what a guard is asked first ---- */
+  const usgP = P('usg'), usgV = v('usg');
+  const hcP = P('hc_ast_pct'), hcV = v('hc_ast_pct'), astP = P('ast_pct'), astV = v('ast_pct'), auP = P('au'), auV = v('au');
+  if (g === 'guard') {
+    if (hcP != null && hcV != null) {
+      if (hcP <= 30 && (usgP == null || usgP >= 30)) W(1.2 * sal(hcP), 'Creating for others', 'Half-court AST% is low for a guard: ' + fx(hcV) + '% (' + at(hcP) + ')' + (usgV != null ? ' on ' + fx(usgV) + '% usage' : '') + '.',
+        'Pass more out of the paint touch: the pocket pass to the roller, the skip to the weak-side corner, and the extra pass when the second side opens.');
+      else if (hcP >= 75) K(sal(hcP), 'Creates for others', fx(hcV) + '% half-court AST% (' + at(hcP) + '): keeps the advantage moving against a set defence.');
+    } else if (astP != null && astV != null) {
+      if (astP <= 25) W(1.1 * sal(astP), 'Creating for others', 'An assist rate of ' + fx(astV) + '% is low for a guard (' + at(astP) + ').',
+        'Look to make the play for others first: the pocket pass in the ball screen and the kick-out off the drive.');
+      else if (astP >= 75) K(sal(astP), 'Creates for others', 'A ' + fx(astV) + '% assist rate (' + at(astP) + ').');
+    }
+  } else if (auP != null && auV != null) {
+    if (auP <= 20 && usgP != null && usgP >= 55) W(0.8 * sal(auP), 'The ball sticks', 'An assist to usage ratio of ' + fx(auV, 2) + ' (' + at(auP) + '): the ball stops with them more than with most ' + who + '.',
+      'Attack the closeout and make the next read in half a second: if the help comes, the kick to the open shooter.');
+    else if (auP >= 80 && usgP != null && usgP <= 50) K(0.8 * sal(auP), 'Connective passer', 'Assists without needing the ball: an assist to usage ratio of ' + fx(auV, 2) + ' (' + at(auP) + ') on ' + fx(usgV) + '% usage.');
+  }
+  /* ---- ball security ---- */
+  const tovP = P('tov_pct'), tovV = v('tov_pct');
+  if (tovP != null && tovV != null && mins >= 60) {
+    if (tovP <= 25) {
+      const hd = v('handle_pg'), bp = v('badpass_pg');
+      W(sal(tovP), 'Ball security', 'Turns it over on ' + fx(tovV) + '% of their possessions (' + at(tovP) + ').',
+        hd != null && bp != null && hd > bp ? 'Most are on the dribble: tighten the handle under pressure, keep it low and away from the help, and pick it up only to pass or shoot.'
+          : hd != null && bp != null && bp > hd ? 'Most are passes: make the read earlier and deliver on time; no jump passes, two hands on the swing.'
+            : 'Value the possession: strong with the ball in traffic, and the simple pass when the first read is not there.');
+    } else if (tovP >= 80 && usgP != null && usgP >= 40) K(0.6 * sal(tovP), 'Takes care of the ball', 'A ' + fx(tovV) + '% turnover rate (' + at(tovP) + ') with ' + fx(usgV) + '% usage.');
+  }
+  /* ---- the shot ---- */
+  const p3P = P('p3_pct'), p3V = v('p3_pct'), p3a = v('p3a'), ftV = v('ft_pct'), fta = v('fta');
+  if (p3P != null && p3V != null && p3a != null && p3a >= (g === 'big' ? 30 : 20)) {
+    if (p3P <= 25) W(sal(p3P), 'The three', fx(p3V) + '% from three on ' + Math.round(p3a) + ' attempts (' + at(p3P) + ').',
+      ftV != null && fta != null && fta >= 15 && ftV >= 75 ? 'The touch says it will come (' + fx(ftV) + '% at the line): keep taking the open ones, shot-ready with the feet set before the catch.'
+        : 'Clean up the shot diet: the catch-and-shoot three only until the percentage comes, and game-speed reps off the catch.');
+    else if (p3P >= 75) K(sal(p3P), 'Shoots it', fx(p3V) + '% from three on ' + Math.round(p3a) + ' attempts (' + at(p3P) + ').');
+  }
+  const tsP = P('ts'), tsV = v('ts'), midVolP = P('mid_a100'), midV = v('mid_pct'), midA = v('midA');
+  if (tsP != null && tsV != null && (fga == null || fga >= 25)) {
+    if (tsP <= 25 && usgP != null && usgP >= 60) W(sal(tsP), 'Shot quality', 'Takes a big share of the shots (' + fx(usgV) + '% usage) for the return: ' + fx(tsV) + '% TS (' + at(tsP) + ').',
+      midVolP != null && midVolP >= 60 && midV != null && midV < 40 ? 'Trade the long two for the rim or the three: one more dribble downhill, or a step back behind the line.'
+        : 'Clean up the shot diet: more shots at the rim and catch-and-shoot threes, fewer contested pull-up twos.');
+    else if (tsP >= 75) K(sal(tsP), 'Efficient scorer', fx(tsV) + '% TS (' + at(tsP) + ').');
+  }
+  if (!work.some(x => x.head === 'Shot quality') && midVolP != null && midVolP >= 75 && midV != null && midV <= 38 && (midA == null || midA >= 20))
+    W(0.6, 'The mid-range', 'Lives in the mid-range, and makes ' + fx(midV) + '% there.', 'The long two is the shot the defence wants them to take: one more dribble to the rim, or a step back behind the line.');
+  /* ---- the line ---- */
+  const ftrP = P('ftr'), ftrV = v('ftr'), rimVolP = P('rim_a100'), rimVol = v('rim_a100');
+  if (ftrP != null && ftrV != null && rimVolP != null) {
+    if (ftrP <= 25 && rimVolP >= 50 && (rimA == null || rimA >= 15)) W(0.8 * sal(ftrP), 'Getting to the line', 'Gets to the rim (' + fx(rimVol) + ' shots there per 100 possessions) but rarely to the line: a free-throw rate of ' + fx(ftrV) + ' (' + at(ftrP) + ').',
+      'Finish through the body, not around it: attack the defender’s chest and use the two-foot gather to draw the contact.');
+    else if (ftrP >= 80 && rimVolP >= 60) K(0.8 * sal(ftrP), 'Rim pressure', 'Gets downhill and to the line: ' + fx(rimVol) + ' shots at the rim per 100 possessions and a free-throw rate of ' + fx(ftrV) + ' (' + at(ftrP) + ').');
+  }
+  const ftP = P('ft_pct');
+  if (ftP != null && ftV != null && fta != null && fta >= 15 && ftP <= 25) W(0.7 * sal(ftP), 'Free throws', fx(ftV) + '% at the line on ' + Math.round(fta) + ' attempts (' + at(ftP) + ').',
+    'The same routine every time, and volume: free throws at the end of practice, when tired.');
+  /* ---- the glass ---- */
+  const drP = P('dreb_pct'), drV = v('dreb_pct'), orP = P('oreb_pct'), orV = v('oreb_pct');
+  if (drP != null && drV != null && mins >= 80) {
+    if (drP <= (g === 'big' ? 30 : g === 'wing' ? 20 : 15)) W((g === 'big' ? 1 : 0.6) * sal(drP), 'Defensive rebounding', fx(drV) + '% of the available defensive rebounds (' + at(drP) + ').',
+      g === 'big' ? 'Find a body before the ball: hit, hold, then go and get it with two hands at its highest point.' : 'Help finish the possession: hit your man first, then chase the long rebound.');
+    else if (drP >= 80 && g !== 'guard') K(0.6 * sal(drP), 'Cleans the glass', fx(drV) + '% of the available defensive rebounds (' + at(drP) + ').');
+  }
+  if (orP != null && orV != null && mins >= 80) {
+    /* not for a big who spaces the floor (top 30% of bigs for threes): popping, they are not the one under the rim to crash */
+    const pops = (P('p3_a100') || 0) >= 70;
+    if (g === 'big' && orP <= 25 && !pops) W(0.7 * sal(orP), 'Offensive rebounding', fx(orV) + '% of the available offensive rebounds (' + at(orP) + ').',
+      'Second jump: crash from the weak side as the shot goes up, and tip it to yourself when you cannot catch it.');
+    else if (orP >= 80) K(0.6 * sal(orP), 'Offensive rebounder', fx(orV) + '% of the available offensive rebounds (' + at(orP) + ').');
+  }
+  /* ---- defence ---- */
+  const stP = P('stl_pct'), stV = v('stl_pct'), bkP = P('blk_pct'), bkV = v('blk_pct'), dbP = P('dbpm'), dbV = v('dbpm');
+  if (g !== 'big' && stP != null && stV != null && mins >= 80) {
+    if (stP <= 20) W(0.6 * sal(stP), 'Defensive events', 'A ' + fx(stV) + '% steal rate (' + at(stP) + ').',
+      'Active hands and early help: sit in the passing lane one pass away, and stunt at the driver from the nail.');
+    else if (stP >= 80) K(0.7 * sal(stP), 'Event creator', 'Active hands: a ' + fx(stV) + '% steal rate (' + at(stP) + ').');
+  }
+  if (g === 'big' && bkP != null && bkV != null && mins >= 80) {
+    if (bkP <= 25) W(0.8 * sal(bkP), 'Contests at the rim', 'A ' + fx(bkV) + '% block rate (' + at(bkP) + ').',
+      'Contest with verticality, not swipes: early from the weak side as the low man, both arms straight up.');
+    else if (bkP >= 80) K(0.8 * sal(bkP), 'Blocks shots', 'A ' + fx(bkV) + '% block rate (' + at(bkP) + ').');
+  }
+  const pfP = P('pf_pg'), pfV = v('pf_pg');
+  if (g === 'big' && pfP != null && pfV != null && pfP <= 20 && mins >= 80) W(0.6 * sal(pfP), 'Fouls', fx(pfV) + ' fouls a game (' + at(pfP) + ').',
+    'Move the feet before the contest and stay vertical: the foul is the late arrival.');
+  if (dbP != null && dbV != null && dbP <= 20 && mins >= 80) W(0.7 * sal(dbP), 'Defensive impact', sg(dbV) + ' DBPM (' + at(dbP) + ').',
+    g === 'guard' ? 'At the point of attack: get over the ball screen and keep the first step in front, without the reach.'
+      : g === 'wing' ? 'Closeouts under control, and screen navigation off the ball: no straight-line drives past them.'
+        : 'Be playable in drop: early position, talk the coverage, and finish the possession with the rebound.');
+  /* ---- left v right (the LEFT V RIGHT page) ---- */
+  const LV = F.lvr && F.lvr.all;
+  if (LV && LV.L && LV.R && LV.L.fga >= 15 && LV.R.fga >= 15 && LV.L.efg != null && LV.R.efg != null && Math.abs(LV.L.efg - LV.R.efg) >= 0.12) {
+    const hi = LV.L.efg > LV.R.efg ? 'left' : 'right', lo = hi === 'left' ? 'right' : 'left';
+    W(0.7, 'Side of the floor', fx(100 * Math.max(LV.L.efg, LV.R.efg)) + '% eFG from the ' + hi + ' side of the floor, ' + fx(100 * Math.min(LV.L.efg, LV.R.efg)) + '% from the ' + lo + '.',
+      'Defences will push them to their ' + lo + ': put the reps there, shooting and finishing from that side.');
+  }
+  /* ---- connections (the CONNECTIONS page) ---- */
+  const C = F.conn;
+  if (C && C.total >= 10 && C.mates && C.mates.length) {
+    const top = C.mates[0];
+    if (top.n / C.total >= 0.45) W(0.6, 'The passing menu', top.n + ' of their ' + C.total + ' assisted baskets went to ' + top.name + '.',
+      'Widen the menu: the skip pass to the weak-side corner and the drop-off to the dunker spot, not only the one look.');
+    if (g === 'guard' && C.total >= 12 && C.threes / C.total <= 0.15) W(0.7, 'Drive and kick', 'Only ' + C.threes + ' of their ' + C.total + ' assisted baskets were threes.',
+      'Draw two on the paint touch and spray it: the kick-out three is the most valuable pass a guard makes.');
+    else if (C.rim / C.total >= 0.5) K(0.5, 'Creates at the rim', C.rim + ' of their ' + C.total + ' assisted baskets were at the rim: their passes find the dunker spot and the roller.');
+  }
+  /* ---- the week (GAMES PLAYED DURING THE WEEK) ---- */
+  const week = [];
+  const G = F.week && F.week.games;
+  if (G && G.length) {
+    const t = { pts: 0, fga: 0, fta: 0, ast: 0, to: 0, p3m: 0, p3a: 0, n: 0, rim: 0, three: 0, shots: 0 };
+    let best = null;
+    G.forEach(x => {
+      const s = x.raw || {};
+      const fga = (+s.p2a || 0) + (+s.p3a || 0);
+      t.pts += +s.pts || 0; t.fga += fga; t.fta += +s.fta || 0; t.ast += +s.ast || 0; t.to += +s.to || 0; t.p3m += +s.p3m || 0; t.p3a += +s.p3a || 0; t.n++;
+      (x.shots || []).forEach(sh => { t.shots++; if (sh.three) t.three++; else if (sh.y != null && sh.y < 0.22 && Math.abs(sh.x - 0.5) < 0.12) t.rim++; });
+      if (!best || (+s.pts || 0) > (+best.raw.pts || 0)) best = x;
+    });
+    const tsW = t.fga + t.fta ? 100 * t.pts / (2 * (t.fga + 0.44 * t.fta)) : null;
+    week.push({ head: t.n + (t.n === 1 ? ' game' : ' games'), text: proof(fx(t.pts / t.n) + ' points a game' + (tsW != null ? ' on ' + fx(tsW) + '% TS' : '') + (tsV != null && tsW != null ? ' (their season: ' + fx(tsV) + '%)' : '') +
+      ', ' + fx(t.ast / t.n) + ' assists and ' + fx(t.to / t.n) + ' turnovers.') });
+    if (best && t.n > 1) {
+      const s = best.raw || {};
+      week.push({ head: 'Best game', text: proof((+s.pts || 0) + ' points ' + (best.home ? 'against ' : 'at ') + best.opp + ' (' + best.res + ' ' + best.us + '–' + best.them + '), ' +
+        ((+s.p2m || 0) + (+s.p3m || 0)) + ' of ' + ((+s.p2a || 0) + (+s.p3a || 0)) + ' from the field.') });
+    }
+    if (tsW != null && tsV != null && t.fga >= 15 && Math.abs(tsW - tsV) >= 8)
+      week.push({ head: tsW > tsV ? 'Above their season' : 'A cold week', text: proof(tsW > tsV ? 'Shot ' + fx(tsW - tsV) + ' points of TS better than their season: the shot diet held, so keep it.'
+        : 'Shot ' + fx(tsV - tsW) + ' points of TS below their season: check the shot diet on the courts above before the shooting itself.') });
+  }
+  const top = (xs, n) => xs.sort((a, b) => b.s - a.s).slice(0, n).map(x => { const o = Object.assign({}, x); delete o.s; return o; });
+  const intro = (F.name || r.name || 'The player') + ', measured against the league’s ' + (M.n || 0) + ' ' + who + ' on every page of this report' +
+    (gp < 5 ? '. Early in the season (' + gp + (gp === 1 ? ' game' : ' games') + '): read these as first signs, not verdicts.' : '.');
+  return { name: F.name || r.name, group: g, who, n: M.n || 0, intro: proof(intro), keep: top(keep, 4), work: top(work, 5), week };
+}
+
 /* ============================================================== the editor ===== */
 /* THE WHOLE, READ ONCE (scrutiny.js, register 'scout'): every line as a paragraph of one piece, so a line that says what
    another already says (near-copy, claim-twice) is caught across the sections; the lines come back fixed, in place */
@@ -517,5 +703,5 @@ function html(r, o) {
   return '<details class="rp-ins" data-i18n-ctx="report">' + s + '</div></details>';
 }
 
-return { team, player, html, TEAM, PLAYER, placeOf, pctOf, poolOf, rolesOf };
+return { team, player, develop, html, TEAM, PLAYER, placeOf, pctOf, poolOf, rolesOf };
 }));

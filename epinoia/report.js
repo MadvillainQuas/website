@@ -894,61 +894,152 @@ function coverPage(c, art) {
 function setLabels(pg, labels, cont) {
   pg.dataset.labels = JSON.stringify(labels);
   const m = pg.querySelector('.rp-top-m');
-  if (m) m.innerHTML = labels.map(esc).join(' <b>\u00b7</b> ') + (cont ? '<i> \u00b7 continued</i>' : '');
+  /* "continued" is the first section's, the one carried over from the page before: "ON THE FLOOR WITH \u00b7 continued \u00b7 LEGEND" */
+  if (m) m.innerHTML = labels.map((l, i) => esc(l) + (cont && i === 0 ? '<i> \u00b7 continued</i>' : '')).join(' <b>\u00b7</b> ');
+  /* two sections' names are long: smaller, and on two lines if need be, so the player's name beside them is never cut */
+  if (m) m.classList.toggle('long', labels.join(' \u00b7 ').length > 26);
 }
+/* A BLOCK OF PARTS (2026-10-16, Louie: "perfectly structured ... so that there's no dead space"): a template's stat groups,
+   a table's rows, a week's games, drawn from any run of them by render(parts, cont) -> a block (cont: not the first run).
+   Where the whole does not fit what is left of a page, the engine draws as many parts as do there and carries the rest on
+   (layout's cut), where it used to move the whole to a page of its own and leave the space it would have filled blank: the
+   player report's MAIN STATS page was a season line and four-fifths of a page of nothing. */
+function splitBlock(parts, render) {
+  const make = (ps, cont) => {
+    const b = ps && ps.length ? render(ps, cont) : null;
+    if (b) b.__split = { parts: ps, make, cont };
+    return b;
+  };
+  return make(parts, false);
+}
+/* how much of a page's body is still free, 0..1, measured where its last block ends */
+function freeOf(body) {
+  const kids = body.children;
+  if (!kids.length) return 1;
+  const r = body.getBoundingClientRect(), last = kids[kids.length - 1].getBoundingClientRect();
+  return r.height > 0 ? Math.max(0, (r.bottom - last.bottom) / r.height) : 0;
+}
+/* A SECTION ON A PAGE ANOTHER BEGAN: its name over the rule in the club's colour, so it reads as a new section and not as
+   more of the one before (a printed label: raster.js copies elements and their styles, never a ::before) */
+function joinHead(b, label) {
+  b.classList.add('rp-join');
+  /* not when the block's own title already says it (CONNECTIONS under "Connections" said it twice) */
+  const h = b.querySelector(':scope > .rp-h h3');
+  const said = h && h.textContent.trim().toUpperCase() === String(label || '').trim().toUpperCase();
+  if (label && !said && !b.querySelector(':scope > .rp-joinlbl')) {
+    const k = el('div', 'rp-joinlbl', label);
+    b.insertBefore(k, b.firstChild);
+  }
+}
+function unjoin(b) {
+  b.classList.remove('rp-join');
+  const k = b.querySelector(':scope > .rp-joinlbl');
+  if (k) k.remove();
+}
+/* the share of a page left free under which a section may not begin on it (opt.pack 'flow'): a heading and a few lines at
+   the foot of a page, the rest overleaf, would read as clutter (Louie, 2026-10-02) */
+const FLOW_FREE = 0.3;
 function layout(host, c, label, blocks, opt) {
   let pg = null, body = null, count = 0, start = null;
   const open = cont => { pg = newPage(c, label, cont); pg.dataset.labels = JSON.stringify([label]); host.appendChild(pg); body = pg.querySelector('.rp-body'); count = 0; };
   const over = () => body.scrollHeight > body.clientHeight + 1;
   const list = (blocks || []).filter(Boolean);
-  const prev = opt && opt.pack ? host.lastElementChild : null;
-  /* a module packs into the space the one before left only when the whole of it fits there: a section is never
-     split between a page it shares and one of its own */
+  const pack = opt && opt.pack;
+  const prev = pack ? host.lastElementChild : null;
+  const joinLabels = () => {
+    let labels = []; try { labels = JSON.parse(pg.dataset.labels || '[]'); } catch (_) { labels = []; }
+    if (labels.indexOf(label) < 0) labels.push(label);
+    setLabels(pg, labels, /continued/.test(pg.querySelector('.rp-top-m') ? pg.querySelector('.rp-top-m').textContent : ''));
+  };
   if (prev && prev.classList.contains('rp-pg') && !prev.classList.contains('rp-cover') && list.length && !list.some(b => b.classList && b.classList.contains('rp-break'))) {
     pg = prev; body = pg.querySelector('.rp-body');
-    list[0].classList.add('rp-join');
-    list.forEach(b => body.appendChild(b));
-    if (over()) { list.forEach(b => b.remove()); list[0].classList.remove('rp-join'); pg = null; }
-    else {
-      list.length = 0; count = body.children.length; start = pg;
-      let labels = []; try { labels = JSON.parse(pg.dataset.labels || '[]'); } catch (_) { labels = []; }
-      if (labels.indexOf(label) < 0) labels.push(label);
-      setLabels(pg, labels, /continued/.test(pg.querySelector('.rp-top-m') ? pg.querySelector('.rp-top-m').textContent : ''));
+    if (pack === 'flow') {
+      /* FLOWING (opt.pack 'flow'): the section begins in what the one before left when its first block fits there and
+         enough of the page is free (FLOW_FREE); the rest of it follows on the pages after, as any section's would */
+      const room = freeOf(body);
+      joinHead(list[0], label);
+      body.appendChild(list[0]);
+      if (room < (opt.free != null ? opt.free : FLOW_FREE) || over()) { list[0].remove(); unjoin(list[0]); pg = null; }
+      else { list.shift(); count = body.children.length; start = pg; joinLabels(); }
+    } else {
+      /* a module packs into the space the one before left only when the whole of it fits there: a section is never
+         split between a page it shares and one of its own */
+      joinHead(list[0], label);
+      list.forEach(b => body.appendChild(b));
+      if (over()) { list.forEach(b => b.remove()); unjoin(list[0]); pg = null; }
+      else { list.length = 0; count = body.children.length; start = pg; joinLabels(); }
     }
   }
   if (!pg) open(false);
   start = start || pg;
-  list.forEach(b => {
-    if (b.classList && b.classList.contains('rp-break')) { if (count) open(true); return; }
+  /* THE CUT: of a block of parts (splitBlock) overflowing the page, the most parts that fit put in its place; the rest,
+     a block of their own, is returned to go on next. Null when not even one part fits (or it is not a block of parts). */
+  const cut = b => {
+    const S = b.__split;
+    if (!S || !S.parts || S.parts.length < 2) return null;
+    const keep = (from, to) => {
+      ['data-mod'].forEach(a => { const v = from.getAttribute(a); if (v != null) to.setAttribute(a, v); });
+      const k = from.querySelector(':scope > .rp-joinlbl');
+      if (from.classList.contains('rp-join')) { to.classList.add('rp-join'); if (k) to.insertBefore(k.cloneNode(true), to.firstChild); }
+    };
+    b.remove();
+    let lo = 1, hi = S.parts.length - 1, best = 0, head = null;
+    while (lo <= hi) {
+      const k = (lo + hi) >> 1, h = S.make(S.parts.slice(0, k), S.cont);
+      if (!h) break;
+      keep(b, h);
+      body.appendChild(h);
+      const fits = !over();
+      h.remove();
+      if (fits) { best = k; head = h; lo = k + 1; } else hi = k - 1;
+    }
+    if (!head) { body.appendChild(b); return null; }
+    body.appendChild(head);
+    const tail = S.make(S.parts.slice(best), true);
+    if (tail) ['data-mod'].forEach(a => { const v = b.getAttribute(a); if (v != null) tail.setAttribute(a, v); });
+    return tail;
+  };
+  for (let i = 0; i < list.length; i++) {
+    const b = list[i];
+    if (b.classList && b.classList.contains('rp-break')) { if (count) open(true); continue; }
     body.appendChild(b);
     count++;
-    if (!over()) return;
+    if (!over()) continue;
     /* a little smaller rather than a page of its own and a gap where it was: down to 88% where that makes it fit */
     if (count > 1 && !b.style.zoom) {
       const need = b.offsetHeight || 1, z = (need - (body.scrollHeight - body.clientHeight) - 3) / need;
-      if (z >= 0.88) { b.style.zoom = z.toFixed(3); if (!over()) return; b.style.zoom = ''; }
-      /* or every block of the page a little smaller together (down to 92%), which saves a page holding one small block */
+      if (z >= 0.88) { b.style.zoom = z.toFixed(3); if (!over()) continue; b.style.zoom = ''; }
+      /* or every block of the page a little smaller together (down to 92%), which saves a page holding one small block - and
+         down to 86% for a section's last block when it is a small one (a legend's last few rows, alone on a last page) */
       const kids = [...body.children];
+      let fitted = false;
+      const floor = i === list.length - 1 && need < body.clientHeight * 0.3 ? 0.86 : 0.92;
       if (kids.every(k => !k.style.zoom)) {
         const tall = kids.reduce((s, k) => s + (k.offsetHeight || 0), 0) || 1;
         let zz = (tall - (body.scrollHeight - body.clientHeight) - 3) / tall;
-        for (let i = 0; i < 2 && zz >= 0.92; i++) {
+        for (let j = 0; j < 2 && zz >= floor; j++) {
           kids.forEach(k => { k.style.zoom = zz.toFixed(3); });
-          if (!over()) return;
+          if (!over()) { fitted = true; break; }
           zz *= (body.clientHeight - 2) / Math.max(1, body.scrollHeight);
         }
-        kids.forEach(k => { k.style.zoom = ''; });
+        if (!fitted) kids.forEach(k => { k.style.zoom = ''; });
       }
+      if (fitted) continue;
+      /* or cut where the page ends, a block of parts: what fits here, the rest on the next page */
+      const tail = cut(b);
+      if (tail) { list.splice(i + 1, 0, tail); continue; }
     }
     if (count > 1) { b.remove(); open(true); body.appendChild(b); count = 1; }
     if (over()) {
-      /* too tall for a whole page: smaller, to fit */
+      /* too tall for a whole page: cut, a block of parts; else smaller, to fit */
+      const tail = cut(b);
+      if (tail) { list.splice(i + 1, 0, tail); continue; }
       const room = body.clientHeight - 2, need = b.offsetHeight || 1;
       const z = Math.max(0.45, Math.min(1, room / need));
       b.style.zoom = z.toFixed(3);
       if (over()) b.style.zoom = Math.max(0.4, z * room / Math.max(1, body.scrollHeight)).toFixed(3);
     }
-  });
+  }
   return start;
 }
 
@@ -1021,7 +1112,9 @@ function legendBlocks(keys, extra, kind, pooled) {
     '<div><i data-b="4"></i><span><b>75th percentile and up</b> among the players (or clubs) the stat is ranked in</span></div>' +
     '<div><i data-b="3"></i><span><b>50th\u201375th</b></span></div><div><i data-b="2"></i><span><b>25th\u201350th</b></span></div><div><i data-b="1"></i><span><b>below the 25th</b></span></div>' +
     '<div><i data-b="5"></i><i data-b="6"></i><i data-b="7"></i><i data-b="8"></i><span><b>a style</b>: more is neither better nor worse, so it is ranked by most and drawn in blue to purple, deeper the more of it</span></div>' +
-    '<div><i data-b="0"></i><span><b>not ranked</b>: too few to rank, or a figure the field does not carry</span></div></div>' +
+    '<div><i data-b="0"></i><span><b>not ranked</b>: too few to rank, or a figure the field does not carry</span></div></div>'));
+  /* the reading under it, a block of its own (2026-10-16): the key alone can begin a legend in what the last section left */
+  out.push(block(
     '<p class="rp-lg-p">A percentile says where the figure sits among the others in the same competition and season: the 80th is better than eight in ten. ' +
     (kind === 'team' ? 'A club is ranked among the clubs; a player always among the players of their own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition. '
       : 'A player is always ranked among the players of their own position (guards, wings or bigs: the site’s position groups, worked out from how each player is used), never the whole competition, and the average shown is theirs. ') +
@@ -1040,7 +1133,9 @@ function legendBlocks(keys, extra, kind, pooled) {
       (d.formula ? ' <code>' + esc(d.formula) + '</code>' : '') + '</span></div>');
   });
   (extra || []).forEach(([t, d, w]) => rows.push('<div class="rp-lg-row" data-lgk="x:' + esc(lgNorm(t)) + '"><b>' + esc(t) + '</b><span>' + esc(d) + (w ? ' <i class="rp-lg-why"><u>Why look:</u> ' + esc(w) + '</i>' : '') + '</span></div>'));
-  for (let i = 0; i < rows.length; i += 10) out.push(block('<div class="rp-lg">' + rows.slice(i, i + 10).join('') + '</div>'));
+  /* one block of parts (splitBlock): each page takes as many rows as fit, where blocks of ten left the foot of a page empty
+     whenever the next ten did not fit (2026-10-16) */
+  if (rows.length) out.push(splitBlock(rows, ps => block('<div class="rp-lg">' + ps.join('') + '</div>')));
   return out;
 }
 
@@ -1792,16 +1887,18 @@ function ui(state) {
         /* each block knows its section: the PDF's bookmarks put a section's headings under it */
         blocks.forEach(b => { if (b && b.setAttribute) b.setAttribute('data-mod', m.page || m.title); });
         /* a module starts a page of its own unless it says it may follow on (pack: true, the combinations after the
-           depth chart): a new section half-way down a page read as clutter (Louie, 2026-10-02) */
-        const at = layout(pagesNew, c, m.page || m.title, blocks, { pack: m.pack === true });
+           depth chart): a new section half-way down a page read as clutter (Louie, 2026-10-02). pack 'flow' (the player
+           report's later sections, 2026-10-16: "no dead space"): it begins in what the section before left when enough
+           of that page is free, under its own name and a rule (layout) */
+        const at = layout(pagesNew, c, m.page || m.title, blocks, { pack: m.pack === true ? true : m.pack === 'flow' ? 'flow' : false });
         toc.push([m.page || m.title, [...pagesNew.querySelectorAll('.rp-pg')].indexOf(at) + 1]);
       }
       const lg = o.modules.find(m => m.key === 'legend');
       /* every stat a page printed by its key has its entry, whichever module drew it (linkLegend links it there) */
       if (lg && conf.on.legend) R.legend.push(...[...pagesNew.querySelectorAll('[data-lg]')].map(e => e.getAttribute('data-lg')).filter(Boolean));
       if (lg && conf.on.legend && (R.legend.length || R.legendExtra.length)) {
-        toc.push(['LEGEND', pagesNew.querySelectorAll('.rp-pg').length + 1]);
-        layout(pagesNew, c, 'LEGEND', legendBlocks(R.legend, R.legendExtra, o.kind, R.pooled));
+        const at = layout(pagesNew, c, 'LEGEND', legendBlocks(R.legend, R.legendExtra, o.kind, R.pooled), { pack: lg.pack === 'flow' ? 'flow' : false, free: lg.free });
+        toc.push(['LEGEND', [...pagesNew.querySelectorAll('.rp-pg')].indexOf(at) + 1]);
         R.lgLinks = linkLegend(pagesNew);
       }
       const tocEl = pagesNew.querySelector('.rp-cv-toc');
@@ -2028,5 +2125,5 @@ function groupsFor(state, set, pos) {
 }
 
 return { mount, WHY, shotMixHTML, keyBox, keyHTML, loadPrior, priorRows, inkOn, colsHTML, rapmControl, rapmOn, rapmKey, bandVs, refOf, zoneColumnsHTML, sitSeason, sitCardHTML, STATS, DEFS, TPL, derive, ranker, statRowHTML, statCellHTML, stand, groupRowsHTML, groupCellsHTML, groupWeight, shotRuns, SHOT_KIND, posCourtHTML, POS_KEY, block, title, frag, el, esc,
-         fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, hcAssists, hcAstOf, trAstOf, HC_MIN, synergyOf, synergySave, synergyOnRow, hasStat, groupsOn, sideTone, synergyControl, synergySource, driveChartHTML, driveTableHTML, directionMixHTML, miniZonesHTML, leanColour, posPools, posRanker, POS_PLURAL, layout, legendBlocks, PAGE, SLOTS, isNum };
+         fmtStat, ordinal, band, posGroup, templateControl, groupsFor, templateOf, turnoverTypes, hcAssists, hcAstOf, trAstOf, HC_MIN, synergyOf, synergySave, synergyOnRow, hasStat, groupsOn, sideTone, synergyControl, synergySource, driveChartHTML, driveTableHTML, directionMixHTML, miniZonesHTML, leanColour, posPools, posRanker, POS_PLURAL, layout, splitBlock, freeOf, legendBlocks, PAGE, SLOTS, isNum };
 }));

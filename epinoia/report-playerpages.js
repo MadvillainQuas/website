@@ -23,6 +23,51 @@
 
 const RP = () => root.EpinoiaReport;
 
+/* CONNECTIONS' PAIRING (the CONNECTIONS section, below): every assist of the player's (ids: his profiles) paired with its basket
+   by the game page's rule (game/connections.js), the basket kept: where it was taken (situations.js describe's locs, x/y 0..1),
+   its zone (rim / mid / three) and its type; and every basket of his that another's assist led to. -> { out, into, games } */
+function passLinks(games, ids) {
+  const X = root.EpinoiaSituations;
+  const me = new Set((ids || []).filter(Boolean).map(String));
+  const out = [], into = [];
+  let n = 0;
+  (games || []).forEach(g => {
+    const evs = g.events || [];
+    if (!evs.some(e => e && e.pid != null && me.has(String(e.pid)))) return;
+    n++;
+    const order = X && X.inGameOrder ? X.inGameOrder(evs) : evs;
+    const Dsc = X && X.describe ? X.describe(evs) : { locs: {}, stypes: {}, zoneOf: () => null };
+    let last = null;
+    order.forEach(ev => {
+      if ((ev.t === 'p2_made' || ev.t === 'p3_made') && ev.pid) last = ev;
+      else if (ev.t === 'ast') {
+        const shot = last && last.team === ev.team ? last : null;
+        if (ev.pid && shot && String(shot.pid) !== String(ev.pid)) {
+          const id = shot.id != null ? shot.id : shot.seq, l = Dsc.locs[id], three = shot.t === 'p3_made';
+          const link = { game: g.id, from: String(ev.pid), to: String(shot.pid), pts: three ? 3 : 2, three,
+            zone: three ? 'three' : (Dsc.zoneOf(shot) || 'mid'), type: String(Dsc.stypes[id] || '').toLowerCase() || null,
+            x: l ? +l.x : null, y: l ? +l.y : null };
+          if (me.has(link.from)) out.push(link); else if (me.has(link.to)) into.push(link);
+        }
+        last = null;
+      }
+    });
+  });
+  return { out, into, games: n };
+}
+function byMate(links, key) {
+  const m = new Map();
+  links.forEach(l => {
+    const k = l[key];
+    const a = m.get(k) || { id: k, n: 0, pts: 0, threes: 0, rim: 0, mid: 0, types: {} };
+    a.n++; a.pts += l.pts;
+    if (l.three) a.threes++; else if (l.zone === 'rim') a.rim++; else a.mid++;
+    if (l.type) a.types[l.type] = (a.types[l.type] || 0) + 1;
+    m.set(k, a);
+  });
+  return [...m.values()].sort((a, b) => b.n - a.n || b.pts - a.pts);
+}
+
 function modules(ctx) {
   const E = RP();
   const { block, title, esc } = E;
@@ -113,6 +158,14 @@ function modules(ctx) {
       if (poolField.length > field.length) R.pooled = 'Every figure is ranked against all ' + ((B.prior || []).length + 1) + ' seasons of the league with data (each player’s season is one entry), among players of their own position, not only the season shown. A stat an earlier season did not record is ranked within the season shown.';
       const pools = E.posPools(poolField);
       const Rk = E.posRanker(poolField, keys, group, mine.id, pools);
+      /* WHAT THE INSIGHTS READ (INSIGHTS, scoutinsights.js develop): his line, and his place among his position on every
+         measure they may speak of, the template's or not */
+      const IK = ['usg', 'ev_half_usg', 'ts', 'efg', 'ftr', 'ft_pct', 'au', 'hc_ast_pct', 'ast_pct', 'tov_pct', 'rim_a100', 'rim_pct', 'ev_half_rim_pct',
+        'mid_a100', 'mid_pct', 'p3_a100', 'p3_pct', 'ev_transition_rim_a100', 'ev_transition_rim_pct', 'oreb_pct', 'dreb_pct', 'stl_pct', 'blk_pct',
+        'pf_pg', 'dbpm', 'obpm', 'bpm'];
+      const RkI = E.posRanker(poolField, IK, group, mine.id, pools);
+      R.facts = R.facts || {};
+      R.facts.main = { mine, group, who: RkI.who, n: RkI.nNow || RkI.n, pct: k => RkI.pct(k, mine.id), avg: k => RkI.avg(k) };
       R.legend.push(...keys.filter(k => !(E.STATS[k] && E.STATS[k].optional) || (E.hasStat ? E.hasStat(k, mine) : E.isNum(mine[k]))));
       const tiles = [['GP', 'gp', 0], ['MIN / G', 'mpg', 1], ['PTS / G', 'ppg', 1], ['REB / G', 'rpg', 1], ['AST / G', 'apg', 1], ['BPM', 'bpm', 1, true]];
       R.legend.push(...tiles.map(t => t[1]));          // the headline tiles have legend entries too, so their names link there
@@ -124,8 +177,14 @@ function modules(ctx) {
       const needRapm = keys.some(k => E.STATS[k] && E.STATS[k].rapm) && !rapmOk;
       const out = [block(title('Season line', [c.scope, Rk.n ? 'ranked among ' + (Rk.nNow || Rk.n) + ' ' + Rk.who + (Rk.nNow && Rk.nNow < Rk.n ? ' this season' : '') + (Rk.group ? ' (adjusted for position)' : '') : ''].filter(Boolean).join(' · ')) + tileHTML +
         (needRapm ? '<p class="rp-flagnote" style="margin-top:8px">ORAPM and DRAPM are not calculated for this league and season: they show blank (Calculate RAPM, above the pages).</p>' : ''))];
-      out.push(block(E.colsHTML(E.groupsOn ? E.groupsOn(groups, mine) : groups, ([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + E.groupRowsHTML(ks, mine, Rk) + '</div>',
-        ([, ks]) => E.groupWeight(ks)) +
+      /* THE GROUPS, A BLOCK OF PARTS (report.js splitBlock): as many as fit under the season line, in two columns, and the
+         rest on the next page - they were one block too tall to go under it, which left this page a strip of tiles and
+         four-fifths blank (Louie, 2026-10-16) */
+      const gl = E.groupsOn ? E.groupsOn(groups, mine) : groups;
+      const gHTML = ([t, ks]) => '<div class="rp-g"><h4>' + esc(t) + '</h4>' + E.groupRowsHTML(ks, mine, Rk) + '</div>';
+      const gCols = ps => block(E.colsHTML(ps, gHTML, ([, ks]) => E.groupWeight(ks)));
+      out.push(E.splitBlock ? E.splitBlock(gl, gCols) : gCols(gl));
+      out.push(block(
         '<p class="rp-note">' + esc('Each row: the value, its percentile among the ' + (Rk.nNow || Rk.n) + ' ' + Rk.who + ' of ' + (c.field || c.scope || 'the competition') + (Rk.nNow && Rk.nNow < Rk.n ? ' (with earlier seasons’, ' + Rk.n + ' in all, deepening the field)' : '') +
           ' (the bar), and their average' + (Rk.group ? ': every figure is adjusted for position, ranked against players of their own' : ': too few players of their position to rank that player among them alone, so against everybody') +
           '. Template: ' + templateName(R.state, group) + '.') + '</p>' + E.keyHTML('Reading the player’s numbers', [
@@ -150,7 +209,7 @@ function modules(ctx) {
   /* the zones court and every shot side by side, the shot zones in two columns under them; then the box score's
      half-court and transition cards over the season (his shots in each, situations.js on every game's log) */
   const shots = {
-    key: 'shots', title: 'Shot chart', page: 'SHOT CHART', on: true,
+    key: 'shots', title: 'Shot chart', page: 'SHOT CHART', on: true, pack: 'flow',
     async build(c, R) {
       const SC = root.EpinoiaShotChart;
       const S = await ctx.shots();
@@ -164,11 +223,28 @@ function modules(ctx) {
       };
       const made = S.shots.filter(x => x.made).length;
       const out = [];
+      /* the courts, and the zone table under them, two blocks: the courts can begin under the section before when its page has
+         room, the table following (report.js layout, pack 'flow') */
       out.push(block(title('Where they shoot', S.shots.length + ' located shots · ' + made + ' made · ' + S.games + ' games') +
         '<div class="rp-two"><div><div class="rp-cap">Zones<span>tinted against each zone’s break-even</span></div>' + court('zones') + '</div>' +
-        '<div><div class="rp-cap">Every shot<span>made ● missed ×</span></div>' + court('shots') + '</div></div>' +
-        '<div class="rp-cap" style="margin-top:10px">Shot zones</div>' + E.zoneColumnsHTML(S.shots, S.games)));
-      /* DIRECTION (Synergy): his drives left against right, and where each side's drives end - in the gap under the zones */
+        '<div><div class="rp-cap">Every shot<span>made ● missed ×</span></div>' + court('shots') + '</div></div>'));
+      out.push(block('<div class="rp-cap">Shot zones</div>' + E.zoneColumnsHTML(S.shots, S.games)));
+      try {
+        const F = await ctx.floor();
+        if (F && F.logs && F.sideOf && root.EpinoiaSituations) {
+          const games = Object.keys(F.logs).filter(id => F.sideOf[id] != null).map(id => ({ events: F.logs[id], side: F.sideOf[id], pid: F.playerId }));
+          const A = E.sitSeason(games);
+          R.facts = R.facts || {};
+          R.facts.sit = { half: A.half, transition: A.transition };
+          if (A.half.fga || A.transition.fga) {
+            out.push(block(title('Half court and transition', 'their shots in each, the club’s last ' + games.length + ' games') +
+              E.sitCardHTML(A.half, { key: 'half', colour, player: true, who: c.name })));
+            out.push(block(E.sitCardHTML(A.transition, { key: 'transition', colour: '#b4572e', player: true, who: c.name })));
+          }
+        }
+      } catch (e) { if (root.console) root.console.warn('[report situations]', e); }
+      /* DIRECTION (Synergy): his drives left against right, and where each side's drives end - after the half court and
+         transition cards (2026-10-16), whose half-page cards it left a half-empty page before */
       try {
         const B = ctx.bars ? await ctx.bars().catch(() => null) : null;
         const prof = B && B.mine ? await synOf(B.mine.id) : null;
@@ -177,18 +253,6 @@ function modules(ctx) {
           '<div class="rp-two rp-dir"><div><div class="rp-cap">Left against right<span>PPP, share of their possessions, eFG%, TO%</span></div>' + ch + '</div>' +
           '<div><div class="rp-cap">Where the drives end<span>% of each side\u2019s shots</span></div>' + E.directionMixHTML(prof) + '</div></div>'));
       } catch (e) { if (root.console) root.console.warn('[report direction]', e); }
-      try {
-        const F = await ctx.floor();
-        if (F && F.logs && F.sideOf && root.EpinoiaSituations) {
-          const games = Object.keys(F.logs).filter(id => F.sideOf[id] != null).map(id => ({ events: F.logs[id], side: F.sideOf[id], pid: F.playerId }));
-          const A = E.sitSeason(games);
-          if (A.half.fga || A.transition.fga) {
-            out.push(block(title('Half court and transition', 'their shots in each, the club’s last ' + games.length + ' games') +
-              E.sitCardHTML(A.half, { key: 'half', colour, player: true, who: c.name })));
-            out.push(block(E.sitCardHTML(A.transition, { key: 'transition', colour: '#b4572e', player: true, who: c.name })));
-          }
-        }
-      } catch (e) { if (root.console) root.console.warn('[report situations]', e); }
       R.legendExtra.push(['ZONES', 'The court cut into twelve areas, each tinted against its own break-even (paint 58%, mid-range 40%, three 35%): orange above, blue below, grey within two points; hatched where there are too few attempts to rate.'],
         ['eFG%', 'Effective field-goal percentage: a made three counts as one and a half makes.'],
         ['HALF COURT / TRANSITION', 'The box score’s situations over the season: transition is a fast break, or within eight seconds of a defensive rebound or a steal; the half court is a chance that was none of second chance, transition, off a turnover or after a timeout.']);
@@ -201,12 +265,14 @@ function modules(ctx) {
      side, all his shots and then only his unassisted ones, and where his unassisted shots come from on the court - always over
      every season and competition he has played (lvr.js career, the profile card's own read), whatever the report's scope */
   const lvr = {
-    key: 'lvr', title: 'Left v right', page: 'LEFT V RIGHT', on: true,
+    key: 'lvr', title: 'Left v right', page: 'LEFT V RIGHT', on: true, pack: 'flow',
     async build(c, R) {
       const LV = root.EpinoiaLvR, SC = root.EpinoiaShotChart;
       const C = LV && ctx.lvr ? await ctx.lvr().catch(() => null) : null;
       if (!LV || !C || !C.shots || !C.shots.length) return [block('<div class="rp-empty">No located shots for this player yet.</div>')];
       const all = LV.split(C.shots), un = LV.split(C.shots, { unassisted: true });
+      R.facts = R.facts || {};
+      R.facts.lvr = { all, un };
       const out = [];
       out.push(block(title('Left v right', 'his shooting from each side of the floor, facing the basket · ' + LV.basis(C) + ' · ' + all.n + ' located shots') +
         '<div class="rp-two rp-lvr"><div><div class="rp-cap">All shots<span>eFG% by side, FG% by distance</span></div>' + LV.cardHTML(all, { compact: true }) + '</div>' +
@@ -233,7 +299,7 @@ function modules(ctx) {
 
   /* ---------------- ON THE FLOOR WITH ---------------- */
   const floor = {
-    key: 'floor', title: 'On the floor with', page: 'ON THE FLOOR WITH', on: true,
+    key: 'floor', title: 'On the floor with', page: 'ON THE FLOOR WITH', on: true, pack: 'flow',
     async build(c, R) {
       const F = await ctx.floor();
       const WY = root.EpinoiaWowy, L = root.EpinoiaLineups, W = root.EpinoiaWith;
@@ -241,7 +307,32 @@ function modules(ctx) {
       const out = [];
       const oo = E.el('div');
       WY.onOffTiles(oo, F.stints, F.playerId);
-      out.push(block(title('The team with them on and off', 'net, offensive and defensive rating per 100 possessions') + oo.innerHTML));
+      /* TWO BLOCKS (2026-10-16): the three tiles and the minutes split, then the table of every figure on and off - one block,
+         it was a page of its own and could never begin under the section before, which left that page half empty */
+      const card = oo.querySelector(':scope > .oo');
+      const ooHead = title('The team with them on and off', 'net, offensive and defensive rating per 100 possessions');
+      if (card && card.querySelector(':scope > .oo-top') && card.querySelector(':scope > .dl')) {
+        const a = E.el('div', card.className);
+        [...card.children].forEach(ch => { if (ch.classList.contains('oo-top') || ch.classList.contains('oo-split')) a.appendChild(ch); });
+        const grid = card.querySelector(':scope > .dl');
+        const tail = [...card.children].filter(ch => ch !== grid).map(x => x.outerHTML).join('');      // the key and the note
+        const rest = [...oo.children].filter(x => x !== card).map(x => x.outerHTML).join('');
+        out.push(block(ooHead + a.outerHTML));
+        /* THE TABLE, A BLOCK OF PARTS: a group of rows each (the ratings, offence, defence, style), the column heads over every
+           run of them, the key under the last - so the groups that fit go under the tiles and the rest overleaf */
+        const heads = [...grid.children].filter(x => x.classList.contains('dl-h')).map(x => x.outerHTML).join('');
+        const groups = [];
+        let cur = null;
+        [...grid.children].forEach(x => {
+          if (x.classList.contains('dl-h')) return;
+          if (x.classList.contains('dl-g')) { cur = [x.outerHTML]; groups.push(cur); } else if (cur) cur.push(x.outerHTML);
+        });
+        const parts = groups.map(gp => gp.join(''));
+        const last = parts[parts.length - 1];
+        const tbl = ps => block('<div class="' + card.className + ' oo-cont"><div class="' + grid.className + '">' + heads + ps.join('') + '</div>' +
+          (ps[ps.length - 1] === last ? tail + rest : '') + '</div>');
+        out.push(parts.length > 1 && E.splitBlock ? E.splitBlock(parts, tbl) : tbl(parts));
+      } else out.push(block(ooHead + oo.innerHTML));
       /* his own line over these games (the panel with no teammate picked) */
       if (W && W.split) {
         try {
@@ -304,9 +395,160 @@ function modules(ctx) {
     }
   };
 
+  /* ---------------- CONNECTIONS ---------------- */
+  /* WHO HE SETS UP, AND THE SHOTS HIS PASSES BECOME (Louie, 2026-10-16: "a connections section that shows the players that
+     player is most assisting and the shots that come from that"): every assist of his paired with the basket it led to by
+     the game page's own rule (game/connections.js: the last made field goal of the same side, each basket once), kept with
+     the shot, so where it was taken and what kind of shot it was are known (situations.js describe); and the other way, who
+     sets him up. Over the games of the report's competition (ctx.fieldGames), else his club's last 40 (ctx.floor). */
+  const PAL = ['#0b7a4b', '#e0702b', '#3d6fd8', '#a2449b', '#c79a14'];
+  const conn = {
+    key: 'conn', title: 'Connections', page: 'CONNECTIONS', on: true, pack: 'flow',
+    async build(c, R) {
+      const B = ctx.bars ? await ctx.bars().catch(() => null) : null;
+      const ids = (ctx.pids ? await ctx.pids().catch(() => []) : []).concat(B && B.mine ? [B.mine.id] : []);
+      let games = ctx.fieldGames ? await ctx.fieldGames().catch(() => null) : null;
+      let src = 'every game of ' + (c.scope || 'the competition');
+      if (!games || !games.length) {
+        const F = ctx.floor ? await ctx.floor().catch(() => null) : null;
+        games = F && F.logs ? Object.keys(F.logs).map(id => ({ id, events: F.logs[id] })) : [];
+        src = 'the club’s last ' + games.length + ' games';
+      }
+      const L = passLinks(games, ids);
+      const head = title('Connections', 'who they set up, and the shots their passes become · ' + src);
+      if (!L.out.length && !L.into.length) return [block(head + '<div class="rp-empty">No assist of theirs, or to them, paired with its basket yet (it needs a play-by-play that logs assists).</div>')];
+      const mates = byMate(L.out, 'to'), feeders = byMate(L.into, 'from');
+      const meta = ctx.meta ? await ctx.meta([...new Set(mates.concat(feeders).map(m => m.id))]).catch(() => ({})) : {};
+      const nm = id => (meta[id] && meta[id].name) || 'Teammate';
+      const top = mates.slice(0, PAL.length), colourOf = new Map(top.map((m, i) => [m.id, PAL[i]]));
+      /* the court: where each of his assists was finished, a colour for each of the teammates he finds most */
+      const Box = root.EpinoiaBox;
+      let court = '';
+      const located = L.out.filter(l => l.x != null && l.y != null);
+      if (Box && Box.courtSVG && located.length) {
+        const C = Box.COURT;
+        const dots = located.slice().sort((a, b) => (colourOf.has(a.to) ? 1 : 0) - (colourOf.has(b.to) ? 1 : 0)).map(l => {
+          const p = Box.snapToValue ? Box.snapToValue(l.x, l.y, l.three) : l;
+          return '<circle cx="' + (p.x * C.W).toFixed(0) + '" cy="' + (p.y * C.H).toFixed(0) + '" r="32" fill="' + (colourOf.get(l.to) || '#a7b2ac') + '" stroke="#ffffff" stroke-width="7"/>';
+        }).join('');
+        court = '<div class="rp-sit-c"><div class="rp-court">' + Box.courtSVG(null, { plain: true }).replace('</svg>', dots + '</svg>') + '</div></div>' +
+          '<div class="rp-cn-key">' + top.map(m => '<span><i style="background:' + colourOf.get(m.id) + '"></i>' + esc(nm(m.id)) + '</span>').join('') +
+          (mates.length > top.length ? '<span><i style="background:#a7b2ac"></i>others</span>' : '') + '</div>';
+      } else court = '<div class="rp-empty">No locations recorded for these baskets.</div>';
+      const pct = (a, b) => (b ? Math.round(100 * a / b) + '%' : '—');
+      const kinds = m => Object.entries(m.types).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([t, n]) => n + ' ' + t + (n > 1 && !/s$/.test(t) ? 's' : '')).join(', ');
+      const rowOf = (m, sw) => '<tr><td class="l">' + (sw ? '<i class="rp-cn-sw" style="background:' + (colourOf.get(m.id) || '#a7b2ac') + '"></i>' : '') + esc(nm(m.id)) + '</td><td>' + m.n + '</td><td>' + m.pts + '</td>' +
+        '<td>' + m.threes + '</td><td>' + m.rim + '</td><td>' + m.mid + '</td>' + (sw ? '<td class="l rp-cn-k">' + esc(kinds(m) || '—') + '</td>' : '') + '</tr>';
+      const out = L.out.length;
+      const tblOut = '<div class="rp-cap">They set up<span>' + out + ' assisted baskets · ' + pct(L.out.filter(l => l.three).length, out) + ' threes · ' + pct(L.out.filter(l => !l.three && l.zone === 'rim').length, out) + ' at the rim</span></div>' +
+        '<table class="rp-tbl rp-cn"><thead><tr><th class="l">teammate</th><th>ast</th><th>pts</th><th>3pt</th><th>rim</th><th>mid</th><th class="l">most often</th></tr></thead><tbody>' +
+        (mates.length ? mates.slice(0, 7).map(m => rowOf(m, true)).join('') : '<tr><td class="l" colspan="7">No assists of theirs paired yet.</td></tr>') + '</tbody></table>';
+      const tblIn = feeders.length ? '<div class="rp-cap" style="margin-top:10px">Who sets them up<span>' + L.into.length + ' of their baskets assisted</span></div>' +
+        '<table class="rp-tbl rp-cn"><thead><tr><th class="l">passer</th><th>ast</th><th>pts</th><th>3pt</th><th>rim</th><th>mid</th></tr></thead><tbody>' +
+        feeders.slice(0, 4).map(m => rowOf(m, false)).join('') + '</tbody></table>' : '';
+      R.facts = R.facts || {};
+      R.facts.conn = { total: out, threes: L.out.filter(l => l.three).length, rim: L.out.filter(l => !l.three && l.zone === 'rim').length,
+        mates: mates.map(m => Object.assign({ name: nm(m.id) }, m)), into: L.into.length, feeders: feeders.map(m => Object.assign({ name: nm(m.id) }, m)), games: L.games };
+      R.legendExtra.push(['CONNECTIONS', 'Every assist paired with the basket it led to, as the game page’s Connections tab pairs them (the last made field goal of the passer’s side, each basket once): who they set up and who sets them up, how many points those baskets were worth, and where they were scored, at the rim, from mid-range or from three. A pass that led to free throws is not counted.']);
+      return [block(head + '<div class="rp-two rp-cn-g"><div>' + court + '</div><div>' + tblOut + tblIn + '</div></div>')];
+    }
+  };
+  /* ---------------- GAMES PLAYED DURING THE WEEK ---------------- */
+  /* HIS WEEK, GAME BY GAME (Louie, 2026-10-16: "shows the shot charts for those games, and their full stats row from those games
+     stacked on top of each other (so the match report pdfs full table segments - but only for that player and with their rows
+     stacked so they can be on the same page - organised by the games that were played)"): a court of his shots for each game,
+     then the match report's three FULL STATS tables (gamefull.js), a row a game, each figure read against its own game. The
+     week is the weekly email's (?rpweek=), else the week of his latest game (p/player.js loadWeekGames). */
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const dayOf = ymd => { const d = new Date(ymd + 'T12:00:00Z'); return DAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()]; };
+  const spanOf = (a, b) => { const x = new Date(a + 'T12:00:00Z'), y = new Date(b + 'T12:00:00Z');
+    return DAYS[x.getUTCDay()] + ' ' + x.getUTCDate() + (x.getUTCMonth() === y.getUTCMonth() ? '' : ' ' + MONTHS[x.getUTCMonth()]) + ' – ' + DAYS[y.getUTCDay()] + ' ' + y.getUTCDate() + ' ' + MONTHS[y.getUTCMonth()] + ' ' + y.getUTCFullYear(); };
+  const wkg = {
+    key: 'wkg', title: 'Games played during the week', page: 'GAMES PLAYED DURING THE WEEK', on: true, pack: 'flow',
+    async build(c, R) {
+      const W = ctx.weekGames ? await ctx.weekGames() : null;
+      const GF = root.EpinoiaGameFull, Box = root.EpinoiaBox;
+      if (!W || !W.games || !W.games.length || !GF || !Box) return [];
+      const gl = W.games;
+      const where = g => (g.home ? 'vs ' : 'at ') + g.opp;
+      const score = g => g.res + ' ' + g.us + '–' + g.them;
+      const C = Box.COURT;
+      const card = g => {
+        const s = g.raw || {}, a = g.row || {};
+        const fgm = (+s.p2m || 0) + (+s.p3m || 0), fga = (+s.p2a || 0) + (+s.p3a || 0);
+        const line = [(+s.pts || 0) + ' PTS', fgm + '/' + fga + ' FG', (+s.p3m || 0) + '/' + (+s.p3a || 0) + ' 3PT', (+s.ftm || 0) + '/' + (+s.fta || 0) + ' FT',
+          ((+s.or || 0) + (+s.dr || 0)) + ' REB', (+s.ast || 0) + ' AST', (+s.to || 0) + ' TO', (a.minTxt || '') + ' MIN'];
+        const loc = (g.shots || []).filter(x => x.x != null && x.y != null);
+        const dots = loc.slice().sort((x, y) => x.made - y.made).map(x => {
+          const cx = (x.x * C.W).toFixed(0), cy = (x.y * C.H).toFixed(0);
+          return x.made ? '<circle class="rp-dot m" cx="' + cx + '" cy="' + cy + '" r="32"/>' : '<circle class="rp-dot x" cx="' + cx + '" cy="' + cy + '" r="26"/>';
+        }).join('');
+        const court = loc.length ? '<div class="rp-sit-c"><div class="rp-court">' + Box.courtSVG(null, { plain: true }).replace('</svg>', dots + '</svg>') + '</div></div>'
+          : '<div class="rp-empty rp-wk-none">No located shots in this game.</div>';
+        const hd = '<div class="rp-wk-h"><b>' + esc(where(g)) + '</b><span class="rp-wk-r ' + (g.res === 'W' ? 'w' : g.res === 'L' ? 'l' : '') + '">' + esc(score(g)) + '</span>' +
+          '<small>' + esc(dayOf(g.day)) + (loc.length ? ' · ' + loc.filter(x => x.made).length + '/' + loc.length + ' located' : '') + '</small></div>';
+        /* A WEEK OF ONE GAME: the court and the game side by side, his line in tiles and his shots by zone, where a card half the
+           page wide left the other half blank */
+        if (wide) {
+          const SC = root.EpinoiaShotChart;
+          const kinds = { paint: [0, 0], mid: [0, 0], three: [0, 0] };
+          if (SC && SC.zones && loc.length) Object.values(SC.zones(loc)).forEach(z => { const k = kinds[z.kind]; if (k) { k[0] += z.made || 0; k[1] += z.att || 0; } });
+          const tiles = [['PTS', +s.pts || 0], ['FG', fgm + '/' + fga], ['3PT', (+s.p3m || 0) + '/' + (+s.p3a || 0)], ['FT', (+s.ftm || 0) + '/' + (+s.fta || 0)],
+            ['REB', (+s.or || 0) + (+s.dr || 0)], ['AST', +s.ast || 0], ['TO', +s.to || 0], ['MIN', a.minTxt || '—']];
+          return '<div class="rp-wk-c wide"><div class="rp-wk-cl">' + court + '</div><div class="rp-wk-cr">' + hd +
+            '<div class="rp-wk-t">' + tiles.map(([l, x]) => '<div><b>' + esc(x) + '</b><span>' + l + '</span></div>').join('') + '</div>' +
+            (loc.length ? '<div class="rp-cap" style="margin-top:12px">By zone<span>made / attempted, located shots</span></div><div class="rp-wk-z">' +
+              [['In the paint', 'paint'], ['Mid-range', 'mid'], ['Three', 'three']].map(([l, k]) => '<div><span>' + l + '</span><b>' + kinds[k][0] + '/' + kinds[k][1] + '</b><i style="width:' +
+                (kinds[k][1] ? 100 * kinds[k][0] / kinds[k][1] : 0).toFixed(0) + '%"></i></div>').join('') + '</div>' : '') + '</div></div>';
+        }
+        return '<div class="rp-wk-c">' + hd + court + '<div class="rp-wk-l">' + line.map(t => '<span>' + esc(t) + '</span>').join('') + '</div></div>';
+      };
+      const wide = gl.length === 1;
+      const n = gl.length;
+      const out = [];
+      /* the courts, three to a row: a block of parts, so a week of many games carries its last row on */
+      const rows = []; for (let i = 0; i < gl.length; i += 3) rows.push(gl.slice(i, i + 3));
+      out.push(E.splitBlock(rows, (ps, cont) => block((cont ? '' : title('Games played during the week', spanOf(W.monday, W.sunday) + ' · ' + n + (n === 1 ? ' game' : ' games') + ' · their shots in each, then their line as the match report prints it, each figure against its own game')) +
+        ps.map(r => '<div class="rp-wk" style="--n:' + (wide ? 1 : Math.min(3, n)) + '">' + r.map(card).join('') + '</div>').join(''))));
+      /* the match report's three FULL STATS tables, a row a game */
+      const nameCell = r => { const g = r.__g; return '<span class="fs-who"><b>' + esc(where(g)) + '</b><em>' + esc(dayOf(g.day) + ' · ' + score(g)) + '</em></span>'; };
+      GF.PARTS.forEach(([what, keep, note]) => {
+        out.push(block('<div class="rp-cap">' + esc(what) + '<span>' + esc(note) + '</span></div>' +
+          GF.table({ groups: Box.ADV_GROUPS, keep, rows: gl.map(g => Object.assign({ __g: g }, g.row)), ctxOf: r => r.__g.cx, nameCell, head: 'Game', cls: 'rp-wkfs' })));
+      });
+      R.facts = R.facts || {};
+      R.facts.week = { monday: W.monday, sunday: W.sunday, games: gl };
+      R.legendExtra.push(['GAMES PLAYED DURING THE WEEK', 'Their games of the week, Monday to Sunday in the league’s time zone: a court of their shots in each (made ●, missed ×), then the match report’s full stats, a row a game. Each figure is shaded by its percentile among players’ games in the league, a bar shows its size beside that game’s other players, and the on-court columns are the difference from that game’s average.']);
+      return out;
+    }
+  };
+
+  /* ---------------- INSIGHTS ---------------- */
+  /* WHAT TO KEEP DOING AND WHAT TO WORK ON, FOR HIS POSITION (Louie, 2026-10-16: "a section at the bottom before the legend
+     orientated to their position, with actionable insights using basketball language through reading the whole pdf"):
+     scoutinsights.js develop, from what every section of this report found (R.facts: the season line and its ranks, the
+     half court and transition, left v right, on the floor, connections, the week) */
+  const ins = {
+    key: 'ins', title: 'Insights', page: 'INSIGHTS', on: true, pack: 'flow',
+    async build(c, R) {
+      const SI = root.EpinoiaScoutInsights;
+      const F = R.facts || {};
+      if (!SI || !SI.develop || !F.main) return [];
+      const D = SI.develop(Object.assign({ name: c.name }, F));
+      if (!D || (!D.keep.length && !D.work.length && !D.week.length)) return [];
+      const li = x => '<li><b>' + esc(x.head) + '</b> ' + esc(x.text) + (x.act ? '<span class="rp-in-do">' + esc(x.act) + '</span>' : '') + '</li>';
+      const col = (h, xs, cls) => (xs.length ? '<div class="rp-in-col ' + cls + '"><h4>' + esc(h) + '</h4><ul>' + xs.map(li).join('') + '</ul></div>' : '');
+      const html = title('Actionable insights', 'for ' + ({ guard: 'a guard', wing: 'a wing', big: 'a big' }[D.group] || 'a player') + ' · read from every page of this report · ranked among ' + D.n + ' ' + D.who) +
+        (D.intro ? '<p class="rp-in-intro">' + esc(D.intro) + '</p>' : '') +
+        '<div class="rp-in-cols' + (D.keep.length && D.work.length ? '' : ' one') + '">' + col('What is working', D.keep, 'good') + col('What to work on', D.work, 'bad') + '</div>' +
+        (D.week.length ? '<div class="rp-in-col wk"><h4>This week</h4><ul>' + D.week.map(li).join('') + '</ul></div>' : '');
+      return [block(html, 'rp-in')];
+    }
+  };
+
   /* ---------------- LAST 7 DAYS (the weekly report) ---------------- */
   const week = {
-    key: 'week', title: 'Last 7 days', page: 'LAST 7 DAYS', on: false,
+    key: 'week', title: 'Last 7 days', page: 'LAST 7 DAYS', on: false, pack: 'flow',
     async build() {
       const W = root.EpinoiaWeekly;
       if (!W || !ctx.week) return [];
@@ -315,9 +557,13 @@ function modules(ctx) {
     }
   };
 
-  const legend = { key: 'legend', title: 'Legend', on: true };
-  return [cover, main, shots, lvr, floor, week, legend];
+  /* the later sections and the legend flow on from the one before where enough of its page is free (report.js layout,
+     pack 'flow'; Louie, 2026-10-16: "no dead space") */
+  const legend = { key: 'legend', title: 'Legend', on: true, pack: 'flow', free: 0.15 };      // its key alone can begin it low on a page
+  /* CONNECTIONS before ON THE FLOOR WITH: shooting, then passing, then the lineups - and its half page fills what LEFT V RIGHT
+     leaves, where the on/off block, a page of its own, could not go */
+  return [cover, main, shots, lvr, conn, floor, wkg, week, ins, legend];
 }
 
-return { modules };
+return { modules, passLinks, byMate };
 }));

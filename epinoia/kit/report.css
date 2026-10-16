@@ -143,6 +143,7 @@
 .rp-top-n b{ font-family:var(--f-score); font-weight:400; font-size:24px; line-height:1; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .rp-top-n span{ font-family:var(--f-micro); font-size:7.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); margin-top:4px }
 .rp-top-m{ font-family:var(--f-score); font-size:22px; letter-spacing:.04em; color:var(--rp-a,#08603f); text-transform:uppercase; white-space:nowrap }
+.rp-top-m.long{ font-size:14px; line-height:1.25; white-space:normal; text-align:right; max-width:430px }
 .rp-top-m i{ font-style:normal; font-family:var(--f-micro); font-size:7.5px; letter-spacing:.1em; color:var(--ink-3) }
 .rp-body{ flex:1 1 auto; min-height:0; overflow:hidden; padding:16px 34px 10px; display:flex; flex-direction:column; gap:14px }
 .rp-foot{ flex:none; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 34px 16px;
@@ -445,6 +446,8 @@
 /* ---- 2026-10-02: colour on every figure, and the pages packed ---- */
 /* a module that starts in the space the one before left: a rule in the club's colour over its title */
 .rp-blk.rp-join{ margin-top:6px; padding-top:12px; border-top:3px solid var(--rp-a,#08603f) }
+/* its section's name over its title (report.js joinHead): a new section, not more of the one before */
+.rp-joinlbl{ font-family:var(--f-micro,ui-monospace,monospace); font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:var(--rp-a,#08603f); margin:-4px 0 8px }
 .rp-top-m b{ color:var(--ink-3); font-weight:400 }
 /* a figure only this club has, against the club's own: the bar grows from the middle */
 .rp-st-bar.dv{ overflow:visible }
@@ -1024,3 +1027,42 @@ dl.ga-key dd{ margin:0; font-family:var(--f-ui); font-size:9px; line-height:1.35
 .sy-tb b.g2{ color:var(--sy-g2) } .sy-tb b.g1{ color:#4c8a17 } .sy-tb b.b1{ color:#b77400 } .sy-tb b.b2{ color:var(--sy-b2) }
 .sy-tb small{ font-size:7.5px; color:var(--ink-3); white-space:nowrap }
 .sy-tb.none em{ grid-column:2 / -1; font-size:8.5px; color:var(--ink-3) }
+
+/* ---- 2026-10-16: the player report's CONNECTIONS, GAMES PLAYED DURING THE WEEK and INSIGHTS (report-playerpages.js) ---- */
+.rp-cn-g{ align-items:start }
+.rp-cn-key{ display:flex; flex-wrap:wrap; gap:4px 12px; margin:7px 2px 0; font-family:var(--f-ui); font-size:9px; font-weight:600; color:var(--ink-2) }
+.rp-cn-key span{ display:inline-flex; align-items:center; gap:5px }
+.rp-cn-key i, .rp-cn-sw{ display:inline-block; width:9px; height:9px; border-radius:50%; flex:none }
+.rp-cn-sw{ margin-right:6px; vertical-align:-1px }
+.rp-tbl.rp-cn td.rp-cn-k{ font-weight:500; font-size:8.5px; color:var(--ink-2); white-space:normal }
+.rp-wk{ display:grid; grid-template-columns:repeat(var(--n,3),minmax(0,1fr)); gap:10px; margin:0 0 10px }
+.rp-wk-c{ border:1px solid var(--rule-2); border-radius:12px; padding:8px 9px 7px; background:#ffffff; min-width:0 }
+.rp-wk-h{ display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:2px 8px; margin:0 0 6px }
+.rp-wk-h b{ font-family:var(--f-ui); font-weight:800; font-size:12px; letter-spacing:.03em; text-transform:uppercase; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.rp-wk-h small{ grid-column:1 / -1; font-family:var(--f-ui); font-size:8.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3) }
+.rp-wk-r{ padding:1px 6px; border-radius:5px; font-family:var(--f-ui); font-weight:800; font-size:10px; font-variant-numeric:tabular-nums; background:#eef2f0; color:var(--ink) }
+.rp-wk-r.w{ background:#dff3e7; color:#0a6d43 } .rp-wk-r.l{ background:#fbe3e3; color:#a3262f }
+.rp-wk-l{ display:flex; flex-wrap:wrap; gap:3px 8px; margin-top:6px; font-family:var(--f-ui); font-size:8.5px; font-weight:700; color:var(--ink-2); font-variant-numeric:tabular-nums }
+.rp-wk-none{ padding:24px 8px; text-align:center }
+.ga-fs.rp-wkfs .fs-who b{ font-size:9.5px; text-transform:uppercase; letter-spacing:.02em }
+.rp-in-intro{ margin:0 0 10px; font-size:10.5px; line-height:1.5; color:var(--ink-2) }
+.rp-in-cols{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px }
+.rp-in-cols.one{ grid-template-columns:minmax(0,1fr) }
+.rp-in-col{ border:1px solid var(--rule-2); border-radius:12px; padding:10px 12px 6px; background:#ffffff }
+.rp-in-col.good{ border-top:4px solid #1f9d55 } .rp-in-col.bad{ border-top:4px solid #e0702b } .rp-in-col.wk{ margin-top:12px; border-top:4px solid var(--rp-a,#08603f) }
+.rp-in-col h4{ margin:0 0 6px; font-family:var(--f-ui); font-weight:800; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink) }
+.rp-in-col ul{ margin:0; padding:0; list-style:none }
+.rp-in-col li{ margin:0 0 8px; font-size:10px; line-height:1.45; color:var(--ink) }
+.rp-in-col li b{ display:block; font-family:var(--f-ui); font-weight:800; font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink) }
+.rp-in-do{ display:block; margin-top:3px; padding:4px 7px; border-radius:6px; background:#fff4ea; color:#7a3a0c; font-size:9.5px; line-height:1.4 }
+.rp-in-col.good .rp-in-do{ background:#eaf7f0; color:#0a5a37 }
+.rp-wk-c.wide{ display:grid; grid-template-columns:minmax(0,0.95fr) minmax(0,1fr); gap:16px; padding:12px }
+.rp-wk-t{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px }
+.rp-wk-t div{ display:flex; flex-direction:column; align-items:center; padding:8px 4px 6px; border:1px solid var(--rule); border-radius:9px; background:#f6faf8 }
+.rp-wk-t b{ font-family:var(--f-ui); font-weight:800; font-size:17px; color:var(--ink); font-variant-numeric:tabular-nums }
+.rp-wk-t span{ font-family:var(--f-micro,ui-monospace,monospace); font-size:7px; letter-spacing:.1em; color:var(--ink-3); margin-top:2px }
+.rp-wk-z{ display:grid; gap:6px }
+.rp-wk-z div{ position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 9px; border-radius:8px; background:#eef4f0; overflow:hidden }
+.rp-wk-z span{ position:relative; z-index:1; font-family:var(--f-ui); font-weight:700; font-size:10px; color:var(--ink-2) }
+.rp-wk-z b{ position:relative; z-index:1; font-family:var(--f-ui); font-weight:800; font-size:12px; color:var(--ink); font-variant-numeric:tabular-nums }
+.rp-wk-z i{ position:absolute; left:0; top:0; bottom:0; background:color-mix(in srgb,var(--rp-a,#08603f) 18%,transparent) }

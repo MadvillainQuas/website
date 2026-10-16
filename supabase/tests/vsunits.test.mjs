@@ -203,8 +203,12 @@ console.log('\n6. the profile');
   /* the player report's own read of the whole competition's logs (half-court AST%, ranked among the field) is set
      aside: it is made once, and only when the report asks for it */
   const pjsPage = pjs.replace(/fieldGames: \(\) => RP_FIELD[\s\S]*?\}\)\(\)\.catch\(\(\) => null\)\),/, '');
+  /* the report's week of games (loadWeekGames, 2026-10-16) reads only the games those logs do not hold */
+  const pjsWeek = pjsPage.replace(/async function loadWeekGames[\s\S]*?\n\}\n/, '');
   ok('the split replays the games "on the floor with" already read: one read of the logs on the page',
-     pjsPage !== pjs && (pjsPage.match(/D\.events\(/g) || []).length === 1 && /clubLogsDone\(\{ games: gs, byGame: logsOf/.test(pjs));
+     pjsPage !== pjs && pjsWeek !== pjsPage && (pjsWeek.match(/D\.events\(/g) || []).length === 1 && /clubLogsDone\(\{ games: gs, byGame: logsOf/.test(pjs));
+  ok('...and the report\'s week of games takes its games\' logs from those, reading only one they do not hold',
+     /const need = gids\.filter\(id => !have\[id\]\);/.test(pjs) && /need\.length \? D\.events\(need\)/.test(pjs));
   ok('...the report reads the competition\'s logs once, and only when it is asked (half-court AST%)', /fieldGames: \(\) => RP_FIELD \|\| \(RP_FIELD = /.test(pjs));
   ok('...which now name their competition (for the scope) and period', /select=id,home_team_id,away_team_id,starters,tipoff_at,competition_id,period/.test(pjs));
   ok('the scope\'s starters are one read, kept for the page, and none for a competition past ' + 800 + ' games',

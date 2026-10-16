@@ -113,17 +113,9 @@
      report's own: two of the tab's column groups to a page, both teams on every page, each group under a band of its
      own colour, every rated figure shaded by its percentile (green good to red poor, blue a style), a bar under each
      figure for its size beside the game's other players, and what each column means in plain words */
-  /* the printed labels: the standard abbreviations, broken where a column is too narrow for one line */
-  const COL = {
-    fgm: ['FGM'], ast: ['AST'], pts: ['PTS'], ptsAst: ['AST', 'PTS'], tpc: ['PTS', 'CREATED'], ppp: ['PTS /', 'POSS'], ts: ['TS%'],
-    usg: ['USG%'], au: ['AST /', 'USG'], min: ['MIN'],
-    rimA: ['RIM', 'FGA'], rimP: ['RIM', 'FG%'], midA: ['MID', 'FGA'], midP: ['MID', 'FG%'], p3a: ['3PA'], p3P: ['3P%'], efg: ['eFG%'],
-    astPct: ['AST%'], tovP: ['TOV%'], stlP: ['STL%'], blkP: ['BLK%'], ftr: ['FT', 'RATE'], orebP: ['OREB%'], drebP: ['DREB%'],
-    ocOrtg: ['ORTG'], ocEfg: ['eFG%'], ocOreb: ['OREB%'], ocTov: ['TOV%'], ocFtr: ['FT', 'RATE'], pacePM: ['PACE', '±'],
-    ocDrtg: ['DRTG'], ocOppEfg: ['OPP', 'eFG%'], ocOppOreb: ['OPP', 'OREB%'], ocTovF: ['TOV', 'FORCED'], ocOppFtr: ['OPP FT', 'RATE'], net: ['NET', 'RTG']
-  };
-  const GRP = { scoring: 'Scoring', usage: 'Usage', shotdist: 'Shot selection', individual: 'Individual rates',
-    offcourt: 'Team offence · player on court', defcourt: 'Team defence · player on court' };
+  /* THE COLUMNS' LABELS, THE GROUP BANDS AND THE THREE PARTS are epinoia/gamefull.js's (EpinoiaGameFull, 2026-10-16), shared
+     with the player report's week of games, so the two tables are one table */
+  const GF = () => window.EpinoiaGameFull;
   /* the tab's data for both teams: cards.js players() is handed it once a team; it is borrowed for the one call */
   function tabData() {
     const B = window.EpinoiaBox, K = window.EpinoiaCards;
@@ -133,72 +125,26 @@
     try { B.advHTML(window.derive()); } catch (_) { /* below */ } finally { K.players = orig; }
     return got[0] && got[1] ? got : null;
   }
-  /* a percentile (gamepct.js: g its goodness, d its direction) in the report's four bands, 9 a style */
-  const bandOf = R => (!R ? 0 : !R.d ? 9 : R.g >= 75 ? 4 : R.g >= 50 ? 3 : R.g >= 25 ? 2 : 1);
-  const signed = (v, dp) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(dp || 0);
+  /* a team's table (EpinoiaGameFull.table): its players' rows from the tab, each figure read against this game, and the
+     team's own figure in every column under them */
   function fsTable(c, keep, t) {
-    const groups = c.groups.filter(g => keep.indexOf(g.key) >= 0);
-    const TT = c.TT, OT = c.OT, avg = c.gameAvg || {};
-    const barW = (v, k) => { const r = c.ranges && c.ranges[k]; if (!r || r.max === r.min) return 0; return Math.max(0, Math.min(100, (v - r.min) / (r.max - r.min) * 100)); };
-    const fig = (col, v, r, R, tot) => {
-      let txt, bar = '', cls = '';
-      if (!isFinite(v)) return '<td class="fs-v"><b>–</b></td>';
-      if (col.pill) { txt = signed(v, col.dec != null ? col.dec : 0); cls = v > 0 ? ' pos' : v < 0 ? ' neg' : ''; }
-      else if (col.diff) {
-        const dff = v - (avg[col.diff] || 0), eff = col.inv ? -dff : dff, w = Math.max(0, Math.min(50, Math.abs(eff) / 15 * 50));
-        txt = (dff > 0 ? '+' : dff < 0 ? '−' : '') + Math.abs(dff).toFixed(0);
-        cls = Math.abs(dff) < 0.5 ? '' : eff > 0 ? ' pos' : ' neg';
-        if (!tot) bar = '<span class="fs-d"><i class="' + (eff >= 0 ? 'p' : 'n') + '" style="' + (eff >= 0 ? 'left:50%' : 'right:50%') + ';width:' + w.toFixed(0) + '%"></i></span>';
-      } else if (col.shot) { txt = String(v); if (!tot) bar = '<span class="fs-b"><i style="width:' + Math.max(3, Math.min(100, v / 10 * 100)).toFixed(0) + '%"></i></span>'; }
-      else {
-        txt = col.f(v, r);
-        if (col.bar && !tot) { let w = barW(v, col.k); if (col.invbar) w = 100 - w; bar = '<span class="fs-b"><i style="width:' + Math.max(3, w).toFixed(0) + '%"></i></span>'; }
-      }
-      const b = tot ? 0 : bandOf(R);
-      return '<td class="fs-v' + cls + '"' + (b ? ' data-b="' + b + '"' : '') + '><b>' + esc(txt) + '</b>' + bar + '</td>';
-    };
-    const head = '<colgroup><col class="fs-cn">' + groups.map(g => g.cols.map(() => '<col>').join('')).join('') + '</colgroup>' +
-      '<thead><tr class="fs-gr"><th class="fs-n" rowspan="2">Player</th>' + groups.map(g => '<th class="fs-g g-' + g.key + '" colspan="' + g.cols.length + '">' + esc(GRP[g.key] || g.label) + '</th>').join('') + '</tr>' +
-      '<tr class="fs-lr">' + groups.map(g => g.cols.map((col, i) => '<th class="g-' + g.key + (i === 0 ? ' fs-first' : '') + '">' + (COL[col.k] || [col.l.toUpperCase()]).map(esc).join('<br>') + '</th>').join('')).join('') + '</tr></thead>';
+    const TT = c.TT, OT = c.OT;
+    const cx = { TT, OT, gameAvg: c.gameAvg || {}, ranges: c.ranges,
+      rate: (col, r) => c.gpRate('player', col.k, { a: r, x: c.d.stats[r.id], TT, OT }) };
     const pl = c.S.teams[t].players || [];
-    const rows = c.rows.map(r => {
-      const p = pl.find(x => x.id === r.id) || {};
-      return '<tr><td class="fs-n"><span class="fs-no">' + esc(r.num != null ? r.num : p.num != null ? p.num : '') + '</span><span class="fs-who"><b>' + esc(r.name || p.name || '') + '</b><em>' + esc(r.minTxt || '') + ' min</em></span></td>' +
-        groups.map(g => g.cols.map((col, i) => {
-          const R = col.gp ? c.gpRate('player', col.k, { a: r, x: c.d.stats[r.id], TT, OT }) : null;
-          return fig(col, r[col.k], r, R).replace('<td class="fs-v', '<td class="fs-v g-' + g.key + (i === 0 ? ' fs-first' : ''));
-        }).join('')).join('') + '</tr>';
-    }).join('');
     /* the team's own figure in every column (the tab's totals row, and the plain counts too) */
     const T2 = { fgm: TT.fgm, ast: TT.ast, pts: TT.pts, ptsAst: TT.ptsAst, tpc: TT.pts + TT.ptsAst, ppp: TT.ppp, ts: TT.ts,
       rimA: TT.rimA, rimP: TT.rimp, midA: TT.midA, midP: TT.midp, p3a: TT.fg3a, p3P: TT.p3p, efg: TT.efg,
       ocOrtg: TT.ortg, ocEfg: TT.efg, ocOreb: TT.orebp, ocTov: TT.tovp, ocFtr: TT.ftr,
       ocDrtg: TT.drtg, ocOppEfg: OT.efg, ocOppOreb: OT.orebp, ocTovF: OT.tovp, ocOppFtr: OT.ftr, net: TT.ortg - TT.drtg,
       astPct: TT.astp, tovP: TT.tovp, stlP: TT.stlp, blkP: TT.blkp, ftr: TT.ftr, orebP: TT.orebp, drebP: TT.drebp };
-    const tot = '<tr class="fs-tot"><td class="fs-n"><span class="fs-who"><b>Team totals</b></span></td>' + groups.map(g => g.cols.map((col, i) => {
-      const v = T2[col.k];
-      return (v == null ? '<td class="fs-v"><b>–</b></td>' : fig(col, v, T2, null, true)).replace('<td class="fs-v', '<td class="fs-v g-' + g.key + (i === 0 ? ' fs-first' : ''));
-    }).join('')).join('') + '</tr>';
-    return '<table class="ga-fs">' + head + '<tbody>' + rows + tot + '</tbody></table>';
+    return GF().table({ groups: c.groups, keep, rows: c.rows, ctxOf: () => cx, head: 'Player',
+      nameCell: r => {
+        const p = pl.find(x => x.id === r.id) || {};
+        return '<span class="fs-no">' + esc(r.num != null ? r.num : p.num != null ? p.num : '') + '</span><span class="fs-who"><b>' + esc(r.name || p.name || '') + '</b><em>' + esc(r.minTxt || '') + ' min</em></span>';
+      },
+      totals: { label: 'Team totals', values: T2, ctx: cx } });
   }
-  const PARTS = [
-    ['Scoring and usage', ['scoring', 'usage'], 'points, shooting efficiency and share of the offence',
-      [['FGM', 'field goals made'], ['AST', 'assists'], ['PTS', 'points'], ['AST PTS', 'points scored from the player’s assists'],
-       ['PTS CREATED', 'own points plus points assisted'], ['PTS / POSS', 'points for each possession the player used'],
-       ['TS%', 'true shooting: efficiency counting threes and free throws'], ['USG%', 'share of the team’s possessions the player finished while on court'],
-       ['AST / USG', 'assists for each possession used (a passer reads high)'], ['MIN', 'minutes played']]],
-    ['Shot selection and individual rates', ['shotdist', 'individual'], 'where each player shot from, and their share of the plays at both ends',
-      [['RIM / MID FGA, 3PA', 'shots at the rim, from mid-range and from three'], ['RIM / MID FG%, 3P%', 'the share of them made'],
-       ['eFG%', 'field-goal percentage with a three worth one and a half twos'], ['AST%', 'share of team-mates’ baskets assisted while on court'],
-       ['TOV%', 'possessions used that ended in a turnover (lower is better)'], ['STL% / BLK%', 'opponent possessions stolen, opponent shots blocked'],
-       ['FT RATE', 'free throws attempted per 100 field-goal attempts'], ['OREB% / DREB%', 'share of available rebounds taken at each end']]],
-    ['On the floor at both ends', ['offcourt', 'defcourt'], 'the team with each player on court, against its whole game',
-      [['ORTG / DRTG', 'points scored / allowed per 100 possessions (lower DRTG is better)'], ['eFG%', 'the team’s shooting'],
-       ['OREB%', 'the team’s offensive rebounding'], ['TOV%', 'the team’s turnovers (lower is better)'], ['FT RATE', 'free throws drawn'],
-       ['PACE ±', 'faster (+) or slower (−) with the player on court'], ['OPP eFG% / OREB% / FT RATE', 'the opponent’s shooting, rebounding and free throws (lower is better)'],
-       ['TOV FORCED', 'opponent turnovers forced'], ['NET RTG', 'points per 100 scored minus allowed with the player on court'],
-       ['ALL FIGURES', 'the difference from the team’s whole game: green better, red worse']]]
-  ];
   function boxesModule() {
     const E = window.EpinoiaA4;
     return {
@@ -209,7 +155,7 @@
         if (!data) return [];
         R.legendExtra.push(['FULL STATS', 'The game page’s Full stats tab, player by player, both teams on each page: scoring and usage, shot selection and individual rates, then how each team did on the floor with the player at both ends. Shading is the figure’s percentile (green good, red poor, blue a style); a bar shows its size beside the game’s other players.']);
         const sc = [M.home_score, M.away_score];
-        return PARTS.flatMap(([what, keep, note, key], pi) => {
+        return GF().PARTS.flatMap(([what, keep, note, key], pi) => {
           const team = t => '<div class="ga-team" style="--tc:' + tc(t) + ';--ti:' + onInk(tc(t)) + ';--tk:' + window.EpinoiaA4.inkOn(tc(t)) + '"><div class="ga-th"><b>' + esc(S.teams[t].name || '') + '</b><span>' + esc(sc[t]) + '</span></div>' +
             fsTable(data[t], keep, t) + '</div>';
           const keyHTML = '<dl class="ga-key">' + key.map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>';

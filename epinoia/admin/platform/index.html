@@ -553,6 +553,22 @@
         <button id="mailGo" class="ep-btn pri" type="button">add</button>
       </div>
       <div id="mailList"></div>
+      <!-- 0272: A PLAYER'S WEEKLY REPORT (Louie, 2026-10-16). An address and a player: every Monday morning, at the address's
+           time, the player's report for the week just played (scripts/report_mailer.mjs playerRound). -->
+      <h3 id="pmailH">Players&rsquo; weekly reports</h3>
+      <p class="lead">Find a player and give the address their report goes to. Every Monday morning, at that address&rsquo;s time, it is
+        emailed their player report for the week just played, Monday to Sunday: the season&rsquo;s pages, and the shot chart and full stats
+        line of each game that week. A week they did not play is skipped. <b>Send now</b> emails the week of their latest game at the
+        mailer&rsquo;s next run, within half an hour.</p>
+      <div class="row" id="pmailForm" style="flex-wrap:wrap;gap:8px;align-items:center">
+        <input id="pmailPlayer" class="ep-input" type="text" placeholder="player: type to find" list="pmailPlayers" style="min-width:240px">
+        <datalist id="pmailPlayers"></datalist>
+        <input id="pmailEmail" class="ep-input" type="email" placeholder="their@email" style="min-width:200px">
+        <input id="pmailName" class="ep-input" type="text" placeholder="first name (optional)" style="width:150px">
+        <select id="pmailTz" class="ep-input"></select>
+        <button id="pmailGo" class="ep-btn pri" type="button">add</button>
+      </div>
+      <div id="pmailList"></div>
       </div><!-- /acctList: the general grant form and the waiting room are
            inside it on purpose, so opening one account's dashboard takes them
            away. Two grant forms on screen at once — one against the account you

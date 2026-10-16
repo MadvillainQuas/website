@@ -211,3 +211,52 @@ same height, so the controls do not jump down when it lands; a build that fails 
   with its slot so a dropped line never shifts the rest.
 - Tests: `supabase/tests/scoutinsights.test.mjs` (in CI).
 
+
+## Pages with no dead space, three new sections, and a weekly email (2026-10-16)
+
+Louie: "make sure that all player report PDFs are perfectly structured and laid out ... so that there's no dead space,
+including if synergy is included", a section of actionable insights before the legend, a connections section, a games played
+during the week section, and a weekly player report by email.
+
+**The engine** (`report.js layout`):
+
+- **A block of parts** (`splitBlock(parts, render)`): MAIN STATS's groups, the legend's rows, the on/off table's groups and the
+  week's rows of courts. Where the whole does not fit what is left of a page, the most parts that do are drawn there and the
+  rest go overleaf (`cut`), rather than the whole moving to a page of its own. MAIN STATS was a season line and four-fifths of a
+  blank page.
+- **A section may flow on** (`pack: 'flow'`): it begins under the section before when its first block fits and 30% of the
+  page is free (`FLOW_FREE`; the legend 15%, its key alone). A section joining a page is named over a rule in the club's
+  colour (`joinHead`, a printed label, never a `::before`), and the page's head names both ("ON THE FLOOR WITH · continued ·
+  CONNECTIONS", smaller when long so the player's name is never cut).
+- **A small last block** (a legend's last few rows) may take the page down to 86% together rather than a page of its own.
+- The player report's order: cover, MAIN STATS, SHOT CHART (Synergy's Direction after the half-court and transition cards),
+  LEFT V RIGHT, CONNECTIONS, ON THE FLOOR WITH (its tiles and its table two blocks), GAMES PLAYED DURING THE WEEK, INSIGHTS,
+  LEGEND. Measured on SLB players with and without Synergy: every page but the last 70% full or more.
+
+**CONNECTIONS**: every assist paired with its basket by the game page's rule (`passLinks`, the last made field goal of the
+passer's side, each basket once), over the competition's games: who they set up most (assists, points, threes, at the rim,
+mid-range, their most frequent shot types), a court of where those baskets were scored in a colour for each teammate, and who
+sets them up.
+
+**GAMES PLAYED DURING THE WEEK** (`p/player.js loadWeekGames`): the week `?rpweek=` names (the email's Monday), else the week of
+the player's latest game, Monday to Sunday in the league's time zone, every profile of theirs. A court of their shots for each
+game (one game: the court and the game's tiles side by side), then the match report's three FULL STATS tables
+(`epinoia/gamefull.js`, shared with `game/analysis.js`), a row a game, each figure against its own game (its bar ranges, its
+average, the game percentiles). The stored line lacks eFG% and the two on-court free-throw rates; `fromStored` works them out.
+
+**INSIGHTS** (`scoutinsights.js develop`): what is working and what to work on, for a guard, a wing or a big, read from what
+every section found (`R.facts`): the season line ranked among their position, transition and half-court finishing, half-court
+AST%, the handle or the passes behind the turnovers, the three (with FT% as the touch), the line, the glass, defensive events,
+left v right, the passing menu, and the week against the season. Each note gives its measure and percentile, and each thing to
+work on the work, in the scout's words. Rebound, steal and block notes wait for 80 minutes, shooting notes for their attempts.
+They/their throughout: the site covers women's leagues.
+
+**The weekly email** (0272, `scripts/report_mailer.mjs playerRound`): an address and a player in `report_mail_players`
+(platform administrators only; the console's *Players' weekly reports*). Every Monday from 8 am at the address's time, the week
+just played: the player's report drawn for that week, attached to an email listing its games. A week without a game of theirs
+is skipped and not logged. A Monday missed is caught up on the Tuesday; on the Monday a game of the club's still being played
+is waited for. *Send now* (`send_now_at`) sends the week of their latest game at the next run. One log row a week
+(`report_mail_player_log`); the address carries what was last done (`last_at`, `last_detail`). Synergy profiles are handed to
+the page as for every report. Until 0272 is applied the round is skipped and the console says so.
+
+Tests: `supabase/tests/report-page-fit.test.mjs` (the engine), `supabase/tests/player-report-weekly.test.mjs` (the rest, in CI).

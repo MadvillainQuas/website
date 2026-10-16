@@ -111,7 +111,9 @@ ok('raster.js reads the height off the element (data-goto-y)', /e\.getAttribute\
 ok('the stat rows and cells carry their key (data-lg)', (R.match(/class="rp-st-l" data-lg="' \+ esc\(k\) \+ '"/g) || []).length === 2 && (R.match(/class="rp-cell-l" data-lg="' \+ esc\(k\) \+ '"/g) || []).length === 2);
 ok('every legend row carries the key it explains (data-lgk), an entry such as FOUR FACTORS its words', /class="rp-lg-row" data-lgk="' \+ esc\(k\) \+ '"/.test(R) && /data-lgk="x:' \+ esc\(lgNorm\(t\)\) \+ '"/.test(R));
 ok('the legend is linked once it is laid out, and has a row for every keyed stat the pages printed',
-   /legendBlocks\(R\.legend, R\.legendExtra, o\.kind, R\.pooled\)\);\s*R\.lgLinks = linkLegend\(pagesNew\);/.test(R) && /R\.legend\.push\(\.\.\.\[\.\.\.pagesNew\.querySelectorAll\('\[data-lg\]'\)\]/.test(R));
+   /* laid out where it begins (it may flow on from the last section: pack 'flow', 2026-10-16), then linked */
+   /legendBlocks\(R\.legend, R\.legendExtra, o\.kind, R\.pooled\), \{ pack: lg\.pack === 'flow' \? 'flow' : false, free: lg\.free \}\);\s*toc\.push\(\['LEGEND', \[\.\.\.pagesNew\.querySelectorAll\('\.rp-pg'\)\]\.indexOf\(at\) \+ 1\]\);\s*R\.lgLinks = linkLegend\(pagesNew\);/.test(R)
+   && /R\.legend\.push\(\.\.\.\[\.\.\.pagesNew\.querySelectorAll\('\[data-lg\]'\)\]/.test(R));
 ok('on the screen a click goes to the row itself and lights it', /const lk = g && g\.getAttribute\('data-lgto'\)/.test(R) && /row\.classList\.add\('rp-lg-hit'\)/.test(R));
 ok('the club report\'s boxes, tiles and shot distribution name their stats', (TP.match(/data-lg="/g) || []).length >= 3);
 ok('the cover says so, under the subtitle, only when the stats do link to a legend',

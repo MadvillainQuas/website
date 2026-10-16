@@ -112,7 +112,7 @@ console.log('\nwhere it is drawn');
      /gameIds: gids, alias, allowBig: true/.test(pjs));
   const pr = read('epinoia', 'report-playerpages.js'), tr = read('epinoia', 'report-teampages.js');
   ok('the player report has a page of its own: all shots, unassisted, the unassisted shot chart',
-     /key: 'lvr', title: 'Left v right', page: 'LEFT V RIGHT'/.test(pr) && /return \[cover, main, shots, lvr, floor, week, legend\]/.test(pr) &&
+     /key: 'lvr', title: 'Left v right', page: 'LEFT V RIGHT'/.test(pr) && /return \[cover, main, shots, lvr, conn, floor, wkg, week, ins, legend\]/.test(pr) &&
      /Unassisted shot chart/.test(pr));
   ok('the club report’s player cards: the condensed one where there is no Synergy file',
      /LV\.careers\(\{ D: root\.EpinoiaData, pids: noSyn \}\)/.test(tr) && /\|\| lvMini \|\|/.test(tr) && /lvr\.js\?v=\d+/.test(read('epinoia', 't', 'index.html')));

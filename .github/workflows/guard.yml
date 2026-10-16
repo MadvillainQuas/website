@@ -1959,6 +1959,9 @@ jobs:
           # the scout's insights on the scouting report (scoutinsights.js): what stands out, each claim with its number,
           # the scout's words only with their evidence, the editor in a scout's register, a fold on the tab, never the PDF
           node supabase/tests/scoutinsights.test.mjs
+          # the player's weekly report (2026-10-16): the shared full stats table, connections, the week's games, the
+          # insights for his position, the Monday email (0272) and the console's form
+          node supabase/tests/player-report-weekly.test.mjs
 
       - name: The video hub offers only broadcasts a play can be placed in
         # the page's head (appmode first, the game page's frame-src, the script order), the
