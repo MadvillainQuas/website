@@ -291,10 +291,12 @@ ok('a save that changed the words kept the version it replaced: its headline, it
    revs0.length === 1 && revs0[0].title === 'Game 3 preview' && revs0[0].words === 2 && revs0[0].saved_name === 'The Writer', revs0);
 await q(`update creator_posts set cover_url = 'https://x.example/c.jpg' where id = $1`, [p1]);
 ok('...a save that changed nothing of the words keeps none', (await q(`select public.creator_post_revisions($1) as j`, [p1]))[0].j.length === 1);
-for (let i = 0; i < 30; i++) await q(`update creator_posts set title = $2, updated_at = clock_timestamp() where id = $1`, [p1, 'Take ' + i]);
+// each save strictly later than the last: PGlite's clock ticks in milliseconds, so thirty quick saves share instants and
+// the revisions' order (saved_at, then kept_at - both off that clock) would be a coin toss between ties
+for (let i = 0; i < 30; i++) await q(`update creator_posts set title = $2, updated_at = greatest(clock_timestamp(), updated_at + interval '1 millisecond') where id = $1`, [p1, 'Take ' + i]);
 const revs = (await q(`select public.creator_post_revisions($1) as j`, [p1]))[0].j;
 const one = (await q(`select public.creator_post_revision($1) as j`, [revs[revs.length - 1].id]))[0].j;
-ok('...25 kept, newest first; one whole, to bring back', revs.length === 25 && revs[0].title === 'Take 28' && one.post_id === p1 && Array.isArray(one.body), revs.length);
+ok('...25 kept, newest first; one whole, to bring back', revs.length === 25 && revs[0].title === 'Take 28' && one.post_id === p1 && Array.isArray(one.body), { n: revs.length, titles: revs.slice(0, 3).map(r => r.title) });
 await as(FAN);
 ok('...to the outlet\'s people and the league only', /do not write/.test(await fails(() => q(`select public.creator_post_revisions($1)`, [p1])) || '') &&
    /do not write/.test(await fails(() => q(`select public.creator_post_revision($1)`, [one.id])) || ''));
