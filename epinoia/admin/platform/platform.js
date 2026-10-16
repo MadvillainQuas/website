@@ -179,7 +179,9 @@ function wire() {
                      analytics: loadAnalytics, links: loadLinks, maint: loadReset, news: loadNewsSources, newsroom: loadNewsroom,
                      manager: loadManager, bfw: loadBackfillWorker,
                      /* the Reports tab (2026-10-16): the clubs' reports by email; the players' are the reports manager's Players tab */
-                     reports: loadMail };
+                     reports: loadMail,
+                     /* the Outreach tab (0276): the clubs' own addresses and the pitch, each letter sent by hand */
+                     outreach: loadOutreach };
       if (load[t.dataset.p]) load[t.dataset.p]();
     });
   });
@@ -1708,6 +1710,11 @@ function loadReset() {
 /* ----------------------------------------------------------------- links --- */
 /* Clubs and players linked across competitions, leagues and seasons (migration 0178): links-ui.js draws the
    whole tab; what is linked is decided here and shown on the team and player pages. */
+function loadOutreach() {
+  const O = window.EpinoiaOutreachUI;
+  if (!O) return say('outreach-ui.js did not load. Reload the page.', 'err');
+  O.mount({ host: '#outreachHost', sb, say, oops });
+}
 function loadLinks() {
   const L = window.EpinoiaLinksUI;
   if (!L) return say('links-ui.js did not load, so links cannot be edited. Reload the page.', 'err');

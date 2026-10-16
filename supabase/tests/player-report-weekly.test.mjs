@@ -479,7 +479,7 @@ console.log('\nthe console: the reports manager\'s Players tab (admin/platform/r
   ok('the manager\'s tabs (Louie, 2026-10-16: "two tabs in report manager (teams and players)"): Teams, Players, and the Synergy files; the console opens it on Teams or on Players',
      /\[\['addr', 'Teams'\], \['pl', 'Players'\], \['syn', 'Synergy files'\]\]/.test(RJ) && /\[\['#mailManage', 'addr'\], \['#mailManagePl', 'pl'\]\]/.test(PJ) && PH.includes('id="mailManagePl"') &&
      /if \(which === 'addr' \|\| which === 'pl' \|\| which === 'syn'\) tab = which;/.test(RJ));
-  ok('...the players\' section has left the Reports tab: none of it on the page or in platform.js, the tab reads the clubs\' alone', !/id="pmail/.test(PH) && !/loadPlayerMail|PMAIL/.test(PJ) && /reports: loadMail \};/.test(PJ));
+  ok('...the players\' section has left the Reports tab: none of it on the page or in platform.js, the tab reads the clubs\' alone', !/id="pmail/.test(PH) && !/loadPlayerMail|PMAIL/.test(PJ) && /reports: loadMail[,\s}]/.test(PJ));
   /* the Reports tab (2026-10-16): the clubs' section in its pane, none left in Accounts, and nothing of it read at the start */
   const paneOf = id => { const m = new RegExp('<div class="pane" id="pane-' + id + '">([\\s\\S]*?)\\n    </div>\\n').exec(PH); return m ? m[1] : ''; };
   const rp = paneOf('reports'), ac = paneOf('acct');

@@ -108,6 +108,36 @@
   .nrm-fix b{font-size:11px;text-transform:uppercase;letter-spacing:.05em}
   .nrm-fix del{opacity:.65}
   .nrm-fix ins{text-decoration:none}
+  /* ---- the Outreach tab (outreach-ui.js): the clubs, their addresses, the pitch and the letters ---- */
+  .or-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between;margin:0 0 10px}
+  .or-note{margin:0;font:400 13px/1.5 var(--f-ui);color:var(--ink-3)}
+  .or-counts{display:flex;flex-wrap:wrap;gap:6px;font:600 12px/1.4 var(--f-ui);color:var(--ink-2)}
+  .or-pill{padding:2px 8px;border-radius:999px;background:var(--panel);border:1px solid var(--rule)}
+  .or-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
+  .or-q{flex:1 1 220px;min-width:0}
+  .or-chk{display:inline-flex;gap:6px;align-items:center;font:500 13px/1.3 var(--f-ui);color:var(--ink-2)}
+  .or-imp{cursor:pointer}
+  .or-tpl{margin:0 0 12px;padding:10px 12px;border:1px solid var(--rule);background:var(--panel)}
+  .or-sum{cursor:pointer;font:700 13px/1.4 var(--f-ui)}
+  .or-field{display:flex;flex-direction:column;gap:4px;margin:10px 0 0}
+  .or-field span{font:700 11px/1.3 var(--f-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+  .or-field textarea{font:500 13px/1.5 var(--f-ui);resize:vertical}
+  .or-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:0 0 6px}
+  .or-tbl{width:100%;border-collapse:collapse;font:400 13px/1.4 var(--f-ui)}
+  .or-tbl th{text-align:left;font:700 11px/1.3 var(--f-ui);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3);padding:6px;border-bottom:1px solid var(--rule)}
+  .or-tbl td{padding:6px;border-bottom:1px solid var(--rule);vertical-align:top}
+  .or-sub{font-size:11px;color:var(--ink-3)}
+  .or-mail{font-family:var(--f-ui);font-weight:600;word-break:break-all}
+  .or-flag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#ffe9b0;color:#6a4b00;font:700 10px/1.4 var(--f-ui);letter-spacing:.06em;cursor:help}
+  .or-st{min-width:130px}
+  .or-write{margin:16px 0 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+  .or-write > .or-h, .or-write > .or-note{grid-column:1 / -1;margin:0}
+  .or-h{font:800 15px/1.3 var(--f-ui)}
+  .or-card{border:1px solid var(--rule);background:var(--panel);padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .or-card-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;font:400 13px/1.4 var(--f-ui)}
+  .or-frame{width:100%;height:420px;border:1px solid var(--rule);background:#eef2ef}
+  .or-acts{display:flex;flex-wrap:wrap;gap:6px}
+
   /* ---- the Links tab (links-ui.js): possible matches, the finder, the linked groups ---- */
   .lk-bar{justify-content:space-between}
   .lk-seg{display:inline-flex;border:1px solid var(--rule-2)}
@@ -417,6 +447,7 @@
         <button class="ep-tab" data-p="analytics" role="tab" data-i18n="off">Analytics</button>
         <button class="ep-tab" data-p="acct" role="tab">Accounts</button>
         <button class="ep-tab" data-p="reports" role="tab">Reports</button>
+        <button class="ep-tab" data-p="outreach" role="tab">Outreach</button>
         <button class="ep-tab" data-p="lgs"  role="tab">Leagues</button>
         <button class="ep-tab" data-p="bfw" role="tab" data-i18n="off">Backfill worker</button>
         <button class="ep-tab" data-p="orgs" role="tab">Organisations</button>
@@ -540,6 +571,8 @@
          platform?"): the clubs' reports by email, until then at the foot of Accounts, read when the tab is opened (and again on
          each opening), as the other tabs are. The players' weekly reports are the reports manager's Players tab (2026-10-16:
          "two tabs in report manager (teams and players)"). -->
+    <!-- the clubs' own contact addresses, and the pitch for the report subscription, sent by hand (0276, outreach-ui.js) -->
+    <div class="pane" id="pane-outreach"><div id="outreachHost"></div></div>
     <div class="pane" id="pane-reports">
       <!-- 0221: REPORTS BY EMAIL. An address and a club: the game analysis after each of its games, its own report every
            other Sunday morning and its opponents' reports for the week ahead (scripts/report_mailer.mjs). -->
@@ -943,6 +976,7 @@
 <script src="arenas-ui.js?v=877" defer></script>
 <script src="analytics-ui.js?v=877" defer></script>
 <script src="links-ui.js?v=877" defer></script>
+<script src="outreach-ui.js?v=877" defer></script>
 <script src="../../voice.js?v=877" defer></script>
 <script src="../../scrutiny.js?v=877" defer></script>
 <script src="../../newsroom.js?v=877" defer></script>

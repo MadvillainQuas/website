@@ -700,6 +700,8 @@ jobs:
           npm i --no-save @electric-sql/pglite
           node supabase/tests/entity-links.test.mjs
           node supabase/tests/links-ui.test.mjs
+          # 0276 outreach: the clubs' own addresses and the pitch, sent by hand - never from the site, platform admins only
+          node supabase/tests/outreach.test.mjs
           # 0190: the events splits are a members' table the database gates (a real Postgres), and data.js puts them back
           node supabase/tests/premium-sit.test.mjs
           node supabase/tests/sit-attach.test.mjs
