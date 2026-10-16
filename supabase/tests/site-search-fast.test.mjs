@@ -120,6 +120,28 @@ await time('warm up');
 const t1 = await time('zzzz'), t6 = await time('zq xw yv ut sr pq');
 ok('six words that match nothing cost about what one does (' + t6 + ' ms against ' + t1 + ' ms)', t6 < t1 * 4 + 150, [t1, t6]);
 
+/* 0270: A SEARCH OF ONE COLLEGE SYSTEM (site_search_in): the clubs and players of the leagues named alone, by the same rules */
+await db.exec(mig('0270_site_search_in.sql'));
+{
+  const lgs = ['slb', 'slbw'];
+  let bad = null, missed = null, withheldSeen = false;
+  for (const q of BATTERY) {
+    const inn = (await db.query('select kind, slug, league_slug from public.site_search_in($1, $2, 12, false)', [q, lgs])).rows;
+    if (inn.some(r => !lgs.includes(r.league_slug) || r.kind === 'league')) bad = bad || { q, inn };
+    /* every club of those leagues the whole-site search finds is found here too */
+    const site = (await db.query('select kind, slug, league_slug from public.site_search($1, 12, false)', [q])).rows
+      .filter(r => r.kind === 'team' && lgs.includes(r.league_slug));
+    if (site.some(r => !inn.some(x => x.kind === 'team' && x.slug === r.slug))) missed = missed || { q, site, inn };
+    const withheld = (await db.query("select 1 from public.site_search_in($1, $2, 12, true) r join public.players p on p.id = r.id where r.kind = 'player' and p.is_minor and not p.public_consent", [q, lgs])).rows;
+    if (withheld.length) withheldSeen = true;
+  }
+  ok('0270: only the named leagues\' clubs and players, never a league row', !bad, bad);
+  ok('...every club of theirs the whole-site search finds', !missed, missed);
+  ok('...a withheld player never', !withheldSeen);
+  ok('...no league named, nothing found', (await db.query("select * from public.site_search_in('newcastle', '{}', 12, false)")).rows.length === 0);
+  ok('...and the browser may ask it', await can('anon', 'public.site_search_in(text, text[], integer, boolean)') && await can('authenticated', 'public.site_search_in(text, text[], integer, boolean)'));
+}
+
 /* the page: a busy database is a retry, then the tables, and only then the error (never "Nothing matches" for a search that did not run) */
 const page = readFileSync(path.join(here, '..', '..', 'epinoia', 'search.js'), 'utf8');
 ok('search.js asks the function twice before giving up on it, and does not mark it missing for being slow',

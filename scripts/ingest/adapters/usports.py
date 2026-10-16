@@ -395,6 +395,16 @@ def team_filter(html) -> list:
     return out
 
 
+def feed_text(content: bytes) -> str:
+    """The iCal and RSS feeds' bytes as text. They are UTF-8 now ('Québec' arrived as 'QuÃ©bec' on the hub's strip,
+    16 Oct 2026, read as Windows-1252); older seasons' feeds were not, so Windows-1252 stays the fallback for bytes
+    that are not UTF-8 at all."""
+    try:
+        return content.decode("utf-8")
+    except UnicodeDecodeError:
+        return content.decode("cp1252", errors="replace")
+
+
 def _ical_unescape(v: str) -> str:
     return v.replace("\\,", ",").replace("\\;", ";").replace("\\n", " ").replace("\\N", " ").replace("\\\\", "\\")
 
@@ -1472,7 +1482,7 @@ class USportsAdapter(FibaLiveStatsAdapter):
             return []
         root = dom(html)
         rows = parse_schedule_rows(root, sp)
-        ical_text = self._get_text(base + "?print=ical", encoding="cp1252")
+        ical_text = self._get_text(base + "?print=ical", encoding="feed")
         ical = parse_ical(ical_text) if ical_text else {}
         USportsAdapter._icals[sp] = (time.time(), ical)
         if len(rows) >= LIST_CAP:
@@ -1675,7 +1685,7 @@ class USportsAdapter(FibaLiveStatsAdapter):
     def _ical(self, sp: str) -> dict:
         at, data = USportsAdapter._icals.get(sp, (0.0, None))
         if data is None or time.time() - at > self.ICAL_TTL_S:
-            text = self._get_text(f"{SITE}{SPORT}/{sp}/schedule?print=ical", encoding="cp1252")
+            text = self._get_text(f"{SITE}{SPORT}/{sp}/schedule?print=ical", encoding="feed")
             data = parse_ical(text) if text else {}
             USportsAdapter._icals[sp] = (time.time(), data)
         return data
@@ -1746,7 +1756,7 @@ class USportsAdapter(FibaLiveStatsAdapter):
                     return held[1]
                 raise RuntimeError(f"usports: {sp} scoreboard unreadable (tried {int(now - failed)} s ago)")
             try:
-                text = self._get_text(f"{SITE}{SPORT}/{sp}/schedule?print=rss", encoding="cp1252", max_wait_s=0)
+                text = self._get_text(f"{SITE}{SPORT}/{sp}/schedule?print=rss", encoding="feed", max_wait_s=0)
             except Exception:
                 USportsAdapter._board_failed[sp] = now
                 if held:
@@ -1791,7 +1801,7 @@ class USportsAdapter(FibaLiveStatsAdapter):
                 time.sleep(5 * net_fail)
                 continue
             if r.status_code == 200:
-                return r.content.decode(encoding, errors="replace")
+                return feed_text(r.content) if encoding == "feed" else r.content.decode(encoding, errors="replace")
             if r.status_code == 404:
                 return None
             if r.status_code == 403:

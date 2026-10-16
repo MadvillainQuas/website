@@ -549,8 +549,6 @@
       'withdrawn': '撤回',
       'senior': 'シニア',
       'masters': 'マスターズ',
-      'men': '男子',
-      'women': '女子',
       'boys': '男子（ユース）',
       'girls': '女子（ユース）',
       'mixed': '混合',

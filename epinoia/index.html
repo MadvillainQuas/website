@@ -188,6 +188,10 @@
      other is the cost this is here to avoid. */
   .m-splash #hub{display:none}
   .m-league #splash,.m-league #pool{display:none}
+  /* A COLLEGE SYSTEM'S HUB (mode.js m-college): the hub's own sections; a league's page never shows them, and the hub
+     shows none of a league page's */
+  html:not(.m-college) #cgConfs,html:not(.m-college) #cgMain{display:none}
+  .m-college #lgMain,.m-college #accessSec{display:none}
 
   /* ---- clubs: each one a screenprint -----------------------------------
      The plate itself — the ink flood, the halftone, the registration crosses,
@@ -579,21 +583,22 @@
     #takepartSec .grid>.card{flex:0 0 max(230px, 33.333%);box-sizing:border-box;box-shadow:0 0 0 1px var(--rule);align-items:center;text-align:center}
   }
 </style>
-<link rel="stylesheet" href="kit/records.css?v=854">
-<link rel="stylesheet" href="kit/newsdesk.css?v=854">
-<link rel="stylesheet" href="kit/starcard.css?v=854">
-<link rel="stylesheet" href="kit/silhouette.css?v=854">
-<link rel="stylesheet" href="kit/teletext.css?v=854">
-<link rel="stylesheet" href="kit/ttpanel.css?v=854">
-<link rel="stylesheet" href="kit/watch.css?v=854">
-<link rel="stylesheet" href="kit/predict.css?v=854">
-<link rel="stylesheet" href="kit/gamepeek.css?v=854">
-<link rel="stylesheet" href="kit/winprob.css?v=854">
-<link rel="stylesheet" href="kit/modes.css?v=854">
-<link rel="stylesheet" href="kit/fxc.css?v=854">
-<link rel="stylesheet" href="kit/leaguegames.css?v=854">
-<link rel="stylesheet" href="kit/secgroups.css?v=854">
-<link rel="stylesheet" href="kit/legibility.css?v=854">
+<link rel="stylesheet" href="kit/records.css?v=852">
+<link rel="stylesheet" href="kit/newsdesk.css?v=852">
+<link rel="stylesheet" href="kit/starcard.css?v=852">
+<link rel="stylesheet" href="kit/silhouette.css?v=852">
+<link rel="stylesheet" href="kit/teletext.css?v=852">
+<link rel="stylesheet" href="kit/ttpanel.css?v=852">
+<link rel="stylesheet" href="kit/watch.css?v=852">
+<link rel="stylesheet" href="kit/predict.css?v=852">
+<link rel="stylesheet" href="kit/gamepeek.css?v=852">
+<link rel="stylesheet" href="kit/winprob.css?v=852">
+<link rel="stylesheet" href="kit/modes.css?v=852">
+<link rel="stylesheet" href="kit/fxc.css?v=852">
+<link rel="stylesheet" href="kit/leaguegames.css?v=852">
+<link rel="stylesheet" href="kit/college.css?v=852">
+<link rel="stylesheet" href="kit/secgroups.css?v=852">
+<link rel="stylesheet" href="kit/legibility.css?v=852">
 <!-- seo:ld -->
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","@id":"https://prophesyscouting.co.uk/epinoia/#website","name":"Epinoia","alternateName":["EPINOIΛ","Epinoia Basketball"],"url":"https://prophesyscouting.co.uk/epinoia/","description":"Follow live basketball scores, fixtures, standings and box scores for leagues around the world, with advanced player stats, scouting tools and shot charts.","inLanguage":"en","publisher":{"@id":"https://prophesyscouting.co.uk/epinoia/#organization"},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://prophesyscouting.co.uk/epinoia/home/?q={search_term_string}"},"query-input":"required name=search_term_string"}}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","@id":"https://prophesyscouting.co.uk/epinoia/#organization","name":"Epinoia","alternateName":"EPINOIΛ","url":"https://prophesyscouting.co.uk/epinoia/","logo":{"@type":"ImageObject","url":"https://prophesyscouting.co.uk/epinoia/brand/epinoia-app-512.png","width":512,"height":512},"image":"https://prophesyscouting.co.uk/epinoia/brand/epinoia-share-1200x630.png","sameAs":["https://x.com/Prophesy_Scout"],"description":"Epinoia is a basketball competition platform: live scores, fixtures, standings, box scores and advanced statistics for leagues around the world."}</script>
@@ -748,6 +753,14 @@
   </nav>
   <div class="vh" id="videoHub" role="tabpanel" aria-label="Video" hidden></div>
 
+  <!-- A COLLEGE SYSTEM'S HUB (?college=u-sports | ncaa-d2; college.js, kit/college.css; Louie, 2026-10-16): U SPORTS and
+       NCAA D2 shown like a country, each conference like a league. Under MAIN | VIDEO, every conference as a card to go to,
+       grouped by region, each region marked on its country's map. Only in college mode (mode.js m-college). -->
+  <section class="cg-confs" id="cgConfs" aria-labelledby="cgConfsH">
+    <div class="cg-head"><h2 id="cgConfsH">Conferences</h2><span class="cg-note" id="cgConfsNote"></span></div>
+    <div class="cg-regions" id="cgRegions"><div class="hm-skel fx" aria-hidden="true"><i></i><i></i><i></i><i></i></div></div>
+  </section>
+
   <!-- members only (league splash only) ---------------------------------
        The paywall card, FIRST, for a members-only league whose server has said
        this viewer may not see it (home.js leagueAccess, docs/memberships.md).
@@ -761,7 +774,7 @@
        a button for each group under the MAIN | VIDEO strip, each group a card; on a desktop the buttons are tabs, one
        group at a time; a phone chooses Tabs or Scroll. Only on a league's page (m-league): the platform's splash shares
        this document. Every section keeps its id, so home.js finds it where it always did. -->
-  <div class="pgrp-root" id="lgMain" data-pgrp="l" data-pgrp-if="m-league">
+  <div class="pgrp-root" id="lgMain" data-pgrp="l" data-pgrp-if="m-leaguepage">
   <div class="pgrp-group" data-pgrp-key="games" data-pgrp-name="Games">
   <!-- GAMES (leaguegames.js, kit/leaguegames.css; Louie, 2026-10-15): the league's own games as HOME's daily fixtures show
        them - LIVE (while anything is, and then first), UPCOMING, RESULTS - two rows of four cards, and SHOW ALL GAMES to
@@ -991,13 +1004,39 @@
   </div>
   </div>
 
+  <!-- THE HUB'S SECTIONS (college.js), in HOME's groups: GAMES (the league page's own Games section, moved in here, with a
+       conference to filter by), CONFERENCES (each a row that opens to its clubs, as HOME's countries open to leagues),
+       the TABLE (every conference's, each a row) and the LEADERS (every club of the system). -->
+  <div class="pgrp-root" id="cgMain" data-pgrp="c" data-pgrp-if="m-college">
+  <div class="pgrp-group" data-pgrp-key="games" data-pgrp-name="Games"><div id="cgGamesHost"></div></div>
+  <div class="pgrp-group" data-pgrp-key="clubs" data-pgrp-name="Conferences">
+  <section class="sec" id="cgClubsSec" aria-labelledby="cgClubsH">
+    <div class="sec-h"><h2 id="cgClubsH">Conferences &amp; clubs</h2><span class="note" id="cgClubsNote"></span></div>
+    <div id="cgClubs"><div class="empty">Loading…</div></div>
+  </section>
+  </div>
+  <div class="pgrp-group" data-pgrp-key="table" data-pgrp-name="Table">
+  <section class="sec" id="cgTableSec" aria-labelledby="cgTableH">
+    <div class="sec-h"><h2 id="cgTableH">Table</h2><a class="showall" id="cgTableAll" href="l/">the table page →</a></div>
+    <div id="cgTable"><div class="empty">Loading…</div></div>
+  </section>
+  </div>
+  <div class="pgrp-group" data-pgrp-key="leaders" data-pgrp-name="Leaders">
+  <section class="sec" id="cgLeadSec" aria-labelledby="cgLeadH">
+    <div class="sec-h"><h2 id="cgLeadH">Leaders</h2><a class="showall" id="cgLeadAll" href="stats/">all statistics →</a></div>
+    <div id="cgLeaders"><div class="empty">Loading…</div></div>
+  </section>
+  </div>
+  </div>
+
   <div class="foot">
     <span>Epinoia Network</span>
     <a href="/index.html">← Prophesy Scouting</a>
     <span id="mode"></span>
   </div>
 </div>
-<script src="config.js?v=854" defer></script>
+<script src="config.js?v=852" defer></script>
+<script src="conferences.js?v=852" defer></script>
 <!-- memberships: the league splash's paywall card, its "Become a member" card and
      a member's auth headers. Nothing is asked of the server on the platform hub. -->
 <script src="access.js?v=854" defer></script>
@@ -1033,20 +1072,21 @@
 <!-- which games the games section reads and shows: this week, results, upcoming -->
 <script src="gameslist.js?v=854" defer></script>
 <!-- the draw distance: content comes out of the haze at the screen edge -->
-<script src="haze.js?v=854" defer></script>
-<script src="feedrank.js?v=854" defer></script>
-<script src="feedview.js?v=854" defer></script>
-<script src="watch.js?v=854" defer></script>
-<script src="winprob.js?v=854" defer></script>
-<script src="gamepeek.js?v=854" defer></script>
-<script src="predict.js?v=854" defer></script>
-<script src="globalgames.js?v=854" defer></script>
-<script src="leaguegames.js?v=854" defer></script>
-<script src="home.js?v=854" defer></script>
-<script src="interest.js?v=854" defer></script>
-<script src="home/vhmode.js?v=854" defer></script>
-<script src="secgroups.js?v=854" defer></script>
-<script src="nav.js?v=854" defer></script>
-<script src="xscroll.js?v=854" defer></script>
+<script src="haze.js?v=852" defer></script>
+<script src="feedrank.js?v=852" defer></script>
+<script src="feedview.js?v=852" defer></script>
+<script src="watch.js?v=852" defer></script>
+<script src="winprob.js?v=852" defer></script>
+<script src="gamepeek.js?v=852" defer></script>
+<script src="predict.js?v=852" defer></script>
+<script src="globalgames.js?v=852" defer></script>
+<script src="leaguegames.js?v=852" defer></script>
+<script src="college.js?v=852" defer></script>
+<script src="home.js?v=852" defer></script>
+<script src="interest.js?v=852" defer></script>
+<script src="home/vhmode.js?v=852" defer></script>
+<script src="secgroups.js?v=852" defer></script>
+<script src="nav.js?v=852" defer></script>
+<script src="xscroll.js?v=852" defer></script>
 </body>
 </html>

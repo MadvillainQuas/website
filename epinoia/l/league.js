@@ -411,7 +411,12 @@ async function renderStandingsInto(pane, competition) {
    two never drift. This page passes its own root for the clubs' links and its ELO (loadElo, below). */
 const SV = () => window.EpinoiaStandingsView;
 function groupTable(rows) { return SV().groupTable(rows, { base: '../', elo: ELO_NOW }); }
-function renderConferences(pane, rows, ST, competition) { SV().conferences(pane, rows, ST, competition, { base: '../', elo: ELO_NOW }); }
+/* A CONFERENCE'S PAGE (?conf=<key>, conferences.js; 2026-10-16): that conference's table alone */
+const URL_CONF = new URLSearchParams(location.search).get('conf') || '';
+const LEAGUE_SLUG_NOW = () => (league && league.slug) || window.__CS_LEAGUE_SLUG || '';
+function renderConferences(pane, rows, ST, competition) {
+  SV().conferences(pane, rows, ST, competition, { base: '../', elo: ELO_NOW, only: URL_CONF || undefined });
+}
 
 /* THE ELO COLUMN: sos.js's rating for every club, worked from the league's finalised games in scope
    (every phase of the season, as the Strength of Schedule tab reads by default), 1500 the average.
@@ -466,6 +471,16 @@ async function renderFixtures() {
     `&order=tipoff_at.asc`);
   const pane = $('#pane-fixtures'); pane.textContent = '';
   if (!gs.length) { pane.appendChild(el('div', 'empty', 'No fixtures scheduled.')); return; }
+  /* a conference's page: the games its clubs play, either side (conferences.js) */
+  const CF = window.EpinoiaConferences;
+  if (URL_CONF && CF && CF.isSystemLeague(LEAGUE_SLUG_NOW())) {
+    const SC = await CF.scope({ D: { get: api }, league: LEAGUE_SLUG_NOW(), compIds: [comp.id], conf: URL_CONF }).catch(() => null);
+    if (SC && SC.conference) {
+      const mine = gs.filter(g => SC.keep(g.home && g.home.id) || SC.keep(g.away && g.away.id));
+      gs.length = 0; mine.forEach(g => gs.push(g));
+      if (!gs.length) { pane.appendChild(el('div', 'empty', 'No fixtures scheduled.')); return; }
+    }
+  }
 
   const TC = window.EpinoiaTeamColour;
   const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -619,6 +634,12 @@ async function scopePicker(host, onChange) {
   const X = window.EpinoiaScopeBar;
   const M = await scopeModel();
   if (!X || !M) return () => true;
+  /* a conference's page opens the stats on its own conference, the first time */
+  if (statConf === null && URL_CONF) {
+    const CF = window.EpinoiaConferences, CS = CF ? CF.systemOf(LEAGUE_SLUG_NOW()) : null;
+    const g = CS && X.groups(M, scopeIds()).list.find(x => { const c = CF.conference(CS, x.name); return c && c.key === URL_CONF; });
+    if (g) statConf = g.name;
+  }
   statConf = X.settle(M, scopeIds(), statConf);
   X.mount({
     host, model: M, scope: statScope, conf: statConf,

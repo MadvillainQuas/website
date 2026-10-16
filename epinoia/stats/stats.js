@@ -88,6 +88,8 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
        read once per season; the conference only decides which clubs' players are shown. */
     const X = window.EpinoiaScopeBar;
     let conf = null, facts = null;
+    /* A CONFERENCE'S PAGE (?conf=<key>, conferences.js; 2026-10-16): the table opens on that conference */
+    let urlConf = new URLSearchParams(location.search).get('conf');
     const factsFor = () => facts || (facts = X ? X.load(D, comps).catch(() => null) : Promise.resolve(null));
 
     /* THE SEASON, in the chips the rest of the platform uses (seasonbar.js).
@@ -148,6 +150,12 @@ const fail = m => { const h = $('#tbl'); h.textContent = ''; h.appendChild(el('d
       if (my !== drawing) return;
       let keep = () => true;
       if (X && M) {
+        const CF = window.EpinoiaConferences, CS = urlConf && CF ? CF.systemOf(league.slug) : null;
+        if (CS) {
+          const g = X.groups(M, scopeIds()).list.find(x => { const c = CF.conference(CS, x.name); return c && c.key === urlConf; });
+          if (g) conf = g.name;
+        }
+        urlConf = null;
         conf = X.settle(M, scopeIds(), conf);
         X.mount({ host: bar, model: M, scope, conf, scopeIds,
                   onScope: s => { scope = s; draw(); }, onConf: g => { conf = g; draw(); } });

@@ -234,8 +234,45 @@ async function askTables(cfg, q, signal, part) {
   return [].concat(acc.league, acc.team, acc.player);
 }
 
+/* A SEARCH OF ONE COLLEGE SYSTEM (Louie, 2026-10-16: U SPORTS's and NCAA D2's rails search "only across U Sports/NCAA D2
+   teams and players"): scope = { leagues: [slugs], label }. site_search_in (0270) answers for those leagues alone; on a
+   database without it, the site's own answer, asked for more rows, is cut to the system's clubs and players. */
+let scopedRpc = 'unknown';
+async function askScoped(cfg, q, leagues, fuzzy, signal) {
+  if (scopedRpc !== 'no') {
+    const r = await fetch(cfg.supabaseUrl + '/rest/v1/rpc/site_search_in', {
+      method: 'POST', signal, headers: { apikey: cfg.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ p_q: q, p_leagues: leagues, p_limit: LIMIT, p_fuzzy: !!fuzzy })
+    });
+    if (r.status === 404 || r.status === 400) scopedRpc = 'no';
+    else if (!r.ok) throw new Error('search ' + r.status);
+    else { scopedRpc = 'yes'; const rows = await r.json(); return Array.isArray(rows) ? rows : []; }
+  }
+  const r = await fetch(cfg.supabaseUrl + '/rest/v1/rpc/site_search', {
+    method: 'POST', signal, headers: { apikey: cfg.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ p_q: q, p_limit: 12, p_fuzzy: !!fuzzy })
+  });
+  if (!r.ok) throw new Error('search ' + r.status);
+  const want = new Set(leagues);
+  return ((await r.json()) || []).filter(x => x && x.kind !== 'league' && want.has(x.league_slug));
+}
+
 /* what to show for q: the function's answer (a second look for near misses), or the tables' */
-async function search(cfg, q, signal, part) {
+async function search(cfg, q, signal, part, scope) {
+  if (scope && scope.leagues && scope.leagues.length) {
+    const sk = 'in:' + scope.leagues.join(',') + ':' + fold(q);
+    if (memo.has(sk)) return memo.get(sk);
+    let rows = await askScoped(cfg, q, scope.leagues, false, signal);
+    let close = false;
+    if (rows.length < FUZZY_BELOW && fold(q).length >= 4) {
+      let more = null;
+      try { more = await askScoped(cfg, q, scope.leagues, true, signal); } catch (e) { if (e && e.name === 'AbortError') throw e; }
+      if (more && more.length) { const all = merge(rows, more); close = all.length > rows.length; rows = all; }
+    }
+    const out = { rows, via: 'rpc', close };
+    memo.set(sk, out);
+    return out;
+  }
   const key = fold(q);
   if (memo.has(key)) return memo.get(key);
   let rows = null, via = 'rpc';
@@ -467,7 +504,7 @@ function mount(host, ctx) {
           if (my !== S.seq) return;
           S.rows = rows; S.via = 'tables'; S.error = false;
           render();
-        });
+        }, ctx.scope ? ctx.scope() : null);
         if (my !== S.seq) return;
         S.rows = res.rows; S.via = res.via; S.close = res.close; S.error = false;
       } catch (e) {
@@ -520,6 +557,9 @@ function mount(host, ctx) {
       panel.hidden = false;
     }
     field.hidden = false;
+    /* a college system's search says whose teams and players it finds (ctx.scope, nav.js) */
+    const sc = ctx.scope ? ctx.scope() : null;
+    input.placeholder = sc && sc.label ? sc.label + ' teams and players' : 'teams, players, leagues';
     S.q = ''; input.value = '';
     S.recent = store ? readRecent(store) : [];
     render();

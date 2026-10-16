@@ -333,14 +333,15 @@ ok('every place that groups a league uses the one rule',
    'the counter, the list filter, the page-opens-its-own-group path and settleCountry');
 
 console.log('\n13. your hub (it was "your profile") is a rail, and the way back to a private league');
-ok('the deck carries a sixth panel (a seventh since, EPINOIA GO\'s layer, and an eighth, scouting\'s)',
+ok('the deck carries a sixth panel (a seventh since, EPINOIA GO\'s layer, an eighth, scouting\'s, and a ninth, a college system\'s conferences)',
    /const followsPanel = el\('div', 'panel followspanel'\);/.test(nav) &&
-   /deck\.append\(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel, scoutPanel\)/.test(nav));
-ok('...and the CSS is an eighth, not a sixth',
-   /width:800%/.test(navcss) && /width:12\.5%/.test(navcss) &&
-   /data-view="follows"\] \.deck\{ transform:translateX\(-62\.5%\)/.test(navcss) &&
-   /data-view="go"\] \.deck\{ transform:translateX\(-75%\)/.test(navcss) &&
-   /data-view="scout"\] \.deck\{ transform:translateX\(-87\.5%\)/.test(navcss));
+   /deck\.append\(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel, scoutPanel, confsPanel\)/.test(nav));
+ok('...and the CSS is a ninth, not a sixth',
+   /width:900%/.test(navcss) && /width:11\.1111%/.test(navcss) &&
+   /data-view="follows"\] \.deck\{ transform:translateX\(-55\.5556%\)/.test(navcss) &&
+   /data-view="go"\] \.deck\{ transform:translateX\(-66\.6667%\)/.test(navcss) &&
+   /data-view="scout"\] \.deck\{ transform:translateX\(-77\.7778%\)/.test(navcss) &&
+   /data-view="confs"\] \.deck\{ transform:translateX\(-88\.8889%\)/.test(navcss));
 ok('the panel is hidden from the tab order like every other',
    /followsPanel\.setAttribute\('aria-hidden', String\(v !== 'follows'\)\)/.test(nav));
 ok('"your hub" opens it, and is still a real link for a modified click',

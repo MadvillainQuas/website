@@ -283,7 +283,8 @@ class UsOffline(U.USportsAdapter):
         if url.endswith("/2026-27/schedule?print=rss"):
             path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "usports", "rss-2026-27.xml.gz")
             with gzip.open(path, "rb") as f:
-                return f.read().decode(encoding)
+                b = f.read()
+            return U.feed_text(b) if encoding == "feed" else b.decode(encoding)
         return None
 
     def fetch(self, xid, cfg):

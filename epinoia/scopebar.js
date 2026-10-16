@@ -77,7 +77,12 @@ function groups(M, scopeIds) {
   });
   const list = [...byName.values()]
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-  return { noun: conferences ? 'conference' : 'group', list: list.length >= 2 ? list : [], clubs };
+  /* IN A CONFERENCE LEAGUE A CLUB WITH NO CONFERENCE IS NOT ONE OF ITS CLUBS (Louie, 2026-10-16: the outside clubs the
+     first U SPORTS import made - Baylor, UC Irvine, a touring side - "not visible on teams or in league tables etc."):
+     "all" is every club with a conference, and only those are counted. Not for a league played in groups. */
+  const members = conferences && ofTeam.size ? new Set(ofTeam.keys()) : null;
+  return { noun: conferences ? 'conference' : 'group', list: list.length >= 2 ? list : [],
+           clubs: members || clubs, members };
 }
 
 /* The conference to show: the reader's choice while this scope still has it; otherwise every
@@ -91,9 +96,11 @@ function settle(M, scopeIds, conf) {
 
 /* teamId -> is this club in the conference being shown */
 function keeper(M, scopeIds, conf) {
-  if (!conf || conf === 'all') return () => true;
-  const g = groups(M, scopeIds).list.find(x => x.name === conf);
-  return g ? (id => g.teams.has(id)) : () => true;
+  const G = groups(M, scopeIds);
+  const all = G.members ? (id => G.members.has(id)) : () => true;
+  if (!conf || conf === 'all') return all;
+  const g = G.list.find(x => x.name === conf);
+  return g ? (id => g.teams.has(id)) : all;
 }
 
 /* ------------------------------------------------------------------ read ---

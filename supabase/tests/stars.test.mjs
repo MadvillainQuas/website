@@ -133,9 +133,10 @@ console.log('\nleague page parity (BCB, captured ' + FX.captured_at + ')');
   const sec = new El('section'); sec.querySelector = s => (s === '#stars' ? host : null);
   const $ = s => (s === '#starsSec' ? sec : null);
   const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
-  const run = new Function('D', '$', 'el', 'LEAGUE', 'api', 'leagueCompetitions',
+  /* collegeScope (2026-10-16): a college league's stars are its own clubs' players; this league is not one */
+  const run = new Function('D', '$', 'el', 'LEAGUE', 'api', 'leagueCompetitions', 'collegeScope',
     src + '\nreturn stars;');
-  const stars = run(D, $, el, FX.league, api, async () => ['comp']);
+  const stars = run(D, $, el, FX.league, api, async () => ['comp'], async () => null);
   const star = await stars();
 
   const html = host.children.map(c => c.outerHTML);

@@ -119,11 +119,15 @@ function leagues() {
    the results; `only` reads those leagues alone (the reader's CHECK VIA LEAGUE pick). Anything that is not a league
    id is left out of the address, and no option is the read every other caller has always made. */
 const idList = v => (Array.isArray(v) ? v : v == null ? [] : [v]).map(String).filter(x => UUID.test(x));
+/* opts.teams (2026-10-16): the games of those clubs alone, either side - a college conference's games (conferences.js),
+   asked of the database, so a read of eight is eight of that conference's games rather than eight of the system's cut
+   down to whichever were the conference's */
 function scopeQuery(o) {
-  const only = idList(o && o.only), ex = idList(o && o.exclude);
+  const only = idList(o && o.only), ex = idList(o && o.exclude), tm = idList(o && o.teams);
   return (only.length === 1 ? '&competitions.seasons.league_id=eq.' + only[0]
     : only.length ? '&competitions.seasons.league_id=in.(' + only.join(',') + ')' : '') +
-    (ex.length ? '&competitions.seasons.league_id=not.in.(' + ex.join(',') + ')' : '');
+    (ex.length ? '&competitions.seasons.league_id=not.in.(' + ex.join(',') + ')' : '') +
+    (tm.length ? '&or=(home_team_id.in.(' + tm.join(',') + '),away_team_id.in.(' + tm.join(',') + '))' : '');
 }
 
 /* Every live game. Rarely more than a handful anywhere on the platform - apart from a grouped league's (opts.exclude). */
@@ -149,9 +153,10 @@ function recent(beforeISO, offset, limit, opts) {
    is the module's own. HOME's fixtures read through it, so their calls read exactly as they always have. No option at
    all is the module itself. */
 function scoped(o) {
-  const s = { only: idList(o && o.only), exclude: idList(o && o.exclude) };
-  if (!s.only.length && !s.exclude.length) return api;
-  const w = x => ({ only: idList(x && x.only).length ? x.only : s.only, exclude: s.exclude.concat(idList(x && x.exclude)) });
+  const s = { only: idList(o && o.only), exclude: idList(o && o.exclude), teams: idList(o && o.teams) };
+  if (!s.only.length && !s.exclude.length && !s.teams.length) return api;
+  const w = x => ({ only: idList(x && x.only).length ? x.only : s.only, exclude: s.exclude.concat(idList(x && x.exclude)),
+                    teams: idList(x && x.teams).length ? x.teams : s.teams });
   return Object.assign({}, api, {
     live: x => live(w(x)),
     upcoming: (fromISO, limit, offset, x) => upcoming(fromISO, limit, offset, w(x)),

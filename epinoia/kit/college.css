@@ -1,0 +1,107 @@
+/* ============================================================================
+   A COLLEGE SYSTEM'S HUB (college.js; Louie, 2026-10-16): U SPORTS and NCAA D2 shown like a country. The conferences as
+   cards under MAIN | VIDEO, a region at a time with its country's tile map lit where the region is; the conference
+   rows of clubs; the conference chips over the games. The league page's own section styles do the rest.
+   ============================================================================ */
+
+/* ---- the hero's Men's | Women's (NCAA D2) ---- */
+.cg-sides{display:inline-flex;gap:6px;flex-wrap:wrap}
+
+/* ---- the conferences on the map (college.js regions): the country, a region a colour; beside it the regions as
+   dropdowns of their conferences; a region hovered lights up, the rest dims, and its card points at it ---- */
+.cg-confs{border-bottom:1px solid var(--rule);padding:0 0 calc(var(--u)*3)}
+.cg-head{display:flex;align-items:baseline;gap:12px;padding:calc(var(--u)*3) calc(var(--u)*3) calc(var(--u)*1)}
+.cg-head h2{font-family:var(--f-ui);font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.04em;margin:0;color:var(--ink)}
+.cg-note{font-family:var(--f-ui);font-size:12px;font-weight:600;color:var(--ink-3)}
+.cg-atlas{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(300px,1fr);gap:calc(var(--u)*3);align-items:start;
+  padding:calc(var(--u)*1) calc(var(--u)*3) 0}
+.cg-stage{position:relative;border:1px solid var(--rule);border-radius:16px;padding:14px;
+  background:radial-gradient(120% 90% at 50% 40%,color-mix(in srgb,var(--lume) 7%,var(--panel)) 0%,var(--panel) 70%)}
+.cg-svg{display:block;width:100%;height:auto;max-height:640px;overflow:visible}
+.cg-svg path{stroke:var(--panel);stroke-width:1.1;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.cg-out path{fill:color-mix(in srgb,var(--ink) 10%,var(--panel))}
+.cg-g path{fill:color-mix(in srgb,var(--rc) 78%,var(--panel));transition:fill .18s ease,opacity .18s ease}
+.cg-g{cursor:pointer;outline:none}
+.cg-g:focus-visible path{stroke:var(--ink);stroke-width:2}
+.cg-stage[data-on] .cg-g:not(.on) path{opacity:.28}
+.cg-stage[data-on] .cg-out path{opacity:.5}
+.cg-g.on path{fill:var(--rc);filter:drop-shadow(0 2px 6px color-mix(in srgb,var(--rc) 45%,transparent))}
+/* the card, with its arrow to the region */
+.cg-callout{position:absolute;z-index:5;width:min(320px,82%);padding:12px;border-radius:14px;background:var(--panel);
+  border:1px solid color-mix(in srgb,var(--rc) 55%,var(--rule));box-shadow:0 18px 40px -22px rgba(0,0,0,.55);
+  display:flex;flex-direction:column;gap:6px}
+.cg-callout[hidden]{display:none}
+.cg-callout::before{content:"";position:absolute;top:calc(var(--ay,50%) - 9px);width:16px;height:16px;background:var(--panel);
+  border:1px solid color-mix(in srgb,var(--rc) 55%,var(--rule));transform:rotate(45deg)}
+.cg-callout[data-arrow="l"]::before{left:-9px;border-top:0;border-right:0}
+.cg-callout[data-arrow="r"]::before{right:-9px;border-bottom:0;border-left:0}
+.cg-callout[data-arrow="n"]::before{display:none}
+.cg-callout-h{display:flex;align-items:baseline;gap:10px;padding:2px 4px 6px;border-bottom:3px solid var(--rc)}
+.cg-callout-h b{font-family:var(--f-ui);font-weight:800;font-size:16px;color:var(--ink)}
+.cg-callout-h span{font-family:var(--f-ui);font-size:12px;font-weight:600;color:var(--ink-3)}
+/* a conference, as a link (the card and the dropdowns) */
+.cg-clink{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:10px;text-decoration:none;color:var(--ink);
+  border:1px solid transparent}
+.cg-clink:hover,.cg-clink:focus-visible{background:color-mix(in srgb,var(--cc,var(--lume)) 10%,var(--panel));border-color:color-mix(in srgb,var(--cc,var(--lume)) 35%,var(--rule));outline:none}
+.cg-clink-t{display:flex;flex-direction:column;min-width:0;flex:1}
+.cg-clink-t b{font-family:var(--f-ui);font-weight:800;font-size:15px;line-height:1.15}
+.cg-clink-n{font-family:var(--f-ui);font-size:12px;font-weight:500;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cg-clink-m{font-family:var(--f-ui);font-size:11.5px;font-weight:700;color:var(--ink-3)}
+.cg-go{flex:none;font-family:var(--f-ui);font-weight:800;font-size:16px;color:var(--ink-3);transition:transform .16s ease}
+.cg-clink:hover .cg-go{transform:translateX(3px);color:var(--ink)}
+/* the regions beside the map */
+.cg-side{display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:16px;overflow:hidden;background:var(--panel)}
+.cg-rrow{border-bottom:1px solid var(--rule);background:var(--panel)}
+.cg-rrow:last-child{border-bottom:0}
+.cg-rrow>summary{gap:12px;min-height:60px;text-transform:none;letter-spacing:0;border-left:5px solid var(--rc,var(--rule-2))}
+.cg-rrow.lit>summary,.cg-rrow[open]>summary{background:color-mix(in srgb,var(--rc,var(--lume)) 9%,var(--panel))}
+.cg-swatch{flex:none;width:14px;height:14px;border-radius:4px;background:var(--rc,var(--rule-2))}
+.cg-rrow-n{display:flex;flex-direction:column;min-width:0}
+.cg-rrow-n b{font-family:var(--f-ui);font-weight:800;font-size:15px;color:var(--ink)}
+.cg-rrow-n span{font-family:var(--f-ui);font-size:12px;font-weight:600;color:var(--ink-3)}
+.cg-rrow-l{margin-left:auto;display:inline-flex;gap:4px}
+.cg-rrow-b{display:flex;flex-direction:column;gap:2px;padding:6px 10px 12px}
+
+/* ---- the games' conference chips ---- */
+.cg-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 calc(var(--u)*3) calc(var(--u)*2)}
+.cg-chips[hidden]{display:none}
+.cg-chips .ep-chip{display:inline-flex;align-items:center;gap:6px}
+
+/* ---- conferences and their clubs: a row each, as HOME's countries ---- */
+.cg-acc{display:flex;flex-direction:column;border-top:1px solid var(--rule)}
+.cg-crow>summary{gap:12px;text-transform:none;letter-spacing:0;min-height:58px}
+.cg-crow-n{display:flex;flex-direction:column;min-width:0}
+.cg-crow-n b{font-family:var(--f-ui);font-weight:800;font-size:15px;color:var(--ink)}
+.cg-crow-n span{font-family:var(--f-ui);font-weight:500;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cg-crow-r{margin-left:auto;padding:3px 9px;border:1px solid var(--rule-2);border-radius:999px;font-family:var(--f-ui);font-size:11px;
+  font-weight:600;color:var(--ink-2)}
+.cg-crow>summary .n{font-family:var(--f-ui);font-size:12px;font-weight:700;color:var(--ink-3);letter-spacing:0}
+.cg-crow-b{padding:12px calc(var(--u)*3) 16px}
+.cg-clubgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.cg-club{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--rule);border-left:4px solid var(--tc,var(--rule-2));
+  border-radius:8px;background:var(--panel);color:var(--ink);text-decoration:none;font-family:var(--f-ui);font-weight:700;font-size:13.5px}
+.cg-club:hover{background:color-mix(in srgb,var(--tc,var(--lume)) 9%,var(--panel))}
+.cg-crest{width:28px;height:28px;flex:none}
+.cg-clubname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cg-confpage{display:inline-block;margin-top:12px;font-family:var(--f-ui);font-weight:800;font-size:12.5px;color:var(--lume);text-decoration:none}
+.cg-confpage:hover{text-decoration:underline;text-underline-offset:3px}
+
+@media (max-width:1100px){ .cg-atlas{grid-template-columns:1fr} .cg-svg{max-height:520px} }
+@media (max-width:720px){
+  .cg-head,.cg-atlas{padding-left:calc(var(--u)*2);padding-right:calc(var(--u)*2)}
+  .cg-stage{padding:8px;border-radius:12px}
+  .cg-callout{width:min(280px,90%)}
+  .cg-crow-r{display:none}
+  .cg-crow-b{padding:10px calc(var(--u)*2) 14px}
+  .cg-chips{padding:0 calc(var(--u)*2) calc(var(--u)*1.5)}
+}
+
+/* ---- a conference's own page (home.js conferenceHero): its logo beside its name, and the way back to its system ---- */
+.hero-head .cf-hero{border-radius:18px;box-shadow:0 0 0 1px var(--rule),0 10px 26px -18px rgba(0,0,0,.6)}
+.cf-back{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--rule-2);border-radius:999px;
+  font-family:var(--f-ui);font-weight:800;font-size:12px;letter-spacing:.02em;color:var(--ink);text-decoration:none;margin-right:10px}
+.cf-back:hover{background:color-mix(in srgb,var(--lume) 10%,transparent)}
+@media (max-width:720px){ .hero-head .cf-hero{width:56px !important;height:56px !important} }
+/* the card under the region (its arrow up) or over it (its arrow down) when there is no room beside it */
+.cg-callout[data-arrow="u"]::before{top:-9px;left:calc(var(--ax,50%) - 8px);border-bottom:0;border-right:0}
+.cg-callout[data-arrow="d"]::before{top:auto;bottom:-9px;left:calc(var(--ax,50%) - 8px);border-top:0;border-left:0}

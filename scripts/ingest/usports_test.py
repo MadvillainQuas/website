@@ -54,7 +54,8 @@ def fixture(name, encoding="utf-8"):
     if not os.path.exists(path):
         return None
     with gzip.open(path, "rb") as f:
-        return f.read().decode(encoding, errors="replace")
+        b = f.read()
+    return U.feed_text(b) if encoding == "feed" else b.decode(encoding, errors="replace")
 
 
 def fixture_for(url):
@@ -66,9 +67,9 @@ def fixture_for(url):
     if m.group(3):
         return f"game-{sp}_{m.group(3)}.html.gz", "utf-8"
     if q == "?print=ical":
-        return f"ical-{sp}.ics.gz", "cp1252"
+        return f"ical-{sp}.ics.gz", "feed"
     if q == "?print=rss":
-        return f"rss-{sp}.xml.gz", "cp1252"
+        return f"rss-{sp}.xml.gz", "feed"
     if q.startswith("?teamId="):
         return f"team-{sp}-{q[8:]}.html.gz", "utf-8"
     if q.startswith("?eid="):
@@ -135,8 +136,11 @@ ok("the list's 500-event cap: the rest came from club pages (and only as many as
    and asked_reg[1].endswith("/2025-26/schedule?print=ical"), [u[-40:] for u in asked_reg[:3]])
 late = [g for g in reg if (g.tipoff_at or "") >= "2026-01-16"]
 ok("games after the cap are there (16 Jan - 21 Feb 2026)", len(late) >= 190, len(late))
-ical = U.parse_ical(fixture("ical-2025-26.ics.gz", "cp1252"))
+ical = U.parse_ical(fixture("ical-2025-26.ics.gz", "feed"))
 ok("the iCal lists all 698 regular-season events", len(ical) == 698, len(ical))
+ok("the feeds are UTF-8 now, Windows-1252 only for bytes that are not ('QuÃ©bec' on the hub's strip, 16 Oct 2026)",
+   U.feed_text("2300 rue de la Terrasse, Québec".encode("utf-8")) == "2300 rue de la Terrasse, Québec"
+   and U.feed_text("Montréal".encode("cp1252")) == "Montréal")
 ids = {g.external_id for g in reg} | {g.external_id for g in po} | {g.external_id for g in f8}
 ok("the key is the PrestoSports event id (16 characters), unique across the three paths",
    len(ids) == 528 and all(re.fullmatch(r"[a-z0-9]{16}", i) for i in ids))
@@ -478,7 +482,7 @@ ok("a page with no box score -> None", U.raw_from_page("<html><body>Not Found</b
 
 # ============================================================================ live on demand (0264, 0268)
 print("\n-- the scoreboard: the season's RSS (captured 15 Oct 2026, 21:11 UTC, UBC at Windsor in progress)")
-rss = U.parse_rss(fixture("rss-2026-27.xml.gz", "cp1252"))
+rss = U.parse_rss(fixture("rss-2026-27.xml.gz", "feed"))
 ok("every event of the season path, uncapped (675; the page list stops at 500)", len(rss) == 675, len(rss))
 ok("a game in progress: names and scores in the schedule's order (away first), its state of play",
    rss.get("u8xvsotcgoe6c0oq") == {"away": "UBC", "home": "Windsor", "away_score": 48, "home_score": 34,
@@ -491,7 +495,7 @@ ok("a neutral-site game: the first-named club is the schedule's away one (Purdue
 ok("a game not started: both clubs, no scores, no state",
    rss["b1dmftofcla57yza"] == {"away": "Dalhousie", "home": "Waterloo", "away_score": None, "home_score": None,
                                "status_text": ""}, rss["b1dmftofcla57yza"])
-po_rss = U.parse_rss(fixture("rss-2025-26p.xml.gz", "cp1252"))
+po_rss = U.parse_rss(fixture("rss-2025-26p.xml.gz", "feed"))
 po_rows = U.parse_schedule_rows(fixture("schedule-2025-26p.html.gz"), "2025-26p")
 same = [r for r in po_rows if r["eid"] in po_rss]
 ok("every 2025-26 playoff game: the RSS's clubs and scores are the schedule's away and home, side for side (29)",

@@ -61,6 +61,9 @@ const qp = new URLSearchParams(location.search);
 let wantLeague = qp.get('l') || '';
 /* ?t= names one club (its page on Epinoia shows the strip for it), as a club site's rule can */
 let wantTeam = qp.get('t') || '';
+/* ?teams= (with ?l=) names a set of clubs by id: a college conference's page (conferences.js; 2026-10-16) shows its own
+   clubs' games, either side */
+const wantTeams = (qp.get('teams') || '').split(',').map(x => x.trim()).filter(x => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(x)).slice(0, 60);
 let limit = Math.min(parseInt(qp.get('n'), 10) || 12, 40);
 const limitFromUrl = !!qp.get('n');
 
@@ -827,6 +830,9 @@ async function scope() {
       const cs = await api('competitions?select=id,seasons!inner(leagues!inner(slug))' +
         '&seasons.leagues.slug=eq.' + encodeURIComponent(wantLeague));
       scopeQ = cs && cs.length ? '&competition_id=in.(' + cs.map(c => c.id).join(',') + ')' : none;
+      if (scopeQ !== none && wantTeams.length) {
+        scopeQ += '&or=(home_team_id.in.(' + wantTeams.join(',') + '),away_team_id.in.(' + wantTeams.join(',') + '))';
+      }
     } else {
       scopeQ = '';
     }

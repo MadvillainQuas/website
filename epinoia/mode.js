@@ -51,10 +51,31 @@
      league's front page (?l=), so it stays; only its splash mode is retired: the bare /epinoia/ goes straight to
      Epinoia's HOME, before anything is painted. The splash's markup and scripts are left in place, unreached, and
      ?mothballed=1 still shows it for reference. */
-  if (!q.get('l') && q.get('mothballed') !== '1' && /\/epinoia\/(index\.html)?$/.test(location.pathname)) {
+  /* A COLLEGE SYSTEM IS NOT A LEAGUE PAGE (Louie, 2026-10-16: U SPORTS and NCAA D2 each "its own navigational splash
+     page instead of being treated like a league page ... U Sports/NCAA D2 as a country"). ?college=<system> is its hub;
+     a system league's own front page with no conference asked for (?l=u-sports) goes to the hub, before anything is
+     painted; with one (?l=u-sports&conf=oua) it is that conference's page, a league page. The league -> system list is
+     config.js EPINOIA_COLLEGE's (conferences.test.mjs holds the three copies to one another). */
+  var COLLEGE = { 'u-sports': 'u-sports', 'ncaa-d2-men': 'ncaa-d2', 'ncaa-d2-women': 'ncaa-d2' };
+  var front = /\/epinoia\/(index\.html)?$/.test(location.pathname);
+  var lg = q.get('l');
+  if (front && lg && COLLEGE[lg] && !q.get('conf')) {
+    try {
+      var u = new URL(location.href);
+      u.searchParams.delete('l');
+      u.searchParams.set('college', COLLEGE[lg]);
+      if (COLLEGE[lg] === 'ncaa-d2') u.searchParams.set('g', /women/.test(lg) ? 'women' : 'men');
+      location.replace(u.href);
+      return;
+    } catch (_) { /* the league page, as before */ }
+  }
+  var college = front && q.get('college');
+  if (!lg && !college && q.get('mothballed') !== '1' && front) {
     try { location.replace(new URL('home/', location.href.split(/[?#]/)[0].replace(/index\.html$/, '')).href); return; } catch (_) { /* fall through to the old page */ }
   }
-  root.classList.add(q.get('l') ? 'm-league' : 'm-splash');
+  root.classList.add(lg || college ? 'm-league' : 'm-splash');
+  /* m-leaguepage: a league's own page (its groups, secgroups data-pgrp-if); m-college: a system's hub */
+  root.classList.add(college ? 'm-college' : lg ? 'm-leaguepage' : 'm-none');
 
   /* An article was asked for, or it was not. Harmless on every page that is
      not the news archive, which is why one file answers both questions rather

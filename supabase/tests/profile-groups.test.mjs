@@ -152,7 +152,8 @@ console.log('\n8. a league\'s front page (Louie, 2026-10-15)');
 {
   const LI = rd('epinoia', 'index.html');
   const at = LI.indexOf('class="pgrp-root"');
-  const body = LI.slice(at);
+  /* the league page's groups only: a college system's hub (#cgMain, 2026-10-16) has its own after them */
+  const body = LI.slice(at, LI.indexOf('id="cgMain"') > at ? LI.indexOf('id="cgMain"') : undefined);
   const starts = [...body.matchAll(/<div class="pgrp-group" data-pgrp-key="([^"]+)" data-pgrp-name="([^"]+)">/g)];
   const g = starts.map((m, i) => {
     const chunk = body.slice(m.index, i + 1 < starts.length ? starts[i + 1].index : undefined);
@@ -170,7 +171,10 @@ console.log('\n8. a league\'s front page (Louie, 2026-10-15)');
   ];
   ok('eight groups, in Louie\'s order', JSON.stringify(g.map(x => x.name)) === JSON.stringify(want.map(w => w[0])), g.map(x => x.name).join(' / '));
   want.forEach(([n, ids], i) => ok(n + ': ' + ids.join(', '), g[i] && JSON.stringify(g[i].secs) === JSON.stringify(ids), g[i] && g[i].secs.join(',')));
-  ok('only on a league\'s page: the platform\'s splash shares the document', /<div class="pgrp-root" id="lgMain" data-pgrp="l" data-pgrp-if="m-league">/.test(LI) &&
+  /* m-leaguepage (mode.js, 2026-10-16): a league's own page - not the splash, and not a college system's hub, which
+     shares the document too and has its own groups (data-pgrp-if="m-college") */
+  ok('only on a league\'s page: the platform\'s splash and a college hub share the document', /<div class="pgrp-root" id="lgMain" data-pgrp="l" data-pgrp-if="m-leaguepage">/.test(LI) &&
+     /<div class="pgrp-root" id="cgMain" data-pgrp="c" data-pgrp-if="m-college">/.test(LI) &&
      /data-pgrp-if/.test(SG) && /doc\.documentElement\.classList\.contains\(c\)/.test(SG));
   ok('the old live and recent list is the Fixtures group\'s, headed so', /<h2>Fixtures<\/h2>/.test(LI) && !/<h2>Games<\/h2>/.test(LI));
 
@@ -193,7 +197,8 @@ console.log('\n8. a league\'s front page (Louie, 2026-10-15)');
 
   /* the games */
   const LG = rd('epinoia', 'leaguegames.js'), LC = rd('epinoia', 'kit', 'leaguegames.css');
-  ok('GAMES: HOME\'s live, upcoming and results for the league alone, eight cards', /G = GG\.scoped \? GG\.scoped\(\{ only: \[league\.id\] \}\) : GG;/.test(LG) &&
+  ok('GAMES: HOME\'s live, upcoming and results for the league alone, eight cards', /const ids = o\.leagues \? o\.leagues\.filter\(Boolean\) : \[league && league\.id\]\.filter\(Boolean\);/.test(LG) &&
+     /G = GG\.scoped \? GG\.scoped\(\{ only: ids, teams: o\.teams \|\| \[\] \}\) : GG;/.test(LG) &&
      /const N = 8,/.test(LG) && /G\.card\(g, \{ base: '', now: data\.now, state: data\.state\[g\.id\], badge: false \}\)/.test(LG) &&
      /data-fx="live"[^>]*hidden/.test(LI) && /data-fx="up"/.test(LI) && /data-fx="res"/.test(LI));
   ok('...two rows of four on a desktop, HOME\'s strip on a phone', /@container lgg \(min-width:616px\)\{ \.lgg \.fxc-rail\{grid-template-columns:repeat\(4,minmax\(0,1fr\)\)\} \}/.test(LC) &&

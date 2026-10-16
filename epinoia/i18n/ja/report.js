@@ -1717,7 +1717,6 @@
       'all seasons': '全シーズン',
       'you are here': '現在地',
       'no competition yet': 'まだ大会はありません',
-      'women': '女子',
       'a women\'s team': '女子チーム',
       'other profiles': '他のプロフィール',
       'the same player in other competitions': '他の大会での同じ選手',

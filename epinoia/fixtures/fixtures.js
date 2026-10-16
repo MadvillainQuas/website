@@ -32,6 +32,10 @@ let teamFilter = qp.get('t') || '';        // team slug, or empty for all
 let stateFilter = qp.get('show') || 'all'; // all | results | upcoming
 /* with a club chosen: one opponent (a head-to-head), its home or its away games; and a month */
 let vsFilter = qp.get('vs') || '', sideFilter = qp.get('ha') || '', monthFilter = qp.get('m') || '';
+/* A COLLEGE LEAGUE'S CONFERENCE (conferences.js; Louie, 2026-10-16: "Can fixtures be conference filterable?"): the
+   games of one conference's clubs, ?conf=<key> - which is also how a conference's own pages open this one. SCOPE is
+   the league's scope (the clubs with a conference); null for every other league. */
+let confFilter = qp.get('conf') || '', SCOPE = null;
 
 const STATES = [
   ['all', 'Everything'],
@@ -92,6 +96,7 @@ function syncUrl() {
   if (compFilter) u.searchParams.set('comp', compFilter); else u.searchParams.delete('comp');
   if (teamFilter) u.searchParams.set('t', teamFilter); else u.searchParams.delete('t');
   if (stateFilter !== 'all') u.searchParams.set('show', stateFilter); else u.searchParams.delete('show');
+  if (confFilter) u.searchParams.set('conf', confFilter); else u.searchParams.delete('conf');
   [['vs', vsFilter], ['ha', sideFilter], ['m', monthFilter]].forEach(([k, v]) => {
     if (v) u.searchParams.set(k, v); else u.searchParams.delete(k);
   });
@@ -157,8 +162,10 @@ function renderFilters() {
                    .reduce((a, g) => a.concat([g.home_team_id, g.away_team_id]), [])
                    .filter(Boolean))
     : null;
+  /* a college league's clubs are those with a conference (the conference's, when one is chosen) */
   const clubs = [...TEAMS.values()]
     .filter(t => !inComp || inComp.has(t.id))
+    .filter(t => !SCOPE || (SCOPE.keep(t.id) && inConf(t.id)))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   /* A club that has just been filtered out cannot stay chosen, or the list is
@@ -205,6 +212,31 @@ function renderFilters() {
         compFilter = c.id; syncUrl(); renderFilters(); render();
       }, c.kind || '')));
     } else cp.parentNode.style.display = 'none';
+  }
+
+  /* THE CONFERENCES, a chip each with its logo: only in a college league with two or more of them */
+  const fp = $('#confPick');
+  if (fp) {
+    fp.textContent = '';
+    const CF = window.EpinoiaConferences;
+    const list = SCOPE && SCOPE.system ? SCOPE.conferences : [];
+    if (confFilter && !list.some(c => c.key === confFilter)) { confFilter = ''; syncUrl(); }
+    if (CF && list.length > 1) {
+      fp.parentNode.style.display = '';
+      const pick = key => { confFilter = key; teamFilter = vsFilter = sideFilter = ''; syncUrl(); renderFilters(); render(); };
+      const all = el('button', 'ep-chip' + (!confFilter ? ' on' : ''), 'All');
+      all.type = 'button';
+      all.addEventListener('click', () => pick(''));
+      fp.appendChild(all);
+      list.forEach(c => {
+        const b = el('button', 'ep-chip cfchip' + (confFilter === c.key ? ' on' : ''));
+        b.type = 'button';
+        b.title = c.name;
+        b.append(CF.badge(SCOPE.system, c, 18), document.createTextNode(' ' + c.short));
+        b.addEventListener('click', () => pick(c.key));
+        fp.appendChild(b);
+      });
+    } else fp.parentNode.style.display = 'none';
   }
 
   const sp = $('#statePick'); sp.textContent = '';
@@ -402,9 +434,16 @@ function fixtureRow(g, stats, names) {
 /* ---------------------------------------------------------------- render --- */
 /* the fixtures the filters leave: competition, club (and its opponent, and home or away), the state
    of play, and (unless asked not to, for the month dropdown's own list) the month */
+/* is this club in the conference being shown (every club when none is) */
+function inConf(id) {
+  if (!confFilter || !SCOPE || !SCOPE.system) return true;
+  const c = SCOPE.conferenceOf(id);
+  return !!c && c.key === confFilter;
+}
 function narrowed(o) {
   let list = GAMES.slice();
   if (compFilter) list = list.filter(g => g.competition_id === compFilter);
+  if (confFilter && SCOPE && SCOPE.system) list = list.filter(g => inConf(g.home_team_id) || inConf(g.away_team_id));
   const bySlug = sl => [...TEAMS.values()].find(x => x.slug === sl);
   const t = teamFilter && bySlug(teamFilter);
   if (t) {
@@ -671,6 +710,9 @@ async function loadGames() {
   /* behind the wall only the fixtures are this viewer's; the database already
      refuses the rest, and this keeps a simulated non-member's list the same */
   if (WALL.walled) GAMES = GAMES.filter(g => g.status === 'scheduled');
+  const CF = window.EpinoiaConferences;
+  SCOPE = CF && CF.isSystemLeague(LEAGUE.slug)
+    ? await CF.scope({ D, league: LEAGUE.slug, compIds: ids, conf: null }).catch(() => null) : null;
   return true;
 }
 

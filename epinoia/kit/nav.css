@@ -173,21 +173,23 @@ body.nav-drawer-open{ overflow:hidden }
    another rung of that ladder, and EPINOIA GO's three places, a leaf off the
    platform layer; both ride the same deck so they inherit the slide, the focus
    handling and the phone drawer instead of inventing a second mechanism. The
-   deck is seven screens wide and slides a seventh at a time, so every
-   percentage here is a seventh: they were sixths before GO's layer, fifths
+   deck is nine screens wide and slides a ninth at a time (a college system's conferences, 2026-10-16, are the ninth), so
+   every percentage here is a ninth: they were sixths before GO's layer, fifths
    before your profile, quarters before the platform layer, thirds before the
    clubs. */
 .ep-nav .deck{
-  display:flex; width:800%; align-items:flex-start;
+  display:flex; width:900%; align-items:flex-start;
   transform:translateX(0); transition:transform .34s cubic-bezier(.4,0,.2,1);
 }
-.ep-nav[data-view="country"] .deck{ transform:translateX(-12.5%) }
-.ep-nav[data-view="root"] .deck{ transform:translateX(-25%) }
-.ep-nav[data-view="league"] .deck{ transform:translateX(-37.5%) }
-.ep-nav[data-view="teams"] .deck{ transform:translateX(-50%) }
-.ep-nav[data-view="follows"] .deck{ transform:translateX(-62.5%) }
-.ep-nav[data-view="go"] .deck{ transform:translateX(-75%) }
-.ep-nav[data-view="scout"] .deck{ transform:translateX(-87.5%) }
+.ep-nav[data-view="country"] .deck{ transform:translateX(-11.1111%) }
+.ep-nav[data-view="root"] .deck{ transform:translateX(-22.2222%) }
+.ep-nav[data-view="league"] .deck{ transform:translateX(-33.3333%) }
+.ep-nav[data-view="teams"] .deck{ transform:translateX(-44.4444%) }
+.ep-nav[data-view="follows"] .deck{ transform:translateX(-55.5556%) }
+.ep-nav[data-view="go"] .deck{ transform:translateX(-66.6667%) }
+.ep-nav[data-view="scout"] .deck{ transform:translateX(-77.7778%) }
+/* a college system's conferences, a layer of their own (nav.js confsPanel, 2026-10-16): the ninth */
+.ep-nav[data-view="confs"] .deck{ transform:translateX(-88.8889%) }
 /* the home rail's sections (Louie, 2026-10-09) */
 .ep-nav .rsec{ font-family:var(--f-micro); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); padding:12px 14px 4px; margin-top:4px; border-top:1px dashed var(--rule) }
 /* the clubs: a crest (or a monogram in the club's colour) beside each name */
@@ -201,7 +203,7 @@ body.nav-drawer-open{ overflow:hidden }
    or tab that is not compositing at the time. The class comes off after the
    first paint, so every LATER change animates. */
 .ep-nav.noanim .deck, .ep-nav.noanim .navdeck{ transition:none }
-.ep-nav .panel{ width:12.5%; flex:0 0 12.5%; min-width:0 }
+.ep-nav .panel{ width:11.1111%; flex:0 0 11.1111%; min-width:0 }
 /* the country panel's heading sits in a head beside its back chevron, so the
    chevron is in the same place at every level; the heading keeps its own type
    rather than the head's smaller link style. */
@@ -1112,3 +1114,11 @@ html .ep-nav .panel > .ptitle, html .ep-nav .panel > .ptitle.on{ border-bottom:0
 :root:not([data-theme="light"]) .ep-nav .crest img{ background:#f4f6f5; padding:1px; box-sizing:border-box }
 /* pinned to the plate: as a grid item its 100% height was the logo's own aspect, so a tall logo was cut off */
 .ep-nav .crest img{ position:absolute; inset:0; border-radius:3px }
+/* a system's mark (its logo, or a mortarboard) and its region labels on the conferences layer */
+.ep-nav .cg-syscrest{ flex:none }
+.ep-nav .grouplbl.cg-reglbl{ display:flex; align-items:center; gap:7px }
+.ep-nav .grouplbl.cg-reglbl::before{ content:""; width:9px; height:9px; border-radius:3px; background:var(--rc,var(--rule-2)) }
+/* A SYSTEM'S RAIL IN ITS LOGO'S COLOURS (Louie, 2026-10-16): its search, conferences and pages sit in the list, not in
+   .pages, so they take the league's keys here as a league's own rows do, the two inks alternating */
+html body.league-themed .ep-nav .item.cg-key{ --kb:var(--league-a); --kink:var(--league-on-a,#fff); --kg:var(--league-a-ink,var(--league-a)) }
+html body.league-themed .ep-nav .item.cg-key.cg-alt{ --kg:var(--league-b-ink,var(--league-a-ink)) }

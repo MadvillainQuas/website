@@ -1655,7 +1655,6 @@
       'all seasons': 'Todas las temporadas',
       'you are here': 'estás aquí',
       'no competition yet': 'Aún sin competición',
-      'women': 'femenino',
       'a women\'s team': 'equipo femenino',
       'other profiles': 'Otros perfiles',
       'the same player in other competitions': 'El mismo jugador en otras competiciones',

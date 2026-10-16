@@ -54,6 +54,15 @@
     if (!S.games.length) return null;
 
     const teams = await d.teamMeta(league.id);
+    /* a college league's clubs are those with a conference (conferences.js; Louie, 2026-10-16), or one conference's on
+       its own page (?conf=) */
+    const CF = window.EpinoiaConferences;
+    if (CF && CF.isSystemLeague(league.slug)) {
+      try {
+        const SC = await CF.scope({ D: d, league: league.slug, compIds });
+        Object.keys(teams).forEach(id => { if (!SC.keep(id)) delete teams[id]; });
+      } catch (_) { /* every club, as before */ }
+    }
     const clubIds = Object.keys(teams);
     /* the releases, and — for whoever manages a club here — which clubs those are */
     const [released] = await Promise.all([

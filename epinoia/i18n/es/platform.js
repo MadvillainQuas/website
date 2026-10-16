@@ -553,8 +553,6 @@
       'withdrawn': 'retirada',
       'senior': 'sénior',
       'masters': 'máster',
-      'men': 'masculino',
-      'women': 'femenino',
       'boys': 'chicos',
       'girls': 'chicas',
       'mixed': 'mixto',

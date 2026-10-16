@@ -98,7 +98,6 @@
       'a set number of people': '人数を指定',
       'new link': '新しいリンク',
       'People let in by a link': 'リンクから参加した人',
-      'hub': 'トップ',
 
       /* ---- admin.js: access and the league ---- */
       'Something went wrong.': '問題が発生しました。',

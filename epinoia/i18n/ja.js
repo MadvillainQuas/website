@@ -2086,7 +2086,39 @@
       'His shots could not be read just now.': '現在シュートを読み込めません。',
       'No located shots in his games yet.': '位置データのあるシュートはまだありません。',
       'Adding up every season and competition he has played…': '全シーズン・全大会を集計中…',
-      'unassisted: his makes without an assist; a miss by its shot type (pull-up, step-back, fadeaway, floater, hook, putback: his own), any other miss shared out as his makes from that distance were; games that log assists': 'アシストなし: アシストの付かない成功。失敗はシュートの種類で判定（プルアップ、ステップバック、フェイダウェイ、フローター、フック、プットバックは自力）、その他の失敗はその距離での成功の自力率で配分。アシストを記録する試合のみ'
+      'unassisted: his makes without an assist; a miss by its shot type (pull-up, step-back, fadeaway, floater, hook, putback: his own), any other miss shared out as his makes from that distance were; games that log assists': 'アシストなし: アシストの付かない成功。失敗はシュートの種類で判定（プルアップ、ステップバック、フェイダウェイ、フローター、フック、プットバックは自力）、その他の失敗はその距離での成功の自力率で配分。アシストを記録する試合のみ',
+      'leads': '首位',
+      'division': 'ディビジョン',
+      'Western Canada': '西カナダ',
+      'Ontario': 'オンタリオ州',
+      'Quebec': 'ケベック州',
+      'Atlantic Canada': '大西洋カナダ',
+      'East': '東部',
+      'Atlantic': '大西洋岸',
+      'Southeast': '南東部',
+      'South': '南部',
+      'Midwest': '中西部',
+      'Central': '中部',
+      'South Central': '南中部',
+      'West': '西部',
+      'Conferences': 'カンファレンス',
+      'Conferences & clubs': 'カンファレンスとクラブ',
+      'Conferences by region': '地域別のカンファレンス',
+      'Independents': '独立校',
+      'hub': 'トップ',
+      'the table page →': '順位表のページへ →',
+      'all statistics →': 'すべての成績 →',
+      'Men’s or women’s': '男子か女子か',
+      'every conference’s games, tables and leaders': '全カンファレンスの試合、順位表、リーダー',
+      'its clubs’ games, table and leaders': '所属クラブの試合、順位表、リーダー',
+      'No games yet: the season’s fixtures have not been published.': 'まだ試合はありません。今シーズンの日程はまだ発表されていません。',
+      'No clubs yet: the season’s fixtures have not been published.': 'まだクラブはありません。今シーズンの日程はまだ発表されていません。',
+      'No table yet: the season has not started.': 'まだ順位表はありません。シーズンはまだ始まっていません。',
+      'No statistics yet: the season has not started.': 'まだ成績はありません。シーズンはまだ始まっていません。',
+      'This could not be read just now.': '今は読み込めませんでした。',
+      'men': '男子',
+      'women': '女子',
+      'Back to the system': 'システムに戻る'
     },
 
     ctx: {
@@ -2933,7 +2965,9 @@
       'storylines': '{n}件のストーリーライン',
       'new': '新着{n}件',
       'updated': '更新{n}件',
-      'picked': '{n}件選択'
+      'picked': '{n}件選択',
+      'conference': '{n}カンファレンス',
+      'conferences': '{n}カンファレンス'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */
@@ -2995,6 +3029,13 @@
     },
 
     patterns: [
+      /* a college system's hub and its conferences (college.js, home.js, nav.js, search.js; 2026-10-16) */
+      [/^(.+)’s page →$/, '$1のページ →'],
+      [/^(.+) Main Hub$/, '$1 メインハブ'],
+      [/^← (.+) hub$/, '← $1 ハブ'],
+      [/^Search (.+) teams and players$/, '$1のチームと選手を検索'],
+      [/^(.+) teams and players$/, '$1のチームと選手'],
+      [/^(.+)’s conferences, by region$/, '$1の地域別カンファレンス'],
       /* a league's tier in its country's pyramid (config.js epinoiaLeagueTier): B.LEAGUE's 1部, 2部 */
       [/^Tier (\d+)$/, '$1部'],
       [/^Youth Tier (\d+)$/, 'ユース$1部'],

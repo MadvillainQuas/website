@@ -15,6 +15,11 @@
 
      EpinoiaLeagueGames.mount({ league: { id, slug, name } })     index.html carries the markup; home.js calls this once
                                                                   it knows the league
+     EpinoiaLeagueGames.mount({ leagues: [ids], teams: [ids], allHref })   A COLLEGE SYSTEM'S HUB (college/hub.js; Louie,
+                                                                  2026-10-16): several leagues (NCAA D2's two), and the
+                                                                  games of one conference's clubs when `teams` is given
+     EpinoiaLeagueGames.rescope({ leagues, teams, allHref })      the hub's conference (or men's / women's) filter: the
+                                                                  same section, read again for the new scope
    ============================================================================ */
 (function (root) {
   const N = 8, LIVE_MS = 15000, IDLE_MS = 60000, STALE_MS = 2 * 3600 * 1000;
@@ -114,13 +119,30 @@
     }
   }
 
+  /* whose games: one league's, or (the hub) several leagues' and, when given, one set of clubs' */
+  function scopeTo(o) {
+    const GG = root.EpinoiaGlobalGames;
+    const ids = o.leagues ? o.leagues.filter(Boolean) : [league && league.id].filter(Boolean);
+    G = GG.scoped ? GG.scoped({ only: ids, teams: o.teams || [] }) : GG;
+    const all = $('#lgGamesAll');
+    if (all && o.allHref) all.href = o.allHref;
+    else if (all && league && league.slug) all.href = 'fixtures/?l=' + encodeURIComponent(league.slug);
+    return ids.length > 0;
+  }
+  function rescope(o) {
+    if (!G || !scopeTo(o || {})) return;
+    lastKey = null; data = null;
+    const h = host();
+    if (h) { h.setAttribute('aria-busy', 'true'); h.textContent = ''; }
+    tick();
+  }
+
   function mount(o) {
     const GG = root.EpinoiaGlobalGames;
     league = o && o.league;
-    if (!GG || !league || !league.id || !host()) return false;
-    G = GG.scoped ? GG.scoped({ only: [league.id] }) : GG;
-    const all = $('#lgGamesAll');
-    if (all && league.slug) all.href = 'fixtures/?l=' + encodeURIComponent(league.slug);
+    if (!GG || !host()) return false;
+    if (!(o && o.leagues && o.leagues.length) && !(league && league.id)) return false;
+    scopeTo(o);
     const s = seg();
     if (s) {
       s.addEventListener('click', e => {
@@ -144,5 +166,5 @@
     tick();
     return true;
   }
-  root.EpinoiaLeagueGames = { mount, N };
+  root.EpinoiaLeagueGames = { mount, rescope, N };
 })(typeof window !== 'undefined' ? window : globalThis);

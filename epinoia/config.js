@@ -498,6 +498,10 @@ window.EPINOIA_LEAGUE_TIERS = {
   /* United States */ 'ncaa-d2-men': ['uni', 'm'], 'ncaa-d2-women': ['uni', 'w'],
   /* Kosovo */ 'kosovo-superliga': [1, 'm']
 };
+/* COLLEGE SYSTEMS (Louie, 2026-10-16): the leagues shown as a SYSTEM of conferences - a hub like a country, each
+   conference like a league. league slug -> system key; conferences.js has the rest (names, logos, regions, the scope
+   every page shows), and its tests hold this list to it. Here so every page - the rail - knows without loading it. */
+window.EPINOIA_COLLEGE = { 'u-sports': 'u-sports', 'ncaa-d2-men': 'ncaa-d2', 'ncaa-d2-women': 'ncaa-d2' };
 /* LEAGUES SHOWN AS ONE GROUP (2026-10-14). NCAA Division II is ~300 schools in ~23 conferences a gender, 140 games a
    side on a Saturday: listed like any league it would be the whole of HOME. It is shown like a COUNTRY instead - one
    "NCAA D2" block - with its conferences inside it like leagues (Men's, then Women's), and the games inside those.

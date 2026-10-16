@@ -2088,7 +2088,39 @@
       'His shots could not be read just now.': 'Ahora mismo no se pueden leer sus tiros.',
       'No located shots in his games yet.': 'Todavía no hay tiros con ubicación en sus partidos.',
       'Adding up every season and competition he has played…': 'Sumando todas las temporadas y competiciones que ha jugado…',
-      'unassisted: his makes without an assist; a miss by its shot type (pull-up, step-back, fadeaway, floater, hook, putback: his own), any other miss shared out as his makes from that distance were; games that log assists': 'sin asistencia: sus canastas sin asistencia; un fallo, por el tipo de tiro (en suspensión tras bote, step-back, fadeaway, bomba, gancho, tras rebote: suyos), cualquier otro fallo repartido como lo fueron sus canastas desde esa distancia; partidos que registran asistencias'
+      'unassisted: his makes without an assist; a miss by its shot type (pull-up, step-back, fadeaway, floater, hook, putback: his own), any other miss shared out as his makes from that distance were; games that log assists': 'sin asistencia: sus canastas sin asistencia; un fallo, por el tipo de tiro (en suspensión tras bote, step-back, fadeaway, bomba, gancho, tras rebote: suyos), cualquier otro fallo repartido como lo fueron sus canastas desde esa distancia; partidos que registran asistencias',
+      'leads': 'lidera',
+      'division': 'división',
+      'Western Canada': 'Oeste de Canadá',
+      'Ontario': 'Ontario',
+      'Quebec': 'Quebec',
+      'Atlantic Canada': 'Canadá Atlántica',
+      'East': 'Este',
+      'Atlantic': 'Atlántico',
+      'Southeast': 'Sureste',
+      'South': 'Sur',
+      'Midwest': 'Medio Oeste',
+      'Central': 'Central',
+      'South Central': 'Centro Sur',
+      'West': 'Oeste',
+      'Conferences': 'Conferencias',
+      'Conferences & clubs': 'Conferencias y clubes',
+      'Conferences by region': 'Conferencias por región',
+      'Independents': 'Independientes',
+      'hub': 'Inicio',
+      'the table page →': 'la página de la clasificación →',
+      'all statistics →': 'todas las estadísticas →',
+      'Men’s or women’s': 'Masculino o femenino',
+      'every conference’s games, tables and leaders': 'los partidos, las clasificaciones y los líderes de cada conferencia',
+      'its clubs’ games, table and leaders': 'los partidos, la clasificación y los líderes de sus clubes',
+      'No games yet: the season’s fixtures have not been published.': 'Aún no hay partidos: el calendario de la temporada no se ha publicado.',
+      'No clubs yet: the season’s fixtures have not been published.': 'Aún no hay clubes: el calendario de la temporada no se ha publicado.',
+      'No table yet: the season has not started.': 'Aún no hay clasificación: la temporada no ha empezado.',
+      'No statistics yet: the season has not started.': 'Aún no hay estadísticas: la temporada no ha empezado.',
+      'This could not be read just now.': 'No se ha podido leer ahora mismo.',
+      'men': 'masculino',
+      'women': 'femenino',
+      'Back to the system': 'Volver al sistema'
     },
 
     ctx: {
@@ -2934,7 +2966,9 @@
       'storylines': '{n} historias',
       'new': 'Nuevas: {n}',
       'updated': 'Actualizadas: {n}',
-      'picked': '{n} elegidas'
+      'picked': '{n} elegidas',
+      'conference': '{n} conferencia',
+      'conferences': '{n} conferencias'
     },
 
     /* a percentile drawn as a chart's value (compare.js): the number, never a rank */
@@ -2996,6 +3030,13 @@
     },
 
     patterns: [
+      /* a college system's hub and its conferences (college.js, home.js, nav.js, search.js; 2026-10-16) */
+      [/^(.+)’s page →$/, 'Página de $1 →'],
+      [/^(.+) Main Hub$/, 'Portada principal de $1'],
+      [/^← (.+) hub$/, '← Portada de $1'],
+      [/^Search (.+) teams and players$/, 'Buscar equipos y jugadores de $1'],
+      [/^(.+) teams and players$/, 'Equipos y jugadores de $1'],
+      [/^(.+)’s conferences, by region$/, 'Conferencias de $1 por región'],
       /* a league's tier in its country's pyramid (config.js epinoiaLeagueTier): "Primera FEB, segunda categoría" */
       [/^Tier (\d+)$/, '$1.ª categoría'],
       [/^Youth Tier (\d+)$/, '$1.ª categoría juvenil'],

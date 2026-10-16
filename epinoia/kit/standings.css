@@ -70,3 +70,39 @@
 .ep-tbl.stand .tname-cell{display:flex;align-items:center}
 .ep-tbl.stand .tname-cell a{text-decoration:none}
 .ep-tbl.stand .dock{color:var(--flare);font-size:9px;margin-left:4px;vertical-align:super}
+/* A CONFERENCE LEAGUE'S CONFERENCES, EACH A ROW (standingsview.js confRow; Louie, 2026-10-16): the house accordion
+   (.ep-acc) carrying the conference's logo on a white tile, its short name and its name in full, its region, its clubs
+   and who leads; opened, its table, a division at a time. */
+.cf-list{display:flex;flex-direction:column;gap:10px;margin:0 0 6px}
+.cf-row.ep-acc{border:1px solid var(--rule);background:var(--panel)}
+.cf-row.ep-acc>summary{min-height:68px;gap:14px;padding:10px 18px;text-transform:none;letter-spacing:0}
+.cf-row.ep-acc[open]>summary{background:color-mix(in srgb,var(--lume) 5%,var(--panel))}
+.cf-badge{flex:none;display:inline-grid;place-items:center;background:#fff;border-radius:10px;overflow:hidden;
+  box-shadow:0 0 0 1px var(--rule)}
+.cf-badge img{width:100%;height:100%;object-fit:contain;padding:12%;box-sizing:border-box}
+.cf-badge.cf-drawn{color:#fff;font-family:var(--f-ui);font-weight:800;letter-spacing:.02em;box-shadow:none}
+.cf-names{display:flex;flex-direction:column;min-width:0;gap:2px}
+.cf-short{font-family:var(--f-ui);font-weight:800;font-size:17px;letter-spacing:.01em;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cf-long{font-family:var(--f-ui);font-weight:500;font-size:12.5px;color:var(--ink-2);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cf-meta{margin-left:auto;display:flex;align-items:center;gap:14px;flex:none;font-family:var(--f-ui);font-size:12px;
+  color:var(--ink-2);font-weight:600}
+.cf-region{padding:3px 9px;border:1px solid var(--rule-2,var(--rule));border-radius:999px;font-size:11px;letter-spacing:.02em}
+.cf-lead{display:inline-flex;align-items:baseline;gap:6px}
+.cf-leadlab{font-size:11px;color:var(--ink-3);font-weight:500}
+.cf-lead b{color:var(--ink);font-weight:800}
+.cf-lead .rec{font-family:var(--f-score);font-size:15px;color:var(--ink)}
+.cf-body{padding:4px 12px 12px}
+.cf-div{display:flex;align-items:baseline;gap:8px;margin:14px 6px 2px;padding-bottom:4px;border-bottom:2px solid var(--rule)}
+.cf-divname{font-family:var(--f-ui);font-weight:800;font-size:14px;color:var(--ink)}
+.cf-divlab{font-family:var(--f-ui);font-size:11px;color:var(--ink-3)}
+.ep-tbl.stand td.cf-cell{white-space:nowrap}
+.ep-tbl.stand td.cf-cell .cf-badge{vertical-align:middle;margin-right:8px;border-radius:6px}
+.ep-tbl.stand td.cf-cell .cf-celldiv{margin-left:6px;color:var(--ink-3);font-size:11.5px}
+@media (max-width:720px){
+  .cf-row.ep-acc>summary{padding:10px 12px;gap:10px;flex-wrap:wrap}
+  .cf-meta{margin-left:54px;width:100%;gap:10px;flex-wrap:wrap}
+  .cf-region{display:none}
+}
+.cf-row.ep-acc>summary::after{margin-left:4px}

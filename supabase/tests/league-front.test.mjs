@@ -79,6 +79,9 @@ function run(fields) {
     /* home.js's ?s= for links out of the page (4d0b3a5c8: the "Full" stats link keeps the season);
        the current season is shown here, which carries no parameter */
     seasonQuery: () => '',
+    /* a college conference's page (2026-10-16): this league is not one */
+    confQuery: () => '',
+    collegeScope: () => Promise.resolve(null),
     seasonFields: () => Promise.resolve(fields),
     /* the season's competitions, the fallback when the fields cannot be read (none here) */
     leagueCompetitions: () => Promise.resolve([])

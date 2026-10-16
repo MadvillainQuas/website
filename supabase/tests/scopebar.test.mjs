@@ -62,6 +62,13 @@ console.log('\na college league of four conferences');
   ok('"all" keeps everybody', X.keeper(us, ['us'], 'all')('RSEQ1') && X.keeper(us, ['us'], null)('AUS0'));
   ok('the playoffs alone have no conferences to offer', X.groups(us, ['usp']).list.length === 0 &&
      X.settle(us, ['usp'], 'OUA') === 'all');
+  /* Louie, 2026-10-16: an outside club the feed brought in (Baylor, UC Irvine) has no conference, and is not shown */
+  const withOutsiders = X.model(USPORTS, usEntries.concat([{ competition_id: 'us', team_id: 'baylor', group_name: null },
+    { competition_id: 'us', team_id: 'ucirvine', group_name: '' }]), new Set(['us', 'usp']));
+  const keepAll = X.keeper(withOutsiders, ['us', 'usp'], 'all');
+  ok('"all" in a conference league: every club with a conference, never one without (Baylor, UC Irvine)',
+     keepAll('RSEQ1') && keepAll('OUA0') && !keepAll('baylor') && !keepAll('ucirvine'));
+  ok('...and only the conferences\' clubs are counted', X.groups(withOutsiders, ['us', 'usp']).clubs.size === 48);
 }
 
 console.log('\na league played in two groups');
@@ -74,6 +81,9 @@ console.log('\na league played in two groups');
   ok('...in a row called "group"', G.noun === 'group');
   ok('twenty-nine clubs open on all of them', X.settle(pb, ['pb'], null) === 'all');
   ok('...with the groups a tap away', X.keeper(pb, ['pb'], 'Nord')('Nord3') && !X.keeper(pb, ['pb'], 'Nord')('Sd3'));
+  const pbOdd = X.model(PROB, entriesFor('pb', { Nord: 14, 'Süd': 15 }).concat([{ competition_id: 'pb', team_id: 'loner', group_name: null }]), new Set(['pb']));
+  ok('a league played in groups keeps a club with no group: only a conference league leaves one out',
+     X.keeper(pbOdd, ['pb'], 'all')('loner'));
 }
 
 console.log('\na season of three competitions, one of them played');

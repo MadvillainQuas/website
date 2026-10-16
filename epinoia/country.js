@@ -140,16 +140,28 @@ const inGroup = (a, b) => {
   const order = g && typeof g.epinoiaLeagueOrder === 'function' ? g.epinoiaLeagueOrder : null;
   return (order ? order(a, b) : 0) || byName(a, b);
 };
+/* A COLLEGE SYSTEM IS A "COUNTRY" OF ITS OWN (Louie, 2026-10-16: "U Sports/NCAA D2 as a country"; config.js
+   EPINOIA_COLLEGE): its leagues are grouped under the system's name - a mortarboard for a flag - not their country's */
+const COLLEGE_NAMES = { 'u-sports': 'U SPORTS', 'ncaa-d2': 'NCAA D2' };
+function collegeOf(l) {
+  const g = typeof globalThis !== 'undefined' ? globalThis : null;
+  const m = g && g.EPINOIA_COLLEGE;
+  return (m && l && l.slug && m[l.slug]) || null;
+}
 function group(leagues) {
   const map = new Map();
   (Array.isArray(leagues) ? leagues : []).forEach(l => {
     if (!l) return;
-    const k = norm(l.country);
+    const sys = collegeOf(l);
+    const k = sys ? '~college:' + sys : norm(l.country);
     if (!map.has(k)) map.set(k, []);
     map.get(k).push(l);
   });
   return [...map.keys()]
-    .map(code => ({ code, name: countryName(code), flag: flagOf(code), leagues: map.get(code).slice().sort(inGroup) }))
+    .map(code => /^~college:/.test(code)
+      ? { code, name: COLLEGE_NAMES[code.slice(9)] || code.slice(9).toUpperCase(), flag: '\u{1F393}', college: code.slice(9),
+          leagues: map.get(code).slice().sort(inGroup) }
+      : { code, name: countryName(code), flag: flagOf(code), leagues: map.get(code).slice().sort(inGroup) })
     .sort((a, b) => (a.code === '') - (b.code === '') || a.name.localeCompare(b.name) ||
       (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
 }

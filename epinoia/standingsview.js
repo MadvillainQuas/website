@@ -176,8 +176,91 @@ function streakCell(streak) {
    ranked by the complete schedule. */
 let confView = 'conf';
 
+/* EACH CONFERENCE A ROW OF ITS OWN (Louie, 2026-10-16: "the conferences made nicer and each be its own dropdown row -
+   maybe incorporate conference logos as well as improve their text"). A conference is a row - its logo, its name in
+   full, its region, how many clubs, who leads - that opens to its table (divisions inside, each headed). Rows remember
+   being opened for the tab's life. A club with NO conference is not shown at all (Louie: "all unassigned teams removed
+   ... not visible on teams or in league tables"): in a conference league it is not one of the league's clubs. */
+const OPEN_KEY = 'epinoia_cf_open:';
+function openSet(compId) {
+  try { return new Set(JSON.parse(W().sessionStorage.getItem(OPEN_KEY + compId) || '[]')); } catch (_) { return new Set(); }
+}
+function saveOpen(compId, set) {
+  try { W().sessionStorage.setItem(OPEN_KEY + compId, JSON.stringify([...set])); } catch (_) { /* private mode */ }
+}
+function leagueSlug(o) {
+  if (o && o.league) return o.league;
+  const w = W();
+  if (w.__CS_LEAGUE_SLUG) return w.__CS_LEAGUE_SLUG;
+  try { return new URLSearchParams(w.location.search).get('l') || ''; } catch (_) { return ''; }
+}
+/* the rows a conference league shows: those with a conference - unless none has one yet (a season whose groups are
+   still to be read), when every row is better than an empty table */
+function assignedOnly(rows) {
+  const has = r => r.group_name != null && String(r.group_name).trim() !== '';
+  return rows.some(has) ? rows.filter(has) : rows;
+}
+/* the club leading a conference: the best conference record (then overall) - only once conference games have been
+   played (before that a preseason loss would "lead" it) and only with a win */
+function leaderOf(rows) {
+  const pct = (w, gp) => (gp ? w / gp : -1);
+  const best = rows.filter(r => r.conf_gp).sort((a, b) => (pct(b.conf_w, b.conf_gp) - pct(a.conf_w, a.conf_gp))
+    || ((b.conf_w || 0) - (a.conf_w || 0)) || (pct(b.w, b.gp) - pct(a.w, a.gp)))[0];
+  return best && best.conf_w ? best : null;
+}
+
+function confRow(g, ST, competition, o, CF, S, open) {
+  const all = g.divisions.reduce((a, d) => a.concat(d.rows), []);
+  const c = CF && S ? CF.conference(S, g.name) : null;
+  const det = el('details', 'cf-row ep-acc');
+  if (c) det.dataset.conf = c.key;
+  if (open.has(g.name) || o.only) det.open = true;
+  const sum = el('summary', 'cf-sum');
+  if (c && CF) sum.appendChild(CF.badge(S, c, 40));
+  const names = el('span', 'cf-names');
+  names.appendChild(el('b', 'cf-short', c ? c.short : ST.groupLabel(g.name, competition)));
+  if (c && c.name && c.name !== c.short) names.appendChild(el('span', 'cf-long', c.name));
+  sum.appendChild(names);
+  const meta = el('span', 'cf-meta');
+  const reg = c && CF ? CF.region(S, c.region) : null;
+  if (reg) meta.appendChild(el('span', 'cf-region', reg.name));
+  meta.appendChild(el('span', 'cf-count', all.length + (all.length === 1 ? ' club' : ' clubs')));
+  const lead = leaderOf(all);
+  if (lead && lead.teams) {
+    const L = el('span', 'cf-lead');
+    L.appendChild(el('span', 'cf-leadlab', 'leads'));
+    L.appendChild(el('b', null, lead.teams.short_name || lead.teams.name));
+    L.appendChild(el('span', 'rec', ST.record(lead.conf_w, lead.conf_l)));
+    meta.appendChild(L);
+  }
+  sum.appendChild(meta);
+  det.appendChild(sum);
+  const body = el('div', 'cf-body');
+  g.divisions.forEach(d => {
+    if (d.name) {
+      const dh = el('div', 'cf-div');
+      dh.appendChild(el('span', 'cf-divname', d.name));
+      dh.appendChild(el('span', 'cf-divlab', 'division'));
+      body.appendChild(dh);
+    }
+    body.appendChild(conferenceTable(d.rows, ST, o));
+  });
+  det.appendChild(body);
+  det.addEventListener('toggle', () => {
+    const s = openSet(competition.id);
+    if (det.open) s.add(g.name); else s.delete(g.name);
+    saveOpen(competition.id, s);
+  });
+  return det;
+}
+
 function conferences(pane, rows, ST, competition, opts) {
   const o = opts || {};
+  const CF = W().EpinoiaConferences;
+  const S = CF ? CF.systemOf(leagueSlug(o)) : null;
+  rows = assignedOnly(rows || []);
+  /* a conference's own pages (?conf=): its table alone, open */
+  if (o.only && CF && S) rows = rows.filter(r => { const c = CF.conference(S, r.group_name); return c && c.key === o.only; });
   const host = el('div');
   const pick = el('div', 'phasepick');
   pick.style.margin = '0 0 12px';
@@ -195,15 +278,18 @@ function conferences(pane, rows, ST, competition, opts) {
   host.appendChild(pick);
 
   if (confView === 'all') {
-    host.appendChild(overallTable(ST.overall(rows), ST, o));
+    host.appendChild(overallTable(ST.overall(rows), ST, Object.assign({}, o, { CF, S })));
   } else {
-    ST.split(rows).forEach(g => {
-      host.appendChild(el('div', 'grouphead', ST.groupLabel(g.name, competition)));
-      g.divisions.forEach(d => {
-        if (d.name) host.appendChild(el('div', 'divhead', d.name));
-        host.appendChild(conferenceTable(d.rows, ST, o));
-      });
-    });
+    const open = openSet(competition.id);
+    const groups = ST.split(rows);
+    /* in the system's own order (region by region) when it knows its conferences, else by name */
+    if (CF && S) {
+      const rank = new Map(CF.order(S, groups.map(g => CF.conference(S, g.name))).map((c, i) => [c.key, i]));
+      groups.sort((a, b) => (rank.get(CF.conference(S, a.name).key) ?? 999) - (rank.get(CF.conference(S, b.name).key) ?? 999));
+    }
+    const list = el('div', 'cf-list');
+    groups.forEach(g => list.appendChild(confRow(g, ST, competition, o, CF, S, open)));
+    host.appendChild(list);
     host.appendChild(el('div', 'tblnote',
       'Conference: games against the club\'s own conference only, which decides the order. ' +
       'Overall: the complete schedule, non-conference games and playoffs included.'));
@@ -264,7 +350,12 @@ function overallTable(rows, ST, o) {
     if (r.teams && r.teams.colour) tr.style.setProperty('--tc', r.teams.colour);
     tr.appendChild(el('td', 'rk', r.overall_rank));
     tr.appendChild(teamCell(r.teams, o.base));
-    tr.appendChild(el('td', null, [r.group_name, r.division_name].filter(Boolean).join(' · ')));
+    const c = o.CF && o.S && r.group_name ? o.CF.conference(o.S, r.group_name) : null;
+    const cc = el('td', 'cf-cell');
+    if (c) { cc.appendChild(o.CF.badge(o.S, c, 22)); cc.appendChild(el('span', null, c.short)); }
+    else cc.textContent = r.group_name || '';
+    if (r.division_name) cc.appendChild(el('span', 'cf-celldiv', r.division_name));
+    tr.appendChild(cc);
     recordCells(tr, r.w, r.l, r.gp, ST, true);
     tr.appendChild(el('td', 'rec', ST.record(r.conf_w, r.conf_l)));
     tr.appendChild(el('td', null, r.pts_for));
@@ -316,7 +407,7 @@ async function render(pane, o) {
     `&order=group_name.asc,rank.asc`);
   if (!rows.length) { pane.appendChild(el('div', 'empty', 'No games played yet.')); return rows; }
   const elo = await eloP;
-  const view = { base: o.base, elo };
+  const view = { base: o.base, elo, only: o.only, league: o.league };
   if (ST && ST.isConferences(competition)) { conferences(pane, rows, ST, competition, view); return rows; }
   const groups = new Map();
   rows.forEach(r => {

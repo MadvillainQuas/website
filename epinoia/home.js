@@ -298,6 +298,7 @@ async function games() {
     /* a chosen competition narrows the READ: filtering what came back would find nothing for a
        cup whose games all lie beyond the window */
     if (gamesComp) scope = '&competition_id=eq.' + encodeURIComponent(gamesComp);
+    scope += await confGamesFilter();          // a conference's page: its clubs' games
     const Q = GL.queries(gamesShow, now, scope);
     const none = { rows: [], total: null };
     /* a database without 0196 answers the stalled filter with a 400: ask again without it */
@@ -603,8 +604,61 @@ async function leagueCompetitions() {
    current season is what every page opens on by itself, so spelling it out
    would put a parameter on every link on the platform for nothing. */
 function seasonQuery() {
-  return (SEASON && SEASON_CURRENT && SEASON.id !== SEASON_CURRENT.id)
-    ? '&s=' + encodeURIComponent(SEASON.name) : '';
+  return ((SEASON && SEASON_CURRENT && SEASON.id !== SEASON_CURRENT.id)
+    ? '&s=' + encodeURIComponent(SEASON.name) : '') + confQuery();
+}
+
+/* A CONFERENCE'S PAGE (?conf=; conferences.js; Louie, 2026-10-16: "treat each conference as a league"): this league's
+   front page for one conference's clubs - its name and logo, its games, clubs, stars, records, table and leaders - and
+   every link out of it carries the conference (the fixtures, the table, the statistics). Null everywhere else. */
+let CONF = null;
+function conferencePage() {
+  const CF = window.EpinoiaConferences;
+  const key = new URLSearchParams(location.search).get('conf');
+  if (!CF || !key || !LEAGUE) return null;
+  const S = CF.systemOf(LEAGUE.slug);
+  const c = S && CF.conferenceByKey(S, key);
+  return c ? { S, c } : null;
+}
+function confQuery() { return CONF ? '&conf=' + encodeURIComponent(CONF.c.key) : ''; }
+/* the conference's games, either side, for a games read (or nothing off a conference's page) */
+async function confGamesFilter() {
+  if (!CONF) return '';
+  const SC = await collegeScope();
+  return SC && SC.conference && SC.ids.length
+    ? '&or=(home_team_id.in.(' + SC.ids.join(',') + '),away_team_id.in.(' + SC.ids.join(',') + '))' : '';
+}
+function conferenceHero() {
+  const { S, c } = CONF;
+  const CF = window.EpinoiaConferences;
+  window.__CS_CONF = c.key;
+  const side = S.leagues.length > 1 ? (/women/.test(LEAGUE.slug) ? ' women\'s' : ' men\'s') : '';
+  document.title = c.short + ' · ' + S.name + side + ' · Epinoia';
+  const wm = document.querySelector('.wordmark');
+  if (wm) {
+    wm.textContent = c.short;
+    const b = CF.badge(S, c, 76);
+    b.classList.add('cf-hero');
+    wm.parentNode.insertBefore(b, wm);
+    wm.parentNode.classList.add('has-logo');
+  }
+  const tag = document.querySelector('.tagline');
+  if (tag) {
+    /* in pieces: the names stay as they are on a translated page, the words are translated */
+    tag.textContent = '';
+    const nm = el('span', null, c.name), sys = el('span', null, S.name);
+    nm.setAttribute('translate', 'no');
+    sys.setAttribute('translate', 'no');
+    tag.append(nm, ' — ', sys);
+    if (side) tag.append(' · ', el('span', null, side.trim() === 'women\'s' ? 'Women’s' : 'Men’s'));
+    tag.append(' · ', el('span', null, 'its clubs’ games, table and leaders'));
+  }
+  const acts = $('#leagueActs');
+  if (acts) {
+    const a = el('a', 'cf-back', '← ' + S.name + ' hub');
+    a.href = '?college=' + encodeURIComponent(S.key) + (side ? '&g=' + (side.trim() === 'women\'s' ? 'women' : 'men') : '');
+    acts.prepend(a);
+  }
 }
 
 /* ---------------------------------------------------- the season's fields ---
@@ -640,6 +694,23 @@ function seasonFields() {
   p.catch(() => { fieldsCache = null; });
   fieldsCache = p;
   return p;
+}
+
+/* ------------------------------------------------------- the college scope ---
+   A COLLEGE LEAGUE'S CLUBS (conferences.js; Louie, 2026-10-16): in U SPORTS and NCAA D2 a club with no conference is
+   not one of the league's - it came in from outside the system (Baylor, UC Irvine, a touring side) - so the clubs, the
+   stars and the leaders here leave it out; its games stay. On a conference's own page (?conf=) it is that conference's
+   clubs alone. Null for every other league, and for any failure: then nothing is left out. */
+let collegeP = null;
+function collegeScope() {
+  if (collegeP) return collegeP;
+  collegeP = (async () => {
+    const CF = window.EpinoiaConferences;
+    if (!CF || !LEAGUE || !CF.isSystemLeague(LEAGUE.slug)) return null;
+    const ids = await leagueCompetitions();
+    return CF.scope({ D: { get: p => api(p) }, league: LEAGUE.slug, compIds: ids });
+  })().catch(() => null);
+  return collegeP;
 }
 
 /* ------------------------------------------------------------- the clubs ---
@@ -755,6 +826,9 @@ async function clubs() {
   } catch (e) {
     return [];                    // a league page without clubs is still a page
   }
+  if (!ts.length) return [];
+  const SC = await collegeScope();
+  if (SC) ts = ts.filter(t => SC.keep(t.id));
   if (!ts.length) return [];
 
   /* an approved logo, if the club has one. Nothing unapproved is ever shown —
@@ -898,12 +972,15 @@ async function stars() {
   let box;
   try { box = await ST.boxScores(inRange(widest).map(g => g.id)); } catch (_) { return null; }
 
+  const SC = await collegeScope();
   const cut = [];
   for (const w of ST.WINDOWS) {
     const inWindow = inRange(w.days);
     if (!inWindow.length) continue;
     const agg = ST.computeWindow(box.pgs, box.tgs, inWindow);
-    const eligible = ST.pick(agg.players, w, 10);   /* three on the podium, ten on tap */
+    /* a college league's stars are its own clubs' players (collegeScope) */
+    const pool = SC ? agg.players.filter(p => SC.keep(agg.teamOfPlayer && agg.teamOfPlayer.get(p.id))) : agg.players;
+    const eligible = ST.pick(pool, w, 10);   /* three on the podium, ten on tap */
     if (!eligible.length) continue;
     cut.push({ w, inWindow, eligible, teamOf: agg.teamOfPlayer });
   }
@@ -953,6 +1030,9 @@ async function records(clubsP) {
       api('teams?league_id=eq.' + LEAGUE.id + '&select=id,name,short_name,slug,colour,colour_2,logo_path').catch(() => []))
   ]);
   if (!data) return;
+  /* a college league's records are its own clubs' (collegeScope): one set by an outside club is not the league's */
+  const SC = await collegeScope();
+  if (SC) ['player', 'team'].forEach(k => { if (Array.isArray(data[k])) data[k] = data[k].filter(r => !r.teamId || SC.keep(r.teamId)); });
   const teamsById = new Map((teams || []).map(t => [t.id, t]));
   if (R.render(sec.querySelector('#records'), data, { teamsById, base: '', season: season.name })) {
     sec.classList.remove('hide');
@@ -1376,7 +1456,7 @@ let splashComp = '';
 function splash() {
   const host = $('#leagues'); host.textContent = '';
   const slug = encodeURIComponent(LEAGUE.slug);
-  const table = 'l/?l=' + slug;
+  const table = 'l/?l=' + slug + confQuery();
 
   /* THE BUTTONS GO ABOVE BOTH TABLES, because they govern both. A league is not
      one competition — it is a league, a cup, a trophy and its playoffs — so the
@@ -1425,14 +1505,19 @@ function splash() {
       T.body.textContent = '';
       if (!comp) { T.body.appendChild(el('div', 'empty', 'The table could not be read just now.')); return; }
       const ids = await leagueCompetitions().catch(() => []);
-      await window.EpinoiaStandingsView.render(T.body, { api, competition: comp, base: '', eloIds: ids.length ? ids : [id] });
+      const SC = await collegeScope();
+      await window.EpinoiaStandingsView.render(T.body, { api, competition: comp, base: '', eloIds: ids.length ? ids : [id],
+        league: LEAGUE.slug, only: SC && SC.conference ? SC.conference.key : undefined });
     })().catch(() => { T.body.textContent = ''; T.body.appendChild(el('div', 'empty', 'The table could not be drawn just now.')); });
     /* the leaders: every player of the competition, the statistics page's table, ranked by points a game */
     (async () => {
       const D = window.EpinoiaData, FT = window.EpinoiaTable;
       const S = await D.season([id], { rows: false, trim: true });
       if (drawn !== id) return;
-      const players = (S && S.players) || [];
+      const SC = await collegeScope();
+      /* a college league's leaders are its own clubs' players (collegeScope) */
+      const players = ((S && S.players) || []).filter(p => !SC ||
+        SC.keep((S.teamOfPlayer && S.teamOfPlayer.get(p.id)) || p.teamId));
       const meta = players.length && D.playerMeta ? await D.playerMeta(players.map(p => p.id)).catch(() => ({})) : {};
       if (drawn !== id) return;
       players.forEach(p => Object.assign(p, meta[p.id] || {}));
@@ -1829,6 +1914,15 @@ function renumber() {
       (window.epinoiaMode ? window.epinoiaMode() : 'local');
   }
 
+  /* A COLLEGE SYSTEM'S HUB (?college=; mode.js m-college, college.js; Louie, 2026-10-16): this document's third page -
+     a system shown like a country. None of a league page's sections run. */
+  if (document.documentElement.classList.contains('m-college')) {
+    if (window.EpinoiaCollegeHub) {
+      try { await window.EpinoiaCollegeHub.boot(); } catch (e) { if (typeof console !== 'undefined') console.warn('[college]', e); }
+    }
+    return;
+  }
+
   if (WANT) {
     /* the whole row: colour_source (0122) is read below, and naming a column a database
        without that migration does not have would lose the league page altogether */
@@ -1866,9 +1960,11 @@ function renumber() {
   }
 
   if (LEAGUE) {
+    CONF = conferencePage();
+    if (CONF) window.__CS_CONF = CONF.c.key;    // before the slug: the rail paints the conference from both
     window.__CS_LEAGUE_SLUG = LEAGUE.slug;      // the rail marks it as current
     document.title = LEAGUE.name + ' · Epinoia';
-    leagueLogo();
+    if (!CONF) leagueLogo();                    // a conference's page wears the conference's logo (conferenceHero)
     const wm = document.querySelector('.wordmark');
     if (wm) {
       wm.textContent = LEAGUE.name;
@@ -1888,6 +1984,7 @@ function renumber() {
     /* not awaited: an empty new league is the only case it draws anything in,
        and nothing else on the page waits on the answer */
     offerSchedule().catch(() => { /* the page is fine without the offer */ });
+    if (CONF) conferenceHero();                 // after the league's name, bell and offer: the conference's own
     if (LEAGUE.colour_a) {
       document.documentElement.style.setProperty('--team-a', LEAGUE.colour_a);
     }
@@ -1901,7 +1998,12 @@ function renumber() {
     /* the strip narrows to this league too */
     const strip = document.querySelector('#strip');
     /* the strip opens in the page's colourway, and teamcolour.js keeps it there */
-    if (strip) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + embedLook();
+    if (strip && !CONF) strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + embedLook();
+    /* a conference's strip: its clubs' games (embed/strip ?teams=), once the conference's clubs are known */
+    if (strip && CONF) collegeScope().then(SC => {
+      strip.src = 'embed/strip/?n=24&l=' + encodeURIComponent(LEAGUE.slug) + embedLook() +
+        (SC && SC.conference && SC.ids.length ? '&teams=' + SC.ids.join(',') : '');
+    });
     /* not drawn while the reader is a screen or more from it (teamcolour.js drawDistance) */
     if (strip && window.EpinoiaTeamColour && window.EpinoiaTeamColour.drawDistance) window.EpinoiaTeamColour.drawDistance(strip);
 
@@ -1936,7 +2038,11 @@ function renumber() {
        cards are its games (leaguegames.js; Louie, 2026-10-15). Both read for themselves, as the strip at the top does. */
     const modes = $('#hmModes');
     if (modes) modes.dataset.league = JSON.stringify({ id: LEAGUE.id, slug: LEAGUE.slug, name: LEAGUE.name });
-    if (window.EpinoiaLeagueGames) window.EpinoiaLeagueGames.mount({ league: LEAGUE });
+    if (window.EpinoiaLeagueGames && !CONF) window.EpinoiaLeagueGames.mount({ league: LEAGUE });
+    /* a conference's GAMES are its clubs' (leaguegames.js teams), SHOW ALL GAMES its fixtures */
+    if (window.EpinoiaLeagueGames && CONF) collegeScope().then(SC => window.EpinoiaLeagueGames.mount({
+      league: LEAGUE, teams: SC && SC.conference ? SC.ids : [],
+      allHref: 'fixtures/?l=' + encodeURIComponent(LEAGUE.slug) + confQuery() }));
     splash();
     seasonBar().catch(() => null);
     const gamesFirst = games().catch(() => null);

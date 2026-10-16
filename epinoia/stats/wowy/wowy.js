@@ -709,7 +709,17 @@ function watchWidth() {
     }
     if (preview) state.vs = 'all';
 
-    const rows = await D.all('teams?league_id=eq.' + league.id + '&select=id,name,short_name,slug,colour,logo_path&order=name');
+    let rows = await D.all('teams?league_id=eq.' + league.id + '&select=id,name,short_name,slug,colour,logo_path&order=name');
+    /* a college league's clubs are those with a conference (conferences.js; Louie, 2026-10-16), or one conference's on
+       its own page (?conf=) */
+    const CF = window.EpinoiaConferences;
+    if (CF && CF.isSystemLeague(league.slug) && seasonComps && seasonComps.length) {
+      try {
+        const SC = await CF.scope({ D, league: league.slug, compIds: seasonComps });
+        const kept = rows.filter(t => SC.keep(t.id));
+        if (kept.length) rows = kept;
+      } catch (_) { /* every club, as before */ }
+    }
     teams = rows.map(decorate); teams.forEach(t => { teamsById[t.id] = t; });
     if (!teams.length) { $('#who').querySelector('.sec-b').appendChild(el('div', 'pg-empty', 'This league has no teams yet.')); return; }
     /* the address may name a team the league has not got: the first one stands in */

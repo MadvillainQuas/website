@@ -290,9 +290,25 @@
      rail without leaving the page, and then the "you are here" marks have to
      stop claiming otherwise. */
   let pageLeague = lg;
-  const withLeague = (path, slug) => (slug || lg)
-    ? path + (path.includes('?') ? '&' : '?') + 'l=' + encodeURIComponent(slug || lg)
-    : path;
+  /* COLLEGE SYSTEMS (config.js EPINOIA_COLLEGE, conferences.js; Louie, 2026-10-16): U SPORTS and NCAA D2 are shown like
+     COUNTRIES - a system in the countries list, its panel the system's own rail (a search of its clubs and players, its
+     conferences, its pages) - and each CONFERENCE like a league: the league's rail with the conference (&conf=) on every
+     row, its name and logo at the top. hubSys: the system whose hub this page is (?college=); rconf: the conference the
+     rail is showing; pageConf: the page's own (a conference's pages carry ?conf=). */
+  const COLLEGE = window.EPINOIA_COLLEGE || {};
+  const COLLEGE_PREFIX = '~college:';
+  const hubSys = /\/epinoia\/(index\.html)?$/.test(location.pathname) ? (qp.get('college') || '') : '';
+  let rconf = (lg && COLLEGE[lg]) ? (qp.get('conf') || window.__CS_CONF || '') : '';
+  let pageConf = rconf;
+  const isCollegeKey = code => typeof code === 'string' && code.indexOf(COLLEGE_PREFIX) === 0;
+  const collegeKey = code => String(code).slice(COLLEGE_PREFIX.length);
+  const collegeName = code => ({ 'u-sports': 'U SPORTS', 'ncaa-d2': 'NCAA D2' }[collegeKey(code)] || collegeKey(code).toUpperCase());
+  const withLeague = (path, slug) => {
+    const s = slug || lg;
+    if (!s) return path;
+    return path + (path.includes('?') ? '&' : '?') + 'l=' + encodeURIComponent(s) +
+      (rconf && COLLEGE[s] ? '&conf=' + encodeURIComponent(rconf) : '');
+  };
 
   const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c;
     if (x != null) n.textContent = x; return n; };
@@ -528,7 +544,12 @@
   const goPanel = el('div', 'panel gopanel');
   /* SCOUTING'S OWN LAYER (Louie, 2026-10-09): scouting, the injury report and what wins, one step in from "scouting ›" */
   const scoutPanel = el('div', 'panel scoutpanel');
-  deck.append(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel, scoutPanel);
+  /* A COLLEGE SYSTEM'S CONFERENCES, A LAYER OF THEIR OWN (Louie, 2026-10-16: "there'll have to be a separate rail only for
+     conferences for NCAA D2"): twenty-four conferences do not fit in the system's panel beside its pages, so a large
+     system's panel has a "conferences ›" row that slides to this one - every conference by region. U SPORTS's four
+     stay in the system's panel. */
+  const confsPanel = el('div', 'panel confspanel');
+  deck.append(homePanel, countryPanel, rootPanel, leaguePanel, teamsPanel, followsPanel, goPanel, scoutPanel, confsPanel);
   navdeck.appendChild(deck);
   navScroll.appendChild(navdeck);
 
@@ -1059,12 +1080,24 @@
   async function fillTeams(l) {
     tname.textContent = '';
     tname.append(crest(l), marquee('Teams \u00b7 ' + l.name));
+    if (rconf && COLLEGE[l.slug]) {
+      const want = rconf;
+      needCF().then(CF => {
+        const S = CF && CF.systemOf(l.slug), c = S && CF.conferenceByKey(S, want);
+        if (!c || rconf !== want) return;
+        tname.textContent = '';
+        const b = CF.badge(S, c, 22);
+        b.classList.add('crest');
+        tname.append(b, marquee('Teams \u00b7 ' + c.short));
+      }).catch(() => { /* the league's name stands */ });
+    }
     tname.href = root + 'l/?l=' + encodeURIComponent(l.slug);
     tname.title = l.name + ' \u2014 the table';
     tlist.textContent = '';
     tlist.appendChild(el('div', 'gempty', '\u2026'));
     sizeDeck(false);
-    let rows = teamsCache[l.slug];
+    const ck = l.slug + (rconf && COLLEGE[l.slug] ? '|' + rconf : '');      // a conference's clubs are its own list
+    let rows = teamsCache[ck];
     if (!rows) {
       const c = window.EPINOIA_CONFIG || {};
       try {
@@ -1090,14 +1123,24 @@
               if (g.length) { ids = cs; break; }
             }
             if (ids) {
-              const inField = new Set((await q('competition_teams?competition_id=in.(' + ids.join(',') + ')&select=team_id&limit=2000')).map(x => x.team_id));
+              let entries = await q('competition_teams?competition_id=in.(' + ids.join(',') + ')&select=team_id,group_name&limit=2000');
+              /* A COLLEGE LEAGUE'S CLUBS ARE THOSE WITH A CONFERENCE (config.js EPINOIA_COLLEGE; Louie, 2026-10-16): a club
+                 the feed brought in from outside the system has none, and is not one of its clubs */
+              const named = e => e.group_name != null && String(e.group_name).trim() !== '';
+              if ((window.EPINOIA_COLLEGE || {})[l.slug] && entries.some(named)) entries = entries.filter(named);
+              /* a conference's rail: that conference's clubs (conferences.js names its group) */
+              if (rconf && COLLEGE[l.slug]) {
+                const CF = await needCF().catch(() => null), S = CF && CF.systemOf(l.slug);
+                if (S) entries = entries.filter(e => { const c = named(e) && CF.conference(S, e.group_name); return c && c.key === rconf; });
+              }
+              const inField = new Set(entries.map(x => x.team_id));
               const now = rows.filter(t => inField.has(t.id));
               if (now.length) rows = now;
             }
           } catch (_) { /* the whole league's list stands */ }
         }
       } catch (_) { rows = []; }
-      teamsCache[l.slug] = rows;
+      teamsCache[ck] = rows;
     }
     tlist.textContent = '';
     if (!rows.length) { tlist.appendChild(el('div', 'gempty', 'no clubs yet')); sizeDeck(false); return; }
@@ -1242,14 +1285,16 @@
         focusRow: () => searchBtn.focus(),
         closed: () => searchBtn.setAttribute('aria-expanded', 'false'),
         /* recorded anonymously for the console's Analytics tab (track.js, 0180), and only where counting is on */
-        log: e => { if (window.EpinoiaTrack && typeof window.EpinoiaTrack.search === 'function') window.EpinoiaTrack.search(e); }
+        log: e => { if (window.EpinoiaTrack && typeof window.EpinoiaTrack.search === 'function') window.EpinoiaTrack.search(e); },
+        /* a college system's panel narrows it to the system's clubs and players (drawCollege); null everywhere else */
+        scope: () => searchScope
       });
     }
     searchBtn.setAttribute('aria-expanded', 'true');
     searchApi.open(typeof preset === 'string' ? preset : undefined);
   }
   ['pointerenter', 'touchstart', 'focus'].forEach(t => searchBtn.addEventListener(t, loadSearch, { once: true, passive: true }));
-  searchBtn.addEventListener('click', () => openSearch());
+  searchBtn.addEventListener('click', () => { searchScope = null; openSearch(); });
   /* /epinoia/home/?q=words opens the search with those words typed: the address the site's WebSite markup gives a
      search engine as its search box (SearchAction, in epinoia/index.html), so it must really work. Only on HOME:
      other pages (scouting) use ?q= for their own filter, and the splash at /epinoia/ has no rail. */
@@ -1262,6 +1307,7 @@
     const t = e.target, tag = t && t.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
     e.preventDefault();
+    searchScope = null;
     openSearch();
   });
   navFoot.append(searchRow, adminRow, platRow);
@@ -1738,7 +1784,7 @@
     a.setAttribute('aria-label', 'Search teams, players and leagues');
     a.append(el('span', 'ic', '⌕'), el('span', 'tx', 'search'));
     ['pointerenter', 'touchstart', 'focus'].forEach(t => a.addEventListener(t, loadSearch, { once: true, passive: true }));
-    a.addEventListener('click', e => { e.preventDefault(); openSearch(); });
+    a.addEventListener('click', e => { e.preventDefault(); searchScope = hubScope(); openSearch(); });
     return a;
   }
   function paintPlatformTabs() {
@@ -1753,6 +1799,40 @@
     });
     nav.classList.add('has-tabbar');
   }
+  /* A COLLEGE SYSTEM'S HUB GETS THE SYSTEM'S PLACES (Louie, 2026-10-16: "its own rail on the sidebar/bottom bar"): the hub,
+     its search (the system's clubs and players), its conferences (the menu, open on the system's panel), and its
+     fixtures and table - of the league the hub is showing (NCAA D2's men's or women's) */
+  function paintHubTabs() {
+    const ls = Object.keys(COLLEGE).filter(x => COLLEGE[x] === hubSys);
+    let g = qp.get('g');
+    if (!g) { try { g = localStorage.getItem('epinoia_college_g'); } catch (_) { g = null; } }
+    const slug = ls.find(x => (g === 'women') === /women/.test(x)) || ls[0] || '';
+    const sq = encodeURIComponent(slug);
+    [{ key: 'hub', ic: '⌂', tx: collegeName(COLLEGE_PREFIX + hubSys), href: '?college=' + encodeURIComponent(hubSys) + (ls.length > 1 ? '&g=' + (/women/.test(slug) ? 'women' : 'men') : ''), on: true },
+     { key: 'conferences', ic: '◎', tx: 'conferences', menu: true },
+     { key: 'fixtures', ic: '▥', tx: 'fixtures', href: 'fixtures/?l=' + sq },
+     { key: 'table', ic: '▤', tx: 'table', href: 'l/?l=' + sq }].forEach((t, i) => {
+      const a = el('a', 'tab');
+      a.href = t.menu ? '#conferences' : root + t.href;
+      a.dataset.tab = t.key;
+      a.append(el('span', 'ic', t.ic), el('span', 'tx', t.tx));
+      if (t.on) { a.classList.add('on'); a.setAttribute('aria-current', 'page'); }
+      if (t.menu) {
+        a.addEventListener('click', e => {
+          e.preventDefault();
+          if (!nav.classList.contains('drawer-open')) navToggle.click();
+          /* the system's conferences: its own layer where it has one (NCAA D2), else its panel */
+          needCF().then(CF => {
+            const S = CF && CF.system(hubSys);
+            if (bigSystem(S)) openConfs(COLLEGE_PREFIX + hubSys, false); else setView('root', false);
+          }).catch(() => setView('root', false));
+        });
+      }
+      tabbar.appendChild(a);
+      if (i === 0) tabbar.appendChild(searchTab());
+    });
+    nav.classList.add('has-tabbar');
+  }
   function paintTabbar() {
     tabbar.textContent = '';
     tabbar.classList.remove('fit');
@@ -1761,6 +1841,7 @@
        SO IS THE PLATFORM'S since its last key is "personalisation" (Louie, 2026-09-30): the whole word, which fits
        beside the others on a 360px phone only with the search and menu keys as their icons */
     nav.classList.toggle('tabs-crowded', true);
+    if (!lg && hubSys) { tabbar.classList.add('fit'); paintHubTabs(); return; }
     if (!lg) { tabbar.classList.add('fit'); paintPlatformTabs(); return; }
     tabbar.classList.add('fit');
     TABS.forEach(t => {
@@ -1913,6 +1994,7 @@
          : view === 'follows' ? followsPanel
          : view === 'go'      ? goPanel
          : view === 'scout'   ? scoutPanel
+         : view === 'confs'   ? confsPanel
          : homePanel;
   }
 
@@ -1958,6 +2040,7 @@
       followsPanel.setAttribute('aria-hidden', 'false');
       goPanel.setAttribute('aria-hidden', 'false');
       scoutPanel.setAttribute('aria-hidden', 'false');
+      confsPanel.setAttribute('aria-hidden', 'false');
       setTimeout(() => {
         navdeck.classList.remove('animating');
         applyHidden();
@@ -1977,6 +2060,7 @@
     followsPanel.setAttribute('aria-hidden', String(v !== 'follows'));
     goPanel.setAttribute('aria-hidden', String(v !== 'go'));
     scoutPanel.setAttribute('aria-hidden', String(v !== 'scout'));
+    confsPanel.setAttribute('aria-hidden', String(v !== 'confs'));
   }
 
   function fillHeader(l) {
@@ -1988,6 +2072,23 @@
     lnameLink.append(crest(l), marquee(l.name), el('span', 'lgo', '›'));
     lnameLink.href = root + '?l=' + encodeURIComponent(l.slug);
     lnameLink.title = l.name + ' — open the league’s front page';
+    /* A CONFERENCE'S RAIL: its logo and its name at the top, its page the link (the system is the league's rows) */
+    if (rconf && COLLEGE[l.slug]) {
+      const want = rconf;
+      lnameLink.href = root + '?l=' + encodeURIComponent(l.slug) + '&conf=' + encodeURIComponent(want);
+      needCF().then(CF => {
+        const S = CF && CF.systemOf(l.slug), c = S && CF.conferenceByKey(S, want);
+        if (!c || rconf !== want) return;
+        lnameLink.textContent = '';
+        const b = CF.badge(S, c, 26);
+        b.classList.add('crest');
+        const side = collegeLeagues(COLLEGE[l.slug]).length > 1 ? (/women/.test(l.slug) ? ' · women' : ' · men') : '';
+        const t = marquee(c.short);
+        t.appendChild(el('span', 'ltier', S.name + side));
+        lnameLink.append(b, t, el('span', 'lgo', '›'));
+        lnameLink.title = c.name + ' — open the conference’s page';
+      }).catch(() => { /* the league's name stands */ });
+    }
   }
 
   back.addEventListener('click', () => {
@@ -1996,12 +2097,20 @@
        are actually on — otherwise the highlight in the list would be marking a
        league you only looked at. */
     const from = lg;
-    if (lg !== pageLeague) {
+    if (lg !== pageLeague || rconf !== pageConf) {
       lg = pageLeague;
+      rconf = pageConf;                 // a conference looked at in the rail: back to the page's own
       markCurrent();
       retarget();
       const l = bySlug();
       if (l) fillHeader(l);
+    }
+    /* out of a conference: the system's panel, freshly marked - or, for a system whose conferences are a layer of
+       their own (NCAA D2), back to that layer */
+    if (isCollegeKey(country)) {
+      drawCollege(country);
+      const CFn = window.EpinoiaConferences, Sx = CFn && CFn.system(collegeKey(country));
+      if (Sx && bigSystem(Sx) && from && COLLEGE[from]) { openConfs(country, true); return; }
     }
     setView('root', true);
     /* focus follows the eye: the row you came from is where you are now */
@@ -2028,6 +2137,8 @@
      landed, under a heading that reads like a mistake. */
   const PRIVATE_KEY = '~private';
   function groupKey(l) {
+    /* a college system's leagues are not their country's: the system is a "country" of its own (COLLEGE above) */
+    if (l && COLLEGE[l.slug]) return COLLEGE_PREFIX + COLLEGE[l.slug];
     return l && l.visibility === 'private' ? PRIVATE_KEY : ((l && l.country) || '');
   }
 
@@ -2068,7 +2179,17 @@
     return node;
   }
   /* [flag slot, the name] for a country row or the leagues panel's head */
+  /* A SYSTEM'S MARK: its own logo - the crest of its first league that has one (U SPORTS's; Louie, 2026-10-16: "U Sports
+     uses the U Sports logo instead of the mortar hat") - and a mortarboard only for a system with no logo yet */
+  function sysMark(code) {
+    const l = leagues.find(x => COLLEGE[x.slug] === collegeKey(code) && x.logo_path);
+    if (!l) return el('span', 'ic cg-sysic', '\u{1F393}');
+    const c = crest(l);
+    c.classList.add('ic', 'cg-syscrest');
+    return c;
+  }
   function countryLabel(code) {
+    if (isCollegeKey(code)) return [sysMark(code), marquee(collegeName(code))];
     const cs = countryCodes(code);
     if (cs.length < 2) return [flagNode(code), marquee(countryName(code))];
     const box = marquee('');
@@ -2122,6 +2243,7 @@
 
   let regionNames = null;
   function countryName(code) {
+    if (isCollegeKey(code)) return collegeName(code);
     if (code === PRIVATE_KEY) return 'Private';
     if (!code) return 'Not yet filed';
     const cs = countryCodes(code);
@@ -2185,6 +2307,11 @@
     cname.append(...countryLabel(code));
     cname.title = name + ' — every league, by country, on HOME';
     cname.href = root + 'home/#leagues';
+    /* a college system's heading is its hub */
+    if (isCollegeKey(code)) {
+      cname.title = name + ' — the hub: every conference, its games, tables and leaders';
+      cname.href = root + '?college=' + encodeURIComponent(collegeKey(code)) + collegeSideQuery(collegeKey(code));
+    }
   }
 
   cback.addEventListener('click', () => {
@@ -2264,6 +2391,7 @@
        list of every country. */
     const mine = leagues.find(l => l.slug === (lg || pageLeague));
     if (mine) country = groupKey(mine);
+    else if (hubSys) country = COLLEGE_PREFIX + hubSys;          // a system's hub opens on the system's panel
     drawCountries();
     /* named before the leagues are drawn, so the header is never briefly blank */
     fillCountryHead(country === null ? '' : country);
@@ -2395,7 +2523,202 @@
     return box;
   }
 
+  /* ------------------------------------------------- a college system's own rail ---
+     THE SYSTEM'S PANEL (Louie, 2026-10-16: "its own rail ... which feeds into 'Conferences' at the top which then shows
+     conferences which then goes into its own individual league pages and league rail sub pages"). A system is a
+     "country"; its panel is, top to bottom: NCAA D2's Men's | Women's, a search of the system's clubs and players
+     ("teams on U Sports/NCAA D2 main rail instead be its own search bar"), its CONFERENCES (each a league: the league
+     panel with the conference on every row), and the system's own pages (the hub, fixtures, the table, statistics...). */
+  const COLLEGE_SIDE = 'epinoia_college_g';
+  function collegeLeagues(key) { return leagues.filter(l => COLLEGE[l.slug] === key); }
+  function collegeLeague(key) {
+    const ls = collegeLeagues(key);
+    const mine = ls.find(l => l.slug === lg) || ls.find(l => l.slug === pageLeague);
+    if (mine) return mine;
+    let g = qp.get('g');
+    if (!g) { try { g = localStorage.getItem(COLLEGE_SIDE); } catch (_) { g = null; } }
+    return ls.find(l => (g === 'women') === /women/.test(l.slug)) || ls[0] || null;
+  }
+  function collegeSideQuery(key) {
+    const l = collegeLeague(key);
+    return l && collegeLeagues(key).length > 1 ? '&g=' + (/women/.test(l.slug) ? 'women' : 'men') : '';
+  }
+  let cfP = null;
+  function needCF() {
+    if (window.EpinoiaConferences) return Promise.resolve(window.EpinoiaConferences);
+    if (!cfP) {
+      cfP = new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = root + 'conferences.js' + stamp;
+        s.onload = () => res(window.EpinoiaConferences || null);
+        s.onerror = rej;
+        (document.head || document.documentElement).appendChild(s);
+      });
+      cfP.catch(() => { cfP = null; });
+    }
+    return cfP;
+  }
+  /* a system with more conferences than sit beside its pages gets them on a layer of their own */
+  const bigSystem = S => !!S && S.conferences.length > 8;
+  /* one conference's row: a league's row, the conference on its pages (rconf); on a phone, a link to its page */
+  function confRow(S, CF, cur, c, region) {
+    const a = el('a', 'item lrow cg-confrow' + (lg === cur.slug && rconf === c.key ? ' on' : ''));
+    a.href = root + '?l=' + encodeURIComponent(cur.slug) + '&conf=' + encodeURIComponent(c.key);
+    a.dataset.leagueSlug = cur.slug;
+    a.dataset.conf = c.key;
+    a.title = c.name;
+    const ic = CF.badge(S, c, 22);
+    ic.classList.add('ic');
+    const txt = el('span', 'ltx');
+    txt.appendChild(marquee(c.short));
+    const reg = CF.region(S, c.region);
+    if (reg && region !== false) txt.appendChild(el('span', 'ltier', reg.name));     // not under its own region's heading
+    a.append(ic, txt);
+    a.addEventListener('click', e => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (nav.classList.contains('drawer-open')) return;       // on a phone: the conference's page
+      e.preventDefault();
+      lg = cur.slug;
+      rconf = c.key;
+      markCurrent();
+      fillHeader(cur);
+      retarget();
+      setView('league', true);
+    });
+    return a;
+  }
+  /* ---- the conferences layer: its head (back to the system's panel, the system's hub), every conference by region ---- */
+  const confsHead = el('div', 'phead');
+  const confsBack = el('button', 'back', '‹');
+  confsBack.type = 'button';
+  confsBack.title = 'Back';
+  confsBack.setAttribute('aria-label', 'Back to the system');
+  const confsName = el('a', 'lname');
+  confsHead.append(confsBack, confsName);
+  const confsList = el('div', 'leagues');
+  confsPanel.append(confsHead, confsList);
+  confsBack.addEventListener('click', () => setView('root', true));
+  async function openConfs(code, animate) {
+    const key = collegeKey(code);
+    let CF = null;
+    try { CF = await needCF(); } catch (_) { CF = null; }
+    const S = CF && CF.system(key);
+    const cur = collegeLeague(key);
+    confsList.textContent = '';
+    confsName.textContent = '';
+    confsName.append(sysMark(code), marquee('Conferences · ' + collegeName(code)));
+    confsName.href = root + '?college=' + encodeURIComponent(key) + collegeSideQuery(key);
+    if (S && cur) {
+      CF.byRegion(S, S.conferences).forEach(g => {
+        const lab = el('div', 'grouplbl cg-reglbl', g.region ? g.region.name : 'Independents');
+        if (g.region) lab.style.setProperty('--rc', g.region.colour);
+        confsList.appendChild(lab);
+        g.conferences.forEach(c => confsList.appendChild(confRow(S, CF, cur, c, false)));
+      });
+    } else confsList.appendChild(el('div', 'gempty', 'none yet'));
+    setView('confs', animate !== false);
+    navScroll.scrollTop = 0; nav.scrollTop = 0;
+    afterPaint(() => sizeDeck(false));
+  }
+  /* the search a system's panel opens: its leagues alone (search.js scope) */
+  let searchScope = null;
+  let collegeDraws = 0;
+  /* on a system's hub the phone bar's search is the system's (the rail's footer search stays the platform's) */
+  function hubScope() {
+    if (!hubSys) return null;
+    const ls = Object.keys(COLLEGE).filter(x => COLLEGE[x] === hubSys);
+    return ls.length ? { leagues: ls, label: collegeName(COLLEGE_PREFIX + hubSys) } : null;
+  }
+  async function drawCollege(code) {
+    const key = collegeKey(code);
+    const drawn = ++collegeDraws;
+    list.textContent = '';
+    let CF = null;
+    try { CF = await needCF(); } catch (_) { CF = null; }
+    if (drawn !== collegeDraws) return;
+    const S = CF && CF.system(key);
+    const ls = collegeLeagues(key);
+    const cur = collegeLeague(key);
+    if (!S || !cur) { list.appendChild(el('div', 'gempty', 'none yet')); sizeDeck(false); return; }
+    list.textContent = '';
+    if (ls.length > 1) {
+      const box = el('div', 'ltabs');
+      box.setAttribute('role', 'group');
+      box.setAttribute('aria-label', 'Men’s or women’s');
+      box.setAttribute('data-i18n-ctx', 'side');
+      [['men', 'Men'], ['women', 'Women']].forEach(([k, t]) => {
+        const b = el('button', 'ltab', t);
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String((k === 'women') === /women/.test(cur.slug)));
+        b.addEventListener('click', () => {
+          try { localStorage.setItem(COLLEGE_SIDE, k); } catch (_) { /* this page only */ }
+          const want = ls.find(l => (k === 'women') === /women/.test(l.slug));
+          if (want && lg !== want.slug && COLLEGE[lg]) { lg = want.slug; retarget(); }
+          drawCollege(code);
+          fillCountryHead(code);
+        });
+        box.appendChild(b);
+      });
+      list.appendChild(box);
+    }
+    /* the system's search */
+    const sr = el('button', 'item cg-sysearch cg-key');
+    sr.type = 'button';
+    const stx = el('span', 'tx', 'search ');
+    const snm = el('span', null, S.name);
+    snm.setAttribute('translate', 'no');
+    stx.appendChild(snm);
+    sr.append(el('span', 'ic', '⌕'), stx);
+    sr.title = 'Search ' + S.name + ' teams and players';
+    ['pointerenter', 'touchstart', 'focus'].forEach(t => sr.addEventListener(t, loadSearch, { once: true, passive: true }));
+    sr.addEventListener('click', () => { searchScope = { leagues: ls.map(l => l.slug), label: S.name }; openSearch(); });
+    list.appendChild(sr);
+    /* THE CONFERENCES: a few (U SPORTS's four) here, region by region; many (NCAA D2's twenty-four) a layer of their
+       own (confsPanel), reached from one row */
+    if (bigSystem(S)) {
+      const a = el('a', 'item cg-confsrow cg-key cg-alt');
+      a.href = root + '?college=' + encodeURIComponent(key) + collegeSideQuery(key) + '#conferences';
+      a.dataset.railMove = '1';
+      a.append(el('span', 'ic', '◎'), el('span', 'tx', 'conferences'), el('span', 'lgo', '›'));
+      a.title = S.name + '’s conferences, by region';
+      a.addEventListener('click', e => {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        openConfs(code, true);
+      });
+      list.appendChild(a);
+    } else {
+      list.appendChild(el('div', 'grouplbl', 'conferences'));
+      CF.order(S, S.conferences).forEach(c => list.appendChild(confRow(S, CF, cur, c)));
+    }
+    /* the system's own pages */
+    list.appendChild(el('div', 'grouplbl', S.name));
+    const sq = encodeURIComponent(cur.slug);
+    [['⌂', 'hub', '?college=' + encodeURIComponent(key) + collegeSideQuery(key), hubSys === key],
+     ['▥', 'fixtures', 'fixtures/?l=' + sq, false],
+     ['▤', 'table / team stats', 'l/?l=' + sq, false],
+     ['▦', 'statistics', 'stats/?l=' + sq, false],
+     ['✚', 'injury report', 'injuries/?l=' + sq, false],
+     ['❏', 'news', 'news/?l=' + sq, false]].forEach(([ic, tx, href, on], i) => {
+      /* cg-key: in the league's colours on a themed page, as a league's own pages are (nav.css) */
+      const a = el('a', 'item cg-key' + (i % 2 ? ' cg-alt' : '') + (on ? ' on' : ''));
+      a.href = root + href;
+      a.append(el('span', 'ic', ic), el('span', 'tx', tx));
+      if (on) a.setAttribute('aria-current', 'page');
+      list.appendChild(a);
+    });
+    afterPaint(() => sizeDeck(false));
+  }
+
   function drawLeagues() {
+    if (isCollegeKey(country)) {
+      drawCollege(country);
+      const l0 = bySlug();
+      if (l0) { fillHeader(l0); applyNav(l0); setView('league', false); }
+      else setView('root', false);
+      afterPaint(() => { sizeDeck(false); afterPaint(() => nav.classList.remove('noanim')); });
+      return;
+    }
     list.textContent = '';
     const inCountry = (country === null
       ? leagues

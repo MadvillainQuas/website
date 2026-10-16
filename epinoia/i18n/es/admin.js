@@ -98,7 +98,6 @@
       'a set number of people': 'Un número fijo de personas',
       'new link': 'Nuevo enlace',
       'People let in by a link': 'Personas que entraron con un enlace',
-      'hub': 'Inicio',
 
       /* ---- admin.js: access and the league ---- */
       'Something went wrong.': 'Algo ha salido mal.',
