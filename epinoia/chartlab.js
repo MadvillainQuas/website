@@ -786,13 +786,15 @@ function exportFileName(league, season, title, ext) {
 /* ============================================================================================ DRAW === */
 const NS = 'http://www.w3.org/2000/svg';
 const FONT = { ui: "Archivo, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif", micro: "Silkscreen, ui-monospace, Menlo, monospace", data: "MartianMono, ui-monospace, Menlo, monospace" };
-/* the two grounds, as tokens.css has them, and the three chart colours validated on each (dataviz palette slots 1-3) */
+/* THE TWO GROUNDS, NEUTRAL (Louie, 2026-10-16: the league-tinted grid and backing "looks amateurish"): an editorial chart's
+   greys on white, or on a deep slate; the clubs' own colours and crests are the only colour on it. amber is the average
+   lines' grey (the key keeps its old name); the three series colours are the dataviz palette's slots 1-3 on each ground. */
 const THEMES = {
-  dark: { name: 'dark', dark: true, ground: '#04100b', panel: '#0a1a13', ink: '#e6fff1', ink2: 'rgba(230,255,241,.94)', ink3: 'rgba(230,255,241,.84)',
-    rule: 'rgba(147,242,191,.20)', rule2: 'rgba(147,242,191,.44)', amber: '#ffd166', good: '#63ffa0', lume: '#93f2bf',
+  dark: { name: 'dark', dark: true, ground: '#111418', panel: '#111418', ink: '#f2f4f7', ink2: '#d5d9df', ink3: '#9aa1ab',
+    rule: '#262b32', rule2: '#3b424b', amber: '#7d858f', good: '#5fd39a', lume: '#f2f4f7',
     s1: '#3987e5', s2: '#d95926', s3: '#199e70', tt: '#050706', ttInk: '#3ff0ff', ttHi: '#ffe44d' },
-  light: { name: 'light', dark: false, ground: '#f3faf6', panel: '#ffffff', ink: '#0d1f17', ink2: 'rgba(13,31,23,.95)', ink3: 'rgba(13,31,23,.86)',
-    rule: 'rgba(13,31,23,.2)', rule2: 'rgba(13,31,23,.4)', amber: '#714a03', good: '#0a6d43', lume: '#08603f',
+  light: { name: 'light', dark: false, ground: '#ffffff', panel: '#ffffff', ink: '#111418', ink2: '#2f353c', ink3: '#6b7280',
+    rule: '#e8eaee', rule2: '#c9ced5', amber: '#8b929b', good: '#16784a', lume: '#111418',
     s1: '#2a78d6', s2: '#eb6834', s3: '#1baf7a', tt: '#050706', ttInk: '#3ff0ff', ttHi: '#ffe44d' }
 };
 /* the page's own colours (a league's accent, the reader's theme), read from the tokens */
@@ -802,9 +804,10 @@ function pageTheme(el) {
     const ground = v('--ground') || THEMES.dark.ground;
     const g = parseHex(ground);
     const base = g && relLum(g) > 0.4 ? THEMES.light : THEMES.dark;
-    return Object.assign({}, base, { name: 'page', ground, panel: v('--panel') || base.panel, ink: v('--ink') || base.ink, ink2: v('--ink-2') || base.ink2,
-      ink3: v('--ink-3') || base.ink3, rule: v('--rule') || base.rule, rule2: v('--rule-2') || base.rule2, amber: v('--amber') || base.amber,
-      good: v('--good') || base.good, lume: v('--lume') || base.lume, dark: !(g && relLum(g) > 0.4) });
+    /* the page's ground and its inks, so the chart sits in the page; the rules, the average lines and the green neutral
+       (the page's own --rule carries a league's tint, which drew an orange grid on a league's charts) */
+    return Object.assign({}, base, { name: 'page', ground, panel: ground, ink: v('--ink') || base.ink, ink2: v('--ink-2') || base.ink2,
+      ink3: base.ink3, dark: !(g && relLum(g) > 0.4) });
   } catch (_) { return Object.assign({ dark: true }, THEMES.dark); }
 }
 
@@ -855,9 +858,24 @@ function labelText(ent, kind, names, overrides, full) {
   /* FULL NAMES (the site's chart names choice, or this chart's own): the whole name; the placer shortens one only where it
      would overlap another */
   if (full) return String(ent.name || '').trim();
-  if (kind === 'team') { const nm = String(ent.name || ''); return nm.length <= (names === 'a' ? 12 : 18) ? nm : (ent.short && ent.short.length <= 5 ? ent.short : shortName(nm, 18)); }
+  if (kind === 'team') return clubLabel(String(ent.name || ''), ent.short, names === 'a' ? 14 : 22);
   if (names === 'a') { const sn = surname(ent.name); return sn.length > 14 ? sn.slice(0, 13) + '…' : sn; }
   return shortName(ent.name, 15);
+}
+
+/* A CLUB'S NAME THAT FITS (2026-10-16: "Liverpool Basketball" was drawn LIV beside "London Lions", a chart of mixed codes and
+   names): the whole name when it fits; else without the words every club has ("Liverpool"); else its last two words ("Sheffield
+   Sharks" for "B. Braun Sheffield Sharks"); only then its code */
+const CLUB_WORDS = /(basketball|basket|baloncesto|pallacanestro|bc|bk|kk|cb|club|team)\.?/gi;
+function clubLabel(nm, code, max) {
+  nm = nm.trim();
+  if (nm.length <= max) return nm;
+  const bare = nm.replace(CLUB_WORDS, ' ').replace(/\s+/g, ' ').trim();
+  if (bare && bare.length <= max) return bare;
+  const w = (bare || nm).split(' ');
+  const last2 = w.slice(-2).join(' ');
+  if (w.length > 2 && last2.length <= max) return last2;
+  return code && code.length <= 5 ? code : shortName(nm, max);
 }
 
 /* The quadrant a chart calls good: both statistics on their better side. 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right. */
@@ -967,25 +985,22 @@ function buildChart(cfg) {
   }
 
   /* ---- grid, axes, ticks (only inside the frame; the clip keeps a zoomed chart honest) ---- */
-  /* A CALMER FRAME (Louie, 2026-10-16: "more professional"): the plot on a faint panel, the horizontal lines a touch stronger
-     than the vertical ones (a scatter is read across), every number in Archivo with even-width figures, the two axes drawn once */
+  /* AN EDITORIAL FRAME (Louie, 2026-10-16: "more professional", then "the grid backing" was not): no backing, light horizontal
+     lines only, one axis line along the foot, every number in Archivo with even-width figures */
   const grid = S('g', { class: 'cl-grid' }); g.appendChild(grid);
-  grid.appendChild(S('rect', { x: x0, y: y0, width: pw, height: ph, fill: T.panel || T.ground, opacity: T.dark ? 0.45 : 0.7 }));
   const tickTxt = { fill: T.ink3, 'font-size': tk, 'font-family': FONT.ui, 'font-weight': 500, style: 'font-variant-numeric:tabular-nums' };
   xt.ticks.forEach((v, i) => {
     const x = num1(X(v));
     if (x < x0 - 0.5 || x > x0 + pw + 0.5) return;
-    grid.appendChild(S('line', { x1: x, x2: x, y1: y0, y2: y0 + ph, stroke: T.rule, 'stroke-width': 1, opacity: 0.55 }));
     grid.appendChild(S('text', Object.assign({ x, y: y0 + ph + 5 * fs + tk, 'text-anchor': 'middle' }, tickTxt), xTickStr[i]));
   });
   yt.ticks.forEach((v, i) => {
     const y = num1(Y(v));
     if (y < y0 - 0.5 || y > y0 + ph + 0.5) return;
-    grid.appendChild(S('line', { x1: x0, x2: x0 + pw, y1: y, y2: y, stroke: T.rule, 'stroke-width': 1, opacity: 0.9 }));
+    grid.appendChild(S('line', { x1: x0, x2: x0 + pw, y1: y, y2: y, stroke: T.rule, 'stroke-width': 1 }));
     grid.appendChild(S('text', Object.assign({ x: x0 - 6 * fs, y: y + tk * 0.36, 'text-anchor': 'end' }, tickTxt), yTickStr[i]));
   });
   g.appendChild(S('line', { x1: x0, x2: x0 + pw, y1: y0 + ph, y2: y0 + ph, stroke: T.rule2, 'stroke-width': 1.2 }));
-  g.appendChild(S('line', { x1: x0, x2: x0, y1: y0, y2: y0 + ph, stroke: T.rule2, 'stroke-width': 1.2 }));
 
   /* ---- quadrants: the tint on the both-better quarter, the lines through the averages, the captions ---- */
   const cl = S('g', { 'clip-path': 'url(#' + clipId + ')' }); g.appendChild(cl);
@@ -999,18 +1014,18 @@ function buildChart(cfg) {
     const q = goodQuadrant(D.cx, D.cy, D.xm, D.overlay ? 'z' : D.ym);
     const qx0 = clamp(mx, x0, x0 + pw), qy0 = clamp(my, y0, y0 + ph);
     const rx = (q & 1) ? qx0 : x0, rw = (q & 1) ? x0 + pw - qx0 : qx0 - x0, ry = (q & 2) ? qy0 : y0, rh = (q & 2) ? y0 + ph - qy0 : qy0 - y0;
-    if (rw > 0 && rh > 0) cl.appendChild(S('rect', { x: num1(rx), y: num1(ry), width: num1(rw), height: num1(rh), fill: T.good, opacity: 0.07 }));
+    if (rw > 0 && rh > 0) cl.appendChild(S('rect', { x: num1(rx), y: num1(ry), width: num1(rw), height: num1(rh), fill: T.good, opacity: 0.045 }));
   }
   if (cfg.qd && okMid) {
-    if (inX) cl.appendChild(S('line', { x1: num1(mx), x2: num1(mx), y1: y0, y2: y0 + ph, stroke: T.amber, 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }));
-    if (inY) cl.appendChild(S('line', { x1: x0, x2: x0 + pw, y1: num1(my), y2: num1(my), stroke: T.amber, 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }));
+    if (inX) cl.appendChild(S('line', { x1: num1(mx), x2: num1(mx), y1: y0, y2: y0 + ph, stroke: T.amber, 'stroke-width': 1, 'stroke-dasharray': '5 4' }));
+    if (inY) cl.appendChild(S('line', { x1: x0, x2: x0 + pw, y1: num1(my), y2: num1(my), stroke: T.amber, 'stroke-width': 1, 'stroke-dasharray': '5 4' }));
     /* each line's words on a small tag of the ground, ringed in the line's colour, in capitals; drawn over the dots and crests
        (avgTags is put on after them) so a club sitting on the line never hides it */
     const tag = (txt0, x, y, anchor) => {
       const txt = String(txt0).toUpperCase();
       const w = mTag(txt) + 10 * fs, hgt = small + 6 * fs, lx = anchor === 'end' ? x - w : x;
-      avgTags.appendChild(S('rect', { x: num1(lx), y: num1(y - hgt + 3 * fs), width: num1(w), height: num1(hgt), rx: num1(hgt / 2), fill: T.ground, stroke: T.amber, 'stroke-width': 1, opacity: 0.95 }));
-      avgTags.appendChild(S('text', { x: num1(lx + w / 2), y: num1(y - 0.5 * fs), 'text-anchor': 'middle', fill: T.ink2, 'font-size': small, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.06em' }, txt));
+      avgTags.appendChild(S('rect', { x: num1(lx), y: num1(y - hgt + 3 * fs), width: num1(w), height: num1(hgt), rx: num1(hgt / 2), fill: T.ground, stroke: T.rule2, 'stroke-width': 1 }));
+      avgTags.appendChild(S('text', { x: num1(lx + w / 2), y: num1(y - 0.5 * fs), 'text-anchor': 'middle', fill: T.ink3, 'font-size': small, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.06em' }, txt));
     };
     if (inX) tag(midLabel(D, 'x', xMid), mx + 4 * fs, y0 + 13 * fs, 'start');
     /* the horizontal line's tag at whichever end has fewer clubs or players close by (the right end first) */
@@ -1089,10 +1104,16 @@ function buildChart(cfg) {
   paths.forEach(e => dots.appendChild(S('path', { d: e.d.join(''), fill: e.col, 'fill-opacity': n > 250 ? 0.66 : 0.92, stroke: ring ? T.ground : null, 'stroke-width': ring ? 1.6 : null })));
   /* the crest discs, the biggest first so a small one is never hidden under a big one */
   let lk = 0;
+  const shadowId = uid + '-sh';
+  if (logoPts.length) {
+    const f = S('filter', { id: shadowId, x: '-40%', y: '-40%', width: '180%', height: '180%' });
+    f.appendChild(S('feDropShadow', { dx: 0, dy: num1(1.2 * fs), stdDeviation: num1(1.6 * fs), 'flood-color': '#000', 'flood-opacity': T.dark ? 0.5 : 0.22 }));
+    defs.appendChild(f);
+  }
   logoPts.slice().sort((a, b) => b.r - a.r).forEach(rec => {
     const e = rec.p.e, R0 = rec.r, col = markColour(e.colour, T.ground) || T.ink3, url = cfg.crest ? cfg.crest(e) : null;
     const gg = S('g', { transform: 'translate(' + num1(rec.px) + ' ' + num1(rec.py) + ')', 'data-id': e.id, class: 'cl-logo' });
-    gg.appendChild(S('circle', { r: R0 + 1.2, fill: T.ground }));
+    gg.appendChild(S('circle', { r: R0 + 1.6 * fs, fill: '#ffffff', filter: 'url(#' + shadowId + ')' }));
     gg.appendChild(S('circle', { r: R0, fill: col }));
     gg.appendChild(S('text', { y: R0 * 0.33, 'text-anchor': 'middle', fill: inkOn(col), 'font-size': Math.round(R0 * 0.78 * 10) / 10, 'font-weight': 800, 'font-family': FONT.ui },
       initialsOf(e.short || e.name)));
@@ -1102,7 +1123,7 @@ function buildChart(cfg) {
       const cp = S('clipPath', { id: cid }); cp.appendChild(S('circle', { r: R0 - 1.3 })); defs.appendChild(cp);
       gg.appendChild(S('image', { href: url, x: -R0 + 1.3, y: -R0 + 1.3, width: 2 * R0 - 2.6, height: 2 * R0 - 2.6, 'clip-path': 'url(#' + cid + ')', preserveAspectRatio: 'xMidYMid meet', 'data-crest': 1 }));
     }
-    gg.appendChild(S('circle', { r: R0, fill: 'none', stroke: col, 'stroke-width': 1.4 }));
+    gg.appendChild(S('circle', { r: R0, fill: 'none', stroke: col, 'stroke-width': 1.2, opacity: 0.85 }));
     dots.appendChild(gg);
   });
 
@@ -1198,22 +1219,22 @@ function buildChart(cfg) {
   const xTitle = T_.ax || axisTitleText(D.cx, D.xm);
   const yTitle = T_.ay || axisTitleText(D.cy, D.ym);
   const fit = (s, maxW, m) => { const l = wrapLines(s, maxW, m, 1); return l.length ? l[0] : ''; };
-  g.appendChild(S('text', ed({ x: num1(x0 + pw / 2), y: H - 20 * fs, 'text-anchor': 'middle', fill: T.ink2, 'font-size': 10.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.03em' }, 'x'), fit(xTitle, pw * 0.72, mMic)));
+  g.appendChild(S('text', ed({ x: num1(x0 + pw / 2), y: H - 20 * fs, 'text-anchor': 'middle', fill: T.ink3, 'font-size': 10.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.03em' }, 'x'), fit(xTitle, pw * 0.72, mMic)));
   const yLabel = D.overlay ? (T_.ay || D.cy.title + ' & ' + D.cy2.title + ': z-scores') : yTitle;
   /* the Y title in the side's room under the BETTER arrow (which always sits at the top: every axis runs better-upwards), not
      centred on the whole side with that room kept clear at both ends - a large export's title was cut to "Net…" */
   const yClear = measureFn(small, FONT.ui, 800)('BETTER') * 1.12 + 18 * fs, yRoom = Math.max(50, ph - yClear - 4 * fs);
-  g.appendChild(S('text', ed({ transform: 'translate(' + num1(11 * fs) + ' ' + num1(y0 + yClear + yRoom / 2) + ') rotate(-90)', 'text-anchor': 'middle', fill: T.ink2, 'font-size': 10.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.03em' }, 'y'), fit(yLabel, yRoom, mMic)));
+  g.appendChild(S('text', ed({ transform: 'translate(' + num1(11 * fs) + ' ' + num1(y0 + yClear + yRoom / 2) + ') rotate(-90)', 'text-anchor': 'middle', fill: T.ink3, 'font-size': 10.5 * fs, 'font-family': FONT.ui, 'font-weight': 700, 'letter-spacing': '0.03em' }, 'y'), fit(yLabel, yRoom, mMic)));
   {
     /* the direction that is better, in words and an arrow: at the foot of X, up the side of Y (both turned round for a
        lower-is-better statistic; z-scores and percentiles are already turned, so their arrows always point up and right) */
     const eff = () => false;      // every axis runs better-upwards now (flipOf)
     const xLowE = eff(D.xm, D.cx), yLowE = D.overlay ? false : eff(D.ym, D.cy);
     const wB = measureFn(small, FONT.ui, 800)('BETTER') * 1.12;       // Archivo capitals, tracked
-    const tri = (x, y, dir) => S('path', { d: dir > 0 ? 'M0 -3.4L5.4 0L0 3.4Z' : 'M0 -3.4L-5.4 0L0 3.4Z', fill: T.good, transform: 'translate(' + num1(x) + ' ' + num1(y) + ') scale(' + fs + ')' });
+    const tri = (x, y, dir) => S('path', { d: dir > 0 ? 'M0 -3.4L5.4 0L0 3.4Z' : 'M0 -3.4L-5.4 0L0 3.4Z', fill: T.ink3, transform: 'translate(' + num1(x) + ' ' + num1(y) + ') scale(' + fs + ')' });
     const bx = S('g', { class: 'cl-better' });
     const gx = S('g', { transform: 'translate(' + num1(x0 + pw) + ' ' + num1(H - 6 * fs) + ')' });
-    const betterTxt = { fill: T.good, 'font-size': small, 'font-family': FONT.ui, 'font-weight': 800, 'letter-spacing': '0.12em' };
+    const betterTxt = { fill: T.ink3, 'font-size': small, 'font-family': FONT.ui, 'font-weight': 800, 'letter-spacing': '0.12em' };
     gx.appendChild(S('text', Object.assign({ x: xLowE ? 0 : -9 * fs, y: 0, 'text-anchor': 'end' }, betterTxt), 'BETTER'));
     gx.appendChild(tri(xLowE ? -wB - 6 * fs : -4.5 * fs, -small * 0.36, xLowE ? -1 : 1));
     bx.appendChild(gx);
@@ -1256,16 +1277,16 @@ function legendItems(cfg, D) {
     out.push({ type: 'dot', colour: T.s1, text: D.cy.label + ' (z)' + (D.cy.low ? ', flipped' : '') }, { type: 'diamond', colour: T.s2, text: D.cy2.label + ' (z)' + (D.cy2.low ? ', flipped' : '') });
   } else if (cfg.co === 'p') {
     out.push({ type: 'dot', colour: T.s1, text: 'guards' }, { type: 'dot', colour: T.s2, text: 'wings' }, { type: 'dot', colour: T.s3, text: 'bigs' });
-  } else if (cfg.co === 'c') out.push({ type: 'none', text: 'colour = club', muted: true });
+  } else if (cfg.co === 'c' && !cfg.clean) out.push({ type: 'none', text: 'colour = club', muted: true });
   if (cfg.size) out.push({ type: 'size', text: 'size = ' + cfg.size.label });
   if (cfg.trend && D.trend.length) D.trend.forEach((tr, i) => out.push({ type: 'line', colour: D.overlay ? (i ? T.s2 : T.s1) : T.ink2,
     text: 'trend' + (tr.r == null ? '' : ' r = ' + tr.r.toFixed(2)) + ' (n ' + tr.n + ')' }));
   if (cfg.hi && cfg.hi.size) out.push({ type: 'ring', text: 'highlighted' });
   const notes = [];
-  notes.push(D.pts.length + ' plotted');
+  if (!cfg.clean) notes.push(D.pts.length + ' plotted');
   if (D.noValue) notes.push(D.noValue + ' without a value');
   if (D.logDropped) notes.push(D.logDropped + ' not above 0 (log)');
-  out.push({ type: 'none', text: notes.join(' · '), muted: true, right: true });
+  if (notes.length) out.push({ type: 'none', text: notes.join(' · '), muted: true, right: true });
   return out;
 }
 /* flows the items into rows no wider than `maxW`; `right` items sit at the end of the last row */
@@ -1388,7 +1409,7 @@ function composeExport(o) {
   const tx = clamp(+o.text || 1, 0.8, 2.5), cx = clamp(+o.chart || 1, 0.8, 3);
   const base = exportLayout({ size: o.size, shown: o.shown, charts: n, credit: false, text: tx, chart: cx });
   const u = base.unit, W = base.w;
-  const mT = measureFn(base.title.size, "Jersey25, " + FONT.ui, 400), mS = measureFn(base.sub.size, FONT.ui, 500), mF = measureFn(base.foot.size, FONT.ui, 500);
+  const mT = measureFn(base.title.size, FONT.ui, 800), mS = measureFn(base.sub.size, FONT.ui, 500), mF = measureFn(base.foot.size, FONT.ui, 500);
   const inner = W - 2 * base.pad;
   const tl = wrapLines(o.texts.title || '', inner, mT, 3), sl = wrapLines(o.texts.sub || '', inner, mS, 3), fl = wrapLines(o.texts.foot || '', inner, mF, 3);
   const L = exportLayout({ size: o.size, shown: o.shown, charts: n, titleLines: tl.length, subLines: sl.length, footLines: fl.length, credit: !!o.credit, text: tx, chart: cx });
@@ -1396,24 +1417,24 @@ function composeExport(o) {
   svg.setAttribute('xmlns', NS); svg.setAttribute('width', L.w); svg.setAttribute('height', L.h); svg.setAttribute('viewBox', '0 0 ' + L.w + ' ' + L.h);
   svg.appendChild(S('style', null, (o.fonts || '') + '\ntext{font-kerning:normal}'));
   if (!o.transparent) svg.appendChild(S('rect', { x: 0, y: 0, width: L.w, height: L.h, fill: theme.ground }));
-  if (!o.transparent) svg.appendChild(S('rect', { x: 0, y: 0, width: L.w, height: Math.max(3, Math.round(4 * u)), fill: theme.lume }));
-  const txt = (lines, box, attrs) => {
+  /* the title and the subtitle CENTRED (Louie, 2026-10-16), the title in heavy Archivo, the subtitle a quiet grey under it */
+  const txt = (lines, box, attrs, centre) => {
     if (!lines.length) return;
-    const t = S('text', Object.assign({ x: box.x, y: box.y + box.size * 1.0, 'font-size': box.size }, attrs));
-    lines.forEach((ln, i) => t.appendChild(S('tspan', { x: box.x, dy: i ? box.lh : 0 }, ln)));
+    const x = centre ? box.x + box.w / 2 : box.x;
+    const t = S('text', Object.assign({ x, y: box.y + box.size * 1.0, 'font-size': box.size, 'text-anchor': centre ? 'middle' : 'start' }, attrs));
+    lines.forEach((ln, i) => t.appendChild(S('tspan', { x, dy: i ? box.lh : 0 }, ln)));
     svg.appendChild(t);
   };
-  txt(tl, Object.assign({}, L.title, { y: L.title.y + L.title.lh * 0.12 }), { fill: theme.ink, 'font-family': "Jersey25, " + FONT.ui, 'font-weight': 400, 'letter-spacing': '0.02em' });
-  txt(sl, Object.assign({}, L.sub, { y: L.sub.y + L.sub.lh * 0.1 }), { fill: theme.ink3, 'font-family': FONT.ui, 'font-weight': 600, 'letter-spacing': '0.01em' });
+  txt(tl, Object.assign({}, L.title, { y: L.title.y + L.title.lh * 0.12 }), { fill: theme.ink, 'font-family': FONT.ui, 'font-weight': 800, 'letter-spacing': '-0.01em' }, true);
+  txt(sl, Object.assign({}, L.sub, { y: L.sub.y + L.sub.lh * 0.1 }), { fill: theme.ink3, 'font-family': FONT.ui, 'font-weight': 500 }, true);
   const crestUsed = new Set(), crestMissing = new Set();
   const fs = clamp(u * 1.1, 0.9, 1.4) * tx;
   L.charts.forEach((r, i) => {
     const cfg = o.charts[i](r, fs, theme, e => { const d = o.crest ? o.crest(e) : null; if (d) crestUsed.add(e.id); else if (o.wantCrest && o.wantCrest(e)) crestMissing.add(e.id); return d; });
     cfg.marks = cx / tx;                               // the marks at the chart size, whatever the words grew by
+    cfg.clean = true;                                  // the subtitle says the count: no "colour = club", no "N plotted"
     const built = buildChart(cfg);
     const gg = S('g', { transform: 'translate(' + r.x + ' ' + r.y + ')' });
-    /* the chart on a soft card: the panel's colour, rounded, a hairline - not a hard outline */
-    if (!o.transparent) gg.appendChild(S('rect', { x: 0.5, y: 0.5, width: r.w - 1, height: r.h - 1, rx: Math.round(10 * u), fill: theme.panel || 'none', 'fill-opacity': theme.dark ? 0.55 : 0.9, stroke: theme.rule, 'stroke-width': 1 }));
     gg.appendChild(built.g);
     svg.appendChild(gg);
   });
@@ -2541,7 +2562,7 @@ async function mountAsync(opts) {
   /* ---------------------------------------------------------------- export --- */
   /* text: the export's words (title, subtitle, axes, names) at 1.25 their old size by default; chart: the marks (dots, crests) 1.25 too,
      the margins trimmed (Louie, 2026-10-16: "the chart is looking quite small in the image") */
-  const xo = { size: '1200x675', scale: 2, transparent: false, theme: 'page', text: 1.25, chart: 1.25, preview: null, busy: 0 };
+  const xo = { size: '1200x675', scale: 2, transparent: false, theme: 'light', text: 1.25, chart: 1.25, preview: null, busy: 0 };
   let exStatus = null, exPreview = null, exNote = null, previewT = 0, previewUrl = null, previewSeq = 0;
   async function buildExport(noCrest) {
     const fonts = await fontCSS();

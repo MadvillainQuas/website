@@ -93,15 +93,16 @@
 
 /* ---- the chart cards ---- */
 .cl-busy{margin:6px 2px;padding:6px 10px;border-left:3px solid var(--lume);background:var(--panel);font-size:12px;color:var(--ink-2)}
-.cl-titles{margin:14px 2px 8px}
-.cl-t{margin:0;font-family:var(--f-score);font-weight:400;font-size:22px;line-height:1.15;letter-spacing:.02em;color:var(--ink);cursor:text;overflow-wrap:anywhere}
-.cl-s{margin:4px 0 0;font-size:12.5px;line-height:1.45;color:var(--ink-2);cursor:text}
+/* the chart's title and subtitle centred, heavy Archivo over a quiet grey line (Louie, 2026-10-16) */
+.cl-titles{margin:16px 2px 10px;text-align:center}
+.cl-t{margin:0;font-family:var(--f-ui);font-weight:800;font-size:22px;line-height:1.2;letter-spacing:-.01em;color:var(--ink);cursor:text;overflow-wrap:break-word;text-wrap:balance}
+.cl-s{margin:5px 0 0;font-size:12.5px;line-height:1.45;color:var(--ink-3);cursor:text}
 .cl-t:hover,.cl-s:hover,.cl-fo:hover{text-decoration:underline dotted;text-underline-offset:4px}
 .cl-t:focus-visible,.cl-s:focus-visible,.cl-fo:focus-visible{outline:2px solid var(--lume);outline-offset:3px}
 .cl .cl-edit-in{width:100%;max-width:none;font-size:14px;min-height:38px}
 .cl-charts{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .cl-charts.side{grid-template-columns:repeat(2,minmax(0,1fr))}
-.cl-card{min-width:0;border:1px solid var(--rule-2);background:var(--ground)}
+.cl-card{min-width:0;border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);border-radius:12px;overflow:hidden;background:var(--ground)}
 .cl-axes{gap:6px 10px;z-index:20}
 .cl-badge{font-family:var(--f-micro);font-size:11px;letter-spacing:.08em;color:var(--cl-yel);min-width:1.4em}
 .cl-ax{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%}
