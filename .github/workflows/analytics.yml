@@ -45,9 +45,11 @@ jobs:
       # the page's own modules and the builder, not the repository's archived feeds
       - uses: actions/checkout@v4
         with:
+          # scripts/lib: the archived games' event logs (eventlog.mjs, 0262), which build-analytics.mjs imports
           sparse-checkout: |
             epinoia
             tools
+            scripts/lib
       - uses: actions/setup-node@v4
         with: { node-version: '24' }
       # NO actions/cache: the private stores (feature lines, player lines, stints and the withheld-player list) live
