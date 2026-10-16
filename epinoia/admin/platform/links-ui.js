@@ -188,7 +188,7 @@ function mount(o) {
   if (!host) return Promise.resolve();
   const keep = S && S.host === host ? S : null;
   S = { sb: o.sb, say: o.say || (() => {}), oops: o.oops, host,
-        kind: (keep && keep.kind) || 'team', conf: 'all', sug: { rows: [], total: 0 }, groups: { rows: [], total: 0 },
+        kind: (keep && keep.kind) || 'team', conf: 'all', sug: { rows: [], total: 0, loading: true }, groups: { rows: [], total: 0 }, ask: 0,
         gq: '', gOffset: 0, basket: [], filters: { leagues: [], seasons: [] }, league: '', season: '' };
   host.textContent = '';
   host.setAttribute('data-i18n', 'off');
@@ -202,7 +202,14 @@ function mount(o) {
   const seg = bar.appendChild(el('div', 'lk-seg'));
   S.segBtns = [['team', 'Clubs'], ['player', 'Players']].map(([k, t]) => {
     const b = seg.appendChild(el('button', 'lk-segb', t)); b.type = 'button';
-    b.addEventListener('click', () => { if (S.kind !== k) { S.kind = k; S.conf = 'all'; S.basket = []; S.gq = ''; S.gOffset = 0; drawAll(); loadAll(); } });
+    b.addEventListener('click', () => {
+      if (S.kind === k) return;
+      /* what the other kind drew goes at once: the clubs' matches were left on show under PLAYERS while the players' were asked for,
+         and stayed there when that answer failed (Louie, 2026-10-16) */
+      S.kind = k; S.conf = 'all'; S.basket = []; S.gq = ''; S.gOffset = 0;
+      S.sug = { rows: [], total: 0, loading: true }; S.groups = { rows: [], total: 0 };
+      drawAll(); loadAll();
+    });
     return b;
   });
   S.tiles = bar.appendChild(el('span', 'ep-micro lk-tiles'));
@@ -222,15 +229,28 @@ async function loadAll(first) {
   } catch (e) { fail(e); }
 }
 
+/* AN ANSWER IS FOR THE KIND IT WAS ASKED FOR: one that comes back after a switch (or after a newer question) is dropped, and a
+   failure is said where the matches go, never left showing what was there before */
 async function loadSuggestions(reset) {
-  const offset = reset ? 0 : S.sug.rows.length;
-  const r = await rpc('platform_link_suggestions', { p_kind: S.kind, p_limit: PAGE, p_offset: offset });
+  const offset = reset ? 0 : S.sug.rows.length, kind = S.kind, mine = ++S.ask;
+  if (reset) { S.sug = { rows: [], total: 0, loading: true }; drawSuggestions(); drawTiles(); }
+  let r;
+  try { r = await rpc('platform_link_suggestions', { p_kind: kind, p_limit: PAGE, p_offset: offset }); }
+  catch (e) {
+    if (mine !== S.ask || kind !== S.kind) return;
+    S.sug = { rows: reset ? [] : S.sug.rows, total: reset ? 0 : S.sug.total, error: (e && e.message) || String(e) };
+    drawSuggestions(); drawTiles();
+    return;
+  }
+  if (mine !== S.ask || kind !== S.kind) return;
   const rows = (r && r.rows) || [];
   S.sug = { rows: reset ? rows : S.sug.rows.concat(rows), total: (r && r.total) || 0 };
   drawSuggestions(); drawTiles();
 }
 async function loadGroups() {
-  const r = await rpc('platform_link_groups', { p_kind: S.kind, p_q: S.gq || null, p_limit: PAGE, p_offset: S.gOffset });
+  const kind = S.kind;
+  const r = await rpc('platform_link_groups', { p_kind: kind, p_q: S.gq || null, p_limit: PAGE, p_offset: S.gOffset });
+  if (kind !== S.kind) return;
   S.groups = { rows: (r && r.rows) || [], total: (r && r.total) || 0 };
   drawGroups(); drawTiles();
 }
@@ -252,7 +272,9 @@ function drawTiles() {
   const bits = [];
   bits.push(String(isTeam() ? S.filters.teams : S.filters.players) + (isTeam() ? ' teams' : ' players'));
   bits.push(String(isTeam() ? S.filters.team_groups : S.filters.player_groups) + ' linked groups');
-  bits.push(S.sug.total + ' possible matches to check' + (S.sug.rows.length ? ' (' + t.high + ' high · ' + t.medium + ' medium · ' + t.low + ' low in view)' : ''));
+  if (S.sug.loading) bits.push('looking for possible matches\u2026');
+  else if (S.sug.error && !S.sug.rows.length) bits.push('possible matches not read');
+  else bits.push(S.sug.total + ' possible matches to check' + (S.sug.rows.length ? ' (' + t.high + ' high · ' + t.medium + ' medium · ' + t.low + ' low in view)' : ''));
   S.tiles.appendChild(data('span', null, bits.join('  ·  ')));
 }
 
@@ -375,7 +397,14 @@ function drawSuggestions() {
   });
   S.sugBox.textContent = '';
   const rows = narrowed(S.sug.rows, S.conf);
-  if (!rows.length) {
+  if (S.sug.loading) {
+    S.sugBox.appendChild(el('p', 'empty', 'Looking for possible ' + noun() + ' matches\u2026'));
+  } else if (S.sug.error) {
+    const p = S.sugBox.appendChild(el('p', 'empty', 'The possible ' + noun() + ' matches could not be read (' + S.sug.error + '). '));
+    p.appendChild(btn('try again', 'mini', () => loadSuggestions(!S.sug.rows.length)));
+  }
+  if (S.sug.loading || (S.sug.error && !S.sug.rows.length)) { /* said above */ }
+  else if (!rows.length) {
     S.sugBox.appendChild(el('p', 'empty', S.sug.rows.length
       ? 'None at this confidence in what is loaded.'
       : 'No possible matches: every row that looks like another is already linked, or was marked as not the same.'));

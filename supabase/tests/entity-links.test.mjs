@@ -39,6 +39,7 @@ await db.exec(`
 await db.exec(mig('0178_entity_links.sql'));
 await db.exec(mig('0181_youth_teams.sql'));
 await db.exec(mig('0182_league_follows_team_gender.sql'));
+await db.exec(mig('0278_link_suggestions_fast.sql'));   // the suggestions read the stored keys from here on (every assertion below runs on 0278)
 
 const q = async (sql, p) => (await db.query(sql, p)).rows;
 const as = async (role, admin, fn) => {                    // run something as a browser role
@@ -386,6 +387,21 @@ console.log(`      6,000 players: suggestions ${tPlayers} ms (${big.total} sets)
 ok('the suggestions for six thousand players come back in a few seconds', tPlayers < 8000 && big.rows.length === 25, tPlayers);
 ok('the suggestions for eighteen hundred teams too', tTeams < 4000 && bigT.rows.length === 25, tTeams);
 ok('a search is quick', tSearch < 2000, tSearch);
+
+console.log('-- 0278: the stored name keys (Louie, 2026-10-16: the player matches never came back on the site)');
+const drift = async () => (await q(`select count(*)::int n from players pl left join player_link_keys k on k.player_id = pl.id
+  where k.player_id is null or k.xkey is distinct from link_person_key(pl.first_name, pl.last_name)
+     or k.ckey is distinct from link_person_core(pl.first_name, pl.last_name) or k.skey is distinct from link_person_short(pl.first_name, pl.last_name)
+     or k.first_tok is distinct from (link_person_tokens(pl.first_name, pl.last_name))[1]`))[0].n;
+ok('every player has his keys stored, and they are what the key functions say', (await drift()) === 0 && (await q(`select count(*)::int n from player_link_keys`))[0].n === (await q(`select count(*)::int n from players`))[0].n);
+const rn = await player('Jon', 'Renamed', 1999);
+await q(`update players set first_name = 'Jonathan Paul', last_name = 'Re-named Jr' where id = $1`, [rn]);
+ok('a renamed player is keyed again by the trigger', (await q(`select xkey, ckey, skey, first_tok from player_link_keys where player_id = $1`, [rn]))[0].ckey === 'jonathan|named' && (await drift()) === 0,
+   (await q(`select * from player_link_keys where player_id = $1`, [rn]))[0]);
+await q(`update players set birth_year = 2000 where id = $1`, [rn]);
+ok('...and nothing else about a player touches them', (await drift()) === 0);
+ok('the table is not readable from a browser', !(await q(`select has_table_privilege('anon', 'public.player_link_keys', 'select') a, has_table_privilege('authenticated', 'public.player_link_keys', 'select') b`)).some(r => r.a || r.b));
+ok('the six thousand players\' suggestions are now well inside a request (the site has nineteen thousand)', tPlayers < 3000, tPlayers);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

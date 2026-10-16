@@ -148,6 +148,44 @@ console.log('-- the console: the women\'s / men\'s setting reaches the whole lea
   ok('"auto" sends no league at all', au && au[1].p_women === null && !('p_league' in au[1]), au);
 }
 
+{
+  /* PLAYERS PRESSED WHILE THE PLAYERS' MATCHES FAIL (Louie, 2026-10-16): the clubs' matches stayed on show under PLAYERS */
+  const clubRow = { key: 'boras', ids: ['t1', 't2'], confidence: 'low', flag: 'possible', reason: 'the same name twice in one league',
+    cards: ['t1', 't2'].map(id => ({ id, slug: id, name: 'Boras Basket', league: 'Basketligan', competitions: [], namesakes: 0 })) };
+  let playersFail = true, slowTeam = null;
+  const sb = { rpc: async (name, args) => {
+    if (name === 'platform_link_filters') return { data: { leagues: [], seasons: [], teams: 900, players: 18956, team_groups: 300, player_groups: 947 } };
+    if (name === 'platform_link_suggestions') {
+      if (args.p_kind === 'team') { if (slowTeam) await slowTeam; return { data: { rows: [clubRow], total: 8 } }; }
+      if (playersFail) return { error: { message: 'canceling statement due to statement timeout' } };
+      return { data: { rows: [{ key: 'a b', kind: 'exact', ids: ['p1', 'p2'], confidence: 'high', flag: 'possible', reason: 'the same name',
+        cards: [{ id: 'p1', name: 'Ann Bee', spells: [] }, { id: 'p2', name: 'Ann Bee', spells: [] }] }], total: 1 } };
+    }
+    if (name === 'platform_link_groups') return { data: { rows: [], total: 0 } };
+    return { data: null };
+  } };
+  const host = new N('div');
+  await L.mount({ host, sb, say: () => {} });
+  await tick(20);
+  const seg = k => host.cls('lk-segb').find(b => b.textContent === k);
+  ok('(the clubs\' matches are drawn first)', /Boras Basket/.test(host.textContent));
+  seg('Players').fire('click'); await tick(20);
+  ok('Players pressed and their matches fail: the clubs\' matches are gone, and the failure is said where they go',
+     !/Boras Basket/.test(host.textContent) && /The possible player matches could not be read \(canceling statement due to statement timeout\)/.test(host.textContent) &&
+     /possible matches not read/.test(host.textContent) && !/8 possible matches/.test(host.textContent), host.textContent.slice(0, 600));
+  playersFail = false;
+  const again = host.find(n => n.tag === 'button' && n.textContent === 'try again')[0];
+  again.fire('click'); await tick(20);
+  ok('..."try again" asks once more and draws the players\' matches', /Ann Bee/.test(host.textContent) && /1 possible matches to check/.test(host.textContent), host.textContent.slice(0, 400));
+  /* an answer for the kind left behind is dropped */
+  let release; slowTeam = new Promise(r => { release = r; });
+  seg('Clubs').fire('click'); await tick(5);
+  ok('...a switch says it is looking, not what the other kind had', /Looking for possible club matches/.test(host.textContent) && !/Ann Bee/.test(host.textContent));
+  seg('Players').fire('click'); await tick(20);
+  release(); await tick(20);
+  ok('...and the clubs\' answer arriving after a switch back to Players is not drawn', /Ann Bee/.test(host.textContent) && !/Boras Basket/.test(host.textContent), host.textContent.slice(0, 400));
+}
+
 console.log('-- the public pages: switchers');
 const CARDS = [
   { id: 'a', slug: 'london-lions', name: 'London Lions', league: 'Super League Basketball Men', women: false, competitions: [{ season: '2026-27', name: 'SLB' }, { season: '2026-27', name: 'Cup' }, { season: '2025-26', name: 'SLB' }] },
