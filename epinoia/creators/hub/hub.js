@@ -304,7 +304,7 @@
       /* the page in the league's colours, as a league's own pages wear them */
       const TC = window.EpinoiaTeamColour;
       if (TC && TC.league) { try { TC.league(league, { keepAccent: !!(league.theme && league.theme.accent) }); } catch (_) { /* its own look */ } }
-      stories().then(() => { graphics(); icons(); });
+      stories().then(() => { graphics(); icons(); newsPosts(); });
     };
     selEl.addEventListener('change', () => choose(selEl.value));
     choose(want);
@@ -562,6 +562,14 @@
       x.beginPath(); x.arc(cx, H, W * 0.44, 1.08 * Math.PI, 1.92 * Math.PI); x.stroke();
     }
     return c;
+  }
+
+  /* ============================================================ NEWS POSTS === */
+  /* a story as an Instagram post (posts.js): the outlet's pieces, the league's news and the publishers' stories */
+  function newsPosts() {
+    const P = window.EpinoiaHubPosts;
+    if (!P || !league) return;
+    P.mount({ host: $('#npBody'), sb, league, outlet, D: window.EpinoiaData });
   }
 
   /* ============================================================ ICONS === */

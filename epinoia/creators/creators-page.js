@@ -345,7 +345,7 @@ async function piece(league) {
     meta: [x.published_at ? N.when(x.published_at) : '', x.author_name ? 'by ' + x.author_name : ''],
     tags: leagueTag(league),
     bell: bellFor(o.id, o.name, 'lbl'),
-    figure: !!(cover || e)
+    figure: !!(cover || e || (x.kind === 'article' && K.artFigure))
   }));
 
   const wrap = el('div', 'pc-read cr-piece');
@@ -365,9 +365,17 @@ async function piece(league) {
     if (cover) {
       const fig = el('figure', 'pc-read-fig');
       const img = el('img'); img.src = cover; img.alt = ''; img.decoding = 'async';
-      img.addEventListener('error', () => { fig.remove(); const m = main.querySelector('.pc-mast'); if (m) m.classList.remove('pc-has-fig'); });
+      img.addEventListener('error', () => {
+        if (x.kind === 'article' && K.artFigure) { fig.replaceWith(K.artFigure({ title: x.title, summary: x.standfirst, kind: 'article', leagues: [league.slug],
+                                                                                 brand: { name: o.name, colour, logo: o.logo_url } })); return; }
+        fig.remove(); const m = main.querySelector('.pc-mast'); if (m) m.classList.remove('pc-has-fig');
+      });
       fig.appendChild(img);
       wrap.appendChild(fig);
+    } else if (x.kind === 'article' && K.artFigure) {
+      /* an article published without a featured image wears its own cover, drawn from its words (newsart.js) */
+      wrap.appendChild(K.artFigure({ title: x.title, summary: x.standfirst, kind: 'article', leagues: [league.slug],
+                                     brand: { name: o.name, colour, logo: o.logo_url } }));
     }
     if (x.kind === 'article') {
       const body = el('div', 'art-body cr-body');

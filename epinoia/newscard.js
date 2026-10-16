@@ -411,11 +411,13 @@ function card(item, opts) {
       const img = el('img', 'pc-cover');
       img.src = it.image; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
       /* a picture that will not load leaves the brand's plate behind */
-      img.addEventListener('error', () => { img.remove(); art.classList.add('pc-noimg'); plate.insertBefore(field(b), plate.firstChild); });
+      img.addEventListener('error', () => { img.remove(); art.classList.add('pc-noimg'); const f = field(b); plate.insertBefore(f, plate.firstChild); cover(plate, f, it); });
       plate.appendChild(img);
       plate.appendChild(el('span', 'pc-shade'));
     } else {
-      plate.appendChild(field(b));
+      const f = field(b);
+      plate.appendChild(f);
+      cover(plate, f, it);
     }
     ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'pc-reg ' + c)));
     const badge = el('span', 'pc-badge');
@@ -478,6 +480,51 @@ function card(item, opts) {
   art.appendChild(foot);
   watchSeen(art, it);
   return art;
+}
+
+/* A COVER FOR A STORY THAT CAME WITHOUT A PICTURE (newsart.js, Louie 2026-10-16): its subject read from its words -
+   the clubs, the player, the number, what kind of news - and drawn as a desk's cover in their colours, over the brand's
+   print, which stays underneath until the cover is drawn (and for good, where it cannot be). newsart.js is loaded the
+   first time a page needs one, from beside this file and at its version. */
+const SELF = (typeof document !== 'undefined' && document.currentScript && document.currentScript.src) || '';
+let artReady = null;
+function newsArt() {
+  const w = typeof window !== 'undefined' ? window : null;
+  if (!w || !w.document) return Promise.resolve(null);
+  if (w.EpinoiaNewsArt) return Promise.resolve(w.EpinoiaNewsArt);
+  if (!artReady) {
+    artReady = new Promise(res => {
+      const m = /^(.*\/)newscard\.js(\?v=\d+)?/.exec(SELF);
+      if (!m) { res(null); return; }
+      const sc = w.document.createElement('script');
+      sc.src = m[1] + 'newsart.js' + (m[2] || '');
+      sc.onload = () => res(w.EpinoiaNewsArt || null);
+      sc.onerror = () => res(null);
+      w.document.head.appendChild(sc);
+    });
+  }
+  return artReady;
+}
+/* what the cover is drawn from: the words, the brand, and the leagues whose clubs it may name */
+function artItem(it) {
+  const x = it || {}, r = x.row || {}, b = x.brand || {};
+  const leagues = (x.tags || []).map(t => t.slug).concat(x.leagues || []);
+  if (r.league_slug) leagues.push(r.league_slug);
+  return { title: x.title, summary: x.summary, kind: x.kind, brand: { name: b.name, colour: b.colour, logo: b.logo },
+           leagues: [...new Set(leagues.filter(Boolean))] };
+}
+/* the cover into a plate: host the plate, after the child it goes over (the brand's print) */
+function art(host, after, it, opts) {
+  newsArt().then(A => { if (A && host) A.mount(host, artItem(it), Object.assign({ after, safeTop: 0.2 }, opts || {})); }, () => { /* the print stays */ });
+}
+/* a reading page's figure for a story with no picture: the cover at 16:9 under the masthead */
+const cover = (host, after, it) => art(host, after, it);
+function artFigure(it) {
+  const fig = el('figure', 'pc-read-fig pc-read-art');
+  const print = el('span', 'pc-flood');
+  fig.appendChild(print);
+  art(fig, print, it, { safeTop: 0.06 });
+  return fig;
 }
 
 /* no picture: the brand's print - its colour flooded, the halftone, and its logo on a disc of its own */
@@ -580,5 +627,5 @@ function grid(items, opts) {
   return g;
 }
 
-return { card, grid, hero, masthead, brands, mark, fromFeed, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND, toTrack, partnerPill, whyLine, langChip };
+return { card, grid, hero, masthead, brands, mark, fromFeed, art, artFigure, artItem, newsArt, tagsOf, embedOf, embedNode, EMBED_HOSTS, lede, ago, tint, initials, host, KIND, toTrack, partnerPill, whyLine, langChip };
 }));

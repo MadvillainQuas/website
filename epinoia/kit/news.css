@@ -371,3 +371,9 @@
   .news-card .club-name{font-size:11px}
   .news-card .club-ed{font-size:7.5px}
 }
+
+/* a written piece with no picture: its cover drawn from its words (newsart.js), over the league's print */
+.news-card .club-plate .na-art{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.art-cover.art-gen{position:relative;margin:0 calc(var(--u)*3);padding:0;aspect-ratio:16/9;max-height:min(58vh,520px);overflow:hidden;
+  border:1px solid var(--rule);background:color-mix(in oklch,var(--ink-c,#335) 40%,var(--panel))}
+.art-cover.art-gen .na-art{position:absolute;inset:0;width:100%;height:100%;display:block}

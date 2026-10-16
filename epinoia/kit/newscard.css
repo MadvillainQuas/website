@@ -320,3 +320,10 @@ a.pc-mast-brand:hover{background:rgba(0,0,0,.42)}
   .pc-embed-post,.pc-embed-post iframe{min-height:480px}
 }
 @media (prefers-reduced-motion:reduce){ .pc,.pc-cover{transition:none} .pc:hover,.pc:hover .pc-cover{transform:none} }
+
+/* A COVER DRAWN FROM THE STORY'S WORDS (newsart.js), for a story that came without a picture: a canvas over the brand's
+   print, the plate's badges, flags and grain still on top of it */
+.na-art{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.pc-read-fig.pc-read-art{aspect-ratio:16/9;overflow:hidden;max-height:min(60vh,540px)}
+.pc-read-fig.pc-read-art > .pc-flood{position:absolute;inset:0}
+.pc-plate.has-art > .pc-field{visibility:hidden}

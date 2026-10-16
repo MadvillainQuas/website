@@ -222,8 +222,15 @@ function card(a, opts) {
   const plate = el('div', 'club-plate');
   if (isMatch && !a.cover_path) link.style.setProperty('--ink-c', matchPlate(a, o, plate, ink));
   else {
-    plate.append(el('div', 'club-flood'), el('div', 'club-tone'));
+    const tone = el('div', 'club-tone');
+    plate.append(el('div', 'club-flood'), tone);
     ['tl', 'tr', 'bl', 'br'].forEach(c => plate.appendChild(el('span', 'club-reg ' + c)));
+    /* NO PICTURE: the story's own cover, drawn from its words over the league's print (newsart.js via newscard.js) */
+    const K = typeof window !== 'undefined' ? window.EpinoiaNewsCard : null;
+    if (!a.cover_path && K && K.art) {
+      K.art(plate, tone, { title: a.title, summary: a.standfirst, kind: 'league', leagues: [o.leagueSlug],
+                           brand: { name: (o.league && o.league.name) || '', colour: (o.league && o.league.colour_a) || null } }, { safeTop: 0.16 });
+    }
   }
 
   if (a.cover_path) {

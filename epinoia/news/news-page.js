@@ -245,6 +245,14 @@ async function one(league) {
     img.addEventListener('error', () => fig.remove());
     fig.appendChild(img);
     host.appendChild(fig);
+  } else if (!generated && K && K.art) {
+    /* a written piece with no picture wears its own cover, drawn from its words (newsart.js) */
+    const fig = el('div', 'art-cover art-gen');
+    const print = el('span', 'art-gen-print');
+    fig.appendChild(print);
+    host.appendChild(fig);
+    K.art(fig, print, { title: a.title, summary: a.standfirst, kind: 'league', leagues: [league.slug],
+                        brand: { name: league.name, colour: league.colour_a || null } }, { safeTop: 0.06 });
   }
 
   const body = el('div', 'art-body');
@@ -855,7 +863,7 @@ async function story(id) {
     meta: [when && !isNaN(when) ? N.when(it.published_at) : '', it.author ? 'by ' + it.author : '', siteHost],
     tags: K.tagsOf(it.leagues, '../', crestUrl),
     bell,
-    figure: !!it.image_url
+    figure: !!it.image_url || (!play && !!K.artFigure)
   }));
 
   const wrap = el('div', 'pc-read');
@@ -864,12 +872,21 @@ async function story(id) {
     const fig = el('figure', 'pc-read-fig pc-read-play');
     fig.appendChild(K.embedNode(play, it.title));
     wrap.appendChild(fig);
+  } else if (!it.image_url && K.artFigure) {
+    /* no picture with the story: its cover, drawn from its words, where the picture would be */
+    wrap.appendChild(K.artFigure({ title: it.title, summary: it.summary, kind: maker ? card.kind : 'story',
+                                   leagues: (it.leagues || []).map(l => l && l.slug),
+                                   brand: { name: src.name, colour, logo: src.logo_url } }));
   } else if (it.image_url) {
     const fig = el('figure', 'pc-read-fig');
     const img = el('img');
     img.src = it.image_url; img.alt = ''; img.decoding = 'async';
-    /* a picture that will not load: the print closes up behind it */
-    img.addEventListener('error', () => { fig.remove(); const m = host.querySelector('.pc-mast'); if (m) m.classList.remove('pc-has-fig'); });
+    /* a picture that will not load (its site refuses other pages): the story's own cover in its place, or the print closes up */
+    img.addEventListener('error', () => {
+      if (K.artFigure) { fig.replaceWith(K.artFigure({ title: it.title, summary: it.summary, kind: 'story', leagues: (it.leagues || []).map(l => l && l.slug),
+                                                       brand: { name: src.name, colour, logo: src.logo_url } })); return; }
+      fig.remove(); const m = host.querySelector('.pc-mast'); if (m) m.classList.remove('pc-has-fig');
+    });
     fig.appendChild(img);
     wrap.appendChild(fig);
   }

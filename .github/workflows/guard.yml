@@ -1791,6 +1791,14 @@ jobs:
         # league's creators section and the rail's rows are wired
         run: node supabase/tests/newscard.test.mjs
 
+      - name: News covers and posts
+        # epinoia/newsart.js + newspost.js: a story's subject read from its words (its clubs - never another team's
+        # nickname - two clubs a game only when it is one, the player, the number, the kind of news), colours white
+        # capitals read on with an accent that is a colour, every cover layout and post template at every size drawn
+        # with every word on it, no cut-out a person did not give, the preview's hint never saved; the hub and the
+        # news cards wired
+        run: node supabase/tests/newsart.test.mjs
+
       - name: A match report's card and its article's head - the result, with the league's logo
         # epinoia/news.js matchPlate: the clubs' three letters (a club's prefix passed over, a derby told apart), the
         # league's own colour and never the platform's default, its logo's chip (its monogram without one, or when the
