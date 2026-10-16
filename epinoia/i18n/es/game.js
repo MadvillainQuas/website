@@ -415,9 +415,9 @@
       'the storylines this game touches': 'las historias que toca este partido',
       'every storyline in the league ↗': 'todas las historias de la liga ↗',
       'full play-by-play starting - within half a minute': 'las jugadas completas llegan en menos de medio minuto',
-      'Kills (3+ consecutive stops: the opponent held scoreless)': 'Kills (3+ stops seguidos: el rival sin anotar)',
-      'No kills (3+ consecutive stops) yet': 'Todavía no hay kills (3+ stops seguidos)',
-      'stops': 'stops'
+      'stops': 'stops',
+      'Kills (4+ consecutive stops: the opponent held scoreless)': 'Kills (4+ stops seguidos: el rival sin anotar)',
+      'No kills (4+ consecutive stops) yet': 'Todavía no hay kills (4+ stops seguidos)'
     },
 
     ctx: {

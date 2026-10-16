@@ -24,8 +24,8 @@
      a point       after every score, every field-goal attempt, every turnover
      a run         consecutive points by one side; 8+ is a team momentum run (6+ for a player run),
                    and any player with 6+ inside it is a player run
-     a kill        three of the other side's possessions in a row held scoreless (killsOf, on the
-                   exact possessions of epinoia/possessions.js); a stretch of six is two
+     a kill        four of the other side's possessions in a row held scoreless (killsOf, on the
+                   exact possessions of epinoia/possessions.js); a stretch of eight is two
 
    THREE THINGS ARE DELIBERATELY NOT COPIED, because they are bugs rather than
    behaviour anybody could want:
@@ -258,18 +258,48 @@ function compute(S) {
   return { points, playerRuns, teamRuns, kills, summary, period, lastElapsed, lineups, halves: H };
 }
 
-/* KILLS (Louie, 2026-10-16: "add kills alongside runs (3+ plays consecutively opposing team held scoreless)"): a
+/* KILLS (Louie, 2026-10-16: "add kills alongside runs ... opposing team held scoreless"; then "4 stops in a row"): a
    side's stretch of KILL or more of the other side's possessions in a row on which it scored nothing - its own
    possessions in between do not break it, a single point does. Possessions are the exact ones (epinoia/possessions.js:
    gaining the ball to losing it, an offensive rebound keeps one going), not the 0.96 x ... estimate the charts use.
-   Each three stops in a stretch is a kill: six in a row is two. A stretch still going at the end of a live log counts
-   for what it has. -> [{key, team, teamIdx, stops, kills, points (= stops, for the strip), ownPts, start/end ...}] */
-const KILL = 3;
+   Each four stops in a stretch is a kill: eight in a row is two. A stretch still going at the end of a live log counts
+   for what it has. -> [{key, team, teamIdx, stops, kills, points (= stops, for the strip), ownPts, start/end ...}]
+
+   A STOP IS A DEFENSIVE POSSESSION, so what the possession list says is read with care (audited on twelve games of
+   2026-10-14: 88 of 1,011 "stops" lasted under three seconds, and some were not stops at all):
+     * ONE POSSESSION, NOT TWO. The list closes a scoring possession on anything logged after the basket - its assist,
+       a timeout or a substitution before an and-one's free throw - and the free throw then opens a possession of its
+       own: a missed one read as the other side's stop. Two possessions of one side with none of the other's between
+       are one possession here (possessions.js itself is left as it is: the situations it feeds, after-timeout sets
+       among them, are stored by finalise-game from the same file).
+     * TECHNICAL FREE THROWS are no possession: the other side's free throws on a technical foul, between two of a
+       side's possessions, are neither a stop nor a break.
+     * A BUZZER HEAVE IS NO STOP: an empty possession gained with three seconds or less on the period clock is neither.
+       (One that scores still breaks a stretch.)
+     * A possession that did nothing (a rebound at the buzzer, the clock run out) is neither, as before. */
+const KILL = 4;
+const HEAVE_MS = 3000;
 function killsOf(evs, H, teams, lineups) {
   const P = root.EpinoiaPossessions ||
     (typeof require === 'function' ? (() => { try { return require('../possessions.js'); } catch (_) { return null; } })() : null);
   if (!P || !P.enumerate || !evs.length) return [];
   const E = P.enumerate({ events: evs });
+  /* the free throws awarded for a technical foul: a free throw of one side after the other side's technical, in the same
+     moment of the clock, before anything else happens */
+  const techFt = new Set();
+  let tech = null;
+  evs.forEach(e => {
+    if (!e) return;
+    if (e.t === 'foul') { tech = e.kind === 'tech' ? { team: e.team, period: e.period, clock: e.clock } : null; return; }
+    if (e.t === 'ft_made' || e.t === 'ft_miss') {
+      if (tech && e.team !== tech.team && e.period === tech.period && e.clock === tech.clock) techFt.add(e.seq != null ? e.seq : e.id);
+      return;
+    }
+    if (/^(loc|stype|tag|sub|timeout)$/.test(e.t)) return;
+    tech = null;
+  });
+  const chancesOf = p => p.chances.map(ci => E.chances[ci]).filter(Boolean);
+  const ftOnly = p => { const c = chancesOf(p); return c.length > 0 && c.every(x => x.outcome === P.OUTCOME.FOUL_FT); };
   /* a possession that did nothing (a rebound at the buzzer, the clock run out) is neither a stop nor a score */
   const poss = E.possessions.filter(p => (p.team === 0 || p.team === 1) &&
     (p.points > 0 || p.chances.some(ci => E.chances[ci] && E.chances[ci].outcome !== P.OUTCOME.PERIOD)));
@@ -279,8 +309,8 @@ function killsOf(evs, H, teams, lineups) {
   poss.forEach((p, j) => { const s = j ? cum[j - 1].slice() : [0, 0]; s[p.team] += p.points; cum.push(s); });
   const fiveAt = (sec, side) => { let on = lineups[0] ? lineups[0].on[side] : []; for (const l of lineups) { if (l.sec <= sec + 1e-9) on = l.on[side]; else break; } return on || []; };
   const out = [];
-  const build = (d, js) => {
-    const a = poss[js[0]], b = poss[js[js.length - 1]], list = js;
+  const build = (d, js, nStops) => {
+    const a = poss[js[0]], b = poss[js[js.length - 1]];
     const startElapsed = cumEl(a.gainPeriod || a.period, a.gainClock != null ? a.gainClock : a.startClock, H) / 1000;
     const endPeriod = b.lastPeriod || b.period, endClock = b.lastClock != null ? b.lastClock : b.startClock;
     const endElapsed = Math.max(startElapsed, cumEl(endPeriod, endClock, H) / 1000);
@@ -288,15 +318,29 @@ function killsOf(evs, H, teams, lineups) {
     const lineupNames = fiveAt(startElapsed, d);
     return {
       key: 'k' + (a.startEventId != null ? a.startEventId : out.length), team: (teams[d] && teams[d].name) || '', teamIdx: d,
-      stops: list.length, kills: Math.floor(list.length / KILL), points: list.length, ownPts: s1[d] - s0[d],
+      stops: nStops, kills: Math.floor(nStops / KILL), points: nStops, ownPts: s1[d] - s0[d],
       startPeriod: a.gainPeriod || a.period, startClock: a.gainClock != null ? a.gainClock : a.startClock, endPeriod, endClock,
       startElapsed, endElapsed, seconds, duration: formatDuration(seconds),
       startScore: s0[0] + '-' + s0[1], endScore: s1[0] + '-' + s1[1], lineupNames
     };
   };
+  /* THE DEFENSIVE POSSESSIONS: technical free throws left out, then a side's possessions with none of the other's between
+     joined into one (scored if any part of it did), then an empty one gained at the buzzer left out */
+  const units = [];
+  poss.forEach((p, j) => {
+    if (techFt.has(p.startEventId) && ftOnly(p)) return;
+    const last = units[units.length - 1];
+    if (last && last.team === p.team) { last.js.push(j); last.points += p.points; return; }
+    units.push({ team: p.team, js: [j], points: p.points, first: p });
+  });
+  const heave = u => !u.points && (u.first.gainClock != null ? u.first.gainClock : u.first.startClock) <= HEAVE_MS &&
+    (u.first.gainPeriod || u.first.period) === (u.first.lastPeriod || u.first.period);
   const cur = [[], []];
-  const close = d => { if (cur[d].length >= KILL) out.push(build(d, cur[d])); cur[d] = []; };
-  poss.forEach((p, j) => { const d = 1 - p.team; if (p.points > 0) close(d); else cur[d].push(j); });
+  const close = d => {
+    if (cur[d].length >= KILL) out.push(build(d, cur[d].map(u => u.js[0]).concat(cur[d][cur[d].length - 1].js.slice(-1)), cur[d].length));
+    cur[d] = [];
+  };
+  units.forEach(u => { const d = 1 - u.team; if (u.points > 0) close(d); else if (!heave(u)) cur[d].push(u); });
   close(0); close(1);
   return out.sort((x, y) => x.startElapsed - y.startElapsed);
 }
@@ -548,7 +592,7 @@ function runsCharts(F, names, watch) {
     if (b > a) quarters += '<span class="gf-strip-q" style="left:' + ((a + b) / 2).toFixed(2) + '%">' + perLabel(p, F.halves) + '</span>';
   }
 
-  /* lo: the smallest a bar can be (6 points for a run, 3 stops for a kill); kills have no video link */
+  /* lo: the smallest a bar can be (6 points for a run, 4 stops for a kill); kills have no video link */
   const chart = (runs, kind, emptyText, rowHTML, lo = 6) => {
     if (!runs.length) return '<p class="gf-none">' + emptyText + '</p>';
     const maxPts = Math.max(lo + 1, ...runs.map(r => r.points));        // the biggest run fills the height
@@ -624,8 +668,8 @@ function runsCharts(F, names, watch) {
       chart(F.teamRuns, 'm', 'No team momentum runs (8+ pts) detected', teamRow) +
     '</section>' +
     '<section class="gf-card gf-runs gf-kills">' +
-      '<div class="gf-card-head"><h3 class="gf-title">Kills (3+ consecutive stops: the opponent held scoreless)</h3>' + killLegend + '</div>' +
-      chart(F.kills || [], 'k', 'No kills (3+ consecutive stops) yet', killRow, 3) +
+      '<div class="gf-card-head"><h3 class="gf-title">Kills (4+ consecutive stops: the opponent held scoreless)</h3>' + killLegend + '</div>' +
+      chart(F.kills || [], 'k', 'No kills (4+ consecutive stops) yet', killRow, 4) +
     '</section>';
 }
 

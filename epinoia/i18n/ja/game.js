@@ -408,9 +408,9 @@
       'the storylines this game touches': 'この試合に関わるストーリーライン',
       'every storyline in the league ↗': 'リーグのすべてのストーリーライン ↗',
       'full play-by-play starting - within half a minute': 'テキスト速報を開始中（30秒以内）',
-      'Kills (3+ consecutive stops: the opponent held scoreless)': 'Kills（3回以上連続のストップ：相手を無得点に抑える）',
-      'No kills (3+ consecutive stops) yet': 'Kills（3回以上連続のストップ）はまだありません',
-      'stops': 'ストップ'
+      'stops': 'ストップ',
+      'Kills (4+ consecutive stops: the opponent held scoreless)': 'Kills（4回以上連続のストップ：相手を無得点に抑える）',
+      'No kills (4+ consecutive stops) yet': 'Kills（4回以上連続のストップ）はまだありません'
     },
 
     ctx: {

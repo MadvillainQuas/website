@@ -306,7 +306,7 @@
         d.innerHTML = F.render(window.S);
         const root = d.querySelector('.gf');
         if (!root) return [];
-        R.legendExtra.push(['GAME FLOW', 'The game in numbers; scoring runs (six points or more in a row); kills (three or more of the other side’s possessions in a row held scoreless; six in a row is two kills); the rotations minute by minute with the margin beneath them; expected points added from turnovers and offensive rebounds; the scoring battle (shooting and free throws); points per possession. All on the game’s clock.']);
+        R.legendExtra.push(['GAME FLOW', 'The game in numbers; scoring runs (six points or more in a row); kills (four or more of the other side’s possessions in a row held scoreless; eight in a row is two kills; an and-one’s free throw, technical free throws and a heave at the buzzer are no stops); the rotations minute by minute with the margin beneath them; expected points added from turnovers and offensive rebounds; the scoring battle (shooting and free throws); points per possession. All on the game’s clock.']);
         const wrap = (n, stack, tall) => '<div class="ga-flow' + (tall ? ' ga-tall' : '') + '"><div class="gf">' + (stack ? '<div class="gf-stack">' + n.outerHTML + '</div>' : n.outerHTML) + '</div></div>';
         const kids = [...root.children];
         const summary = kids.find(n => n.classList.contains('gf-summary'));
