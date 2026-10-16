@@ -1124,11 +1124,14 @@ function askPick({ title, lead, groups, go }) {
   });
 }
 /* WHAT NEXT WEEK'S EMAIL OF SOME ADDRESSES CAN CARRY, ticked for "send now": each club's opponents that week, its own report (ticked
-   when its fortnight is up), the players' ZIP. Answers sub id -> pick ({ opps, own, players }, the mailer's weekChoice), or null. */
+   when its fortnight is up), the players' ZIP. AND THE CLUB'S LAST TEN FINALS, none ticked (Louie, 2026-10-16: "is it possible to
+   select the possible games (similar to selecting teams) to choose for the game analysis section?", for a new customer's first
+   reports): each ticked one's analysis goes now, an email of its own, as if the game had just finished; one already sent says so.
+   Answers sub id -> pick ({ opps, own, players, games? }, the mailer's weekChoice and its pick.games), or null. */
 async function pickWeek(list, title) {
   const ids = list.map(x => x.id);
   const [{ data: lg }, { data: pk }] = await Promise.all([
-    sb.from('report_mail_log').select('sub_id,ref').eq('kind', 'team').in('sub_id', ids),
+    sb.from('report_mail_log').select('sub_id,kind,ref').in('kind', ['team', 'game']).in('sub_id', ids),
     sb.from('report_mail_picks').select('sub_id,sunday,skip_opps,own,players').in('sub_id', ids)
   ]);
   const groups = [];
@@ -1142,19 +1145,32 @@ async function pickWeek(list, title) {
       if (!opps.has(o)) opps.set(o, { id: o, name: ((home ? g.away : g.home) || {}).name || 'opponent', at: g.tipoff_at }); });
     const week = (pk || []).find(p => p.sub_id === x.id && p.sunday === W.sunday) || {};
     const skip = new Set(week.skip_opps || []);
-    const due = ownDueFor((lg || []).filter(r => r.sub_id === x.id).map(r => r.ref), W.sunday);
+    const due = ownDueFor((lg || []).filter(r => r.sub_id === x.id && r.kind !== 'game').map(r => r.ref), W.sunday);
     const day = iso => new Date(iso).toLocaleDateString('en-GB', { timeZone: x.tz || 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
     groups.push({ head: club, note: 'Week of ' + weekWords(x.tz) + ', their time',
       items: [...opps.values()].map(o => ({ key: 'o:' + x.id + ':' + o.id, label: 'scouting report: ' + o.name, hint: day(o.at), on: x.send_opponents !== false && !skip.has(o.id) }))
         .concat([{ key: 'own:' + x.id, label: 'own team report: ' + club, hint: due ? 'its fortnight is up' : 'not its fortnight', on: week.own != null ? week.own : due && x.send_own !== false },
                  { key: 'zip:' + x.id, label: 'players’ reports (ZIP), a reply to the email', on: week.players != null ? week.players : x.player_zip !== false }]) });
     if (!opps.size) groups[groups.length - 1].note += ': no games that week';
+    const { data: fin } = await sb.from('games').select('id,home_team_id,away_team_id,home_score,away_score,tipoff_at,home:home_team_id(name),away:away_team_id(name)')
+      .or('home_team_id.eq.' + tid + ',away_team_id.eq.' + tid).eq('status', 'final').order('tipoff_at', { ascending: false }).limit(10);
+    const went = new Set((lg || []).filter(r => r.sub_id === x.id && r.kind === 'game').map(r => r.ref));
+    if ((fin || []).length) groups.push({ head: club + ': game analyses', note: 'Its last ' + fin.length + ' games, each drawn from its side. Each one ticked goes now, in an email of its own',
+      items: fin.map(g => {
+        const home = g.home_team_id === tid, us = home ? g.home_score : g.away_score, them = home ? g.away_score : g.home_score;
+        const opp = ((home ? g.away : g.home) || {}).name || 'opponent';
+        return { key: 'g:' + x.id + ':' + g.id, label: 'game analysis: ' + (home ? 'v ' : 'at ') + opp + ' (' + (us > them ? 'W' : us < them ? 'L' : 'D') + ' ' + us + '–' + them + ')',
+          hint: day(g.tipoff_at) + (went.has(g.id) ? ' · sent before' : ''), on: false };
+      }) });
   }
-  const t = await askPick({ title: title || 'Send next week’s reports now', lead: 'Tick what goes. It counts as that Sunday’s email, so Sunday morning will not send it again. It takes a few minutes.', groups, go: 'send now' });
+  const t = await askPick({ title: title || 'Send next week’s reports now', lead: 'Tick what goes. The week’s reports count as that Sunday’s email, so Sunday morning will not send them again; a game analysis ticked goes as its own email. It takes a few minutes.', groups, go: 'send now' });
   if (!t) return null;
-  return new Map(list.map(x => [x.id, {
-    opps: [...t].filter(([k, v]) => v && k.startsWith('o:' + x.id + ':')).map(([k]) => k.split(':')[2]),
-    own: !!t.get('own:' + x.id), players: !!t.get('zip:' + x.id) }]));
+  return new Map(list.map(x => {
+    const games = [...t].filter(([k, v]) => v && k.startsWith('g:' + x.id + ':')).map(([k]) => k.split(':')[2]);
+    return [x.id, Object.assign({
+      opps: [...t].filter(([k, v]) => v && k.startsWith('o:' + x.id + ':')).map(([k]) => k.split(':')[2]),
+      own: !!t.get('own:' + x.id), players: !!t.get('zip:' + x.id) }, games.length ? { games } : {})];
+  }));
 }
 /* "send everyone": which kinds go, for every address at once (each its own week and opponents) */
 async function pickKinds(n) {

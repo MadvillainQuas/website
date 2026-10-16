@@ -113,7 +113,7 @@ function world(st) {
     const table = u.pathname.replace('/rest/v1/', '');
     if (table === 'report_mail_requests') {
       if (st.noTable) return new Response(JSON.stringify({ code: 'PGRST205', message: 'Could not find the table' }), { status: 404 });
-      if (method === 'GET') return J(st.requests.filter(r => r.state === 'queued').map(r => ({ id: r.id, sub: r.sub })));
+      if (method === 'GET') return J(st.requests.filter(r => r.state === 'queued').map(r => ({ id: r.id, sub: r.sub, ...(r.pick ? { pick: r.pick } : {}) })));
       const id = (q.get('id') || '').replace(/^eq\./, ''), r = st.requests.find(x => x.id === id);
       if (!id) { calls.push({ k: 'sweep', state: q.get('state'), before: (q.get('requested_at') || '').replace(/^lt\./, ''), body }); return none(204); }
       if (q.get('state') === 'eq.queued') {
@@ -129,6 +129,10 @@ function world(st) {
       calls.push({ k: 'log', ...body }); st.log.push({ ...body, sent_at: new Date().toISOString() }); return none(201);
     }
     if (table === 'games') {
+      /* one game by its id (a game ticked in send now: a final), and a game's next fixture (the first after it) */
+      if (q.get('id')) { const id = q.get('id').replace(/^eq\./, ''); calls.push({ k: 'game', id }); return J(st.games.filter(g => g.id === id && q.get('status') === 'eq.final' && g.status === 'final')); }
+      const after = q.getAll('tipoff_at').find(x => x.startsWith('gt.'));
+      if (after) return J(st.games.filter(g => !g.status && g.tipoff_at > after.slice(3)).sort((a, b) => a.tipoff_at < b.tipoff_at ? -1 : 1).slice(0, 1));
       const [lo, hi] = q.getAll('tipoff_at').map(x => x.replace(/^(gte|lt)\./, ''));
       calls.push({ k: 'games', from: lo, to: hi });
       return J(st.games.filter(g => g.tipoff_at >= lo && g.tipoff_at < hi));
@@ -246,6 +250,57 @@ console.log('\n...and the other ways a request ends');
   ok('...and the Sunday round still skips a Sunday that is in the log (a request\'s date is the Sunday\'s)', /if \(L\.wd !== 'Sun' \|\| L\.hour \* 60 \+ L\.mi < SUNDAY_FROM_MIN \|\| has\('sunday', L\.date\)\) return failed;/.test(src));
   ok('...it logs "nothing this week" for the Sunday itself, a request does not', /if \(!\(await sendWeek\(sub, team, tz, sent, W, L\.date, pick\)\)\) await log\(sub, 'sunday', L\.date, 'nothing this week'\);/.test(src) &&
      !/sendWeek[^\n]*\n[^\n]*log\(s, 'sunday'/.test(src));
+}
+
+console.log('\nthe games ticked: each one\'s analysis, an email of its own (pick.games)');
+{
+  const U = n => 'f1f1f1f1-0000-4000-8000-00000000000' + n;
+  const F = (id, h, a, hn, an, at, hs, as) => Object.assign(G(id, h, a, hn, an, at), { status: 'final', home_score: hs, away_score: as, finalised_at: at, competitions: { name: 'NBL', seasons: { leagues: { name: 'NBL' } } } });
+  const finals = [F(U(1), TEAM, 'Q', 'Illawarra Hawks', 'Queensland Rockets', '2026-09-20T10:00:00Z', 90, 80),
+                  F(U(2), 'K', TEAM, 'Kings', 'Illawarra Hawks', '2026-09-27T10:00:00Z', 75, 70),
+                  F(U(3), 'K', 'Q', 'Kings', 'Queensland Rockets', '2026-09-28T10:00:00Z', 60, 61)];       // not a game of the club's
+  const st = { requests: [Object.assign(want('R10'), { pick: { opps: [], own: false, players: false, games: [U(1), U(2), U(3), 'not-a-game', U(1)] } })], games: GAMES.concat(finals) };
+  const calls = world(st);
+  const failed = await quiet(() => M.requests(NOW));
+  const pdfs = calls.filter(c => c.k === 'pdf'), mails = calls.filter(c => c.k === 'mail'), mark = calls.find(c => c.k === 'mark');
+  ok('two finals of the club ticked: each analysis from the club\'s side (home 0, away 1), each email alone; another club\'s game and a bad id are not sent, a game ticked twice goes once',
+     failed === 0 && pdfs.map(p => p.path).join(' ') === `/epinoia/game/?g=${U(1)}&analysis=0 /epinoia/game/?g=${U(2)}&analysis=1` &&
+     mails.length === 2 && mails.every(m => m.files.length === 1 && /^Game analysis: Illawarra Hawks /.test(m.subject)) && calls.filter(c => c.k === 'game').length === 3,
+     [failed, pdfs.map(p => p.path), mails.map(m => m.subject)]);
+  ok('...the analysis of a game the club won and one it lost, from its side', /Illawarra Hawks 90.80 Queensland Rockets/.test(mails[0].subject) && /Illawarra Hawks 70.75 Kings/.test(mails[1].subject), mails.map(m => m.subject));
+  ok('...logged as game analyses (the round after a final never sends one again) and kept for the dashboard',
+     calls.filter(c => c.k === 'log').map(l => l.kind + ' ' + l.ref).join(' | ') === 'game ' + U(1) + ' | game ' + U(2) &&
+     calls.filter(c => c.k === 'file').map(f => f.kind + ' ' + f.ref).join(' | ') === 'game ' + U(1) + ' | game ' + U(2), calls.filter(c => c.k === 'log' || c.k === 'file'));
+  ok('...nothing else ticked: no week-ahead email, the Sunday not logged, and the request says what went', mark.state === 'sent' &&
+     mark.detail === 'Sent 2 game analyses (nothing else was ticked, or due, for the week of Mon 12 Oct).' && !calls.some(c => c.k === 'log' && c.kind === 'sunday'), mark);
+
+  const c2 = world({ requests: [Object.assign(want('R11'), { pick: { opps: ['P'], own: false, players: false, games: [U(1)] } })], games: GAMES.concat(finals) });
+  await quiet(() => M.requests(NOW));
+  const m2 = c2.find(c => c.k === 'mark'), mails2 = c2.filter(c => c.k === 'mail');
+  ok('with the week\'s reports ticked too: the game\'s email, then the week\'s, and the line says both', mails2.length === 2 && /^Game analysis/.test(mails2[0].subject) && /^Your week ahead/.test(mails2[1].subject) &&
+     m2.state === 'sent' && m2.detail === 'Sent the week of Mon 12 Oct: scouting report on South East Melbourne Phoenix; and one game analysis.', [mails2.map(m => m.subject), m2]);
+
+  const c3 = world({ requests: [Object.assign(want('R12'), { pick: { opps: [], own: false, players: false, games: [U(1)] } })], games: GAMES.concat(finals), resend: 500 });
+  const f3 = await quiet(() => M.requests(NOW));
+  const m3 = c3.find(c => c.k === 'mark');
+  ok('...a game\'s email refused: a failure of the run, not logged as sent, and the request failed with its words (nothing else went)',
+     f3 === 1 && !c3.some(c => c.k === 'log') && m3.state === 'failed' && /^One game analysis could not be sent: .*resend 500/.test(m3.detail), [f3, m3]);
+
+  const c4 = world({ requests: [want('R13')] });
+  await quiet(() => M.requests(NOW));
+  ok('a request with no games in it asks for no game', !c4.some(c => c.k === 'game') && c4.filter(c => c.k === 'mail').length === 1);
+
+  const W = M.nextWeek(LON, NOW);
+  ok('the line: the games said after the week, alone when nothing else went, as before without them',
+     M.requestLine(W, LON, { names: ['A'], own: true }, 3) === 'Sent the week of Mon 12 Oct: scouting report on A, plus the club’s own team report; and 3 game analyses.' &&
+     M.requestLine(W, LON, null, 1) === 'Sent one game analysis (nothing else was ticked, or due, for the week of Mon 12 Oct).' &&
+     M.requestLine(W, LON, null, 0) === 'No games in the week of Mon 12 Oct and no team report due: nothing to send.');
+
+  const js = read('epinoia', 'admin', 'platform', 'platform.js');
+  ok('the console: each club\'s last ten finals in the send-now ticks, none ticked, one already sent said so, and the pick carries the games ticked',
+     /\.eq\('status', 'final'\)\.order\('tipoff_at', \{ ascending: false \}\)\.limit\(10\);/.test(js) && /key: 'g:' \+ x\.id \+ ':' \+ g\.id/.test(js) &&
+     /went\.has\(g\.id\) \? ' · sent before' : ''\), on: false/.test(js) && /games\.length \? \{ games \} : \{\}/.test(js) && /\.in\('kind', \['team', 'game'\]\)/.test(js) &&
+     /r\.kind !== 'game'\)\.map\(r => r\.ref\), W\.sunday\)/.test(js));
 }
 
 console.log('\nthe request, as the line the console shows');

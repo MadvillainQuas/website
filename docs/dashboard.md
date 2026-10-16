@@ -57,6 +57,12 @@ there is more than one. Pressing it says what will go and asks first.
 - **It counts as that Sunday's email.** It is logged as the Sunday before the week, which Sunday morning's own run finds, so
   that Sunday does not send it again. A week with no games and no team report due sends nothing, says so, and is *not*
   logged: the fixtures may still be announced, and Sunday morning looks again.
+- **Past games' analyses (2026-10-16), for a new customer's first reports:** under each club the ticks list its last ten
+  finals, none ticked, one already emailed to the address marked *sent before*. Each one ticked goes now, as its own
+  game-analysis email from the club's side, exactly as if the game had just finished. It is kept for the dashboard and logged
+  as that game's email, so the round after a final never sends it again. The request's line counts them ("Sent one game
+  analysis (nothing else was ticked...)"). A game whose email fails is said, and fails the request when nothing else went.
+  No migration: the games ride in the request's `pick` (0263) as `games`.
 - **When it goes:** a press queues a request (`report_mail_requests`, `request_report_send`, platform administrators only), and
   the first of three things starts the mailer: the `console-kick` function, the moment you press, where it is set up
   (`docs/backfills.md`, "Setting up the instant start"); the live lane, within about two minutes, which needs no setup (it

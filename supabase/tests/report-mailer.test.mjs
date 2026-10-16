@@ -95,8 +95,8 @@ console.log('\nkept for the dashboard (0225)');
   ok('...with a row saying what it is, for whom, and how big', row.sub_id === sub.id && row.kind === 'opp' && row.ref === '2026-10-04:T2' && row.title === 'Sydney Kings' &&
      row.subtitle === 'Week of Mon 5 Oct 2026' && row.bytes === 1200 && !('seen_at' in row) && !('made_at' in row));
   const src = readFileSync(path.join(ROOT, 'scripts', 'report_mailer.mjs'), 'utf8');
-  const one = src.slice(src.indexOf('async function one('));
-  const week = src.slice(src.indexOf('async function sendWeek('), src.indexOf('async function one('));     // the Sunday email, which a "send next week's reports now" shares (0226)
+  const one = src.slice(src.indexOf('async function sendGame('), src.indexOf('async function one('));   // a game's email, after a final and in send now (pick.games)
+  const week = src.slice(src.indexOf('async function sendWeek('), src.indexOf('async function sendGame('));     // the Sunday email, which a "send next week's reports now" shares (0226)
   ok('every report is kept before its email goes (a failed email still leaves it in the dashboard)',
      one.indexOf("kind: 'game'") >= 0 && one.indexOf("kind: 'game'") < one.indexOf('await send(sub.email, E.subject, E.html, [pdf])') &&
      week.indexOf("kind: 'opp'") >= 0 && week.indexOf("kind: 'opp'") < week.lastIndexOf('await send(') && week.indexOf("kind: 'team'") >= 0 && week.indexOf("kind: 'team'") < week.lastIndexOf('await send('));
@@ -204,7 +204,7 @@ console.log('\nthe Sunday hold, and the rest of the round');
     /const nextMon = weekAhead\(tz, new Date\(\), false\)\.from;/.test(src) && /tipoff_at=gte\.\$\{nextMon\.toISOString\(\)\}/.test(src));
   ok('...and the club itself when its own report goes in the email (not on its first Sunday)', /const ownToday = !first && weekChoice/.test(src) && /concat\(ownToday \? \[team\.id\] : \[\]\)/.test(src));
   ok('...the opponents unticked for the week are not waited for', /weekChoice\(\{ sub, opps: opponentsOf\(team, ahead\)\.uniq, ownDue: false, pick \}\)\.opps/.test(src));
-  ok('one game that cannot be drawn does not stop the rest: each in its own try, given up after 36 hours', /const side = g\.home_team_id === team\.id \? 0 : 1;\n    try \{/.test(src) &&
+  ok('one game that cannot be drawn does not stop the rest: each in its own try, given up after 36 hours', /if \(has\('game', g\.id\)\) continue;\n[\s\S]{0,400}?\n    try \{\n      await sendGame\(sub, team, g, tz\);\n    \} catch \(e\) \{/.test(src) &&
     M.GAME_GIVE_UP_MS === 36 * 36e5 && /'not sent: '/.test(src));
   ok('the game emails follow the address\'s kind', /sub\.send_games === false \? \[\] : games/.test(src));
   ok('the log is written up to three times', /if \(i >= 2\) throw e;/.test(src));

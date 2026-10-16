@@ -663,6 +663,26 @@ async function sendWeek(sub, team, tz, sent, W, day, given) {
   return { names: uniq.map(o => o.oname), own: ownDue, players: players ? players.reduce((s, c) => s + c.players.length, 0) : 0 };
 }
 
+/* ONE GAME'S ANALYSIS, AN EMAIL OF ITS OWN (from the club's side), kept for the dashboard and logged ('game', its id): after each
+   final (one, below), and the games ticked in "send now" (requests: pick.games; Louie, 2026-10-16: "is it possible to select the
+   possible games ... to choose for the game analysis section?", for new customers' first reports). The log keeps the round after
+   each final from sending it again. */
+async function sendGame(sub, team, g, tz) {
+  const club = team.name, mine = mineOf(team);
+  const side = g.home_team_id === team.id ? 0 : 1;
+  const [next] = await rest(`games?${mine}&status=in.(scheduled,live)&tipoff_at=gt.${encodeURIComponent(g.tipoff_at || new Date().toISOString())}&select=${GAME_SELECT}&order=tipoff_at.asc&limit=1`);
+  const E = gameEmail({ sub, team, g, side, next, tz });
+  const opp = ((side ? g.home : g.away) || {}).name || 'opponent';
+  console.log('game', club, 'v', opp, g.id);
+  const pdf = await pdfOf(`/epinoia/game/?g=${g.id}&analysis=${side}`, `game-analysis-${slug(club)}-v-${slug(opp)}-${(g.tipoff_at || '').slice(0, 10)}`);
+  const comp = (g.competitions && g.competitions.name) || '';
+  await keep(sub, (g.tipoff_at || new Date().toISOString()).slice(0, 10), pdf, { kind: 'game', ref: g.id, title: E.subject.replace(/^Game analysis: /, ''),
+    subtitle: [comp, shortDay(g.tipoff_at, tz), g.venue].filter(Boolean).join(' · ') });
+  await send(sub.email, E.subject, E.html, [pdf]);
+  await log(sub, 'game', g.id, `${side ? g.away_score : g.home_score}-${side ? g.home_score : g.away_score} v ${opp}`);
+  return opp;
+}
+
 async function one(sub, team) {
   const tz = tzOf(sub, team);
   let failed = 0;
@@ -682,18 +702,8 @@ async function one(sub, team) {
     if (has('game', g.id)) continue;
     /* EACH GAME ON ITS OWN (2026-10-14): one that cannot be drawn does not stop the rest, nor the Sunday below; it is tried again
        each run, and given up 36 hours after it was final (logged as not sent, so it stops being tried) */
-    const side = g.home_team_id === team.id ? 0 : 1;
     try {
-      const [next] = await rest(`games?${mine}&status=in.(scheduled,live)&tipoff_at=gt.${encodeURIComponent(g.tipoff_at || new Date().toISOString())}&select=${GAME_SELECT}&order=tipoff_at.asc&limit=1`);
-      const E = gameEmail({ sub, team, g, side, next, tz });
-      const opp = ((side ? g.home : g.away) || {}).name || 'opponent';
-      console.log('game', club, 'v', opp, g.id);
-      const pdf = await pdfOf(`/epinoia/game/?g=${g.id}&analysis=${side}`, `game-analysis-${slug(club)}-v-${slug(opp)}-${(g.tipoff_at || '').slice(0, 10)}`);
-      const comp = (g.competitions && g.competitions.name) || '';
-      await keep(sub, (g.tipoff_at || new Date().toISOString()).slice(0, 10), pdf, { kind: 'game', ref: g.id, title: E.subject.replace(/^Game analysis: /, ''),
-        subtitle: [comp, shortDay(g.tipoff_at, tz), g.venue].filter(Boolean).join(' · ') });
-      await send(sub.email, E.subject, E.html, [pdf]);
-      await log(sub, 'game', g.id, `${side ? g.away_score : g.home_score}-${side ? g.home_score : g.away_score} v ${opp}`);
+      await sendGame(sub, team, g, tz);
     } catch (e) {
       failed++;
       console.error('[' + sub.email + '] game ' + g.id + ':', e.message || e);
@@ -742,13 +752,16 @@ async function one(sub, team) {
    shows. Requests not done in three hours are given up, as the database does when it is next asked. */
 const SUB_SELECT = '*,teams(id,name,colour,leagues(timezone))';
 const GIVE_UP_MS = 3 * 36e5;
-export function requestLine(W, tz, done) {
+export function requestLine(W, tz, done, games) {
   const week = 'the week of ' + dayShort(W.from.toISOString(), tz);
-  if (!done) return 'No games in ' + week + ' and no team report due: nothing to send.';
+  /* the game analyses ticked (pick.games), said with the week's email, or alone */
+  const ga = games ? (games === 1 ? 'one game analysis' : games + ' game analyses') : '';
+  if (!done) return ga ? 'Sent ' + ga + ' (nothing else was ticked, or due, for ' + week + ').' : 'No games in ' + week + ' and no team report due: nothing to send.';
   const what = [];
   if (done.names.length) what.push('scouting report' + (done.names.length > 1 ? 's' : '') + ' on ' + listOf(done.names));
   if (done.own) what.push('the club’s own team report');
-  return 'Sent ' + week + ': ' + what.join(', plus ') + (done.players ? '; and ' + done.players + ' player report' + (done.players === 1 ? '' : 's') + ' in a reply' : '') + '.';
+  return 'Sent ' + week + ': ' + what.join(', plus ') + (done.players ? '; and ' + done.players + ' player report' + (done.players === 1 ? '' : 's') + ' in a reply' : '') +
+    (ga ? '; and ' + ga : '') + '.';
 }
 export async function requests(now = new Date()) {
   if (!DRY) await rest(`report_mail_requests?state=in.(queued,running)&requested_at=lt.${new Date(now.getTime() - GIVE_UP_MS).toISOString()}`, { method: 'PATCH',
@@ -773,8 +786,23 @@ export async function requests(now = new Date()) {
     try {
       const W = nextWeek(tz, now);
       console.log('send now', s.email, '->', team.name, '| the week from', W.from.toISOString());
+      /* THE GAMES TICKED (pick.games): each one final and the club's, its analysis an email of its own, whatever the week brings */
+      const gids = r.pick && Array.isArray(r.pick.games) ? [...new Set(r.pick.games.map(String))].filter(id => /^[0-9a-f-]{36}$/i.test(id)).slice(0, 20) : [];
+      let games = 0;
+      const gfail = [];
+      for (const gid of gids) {
+        try {
+          const [g] = await rest(`games?id=eq.${gid}&status=eq.final&select=${GAME_SELECT},competitions(name,seasons(leagues(name)))`);
+          if (!g || (g.home_team_id !== team.id && g.away_team_id !== team.id)) { console.warn('[' + s.email + '] game ' + gid + ': not a final of ' + team.name + ', not sent'); continue; }
+          await sendGame(s, team, g, tz);
+          games++;
+        } catch (e) { failed++; gfail.push(e.message || String(e)); console.error('[' + s.email + '] game ' + gid + ':', e.message || e); }
+      }
       const done = await sendWeek(s, team, tz, await rest(`report_mail_log?sub_id=eq.${s.id}&select=kind,ref,sent_at`), W, W.sunday, r.pick || null);
-      await mark(done ? 'sent' : 'nothing', requestLine(W, tz, done));
+      /* a game's email that failed is said, and is the request's failure when nothing else went */
+      const fails = gfail.length ? (gfail.length === 1 ? 'One game analysis' : gfail.length + ' game analyses') + ' could not be sent: ' + gfail[0] : '';
+      if (fails && !done && !games) await mark('failed', fails);
+      else await mark(done || games ? 'sent' : 'nothing', requestLine(W, tz, done, games) + (fails ? ' ' + fails : ''));
     } catch (e) {
       failed++; console.error('[' + s.email + '] send now:', e.message || e);
       await mark('failed', e.message || e).catch(() => {});
