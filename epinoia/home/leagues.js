@@ -153,6 +153,9 @@
   function card(l, ctx, clubs, season) {
     const a = el('a', 'club lgc');
     a.href = ctx.base + '?l=' + encodeURIComponent(l.slug || '');
+    /* a college system's league goes to the system's hub, its conferences and the side it is (config.js EPINOIA_COLLEGE) */
+    const sys = (window.EPINOIA_COLLEGE || {})[l.slug];
+    if (sys) a.href = ctx.base + '?college=' + encodeURIComponent(sys) + (/-women$/.test(l.slug) ? '&g=women' : /-men$/.test(l.slug) ? '&g=men' : '');
     a.setAttribute('role', 'listitem');
     paint(a, l);
 
@@ -287,18 +290,6 @@
     const flagEl = grp => {
       const src = typeof C.flagSrc === 'function' ? C.flagSrc(grp.code) : '';
       const emoji = () => { const s = el('span', 'lgc-flag', grp.flag); s.setAttribute('aria-hidden', 'true'); return s; };
-      /* A COLLEGE SYSTEM'S ROW WEARS ITS OWN LOGO (country.js group: U SPORTS's; Louie, 2026-10-16), the mortarboard
-         only while it has none */
-      if (grp.college) {
-        const lg = (grp.leagues || []).find(l => l && l.logo_path);
-        const url = lg && window.epinoiaLogoUrl ? window.epinoiaLogoUrl(lg.logo_path, 64) : null;
-        if (!url) return emoji();
-        const im = el('img', 'lgc-flag lgc-flag-img lgc-syslogo');
-        im.alt = ''; im.width = 22; im.height = 22; im.decoding = 'async';
-        im.addEventListener('error', () => im.replaceWith(emoji()), { once: true });
-        im.src = url;
-        return im;
-      }
       if (!src) return emoji();
       const img = el('img', 'lgc-flag lgc-flag-img');
       img.alt = ''; img.width = 22; img.height = 15; img.decoding = 'async';

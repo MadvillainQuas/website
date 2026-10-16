@@ -58,7 +58,7 @@ function norm(code) {
    ADDING ONE IS TWO STEPS, deliberately: drop <code>.svg into brand/flags and
    add the code here. The alternative — try the image and fall back on error —
    means a 404 on every page load for every country we have not drawn. */
-const HAVE_FLAG = ['AL', 'AR', 'AT', 'AU', 'AZ', 'BE', 'BG', 'BR', 'CA', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'EU', 'FI', 'FR', 'GB', 'GR', 'HU', 'IL', 'IT', 'JP', 'KR', 'LT', 'LV', 'MK', 'MX', 'NL', 'PL', 'RO', 'SE', 'SK', 'XB', 'XK'];
+const HAVE_FLAG = ['AL', 'AR', 'AT', 'AU', 'AZ', 'BE', 'BG', 'BR', 'CA', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'EU', 'FI', 'FR', 'GB', 'GR', 'HU', 'IL', 'IT', 'JP', 'KR', 'LT', 'LV', 'MK', 'MX', 'NL', 'PL', 'RO', 'SE', 'SK', 'US', 'XB', 'XK'];
 
 /* A REGION IS NOT A COUNTRY, but some leagues belong to one: the ABA League is
    played across the former Yugoslavia and no single flag is its home. Such a
@@ -140,28 +140,19 @@ const inGroup = (a, b) => {
   const order = g && typeof g.epinoiaLeagueOrder === 'function' ? g.epinoiaLeagueOrder : null;
   return (order ? order(a, b) : 0) || byName(a, b);
 };
-/* A COLLEGE SYSTEM IS A "COUNTRY" OF ITS OWN (Louie, 2026-10-16: "U Sports/NCAA D2 as a country"; config.js
-   EPINOIA_COLLEGE): its leagues are grouped under the system's name - a mortarboard for a flag - not their country's */
-const COLLEGE_NAMES = { 'u-sports': 'U SPORTS', 'ncaa-d2': 'NCAA D2' };
-function collegeOf(l) {
-  const g = typeof globalThis !== 'undefined' ? globalThis : null;
-  const m = g && g.EPINOIA_COLLEGE;
-  return (m && l && l.slug && m[l.slug]) || null;
-}
+/* A college system's leagues are their country's here (Louie, 2026-10-16: "I still want U-Sports and NCAA D2 to come
+   under their respective countries"): U SPORTS under Canada, NCAA D2 under the United States. Their rows go to the
+   system's hub (home/leagues.js). */
 function group(leagues) {
   const map = new Map();
   (Array.isArray(leagues) ? leagues : []).forEach(l => {
     if (!l) return;
-    const sys = collegeOf(l);
-    const k = sys ? '~college:' + sys : norm(l.country);
+    const k = norm(l.country);
     if (!map.has(k)) map.set(k, []);
     map.get(k).push(l);
   });
   return [...map.keys()]
-    .map(code => /^~college:/.test(code)
-      ? { code, name: COLLEGE_NAMES[code.slice(9)] || code.slice(9).toUpperCase(), flag: '\u{1F393}', college: code.slice(9),
-          leagues: map.get(code).slice().sort(inGroup) }
-      : { code, name: countryName(code), flag: flagOf(code), leagues: map.get(code).slice().sort(inGroup) })
+    .map(code => ({ code, name: countryName(code), flag: flagOf(code), leagues: map.get(code).slice().sort(inGroup) }))
     .sort((a, b) => (a.code === '') - (b.code === '') || a.name.localeCompare(b.name) ||
       (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
 }

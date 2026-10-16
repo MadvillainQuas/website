@@ -2137,10 +2137,26 @@
      landed, under a heading that reads like a mistake. */
   const PRIVATE_KEY = '~private';
   function groupKey(l) {
-    /* a college system's leagues are not their country's: the system is a "country" of its own (COLLEGE above) */
+    /* a college system's leagues are the system's panel's, not their country's list (COLLEGE above) */
     if (l && COLLEGE[l.slug]) return COLLEGE_PREFIX + COLLEGE[l.slug];
     return l && l.visibility === 'private' ? PRIVATE_KEY : ((l && l.country) || '');
   }
+  /* A COLLEGE SYSTEM LIVES IN ITS COUNTRY (Louie, 2026-10-16: "I still want U-Sports and NCAA D2 to come under their
+     respective countries (Canada and the United States) ... while retaining the same function"). On the countries list
+     its leagues count under that country; in the country's list the system is one row (systemRow) opening its own
+     panel, whose back button comes back to the country. `country` still names the system while its panel is open, so a
+     conference's rail comes back out to the system, as before. */
+  const COLLEGE_HOME = { 'u-sports': 'CA', 'ncaa-d2': 'US' };
+  function homeOf(key) {
+    const l = leagues.find(x => COLLEGE[x.slug] === key && x.country);
+    return (l && l.country) || COLLEGE_HOME[key] || '';
+  }
+  const listedIn = l => (l && COLLEGE[l.slug] ? homeOf(COLLEGE[l.slug]) : groupKey(l));
+  const countryHere = () => (isCollegeKey(country) ? homeOf(collegeKey(country)) : country);
+  /* WHERE THE RAIL OPENS FOR A PAGE OF A SYSTEM'S LEAGUE: a conference's page on the conference's rail, every other page
+     (a box score, the system's fixtures or table) on the system's panel - never the bare league's rail, which has none of
+     the system's places (reported 2026-10-16: a U SPORTS box score showed the old rail) */
+  const systemPage = l => !!(l && COLLEGE[l.slug] && !rconf);
 
   /* THE FLAG AS A PICTURE WHERE WE HAVE ONE.
 
@@ -2161,7 +2177,7 @@
      bigger one than this.
 
      Returns a NODE, because one of the two answers is an <img>. */
-  const HAVE_FLAG = ['AL', 'AR', 'AT', 'AU', 'AZ', 'BE', 'BG', 'BR', 'CA', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'EU', 'FI', 'FR', 'GB', 'GR', 'HU', 'IL', 'IT', 'JP', 'KR', 'LT', 'LV', 'MK', 'MX', 'NL', 'PL', 'RO', 'SE', 'SK', 'XB', 'XK'];
+  const HAVE_FLAG = ['AL', 'AR', 'AT', 'AU', 'AZ', 'BE', 'BG', 'BR', 'CA', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'EU', 'FI', 'FR', 'GB', 'GR', 'HU', 'IL', 'IT', 'JP', 'KR', 'LT', 'LV', 'MK', 'MX', 'NL', 'PL', 'RO', 'SE', 'SK', 'US', 'XB', 'XK'];
   /* A region filed under a user-assigned code (country.js says why); its
      "flag" is an outline of the area, and its name is ours, not Intl's. */
   const REGIONS = { XB: { name: 'Balkans', glyph: '\u{1F5FA}\uFE0F' } };
@@ -2264,7 +2280,7 @@
     clist.textContent = '';
     const groups = new Map();
     leagues.forEach(l => {
-      const k = groupKey(l);
+      const k = listedIn(l);
       if (!groups.has(k)) groups.set(k, 0);
       groups.set(k, groups.get(k) + 1);
     });
@@ -2279,7 +2295,7 @@
                       (a === '') - (b === '') ||
                       countryName(a).localeCompare(countryName(b)))
       .forEach(code => {
-        const row = el('button', 'item crow' + (country === code ? ' on' : ''));
+        const row = el('button', 'item crow' + (countryHere() === code ? ' on' : ''));
         row.type = 'button';
         const name = countryName(code);
         row.title = name + ' \u00b7 ' + groups.get(code) +
@@ -2315,6 +2331,16 @@
   }
 
   cback.addEventListener('click', () => {
+    if (isCollegeKey(country)) {
+      const key = collegeKey(country);
+      country = homeOf(key);
+      fillCountryHead(country);
+      drawLeagues(true);
+      slideIn(list, 'back');
+      const sr = list.querySelector('.cg-sysrow[data-college="' + key + '"]');
+      if (sr) sr.focus({ preventScroll: true });
+      return;
+    }
     setView('country', true);
     const row = clist.querySelector('.crow.on') || clist.querySelector('.crow');
     if (row) row.focus({ preventScroll: true });
@@ -2620,6 +2646,44 @@
     navScroll.scrollTop = 0; nav.scrollTop = 0;
     afterPaint(() => sizeDeck(false));
   }
+  /* A SYSTEM'S ROW IN ITS COUNTRY'S LIST: its crest and name, "›" for the panel it opens in place (the system's search,
+     conferences and pages). A link to the hub, so a modified click opens that; on a phone it is a railMove, so the sheet
+     stays open on the system's panel as it did when the system was a country. */
+  function systemRow(key) {
+    const code = COLLEGE_PREFIX + key;
+    const a = el('a', 'item lrow cg-sysrow' + (hubSys === key || (COLLEGE[pageLeague] === key) ? ' on' : ''));
+    a.href = root + '?college=' + encodeURIComponent(key) + collegeSideQuery(key);
+    a.dataset.college = key;
+    a.dataset.railMove = '1';
+    a.title = collegeName(code) + ' — its conferences, hub and pages';
+    const l = leagues.find(x => COLLEGE[x.slug] === key && x.logo_path);
+    const mark = l ? crest(l) : el('span', 'crest cg-sysplate', '\u{1F393}');
+    const txt = el('span', 'ltx');
+    const nm = marquee(collegeName(code));
+    nm.setAttribute('translate', 'no');
+    txt.append(nm, el('span', 'ltier', 'university basketball'));
+    a.append(mark, txt, el('span', 'lgo', '›'));
+    a.addEventListener('click', e => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      /* after the tap, as the side switch above: the redraw removes this row, which the phone sheet would read as a
+         tap outside it */
+      setTimeout(() => {
+        country = code;
+        fillCountryHead(code);
+        drawLeagues(true);
+        slideIn(list, 'in');
+        navScroll.scrollTop = 0; nav.scrollTop = 0;
+      }, 0);
+    });
+    return a;
+  }
+  /* the list redrawn in place slides in from the side it came from */
+  function slideIn(node, way) {
+    node.classList.remove('cg-slide-in', 'cg-slide-back');
+    void node.offsetWidth;                         // restart the animation
+    node.classList.add(way === 'back' ? 'cg-slide-back' : 'cg-slide-in');
+  }
   /* the search a system's panel opens: its leagues alone (search.js scope) */
   let searchScope = null;
   let collegeDraws = 0;
@@ -2654,8 +2718,9 @@
           try { localStorage.setItem(COLLEGE_SIDE, k); } catch (_) { /* this page only */ }
           const want = ls.find(l => (k === 'women') === /women/.test(l.slug));
           if (want && lg !== want.slug && COLLEGE[lg]) { lg = want.slug; retarget(); }
-          drawCollege(code);
-          fillCountryHead(code);
+          /* after the tap: redrawing removes this button, and the phone sheet reads a tap on a removed node as a tap
+             outside it, and closes */
+          setTimeout(() => { drawCollege(code); fillCountryHead(code); }, 0);
         });
         box.appendChild(b);
       });
@@ -2694,12 +2759,14 @@
     /* the system's own pages */
     list.appendChild(el('div', 'grouplbl', S.name));
     const sq = encodeURIComponent(cur.slug);
+    /* the page this is, lit: the hub, or a system page of the system's league with no conference */
+    const at = dir => !rconf && COLLEGE[pageLeague] === key && new RegExp('/epinoia/' + dir + '/(index\\.html)?$').test(location.pathname);
     [['⌂', 'hub', '?college=' + encodeURIComponent(key) + collegeSideQuery(key), hubSys === key],
-     ['▥', 'fixtures', 'fixtures/?l=' + sq, false],
-     ['▤', 'table / team stats', 'l/?l=' + sq, false],
-     ['▦', 'statistics', 'stats/?l=' + sq, false],
-     ['✚', 'injury report', 'injuries/?l=' + sq, false],
-     ['❏', 'news', 'news/?l=' + sq, false]].forEach(([ic, tx, href, on], i) => {
+     ['▥', 'fixtures', 'fixtures/?l=' + sq, at('fixtures')],
+     ['▤', 'table / team stats', 'l/?l=' + sq, at('l')],
+     ['▦', 'statistics', 'stats/?l=' + sq, at('stats')],
+     ['✚', 'injury report', 'injuries/?l=' + sq, at('injuries')],
+     ['❏', 'news', 'news/?l=' + sq, at('news')]].forEach(([ic, tx, href, on], i) => {
       /* cg-key: in the league's colours on a themed page, as a league's own pages are (nav.css) */
       const a = el('a', 'item cg-key' + (i % 2 ? ' cg-alt' : '') + (on ? ' on' : ''));
       a.href = root + href;
@@ -2710,11 +2777,12 @@
     afterPaint(() => sizeDeck(false));
   }
 
-  function drawLeagues() {
+  function drawLeagues(listOnly) {
     if (isCollegeKey(country)) {
       drawCollege(country);
+      if (listOnly) return;
       const l0 = bySlug();
-      if (l0) { fillHeader(l0); applyNav(l0); setView('league', false); }
+      if (l0 && !systemPage(l0)) { fillHeader(l0); applyNav(l0); setView('league', false); }
       else setView('root', false);
       afterPaint(() => { sizeDeck(false); afterPaint(() => nav.classList.remove('noanim')); });
       return;
@@ -2724,7 +2792,10 @@
       ? leagues
       : leagues.filter(l => groupKey(l) === country)).slice();
     if (typeof window.epinoiaLeagueOrder === 'function') inCountry.sort(window.epinoiaLeagueOrder);
-    if (!inCountry.length) {
+    /* the country's college systems, a row each after its own leagues */
+    const systems = country === null ? [] : [...new Set(leagues.filter(l => COLLEGE[l.slug] && homeOf(COLLEGE[l.slug]) === country)
+      .map(l => COLLEGE[l.slug]))];
+    if (!inCountry.length && !systems.length) {
       list.appendChild(el('div', 'gempty', 'none yet'));
       sizeDeck(false);
       return;
@@ -2774,7 +2845,9 @@
 
       list.appendChild(a);
     });
+    systems.forEach(key => list.appendChild(systemRow(key)));
     markCurrent();
+    if (listOnly) { afterPaint(() => sizeDeck(false)); return; }
     const l = bySlug();
     /* A page that names a league opens inside it; anything else opens at the
        top, which is now the countries rather than a flat list of every league
@@ -3637,7 +3710,7 @@
         markCurrent();
         retarget();
         const l = bySlug();
-        if (l) { fillHeader(l); setView('league', false); settleCountry(l); }
+        if (l) { fillHeader(l); setView(systemPage(l) ? 'root' : 'league', false); settleCountry(l); }
         else { setView('root', false); }
         applyAuth();                 // role gating is league-scoped
         themeLeague();               // and the page wears that league's colours

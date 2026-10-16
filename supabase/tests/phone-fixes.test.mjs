@@ -72,7 +72,7 @@ console.log('\n-- a match report links its game');
 console.log('\n-- a league tapped in the phone menu');
 {
   const nav = rd('epinoia', 'nav.js');
-  const at = nav.indexOf('function drawLeagues()');
+  const at = nav.indexOf('function drawLeagues(');      // (listOnly) since 2026-10-16
   const body = nav.slice(at, nav.indexOf("setView('league', true);", at));
   ok('in the open sheet the row is left to be the link it is (the league\'s front page)',
      /if \(nav\.classList\.contains\('drawer-open'\)\) return;\s*e\.preventDefault\(\);/.test(body), body.slice(0, 400));

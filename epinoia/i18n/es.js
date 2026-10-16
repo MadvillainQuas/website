@@ -2120,7 +2120,8 @@
       'This could not be read just now.': 'No se ha podido leer ahora mismo.',
       'men': 'masculino',
       'women': 'femenino',
-      'Back to the system': 'Volver al sistema'
+      'Back to the system': 'Volver al sistema',
+      'university basketball': 'Baloncesto universitario'
     },
 
     ctx: {
@@ -3033,6 +3034,7 @@
       /* a college system's hub and its conferences (college.js, home.js, nav.js, search.js; 2026-10-16) */
       [/^(.+)’s page →$/, 'Página de $1 →'],
       [/^(.+) Main Hub$/, 'Portada principal de $1'],
+      [/^(.+) — its conferences, hub and pages$/, '$1: sus conferencias, portada y páginas'],
       [/^← (.+) hub$/, '← Portada de $1'],
       [/^Search (.+) teams and players$/, 'Buscar equipos y jugadores de $1'],
       [/^(.+) teams and players$/, 'Equipos y jugadores de $1'],

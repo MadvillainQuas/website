@@ -99,6 +99,41 @@ ok('the footer\'s search stays the platform\'s; the hub\'s phone bar searches th
 ok('the college helpers are defined before the bar is painted (they once were not: the whole rail failed)',
    NV.indexOf('const collegeName = ') > 0 && NV.indexOf('const collegeName = ') < NV.indexOf('function paintHubTabs()'));
 
+console.log('\n-- a system under its country (Louie, 2026-10-16: "U-Sports and NCAA D2 ... under their respective countries")');
+ok('the countries list counts a system\'s leagues under its country (U SPORTS: Canada, NCAA D2: the United States)',
+   NV.includes("const COLLEGE_HOME = { 'u-sports': 'CA', 'ncaa-d2': 'US' };")
+   && NV.includes('const listedIn = l => (l && COLLEGE[l.slug] ? homeOf(COLLEGE[l.slug]) : groupKey(l));')
+   && NV.includes('const k = listedIn(l);') && NV.includes("el('button', 'item crow' + (countryHere() === code ? ' on' : ''))"));
+ok('...and the country\'s list has the system as one row after its leagues, opening the system\'s panel in place',
+   NV.includes('systems.forEach(key => list.appendChild(systemRow(key)));') && NV.includes("el('a', 'item lrow cg-sysrow'")
+   && /a\.dataset\.railMove = '1';[\s\S]{0,900}country = code;\s*fillCountryHead\(code\);\s*drawLeagues\(true\);/.test(NV));
+ok('...after the tap: a redraw that removes the row tapped would read, in the phone sheet, as a tap outside it (it closed)',
+   /setTimeout\(\(\) => \{\s*country = code;\s*fillCountryHead\(code\);\s*drawLeagues\(true\);/.test(NV)
+   && NV.includes('setTimeout(() => { drawCollege(code); fillCountryHead(code); }, 0);'));
+ok('the system\'s panel\'s back button comes back to its country, the system\'s row in focus',
+   /if \(isCollegeKey\(country\)\) \{\s*const key = collegeKey\(country\);\s*country = homeOf\(key\);\s*fillCountryHead\(country\);\s*drawLeagues\(true\);/.test(NV));
+ok('a page of a system\'s league with no conference opens on the system\'s panel - a box score too (reported 2026-10-16)',
+   NV.includes('const systemPage = l => !!(l && COLLEGE[l.slug] && !rconf);')
+   && NV.includes("if (l0 && !systemPage(l0)) { fillHeader(l0); applyNav(l0); setView('league', false); }")
+   && NV.includes("if (l) { fillHeader(l); setView(systemPage(l) ? 'root' : 'league', false); settleCountry(l); }"));
+ok('...with the system page it is lit there', NV.includes("['▥', 'fixtures', 'fixtures/?l=' + sq, at('fixtures')]"));
+{
+  const req = (await import('node:module')).createRequire(import.meta.url);
+  globalThis.EPINOIA_COLLEGE = { 'u-sports': 'u-sports', 'ncaa-d2-men': 'ncaa-d2', 'ncaa-d2-women': 'ncaa-d2' };
+  const C = req(path.join(EP, 'country.js'));
+  const g = C.group([{ slug: 'u-sports', name: 'U SPORTS', country: 'CA' }, { slug: 'cebl', name: 'CEBL', country: 'CA' },
+                     { slug: 'ncaa-d2-men', name: 'NCAA D2 Men', country: 'US' }]);
+  ok('HOME\'s directory: U SPORTS under Canada, NCAA D2 under the United States, with its drawn flag',
+     JSON.stringify(g.map(x => [x.code, x.leagues.map(l => l.slug).sort()])) === '[["CA",["cebl","u-sports"]],["US",["ncaa-d2-men"]]]'
+     && C.flagSrc('US') === 'brand/flags/us.svg', g);
+  delete globalThis.EPINOIA_COLLEGE;
+}
+ok('...its rows go to the system\'s hub, on the side they are', rd('home', 'leagues.js').includes("if (sys) a.href = ctx.base + '?college=' + encodeURIComponent(sys)"));
+ok('the US flag is drawn (13 stripes, 50 stars) and in the rail\'s list', /aria-label="United States"/.test(rd('brand', 'flags', 'us.svg'))
+   && (rd('brand', 'flags', 'us.svg').match(/M[\d.]+ [\d.]+L/g) || []).length === 50 && /'SK', 'US', 'XB'/.test(NV));
+ok('the hub\'s region rows: the names take the spare width, so every row\'s logos end at one edge',
+   CSS.includes('.cg-rrow-n{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}') && CSS.includes('.cg-rrow-l{flex:none;display:inline-flex;justify-content:flex-end;gap:4px;margin-right:4px}'));
+
 console.log('\n-- the system\'s search (search.js)');
 const SJ = rd('search.js');
 const calls = [];

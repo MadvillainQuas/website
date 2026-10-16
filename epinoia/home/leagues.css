@@ -154,4 +154,3 @@
    In the flow it takes its own place at the end, a clear gap after the count, at any width. */
 .hm .lgc-country>summary.lgc-h::after{position:static;margin:0 0 0 14px}
 /* a college system's row wears its own logo (leagues.js flagEl): a square crest, not a flag's oblong */
-.lgc-country .lgc-flag-img.lgc-syslogo{width:22px;height:22px;object-fit:contain;border-radius:5px;background:#fff;padding:1px;box-sizing:border-box}

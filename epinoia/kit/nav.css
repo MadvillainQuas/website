@@ -1122,3 +1122,17 @@ html .ep-nav .panel > .ptitle, html .ep-nav .panel > .ptitle.on{ border-bottom:0
    .pages, so they take the league's keys here as a league's own rows do, the two inks alternating */
 html body.league-themed .ep-nav .item.cg-key{ --kb:var(--league-a); --kink:var(--league-on-a,#fff); --kg:var(--league-a-ink,var(--league-a)) }
 html body.league-themed .ep-nav .item.cg-key.cg-alt{ --kg:var(--league-b-ink,var(--league-a-ink)) }
+/* A SYSTEM'S ROW IN ITS COUNTRY'S LIST (nav.js systemRow): a league row with "›" at its end for the panel it opens; a
+   system with no logo yet (NCAA D2) gets its mortarboard on a paper plate */
+.ep-nav .cg-sysrow .lgo{ margin-left:auto }
+.ep-nav .cg-sysrow:hover .lgo{ color:var(--lume); transform:translateX(2px) }
+/* lit (the page is the system's): its "›" says where it goes, so no second marker beside it */
+html .ep-nav a.item.cg-sysrow.on::after{ content:none }
+html .ep-nav a.item.cg-sysrow.on .lgo{ color:inherit }
+.ep-nav .crest.cg-sysplate{ background:#f4f6f5; font-size:14px; line-height:1 }
+/* the list redrawn in place (a system's panel opened from its country, or back out of it) slides in from that side */
+@keyframes cg-slide-in{ from{ opacity:0; transform:translateX(18px) } to{ opacity:1; transform:none } }
+@keyframes cg-slide-back{ from{ opacity:0; transform:translateX(-18px) } to{ opacity:1; transform:none } }
+.ep-nav .leagues.cg-slide-in{ animation:cg-slide-in .2s ease-out }
+.ep-nav .leagues.cg-slide-back{ animation:cg-slide-back .2s ease-out }
+@media (prefers-reduced-motion:reduce){ .ep-nav .leagues.cg-slide-in, .ep-nav .leagues.cg-slide-back{ animation:none } }

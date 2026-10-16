@@ -56,10 +56,13 @@
 .cg-rrow>summary{gap:12px;min-height:60px;text-transform:none;letter-spacing:0;border-left:5px solid var(--rc,var(--rule-2))}
 .cg-rrow.lit>summary,.cg-rrow[open]>summary{background:color-mix(in srgb,var(--rc,var(--lume)) 9%,var(--panel))}
 .cg-swatch{flex:none;width:14px;height:14px;border-radius:4px;background:var(--rc,var(--rule-2))}
-.cg-rrow-n{display:flex;flex-direction:column;min-width:0}
+/* THE NAMES TAKE THE SPARE WIDTH, so every row's logos end at one edge beside the chevron (Louie, 2026-10-16: "make sure
+   the logos/elements are aligned"). The logos and the dropdown's chevron both had margin-left:auto, which splits the
+   space between them, and each row's logos sat wherever its name happened to end. */
+.cg-rrow-n{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}
 .cg-rrow-n b{font-family:var(--f-ui);font-weight:800;font-size:15px;color:var(--ink)}
 .cg-rrow-n span{font-family:var(--f-ui);font-size:12px;font-weight:600;color:var(--ink-3)}
-.cg-rrow-l{margin-left:auto;display:inline-flex;gap:4px}
+.cg-rrow-l{flex:none;display:inline-flex;justify-content:flex-end;gap:4px;margin-right:4px}
 .cg-rrow-b{display:flex;flex-direction:column;gap:2px;padding:6px 10px 12px}
 
 /* ---- the games' conference chips ---- */
@@ -70,10 +73,10 @@
 /* ---- conferences and their clubs: a row each, as HOME's countries ---- */
 .cg-acc{display:flex;flex-direction:column;border-top:1px solid var(--rule)}
 .cg-crow>summary{gap:12px;text-transform:none;letter-spacing:0;min-height:58px}
-.cg-crow-n{display:flex;flex-direction:column;min-width:0}
+.cg-crow-n{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}          /* the same: the counts line up */
 .cg-crow-n b{font-family:var(--f-ui);font-weight:800;font-size:15px;color:var(--ink)}
 .cg-crow-n span{font-family:var(--f-ui);font-weight:500;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cg-crow-r{margin-left:auto;padding:3px 9px;border:1px solid var(--rule-2);border-radius:999px;font-family:var(--f-ui);font-size:11px;
+.cg-crow-r{flex:none;margin-right:4px;padding:3px 9px;border:1px solid var(--rule-2);border-radius:999px;font-family:var(--f-ui);font-size:11px;
   font-weight:600;color:var(--ink-2)}
 .cg-crow>summary .n{font-family:var(--f-ui);font-size:12px;font-weight:700;color:var(--ink-3);letter-spacing:0}
 .cg-crow-b{padding:12px calc(var(--u)*3) 16px}

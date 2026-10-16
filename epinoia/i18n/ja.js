@@ -2118,7 +2118,8 @@
       'This could not be read just now.': '今は読み込めませんでした。',
       'men': '男子',
       'women': '女子',
-      'Back to the system': 'システムに戻る'
+      'Back to the system': 'システムに戻る',
+      'university basketball': '大学バスケットボール'
     },
 
     ctx: {
@@ -3032,6 +3033,7 @@
       /* a college system's hub and its conferences (college.js, home.js, nav.js, search.js; 2026-10-16) */
       [/^(.+)’s page →$/, '$1のページ →'],
       [/^(.+) Main Hub$/, '$1 メインハブ'],
+      [/^(.+) — its conferences, hub and pages$/, '$1 — カンファレンス、トップ、各ページ'],
       [/^← (.+) hub$/, '← $1 ハブ'],
       [/^Search (.+) teams and players$/, '$1のチームと選手を検索'],
       [/^(.+) teams and players$/, '$1のチームと選手'],

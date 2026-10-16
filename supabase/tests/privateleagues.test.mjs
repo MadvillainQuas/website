@@ -433,7 +433,9 @@ ok('the failed bell has a style of its own',
 /* ---- 18. the private group cannot appear for somebody with no private league */
 console.log('\n18. "Private" only shows to somebody who is in one');
 ok('the group is built from the league list, which RLS has already filtered',
-   /leagues\.forEach\(l => \{\s*\n\s*const k = groupKey\(l\);/.test(nav),
+   /* listedIn since 2026-10-16 (a college system's leagues under their country); everything else is groupKey's */
+   /leagues\.forEach\(l => \{\s*\n\s*const k = listedIn\(l\);/.test(nav)
+   && nav.includes('const listedIn = l => (l && COLLEGE[l.slug] ? homeOf(COLLEGE[l.slug]) : groupKey(l));'),
    'a league nobody let this account into is not in `leagues`, so it makes no group');
 ok('...and 0139 is what filters it',
    /create policy leagues_read on public\.leagues for select/.test(m39) &&
