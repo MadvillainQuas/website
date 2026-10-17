@@ -736,6 +736,33 @@
                                  'reports: a player’s or a club’s scouting reports, emailed to you');
   const setupRow = platformRow('⊕', 'set up a league', 'setup-league/', /\/epinoia\/setup-league\//,
                                'set up a league: your own private league on Epinoia, run by you');
+  /* NOTHING SOLD WHILE PAYMENTS ARE OFF (Louie, 2026-10-17: "If payments/memberships aren't turned on, please can it hide
+     the membership/reports/set up a league pages"): the three rows stay out of the rail until memberships_enabled() says
+     on (anon may ask it, 0117), and on one of the three pages themselves a visitor is sent home. An unanswered question
+     keeps them hidden - the switch ships off. One question a session. */
+  const soldRows = [membershipRow, reportsRow, setupRow];
+  soldRows.forEach(a => { a.style.display = 'none'; });
+  const onSoldPage = soldRows.some(a => a.classList.contains('on'));
+  (function paymentsOn() {
+    const K = 'epinoia_memberships_on';
+    let known = null;
+    try { const v = sessionStorage.getItem(K); if (v === '1' || v === '0') known = v === '1'; } catch (_) { /* ask */ }
+    const apply = on => {
+      if (on) { soldRows.forEach(a => { a.style.display = ''; }); return; }
+      if (onSoldPage) location.replace(root + 'home/');
+    };
+    if (known !== null) return apply(known);
+    const cfg = window.EPINOIA_CONFIG;
+    if (!cfg || !cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.fetch) return apply(false);
+    fetch(cfg.supabaseUrl + '/rest/v1/rpc/memberships_enabled', {
+      method: 'POST', body: '{}', cache: 'no-store',
+      headers: { apikey: cfg.supabaseAnonKey, 'Content-Type': 'application/json', Accept: 'application/json' }
+    }).then(r => (r.ok ? r.json() : null)).then(j => {
+      if (typeof j !== 'boolean') return onSoldPage ? null : apply(false);
+      try { sessionStorage.setItem(K, j ? '1' : '0'); } catch (_) { /* fine */ }
+      apply(j);
+    }, () => { if (!onSoldPage) apply(false); });
+  })();
   /* THE HOME RAIL IN SECTIONS (Louie, 2026-10-09): home; MAIN - fixtures, leagues ›, scouting › (its own layer: scouting,
      the injury report, what wins); VIDEO & FEED - news, videos; EPINOIA GO - GO ›, the Manager */
   const onScout = /\/epinoia\/(scouting|injuries|winning)\//.test(here);
